@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\HourBanks\HourBankCommitment;
+use App\Domain\HourBanks\HourBankRenewal;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Models\Client;
@@ -9,7 +11,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -227,23 +228,24 @@ describe('ficha', function () {
                 ->where('can.update', false));
     });
 
-    test('las horas comprometidas solo agregan las horas de las tareas de sus bolsas', function () {
-        $elsewhere = Task::factory()->inBank(HourBank::factory()->create())->create(['estimated_minutes' => 60]);
-        TimeEntry::factory()->forTask($elsewhere)->minutes(30)->on('2026-09-01')->create();
+    test('las horas comprometidas coinciden con las del detalle de la bolsa, también tras renovar moviendo tareas con horas (BRN-03)', function () {
+        // Una tarea de 10 h con 8 h imputadas en la bolsa antigua se mueve al renovar: en la nueva
+        // queda comprometida entera (lo imputado antes es de la bolsa antigua, D-039).
+        $bank = HourBank::factory()->hours(10)->create(['project_id' => $this->web->id, 'name' => 'Bolsa T4', 'start_date' => '2026-09-01']);
+        $moved = Task::factory()->inBank($bank)->create(['estimated_minutes' => 600]);
+        TimeEntry::factory()->forTask($moved)->minutes(480)->on('2026-09-01')->create();
+        // Un hito con estimación cuenta 0 (D-039).
+        $milestone = Task::factory()->inBank($bank)->milestone()->create();
+        DB::table('tasks')->where('id', $milestone->id)->update(['estimated_minutes' => 120]);
+        $renewal = app(HourBankRenewal::class)->renew($bank->fresh(), [], true)['bank'];
 
-        $sql = [];
-        DB::listen(function (QueryExecuted $query) use (&$sql): void {
-            $sql[] = $query->sql;
-        });
+        $detail = app(HourBankCommitment::class)->committedFor($renewal);
+        expect($detail)->toBe(600);
 
         $this->actingAs($this->employee)
             ->get("/clientes/{$this->client->id}")
-            ->assertInertia(fn (Assert $page) => $page->where('hourBanks.0.committed_minutes', (300 - 180) + 60));
-
-        $aggregations = array_values(array_filter($sql, fn (string $query): bool => str_contains($query, 'SUM(minutes) AS logged')));
-
-        expect($aggregations)->toHaveCount(1)
-            ->and($aggregations[0])->toContain('"task_id" in (select "id" from "tasks" where "hour_bank_id" in');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('hourBanks', fn ($banks) => collect($banks)->firstWhere('id', $renewal->id)['committed_minutes'] === $detail));
     });
 
     test('con view-financials llegan la tarifa del cliente y los importes de las bolsas', function () {

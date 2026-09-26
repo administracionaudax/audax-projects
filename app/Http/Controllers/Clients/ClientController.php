@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Clients;
 
 use App\Domain\Admin\TextSearch;
+use App\Domain\HourBanks\HourBankCommitment;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
@@ -23,7 +24,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -103,7 +103,7 @@ class ClientController extends Controller
         return to_route('clients.show', $client);
     }
 
-    public function show(Request $request, Client $client): Response
+    public function show(Request $request, Client $client, HourBankCommitment $commitment): Response
     {
         $this->authorize('view', $client);
 
@@ -130,8 +130,9 @@ class ClientController extends Controller
         $open = $banks->filter(fn (HourBank $bank): bool => in_array($bank->status, [HourBankStatus::Active, HourBankStatus::Exhausted], true))->values();
         $history = $banks->filter(fn (HourBank $bank): bool => in_array($bank->status, [HourBankStatus::Renewed, HourBankStatus::Closed], true))->values();
 
-        $committed = self::committedMinutes($open->map(fn (HourBank $bank): int => $bank->id)->values()->all());
-        $open->each(fn (HourBank $bank) => $bank->setAttribute('committed_minutes', $committed[$bank->id] ?? 0));
+        // Las mismas horas comprometidas que el detalle de la bolsa, su tarjeta y la vista global.
+        $committed = $commitment->forBanks($open->modelKeys());
+        $open->each(fn (HourBank $bank) => $bank->setAttribute('committed_minutes', $committed[$bank->id]['committed_minutes'] ?? 0));
 
         [$monthStart, $monthEnd] = self::monthRange();
         $yearStart = LocalTime::today()->startOfYear()->toDateString();
@@ -212,48 +213,5 @@ class ClientController extends Controller
             ->whereIn('project_id', $projects->modelKeys())
             ->whereBetween('date', [$from, $to])
             ->sum('minutes');
-    }
-
-    /**
-     * Horas comprometidas por bolsa (SPEC §8, UI): suma de max(estimada − imputada, 0) de sus tareas
-     * abiertas. Si una tarea tiene subtareas con estimación, cuentan las subtareas (su estimación
-     * es la suma de las de las subtareas, SPEC §6) y no la tarea padre, para no contar dos veces.
-     * Una sola consulta agregada.
-     *
-     * @param  array<int, int>  $bankIds
-     * @return array<int, int>
-     */
-    public static function committedMinutes(array $bankIds): array
-    {
-        if ($bankIds === []) {
-            return [];
-        }
-
-        // Solo las horas de las tareas de esas bolsas (por tarea y no por time_entries.hour_bank_id,
-        // que conserva la bolsa del momento de imputar): PostgreSQL no lleva la condición del join
-        // dentro de una subconsulta agrupada, y sin este filtro agregaría todas las horas.
-        $logged = DB::table('time_entries')
-            ->select('task_id')
-            ->selectRaw('SUM(minutes) AS logged')
-            ->whereIn('task_id', DB::table('tasks')->select('id')->whereIn('hour_bank_id', $bankIds))
-            ->groupBy('task_id');
-
-        return DB::table('tasks')
-            ->leftJoinSub($logged, 'logged', 'logged.task_id', '=', 'tasks.id')
-            ->whereIn('tasks.hour_bank_id', $bankIds)
-            ->whereNull('tasks.completed_at')
-            ->whereNull('tasks.deleted_at')
-            ->whereNotNull('tasks.estimated_minutes')
-            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
-                ->from('tasks as subtasks')
-                ->whereColumn('subtasks.parent_task_id', 'tasks.id')
-                ->whereNotNull('subtasks.estimated_minutes')
-                ->whereNull('subtasks.deleted_at'))
-            ->groupBy('tasks.hour_bank_id')
-            ->selectRaw('tasks.hour_bank_id AS bank_id')
-            ->selectRaw('SUM(CASE WHEN tasks.estimated_minutes > COALESCE(logged.logged, 0) THEN tasks.estimated_minutes - COALESCE(logged.logged, 0) ELSE 0 END) AS committed')
-            ->pluck('committed', 'bank_id')
-            ->mapWithKeys(fn ($committed, $bankId): array => [(int) $bankId => (int) $committed])
-            ->all();
     }
 }
