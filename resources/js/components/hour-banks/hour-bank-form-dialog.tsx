@@ -24,11 +24,12 @@ import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { todayInMadrid } from '@/lib/week';
 import { store, update } from '@/routes/projects/hour-banks';
-import type { HourBank, Option } from '@/types';
+import type { HourBank, HourBankDepartmentOption } from '@/types';
 
 /**
  * Alta o edición de una bolsa en un diálogo. Cambiar el total recalcula el consumo y el exceso
- * en el servidor (HourBankLedger); una bolsa renovada no se edita.
+ * en el servidor (HourBankLedger); una bolsa renovada no se edita y en una cerrada no se cambia
+ * el total (antes hay que reabrirla).
  */
 export function HourBankFormDialog({
     projectId,
@@ -40,7 +41,7 @@ export function HourBankFormDialog({
     projectId: number;
     /** Sin bolsa, es un alta. */
     bank?: HourBank;
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
     trigger: ReactNode;
 }) {
@@ -73,7 +74,7 @@ function HourBankForm({
 }: {
     projectId: number;
     bank?: HourBank;
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
     onDone: () => void;
 }) {
@@ -121,6 +122,7 @@ function HourBankForm({
                 departments={departments}
                 overageDefault={overageDefault}
                 canViewFinancials={can.viewFinancials}
+                totalLocked={bank?.status === 'closed'}
             />
 
             {(form.errors as Record<string, string>).hour_bank ? (

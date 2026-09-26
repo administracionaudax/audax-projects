@@ -14,7 +14,16 @@ import type {
 } from './domain';
 import type { ProjectsPaginated } from './projects';
 
-/** Qué botones ofrecer en una bolsa (la autorización real la hace el servidor). */
+/**
+ * Departamento del selector de una bolsa. `deleted`: eliminado, pero es el de la bolsa y se
+ * puede conservar al editarla o renovarla.
+ */
+export type HourBankDepartmentOption = Option & { deleted?: boolean };
+
+/**
+ * Qué botones ofrecer en una bolsa (la autorización real la hace el servidor). `renew`, solo si
+ * está agotada o próxima a agotarse (D-035).
+ */
 export type HourBankAbilities = {
     update: boolean;
     renew: boolean;
@@ -27,7 +36,7 @@ export type HourBankAbilities = {
 export type HourBankCard = HourBank & {
     /** Estimación restante de sus tareas abiertas (App\Domain\HourBanks\HourBankCommitment). */
     committed_minutes: number;
-    /** Tareas abiertas de primer nivel (las que se ofrecen mover al renovar). */
+    /** Tareas abiertas de cualquier nivel, también hitos: las que se mueven al renovar. */
     open_tasks_count: number;
     project?: {
         id: number;
@@ -45,6 +54,7 @@ export type HourBankCard = HourBank & {
 /** Eslabón del histórico de renovaciones (de la más antigua a la más reciente). */
 export type HourBankChainItem = {
     id: number;
+    project_id: number;
     name: string;
     status: HourBankStatus;
     start_date: string;
@@ -59,7 +69,7 @@ export type ProjectHourBanksProps = {
     hiddenCount: number;
     history: HourBankChainItem[][];
     filters: { todas: boolean };
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     /** Política efectiva de las bolsas con «Según el ajuste general». */
     overageDefault: 'allow' | 'block';
     can: { create: boolean };
@@ -116,7 +126,7 @@ export type HourBankShowProps = {
     /** Entradas que puede ver quien mira (D-021). */
     entries: ProjectsPaginated<TimeEntry>;
     tasks: HourBankTaskRow[];
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     /** Política efectiva de las bolsas con «Según el ajuste general». */
     overageDefault: 'allow' | 'block';
 };
@@ -140,4 +150,12 @@ export type HourBanksIndexProps = {
     /** 'managed' = solo las bolsas de mis proyectos (gestor, D-035). */
     scope: 'all' | 'managed';
     options: { clients: Option[]; departments: Option[] };
+};
+
+/** Proyecto de una cadena del histórico de un cliente. */
+export type HourBankHistoryProject = {
+    id: number;
+    code: string;
+    name: string;
+    color: string;
 };

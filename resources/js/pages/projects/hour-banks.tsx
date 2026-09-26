@@ -145,10 +145,7 @@ export default function ProjectHourBanks({
                     </PageSection>
 
                     <PageSection title={t('hour_banks.history.heading')}>
-                        <HourBankHistory
-                            projectId={project.id}
-                            chains={history}
-                        />
+                        <HourBankHistory chains={history} />
                     </PageSection>
                 </div>
             </ProjectShell>

@@ -6,6 +6,7 @@ import { cloneElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { offersRenewal } from '@/components/hour-banks/hour-bank-actions';
 import { HourBankCard } from '@/components/hour-banks/hour-bank-card';
+import { HourBankFields } from '@/components/hour-banks/hour-bank-fields';
 import { HourBankHistory } from '@/components/hour-banks/hour-bank-history';
 import { renewalDefaults } from '@/components/hour-banks/hour-bank-renew-dialog';
 import { HourBankTasksTable } from '@/components/hour-banks/hour-bank-tasks-table';
@@ -197,11 +198,11 @@ describe('HourBankHistory', () => {
     it('pinta cada cadena de la más antigua a la más reciente', () => {
         render(
             <HourBankHistory
-                projectId={2}
                 chains={[
                     [
                         {
                             id: 1,
+                            project_id: 2,
                             name: 'T3',
                             status: 'renewed',
                             start_date: '2026-07-01',
@@ -209,6 +210,7 @@ describe('HourBankHistory', () => {
                         },
                         {
                             id: 2,
+                            project_id: 2,
                             name: 'T4',
                             status: 'active',
                             start_date: '2026-10-01',
@@ -228,13 +230,130 @@ describe('HourBankHistory', () => {
         ).toEqual(['T3', 'T4']);
         expect(items[0].textContent).toContain('Renovada');
         expect(items[1].textContent).toContain('Desde el 01/10/2026');
+        expect(within(items[1]).getByRole('link').getAttribute('href')).toBe(
+            '/proyectos/2/bolsas/2',
+        );
+    });
+
+    it('en el de un cliente, cada cadena dice de qué proyecto es y enlaza a sus bolsas', () => {
+        const { container } = render(
+            <HourBankHistory
+                projects={[
+                    { id: 2, code: 'ACME-WEB', name: 'Web', color: '#0171FF' },
+                    { id: 3, code: 'ACME-SEO', name: 'SEO', color: '#179FA5' },
+                ]}
+                chains={[
+                    [
+                        {
+                            id: 1,
+                            project_id: 3,
+                            name: 'SEO 1',
+                            status: 'renewed',
+                            start_date: '2026-07-01',
+                            end_date: null,
+                        },
+                        {
+                            id: 4,
+                            project_id: 3,
+                            name: 'SEO 2',
+                            status: 'active',
+                            start_date: '2026-10-01',
+                            end_date: null,
+                        },
+                    ],
+                ]}
+            />,
+        );
+
+        const chain = container.querySelector<HTMLElement>(
+            '[data-test="renewal-chain"]',
+        );
+        expect(chain).not.toBeNull();
+        const project = within(chain as HTMLElement).getByRole('link', {
+            name: /ACME-SEO/,
+        });
+        expect(project.getAttribute('href')).toBe('/proyectos/3');
+        expect(project.textContent).toContain('SEO');
+        expect(
+            within(chain as HTMLElement)
+                .getByRole('link', { name: 'SEO 2' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/3/bolsas/4');
     });
 
     it('estado vacío sin renovaciones', () => {
-        render(<HourBankHistory projectId={2} chains={[]} />);
+        render(
+            <HourBankHistory
+                chains={[]}
+                emptyDescription="Sin renovaciones de este cliente."
+            />,
+        );
 
         expect(
             screen.getByText('Aún no se ha renovado ninguna bolsa'),
+        ).toBeTruthy();
+        expect(
+            screen.getByText('Sin renovaciones de este cliente.'),
+        ).toBeTruthy();
+    });
+});
+
+describe('HourBankFields', () => {
+    const data = {
+        name: 'Bolsa T4',
+        department_id: 4,
+        total_minutes: 600,
+        start_date: '2026-10-01',
+        end_date: null,
+        overage_policy: 'inherit' as const,
+        hourly_rate: '',
+        price_amount: '',
+        invoice_reference: '',
+        notes: '',
+    };
+
+    it('un departamento eliminado de la bolsa se muestra como tal', () => {
+        render(
+            <HourBankFields
+                data={data}
+                set={() => {}}
+                errors={{}}
+                departments={[
+                    { id: 1, name: 'Diseño' },
+                    { id: 4, name: 'Vídeo', deleted: true },
+                ]}
+                overageDefault="allow"
+                canViewFinancials={false}
+            />,
+        );
+
+        expect(
+            screen.getByRole('combobox', { name: 'Departamento' }).textContent,
+        ).toContain('Vídeo (eliminado)');
+    });
+
+    it('en una bolsa cerrada el total no se puede cambiar y se explica', () => {
+        render(
+            <HourBankFields
+                data={data}
+                set={() => {}}
+                errors={{}}
+                departments={[]}
+                overageDefault="allow"
+                canViewFinancials={false}
+                totalLocked
+            />,
+        );
+
+        const total = screen.getByLabelText(
+            'Total de horas',
+        ) as HTMLInputElement;
+        expect(total.disabled).toBe(true);
+        expect(total.getAttribute('aria-describedby')).toBeTruthy();
+        expect(
+            screen.getByText(
+                'La bolsa está cerrada: para cambiar el total, administración tiene que reabrirla.',
+            ),
         ).toBeTruthy();
     });
 });

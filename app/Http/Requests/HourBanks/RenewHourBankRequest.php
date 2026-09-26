@@ -16,10 +16,13 @@ class RenewHourBankRequest extends FormRequest
 
     public function authorize(): bool
     {
-        /** @var HourBank $bank */
-        $bank = $this->route('hourBank');
+        return $this->user()?->can('renew', $this->hourBank()) ?? false;
+    }
 
-        return $this->user()?->can('renew', $bank) ?? false;
+    public function hourBank(): HourBank
+    {
+        /** @var HourBank */
+        return $this->route('hourBank');
     }
 
     /**
@@ -28,7 +31,8 @@ class RenewHourBankRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...$this->hourBankRules(),
+            // Mismos parámetros: se puede conservar el departamento aunque se haya eliminado.
+            ...$this->hourBankRules(keepDepartmentId: $this->hourBank()->department_id),
             'move_open_tasks' => ['sometimes', 'boolean'],
         ];
     }

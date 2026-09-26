@@ -4,7 +4,10 @@ namespace App\Http\Controllers\HourBanks;
 
 use App\Domain\HourBanks\HourBankBreakdown;
 use App\Domain\HourBanks\HourBankCommitment;
+use App\Domain\HourBanks\HourBankDeletion;
+use App\Domain\HourBanks\HourBankHistory;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\HourBanks\HourBankRenewal;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
 use App\Http\Controllers\Controller;
@@ -22,7 +25,7 @@ use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,8 +44,13 @@ class HourBankController extends Controller
 
     public const int ENTRIES_PER_PAGE = 20;
 
-    public function index(Request $request, Project $project, HourBankCommitment $commitment): Response
-    {
+    public function index(
+        Request $request,
+        Project $project,
+        HourBankCommitment $commitment,
+        HourBankHistory $history,
+        HourBankRenewal $renewal,
+    ): Response {
         $this->authorize('view', $project);
         abort_unless($project->usesHourBanks(), 404);
 
@@ -54,7 +62,7 @@ class HourBankController extends Controller
         $banks = HourBank::query()
             ->where('project_id', $project->id)
             ->with(['department:id,name,color', 'closer:id,name'])
-            ->withExists(['timeEntries as has_time', 'tasks as has_tasks'])
+            ->withExists(['timeEntries as has_time', 'tasks as has_tasks', 'renewal as has_renewal'])
             ->orderByDesc('start_date')
             ->orderByDesc('id')
             ->get();
@@ -69,7 +77,7 @@ class HourBankController extends Controller
 
             $cards[] = [
                 ...ResourceData::of(new HourBankCardResource($bank, $figures[$bank->id] ?? null), $request),
-                'can' => $this->abilities($bank, $user, $canManage),
+                'can' => $this->abilities($bank, $user, $canManage, $renewal),
             ];
         }
 
@@ -80,10 +88,10 @@ class HourBankController extends Controller
             'canManage' => $canManage,
             'banks' => $cards,
             'hiddenCount' => $banks->count() - count($cards),
-            'history' => $this->history($banks),
+            'history' => $history->chains($banks),
             'filters' => ['todas' => $showAll],
-            'departments' => $this->departmentOptions(),
-            'overageDefault' => $this->overageDefault(),
+            'departments' => $this->departmentOptions($banks->pluck('department_id')->filter()->all()),
+            'overageDefault' => self::overageDefault(),
             'can' => ['create' => $user->can('create', [HourBank::class, $project])],
         ]);
     }
@@ -111,6 +119,7 @@ class HourBankController extends Controller
         HourBank $hourBank,
         HourBankCommitment $commitment,
         HourBankBreakdown $breakdown,
+        HourBankRenewal $renewal,
     ): Response {
         $this->authorize('view', $hourBank);
 
@@ -124,7 +133,7 @@ class HourBankController extends Controller
             'renewedFrom' => fn ($previous) => $previous->withTrashed()->select(['id', 'name', 'status']),
             'renewal:id,name,status,renewed_from_id',
         ]);
-        $hourBank->loadExists(['timeEntries as has_time', 'tasks as has_tasks']);
+        $hourBank->loadExists(['timeEntries as has_time', 'tasks as has_tasks', 'renewal as has_renewal']);
 
         $figures = $commitment->forBanks([$hourBank->id]);
         $canBreakdown = $user->can('viewBreakdown', $hourBank);
@@ -145,7 +154,7 @@ class HourBankController extends Controller
             'canManage' => $canManage,
             'bank' => [
                 ...ResourceData::of(new HourBankCardResource($hourBank, $figures[$hourBank->id] ?? null), $request),
-                'can' => $this->abilities($hourBank, $user, $canManage),
+                'can' => $this->abilities($hourBank, $user, $canManage, $renewal),
             ],
             'weekly' => $breakdown->weekly($hourBank),
             'byPerson' => $canBreakdown ? array_map(fn (array $row): array => [
@@ -176,8 +185,8 @@ class HourBankController extends Controller
                 'logged_minutes' => $row['logged_minutes'],
                 'committed_minutes' => $row['committed_minutes'],
             ], $commitment->tasksFor($hourBank)),
-            'departments' => $this->departmentOptions(),
-            'overageDefault' => $this->overageDefault(),
+            'departments' => $this->departmentOptions(array_filter([$hourBank->department_id])),
+            'overageDefault' => self::overageDefault(),
         ]);
     }
 
@@ -192,95 +201,57 @@ class HourBankController extends Controller
         return back();
     }
 
-    public function destroy(Project $project, HourBank $hourBank): RedirectResponse
+    /**
+     * Borrar (solo admin y sin horas, HourBankPolicy::delete). HourBankDeletion no deja borrar una
+     * bolsa con tareas o ya renovada, y si es la renovación de otra, la anterior vuelve a abrirse.
+     */
+    public function destroy(Project $project, HourBank $hourBank, HourBankDeletion $deletion): RedirectResponse
     {
         $this->authorize('delete', $hourBank);
 
-        if ($hourBank->tasks()->exists()) {
-            throw ValidationException::withMessages(['hour_bank' => __('hour_banks.errors.has_tasks')]);
-        }
-
         $name = $hourBank->name;
-        $hourBank->delete();
+        $previous = $deletion->delete($hourBank);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('hour_banks.flash.deleted', ['name' => $name])]);
+        $message = $previous === null
+            ? __('hour_banks.flash.deleted', ['name' => $name])
+            : __('hour_banks.flash.deleted_renewal', [
+                'name' => $name,
+                'previous' => $previous->name,
+                'status' => mb_strtolower($previous->status->label()),
+            ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('projects.hour-banks.index', $project);
     }
 
     /**
-     * Qué botones ofrecer (la autorización real la hace HourBankPolicy en cada acción).
+     * Qué botones ofrecer (la autorización real la hacen HourBankPolicy y las clases de dominio en
+     * cada acción). Renovar, solo si está agotada o próxima a agotarse (D-035).
      *
      * @return array{update: bool, renew: bool, close: bool, reopen: bool, delete: bool}
      */
-    private function abilities(HourBank $bank, User $user, bool $canManage): array
+    private function abilities(HourBank $bank, User $user, bool $canManage, HourBankRenewal $renewal): array
     {
-        $open = $bank->acceptsTime();
         $attributes = $bank->getAttributes();
 
         return [
             'update' => $canManage && $bank->status !== HourBankStatus::Renewed,
-            'renew' => $canManage && $open,
-            'close' => $canManage && $open,
+            'renew' => $canManage && $renewal->isDue($bank),
+            'close' => $canManage && $bank->acceptsTime(),
             'reopen' => $user->isAdmin() && $bank->status === HourBankStatus::Closed,
-            'delete' => $user->isAdmin() && ! ($attributes['has_time'] ?? true) && ! ($attributes['has_tasks'] ?? true),
+            'delete' => $user->isAdmin()
+                && ! ($attributes['has_time'] ?? true)
+                && ! ($attributes['has_tasks'] ?? true)
+                && ! ($attributes['has_renewal'] ?? true),
         ];
     }
 
     /**
-     * Histórico de renovaciones (SPEC §8.8): cadenas de bolsas enlazadas por renewed_from_id, de la
-     * más antigua a la más reciente. Solo las cadenas con al menos una renovación.
-     *
-     * @param  Collection<int, HourBank>  $banks
-     * @return list<list<array{id: int, name: string, status: string, start_date: string, end_date: string|null}>>
-     */
-    private function history(Collection $banks): array
-    {
-        $byId = $banks->keyBy('id');
-        $next = [];
-
-        foreach ($banks as $bank) {
-            if ($bank->renewed_from_id !== null && $byId->has($bank->renewed_from_id)) {
-                $next[$bank->renewed_from_id] = $bank;
-            }
-        }
-
-        $chains = [];
-
-        foreach ($banks->sortBy(['start_date', 'id']) as $bank) {
-            $isStart = $bank->renewed_from_id === null || ! $byId->has($bank->renewed_from_id);
-
-            if (! $isStart || ! isset($next[$bank->id])) {
-                continue;
-            }
-
-            $chain = [];
-            $current = $bank;
-            $seen = [];
-
-            while ($current !== null && ! isset($seen[$current->id])) {
-                $seen[$current->id] = true;
-                $chain[] = [
-                    'id' => $current->id,
-                    'name' => $current->name,
-                    'status' => $current->status->value,
-                    'start_date' => $current->start_date->toDateString(),
-                    'end_date' => $current->end_date?->toDateString(),
-                ];
-                $current = $next[$current->id] ?? null;
-            }
-
-            $chains[] = $chain;
-        }
-
-        return $chains;
-    }
-
-    /**
      * Política efectiva de una bolsa con `inherit` (el ajuste allow_hour_bank_overage), para
-     * explicarla en el formulario.
+     * explicarla en el formulario (también en el de la primera bolsa de un proyecto).
      */
-    private function overageDefault(): string
+    public static function overageDefault(): string
     {
         return app(HourBankLedger::class)
             ->effectivePolicy(new HourBank(['overage_policy' => OveragePolicy::Inherit]))
@@ -288,14 +259,28 @@ class HourBankController extends Controller
     }
 
     /**
-     * @return list<array{id: int, name: string}>
+     * Departamentos para el selector: los que existen y, marcados como eliminados, los de las
+     * bolsas que se muestran aunque ya se hayan borrado (para poder conservarlos al editar o
+     * renovar, como el cliente de un proyecto).
+     *
+     * @param  array<int, int|null>  $keep
+     * @return list<array{id: int, name: string, deleted: bool}>
      */
-    private function departmentOptions(): array
+    private function departmentOptions(array $keep = []): array
     {
+        $keep = array_values(array_unique(array_map('intval', array_filter($keep))));
+
         return array_values(Department::query()
+            ->withTrashed()
+            ->where(fn (Builder $where) => $where->whereNull('deleted_at')
+                ->when($keep !== [], fn (Builder $kept) => $kept->orWhereIn('id', $keep)))
             ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Department $department): array => ['id' => $department->id, 'name' => $department->name])
+            ->get(['id', 'name', 'deleted_at'])
+            ->map(fn (Department $department): array => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'deleted' => $department->trashed(),
+            ])
             ->all());
     }
 }

@@ -42,6 +42,17 @@ test('las tareas completadas y los hitos no cuentan', function () {
     expect($this->commitment->committedFor($this->bank))->toBe(30);
 });
 
+test('open_tasks_count: todas las tareas abiertas (subtareas e hitos incluidos), las que se mueven al renovar', function () {
+    $parent = Task::factory()->inBank($this->bank)->create();
+    Task::factory()->subtaskOf($parent)->create();
+    Task::factory()->subtaskOf($parent)->completed()->create();
+    $done = Task::factory()->inBank($this->bank)->completed()->create();
+    Task::factory()->subtaskOf($done)->create();
+    Task::factory()->inBank($this->bank)->milestone()->create();
+
+    expect($this->commitment->forBanks([$this->bank->id])[$this->bank->id]['open_tasks_count'])->toBe(4);
+});
+
 test('cuentan las subtareas y no el padre cuya estimación deriva de ellas', function () {
     $parent = Task::factory()->inBank($this->bank)->create(['estimated_minutes' => 1000]);
     $sub1 = Task::factory()->subtaskOf($parent)->create(['estimated_minutes' => 120]);
@@ -90,7 +101,8 @@ test('calcula varias bolsas a la vez con las mismas consultas', function () {
 
     expect($count)->toBe(3)
         ->and(array_column($figures, 'committed_minutes'))->toBe([90, 90, 90, 90, 90])
-        ->and(array_column($figures, 'open_tasks_count'))->toBe([2, 2, 2, 2, 2])
+        // Todas las abiertas: el padre, su subtarea y la otra tarea.
+        ->and(array_column($figures, 'open_tasks_count'))->toBe([3, 3, 3, 3, 3])
         ->and($this->commitment->forBanks([]))->toBe([]);
 });
 

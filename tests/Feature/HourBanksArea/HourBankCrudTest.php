@@ -2,6 +2,7 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Domain\HourBanks\HourBankClosure;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
 use App\Models\Department;
@@ -218,15 +219,89 @@ test('la pestaña Bolsas: abiertas por defecto, con el filtro también cerradas 
 test('las tarjetas dicen qué acciones ofrecer', function () {
     $active = HourBank::factory()->create(['project_id' => $this->project->id]);
     $closed = HourBank::factory()->closed()->create(['project_id' => $this->project->id]);
+    $exhausted = HourBank::factory()->hours(1)->create(['project_id' => $this->project->id]);
+    TimeEntry::factory()->forTask(Task::factory()->inBank($exhausted)->create())->minutes(60)->create();
 
     $this->actingAs(userWithRole('admin'))
         ->get("{$this->banksUrl}?todas=1")
-        ->assertInertia(function (Assert $page) use ($active, $closed) {
+        ->assertInertia(function (Assert $page) use ($active, $closed, $exhausted) {
             $banks = collect($page->toArray()['props']['banks'])->keyBy('id');
 
-            expect($banks[$active->id]['can'])->toBe(['update' => true, 'renew' => true, 'close' => true, 'reopen' => false, 'delete' => true])
-                ->and($banks[$closed->id]['can'])->toBe(['update' => true, 'renew' => false, 'close' => false, 'reopen' => true, 'delete' => true]);
+            // Renovar, solo agotada o próxima a agotarse (D-035); borrar, sin horas ni tareas.
+            expect($banks[$active->id]['can'])->toBe(['update' => true, 'renew' => false, 'close' => true, 'reopen' => false, 'delete' => true])
+                ->and($banks[$closed->id]['can'])->toBe(['update' => true, 'renew' => false, 'close' => false, 'reopen' => true, 'delete' => true])
+                ->and($banks[$exhausted->id]['can'])->toBe(['update' => true, 'renew' => true, 'close' => true, 'reopen' => false, 'delete' => false]);
         });
+});
+
+test('en una bolsa cerrada no se cambia el total (su saldo ya quedó registrado); el resto sí', function () {
+    $bank = HourBank::factory()->hours(10)->create(['project_id' => $this->project->id]);
+    TimeEntry::factory()->forTask(Task::factory()->inBank($bank)->create())->minutes(4 * 60)->create();
+    app(HourBankClosure::class)->close($bank, $this->owner);
+
+    $this->actingAs($this->owner)
+        ->put("{$this->banksUrl}/{$bank->id}", ($this->valid)(['total_minutes' => 20 * 60]))
+        ->assertSessionHasErrors(['total_minutes' => 'La bolsa está cerrada: para cambiar el total, un administrador tiene que reabrirla antes.']);
+
+    expect($bank->fresh())
+        ->total_minutes->toBe(600)
+        ->closed_remaining_minutes->toBe(360);
+
+    $this->actingAs($this->owner)
+        ->put("{$this->banksUrl}/{$bank->id}", ($this->valid)(['total_minutes' => 600, 'invoice_reference' => 'F-2026-101']))
+        ->assertSessionHasNoErrors();
+
+    expect($bank->fresh())
+        ->invoice_reference->toBe('F-2026-101')
+        ->status->toBe(HourBankStatus::Closed)
+        ->closed_remaining_minutes->toBe(360);
+});
+
+test('se conserva el departamento de la bolsa aunque se haya eliminado; otro eliminado, no', function () {
+    $gone = Department::factory()->create(['name' => 'Vídeo']);
+    $alsoGone = Department::factory()->create();
+    $bank = HourBank::factory()->forDepartment($gone)->create(['project_id' => $this->project->id]);
+    $gone->delete();
+    $alsoGone->delete();
+
+    // El selector lo incluye, marcado como eliminado; el otro eliminado no sale.
+    $this->actingAs($this->owner)
+        ->get($this->banksUrl)
+        ->assertInertia(function (Assert $page) use ($gone, $alsoGone) {
+            $departments = collect($page->toArray()['props']['departments'])->keyBy('id');
+
+            expect($departments[$gone->id])->toBe(['id' => $gone->id, 'name' => 'Vídeo', 'deleted' => true])
+                ->and($departments->has($alsoGone->id))->toBeFalse()
+                ->and($departments->where('deleted', false)->count())->toBe(Department::query()->count());
+        });
+
+    $this->actingAs($this->owner)
+        ->put("{$this->banksUrl}/{$bank->id}", ($this->valid)(['department_id' => $gone->id]))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($this->owner)
+        ->put("{$this->banksUrl}/{$bank->id}", ($this->valid)(['department_id' => $alsoGone->id]))
+        ->assertSessionHasErrors('department_id');
+
+    // Una bolsa nueva, solo con un departamento que exista.
+    $this->actingAs($this->owner)
+        ->post($this->banksUrl, ($this->valid)(['department_id' => $gone->id]))
+        ->assertSessionHasErrors('department_id');
+
+    expect($bank->fresh()->department_id)->toBe($gone->id);
+});
+
+test('al renovar se puede conservar el departamento eliminado de la bolsa', function () {
+    $gone = Department::factory()->create();
+    $bank = HourBank::factory()->hours(1)->forDepartment($gone)->create(['project_id' => $this->project->id]);
+    TimeEntry::factory()->forTask(Task::factory()->inBank($bank)->create())->minutes(60)->create();
+    $gone->delete();
+
+    $this->actingAs($this->owner)
+        ->post("{$this->banksUrl}/{$bank->id}/renovar", ($this->valid)(['department_id' => $gone->id]))
+        ->assertSessionHasNoErrors();
+
+    expect(HourBank::query()->where('renewed_from_id', $bank->id)->value('department_id'))->toBe($gone->id);
 });
 
 test('sin view-financials las bolsas no llevan tarifa ni precio', function () {

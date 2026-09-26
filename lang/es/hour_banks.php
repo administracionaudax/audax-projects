@@ -14,6 +14,7 @@ return [
         'closed' => 'Bolsa cerrada. Saldo sin consumir: :remaining.',
         'reopened' => 'Bolsa reabierta.',
         'deleted' => 'Bolsa «:name» eliminada.',
+        'deleted_renewal' => 'Bolsa «:name» eliminada. «:previous» deja de estar renovada y vuelve a estar :status.',
     ],
 
     'errors' => [
@@ -21,6 +22,9 @@ return [
         'renewed_not_editable' => 'Una bolsa renovada no se puede editar: su histórico queda como estaba.',
         'not_open' => 'La bolsa «:bank» está :status: solo se pueden renovar o cerrar bolsas activas o agotadas.',
         'not_closed' => 'Solo se puede reabrir una bolsa cerrada que no se haya renovado.',
+        'not_due' => 'Solo se puede renovar una bolsa agotada o que haya llegado al :threshold % de consumo.',
+        'has_renewal' => 'La bolsa ya se ha renovado: no se puede eliminar sin romper el histórico. Si hace falta, elimina antes la bolsa que la renueva.',
+        'closed_total' => 'La bolsa está cerrada: para cambiar el total, un administrador tiene que reabrirla antes.',
         'has_tasks' => 'La bolsa tiene tareas. Muévelas a otra bolsa antes de eliminarla.',
         'has_time' => 'La bolsa tiene horas imputadas: no se puede eliminar. Puedes cerrarla.',
         'end_before_start' => 'La fecha de fin no puede ser anterior a la de inicio.',

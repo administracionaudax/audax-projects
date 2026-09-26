@@ -15,7 +15,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { t } from '@/lib/i18n';
-import type { HourBank, Option, OveragePolicy } from '@/types';
+import type {
+    HourBank,
+    HourBankDepartmentOption,
+    OveragePolicy,
+} from '@/types';
 
 /** Máximo del total de una bolsa (9999:59), como en el servidor. */
 export const MAX_BANK_MINUTES = 9999 * 60 + 59;
@@ -86,6 +90,8 @@ const NO_DEPARTMENT = '__none__';
  * Campos de una bolsa (SPEC §4.2 y §8): nombre, departamento opcional (restringe quién imputa),
  * total, fechas, política de exceso (explicando cuál se aplica) y, con view-financials, tarifa
  * y precio. La referencia de factura no es un dato económico.
+ * - Un departamento eliminado solo aparece si es el de la bolsa (se puede conservar).
+ * - `totalLocked`: bolsa cerrada, cuyo total no se cambia sin reabrirla.
  */
 export function HourBankFields({
     data,
@@ -94,6 +100,7 @@ export function HourBankFields({
     departments,
     overageDefault,
     canViewFinancials,
+    totalLocked = false,
 }: {
     data: HourBankFormData;
     set: <K extends keyof HourBankFormData>(
@@ -101,9 +108,10 @@ export function HourBankFields({
         value: HourBankFormData[K],
     ) => void;
     errors: Partial<Record<keyof HourBankFormData, string>>;
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
     canViewFinancials: boolean;
+    totalLocked?: boolean;
 }) {
     const id = useId();
 
@@ -138,7 +146,19 @@ export function HourBankFields({
                         max={MAX_BANK_MINUTES}
                         placeholder={t('hour_banks.form.total_placeholder')}
                         invalid={Boolean(errors.total_minutes)}
+                        disabled={totalLocked}
+                        aria-describedby={
+                            totalLocked ? `${id}-total-help` : undefined
+                        }
                     />
+                    {totalLocked ? (
+                        <p
+                            id={`${id}-total-help`}
+                            className="text-xs text-muted-foreground"
+                        >
+                            {t('hour_banks.form.total_locked')}
+                        </p>
+                    ) : null}
                     <InputError message={errors.total_minutes} />
                 </div>
 
@@ -178,7 +198,14 @@ export function HourBankFields({
                                     key={department.id}
                                     value={String(department.id)}
                                 >
-                                    {department.name}
+                                    {department.deleted
+                                        ? t(
+                                              'hour_banks.form.department_deleted',
+                                              {
+                                                  name: department.name,
+                                              },
+                                          )
+                                        : department.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>

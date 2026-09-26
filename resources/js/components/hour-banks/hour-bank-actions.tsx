@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { close, destroy, reopen } from '@/routes/projects/hour-banks';
-import type { HourBankAbilities, HourBankCard, Option } from '@/types';
+import type {
+    HourBankAbilities,
+    HourBankCard,
+    HourBankDepartmentOption,
+} from '@/types';
 
 /** Primer umbral de alerta configurado (75 % por defecto, D-035). */
 export function useFirstThreshold(): number {
@@ -43,7 +47,7 @@ export function HourBankActions({
 }: {
     projectId: number;
     bank: HourBankCard & { can: HourBankAbilities };
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
 }) {
     const threshold = useFirstThreshold();

@@ -27,7 +27,7 @@ import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { addDays, todayInMadrid } from '@/lib/week';
 import { renew } from '@/routes/projects/hour-banks';
-import type { HourBankCard, Option } from '@/types';
+import type { HourBankCard, HourBankDepartmentOption } from '@/types';
 
 type RenewForm = HourBankFormData & { move_open_tasks: boolean };
 
@@ -60,7 +60,7 @@ export function HourBankRenewDialog({
 }: {
     projectId: number;
     bank: HourBankCard;
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
     trigger: ReactNode;
 }) {
@@ -93,7 +93,7 @@ function RenewForm({
 }: {
     projectId: number;
     bank: HourBankCard;
-    departments: Option[];
+    departments: HourBankDepartmentOption[];
     overageDefault: 'allow' | 'block';
     onDone: () => void;
 }) {

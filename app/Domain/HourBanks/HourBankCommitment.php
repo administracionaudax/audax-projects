@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Collection;
  * subtareas estimadas cuenta con su propia estimación. Los hitos no llevan horas.
  *
  * Aviso: si consumido + comprometido supera el total, las tareas planificadas superan el saldo.
+ * open_tasks_count: todas las tareas abiertas de la bolsa (de cualquier nivel, también los hitos),
+ * que son las que mueve HourBankRenewal al renovar.
  * Se calcula en tres consultas para cualquier número de bolsas (sin N+1).
  */
 final class HourBankCommitment
@@ -39,21 +41,18 @@ final class HourBankCommitment
             $openTasks = Task::query()
                 ->whereIn('hour_bank_id', $ids)
                 ->whereNull('completed_at')
-                ->where('is_milestone', false)
-                ->get(['id', 'hour_bank_id', 'parent_task_id', 'estimated_minutes']);
+                ->get(['id', 'hour_bank_id', 'parent_task_id', 'estimated_minutes', 'is_milestone']);
 
             $derivedParents = $this->derivedParents($ids);
             $logged = $this->loggedByTask($ids, openOnly: true);
 
             foreach ($openTasks as $task) {
                 $bankId = (int) $task->hour_bank_id;
+                $openTasksCount[$bankId] = ($openTasksCount[$bankId] ?? 0) + 1;
 
-                if ($task->parent_task_id === null) {
-                    $openTasksCount[$bankId] = ($openTasksCount[$bankId] ?? 0) + 1;
-
-                    if (isset($derivedParents[$task->id])) {
-                        continue;
-                    }
+                // Los hitos no llevan horas; un padre con subtareas estimadas cuenta en ellas.
+                if ($task->is_milestone || ($task->parent_task_id === null && isset($derivedParents[$task->id]))) {
+                    continue;
                 }
 
                 $committed[$bankId] = ($committed[$bankId] ?? 0) + max(
