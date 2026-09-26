@@ -334,6 +334,29 @@ it('una entrada bloqueada solo la edita un admin, sin reabrir la semana', functi
         ->and($updated->status)->toBe(TimeEntryStatus::Locked);
 });
 
+it('un admin que reduce o amplía una entrada bloqueada recalcula su exceso (nunca mayor que sus minutos)', function () {
+    $admin = User::factory()->admin()->create();
+    $bank = HourBank::factory()->hours(1)->allowOverage()->create();
+    $task = memberTask($this->employee, bank: $bank);
+    TimeEntry::factory()->forTask($task)->minutes(60)->on('2026-09-01')->create(['user_id' => $this->employee->id]);
+    $locked = TimeEntry::factory()->forTask($task)->minutes(60)->on('2026-09-02')->create(['user_id' => $this->employee->id]);
+    expect($locked->fresh()->overage_minutes)->toBe(60);
+    TimeEntry::query()->whereKey($locked->id)->update(['status' => TimeEntryStatus::Locked->value, 'locked_at' => now()]);
+
+    $reduced = $this->writer->update($admin, $locked->fresh(), entryData($this->employee, $task, 15, '2026-09-02'))->entry;
+
+    expect($reduced->overage_minutes)->toBe(15)
+        ->and($reduced->in_bank_minutes)->toBe(0)
+        ->and($bank->fresh()->only(['consumed_minutes', 'overage_minutes']))->toBe(['consumed_minutes' => 75, 'overage_minutes' => 15]);
+
+    $extended = $this->writer->update($admin, $reduced, entryData($this->employee, $task, 120, '2026-09-02'))->entry;
+
+    expect($extended->overage_minutes)->toBe(120)
+        ->and($extended->status)->toBe(TimeEntryStatus::Locked)
+        ->and($bank->fresh()->only(['consumed_minutes', 'overage_minutes']))->toBe(['consumed_minutes' => 180, 'overage_minutes' => 120])
+        ->and($bank->fresh()->in_bank_minutes)->toBeLessThanOrEqual($bank->fresh()->total_minutes);
+});
+
 it('no mueve una entrada fuera de una semana cerrada', function () {
     $task = memberTask($this->employee);
     $entry = $this->writer->create($this->employee, entryData($this->employee, $task, 60, '2026-09-14'))->entry;

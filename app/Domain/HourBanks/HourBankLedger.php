@@ -26,6 +26,10 @@ use Illuminate\Validation\ValidationException;
  *   parte dentro de la bolsa; el saldo restante se reparte entre las no bloqueadas en orden
  *   cronológico (date, created_at, id). Una entrada que cruza el límite queda con la parte que no
  *   cabe como exceso. Así la suma de lo que va "dentro" nunca supera el total de la bolsa.
+ * - Si un admin edita los minutos, la fecha o la bolsa de una entrada bloqueada (SPEC §7), esa
+ *   entrada se recalcula una vez como si no estuviera bloqueada ($reprice): su exceso vuelve a
+ *   quedar entre 0 y sus minutos. Las demás bloqueadas no cambian. Como red de seguridad, el
+ *   exceso de una bloqueada nunca se toma fuera de ese rango.
  * - Política: `inherit` sigue el ajuste allow_hour_bank_overage. Con `block`, una imputación que no
  *   cabe se rechaza indicando el saldo (sin recortarla); el exceso ya existente se conserva.
  * - Avisos: cada umbral una sola vez por bolsa; el exceso, como máximo una vez al día.
@@ -103,7 +107,7 @@ final class HourBankLedger
         return HourBank::query()->withTrashed()->whereKey($bank->id)->lockForUpdate()->firstOrFail();
     }
 
-    public function recalculateById(?int $bankId, bool $notify = true): void
+    public function recalculateById(?int $bankId, bool $notify = true, ?int $reprice = null): void
     {
         if ($bankId === null) {
             return;
@@ -112,17 +116,18 @@ final class HourBankLedger
         $bank = HourBank::query()->withTrashed()->find($bankId);
 
         if ($bank !== null) {
-            $this->recalculate($bank, $notify);
+            $this->recalculate($bank, $notify, $reprice);
         }
     }
 
     /**
      * Recalcula el exceso de cada entrada, la caché de la bolsa y su estado, y emite los avisos.
-     * Actualiza también la instancia recibida.
+     * Actualiza también la instancia recibida. $reprice: una entrada bloqueada que un admin acaba
+     * de editar y cuyo exceso se recalcula en esta pasada.
      */
-    public function recalculate(HourBank $bank, bool $notify = true): HourBank
+    public function recalculate(HourBank $bank, bool $notify = true, ?int $reprice = null): HourBank
     {
-        return DB::transaction(function () use ($bank, $notify): HourBank {
+        return DB::transaction(function () use ($bank, $notify, $reprice): HourBank {
             $locked = $this->lock($bank);
             $previousOverage = $locked->overage_minutes;
 
@@ -133,10 +138,14 @@ final class HourBankLedger
                 ->orderBy('id')
                 ->get(['id', 'minutes', 'overage_minutes', 'status']);
 
+            $keepsOverage = fn (TimeEntry $entry): bool => $entry->status === TimeEntryStatus::Locked && $entry->id !== $reprice;
+            // Exceso de una bloqueada, siempre entre 0 y sus minutos.
+            $lockedOverage = fn (TimeEntry $entry): int => min(max($entry->overage_minutes, 0), $entry->minutes);
+
             $reserved = 0;
             foreach ($entries as $entry) {
-                if ($entry->status === TimeEntryStatus::Locked) {
-                    $reserved += $entry->minutes - $entry->overage_minutes;
+                if ($keepsOverage($entry)) {
+                    $reserved += $entry->minutes - $lockedOverage($entry);
                 }
             }
 
@@ -150,8 +159,13 @@ final class HourBankLedger
             foreach ($entries as $entry) {
                 $consumed += $entry->minutes;
 
-                if ($entry->status === TimeEntryStatus::Locked) {
-                    $overage += $entry->overage_minutes;
+                if ($keepsOverage($entry)) {
+                    $entryOverage = $lockedOverage($entry);
+                    $overage += $entryOverage;
+
+                    if ($entryOverage !== $entry->overage_minutes) {
+                        $changes[$entryOverage][] = $entry->id;
+                    }
 
                     continue;
                 }

@@ -164,6 +164,51 @@ it('una bloqueada con exceso lo conserva aunque luego se libere saldo', function
         ->and($bank->fresh()->overage_minutes)->toBe(120);
 });
 
+it('si se cambian los minutos de una bloqueada (admin), su exceso se recalcula entre 0 y sus minutos', function () {
+    [$bank, $task] = bankWithTask(1);
+
+    // Reducir una bloqueada que estaba entera en exceso: su exceso no puede superar sus minutos.
+    logEntry($task, 60, '2026-09-01');
+    $locked = logEntry($task, 60, '2026-09-02', ['status' => TimeEntryStatus::Locked, 'overage_minutes' => 60]);
+    app(HourBankLedger::class)->recalculate($bank);
+    expect($locked->fresh()->overage_minutes)->toBe(60);
+
+    $locked->update(['minutes' => 15]);
+
+    expect($locked->fresh()->overage_minutes)->toBe(15)
+        ->and($locked->fresh()->in_bank_minutes)->toBe(0)
+        ->and($bank->fresh()->consumed_minutes)->toBe(75)
+        ->and($bank->fresh()->overage_minutes)->toBe(15)
+        ->and($bank->fresh()->in_bank_minutes)->toBe(60);
+});
+
+it('si se amplía una bloqueada sin exceso en una bolsa llena, lo que no cabe pasa a exceso', function () {
+    [$bank, $task] = bankWithTask(1);
+    $locked = logEntry($task, 60, '2026-09-02', ['status' => TimeEntryStatus::Locked]);
+
+    $locked->update(['minutes' => 120]);
+
+    expect($locked->fresh()->overage_minutes)->toBe(60)
+        ->and($bank->fresh()->consumed_minutes)->toBe(120)
+        ->and($bank->fresh()->overage_minutes)->toBe(60)
+        ->and($bank->fresh()->in_bank_minutes)->toBe(60);
+});
+
+it('editar una bloqueada no cambia el exceso de las demás bloqueadas', function () {
+    [$bank, $task] = bankWithTask(1);
+    $first = logEntry($task, 30, '2026-09-01', ['status' => TimeEntryStatus::Locked]);
+    logEntry($task, 30, '2026-09-02');
+    $other = logEntry($task, 60, '2026-09-03', ['status' => TimeEntryStatus::Locked, 'overage_minutes' => 60]);
+    app(HourBankLedger::class)->recalculate($bank);
+
+    $other->update(['minutes' => 30]);
+
+    expect($first->fresh()->overage_minutes)->toBe(0)
+        ->and($other->fresh()->overage_minutes)->toBe(30)
+        ->and($bank->fresh()->overage_minutes)->toBe(30)
+        ->and($bank->fresh()->in_bank_minutes)->toBe(60);
+});
+
 it('al mover una entrada a otra bolsa recalcula las dos', function () {
     [$bankA, $taskA] = bankWithTask(1);
     $bankB = HourBank::factory()->hours(1)->create(['project_id' => $bankA->project_id]);

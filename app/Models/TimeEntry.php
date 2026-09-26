@@ -129,7 +129,10 @@ class TimeEntry extends Model
             }
 
             $ledger = app(HourBankLedger::class);
-            $ledger->recalculateById($entry->hour_bank_id);
+            // Un admin ha cambiado los minutos, la fecha o la bolsa de una bloqueada: su exceso se
+            // recalcula (las demás bloqueadas no cambian, D-019).
+            $reprice = $entry->isLocked() && $entry->wasChanged(self::LEDGER_FIELDS) ? $entry->id : null;
+            $ledger->recalculateById($entry->hour_bank_id, reprice: $reprice);
 
             $previousBank = $entry->getOriginal('hour_bank_id');
             if ($entry->wasChanged('hour_bank_id') && $previousBank !== null) {
