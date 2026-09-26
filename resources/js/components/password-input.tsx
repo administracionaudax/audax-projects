@@ -3,6 +3,7 @@ import type { ComponentProps, Ref } from 'react';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 
 export default function PasswordInput({
     className,
@@ -23,8 +24,12 @@ export default function PasswordInput({
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-3 text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                tabIndex={-1}
+                aria-label={
+                    showPassword
+                        ? t('password_input.hide')
+                        : t('password_input.show')
+                }
+                aria-pressed={showPassword}
             >
                 {showPassword ? (
                     <EyeOff className="size-4" />

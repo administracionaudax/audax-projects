@@ -1,45 +1,69 @@
+import { router } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import type { HTMLAttributes } from 'react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { Appearance } from '@/hooks/use-appearance';
-import { useAppearance } from '@/hooks/use-appearance';
+import { isAppearance, useAppearance } from '@/hooks/use-appearance';
+import { t } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { update } from '@/routes/appearance';
 
+const OPTIONS: {
+    value: Appearance;
+    icon: LucideIcon;
+    label: TranslationKey;
+}[] = [
+    { value: 'light', icon: Sun, label: 'appearance.light' },
+    { value: 'dark', icon: Moon, label: 'appearance.dark' },
+    { value: 'system', icon: Monitor, label: 'appearance.system' },
+];
+
+/**
+ * Selector de tema. Aplica el tema al instante en el navegador y lo guarda en el usuario
+ * (PATCH /ajustes/apariencia con { theme }), para que le siga en cualquier dispositivo.
+ */
 export default function AppearanceToggleTab({
     className = '',
-    ...props
-}: HTMLAttributes<HTMLDivElement>) {
+}: {
+    className?: string;
+}) {
     const { appearance, updateAppearance } = useAppearance();
 
-    const tabs: { value: Appearance; icon: LucideIcon; label: string }[] = [
-        { value: 'light', icon: Sun, label: 'Light' },
-        { value: 'dark', icon: Moon, label: 'Dark' },
-        { value: 'system', icon: Monitor, label: 'System' },
-    ];
+    const change = (value: string) => {
+        if (!isAppearance(value) || value === appearance) {
+            return;
+        }
+
+        updateAppearance(value);
+        router.patch(
+            update.url(),
+            { theme: value },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
 
     return (
-        <div
+        <ToggleGroup
+            type="single"
+            value={appearance}
+            onValueChange={change}
+            aria-label={t('appearance.label')}
             className={cn(
-                'inline-flex gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800',
+                'inline-flex gap-1 rounded-md border bg-muted p-1',
                 className,
             )}
-            {...props}
         >
-            {tabs.map(({ value, icon: Icon, label }) => (
-                <button
+            {OPTIONS.map(({ value, icon: Icon, label }) => (
+                <ToggleGroupItem
                     key={value}
-                    onClick={() => updateAppearance(value)}
-                    className={cn(
-                        'flex items-center rounded-md px-3.5 py-1.5 transition-colors',
-                        appearance === value
-                            ? 'bg-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                            : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
-                    )}
+                    value={value}
+                    className="h-8 rounded-sm px-3 text-muted-foreground first:rounded-sm last:rounded-sm hover:bg-background hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground"
                 >
-                    <Icon className="-ml-1 h-4 w-4" />
-                    <span className="ml-1.5 text-sm">{label}</span>
-                </button>
+                    <Icon aria-hidden="true" className="size-4" />
+                    <span className="text-sm">{t(label)}</span>
+                </ToggleGroupItem>
             ))}
-        </div>
+        </ToggleGroup>
     );
 }

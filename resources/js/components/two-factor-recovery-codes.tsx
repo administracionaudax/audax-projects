@@ -11,6 +11,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { regenerateRecoveryCodes } from '@/routes/two-factor';
+import { t } from '@/lib/i18n';
 
 type Props = {
     recoveryCodesList: string[];
@@ -57,11 +58,10 @@ export default function TwoFactorRecoveryCodes({
             <CardHeader>
                 <CardTitle className="flex gap-3">
                     <LockKeyhole className="size-4" aria-hidden="true" />
-                    2FA recovery codes
+                    {t('two_factor.recovery.title')}
                 </CardTitle>
                 <CardDescription>
-                    Recovery codes let you regain access if you lose your 2FA
-                    device. Store them in a secure password manager.
+                    {t('two_factor.recovery.description')}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -76,7 +76,9 @@ export default function TwoFactorRecoveryCodes({
                             className="size-4"
                             aria-hidden="true"
                         />
-                        {codesAreVisible ? 'Hide' : 'View'} recovery codes
+                        {codesAreVisible
+                            ? t('two_factor.recovery.hide')
+                            : t('two_factor.recovery.show')}
                     </Button>
 
                     {canRegenerateCodes && (
@@ -92,7 +94,8 @@ export default function TwoFactorRecoveryCodes({
                                     disabled={processing}
                                     aria-describedby="regenerate-warning"
                                 >
-                                    <RefreshCw /> Regenerate codes
+                                    <RefreshCw aria-hidden="true" />{' '}
+                                    {t('two_factor.recovery.regenerate')}
                                 </Button>
                             )}
                         </Form>
@@ -110,9 +113,11 @@ export default function TwoFactorRecoveryCodes({
                             <>
                                 <div
                                     ref={codesSectionRef}
-                                    className="grid gap-1 rounded-lg bg-muted p-4 font-mono text-sm"
+                                    className="grid gap-1 rounded-md bg-muted p-4 font-mono text-sm"
                                     role="list"
-                                    aria-label="Recovery codes"
+                                    aria-label={t(
+                                        'two_factor.recovery.list_label',
+                                    )}
                                 >
                                     {recoveryCodesList.length ? (
                                         recoveryCodesList.map((code, index) => (
@@ -127,14 +132,16 @@ export default function TwoFactorRecoveryCodes({
                                     ) : (
                                         <div
                                             className="space-y-2"
-                                            aria-label="Loading recovery codes"
+                                            aria-label={t(
+                                                'two_factor.recovery.loading',
+                                            )}
                                         >
                                             {Array.from(
                                                 { length: 8 },
                                                 (_, index) => (
                                                     <div
                                                         key={index}
-                                                        className="h-4 animate-pulse rounded bg-muted-foreground/20"
+                                                        className="h-4 animate-pulse rounded-sm bg-muted-foreground/20"
                                                         aria-hidden="true"
                                                     />
                                                 ),
@@ -145,13 +152,7 @@ export default function TwoFactorRecoveryCodes({
 
                                 <div className="text-xs text-muted-foreground select-none">
                                     <p id="regenerate-warning">
-                                        Each recovery code can be used once to
-                                        access your account and will be removed
-                                        after use. If you need more, click{' '}
-                                        <span className="font-bold">
-                                            Regenerate codes
-                                        </span>{' '}
-                                        above.
+                                        {t('two_factor.recovery.warning')}
                                     </p>
                                 </div>
                             </>

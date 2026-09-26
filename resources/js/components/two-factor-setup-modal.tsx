@@ -22,11 +22,12 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { confirm } from '@/routes/two-factor';
+import { t } from '@/lib/i18n';
 
 function GridScanIcon() {
     return (
-        <div className="mb-3 rounded-full border border-border bg-card p-0.5 shadow-sm">
-            <div className="relative overflow-hidden rounded-full border border-border bg-muted p-2.5">
+        <div className="mb-3 rounded-md border border-border bg-card p-0.5">
+            <div className="relative overflow-hidden rounded-sm border border-border bg-muted p-2.5">
                 <div className="absolute inset-0 grid grid-cols-5 opacity-50">
                     {Array.from({ length: 5 }, (_, i) => (
                         <div
@@ -43,7 +44,10 @@ function GridScanIcon() {
                         />
                     ))}
                 </div>
-                <ScanLine className="relative z-20 size-6 text-foreground" />
+                <ScanLine
+                    aria-hidden="true"
+                    className="relative z-20 size-6 text-foreground"
+                />
             </div>
         </div>
     );
@@ -73,11 +77,15 @@ function TwoFactorSetupStep({
             ) : (
                 <>
                     <div className="mx-auto flex max-w-md overflow-hidden">
-                        <div className="mx-auto aspect-square w-64 rounded-lg border border-border">
+                        <div className="mx-auto aspect-square w-64 rounded-md border border-border">
                             <div className="z-10 flex h-full w-full items-center justify-center p-5">
                                 {qrCodeSvg ? (
                                     <div
-                                        className="aspect-square w-full rounded-lg bg-white p-2 [&_svg]:size-full"
+                                        role="img"
+                                        aria-label={t(
+                                            'two_factor.setup.qr_label',
+                                        )}
+                                        className="aspect-square w-full rounded-md bg-white p-2 [&_svg]:size-full"
                                         dangerouslySetInnerHTML={{
                                             __html: qrCodeSvg,
                                         }}
@@ -104,12 +112,12 @@ function TwoFactorSetupStep({
                     <div className="relative flex w-full items-center justify-center">
                         <div className="absolute inset-0 top-1/2 h-px w-full bg-border" />
                         <span className="relative bg-card px-2 py-1">
-                            or, enter the code manually
+                            {t('two_factor.setup.manual')}
                         </span>
                     </div>
 
                     <div className="flex w-full space-x-2">
-                        <div className="flex w-full items-stretch overflow-hidden rounded-xl border border-border">
+                        <div className="flex w-full items-stretch overflow-hidden rounded-md border border-border">
                             {!manualSetupKey ? (
                                 <div className="flex h-full w-full items-center justify-center bg-muted p-3">
                                     <Spinner />
@@ -120,13 +128,25 @@ function TwoFactorSetupStep({
                                         type="text"
                                         readOnly
                                         value={manualSetupKey}
+                                        aria-label={t(
+                                            'two_factor.setup.key_label',
+                                        )}
                                         className="h-full w-full bg-background p-3 text-foreground outline-none"
                                     />
                                     <button
+                                        type="button"
                                         onClick={() => copy(manualSetupKey)}
-                                        className="border-l border-border px-3 hover:bg-muted"
+                                        className="border-l border-border px-3 hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                        aria-label={
+                                            copiedText === manualSetupKey
+                                                ? t('two_factor.setup.copied')
+                                                : t('two_factor.setup.copy')
+                                        }
                                     >
-                                        <IconComponent className="w-4" />
+                                        <IconComponent
+                                            aria-hidden="true"
+                                            className="w-4"
+                                        />
                                     </button>
                                 </>
                             )}
@@ -177,6 +197,7 @@ function TwoFactorVerificationStep({
                             <InputOTP
                                 id="otp"
                                 name="code"
+                                aria-label={t('two_factor.setup.code_label')}
                                 maxLength={OTP_MAX_LENGTH}
                                 onChange={setCode}
                                 disabled={processing}
@@ -210,7 +231,7 @@ function TwoFactorVerificationStep({
                                 onClick={onBack}
                                 disabled={processing}
                             >
-                                Back
+                                {t('common.back')}
                             </Button>
                             <Button
                                 type="submit"
@@ -219,7 +240,7 @@ function TwoFactorVerificationStep({
                                     processing || code.length < OTP_MAX_LENGTH
                                 }
                             >
-                                Confirm
+                                {t('common.confirm')}
                             </Button>
                         </div>
                     </div>
@@ -262,27 +283,24 @@ export default function TwoFactorSetupModal({
     }>(() => {
         if (twoFactorEnabled) {
             return {
-                title: 'Two-factor authentication enabled',
-                description:
-                    'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
-                buttonText: 'Close',
+                title: t('two_factor.setup.enabled_title'),
+                description: t('two_factor.setup.enabled_description'),
+                buttonText: t('common.close'),
             };
         }
 
         if (showVerificationStep) {
             return {
-                title: 'Verify authentication code',
-                description:
-                    'Enter the 6-digit code from your authenticator app',
-                buttonText: 'Continue',
+                title: t('two_factor.setup.verify_title'),
+                description: t('two_factor.setup.verify_description'),
+                buttonText: t('common.continue'),
             };
         }
 
         return {
-            title: 'Enable two-factor authentication',
-            description:
-                'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
-            buttonText: 'Continue',
+            title: t('two_factor.setup.title'),
+            description: t('two_factor.setup.description'),
+            buttonText: t('common.continue'),
         };
     }, [twoFactorEnabled, showVerificationStep]);
 

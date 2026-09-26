@@ -1,6 +1,6 @@
 import { Form, Head, setLayoutProps } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,38 +9,31 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
+import { t } from '@/lib/i18n';
 import { store } from '@/routes/two-factor/login';
 
 export default function TwoFactorChallenge() {
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
 
-    const authConfigContent = useMemo<{
-        title: string;
-        description: string;
-        toggleText: string;
-    }>(() => {
-        if (showRecoveryInput) {
-            return {
-                title: 'Recovery code',
-                description:
-                    'Please confirm access to your account by entering one of your emergency recovery codes.',
-                toggleText: 'login using an authentication code',
-            };
-        }
-
-        return {
-            title: 'Authentication code',
-            description:
-                'Enter the authentication code provided by your authenticator application.',
-            toggleText: 'login using a recovery code',
-        };
-    }, [showRecoveryInput]);
+    const content = showRecoveryInput
+        ? {
+              title: t('two_factor.challenge.recovery_title'),
+              description: t('two_factor.challenge.recovery_description'),
+              toggleText: t('two_factor.challenge.use_code'),
+          }
+        : {
+              title: t('two_factor.challenge.code_title'),
+              description: t('two_factor.challenge.code_description'),
+              toggleText: t('two_factor.challenge.use_recovery'),
+          };
 
     setLayoutProps({
-        title: authConfigContent.title,
-        description: authConfigContent.description,
+        title: content.title,
+        description: content.description,
     });
 
     const toggleRecoveryMode = (clearErrors: () => void): void => {
@@ -51,7 +44,7 @@ export default function TwoFactorChallenge() {
 
     return (
         <>
-            <Head title="Two-factor authentication" />
+            <Head title={t('two_factor.challenge.page_title')} />
 
             <div className="space-y-6">
                 <Form
@@ -63,18 +56,29 @@ export default function TwoFactorChallenge() {
                     {({ errors, processing, clearErrors }) => (
                         <>
                             {showRecoveryInput ? (
-                                <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="recovery_code">
+                                        {t(
+                                            'two_factor.challenge.recovery_label',
+                                        )}
+                                    </Label>
                                     <Input
+                                        id="recovery_code"
                                         name="recovery_code"
                                         type="text"
-                                        placeholder="Enter recovery code"
+                                        autoComplete="one-time-code"
                                         autoFocus={showRecoveryInput}
                                         required
+                                        aria-invalid={
+                                            errors.recovery_code
+                                                ? true
+                                                : undefined
+                                        }
                                     />
                                     <InputError
                                         message={errors.recovery_code}
                                     />
-                                </>
+                                </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center space-y-3 text-center">
                                     <div className="flex w-full items-center justify-center">
@@ -86,6 +90,9 @@ export default function TwoFactorChallenge() {
                                             disabled={processing}
                                             pattern={REGEXP_ONLY_DIGITS}
                                             autoFocus
+                                            aria-label={t(
+                                                'two_factor.challenge.code_label',
+                                            )}
                                         >
                                             <InputOTPGroup>
                                                 {Array.from(
@@ -109,21 +116,22 @@ export default function TwoFactorChallenge() {
                                 className="w-full"
                                 disabled={processing}
                             >
-                                Continue
+                                {processing && <Spinner />}
+                                {t('common.continue')}
                             </Button>
 
-                            <div className="text-center text-sm text-muted-foreground">
-                                <span>or you can </span>
+                            <p className="text-center text-sm text-muted-foreground">
+                                <span>{t('two_factor.challenge.or')} </span>
                                 <button
                                     type="button"
-                                    className="cursor-pointer text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                                    className="cursor-pointer rounded-xs text-primary-text underline decoration-primary-text/40 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                                     onClick={() =>
                                         toggleRecoveryMode(clearErrors)
                                     }
                                 >
-                                    {authConfigContent.toggleText}
+                                    {content.toggleText}
                                 </button>
-                            </div>
+                            </p>
                         </>
                     )}
                 </Form>

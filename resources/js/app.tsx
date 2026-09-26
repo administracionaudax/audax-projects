@@ -7,20 +7,29 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
+import PortalLayout from '@/layouts/portal-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { t } from '@/lib/i18n';
+import type { Auth } from '@/types';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Audax Proyectos';
+const appName = import.meta.env.VITE_APP_NAME || t('brand.app_name');
 
 void createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
-    layout: (name) => {
+    title: (title) => (title ? `${title} · ${appName}` : appName),
+    layout: (name, page) => {
         switch (true) {
-            case name === 'welcome':
+            // La guía de estilo es pública en desarrollo y trae su propia maquetación.
+            case name === 'styleguide':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            case name.startsWith('portal/'):
+                return PortalLayout;
+            // Los ajustes son comunes: los clientes los ven dentro del portal.
             case name.startsWith('settings/'):
-                return [AppLayout, SettingsLayout];
+                return (page.props as { auth?: Auth }).auth?.user?.is_client
+                    ? [PortalLayout, SettingsLayout]
+                    : [AppLayout, SettingsLayout];
             default:
                 return AppLayout;
         }
@@ -39,5 +48,5 @@ void createInertiaApp({
     },
 });
 
-// This will set light / dark mode on load...
+// Aplica el tema claro/oscuro guardado antes del primer render.
 initializeTheme();
