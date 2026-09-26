@@ -18,7 +18,6 @@ import {
     InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { Spinner } from '@/components/ui/spinner';
-import { useAppearance } from '@/hooks/use-appearance';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { confirm } from '@/routes/two-factor';
@@ -68,7 +67,6 @@ function TwoFactorSetupStep({
     onNextStep: () => void;
     errors: string[];
 }) {
-    const { resolvedAppearance } = useAppearance();
     const [copiedText, copy] = useClipboard();
     const IconComponent = copiedText === manualSetupKey ? Check : Copy;
 
@@ -82,20 +80,18 @@ function TwoFactorSetupStep({
                         <div className="mx-auto aspect-square w-64 rounded-md border border-border">
                             <div className="z-10 flex h-full w-full items-center justify-center p-5">
                                 {qrCodeSvg ? (
+                                    // Módulos oscuros sobre blanco en los dos temas (UI-11): un QR
+                                    // invertido no lo leen algunas apps de autenticación. El bg-white
+                                    // con p-2 da la zona de silencio también en el tema oscuro.
                                     <div
                                         role="img"
                                         aria-label={t(
                                             'two_factor.setup.qr_label',
                                         )}
+                                        data-test="two-factor-qr"
                                         className="aspect-square w-full rounded-md bg-white p-2 [&_svg]:size-full"
                                         dangerouslySetInnerHTML={{
                                             __html: qrCodeSvg,
-                                        }}
-                                        style={{
-                                            filter:
-                                                resolvedAppearance === 'dark'
-                                                    ? 'invert(1) brightness(1.5)'
-                                                    : undefined,
                                         }}
                                     />
                                 ) : (
