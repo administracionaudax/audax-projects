@@ -59,6 +59,8 @@ export type ActiveSession = {
 
 export type SessionsPageProps = {
     sessions: ActiveSession[];
+    /** false si el driver de sesión no es "database": no se pueden listar ni cerrar sesiones. */
+    supported: boolean;
 };
 
 /** GET /buscar?q= (App\Http\Controllers\SearchController). */

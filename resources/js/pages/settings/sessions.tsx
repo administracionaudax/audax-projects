@@ -1,9 +1,10 @@
 import { Head, router } from '@inertiajs/react';
-import { LogOut, Monitor, Smartphone } from 'lucide-react';
-import { useState } from 'react';
+import { LogOut, Monitor, Smartphone, TriangleAlert } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format';
@@ -24,9 +25,17 @@ export function describeDevice(session: ActiveSession): string {
     return t('sessions.device', { browser, platform });
 }
 
-function SessionRow({ session }: { session: ActiveSession }) {
+function SessionRow({
+    session,
+    onClosed,
+}: {
+    session: ActiveSession;
+    /** Se llama cuando la sesión se ha cerrado: la fila (y su botón) desaparecen. */
+    onClosed: () => void;
+}) {
     const [open, setOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const closed = useRef(false);
     const Icon = MOBILE_PLATFORMS.test(session.platform ?? '')
         ? Smartphone
         : Monitor;
@@ -36,6 +45,10 @@ function SessionRow({ session }: { session: ActiveSession }) {
         router.delete(destroy.url(session.id), {
             preserveScroll: true,
             onStart: () => setProcessing(true),
+            onSuccess: () => {
+                closed.current = true;
+                onClosed();
+            },
             onFinish: () => {
                 setProcessing(false);
                 setOpen(false);
@@ -95,21 +108,43 @@ function SessionRow({ session }: { session: ActiveSession }) {
                     confirmLabel={t('sessions.close_one')}
                     processing={processing}
                     onConfirm={close}
+                    onCloseAutoFocus={(event) => {
+                        // El disparador ya no existe: Radix dejaría el foco en <body> (UI-08).
+                        if (closed.current) {
+                            event.preventDefault();
+                            onClosed();
+                        }
+                    }}
                 />
             )}
         </li>
     );
 }
 
-export default function Sessions({ sessions }: SessionsPageProps) {
+export default function Sessions({ sessions, supported }: SessionsPageProps) {
     const [open, setOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const closedOthers = useRef(false);
+    const heading = useRef<HTMLHeadingElement>(null);
     const others = sessions.filter((session) => !session.is_current).length;
+
+    /**
+     * Destino estable del foco tras cerrar sesiones (UI-08): la fila o el botón que tenía el
+     * foco desaparece o se desactiva, así que se lleva al encabezado de la sección. Se aplaza
+     * para ir después de que Radix devuelva el foco al disparador (que ya no está).
+     */
+    const focusHeading = () => {
+        window.setTimeout(() => heading.current?.focus(), 0);
+    };
 
     const closeOthers = () => {
         router.delete(destroyOthers.url(), {
             preserveScroll: true,
             onStart: () => setProcessing(true),
+            onSuccess: () => {
+                closedOthers.current = true;
+                focusHeading();
+            },
             onFinish: () => {
                 setProcessing(false);
                 setOpen(false);
@@ -121,39 +156,72 @@ export default function Sessions({ sessions }: SessionsPageProps) {
         <>
             <Head title={t('sessions.title')} />
 
-            <h1 className="sr-only">{t('sessions.title')}</h1>
-
             <div className="space-y-6">
                 <Heading
+                    ref={heading}
+                    tabIndex={-1}
                     variant="small"
                     title={t('sessions.heading')}
                     description={t('sessions.description')}
                 />
 
-                {sessions.length === 0 ? (
-                    <EmptyState icon={Monitor} title={t('sessions.empty')} />
+                {!supported ? (
+                    // Sin el driver de sesión «database» no se pueden listar ni cerrar sesiones:
+                    // se avisa en vez de mostrar una lista vacía y un botón que no haría nada.
+                    <Alert role="status" data-test="sessions-unsupported">
+                        <TriangleAlert aria-hidden="true" />
+                        <AlertTitle>
+                            {t('sessions.unsupported_title')}
+                        </AlertTitle>
+                        <AlertDescription>
+                            {t('sessions.unsupported_description')}
+                        </AlertDescription>
+                    </Alert>
                 ) : (
-                    <ul className="divide-y border-y">
-                        {sessions.map((session) => (
-                            <SessionRow key={session.id} session={session} />
-                        ))}
-                    </ul>
-                )}
+                    <>
+                        {sessions.length === 0 ? (
+                            <EmptyState
+                                icon={Monitor}
+                                title={t('sessions.empty')}
+                            />
+                        ) : (
+                            <ul className="divide-y border-y">
+                                {sessions.map((session) => (
+                                    <SessionRow
+                                        key={session.id}
+                                        session={session}
+                                        onClosed={focusHeading}
+                                    />
+                                ))}
+                            </ul>
+                        )}
 
-                <ConfirmDialog
-                    open={open}
-                    onOpenChange={setOpen}
-                    trigger={
-                        <Button variant="destructive" disabled={others === 0}>
-                            {t('sessions.close_others')}
-                        </Button>
-                    }
-                    title={t('sessions.close_others_title')}
-                    description={t('sessions.close_others_description')}
-                    confirmLabel={t('sessions.close_others')}
-                    processing={processing}
-                    onConfirm={closeOthers}
-                />
+                        <ConfirmDialog
+                            open={open}
+                            onOpenChange={setOpen}
+                            trigger={
+                                <Button
+                                    variant="destructive"
+                                    disabled={others === 0}
+                                >
+                                    {t('sessions.close_others')}
+                                </Button>
+                            }
+                            title={t('sessions.close_others_title')}
+                            description={t('sessions.close_others_description')}
+                            confirmLabel={t('sessions.close_others')}
+                            processing={processing}
+                            onConfirm={closeOthers}
+                            onCloseAutoFocus={(event) => {
+                                if (closedOthers.current) {
+                                    closedOthers.current = false;
+                                    event.preventDefault();
+                                    focusHeading();
+                                }
+                            }}
+                        />
+                    </>
+                )}
             </div>
         </>
     );

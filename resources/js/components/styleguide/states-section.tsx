@@ -27,7 +27,7 @@ export function StatesSection() {
                     />
                     <div className="grid max-w-lg gap-2">
                         <p className="text-3xl">Todavía no hay proyectos</p>
-                        <p className="text-white/80">
+                        <p className="text-on-gradient-muted">
                             Crea el primero para empezar a planificar tareas e
                             imputar horas. Puedes partir de una plantilla.
                         </p>

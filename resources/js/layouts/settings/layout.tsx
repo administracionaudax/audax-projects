@@ -52,7 +52,9 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     return (
         <div className="px-4 py-6">
+            {/* Título de la página (h1); cada página de ajustes titula sus secciones en h2. */}
             <Heading
+                as="h1"
                 title={t('settings.title')}
                 description={t('settings.description')}
             />

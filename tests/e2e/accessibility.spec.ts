@@ -2,7 +2,13 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import type { Theme } from './support';
-import { expectTheme, login, USERS, presetTheme } from './support';
+import {
+    expectTheme,
+    login,
+    presetTheme,
+    saveUserTheme,
+    USERS,
+} from './support';
 
 /**
  * Accesibilidad AA (SPEC §3: contraste AA en ambos temas y navegación por teclado).
@@ -52,6 +58,9 @@ for (const theme of ['light', 'dark'] as const satisfies readonly Theme[]) {
 
         await test.step('/ (inicio)', async () => {
             await login(page, USERS.admin);
+            // El login aplica el tema guardado en la cuenta: se fija aquí para no depender
+            // del que haya dejado otro spec (F09).
+            await saveUserTheme(page, theme);
             await page.goto('/');
             await page.waitForLoadState('networkidle');
             await expectTheme(page, theme);

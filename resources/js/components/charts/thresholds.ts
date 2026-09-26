@@ -12,6 +12,7 @@ import {
     OctagonAlert,
     TriangleAlert,
 } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 /* ------------------------------------------------------------------ */
 /* Semáforo de carga (SPEC §9)                                         */
@@ -59,31 +60,31 @@ export function loadLevel(
 
 export const LOAD_LEVELS: Record<LoadLevel, LevelMeta> = {
     none: {
-        label: 'Sin capacidad',
+        label: t('load.level.none'),
         icon: CalendarOff,
         surface: 'bg-neutral-soft',
         tone: 'text-muted-foreground',
     },
     under: {
-        label: 'Holgada',
+        label: t('load.level.under'),
         icon: CircleGauge,
         surface: 'bg-info-soft',
         tone: 'text-info',
     },
     balanced: {
-        label: 'Equilibrada',
+        label: t('load.level.balanced'),
         icon: CircleCheck,
         surface: 'bg-success-soft',
         tone: 'text-success',
     },
     high: {
-        label: 'Alta',
+        label: t('load.level.high'),
         icon: TriangleAlert,
         surface: 'bg-warning-soft',
         tone: 'text-warning',
     },
     over: {
-        label: 'Sobrecarga',
+        label: t('load.level.over'),
         icon: OctagonAlert,
         surface: 'bg-danger-soft',
         tone: 'text-danger',
@@ -122,21 +123,21 @@ export const HOUR_BANK_LEVELS: Record<
     LevelMeta & { bar: string }
 > = {
     ok: {
-        label: 'En margen',
+        label: t('hour_bank.level.ok'),
         icon: CircleCheck,
         surface: 'bg-success-soft',
         tone: 'text-success',
         bar: 'bg-success',
     },
     warning: {
-        label: 'Cerca del límite',
+        label: t('hour_bank.level.warning'),
         icon: TriangleAlert,
         surface: 'bg-warning-soft',
         tone: 'text-warning',
         bar: 'bg-warning',
     },
     exhausted: {
-        label: 'Agotada',
+        label: t('hour_bank.level.exhausted'),
         icon: CircleAlert,
         surface: 'bg-danger-soft',
         tone: 'text-danger',

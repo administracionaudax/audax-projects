@@ -6,6 +6,7 @@ import {
     hourBankLevel,
 } from '@/components/charts/thresholds';
 import { formatMinutes, formatPercent } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type HourBankMeterProps = {
@@ -38,9 +39,15 @@ export function HourBankMeter({
     const inside = Math.min(f.consumed, f.total);
     const pct = (minutes: number) => `${(minutes / scale) * 100}%`;
 
-    const valueText =
-        `${formatMinutes(f.consumed)} de ${formatMinutes(f.total)} (${formatPercent(f.ratio, 0)})` +
-        (f.overage > 0 ? `, ${formatMinutes(f.overage)} de exceso` : '');
+    const valueText = t(
+        f.overage > 0 ? 'hour_bank.value_text_overage' : 'hour_bank.value_text',
+        {
+            consumed: formatMinutes(f.consumed),
+            total: formatMinutes(f.total),
+            ratio: formatPercent(f.ratio, 0),
+            overage: formatMinutes(f.overage),
+        },
+    );
 
     return (
         <div className={cn('@container grid gap-3', className)}>
@@ -60,7 +67,9 @@ export function HourBankMeter({
                                 aria-hidden="true"
                                 className="size-4 self-center"
                             />
-                            +{formatMinutes(f.overage)} de exceso
+                            {t('hour_bank.overage_badge', {
+                                minutes: formatMinutes(f.overage),
+                            })}
                         </span>
                     ) : null}
                 </p>
@@ -80,7 +89,7 @@ export function HourBankMeter({
 
             <div
                 role="meter"
-                aria-label={`Consumo de ${name}`}
+                aria-label={t('hour_bank.meter_label', { name })}
                 aria-valuemin={0}
                 aria-valuemax={f.total}
                 aria-valuenow={inside}
@@ -115,17 +124,23 @@ export function HourBankMeter({
             </div>
 
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm @md:grid-cols-4">
-                <Figure label="Consumidas" value={formatMinutes(f.consumed)} />
-                <Figure label="Restantes" value={formatMinutes(f.remaining)} />
                 <Figure
-                    label="Exceso"
+                    label={t('hour_bank.consumed')}
+                    value={formatMinutes(f.consumed)}
+                />
+                <Figure
+                    label={t('hour_bank.remaining')}
+                    value={formatMinutes(f.remaining)}
+                />
+                <Figure
+                    label={t('hour_bank.overage')}
                     value={
                         f.overage > 0 ? `+${formatMinutes(f.overage)}` : '0:00'
                     }
                     danger={f.overage > 0}
                 />
                 <Figure
-                    label="Comprometidas"
+                    label={t('hour_bank.committed')}
                     value={formatMinutes(f.committed)}
                 />
             </dl>
@@ -136,8 +151,9 @@ export function HourBankMeter({
                         aria-hidden="true"
                         className="mt-0.5 size-4 shrink-0 text-warning"
                     />
-                    Las tareas planificadas superan el saldo de la bolsa en{' '}
-                    {formatMinutes(f.shortfall)} h.
+                    {t('hour_bank.shortfall', {
+                        minutes: formatMinutes(f.shortfall),
+                    })}
                 </p>
             ) : null}
         </div>

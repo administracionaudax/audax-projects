@@ -30,6 +30,7 @@ import {
     SEARCH_MIN_LENGTH,
     useSearchResults,
 } from '@/hooks/use-search-results';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -172,7 +173,7 @@ export function SearchPalette({
                 placeholder={t('search.placeholder')}
                 aria-label={t('search.input_label')}
             />
-            <CommandList>
+            <CommandList label={t('search.results_label')}>
                 <div aria-live="polite" className="empty:hidden">
                     {status === 'idle' && (
                         <SearchMessage>
@@ -256,7 +257,8 @@ export function SearchTrigger({ className }: { className?: string }) {
             aria-label={t('search.open', { shortcut })}
             aria-keyshortcuts="Control+K Meta+K"
             className={cn(
-                'inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                'inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+                FOCUS_RING,
                 className,
             )}
         >

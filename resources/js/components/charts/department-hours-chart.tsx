@@ -20,6 +20,7 @@ import {
 import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { formatMinutes } from '@/lib/format';
+import { t } from '@/lib/i18n';
 
 export type CategoryMinutes = {
     id: string;
@@ -29,15 +30,15 @@ export type CategoryMinutes = {
 
 /** Una sola serie → un solo color (var(--chart-1)) y sin leyenda: el título ya la nombra. */
 export const DEPARTMENT_HOURS_SERIES = defineSeries([
-    { key: 'minutes', label: 'Horas imputadas' },
+    { key: 'minutes', label: t('charts.department.series.minutes') },
 ] as const);
 
 const ROW_HEIGHT = 36;
 
 export function DepartmentHoursChart({
     data,
-    title = 'Horas imputadas por departamento',
-    description = 'Mes en curso.',
+    title = t('charts.department.title'),
+    description = t('charts.department.description'),
 }: {
     data: ReadonlyArray<CategoryMinutes>;
     title?: string;
@@ -51,11 +52,28 @@ export function DepartmentHoursChart({
         <ChartFrame
             title={title}
             description={description}
-            summary={`${title}: ${data.map((d) => `${d.label} ${formatMinutes(d.minutes)}`).join(', ')}.`}
+            summary={t('charts.department.summary', {
+                title,
+                items: data
+                    .map((d) =>
+                        t('charts.department.summary_item', {
+                            label: d.label,
+                            minutes: formatMinutes(d.minutes),
+                        }),
+                    )
+                    .join(', '),
+            })}
             table={{
                 columns: [
-                    { key: 'label', label: 'Departamento' },
-                    { key: 'minutes', label: 'Horas', numeric: true },
+                    {
+                        key: 'label',
+                        label: t('charts.department.column.department'),
+                    },
+                    {
+                        key: 'minutes',
+                        label: t('charts.department.column.hours'),
+                        numeric: true,
+                    },
                 ],
                 rows: data.map((d) => ({
                     id: d.id,
@@ -66,6 +84,7 @@ export function DepartmentHoursChart({
         >
             <ResponsiveContainer width="100%" height={height}>
                 <BarChart
+                    accessibilityLayer={false}
                     data={[...data]}
                     layout="vertical"
                     margin={{ top: 0, right: 56, bottom: 0, left: 0 }}

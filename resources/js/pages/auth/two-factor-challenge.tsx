@@ -124,7 +124,7 @@ export default function TwoFactorChallenge() {
                                 <span>{t('two_factor.challenge.or')} </span>
                                 <button
                                     type="button"
-                                    className="cursor-pointer rounded-xs text-primary-text underline decoration-primary-text/40 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                    className="cursor-pointer rounded-xs text-primary-text underline decoration-primary-text/40 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                                     onClick={() =>
                                         toggleRecoveryMode(clearErrors)
                                     }

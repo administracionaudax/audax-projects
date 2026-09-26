@@ -8,7 +8,10 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GlobalSearchProvider } from '@/components/global-search';
+import {
+    GlobalSearchProvider,
+    SearchTrigger,
+} from '@/components/global-search';
 
 const visit = vi.fn();
 
@@ -180,5 +183,32 @@ describe('búsqueda global', () => {
                 'No se ha podido completar la búsqueda. Inténtalo de nuevo.',
             ),
         ).toBeTruthy();
+    });
+
+    it('etiqueta la lista de resultados en español (no «Suggestions»)', async () => {
+        renderSearch();
+        fireEvent.keyDown(document, { key: 'k', ctrlKey: true });
+
+        expect(
+            await screen.findByRole('listbox', {
+                name: 'Resultados de la búsqueda',
+            }),
+        ).toBeTruthy();
+    });
+
+    it('el nombre accesible del disparador contiene su texto visible (WCAG 2.5.3)', async () => {
+        const user = userEvent.setup();
+        render(
+            <GlobalSearchProvider>
+                <SearchTrigger />
+            </GlobalSearchProvider>,
+        );
+
+        const trigger = screen.getByRole('button', { name: /^Buscar…/ });
+        expect(trigger.getAttribute('aria-label')).toBe('Buscar… (Ctrl K)');
+        expect(trigger.textContent).toContain('Buscar…');
+
+        await user.click(trigger);
+        expect(await screen.findByRole('dialog')).toBeTruthy();
     });
 });

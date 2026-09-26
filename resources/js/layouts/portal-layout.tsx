@@ -14,6 +14,8 @@ import {
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useUser } from '@/hooks/use-auth';
 import { useInitials } from '@/hooks/use-initials';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 import { home } from '@/routes/portal';
 import type { BreadcrumbItem } from '@/types';
@@ -40,11 +42,14 @@ export default function PortalLayout({
                 <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
                     <Link
                         href={home()}
-                        className="flex items-baseline gap-3 rounded-md focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                        className={cn(
+                            'flex items-baseline gap-3 rounded-md',
+                            FOCUS_RING,
+                        )}
                         aria-label={t('portal.home_link')}
                     >
                         <AudaxWordmark tone="inverse" className="h-4" />
-                        <span className="hidden text-sm text-muted-foreground sm:inline">
+                        <span className="hidden text-sm text-on-gradient-muted sm:inline">
                             {t('portal.name')}
                         </span>
                     </Link>
@@ -54,7 +59,7 @@ export default function PortalLayout({
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
-                                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                                     data-test="portal-user-menu"
                                 >
                                     <Avatar className="size-8 overflow-hidden rounded-full">
@@ -74,7 +79,7 @@ export default function PortalLayout({
                                     </span>
                                     <ChevronDown
                                         aria-hidden="true"
-                                        className="size-4 text-muted-foreground"
+                                        className="size-4 text-on-gradient-muted"
                                     />
                                 </button>
                             </DropdownMenuTrigger>
