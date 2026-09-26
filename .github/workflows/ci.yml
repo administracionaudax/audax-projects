@@ -186,7 +186,11 @@ jobs:
       - name: Tipos (tsc)
         run: npx tsc --noEmit
 
+      # Vitest arranca internamente un servidor de Vite y laravel-vite-plugin lo prohíbe si detecta CI=true.
+      # En los tests es correcto: no se sirve nada, solo se transforman los módulos.
       - name: Vitest
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: '1'
         run: npx vp test run
 
       - name: Build
