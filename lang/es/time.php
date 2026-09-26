@@ -15,6 +15,7 @@ return [
         'milestone' => 'Los hitos no llevan horas.',
         'task_without_bank' => 'La tarea no tiene bolsa. Asígnale una antes de imputar.',
         'bank_closed' => 'La bolsa «:bank» está :status: no admite horas.',
+        'bank_frozen' => 'La bolsa «:bank» está :status: sus horas ya no se pueden cambiar ni borrar, solo su descripción. Si hay que corregirlas, pídeselo a un administrador.',
         'bank_department' => 'La bolsa «:bank» es solo para el departamento :department.',
         'bank_blocked' => 'La bolsa «:bank» no admite exceso. Saldo disponible: :available.',
         'not_member' => 'Solo los miembros del proyecto pueden imputar horas.',

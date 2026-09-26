@@ -329,3 +329,12 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
 ### D-042 · Contrato técnico
 - **Resources:** se envían a Inertia **sin envoltorio `{data}`** (`JsonResource::withoutWrapping()`), también los anidados; las colecciones paginadas mantienen `{data, links, meta}`. Algunas áreas pasan además sus props por un ayudante propio (`Plain::of`, `ResourceData::of`, `ResourceProps`), que sigue siendo válido.
 - **Tests:** necesitan 512 MB de memoria en un solo proceso (`phpunit.xml`).
+
+## 26/09/2026: Decisiones tomadas en autonomía en la revisión global de la Fase 1
+
+### D-043 · Bolsas cerradas y renovadas: sus horas quedan fijas **[concreta el SPEC §7, §8.4, §8.7 y §8.9]**
+- **Qué se puede hacer con una entrada de una bolsa cerrada o renovada:**
+  - cualquiera que pueda editarla corrige su **descripción** (o si es facturable): no cambia el consumo,
+  - cambiar sus **minutos, su fecha o su tarea**, o **borrarla**, solo lo hace un **administrador** (queda en la auditoría). A los demás se les explica que se lo pidan.
+- **Por qué:** el saldo registrado al cerrar (SPEC §8.9) y el histórico de la renovación (las horas nunca se mueven, SPEC §8.7) no deben cambiar sin control. Antes se bloqueaba incluso corregir la descripción, pero se podía borrar la entrada o pasarla a otra tarea.
+- **Saldo registrado:** si un admin corrige las horas de una bolsa cerrada, `closed_remaining_minutes` se recalcula con su consumo.

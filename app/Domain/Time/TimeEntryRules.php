@@ -55,7 +55,22 @@ final class TimeEntryRules
             && $existing->getOriginal('hour_bank_id') === null
             && (int) $existing->getOriginal('task_id') === $task->id;
 
-        $errors = $this->subjectErrors($actor, $target, $task, $project, $bank, $adminEditingLocked, $keepsNoBank);
+        // Bolsa cerrada o renovada (D-043): sus horas quedan fijas (el saldo registrado al cerrar y
+        // el histórico de la renovación no cambian). Se puede corregir la descripción o si es
+        // facturable; los minutos, la fecha, la tarea o borrarla, solo un admin (queda auditado).
+        $frozen = $existing !== null ? $this->frozenBankOf($existing, $bank) : null;
+        $changesConsumption = $existing === null
+            || (int) $existing->getOriginal('task_id') !== $task->id
+            || $minutes !== (int) $existing->getOriginal('minutes')
+            || $date->toDateString() !== CarbonImmutable::parse((string) $existing->getRawOriginal('date'))->toDateString();
+        // En su misma bolsa no aplica «no admite horas»: lo que se puede cambiar lo dice bank_frozen.
+        $editsFrozenInPlace = $frozen !== null && $bank?->id === $frozen->id;
+
+        $errors = $this->subjectErrors($actor, $target, $task, $project, $bank, $adminEditingLocked || $editsFrozenInPlace, $keepsNoBank);
+
+        if ($frozen !== null && $changesConsumption && ! $actor->isAdmin()) {
+            $errors['task_id'][] = $this->frozenMessage($frozen);
+        }
 
         // Fecha
         if ($date->toDateString() > LocalTime::todayString() && ! (bool) Setting::get('allow_future_time_entries', false)) {
@@ -196,7 +211,8 @@ final class TimeEntryRules
     }
 
     /**
-     * Borrar una entrada: solo si su semana es editable (o si es un admin con una bloqueada).
+     * Borrar una entrada: solo si su semana es editable (o si es un admin con una bloqueada), y si
+     * su bolsa está cerrada o renovada, solo un admin (D-043).
      *
      * @throws ValidationException
      */
@@ -204,6 +220,12 @@ final class TimeEntryRules
     {
         if ($entry->isLocked() && $actor->isAdmin()) {
             return;
+        }
+
+        $frozen = $this->frozenBankOf($entry, null);
+
+        if ($frozen !== null && ! $actor->isAdmin()) {
+            throw ValidationException::withMessages(['task_id' => $this->frozenMessage($frozen)]);
         }
 
         $period = TimesheetPeriod::forUserOn($entry->user_id, $entry->date);
@@ -216,6 +238,27 @@ final class TimeEntryRules
                 ]),
             ]);
         }
+    }
+
+    /**
+     * La bolsa (original) de una entrada existente si está cerrada o renovada.
+     */
+    private function frozenBankOf(TimeEntry $entry, ?HourBank $loaded): ?HourBank
+    {
+        $bankId = $entry->getOriginal('hour_bank_id');
+
+        if ($bankId === null) {
+            return null;
+        }
+
+        $bank = $loaded?->id === (int) $bankId ? $loaded : HourBank::query()->withTrashed()->find((int) $bankId);
+
+        return $bank !== null && ! $bank->acceptsTime() ? $bank : null;
+    }
+
+    private function frozenMessage(HourBank $bank): string
+    {
+        return $this->message('time.errors.bank_frozen', ['bank' => $bank->name, 'status' => mb_strtolower($bank->status->label())]);
     }
 
     /**

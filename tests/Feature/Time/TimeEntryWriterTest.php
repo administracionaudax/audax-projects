@@ -3,6 +3,8 @@
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Domain\HourBanks\FirstHourBank;
+use App\Domain\HourBanks\HourBankClosure;
+use App\Domain\HourBanks\HourBankRenewal;
 use App\Domain\Time\TimeEntryData;
 use App\Domain\Time\TimeEntryWarning;
 use App\Domain\Time\TimeEntryWriter;
@@ -388,6 +390,47 @@ it('al pasar el proyecto a bolsas, sus entradas anteriores se siguen corrigiendo
     $unbanked = Task::factory()->create(['project_id' => $project->id]);
     expect(validationErrors(fn () => $this->writer->update($this->employee, $updated, entryData($this->employee, $unbanked, 60))))
         ->toBe(['task_id' => ['La tarea no tiene bolsa. Asígnale una antes de imputar.']]);
+});
+
+describe('entradas de una bolsa cerrada o renovada (D-043)', function () {
+    beforeEach(function () {
+        $this->bank = HourBank::factory()->hours(2)->create();
+        $this->task = memberTask($this->employee, bank: $this->bank);
+        $this->entry = $this->writer->create($this->employee, entryData($this->employee, $this->task, 60, description: 'x'))->entry;
+        $this->admin = User::factory()->admin()->create();
+    });
+
+    it('tras renovar, se corrige la descripción, pero no los minutos, la fecha, la tarea ni se borra', function () {
+        // Agotada (2:00 de 2:00): toca renovarla.
+        $this->writer->create($this->employee, entryData($this->employee, $this->task, 60, '2026-09-22', 'y'));
+        app(HourBankRenewal::class)->renew($this->bank->fresh(), [], false);
+
+        $updated = $this->writer->update($this->employee, $this->entry, entryData($this->employee, $this->task, 60, description: 'Descripción corregida'))->entry;
+        expect($updated->description)->toBe('Descripción corregida');
+
+        $frozen = 'La bolsa «'.$this->bank->name.'» está renovada: sus horas ya no se pueden cambiar ni borrar, solo su descripción. Si hay que corregirlas, pídeselo a un administrador.';
+        $open = memberTask($this->employee);
+
+        expect(validationErrors(fn () => $this->writer->update($this->employee, $updated, entryData($this->employee, $this->task, 30))))->toBe(['task_id' => [$frozen]])
+            ->and(validationErrors(fn () => $this->writer->update($this->employee, $updated, entryData($this->employee, $this->task, 60, '2026-09-23'))))->toBe(['task_id' => [$frozen]])
+            ->and(validationErrors(fn () => $this->writer->update($this->employee, $updated, entryData($this->employee, $open, 60))))->toBe(['task_id' => [$frozen]])
+            ->and(validationErrors(fn () => $this->writer->delete($this->employee, $updated)))->toBe(['task_id' => [$frozen]])
+            ->and(TimeEntry::query()->count())->toBe(2)
+            ->and($this->bank->fresh()->consumed_minutes)->toBe(120);
+    });
+
+    it('en una bolsa cerrada, solo un admin corrige o borra sus horas, y el saldo registrado se recalcula', function () {
+        app(HourBankClosure::class)->close($this->bank->fresh(), $this->admin);
+        expect($this->bank->fresh()->closed_remaining_minutes)->toBe(60);
+
+        expect(validationErrors(fn () => $this->writer->delete($this->employee, $this->entry->fresh())))->toHaveKey('task_id');
+
+        $this->writer->update($this->admin, $this->entry->fresh(), entryData($this->employee, $this->task, 90, description: 'x'));
+        expect($this->bank->fresh()->only(['consumed_minutes', 'closed_remaining_minutes']))->toBe(['consumed_minutes' => 90, 'closed_remaining_minutes' => 30]);
+
+        $this->writer->delete($this->admin, $this->entry->fresh());
+        expect($this->bank->fresh()->only(['consumed_minutes', 'closed_remaining_minutes']))->toBe(['consumed_minutes' => 0, 'closed_remaining_minutes' => 120]);
+    });
 });
 
 it('no mueve una entrada fuera de una semana cerrada', function () {
