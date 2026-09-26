@@ -2,6 +2,7 @@
 
 use App\Models\Department;
 use App\Models\User;
+use App\Search\Sources\PageSource;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -95,6 +96,27 @@ test('devuelve personas internas activas por nombre o correo', function () {
         ->and($people[0]['title'])->toBe('Lucía Martín')
         ->and($people[0]['subtitle'])->toBe('Diseño · lucia@audaxstudio.com')
         ->and(searchTitles('LUCIA@AUDAX'))->toContain('Lucía Martín');
+});
+
+test('los textos de las secciones salen de lang/es/search.php', function () {
+    $pages = (new class extends PageSource
+    {
+        /** @return list<array{route: string, title: string, subtitle: string, keywords: string, allowed: Closure(User): bool}> */
+        public function all(): array
+        {
+            return $this->pages();
+        }
+    })->all();
+
+    expect($pages)->toHaveCount(14);
+
+    foreach ($pages as $page) {
+        foreach (['title', 'subtitle', 'keywords'] as $field) {
+            expect($page[$field])->not->toBe('')->not->toStartWith('search.');
+        }
+    }
+
+    expect(collect($pages)->firstWhere('route', 'sessions.index')['title'])->toBe(__('search.pages.sessions.title'));
 });
 
 test('en PostgreSQL la búsqueda de personas ignora los acentos (extensión unaccent)', function () {
