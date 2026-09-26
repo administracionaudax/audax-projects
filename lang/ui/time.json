@@ -22,6 +22,7 @@
     "hours.timer.stop_failed_reason": "Qué ha pasado",
     "hours.timer.keep_running": "Seguir en marcha",
     "hours.timer.log_and_stop": "Imputar y parar",
+    "hours.timer.stop_measured_hint": "Medido: :duration. Si no cambias la duración, se imputa lo medido, repartido por días.",
 
     "hours.task_picker.placeholder": "Elige una tarea",
     "hours.task_picker.search": "Busca por tarea o proyecto",

@@ -93,6 +93,23 @@ it('al parar con otra duración u otra tarea imputa lo indicado (acepta «1:15»
         ->and($entry->task_id)->toBe($this->other->id);
 });
 
+it('al parar solo con otra tarea (sin duración) reparte lo medido por días y lo redondea (D-036)', function () {
+    Setting::set('timer_rounding_minutes', 15);
+    $this->travelTo(CarbonImmutable::parse('2026-09-23 23:10:00', 'Europe/Madrid'));
+    $this->actingAs($this->user)->post('/temporizador', ['task_id' => $this->task->id]);
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 01:23:00', 'Europe/Madrid'));
+
+    $this->actingAs($this->user)
+        ->post('/temporizador/parar', ['minutes' => null, 'task_id' => $this->other->id])
+        ->assertSessionHasNoErrors();
+
+    $entries = TimeEntry::query()->orderBy('date')->get();
+    expect($entries)->toHaveCount(2)
+        ->and($entries->pluck('task_id')->unique()->all())->toBe([$this->other->id])
+        ->and($entries->map(fn (TimeEntry $entry): array => [$entry->date->toDateString(), $entry->minutes])->all())
+        ->toBe([['2026-09-23', 45], ['2026-09-24', 90]]);
+});
+
 it('con una bolsa block sin saldo, parar devuelve el error y el temporizador sigue en marcha', function () {
     $task = ($this->blockTask)(1);
     $this->actingAs($this->user)->post('/temporizador', ['task_id' => $task->id])->assertSessionHasNoErrors();

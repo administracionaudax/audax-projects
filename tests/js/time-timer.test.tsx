@@ -3,7 +3,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TimerButton } from '@/components/time/timer-button';
+import { timerStopDialog } from '@/components/time/timer-actions';
 import { spokenDuration, TimerChip } from '@/components/time/timer-chip';
+import {
+    measuredMinutes,
+    TimerStopDialog,
+} from '@/components/time/timer-stop-dialog';
 import { elapsedSeconds, formatElapsed } from '@/components/time/use-elapsed';
 import type { ActiveTimer } from '@/types';
 
@@ -69,6 +74,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    act(() => {
+        timerStopDialog.close();
+    });
     vi.useRealTimers();
 });
 
@@ -255,5 +263,90 @@ describe('botón de temporizador de una tarea', () => {
         expect((button as HTMLButtonElement).disabled).toBe(true);
         fireEvent.click(button);
         expect(post).not.toHaveBeenCalled();
+    });
+});
+
+describe('diálogo al parar cuando la imputación no es válida', () => {
+    const config = {
+        hour_bank_thresholds: [75, 90, 100],
+        timer_warning_hours: 10,
+        timer_rounding_minutes: 15,
+    };
+
+    function openDialog(secondsAgo: number) {
+        vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
+        page.props = { timer: timerStartedSecondsAgo(secondsAgo), config };
+        render(<TimerStopDialog />);
+        act(() => {
+            timerStopDialog.open({
+                timer: 'La bolsa de horas no tiene saldo.',
+            });
+        });
+    }
+
+    function sentData(): unknown {
+        expect(post).toHaveBeenCalledTimes(1);
+        const [url, data] = post.mock.calls[0] as [string, unknown];
+        expect(url).toBe('/temporizador/parar');
+
+        return data;
+    }
+
+    it('redondea lo medido como el servidor', () => {
+        const now = NOW.getTime();
+        const ago = (seconds: number) =>
+            new Date(now - seconds * 1000).toISOString();
+
+        expect(measuredMinutes(ago(3718), 15, now)).toBe(60);
+        expect(measuredMinutes(ago(3718), 1, now)).toBe(62);
+        expect(measuredMinutes(ago(5 * 60), 15, now)).toBe(0);
+        expect(measuredMinutes(ago(30 * 3600), 1, now)).toBe(1800);
+    });
+
+    it('si solo cambia la tarea, no envía la duración: el servidor reparte por días y redondea', () => {
+        openDialog(3718);
+
+        expect(
+            screen.getByText('La bolsa de horas no tiene saldo.'),
+        ).toBeTruthy();
+        const duration = screen.getByLabelText('Duración') as HTMLInputElement;
+        expect(duration.value).toBe('1:00');
+        expect(
+            screen.getByText(/^Medido: 1:00\. Si no cambias la duración/u),
+        ).toBeTruthy();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Imputar y parar' }),
+        );
+
+        expect(sentData()).toEqual({ minutes: null, task_id: 12 });
+    });
+
+    it('con la duración cambiada, la envía para imputarla en una sola entrada', () => {
+        openDialog(3718);
+
+        fireEvent.change(screen.getByLabelText('Duración'), {
+            target: { value: '0:45' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Imputar y parar' }),
+        );
+
+        expect(sentData()).toEqual({ minutes: 45, task_id: 12 });
+    });
+
+    it('un temporizador de más de 24 h muestra el máximo y, sin tocarlo, se reparte por días', () => {
+        openDialog(30 * 3600);
+
+        expect(
+            (screen.getByLabelText('Duración') as HTMLInputElement).value,
+        ).toBe('24:00');
+        expect(screen.getByText(/^Medido: 30:00\./u)).toBeTruthy();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Imputar y parar' }),
+        );
+
+        expect(sentData()).toEqual({ minutes: null, task_id: 12 });
     });
 });

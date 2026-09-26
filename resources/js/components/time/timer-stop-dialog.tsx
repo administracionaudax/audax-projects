@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { MAX_MINUTES } from '@/lib/duration';
+import { MAX_MINUTES, roundToNearest } from '@/lib/duration';
+import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { ActiveTimer } from '@/types';
 import { TaskPicker } from './task-picker';
@@ -35,7 +36,7 @@ import { elapsedSeconds } from './use-elapsed';
  */
 export function TimerStopDialog() {
     const { open, errors } = useTimerStopDialog();
-    const timer = usePage().props.timer ?? null;
+    const { timer = null, config } = usePage().props;
     const visible = open && timer !== null;
 
     return (
@@ -49,27 +50,47 @@ export function TimerStopDialog() {
         >
             <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 {visible && timer ? (
-                    <StopForm timer={timer} errors={errors} />
+                    <StopForm
+                        timer={timer}
+                        errors={errors}
+                        rounding={config?.timer_rounding_minutes ?? 1}
+                    />
                 ) : null}
             </DialogContent>
         </Dialog>
     );
 }
 
+/**
+ * Minutos medidos por el temporizador, redondeados como en el servidor (timer_rounding_minutes).
+ */
+export function measuredMinutes(
+    startedAt: string,
+    rounding: number,
+    now: number = Date.now(),
+): number {
+    return roundToNearest(
+        Math.round(elapsedSeconds(startedAt, now) / 60),
+        Math.max(rounding, 1),
+    );
+}
+
 function StopForm({
     timer,
     errors,
+    rounding,
 }: {
     timer: ActiveTimer;
     errors: Record<string, string>;
+    rounding: number;
 }) {
     const id = useId();
-    const [minutes, setMinutes] = useState<number | null>(() =>
-        Math.min(
-            Math.max(Math.round(elapsedSeconds(timer.started_at) / 60), 1),
-            MAX_MINUTES,
-        ),
+    const [measured] = useState(() =>
+        measuredMinutes(timer.started_at, rounding),
     );
+    // Lo que muestra el campo al abrir: lo medido, sin pasar del máximo de una entrada.
+    const [initial] = useState(() => Math.min(measured, MAX_MINUTES));
+    const [minutes, setMinutes] = useState<number | null>(initial);
     const [task, setTask] = useState<PickedTask | null>({
         id: timer.task_id,
         title: timer.task_title,
@@ -97,7 +118,13 @@ function StopForm({
             return;
         }
 
-        stopTimer({ ...callbacks, minutes, taskId: task?.id ?? null });
+        // Si no se toca la duración, el servidor imputa lo medido hasta ahora, repartido por días y
+        // redondeado (D-036); solo una duración cambiada va como una única entrada.
+        stopTimer({
+            ...callbacks,
+            minutes: minutes === initial ? null : minutes,
+            taskId: task?.id ?? null,
+        });
     };
 
     return (
@@ -133,8 +160,17 @@ function StopForm({
                     id={`${id}-minutes`}
                     value={minutes}
                     onChange={setMinutes}
+                    aria-describedby={`${id}-minutes-hint`}
                     autoFocus
                 />
+                <p
+                    id={`${id}-minutes-hint`}
+                    className="text-sm text-muted-foreground"
+                >
+                    {t('hours.timer.stop_measured_hint', {
+                        duration: formatMinutes(measured),
+                    })}
+                </p>
             </div>
 
             <div className="grid gap-2">
