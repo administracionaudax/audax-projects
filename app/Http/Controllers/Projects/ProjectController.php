@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Projects;
 
+use App\Domain\HourBanks\FirstHourBank;
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\Projects\ProjectActivityFeed;
 use App\Domain\Projects\ProjectColors;
@@ -12,6 +13,7 @@ use App\Enums\BillingType;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\HourBanks\HourBankController;
 use App\Http\Requests\Projects\StoreProjectRequest;
 use App\Http\Requests\Projects\UpdateProjectRequest;
 use App\Http\Resources\HourBanks\HourBankCardResource;
@@ -30,6 +32,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -216,6 +219,10 @@ class ProjectController extends Controller
             'clients' => $this->clientOptions($project->client_id),
             'people' => $this->peopleOptions(),
             'hasHourBanks' => $project->hourBanks()->exists(),
+            // Si pasa a «bolsa de horas» con tareas, se crea su primera bolsa en el mismo paso.
+            'tasksWithoutBank' => $project->usesHourBanks() ? 0 : $project->tasks()->whereNull('hour_bank_id')->count(),
+            'departments' => $this->departmentOptions(),
+            'overageDefault' => HourBankController::overageDefault(),
             'can' => [
                 'manageMembers' => $user->can('manageMembers', $project),
                 'archive' => $user->can('archive', $project),
@@ -224,12 +231,31 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
+    /**
+     * Guarda los datos. Si el proyecto pasa a «bolsa de horas» y ya tiene tareas, crea en la misma
+     * transacción su primera bolsa y le asigna esas tareas (FirstHourBank; las horas no se mueven).
+     */
+    public function update(UpdateProjectRequest $request, Project $project, FirstHourBank $firstBank): RedirectResponse
     {
-        $project->fill($request->validated());
-        $project->save();
+        $data = $request->validated();
+        $bankData = $data['hour_bank'] ?? null;
+        unset($data['hour_bank']);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('projects.flash.updated')]);
+        $first = DB::transaction(function () use ($project, $data, $bankData, $firstBank): ?array {
+            $project->fill($data);
+            $project->save();
+
+            return is_array($bankData) ? $firstBank->create($project, $bankData) : null;
+        });
+
+        $message = $first === null
+            ? __('projects.flash.updated')
+            : trans_choice('projects.flash.updated_with_bank', $first['moved_tasks'], [
+                'count' => $first['moved_tasks'],
+                'name' => $first['bank']->name,
+            ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('projects.settings', $project);
     }

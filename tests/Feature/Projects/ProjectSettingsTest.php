@@ -1,10 +1,15 @@
 <?php
 
+use App\Enums\BillingType;
+use App\Enums\HourBankStatus;
 use App\Enums\ProjectAlert;
 use App\Enums\ProjectStatus;
 use App\Models\Client;
+use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
+use App\Models\Task;
+use App\Models\TimeEntry;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -83,6 +88,107 @@ test('un proyecto con bolsas no deja de ser de bolsas', function () {
             'color' => $project->color,
         ])
         ->assertSessionHasErrors('billing_type');
+});
+
+test('pasar a bolsa de horas un proyecto con tareas crea su primera bolsa y le asigna las tareas', function () {
+    $this->project->update(['billing_type' => BillingType::TimeAndMaterials]);
+    $parent = Task::factory()->create(['project_id' => $this->project->id]);
+    $subtask = Task::factory()->subtaskOf($parent)->create();
+    $done = Task::factory()->completed()->create(['project_id' => $this->project->id]);
+    $entry = TimeEntry::factory()->forTask($parent)->minutes(90)->create();
+    $department = Department::factory()->create();
+
+    // Sin los datos de la primera bolsa, no: sus tareas se quedarían sin bolsa (SPEC §8.2).
+    $this->actingAs($this->owner)
+        ->put($this->url, ($this->payload)(['billing_type' => 'hour_bank']))
+        ->assertSessionHasErrors(['hour_bank' => 'El proyecto ya tiene tareas: crea su primera bolsa para que vayan a ella.']);
+
+    expect($this->project->fresh()->billing_type)->toBe(BillingType::TimeAndMaterials);
+
+    $this->actingAs($this->owner)
+        ->put($this->url, ($this->payload)([
+            'billing_type' => 'hour_bank',
+            'hour_bank' => ['name' => 'Bolsa inicial', 'total_minutes' => 20 * 60, 'start_date' => '2026-10-01', 'end_date' => '2026-09-01', 'overage_policy' => 'inherit'],
+        ]))
+        ->assertSessionHasErrors(['hour_bank.end_date']);
+
+    $this->actingAs($this->owner)
+        ->put($this->url, ($this->payload)([
+            'billing_type' => 'hour_bank',
+            'hour_bank' => [
+                'name' => 'Bolsa inicial',
+                'department_id' => $department->id,
+                'total_minutes' => 20 * 60,
+                'start_date' => '2026-10-01',
+                'end_date' => null,
+                'overage_policy' => 'block',
+                // Sin view-financials se ignoran.
+                'hourly_rate' => '99',
+                'price_amount' => '999',
+            ],
+        ]))
+        ->assertRedirect(route('projects.settings', $this->project))
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.message', 'Cambios guardados. Las 3 tareas del proyecto van ahora a la bolsa «Bolsa inicial».');
+
+    $bank = HourBank::query()->where('project_id', $this->project->id)->sole();
+
+    expect($this->project->fresh()->billing_type)->toBe(BillingType::HourBank)
+        ->and($bank)
+        ->name->toBe('Bolsa inicial')
+        ->department_id->toBe($department->id)
+        ->total_minutes->toBe(1200)
+        ->status->toBe(HourBankStatus::Active)
+        ->hourly_rate->toBeNull()
+        ->price_amount->toBeNull()
+        // Las horas ya imputadas no se mueven ni cuentan en la bolsa.
+        ->consumed_minutes->toBe(0)
+        ->and($entry->fresh()->hour_bank_id)->toBeNull()
+        ->and([$parent->fresh()->hour_bank_id, $subtask->fresh()->hour_bank_id, $done->fresh()->hour_bank_id])
+        ->toBe([$bank->id, $bank->id, $bank->id]);
+
+    $this->assertDatabaseHas('activity_log', [
+        'subject_type' => $parent->getMorphClass(),
+        'subject_id' => $parent->id,
+        'event' => 'updated',
+        'causer_id' => $this->owner->id,
+    ]);
+});
+
+test('sin tareas, o si ya es de bolsas, no se pide ni se crea ninguna bolsa', function () {
+    $this->project->update(['billing_type' => BillingType::FixedPrice]);
+
+    $this->actingAs($this->owner)
+        ->put($this->url, ($this->payload)(['billing_type' => 'hour_bank']))
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($this->owner)
+        ->put($this->url, ($this->payload)(['billing_type' => 'hour_bank', 'hour_bank' => ['name' => 'X']]))
+        ->assertSessionHasNoErrors();
+
+    expect($this->project->fresh()->billing_type)->toBe(BillingType::HourBank)
+        ->and(HourBank::query()->count())->toBe(0);
+});
+
+test('los ajustes dicen cuántas tareas necesitarían bolsa y llevan lo necesario para crearla', function () {
+    $this->project->update(['billing_type' => BillingType::TimeAndMaterials]);
+    Task::factory()->count(2)->create(['project_id' => $this->project->id]);
+    Department::factory()->create(['name' => 'Diseño']);
+    Department::factory()->create()->delete();
+
+    $this->actingAs($this->owner)
+        ->get("{$this->url}/ajustes")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('tasksWithoutBank', 2)
+            ->has('departments', 1)
+            ->where('departments.0.name', 'Diseño')
+            ->where('overageDefault', 'allow'));
+
+    $bankProject = Project::factory()->hourBank()->create(['owner_user_id' => $this->owner->id]);
+
+    $this->actingAs($this->owner)
+        ->get("/proyectos/{$bankProject->id}/ajustes")
+        ->assertInertia(fn (Assert $page) => $page->where('tasksWithoutBank', 0));
 });
 
 test('en un proyecto archivado el estado no se cambia desde el formulario', function () {

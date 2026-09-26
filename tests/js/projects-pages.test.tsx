@@ -216,6 +216,9 @@ describe('ajustes del proyecto', () => {
             { id: 10, name: 'Carlos Nuevo', department: 'Desarrollo' },
         ],
         hasHourBanks: true,
+        tasksWithoutBank: 0,
+        departments: [{ id: 1, name: 'Diseño' }],
+        overageDefault: 'allow',
         can: { manageMembers: true, archive: true, editAlertsOf: [7] },
         ...overrides,
     });
@@ -331,6 +334,55 @@ describe('ajustes del proyecto', () => {
             screen.getByRole('button', { name: 'Recuperar el proyecto' }),
         ).toBeTruthy();
         expect(screen.queryByRole('combobox', { name: 'Estado' })).toBeNull();
+    });
+
+    it('al pasar a bolsas un proyecto con tareas, pide los datos de su primera bolsa', async () => {
+        // Radix Select usa la captura del puntero, que jsdom no tiene.
+        if (!('hasPointerCapture' in Element.prototype)) {
+            Object.assign(Element.prototype, {
+                hasPointerCapture: () => false,
+                releasePointerCapture: () => {},
+            });
+        }
+        const user = userEvent.setup();
+
+        render(
+            <ProjectSettings
+                {...settingsProps({
+                    project: { ...project, billing_type: 'time_and_materials' },
+                    hasHourBanks: false,
+                    tasksWithoutBank: 3,
+                })}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('region', { name: 'Primera bolsa de horas' }),
+        ).toBeNull();
+
+        await user.click(
+            screen.getByRole('combobox', { name: 'Tipo de facturación' }),
+        );
+        await user.click(
+            await screen.findByRole('option', { name: 'Bolsas de horas' }),
+        );
+
+        const section = screen.getByRole('region', {
+            name: 'Primera bolsa de horas',
+        });
+        expect(section.textContent).toContain(
+            'El proyecto ya tiene tareas (3)',
+        );
+        expect(within(section).getByLabelText('Nombre')).toBeTruthy();
+        expect(within(section).getByLabelText('Total de horas')).toBeTruthy();
+    });
+
+    it('sin tareas, o si ya es de bolsas, no pide ninguna bolsa', () => {
+        render(<ProjectSettings {...settingsProps({ tasksWithoutBank: 0 })} />);
+
+        expect(
+            screen.queryByRole('region', { name: 'Primera bolsa de horas' }),
+        ).toBeNull();
     });
 
     it('sin view-financials no hay campos económicos', () => {

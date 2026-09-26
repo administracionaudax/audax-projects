@@ -8,6 +8,12 @@ import {
 import { Archive, ArchiveRestore, TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import {
+    emptyHourBankForm,
+    HourBankFields,
+    hourBankPayload,
+} from '@/components/hour-banks/hour-bank-fields';
+import type { HourBankFormData } from '@/components/hour-banks/hour-bank-fields';
 import InputError from '@/components/input-error';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { PageSection } from '@/components/projects-list/page-section';
@@ -21,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
+import { todayInMadrid } from '@/lib/week';
 import {
     archive,
     index,
@@ -43,6 +50,9 @@ export default function ProjectSettings({
     clients,
     people,
     hasHourBanks,
+    tasksWithoutBank,
+    departments,
+    overageDefault,
     can,
 }: ProjectSettingsProps) {
     const abilities = useAbilities();
@@ -85,6 +95,9 @@ export default function ProjectSettings({
                             project={project}
                             clients={clients}
                             hasHourBanks={hasHourBanks}
+                            tasksWithoutBank={tasksWithoutBank}
+                            departments={departments}
+                            overageDefault={overageDefault}
                             canViewFinancials={abilities.viewFinancials}
                         />
                     </PageSection>
@@ -162,16 +175,45 @@ ProjectSettings.layout = {
     breadcrumbs: [{ title: t('nav.projects'), href: index() }],
 };
 
+type ProjectSettingsForm = ProjectFormData & { hour_bank: HourBankFormData };
+
+/** Errores de la primera bolsa (`hour_bank.name` → `name`). */
+function firstBankErrors(
+    errors: Record<string, string | undefined>,
+): Partial<Record<keyof HourBankFormData, string>> {
+    const result: Record<string, string | undefined> = {};
+
+    for (const [key, message] of Object.entries(errors)) {
+        if (key.startsWith('hour_bank.')) {
+            result[key.slice('hour_bank.'.length)] = message;
+        }
+    }
+
+    return result as Partial<Record<keyof HourBankFormData, string>>;
+}
+
 function ProjectDataForm({
     project,
     clients,
     hasHourBanks,
+    tasksWithoutBank,
+    departments,
+    overageDefault,
     canViewFinancials,
-}: Pick<ProjectSettingsProps, 'project' | 'clients' | 'hasHourBanks'> & {
+}: Pick<
+    ProjectSettingsProps,
+    | 'project'
+    | 'clients'
+    | 'hasHourBanks'
+    | 'tasksWithoutBank'
+    | 'departments'
+    | 'overageDefault'
+> & {
     canViewFinancials: boolean;
 }) {
+    const id = useId();
     const archived = project.status === 'archived';
-    const form = useForm<ProjectFormData>({
+    const form = useForm<ProjectSettingsForm>({
         name: project.name,
         client_id: project.client_id,
         billing_type: project.billing_type,
@@ -184,7 +226,14 @@ function ProjectDataForm({
         budget_minutes: project.budget_minutes,
         fixed_price_amount: project.fixed_price_amount ?? '',
         hourly_rate: project.hourly_rate ?? '',
+        hour_bank: emptyHourBankForm(project.start_date ?? todayInMadrid()),
     });
+    const errors = form.errors as Record<string, string | undefined>;
+    // Pasa a «bolsa de horas» con tareas: su primera bolsa se crea en el mismo paso (SPEC §8.2).
+    const needsFirstBank =
+        project.billing_type !== 'hour_bank' &&
+        form.data.billing_type === 'hour_bank' &&
+        tasksWithoutBank > 0;
 
     return (
         <form
@@ -193,7 +242,17 @@ function ProjectDataForm({
             onSubmit={(event) => {
                 event.preventDefault();
                 form.transform((data) => {
-                    const payload: Partial<ProjectFormData> = { ...data };
+                    const { hour_bank: firstBank, ...rest } = data;
+                    const payload: Partial<ProjectFormData> & {
+                        hour_bank?: Partial<HourBankFormData>;
+                    } = { ...rest };
+
+                    if (needsFirstBank) {
+                        payload.hour_bank = hourBankPayload(
+                            firstBank,
+                            canViewFinancials,
+                        );
+                    }
 
                     // Archivado: el estado se recupera con su botón, no desde aquí.
                     if (archived) {
@@ -215,7 +274,11 @@ function ProjectDataForm({
                 set={(key, value) =>
                     form.setData((data) => ({ ...data, [key]: value }))
                 }
-                errors={form.errors}
+                errors={
+                    form.errors as Partial<
+                        Record<keyof ProjectFormData, string>
+                    >
+                }
                 clients={clients}
                 canViewFinancials={canViewFinancials}
                 statusEditable={!archived}
@@ -230,6 +293,45 @@ function ProjectDataForm({
                     />
                     {t('projects.settings.has_hour_banks')}
                 </p>
+            ) : null}
+            {needsFirstBank ? (
+                <section
+                    aria-labelledby={`${id}-first-bank`}
+                    aria-describedby={`${id}-first-bank-help`}
+                    className="grid gap-4 rounded-md border p-4"
+                >
+                    <div className="grid gap-1">
+                        <h3 id={`${id}-first-bank`} className="font-medium">
+                            {t('projects.settings.first_bank_title')}
+                        </h3>
+                        <p
+                            id={`${id}-first-bank-help`}
+                            className="text-sm text-muted-foreground"
+                        >
+                            {t('projects.settings.first_bank_description', {
+                                count: tasksWithoutBank,
+                            })}
+                        </p>
+                    </div>
+                    {errors.hour_bank ? (
+                        <p role="alert" className="text-sm text-danger">
+                            {errors.hour_bank}
+                        </p>
+                    ) : null}
+                    <HourBankFields
+                        data={form.data.hour_bank}
+                        set={(key, value) =>
+                            form.setData((data) => ({
+                                ...data,
+                                hour_bank: { ...data.hour_bank, [key]: value },
+                            }))
+                        }
+                        errors={firstBankErrors(errors)}
+                        departments={departments}
+                        overageDefault={overageDefault}
+                        canViewFinancials={canViewFinancials}
+                    />
+                </section>
             ) : null}
             <div>
                 <Button type="submit" disabled={form.processing}>

@@ -9,6 +9,7 @@ return [
     'flash' => [
         'created' => 'Proyecto creado.',
         'updated' => 'Cambios guardados.',
+        'updated_with_bank' => '{1} Cambios guardados. La tarea del proyecto va ahora a la bolsa «:name».|[2,*] Cambios guardados. Las :count tareas del proyecto van ahora a la bolsa «:name».',
         'archived' => 'Proyecto archivado.',
         'unarchived' => 'Proyecto recuperado del archivo.',
         'member_added' => ':name ya es miembro del proyecto.',
@@ -29,6 +30,7 @@ return [
         'owner_always_manager' => 'El gestor principal siempre es gestor del proyecto.',
         'already_owner' => ':name ya es el gestor principal.',
         'has_hour_banks' => 'El proyecto tiene bolsas de horas: no puede cambiar a otro tipo de facturación.',
+        'first_hour_bank_required' => 'El proyecto ya tiene tareas: crea su primera bolsa para que vayan a ella.',
         'already_member' => ':name ya es miembro del proyecto.',
         'not_member' => ':name no es miembro del proyecto.',
         'due_before_start' => 'La fecha de entrega no puede ser anterior a la de inicio.',

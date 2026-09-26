@@ -115,6 +115,14 @@ export type ProjectSettingsProps = {
     clients: ProjectClientOption[];
     people: ProjectPersonOption[];
     hasHourBanks: boolean;
+    /**
+     * Tareas sin bolsa (0 si ya es de bolsas): si pasa a «bolsa de horas», hay que crear su primera
+     * bolsa en el mismo paso y van a ella.
+     */
+    tasksWithoutBank: number;
+    /** Para la primera bolsa. */
+    departments: Option[];
+    overageDefault: 'allow' | 'block';
     can: {
         manageMembers: boolean;
         archive: boolean;

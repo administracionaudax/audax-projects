@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Projects;
 
 use App\Enums\BillingType;
+use App\Http\Requests\HourBanks\Concerns\HourBankRules;
 use App\Http\Requests\Projects\Concerns\ProjectRules;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,10 +12,17 @@ use Illuminate\Validation\Validator;
 /**
  * Edición de los datos de un proyecto (ajustes). El gestor principal y los miembros se cambian
  * aparte; archivar tiene su botón. Un proyecto con bolsas no deja de ser de bolsas.
+ * Si pasa a «bolsa de horas» teniendo tareas, hay que dar los datos de su primera bolsa
+ * (`hour_bank.*`): sus tareas irán a ella (SPEC §8.2, cada tarea pertenece a una bolsa).
  */
 class UpdateProjectRequest extends FormRequest
 {
-    use ProjectRules;
+    use HourBankRules, ProjectRules {
+        ProjectRules::canSetFinancials insteadof HourBankRules;
+        ProjectRules::transText insteadof HourBankRules;
+    }
+
+    private ?int $tasksWithoutBank = null;
 
     public function authorize(): bool
     {
@@ -33,11 +41,32 @@ class UpdateProjectRequest extends FormRequest
     }
 
     /**
+     * Tareas que se quedarían sin bolsa: las del proyecto si pasa a «bolsa de horas» (0 si no).
+     */
+    public function tasksNeedingBank(): int
+    {
+        $project = $this->project();
+
+        if ($project->usesHourBanks() || $this->input('billing_type') !== BillingType::HourBank->value) {
+            return 0;
+        }
+
+        return $this->tasksWithoutBank ??= $project->tasks()->whereNull('hour_bank_id')->count();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        return $this->projectRules($this->project());
+        $rules = $this->projectRules($this->project());
+
+        if ($this->tasksNeedingBank() > 0) {
+            $rules['hour_bank'] = ['required', 'array'];
+            $rules = [...$rules, ...$this->hourBankRules('hour_bank.')];
+        }
+
+        return $rules;
     }
 
     /**
@@ -64,7 +93,11 @@ class UpdateProjectRequest extends FormRequest
      */
     public function messages(): array
     {
-        return $this->projectMessages();
+        return [
+            ...$this->projectMessages(),
+            ...$this->hourBankMessages('hour_bank.'),
+            'hour_bank.required' => $this->transText('projects.errors.first_hour_bank_required'),
+        ];
     }
 
     /**
@@ -72,6 +105,9 @@ class UpdateProjectRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return $this->projectAttributes();
+        return [
+            ...$this->projectAttributes(),
+            ...$this->hourBankAttributes('hour_bank.'),
+        ];
     }
 }

@@ -121,6 +121,8 @@
     "projects.settings.data": "Datos del proyecto",
     "projects.settings.data_description": "Nombre, cliente, tipo, fechas y presupuesto.",
     "projects.settings.has_hour_banks": "El proyecto tiene bolsas de horas: no puede cambiar a otro tipo de facturación.",
+    "projects.settings.first_bank_title": "Primera bolsa de horas",
+    "projects.settings.first_bank_description": "El proyecto ya tiene tareas (:count) y cada tarea tiene que ir en una bolsa. Crea aquí su primera bolsa: todas sus tareas irán a ella. Las horas ya imputadas no se mueven ni cuentan en la bolsa.",
     "projects.settings.team": "Miembros y gestores",
     "projects.settings.team_description": "Los miembros imputan horas y reciben los avisos del proyecto. Los gestores, además, lo gestionan.",
     "projects.settings.owner": "Gestor principal",
