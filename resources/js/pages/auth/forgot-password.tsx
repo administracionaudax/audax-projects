@@ -1,23 +1,27 @@
-// Components
 import { Form, Head } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { t } from '@/lib/i18n';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
+import type { ForgotPasswordPageProps } from '@/types';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({ status }: ForgotPasswordPageProps) {
     return (
         <>
-            <Head title="Forgot password" />
+            <Head title={t('forgot.page_title')} />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <p
+                    role="status"
+                    className="rounded-md bg-success-soft px-3 py-2 text-sm text-success"
+                >
                     {status}
-                </div>
+                </p>
             )}
 
             <div className="space-y-6">
@@ -25,14 +29,20 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">
+                                    {t('common.email')}
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     name="email"
-                                    autoComplete="off"
+                                    autoComplete="email"
+                                    required
                                     autoFocus
-                                    placeholder="email@example.com"
+                                    placeholder={t('common.email_placeholder')}
+                                    aria-invalid={
+                                        errors.email ? true : undefined
+                                    }
                                 />
 
                                 <InputError message={errors.email} />
@@ -44,26 +54,24 @@ export default function ForgotPassword({ status }: { status?: string }) {
                                     disabled={processing}
                                     data-test="email-password-reset-link-button"
                                 >
-                                    {processing && (
-                                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                                    )}
-                                    Email password reset link
+                                    {processing && <Spinner />}
+                                    {t('forgot.submit')}
                                 </Button>
                             </div>
                         </>
                     )}
                 </Form>
 
-                <div className="space-x-1 text-center text-sm text-muted-foreground">
-                    <span>Or, return to</span>
-                    <TextLink href={login()}>log in</TextLink>
-                </div>
+                <p className="space-x-1 text-sm text-muted-foreground">
+                    <span>{t('forgot.back_prefix')}</span>
+                    <TextLink href={login()}>{t('forgot.back_link')}</TextLink>
+                </p>
             </div>
         </>
     );
 }
 
 ForgotPassword.layout = {
-    title: 'Forgot password',
-    description: 'Enter your email to receive a password reset link',
+    title: t('forgot.title'),
+    description: t('forgot.description'),
 };

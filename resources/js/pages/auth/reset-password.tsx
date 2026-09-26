@@ -5,18 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { t } from '@/lib/i18n';
 import { update } from '@/routes/password';
+import type { ResetPasswordPageProps } from '@/types';
 
-type Props = {
-    token: string;
-    email: string;
-    passwordRules: string;
-};
-
-export default function ResetPassword({ token, email, passwordRules }: Props) {
+export default function ResetPassword({
+    token,
+    email,
+    passwordRules,
+}: ResetPasswordPageProps) {
     return (
         <>
-            <Head title="Reset password" />
+            <Head title={t('reset.page_title')} />
 
             <Form
                 {...update.form()}
@@ -26,7 +26,7 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                 {({ processing, errors }) => (
                     <div className="grid gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t('common.email')}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -43,30 +43,38 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">
+                                {t('reset.new_password')}
+                            </Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
                                 autoFocus
-                                placeholder="Password"
                                 passwordrules={passwordRules}
+                                aria-invalid={
+                                    errors.password ? true : undefined
+                                }
                             />
                             <InputError message={errors.password} />
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="password_confirmation">
-                                Confirm password
+                                {t('common.password_confirmation')}
                             </Label>
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
-                                placeholder="Confirm password"
                                 passwordrules={passwordRules}
+                                aria-invalid={
+                                    errors.password_confirmation
+                                        ? true
+                                        : undefined
+                                }
                             />
                             <InputError
                                 message={errors.password_confirmation}
@@ -81,7 +89,7 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                             data-test="reset-password-button"
                         >
                             {processing && <Spinner />}
-                            Reset password
+                            {t('reset.submit')}
                         </Button>
                     </div>
                 )}
@@ -91,6 +99,6 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
 }
 
 ResetPassword.layout = {
-    title: 'Reset password',
-    description: 'Please enter your new password below',
+    title: t('reset.title'),
+    description: t('reset.description'),
 };
