@@ -148,8 +148,9 @@ final class RevenueCalculator
 
     /**
      * Tarifa vigente: bolsa > proyecto > cliente > persona (la misma prioridad que RateResolver).
+     * Pública para valorar entradas sueltas con el mismo criterio (EntryValuation, R2).
      */
-    private function rate(?HourBank $bank, Project $project, ?Client $client, ?User $user): ?string
+    public function rate(?HourBank $bank, Project $project, ?Client $client, ?User $user): ?string
     {
         foreach ([$bank?->hourly_rate, $project->hourly_rate, $client?->default_hourly_rate, $user?->default_hourly_rate] as $rate) {
             if ($rate !== null && $rate !== '') {
@@ -161,12 +162,13 @@ final class RevenueCalculator
     }
 
     /**
-     * Base de avance de cada proyecto de precio cerrado (D-043).
+     * Base de avance de cada proyecto de precio cerrado (D-043). Pública para valorar entradas
+     * sueltas con la misma base (EntryValuation, R2).
      *
      * @param  \Illuminate\Database\Eloquent\Collection<int, Project>  $projects
      * @return array<int, int>
      */
-    private function fixedPriceBases(\Illuminate\Database\Eloquent\Collection $projects): array
+    public function fixedPriceBases(\Illuminate\Database\Eloquent\Collection $projects): array
     {
         if ($projects->isEmpty()) {
             return [];
