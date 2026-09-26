@@ -14,6 +14,8 @@ return [
     'profile_updated' => 'Perfil actualizado.',
     'password_updated' => 'Contraseña actualizada.',
     'appearance_updated' => 'Tema actualizado.',
+    'invitation_accepted' => 'Tu contraseña está lista. Ya puedes entrar.',
+    'invitation_invalid' => 'Este enlace de invitación no es válido o ha caducado. Pide a la administración que te envíe otro.',
 
     'sessions' => [
         'closed' => 'Sesión cerrada.',

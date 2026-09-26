@@ -99,6 +99,15 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        // Invitaciones de alta (Fase 1): mismo mecanismo que el restablecimiento, pero el enlace
+        // dura 7 días y se acepta en /invitacion/{token} (App\Http\Controllers\Auth\InvitationController).
+        'invitations' => [
+            'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 7 * 24 * 60,
+            'throttle' => 60,
+        ],
     ],
 
     /*

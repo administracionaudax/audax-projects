@@ -56,5 +56,10 @@
     "common.saved": "Guardado",
     "common.actions": "Acciones",
     "common.yes": "Sí",
-    "common.no": "No"
+    "common.no": "No",
+    "invitation.page_title": "Activa tu cuenta",
+    "invitation.title": "Te damos la bienvenida",
+    "invitation.description": "Elige tu contraseña para empezar a usar Audax Proyectos.",
+    "invitation.password": "Contraseña",
+    "invitation.submit": "Guardar y entrar"
 }
