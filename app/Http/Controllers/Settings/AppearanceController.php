@@ -31,10 +31,6 @@ class AppearanceController extends Controller
         $user = $request->user();
         $user->forceFill(['theme_preference' => $validated['theme']])->save();
 
-        return back()->withCookie(cookie(
-            'appearance',
-            $validated['theme'],
-            RecordSuccessfulLogin::APPEARANCE_COOKIE_MINUTES,
-        ));
+        return back()->withCookie(RecordSuccessfulLogin::appearanceCookie($validated['theme']));
     }
 }

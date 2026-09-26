@@ -42,7 +42,27 @@ test('con un código incorrecto no se inicia sesión', function () {
 
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
 
-    $this->post(route('two-factor.login.store'), ['code' => '000000']);
+    $this->from(route('two-factor.login'))
+        ->post(route('two-factor.login.store'), ['code' => '000000'])
+        ->assertRedirect(route('two-factor.login'))
+        ->assertSessionHasErrors('code');
 
     $this->assertGuest();
 });
+
+test('un código 2FA o de recuperación incorrecto queda registrado como acceso fallido', function (array $payload) {
+    $user = User::factory()->withTwoFactor()->employee()->create();
+
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+    $this->post(route('two-factor.login.store'), $payload);
+
+    $this->assertGuest();
+
+    $event = LoginEvent::query()->sole();
+    expect($event->succeeded)->toBeFalse()
+        ->and($event->user_id)->toBe($user->id)
+        ->and($event->email)->toBe($user->email);
+})->with([
+    'código' => [['code' => '000000']],
+    'código de recuperación' => [['recovery_code' => 'no-es-un-codigo']],
+]);
