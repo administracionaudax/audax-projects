@@ -170,6 +170,36 @@ it('un compañero no puede imputar en nombre de otro', function () {
         ->assertSessionHasErrors(['user_id' => 'No puedes imputar horas en nombre de esta persona en este proyecto.']);
 });
 
+it('el gestor de un proyecto interno solo imputa por sus miembros, no por cualquiera (SEG-02, D-036)', function () {
+    $manager = User::factory()->employee()->create();
+    $internal = Project::factory()->internal()->create(['owner_user_id' => $manager->id]);
+    $meetings = Task::factory()->create(['project_id' => $internal->id]);
+    $member = User::factory()->employee()->create();
+    $internal->addMember($member);
+    $outsider = User::factory()->employee()->inDepartment(Department::factory()->create())->create();
+    $admin = User::factory()->admin()->create();
+    expect($manager->isManagerOf($internal))->toBeTrue();
+
+    // Por quien no es miembro (ni de su equipo), aunque el proyecto sea interno: no.
+    foreach ([$outsider, $admin] as $target) {
+        $this->actingAs($manager)
+            ->post('/horas/entradas', ($this->payload)(['task_id' => $meetings->id, 'user_id' => $target->id, 'minutes' => 480]))
+            ->assertSessionHasErrors(['user_id' => 'No puedes imputar horas en nombre de esta persona en este proyecto.']);
+    }
+
+    expect(TimeEntry::query()->count())->toBe(0);
+
+    // Por un miembro, sí. Y la propia persona imputa sin ser miembro (D-033).
+    $this->actingAs($manager)
+        ->post('/horas/entradas', ($this->payload)(['task_id' => $meetings->id, 'user_id' => $member->id, 'minutes' => 30]))
+        ->assertSessionHasNoErrors();
+    $this->actingAs($outsider)
+        ->post('/horas/entradas', ($this->payload)(['task_id' => $meetings->id, 'minutes' => 30]))
+        ->assertSessionHasNoErrors();
+
+    expect(TimeEntry::query()->pluck('user_id')->sort()->values()->all())->toBe(collect([$member->id, $outsider->id])->sort()->values()->all());
+});
+
 it('una entrada bloqueada solo la edita un admin', function () {
     $entry = TimeEntry::factory()->forTask($this->task)->on('2026-09-21')->minutes(60)->status(TimeEntryStatus::Locked)->create(['user_id' => $this->employee->id]);
     TimesheetPeriod::factory()->for($this->employee)->week('2026-09-21')->status(TimesheetStatus::Locked)->create();

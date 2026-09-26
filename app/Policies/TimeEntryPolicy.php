@@ -21,15 +21,17 @@ class TimeEntryPolicy
     }
 
     /**
-     * Imputar en nombre de otra persona (SPEC §7, D-036): gestores en sus proyectos, responsables
-     * para su equipo y admins para cualquiera. Queda en la auditoría (created_by).
+     * Imputar en nombre de otra persona (SPEC §7, D-036): gestores en sus proyectos y para sus
+     * miembros (también en un proyecto interno, donde imputar no exige ser miembro, D-033),
+     * responsables para su equipo y admins para cualquiera. La misma regla que LoggablePeople.
+     * Queda en la auditoría (created_by).
      */
     public function logTimeFor(User $user, User $target, Project $project): bool
     {
         return $user->id === $target->id
             || $user->isAdmin()
             || $user->supervises($target)
-            || $user->isManagerOf($project);
+            || ($user->isManagerOf($project) && $target->isMemberOf($project));
     }
 
     /**
