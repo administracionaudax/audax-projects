@@ -29,3 +29,10 @@ Schedule::command('app:notify-due-tasks')
     ->withoutOverlapping()
     ->onOneServer()
     ->when(fn (): bool => array_key_exists('app:notify-due-tasks', Artisan::all()));
+
+// Tareas recurrentes (Fase 4, D-056): cada día a las 06:00 de Madrid.
+Schedule::command('tasks:generate-recurring')
+    ->dailyAt('06:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
