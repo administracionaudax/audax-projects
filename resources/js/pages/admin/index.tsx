@@ -99,6 +99,7 @@ export default function AdminIndex() {
 
             <div className="flex flex-1 flex-col p-4 md:p-6">
                 <Heading
+                    as="h1"
                     title={t('admin.heading')}
                     description={t('admin.description')}
                 />

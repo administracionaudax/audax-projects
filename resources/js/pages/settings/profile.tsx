@@ -20,8 +20,6 @@ export default function Profile({ status }: ProfilePageProps) {
         <>
             <Head title={t('profile.title')} />
 
-            <h1 className="sr-only">{t('profile.title')}</h1>
-
             <div className="space-y-6">
                 <Heading
                     variant="small"
