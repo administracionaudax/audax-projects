@@ -19,6 +19,8 @@ return [
         'default_hourly_rate' => 'tarifa por hora',
         'assignee' => 'persona',
         'task' => 'tarea',
+        'owner' => 'gestor principal',
+        'project' => 'proyecto',
         'valid_from' => 'fecha de inicio',
         'week' => 'jornada',
         'color' => 'color',
@@ -47,6 +49,7 @@ return [
             'timer_discarded' => 'Su temporizador no se ha podido imputar y se ha descartado: :reason',
             'timer_too_short' => 'Su temporizador duraba menos del redondeo y se ha descartado.',
             'departments' => '{1} Deja de ser responsable de :count departamento.|[2,*] Deja de ser responsable de :count departamentos.',
+            'projects' => '{1} :count proyecto tiene un gestor principal nuevo.|[2,*] :count proyectos tienen un gestor principal nuevo.',
         ],
         'errors' => [
             'client_user' => 'Las personas del portal de clientes se gestionan desde su cliente.',

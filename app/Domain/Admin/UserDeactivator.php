@@ -4,6 +4,7 @@ namespace App\Domain\Admin;
 
 use App\Domain\Time\TimerService;
 use App\Models\ActiveTimer;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,9 +18,12 @@ use stdClass;
  *      (semana enviada, bolsa `block` sin saldo…), lo descarta y lo cuenta en el resultado,
  *   2. reasigna sus tareas abiertas a otra persona interna activa o las deja sin asignar; si la
  *      persona nueva no es miembro del proyecto, se añade como miembro para que pueda imputar,
- *   3. deja de ser responsable de sus departamentos (así las aprobaciones de su equipo no esperan
+ *   3. traspasa la gestión principal de los proyectos no archivados que dirige a quien se elija
+ *      (D-032: el nuevo gestor principal queda como miembro gestor); los que no se elijan siguen
+ *      igual y se pueden cambiar después en los ajustes del proyecto,
+ *   4. deja de ser responsable de sus departamentos (así las aprobaciones de su equipo no esperan
  *      a alguien desactivado, D-020 y D-034),
- *   4. is_active = false: User::booted cierra sus sesiones y su «Recordarme».
+ *   5. is_active = false: User::booted cierra sus sesiones y su «Recordarme».
  * Sus horas y su historial se conservan intactos.
  */
 final class UserDeactivator
@@ -32,12 +36,13 @@ final class UserDeactivator
     /**
      * @param  array<int, int|null>  $assignments  task_id => nueva persona (null = sin asignar).
      * @param  int|null  $defaultAssignee  Para las tareas abiertas que no estén en $assignments.
+     * @param  array<int, int>  $owners  project_id => nuevo gestor principal (el resto sigue igual).
      *
      * @throws ValidationException
      */
-    public function deactivate(User $actor, User $user, array $assignments, ?int $defaultAssignee): DeactivationResult
+    public function deactivate(User $actor, User $user, array $assignments, ?int $defaultAssignee, array $owners = []): DeactivationResult
     {
-        return DB::transaction(function () use ($actor, $user, $assignments, $defaultAssignee): DeactivationResult {
+        return DB::transaction(function () use ($actor, $user, $assignments, $defaultAssignee, $owners): DeactivationResult {
             $this->guard->lockActiveAdmins();
 
             /** @var User $locked */
@@ -49,6 +54,7 @@ final class UserDeactivator
 
             $this->stopTimer($locked, $result);
             $this->reassignTasks($locked, $assignments, $defaultAssignee, $result);
+            $this->transferProjects($locked, $owners, $result);
 
             $result->departmentsLeft = $locked->managedDepartments()->count();
             $locked->managedDepartments()->detach();
@@ -119,6 +125,34 @@ final class UserDeactivator
             } else {
                 $result->reassigned++;
             }
+        }
+    }
+
+    /**
+     * Nuevo gestor principal de los proyectos no archivados que dirige (solo los elegidos). Cada
+     * cambio queda en la auditoría del proyecto.
+     *
+     * @param  array<int, int>  $owners
+     */
+    private function transferProjects(User $user, array $owners, DeactivationResult $result): void
+    {
+        if ($owners === []) {
+            return;
+        }
+
+        $projects = Project::query()
+            ->where('owner_user_id', $user->id)
+            ->notArchived()
+            ->whereKey(array_keys($owners))
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($projects as $project) {
+            $project->owner_user_id = $owners[$project->id];
+            $project->save();
+            $project->addMember($owners[$project->id], isManager: true);
+
+            $result->projectsTransferred++;
         }
     }
 

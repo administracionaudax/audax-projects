@@ -97,6 +97,13 @@ export type AdminDeactivationTask = {
     project: { id: number; code: string; name: string; color: string };
 };
 
+/** Proyecto no archivado del que es gestor principal. */
+export type AdminDeactivationProject = {
+    id: number;
+    code: string;
+    name: string;
+};
+
 export type AdminUserDeactivateProps = {
     user: { id: number; name: string; email: string };
     /** Motivo por el que no se puede desactivar (último admin, uno mismo…), o null. */
@@ -109,7 +116,7 @@ export type AdminUserDeactivateProps = {
     } | null;
     candidates: UserSummary[];
     managedDepartments: string[];
-    ownedProjects: { id: number; code: string; name: string }[];
+    ownedProjects: AdminDeactivationProject[];
 };
 
 /** DepartmentRowResource. */

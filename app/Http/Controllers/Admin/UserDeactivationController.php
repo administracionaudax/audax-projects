@@ -23,8 +23,9 @@ use Inertia\Response;
 
 /**
  * Asistente de baja (SPEC §14): muestra las tareas abiertas asignadas, el temporizador activo y lo
- * que dirige (departamentos y proyectos como gestor principal) y, al confirmar, desactiva con
- * UserDeactivator. Reactivar vuelve a dar acceso (nunca se borra a nadie).
+ * que dirige (departamentos y proyectos como gestor principal, que se pueden traspasar, D-032) y,
+ * al confirmar, desactiva con UserDeactivator. Reactivar vuelve a dar acceso (nunca se borra a
+ * nadie).
  */
 class UserDeactivationController extends Controller
 {
@@ -115,7 +116,7 @@ class UserDeactivationController extends Controller
         /** @var User $actor */
         $actor = $request->user();
 
-        $result = $deactivator->deactivate($actor, $user, $request->assignments(), $request->defaultAssignee());
+        $result = $deactivator->deactivate($actor, $user, $request->assignments(), $request->defaultAssignee(), $request->owners());
 
         Inertia::flash('toast', [
             'type' => $result->timer === DeactivationResult::TIMER_DISCARDED ? 'warning' : 'success',
@@ -167,6 +168,10 @@ class UserDeactivationController extends Controller
             DeactivationResult::TIMER_TOO_SHORT => __('admin.users.summary.timer_too_short'),
             default => '',
         };
+
+        if ($result->projectsTransferred > 0) {
+            $parts[] = trans_choice('admin.users.summary.projects', $result->projectsTransferred, ['count' => $result->projectsTransferred]);
+        }
 
         if ($result->departmentsLeft > 0) {
             $parts[] = trans_choice('admin.users.summary.departments', $result->departmentsLeft, ['count' => $result->departmentsLeft]);

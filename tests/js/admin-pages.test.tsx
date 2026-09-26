@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { router as coreRouter } from '@inertiajs/core';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -309,7 +310,7 @@ describe('asistente de baja', () => {
         expect(first.value).toBe('2');
     });
 
-    it('explica qué más pasará: temporizador, departamentos y proyectos que dirige', () => {
+    it('explica qué más pasará: temporizador y departamentos', () => {
         render(<AdminUserDeactivate {...deactivateProps()} />);
 
         expect(
@@ -320,11 +321,60 @@ describe('asistente de baja', () => {
         expect(
             screen.getByText('Dejará de ser responsable de: Diseño.'),
         ).toBeTruthy();
+    });
+
+    it('deja elegir el nuevo gestor principal de cada proyecto que dirige y lo envía', async () => {
+        render(<AdminUserDeactivate {...deactivateProps()} />);
+
         expect(
             screen
                 .getByRole('link', { name: 'HOT-WEB · Web' })
                 .getAttribute('href'),
-        ).toBe('/proyectos/3/ajustes');
+        ).toBe('/proyectos/3');
+
+        const owner = screen.getByLabelText(
+            'Nuevo gestor principal de «Web»',
+        ) as HTMLSelectElement;
+        expect(owner.value).toBe('');
+        expect(
+            within(owner).getByRole('option', { name: 'Sin cambios' }),
+        ).toBeTruthy();
+
+        // useForm envía con el router de @inertiajs/core.
+        const post = vi.spyOn(coreRouter, 'post').mockImplementation(() => {});
+
+        await userEvent.selectOptions(owner, '3');
+        // «Pasar todas a» cambia las tareas sin perder lo elegido para los proyectos.
+        await userEvent.selectOptions(
+            screen.getByLabelText('Pasar todas a'),
+            '2',
+        );
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Desactivar a Laura Baja' }),
+        );
+
+        expect(post).toHaveBeenCalledTimes(1);
+        const [url, data] = post.mock.calls[0] as unknown as [
+            string,
+            Record<string, unknown>,
+        ];
+        expect(url).toBe('/admin/usuarios/7/baja');
+        expect(data.owners).toEqual([{ project_id: 3, owner_user_id: 3 }]);
+        expect(data.default_assignee_id).toBe(2);
+        post.mockRestore();
+    });
+
+    it('sin proyectos que dirija, lo dice en «Qué más pasará»', () => {
+        render(
+            <AdminUserDeactivate {...deactivateProps({ ownedProjects: [] })} />,
+        );
+
+        expect(
+            screen.getByText(
+                'No es gestor principal de ningún proyecto abierto.',
+            ),
+        ).toBeTruthy();
+        expect(screen.queryByLabelText(/Nuevo gestor principal/)).toBeNull();
     });
 
     it('si no se puede desactivar, lo dice y no deja confirmar', () => {

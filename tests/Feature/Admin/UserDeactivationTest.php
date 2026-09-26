@@ -178,6 +178,53 @@ test('solo se reasigna a personas internas activas y nunca a quien se da de baja
     'inexistente' => [fn () => 999999],
 ]);
 
+test('traspasa la gestión principal de los proyectos elegidos; los demás siguen igual', function () {
+    $this->project->forceFill(['owner_user_id' => $this->leaving->id])->save();
+    $this->other->forceFill(['owner_user_id' => $this->leaving->id])->save();
+    $archived = Project::factory()->archived()->create(['owner_user_id' => $this->leaving->id]);
+    $foreign = Project::factory()->create();
+    $foreignOwner = $foreign->owner_user_id;
+
+    $this->actingAs($this->admin)
+        ->post("/admin/usuarios/{$this->leaving->id}/baja", [
+            'owners' => [
+                ['project_id' => $this->project->id, 'owner_user_id' => $this->colleague->id],
+                ['project_id' => $this->other->id, 'owner_user_id' => null],
+                // Ni un proyecto archivado ni uno que no dirige cambian, aunque lleguen.
+                ['project_id' => $archived->id, 'owner_user_id' => $this->colleague->id],
+                ['project_id' => $foreign->id, 'owner_user_id' => $this->colleague->id],
+            ],
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.type', 'success');
+
+    expect($this->leaving->fresh()?->is_active)->toBeFalse()
+        ->and($this->project->fresh()?->owner_user_id)->toBe($this->colleague->id)
+        ->and($this->colleague->fresh()?->isManagerOf($this->project))->toBeTrue()
+        ->and($this->other->fresh()?->owner_user_id)->toBe($this->leaving->id)
+        ->and($archived->fresh()?->owner_user_id)->toBe($this->leaving->id)
+        ->and($foreign->fresh()?->owner_user_id)->toBe($foreignOwner)
+        ->and((string) data_get(session()->get(SessionKey::FLASH_DATA), 'toast.message'))->toContain('1 proyecto tiene un gestor principal nuevo')
+        ->and(DB::table('activity_log')->where('subject_type', (new Project)->getMorphClass())->where('subject_id', $this->project->id)->where('event', 'updated')->exists())->toBeTrue();
+});
+
+test('el nuevo gestor principal es una persona interna activa y no quien se da de baja', function (Closure $owner) {
+    $this->project->forceFill(['owner_user_id' => $this->leaving->id])->save();
+
+    $this->actingAs($this->admin)
+        ->post("/admin/usuarios/{$this->leaving->id}/baja", [
+            'owners' => [['project_id' => $this->project->id, 'owner_user_id' => $owner->call($this)]],
+        ])
+        ->assertSessionHasErrors('owners.0.owner_user_id');
+
+    expect($this->leaving->fresh()?->is_active)->toBeTrue()
+        ->and($this->project->fresh()?->owner_user_id)->toBe($this->leaving->id);
+})->with([
+    'desactivada' => [fn () => userWithRole('employee', ['is_active' => false])->id],
+    'cliente' => [fn () => userWithRole('client')->id],
+    'la misma persona' => [fn () => $this->leaving->id],
+]);
+
 test('nadie se desactiva a sí mismo ni desactiva al último admin activo', function () {
     $this->actingAs($this->admin)
         ->post("/admin/usuarios/{$this->admin->id}/baja", [])

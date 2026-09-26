@@ -24,6 +24,9 @@ final class DeactivationResult
 
     public int $departmentsLeft = 0;
 
+    /** Proyectos con un gestor principal nuevo. */
+    public int $projectsTransferred = 0;
+
     public string $timer = self::TIMER_NONE;
 
     public int $timerMinutes = 0;

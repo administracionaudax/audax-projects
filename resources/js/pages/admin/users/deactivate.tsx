@@ -5,7 +5,6 @@ import {
     FolderKanban,
     ListChecks,
     Timer,
-    TriangleAlert,
     UserX,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -35,11 +34,17 @@ import {
     edit,
     index as usersIndex,
 } from '@/routes/admin/users';
-import type { AdminDeactivationTask, AdminUserDeactivateProps } from '@/types';
+import type {
+    AdminDeactivationProject,
+    AdminDeactivationTask,
+    AdminUserDeactivateProps,
+} from '@/types';
 
 type DeactivationForm = {
     default_assignee_id: string;
     assignments: { task_id: number; assignee_user_id: string }[];
+    /** '' = sigue como gestor principal. */
+    owners: { project_id: number; owner_user_id: string }[];
 };
 
 /** Una tarea abierta y a quién pasa: en el móvil, el selector va debajo de la tarea. */
@@ -109,11 +114,62 @@ function TaskAssignment({
     );
 }
 
+/** Un proyecto que dirige y quién pasa a ser su gestor principal (D-032). */
+function ProjectOwner({
+    project,
+    selectId,
+    value,
+    error,
+    onChange,
+    options,
+}: {
+    project: AdminDeactivationProject;
+    selectId: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+    options: ReactNode;
+}) {
+    return (
+        <li
+            className="grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] sm:items-center sm:gap-4"
+            data-test="deactivation-project"
+        >
+            <Link
+                href={urls.project(project.id)}
+                className={cn(
+                    'min-w-0 rounded-sm break-words hover:underline',
+                    FOCUS_RING,
+                )}
+            >
+                {project.code} · {project.name}
+            </Link>
+            <div className="grid gap-1">
+                <label htmlFor={selectId} className="sr-only">
+                    {t('admin.deactivation.owner_for', {
+                        project: project.name,
+                    })}
+                </label>
+                <NativeSelect
+                    id={selectId}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    aria-invalid={error ? true : undefined}
+                >
+                    {options}
+                </NativeSelect>
+                <InputError message={error} />
+            </div>
+        </li>
+    );
+}
+
 /**
  * Asistente de baja (SPEC §14). Enseña lo que la persona deja pendiente (tareas abiertas,
- * temporizador, departamentos y proyectos que dirige) y deja elegir a quién pasan sus tareas:
- * todas a la vez o una a una. Al confirmar se para su temporizador, se reasignan las tareas y
- * pierde el acceso; su historial de horas no cambia.
+ * temporizador, departamentos y proyectos que dirige) y deja elegir a quién pasan sus tareas
+ * (todas a la vez o una a una) y quién dirige sus proyectos. Al confirmar se para su
+ * temporizador, se reasignan las tareas y los proyectos elegidos y pierde el acceso; su historial
+ * de horas no cambia.
  */
 export default function AdminUserDeactivate({
     user,
@@ -131,6 +187,10 @@ export default function AdminUserDeactivate({
         assignments: tasks.map((task) => ({
             task_id: task.id,
             assignee_user_id: '',
+        })),
+        owners: ownedProjects.map((project) => ({
+            project_id: project.id,
+            owner_user_id: '',
         })),
     });
     const errors = form.errors as Record<string, string | undefined>;
@@ -151,6 +211,7 @@ export default function AdminUserDeactivate({
     const applyToAll = (value: string) => {
         setBulk(value);
         form.setData({
+            ...form.data,
             default_assignee_id: value,
             assignments: form.data.assignments.map((row) => ({
                 ...row,
@@ -170,6 +231,17 @@ export default function AdminUserDeactivate({
         );
     };
 
+    const setOwner = (projectId: number, value: string) => {
+        form.setData(
+            'owners',
+            form.data.owners.map((row) =>
+                row.project_id === projectId
+                    ? { ...row, owner_user_id: value }
+                    : row,
+            ),
+        );
+    };
+
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
         form.transform((data) => ({
@@ -184,6 +256,11 @@ export default function AdminUserDeactivate({
                         ? null
                         : Number(row.assignee_user_id),
             })),
+            owners: data.owners.map((row) => ({
+                project_id: row.project_id,
+                owner_user_id:
+                    row.owner_user_id === '' ? null : Number(row.owner_user_id),
+            })),
         }));
         form.post(deactivate.url(user.id), { preserveScroll: true });
     };
@@ -191,6 +268,17 @@ export default function AdminUserDeactivate({
     const options = (
         <>
             <option value="">{t('admin.deactivation.unassigned')}</option>
+            {candidates.map((candidate) => (
+                <option key={candidate.id} value={String(candidate.id)}>
+                    {candidate.name}
+                </option>
+            ))}
+        </>
+    );
+
+    const ownerOptions = (
+        <>
+            <option value="">{t('admin.deactivation.keep_owner')}</option>
             {candidates.map((candidate) => (
                 <option key={candidate.id} value={String(candidate.id)}>
                     {candidate.name}
@@ -313,6 +401,61 @@ export default function AdminUserDeactivate({
                         </CardContent>
                     </Card>
 
+                    {ownedProjects.length > 0 ? (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    <h2 className="flex items-center gap-2 text-base font-medium">
+                                        <FolderKanban
+                                            aria-hidden="true"
+                                            className="size-4 text-muted-foreground"
+                                        />
+                                        {t(
+                                            'admin.deactivation.projects_title',
+                                            {
+                                                count: ownedProjects.length,
+                                            },
+                                        )}
+                                    </h2>
+                                </CardTitle>
+                                <CardDescription>
+                                    {t(
+                                        'admin.deactivation.projects_description',
+                                    )}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ul
+                                    className="divide-y rounded-md border"
+                                    aria-label={t(
+                                        'admin.deactivation.projects_label',
+                                    )}
+                                >
+                                    {ownedProjects.map((project, index) => (
+                                        <ProjectOwner
+                                            key={project.id}
+                                            project={project}
+                                            selectId={`${id}-project-${project.id}`}
+                                            value={
+                                                form.data.owners[index]
+                                                    ?.owner_user_id ?? ''
+                                            }
+                                            error={
+                                                errors[
+                                                    `owners.${index}.owner_user_id`
+                                                ]
+                                            }
+                                            onChange={(value) =>
+                                                setOwner(project.id, value)
+                                            }
+                                            options={ownerOptions}
+                                        />
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    ) : null}
+
                     <Card>
                         <CardHeader>
                             <CardTitle>
@@ -363,55 +506,19 @@ export default function AdminUserDeactivate({
                                               )}
                                     </span>
                                 </li>
-                                <li className="flex items-start gap-2">
-                                    <FolderKanban
-                                        aria-hidden="true"
-                                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                                    />
-                                    {ownedProjects.length > 0 ? (
-                                        <div className="grid gap-1">
-                                            <span>
-                                                {t(
-                                                    'admin.deactivation.owned_projects',
-                                                )}
-                                            </span>
-                                            <ul className="grid gap-1">
-                                                {ownedProjects.map(
-                                                    (project) => (
-                                                        <li
-                                                            key={project.id}
-                                                            className="flex items-center gap-1.5"
-                                                        >
-                                                            <TriangleAlert
-                                                                aria-hidden="true"
-                                                                className="size-3.5 text-warning"
-                                                            />
-                                                            <Link
-                                                                href={urls.project(
-                                                                    project.id,
-                                                                    'ajustes',
-                                                                )}
-                                                                className={cn(
-                                                                    'rounded-sm text-primary-text hover:underline',
-                                                                    FOCUS_RING,
-                                                                )}
-                                                            >
-                                                                {project.code} ·{' '}
-                                                                {project.name}
-                                                            </Link>
-                                                        </li>
-                                                    ),
-                                                )}
-                                            </ul>
-                                        </div>
-                                    ) : (
+                                {ownedProjects.length === 0 ? (
+                                    <li className="flex items-start gap-2">
+                                        <FolderKanban
+                                            aria-hidden="true"
+                                            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                        />
                                         <span>
                                             {t(
                                                 'admin.deactivation.no_owned_projects',
                                             )}
                                         </span>
-                                    )}
-                                </li>
+                                    </li>
+                                ) : null}
                             </ul>
                         </CardContent>
                     </Card>
