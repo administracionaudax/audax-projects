@@ -36,6 +36,7 @@ export default defineConfig({
     test: {
         include: ['tests/js/**/*.test.{ts,tsx}'],
         environment: 'node',
+        setupFiles: ['tests/js/setup.ts'],
     },
     lint: {
         ignorePatterns: [
