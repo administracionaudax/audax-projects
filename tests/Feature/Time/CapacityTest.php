@@ -38,7 +38,7 @@ it('usa el horario vigente en cada fecha (versionado)', function () {
         ->and($capacity->onDate($user, CarbonImmutable::parse('2026-09-26')))->toBe(0);
 });
 
-it('forRanges calcula varias personas y rangos con una sola consulta, igual que forRange', function () {
+it('forRanges calcula varias personas y rangos con un número fijo de consultas, igual que forRange', function () {
     $versioned = User::factory()->create();
     WorkSchedule::factory()->for($versioned)->intensive()->create(['valid_from' => '2026-07-01', 'valid_to' => '2026-08-31']);
     WorkSchedule::factory()->for($versioned)->create(['valid_from' => '2026-09-01', 'fri_minutes' => 300]);
@@ -56,7 +56,9 @@ it('forRanges calcula varias personas y rangos con una sola consulta, igual que 
     $queries = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    expect($queries)->toBeLessThanOrEqual(2) // horarios (y, como mucho, el ajuste de la jornada por defecto)
+    // Horarios, festivos y ausencias (Fase 3), y como mucho el ajuste de la jornada por defecto:
+    // no depende del número de personas ni de rangos.
+    expect($queries)->toBeLessThanOrEqual(4)
         ->and($result)->toHaveCount(3)
         ->and(array_values($result[0]))->toBe([420, 480, 480, 480, 300, 0, 0])
         ->and(array_values($result[1]))->toBe([480, 480, 480, 480, 480, 0, 0])

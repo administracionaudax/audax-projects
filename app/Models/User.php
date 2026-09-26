@@ -218,6 +218,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<Absence, $this>
+     */
+    public function absences(): HasMany
+    {
+        return $this->hasMany(Absence::class);
+    }
+
+    /**
      * @return HasMany<TimesheetPeriod, $this>
      */
     public function timesheetPeriods(): HasMany
