@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Audax Proyectos">
+  <!-- Icono provisional: cuadrado navy de marca con una "A" blanca. Sustituir por el logotipo oficial. -->
+  <defs>
+    <clipPath id="glyph">
+      <rect x="0" y="89.6" width="512" height="314.9"/>
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" fill="#001B39"/>
+  <g clip-path="url(#glyph)" fill="none" stroke="#FFFFFF" stroke-width="53.76" stroke-linejoin="round">
+    <path d="M130.56 404.48 L256 107.52 L381.44 404.48"/>
+  </g>
+  <rect x="171.7" y="284.35" width="168.6" height="45.7" fill="#FFFFFF"/>
+</svg>
