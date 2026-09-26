@@ -661,6 +661,9 @@ function CellInput({
                 onChange={setDraft}
                 placeholder=""
                 aria-label={label}
+                // Mientras se guarda, no se admite otro cambio en la misma celda (evita duplicar
+                // la entrada si se vuelve a escribir antes de que responda el servidor).
+                disabled={saving}
                 className="gap-0 [&>input]:h-9 [&>input]:px-1.5 [&>input]:text-center [&>input]:tabular-nums [&>p]:sr-only"
             />
             {saving ? (
