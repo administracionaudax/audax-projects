@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TaskStatusCategory;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Illuminate\Support\Facades\DB;
@@ -175,6 +176,34 @@ test('mover a un estado no «done» reabre las tareas que estaban completadas', 
 
     expect($task->fresh()?->status_id)->toBe($this->doing->id)
         ->and($task->fresh()?->completed_at)->toBeNull();
+});
+
+test('las tareas movidas pasan al final de la columna de destino de cada proyecto, en su orden', function () {
+    $web = Project::factory()->create();
+    $app = Project::factory()->create();
+    $inColumn = fn (Project $project, TaskStatus $status, int $position, string $title) => Task::factory()
+        ->create(['project_id' => $project->id, 'status_id' => $status->id, 'position' => $position, 'title' => $title]);
+
+    $inColumn($web, $this->doing, 0, 'Web en curso 1');
+    $inColumn($web, $this->doing, 1, 'Web en curso 2');
+    $inColumn($web, $this->review, 0, 'Web revisión 1');
+    $inColumn($web, $this->review, 1, 'Web revisión 2');
+    $inColumn($app, $this->review, 0, 'App revisión');
+
+    $this->actingAs($this->admin)
+        ->delete("/admin/estados/{$this->review->id}", ['replacement_status_id' => $this->doing->id])
+        ->assertSessionHasNoErrors();
+
+    $column = fn (Project $project) => Task::query()
+        ->where('project_id', $project->id)
+        ->where('status_id', $this->doing->id)
+        ->orderBy('position')
+        ->get(['title', 'position'])
+        ->map(fn (Task $task): string => "{$task->position}:{$task->title}")
+        ->all();
+
+    expect($column($web))->toBe(['0:Web en curso 1', '1:Web en curso 2', '2:Web revisión 1', '3:Web revisión 2'])
+        ->and($column($app))->toBe(['0:App revisión']);
 });
 
 test('subir y bajar estados', function () {

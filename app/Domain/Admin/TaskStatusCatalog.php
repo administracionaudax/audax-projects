@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
  * - siempre queda al menos un estado de categoría «todo» y otro de «done»,
  * - completed_at de las tareas sigue a la categoría de su estado (Task::booted lo hace tarea a
  *   tarea; aquí, al cambiar la categoría o al mover tareas de estado, con una actualización masiva),
- * - un estado con tareas solo se borra moviéndolas antes a otro (en la misma transacción).
+ * - un estado con tareas solo se borra moviéndolas antes a otro (en la misma transacción), al
+ *   final de la columna de destino de cada proyecto.
  * Las actualizaciones masivas de tareas dejan una entrada en la auditoría con el resumen.
  */
 final class TaskStatusCatalog
@@ -138,6 +139,7 @@ final class TaskStatusCatalog
                     throw ValidationException::withMessages(['replacement_status_id' => __('admin.statuses.errors.replacement_same')]);
                 }
 
+                $this->appendToColumns($current, $replacement);
                 $moved = Task::withTrashed()->where('status_id', $current->id)->update(['status_id' => $replacement->id]);
 
                 // Las movidas siguen a la categoría del estado nuevo: solo cambia si cruzan «done». Las
@@ -193,6 +195,23 @@ final class TaskStatusCatalog
                 ]);
             }
         }
+    }
+
+    /**
+     * Antes de mover las tareas de $from a $to, las coloca al final de la columna $to de cada
+     * proyecto (position = position + máximo de esa columna + 1), conservando su orden relativo:
+     * así el tablero no mezcla ni repite posiciones. Mientras se ejecuta, las tareas movidas aún
+     * están en $from y la subconsulta solo lee las de $to (igual en SQLite y PostgreSQL).
+     */
+    private function appendToColumns(TaskStatus $from, TaskStatus $to): void
+    {
+        DB::update(
+            'UPDATE tasks SET position = position + COALESCE(('
+            .'SELECT MAX(column_tasks.position) + 1 FROM tasks AS column_tasks'
+            .' WHERE column_tasks.project_id = tasks.project_id AND column_tasks.status_id = ?'
+            .'), 0) WHERE status_id = ?',
+            [$to->id, $from->id],
+        );
     }
 
     /**
