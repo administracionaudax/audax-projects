@@ -43,13 +43,13 @@ class TimesheetController extends TimeController
         $week = Week::fromIso($request->string('semana')->toString()) ?? Week::current();
         $owner = $this->owner($request, $viewer);
 
-        abort_unless($this->sheets->canView($viewer, $owner, $week), 403, Messages::get('time.errors.cannot_view_hours'));
-
         $period = TimesheetPeriod::query()->with('reviewer')->firstOrNew(
             ['user_id' => $owner->id, 'week_start' => $week->startString()],
             ['status' => TimesheetStatus::Open],
         );
         $period->setRelation('user', $owner);
+
+        abort_unless($this->sheets->canView($viewer, $owner, $week, $period), 403, Messages::get('time.errors.cannot_view_hours'));
 
         $entries = $this->sheets->entries($viewer, $owner, $week);
         $gate = Gate::forUser($viewer);

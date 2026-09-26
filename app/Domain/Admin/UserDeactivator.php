@@ -62,6 +62,7 @@ final class UserDeactivator
 
             $result->departmentsLeft = $locked->managedDepartments()->count();
             $locked->managedDepartments()->detach();
+            User::forgetMemberships();
 
             $locked->is_active = false;
             $locked->save();

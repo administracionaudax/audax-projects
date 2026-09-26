@@ -21,6 +21,17 @@ class ProjectMember extends Pivot
     protected $table = 'project_members';
 
     /**
+     * Un cambio de miembros o gestores vacía la memoria de pertenencia de la petición (PERF-04).
+     * Con ->using(ProjectMember::class), attach, sync, updateExistingPivot y detach disparan estos
+     * eventos.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => User::forgetMemberships());
+        static::deleted(fn () => User::forgetMemberships());
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

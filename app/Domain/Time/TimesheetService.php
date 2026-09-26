@@ -27,10 +27,11 @@ final class TimesheetService
 
     /**
      * ¿Puede $viewer abrir la hoja de $owner? Con la política de la semana (TimesheetPeriodPolicy).
+     * Con $period (la semana ya cargada por quien llama) no la vuelve a consultar.
      */
-    public function canView(User $viewer, User $owner, Week $week): bool
+    public function canView(User $viewer, User $owner, Week $week, ?TimesheetPeriod $period = null): bool
     {
-        $period = TimesheetPeriod::forUserOn($owner, $week->startString());
+        $period ??= TimesheetPeriod::forUserOn($owner, $week->startString());
         $period->setRelation('user', $owner);
 
         $gate = Gate::forUser($viewer);

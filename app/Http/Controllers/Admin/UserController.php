@@ -158,6 +158,7 @@ class UserController extends Controller
                 // Solo responsables y admins pueden figurar como responsables de un departamento.
                 if ($role === Role::Employee) {
                     $user->managedDepartments()->detach();
+                    User::forgetMemberships();
                 }
             }
         });

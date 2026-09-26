@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Auth\SessionTerminator;
 use App\Enums\Role;
 use App\Notifications\ResetPasswordNotification;
+use Closure;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -77,6 +79,9 @@ use Spatie\Permission\Traits\HasRoles;
 ])]
 class User extends Authenticatable
 {
+    /** Prefijo de la memoria por petición de pertenencia y gestión (PERF-04). */
+    private const string MEMO_PREFIX = 'audax.membership.';
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
 
@@ -143,7 +148,7 @@ class User extends Authenticatable
 
         $id = $department instanceof Department ? $department->id : $department;
 
-        return $this->managedDepartments()->whereKey($id)->exists();
+        return in_array($id, $this->managedDepartmentIds(), true);
     }
 
     /**
@@ -236,7 +241,7 @@ class User extends Authenticatable
     public function managedDepartmentIds(): array
     {
         /** @var list<int> */
-        return $this->managedDepartments()->pluck('departments.id')->map(fn ($id): int => (int) $id)->values()->all();
+        return $this->memo('departments', fn (): array => $this->managedDepartments()->pluck('departments.id')->map(fn ($id): int => (int) $id)->values()->all());
     }
 
     /**
@@ -247,21 +252,70 @@ class User extends Authenticatable
     public function managedProjectIds(): array
     {
         /** @var list<int> */
-        return $this->managedProjects()->pluck('projects.id')->map(fn ($id): int => (int) $id)->values()->all();
+        return $this->memo('projects', fn (): array => $this->managedProjects()->pluck('projects.id')->map(fn ($id): int => (int) $id)->values()->all());
     }
 
     public function isMemberOf(Project|int $project): bool
     {
         $id = $project instanceof Project ? $project->id : $project;
 
-        return $this->projects()->whereKey($id)->exists();
+        return (bool) $this->memo("member.{$id}", fn (): bool => $this->projects()->whereKey($id)->exists());
     }
 
     public function isManagerOf(Project|int $project): bool
     {
         $id = $project instanceof Project ? $project->id : $project;
 
-        return $this->managedProjects()->whereKey($id)->exists();
+        return in_array($id, $this->managedProjectIds(), true);
+    }
+
+    /**
+     * Memoria de las comprobaciones de gestión y pertenencia durante una petición (PERF-04): la
+     * hoja semanal, el panel de la tarea y las políticas las repiten varias veces con el mismo
+     * resultado. Se guarda en los atributos de la petición en curso (una petición nueva empieza
+     * de cero) y solo mientras se atiende una ruta: los comandos, los jobs y el código que se
+     * llama fuera de una petición consultan siempre. Cualquier cambio de miembros, gestores o
+     * responsables la vacía (ProjectMember y User::forgetMemberships()).
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $compute
+     * @return T
+     */
+    private function memo(string $key, Closure $compute): mixed
+    {
+        $request = app()->bound('request') ? app('request') : null;
+
+        if (! $request instanceof Request || $request->route() === null || $this->id === null) {
+            return $compute();
+        }
+
+        $key = self::MEMO_PREFIX.$this->id.'.'.$key;
+
+        if (! $request->attributes->has($key)) {
+            $request->attributes->set($key, $compute());
+        }
+
+        return $request->attributes->get($key);
+    }
+
+    /**
+     * Vacía la memoria de pertenencia y gestión de la petición en curso (tras cambiar miembros,
+     * gestores de proyecto o responsables de departamento).
+     */
+    public static function forgetMemberships(): void
+    {
+        $request = app()->bound('request') ? app('request') : null;
+
+        if (! $request instanceof Request) {
+            return;
+        }
+
+        foreach (array_keys($request->attributes->all()) as $key) {
+            if (str_starts_with((string) $key, self::MEMO_PREFIX)) {
+                $request->attributes->remove((string) $key);
+            }
+        }
     }
 
     /**

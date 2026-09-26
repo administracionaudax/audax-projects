@@ -66,6 +66,7 @@ class DepartmentController extends Controller
             ]);
 
             $department->managers()->sync($request->managerIds());
+            User::forgetMemberships();
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('admin.departments.created')]);
@@ -82,6 +83,7 @@ class DepartmentController extends Controller
             ])->save();
 
             $department->managers()->sync($request->managerIds());
+            User::forgetMemberships();
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('admin.departments.updated')]);
@@ -111,6 +113,7 @@ class DepartmentController extends Controller
 
             TaskType::withTrashed()->where('department_id', $locked->id)->update(['department_id' => null]);
             $locked->managers()->detach();
+            User::forgetMemberships();
             $locked->delete();
         });
 
