@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Tasks\AttachmentStorage;
+use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Http\Resources\Tasks\AttachmentResource;
 use App\Models\Attachment;
 use App\Models\Project;
@@ -8,6 +9,7 @@ use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
@@ -81,6 +83,83 @@ it('no hace miniatura de los SVG ni de imágenes demasiado grandes', function ()
 
     expect(Attachment::query()->firstOrFail()->thumbnail_path)->toBeNull()
         ->and(AttachmentStorage::MAX_THUMBNAIL_PIXELS)->toBe(40_000_000);
+});
+
+it('la subida no genera la miniatura en la petición: la encola y la hace el job', function () {
+    Queue::fake();
+
+    ($this->upload)([UploadedFile::fake()->image('foto.jpg', 1600, 800)])->assertSessionHasNoErrors();
+
+    $attachment = Attachment::query()->firstOrFail();
+    expect($attachment->thumbnail_path)->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toBe([$attachment->path]);
+
+    Queue::assertPushed(GenerateAttachmentThumbnail::class, 1);
+    $job = Queue::pushed(GenerateAttachmentThumbnail::class)->first();
+    expect($job->attachment->is($attachment))->toBeTrue()
+        ->and($job->tries)->toBe(1);
+
+    app()->call([$job, 'handle']);
+
+    $thumbnail = (string) $attachment->refresh()->thumbnail_path;
+    expect($thumbnail)->toStartWith("attachments/{$this->project->id}/thumbs/");
+    expect(getimagesizefromstring((string) Storage::disk('local')->get($thumbnail))[0])->toBe(400);
+});
+
+it('solo encola miniaturas de las imágenes rasterizadas', function () {
+    Queue::fake();
+
+    ($this->upload)([
+        UploadedFile::fake()->create('acta.pdf', 5, 'application/pdf'),
+        UploadedFile::fake()->createWithContent('logo.svg', '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>')->mimeType('image/svg+xml'),
+    ])->assertSessionHasNoErrors();
+
+    expect(Attachment::query()->count())->toBe(2);
+    Queue::assertNotPushed(GenerateAttachmentThumbnail::class);
+});
+
+it('gira la miniatura según el EXIF de la foto', function () {
+    $image = imagecreatetruecolor(800, 400);
+    ob_start();
+    imagejpeg($image);
+    $jpeg = (string) ob_get_clean();
+    // APP1 con un TIFF mínimo: una sola etiqueta Orientation = 6 (girar 90° a la derecha).
+    $tiff = 'MM'."\x00\x2A".pack('N', 8).pack('n', 1).pack('nnNn', 0x0112, 3, 1, 6)."\x00\x00".pack('N', 0);
+    $jpeg = substr($jpeg, 0, 2)."\xFF\xE1".pack('n', 2 + 6 + strlen($tiff))."Exif\x00\x00".$tiff.substr($jpeg, 2);
+
+    ($this->upload)([UploadedFile::fake()->createWithContent('movil.jpg', $jpeg)])->assertSessionHasNoErrors();
+
+    $thumbnail = Storage::disk('local')->get((string) Attachment::query()->firstOrFail()->thumbnail_path);
+
+    expect(array_slice((array) getimagesizefromstring((string) $thumbnail), 0, 2))->toBe([200, 400]);
+})->skip(! function_exists('exif_read_data'), 'Sin la extensión exif.');
+
+it('descarta las imágenes enormes por su cabecera, sin llegar a decodificarlas', function () {
+    // Solo la firma y el IHDR de un PNG de 8.000 × 6.000 (48 megapíxeles).
+    $ihdr = 'IHDR'.pack('NNCCCCC', 8000, 6000, 8, 2, 0, 0, 0);
+    $png = "\x89PNG\r\n\x1a\n".pack('N', 13).$ihdr.pack('N', crc32($ihdr));
+
+    ($this->upload)([UploadedFile::fake()->createWithContent('enorme.png', $png)])->assertSessionHasNoErrors();
+
+    expect(Attachment::query()->firstOrFail()->thumbnail_path)->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toHaveCount(1)
+        // El presupuesto de memoria no depende de memory_limit y cubre el máximo de píxeles.
+        ->and(AttachmentStorage::thumbnailMemory(8000, 5000))->toBeLessThanOrEqual(AttachmentStorage::MAX_THUMBNAIL_MEMORY)
+        ->and(AttachmentStorage::thumbnailMemory(8000, 6000))->toBeGreaterThan(AttachmentStorage::MAX_THUMBNAIL_MEMORY);
+});
+
+it('si el adjunto se borra antes de que corra el job, no deja la miniatura huérfana', function () {
+    Queue::fake();
+    ($this->upload)([UploadedFile::fake()->image('foto.png', 800, 600)])->assertSessionHasNoErrors();
+    $attachment = Attachment::query()->firstOrFail();
+    $job = Queue::pushed(GenerateAttachmentThumbnail::class)->first();
+
+    // Solo la fila (a la papelera): el fichero original sigue en el disco mientras corre el job.
+    $attachment->delete();
+    app()->call([$job, 'handle']);
+
+    expect(Storage::disk('local')->allFiles())->toBe([$attachment->path])
+        ->and(Attachment::withTrashed()->findOrFail($attachment->id)->thumbnail_path)->toBeNull();
 });
 
 it('respeta el tamaño máximo del ajuste max_attachment_mb', function () {

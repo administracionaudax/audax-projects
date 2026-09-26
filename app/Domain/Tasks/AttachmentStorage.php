@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tasks;
 
+use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Models\Attachment;
 use App\Models\Setting;
 use App\Models\Task;
@@ -17,8 +18,10 @@ use RuntimeException;
  * Adjuntos de tareas y comentarios (SPEC §15, D-037):
  * - disco privado `local`, en attachments/{project_id}/{uuid}.{ext}; el nombre original solo en BD,
  * - el tipo real lo decide el servidor (fileinfo), nunca el navegador; la extensión debe casar con él,
- * - miniatura de 400 px (lado mayor) con GD solo de las imágenes rasterizadas previsualizables, con
- *   un límite de 40 megapíxeles y de memoria disponible para no agotar PHP con imágenes enormes,
+ * - miniatura de 400 px (lado mayor) solo de las imágenes rasterizadas previsualizables, en un job
+ *   de Horizon (GenerateAttachmentThumbnail) y nunca en la petición web: el pool FPM no tiene cgroup
+ *   y la libgd del sistema reserva memoria fuera de memory_limit (RUNBOOK-DESPLIEGUE). Aun así,
+ *   el job solo decodifica imágenes de hasta 40 megapíxeles y dentro de un presupuesto de memoria,
  * - al borrar se eliminan el fichero y la miniatura (la fila queda en la papelera para la auditoría).
  */
 final class AttachmentStorage
@@ -28,6 +31,12 @@ final class AttachmentStorage
     public const int THUMBNAIL_SIZE = 400;
 
     public const int MAX_THUMBNAIL_PIXELS = 40_000_000;
+
+    /**
+     * Memoria máxima que puede necesitar una miniatura, independiente de memory_limit (la libgd del
+     * sistema no la cuenta). Con dos workers de Horizon a la vez cabe en el MemoryLimit de su unidad.
+     */
+    public const int MAX_THUMBNAIL_MEMORY = 192 * 1024 * 1024;
 
     /**
      * Archivos por subida.
@@ -110,10 +119,6 @@ final class AttachmentStorage
             throw new RuntimeException("No se ha podido guardar el adjunto {$uuid}.");
         }
 
-        $thumbnail = in_array($mime, Attachment::PREVIEWABLE_IMAGES, true)
-            ? $this->thumbnail((string) $file->getRealPath(), "{$directory}/thumbs/{$uuid}")
-            : null;
-
         $attachment = new Attachment([
             'project_id' => $projectId,
             'user_id' => $uploader->id,
@@ -122,12 +127,55 @@ final class AttachmentStorage
             'original_name' => self::cleanName($file->getClientOriginalName()),
             'mime' => $mime,
             'size' => (int) $file->getSize(),
-            'thumbnail_path' => $thumbnail,
+            'thumbnail_path' => null,
         ]);
         $attachment->attachable()->associate($attachable);
         $attachment->save();
 
+        // La miniatura, en cola y solo cuando se confirme la transacción (p. ej., la del comentario).
+        if ($attachment->isPreviewableImage()) {
+            GenerateAttachmentThumbnail::dispatch($attachment)->afterCommit();
+        }
+
         return $attachment;
+    }
+
+    /**
+     * Genera la miniatura de un adjunto ya guardado (lo llama el job, fuera de la petición web) y
+     * devuelve su ruta, o null si no procede o no se puede. Si el adjunto se ha borrado mientras
+     * tanto, no deja la miniatura huérfana en el disco.
+     */
+    public function generateThumbnail(Attachment $attachment): ?string
+    {
+        if ($attachment->thumbnail_path !== null || ! $attachment->isPreviewableImage()) {
+            return $attachment->thumbnail_path;
+        }
+
+        $disk = Storage::disk($attachment->disk);
+
+        if (! $disk->exists($attachment->path)) {
+            return null;
+        }
+
+        $base = dirname($attachment->path).'/thumbs/'.pathinfo($attachment->path, PATHINFO_FILENAME);
+        $thumbnail = $this->thumbnail($disk->path($attachment->path), $base, $attachment->disk);
+
+        if ($thumbnail === null) {
+            return null;
+        }
+
+        // Solo si sigue vivo (el ámbito de la papelera excluye los borrados).
+        $updated = Attachment::query()->whereKey($attachment->id)->update(['thumbnail_path' => $thumbnail]);
+
+        if ($updated === 0) {
+            $disk->delete($thumbnail);
+
+            return null;
+        }
+
+        $attachment->forceFill(['thumbnail_path' => $thumbnail])->syncOriginalAttributes('thumbnail_path');
+
+        return $thumbnail;
     }
 
     public function delete(Attachment $attachment): void
@@ -152,10 +200,12 @@ final class AttachmentStorage
     /**
      * Miniatura WebP (o PNG si GD no tiene WebP) de 400 px en el lado mayor. Devuelve su ruta, o
      * null si GD no puede con la imagen o sería demasiado grande para la memoria disponible.
+     * En memoria solo hay a la vez la imagen decodificada y la miniatura: el fichero se lee desde
+     * el disco (sin copiarlo en una cadena) y el giro EXIF se aplica a la miniatura, no al original.
      */
-    private function thumbnail(string $source, string $pathWithoutExtension): ?string
+    private function thumbnail(string $source, string $pathWithoutExtension, string $disk): ?string
     {
-        if (! function_exists('imagecreatefromstring') || ! is_file($source)) {
+        if (! function_exists('imagecreatetruecolor') || ! is_file($source)) {
             return null;
         }
 
@@ -165,34 +215,31 @@ final class AttachmentStorage
             return null;
         }
 
-        [$width, $height] = $info;
+        [$width, $height, $type] = $info;
 
         if ($width < 1 || $height < 1 || $width * $height > self::MAX_THUMBNAIL_PIXELS || ! $this->fitsInMemory($width, $height)) {
             return null;
         }
 
-        $contents = @file_get_contents($source);
-        $image = $contents === false ? false : @imagecreatefromstring($contents);
-        unset($contents);
+        $image = $this->decode($source, $type);
 
         if (! $image instanceof GdImage) {
             return null;
         }
 
-        $image = $this->orient($image, $source, $info[2]);
-        $sourceWidth = imagesx($image);
-        $sourceHeight = imagesy($image);
-        $ratio = min(1, self::THUMBNAIL_SIZE / max($sourceWidth, $sourceHeight));
-        $targetWidth = max(1, (int) round($sourceWidth * $ratio));
-        $targetHeight = max(1, (int) round($sourceHeight * $ratio));
+        $ratio = min(1, self::THUMBNAIL_SIZE / max($width, $height));
+        $targetWidth = max(1, (int) round($width * $ratio));
+        $targetHeight = max(1, (int) round($height * $ratio));
 
         $thumbnail = imagecreatetruecolor($targetWidth, $targetHeight);
         imagealphablending($thumbnail, false);
         imagesavealpha($thumbnail, true);
         imagefill($thumbnail, 0, 0, (int) imagecolorallocatealpha($thumbnail, 0, 0, 0, 127));
-        imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+        imagecopyresampled($thumbnail, $image, 0, 0, 0, 0, $targetWidth, $targetHeight, imagesx($image), imagesy($image));
         imagedestroy($image);
+        unset($image);
 
+        $thumbnail = $this->orient($thumbnail, $source, $type);
         $webp = function_exists('imagewebp');
 
         ob_start();
@@ -206,11 +253,35 @@ final class AttachmentStorage
 
         $path = $pathWithoutExtension.($webp ? '.webp' : '.png');
 
-        return Storage::disk(self::DISK)->put($path, $data) ? $path : null;
+        return Storage::disk($disk)->put($path, $data) ? $path : null;
     }
 
     /**
-     * Gira la imagen según su EXIF (fotos de móvil), si la extensión exif está disponible.
+     * Decodifica desde el fichero con el lector de su formato (getimagesize ya ha leído la cabecera).
+     */
+    private function decode(string $source, int $type): ?GdImage
+    {
+        $reader = match ($type) {
+            IMAGETYPE_JPEG => 'imagecreatefromjpeg',
+            IMAGETYPE_PNG => 'imagecreatefrompng',
+            IMAGETYPE_GIF => 'imagecreatefromgif',
+            IMAGETYPE_WEBP => 'imagecreatefromwebp',
+            IMAGETYPE_AVIF => 'imagecreatefromavif',
+            default => null,
+        };
+
+        if ($reader === null || ! function_exists($reader)) {
+            return null;
+        }
+
+        $image = @$reader($source);
+
+        return $image instanceof GdImage ? $image : null;
+    }
+
+    /**
+     * Gira la miniatura según el EXIF del original (fotos de móvil), si la extensión exif está
+     * disponible. Se gira la miniatura, no el original: así no hay una segunda copia a tamaño real.
      */
     private function orient(GdImage $image, string $source, int $type): GdImage
     {
@@ -228,23 +299,39 @@ final class AttachmentStorage
             default => $image,
         };
 
-        return $rotated instanceof GdImage ? $rotated : $image;
+        if (! $rotated instanceof GdImage || $rotated === $image) {
+            return $image;
+        }
+
+        imagedestroy($image);
+
+        return $rotated;
     }
 
     /**
-     * GD descomprime la imagen entera en memoria (unos 5 bytes por píxel con el canal alfa).
+     * Memoria que necesita GD: 4 bytes por píxel en color verdadero más un puntero por fila, la
+     * miniatura y un margen para los búferes del decodificador.
+     */
+    public static function thumbnailMemory(int $width, int $height): int
+    {
+        return $width * $height * 4 + $height * 8 + self::THUMBNAIL_SIZE * self::THUMBNAIL_SIZE * 4 + 16 * 1024 * 1024;
+    }
+
+    /**
+     * Cabe si no pasa del presupuesto fijo (la libgd del sistema reserva fuera de memory_limit) ni
+     * de lo que queda hasta memory_limit (la GD integrada en PHP sí lo cuenta).
      */
     private function fitsInMemory(int $width, int $height): bool
     {
-        $limit = $this->memoryLimit();
+        $needed = self::thumbnailMemory($width, $height);
 
-        if ($limit < 0) {
-            return true;
+        if ($needed > self::MAX_THUMBNAIL_MEMORY) {
+            return false;
         }
 
-        $needed = $width * $height * 5 + self::THUMBNAIL_SIZE * self::THUMBNAIL_SIZE * 5 + 8 * 1024 * 1024;
+        $limit = $this->memoryLimit();
 
-        return memory_get_usage(true) + $needed < $limit;
+        return $limit < 0 || memory_get_usage(true) + $needed < $limit;
     }
 
     private function memoryLimit(): int

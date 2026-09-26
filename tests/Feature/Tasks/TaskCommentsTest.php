@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Models\Attachment;
 use App\Models\CommentReaction;
 use App\Models\Project;
@@ -11,6 +12,7 @@ use App\Notifications\Tasks\TaskCommentedNotification;
 use App\Notifications\Tasks\TaskMentionedNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 /*
@@ -138,6 +140,17 @@ it('nadie edita ni borra comentarios ajenos; el admin puede borrarlos pero no ed
 
     $this->actingAs($admin)->delete("/comentarios/{$comment->id}")->assertRedirect();
     expect(TaskComment::query()->find($comment->id))->toBeNull();
+});
+
+it('las imágenes de un comentario se miniaturizan en cola, fuera de su transacción', function () {
+    Queue::fake();
+
+    ($this->comment)(['body' => '<p>Con foto</p>', 'files' => [UploadedFile::fake()->image('foto.png', 600, 300)]])->assertSessionHasNoErrors();
+
+    $attachment = TaskComment::query()->firstOrFail()->attachments()->firstOrFail();
+    expect($attachment->thumbnail_path)->toBeNull()
+        ->and(Storage::disk('local')->allFiles())->toBe([$attachment->path]);
+    Queue::assertPushed(GenerateAttachmentThumbnail::class, fn (GenerateAttachmentThumbnail $job): bool => $job->attachment->is($attachment));
 });
 
 it('el autor borra su comentario y sus adjuntos (ficheros incluidos)', function () {
