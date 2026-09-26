@@ -55,7 +55,7 @@ final class TimeEntryRules
             && $existing->getOriginal('hour_bank_id') === null
             && (int) $existing->getOriginal('task_id') === $task->id;
 
-        // Bolsa cerrada o renovada (D-043): sus horas quedan fijas (el saldo registrado al cerrar y
+        // Bolsa cerrada o renovada (D-053): sus horas quedan fijas (el saldo registrado al cerrar y
         // el histórico de la renovación no cambian). Se puede corregir la descripción o si es
         // facturable; los minutos, la fecha, la tarea o borrarla, solo un admin (queda auditado).
         $frozen = $existing !== null ? $this->frozenBankOf($existing, $bank) : null;
@@ -212,7 +212,7 @@ final class TimeEntryRules
 
     /**
      * Borrar una entrada: solo si su semana es editable (o si es un admin con una bloqueada), y si
-     * su bolsa está cerrada o renovada, solo un admin (D-043).
+     * su bolsa está cerrada o renovada, solo un admin (D-053).
      *
      * @throws ValidationException
      */

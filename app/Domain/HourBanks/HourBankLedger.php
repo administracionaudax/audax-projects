@@ -204,7 +204,7 @@ final class HourBankLedger
             }
 
             // En una bolsa cerrada, el saldo registrado sigue a su consumo si un admin corrige sus
-            // horas (SPEC §8.9, D-043).
+            // horas (SPEC §8.9, D-053).
             if ($locked->status === HourBankStatus::Closed) {
                 $locked->closed_remaining_minutes = max($locked->total_minutes - ($consumed - $overage), 0);
             }
