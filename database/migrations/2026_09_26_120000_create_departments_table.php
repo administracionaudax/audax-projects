@@ -8,6 +8,7 @@ return new class extends Migration
 {
     /**
      * Departamentos (SPEC §4.1): Diseño, Desarrollo, Marketing… editables desde administración.
+     * Los responsables van en el pivote department_managers (D-024: varios por departamento).
      */
     public function up(): void
     {
@@ -15,7 +16,6 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('color', 7);
-            $table->foreignId('manager_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

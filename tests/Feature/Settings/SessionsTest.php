@@ -41,6 +41,7 @@ test('lista solo las sesiones propias, marca la actual y no expone el id real', 
 
     $response = $this->actingAs($user)
         ->withCookie(config('session.cookie'), $current)
+        ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('sessions.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
@@ -151,6 +152,7 @@ test('con un driver de sesión distinto de database la lista sale vacía y lo in
     config(['session.driver' => 'array']);
 
     $this->actingAs(userWithRole('employee'))
+        ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('sessions.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('supported', false)
@@ -169,6 +171,7 @@ function sessionPublicId(User $user, string $current, string $target): string
 
     $response = $test->actingAs($user)
         ->withCookie(config('session.cookie'), $current)
+        ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('sessions.index'));
 
     /** @var list<array{id: string, is_current: bool, ip_address: string}> $sessions */

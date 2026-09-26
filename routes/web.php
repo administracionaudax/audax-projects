@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StyleguideController;
@@ -18,8 +17,7 @@ use Illuminate\Support\Facades\Route;
 |   2fa      → exige 2FA si el ajuste require_2fa está activo
 */
 
-// Estado para el despliegue y la monitorización (sin datos sensibles).
-Route::get('health', HealthController::class)->name('health');
+// /health se registra fuera del grupo web (bootstrap/app.php): sin sesión, cookies ni CSRF.
 
 // Guía de estilo: pública durante el desarrollo (APP_STYLEGUIDE_PUBLIC=true); después, solo admin.
 Route::get('styleguide', StyleguideController::class)->name('styleguide');

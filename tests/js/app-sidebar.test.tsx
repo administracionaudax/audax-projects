@@ -141,10 +141,10 @@ describe('navegación principal', () => {
         ).toBeNull();
     });
 
-    it('sustituye el logotipo del kit por el provisional de AUDAX, sin enlaces externos', () => {
+    it('muestra el logotipo oficial de AUDAX (SVG accesible), sin enlaces externos', () => {
         renderSidebar();
 
-        expect(screen.getByText('AUDAX')).toBeTruthy();
+        expect(screen.getByRole('img', { name: 'AUDAX' })).toBeTruthy();
         expect(
             screen
                 .getAllByRole('link')

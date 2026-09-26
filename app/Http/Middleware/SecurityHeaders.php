@@ -59,6 +59,8 @@ class SecurityHeaders
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
             'object-src' => ["'none'"],
+            'worker-src' => ["'self'"],
+            'manifest-src' => ["'self'"],
         ];
 
         return implode('; ', array_map(

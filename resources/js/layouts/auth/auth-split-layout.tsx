@@ -19,7 +19,7 @@ export default function AuthSplitLayout({
         <div className="flex min-h-dvh flex-col bg-background lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
             <ThemeSync />
             <aside className="dark relative flex shrink-0 flex-col justify-between gap-6 px-6 py-6 text-foreground bg-brand-gradient sm:px-10 lg:min-h-dvh lg:py-10">
-                <AudaxWordmark tone="inverse" className="text-lg lg:text-xl" />
+                <AudaxWordmark tone="inverse" className="h-5 lg:h-6" />
 
                 <div className="space-y-3 lg:space-y-5">
                     <p className="max-w-md text-2xl leading-tight text-balance lg:text-4xl">

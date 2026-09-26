@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -110,6 +111,30 @@ class User extends Authenticatable
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Departamentos de los que es responsable (D-024).
+     *
+     * @return BelongsToMany<Department, $this>
+     */
+    public function managedDepartments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'department_managers')->withTimestamps();
+    }
+
+    /**
+     * ¿Es responsable de ese departamento?
+     */
+    public function managesDepartment(Department|int|null $department): bool
+    {
+        if ($department === null) {
+            return false;
+        }
+
+        $id = $department instanceof Department ? $department->id : $department;
+
+        return $this->managedDepartments()->whereKey($id)->exists();
     }
 
     /**

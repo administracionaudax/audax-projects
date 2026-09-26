@@ -42,6 +42,7 @@
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
     --color-primary-text: var(--primary-text);
+    --color-on-dark-foreground: var(--on-dark-foreground);
 
     --color-brand: var(--brand);
     --color-brand-navy: var(--brand-navy);
@@ -131,6 +132,8 @@
     --primary: #0068eb;
     --primary-foreground: #ffffff;
     --primary-text: #005fd6;
+    /* Texto del botón blanco «sobre fondo oscuro» (SPEC §3.1): fijo en ambos temas (5,82:1 sobre blanco). */
+    --on-dark-foreground: #005fd6;
     --secondary: #f5f6f7;
     --secondary-foreground: #001b39;
     --muted: #f5f6f7;
@@ -199,7 +202,7 @@
     --danger: #f2837b;
     --danger-soft: #36283d;
     --info: #4a93ff;
-    --info-soft: #002e65;
+    --info-soft: #00275a;
     --neutral-soft: #0f2945;
 
     --chart-1: #0260d9;

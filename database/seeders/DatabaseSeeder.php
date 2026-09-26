@@ -10,14 +10,15 @@ use RuntimeException;
 
 /**
  * Datos de DESARROLLO: un usuario por rol con contraseña de ejemplo ("password").
- * Nunca en producción: el primer admin real se crea con `php artisan app:install`.
+ * Solo en local y testing (nunca en staging ni producción, que son accesibles desde Internet):
+ * el primer admin real se crea con `php artisan app:install`.
  */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        if (app()->isProduction()) {
-            throw new RuntimeException('DatabaseSeeder crea usuarios con contraseñas de ejemplo: no se ejecuta en producción. Usa `php artisan app:install`.');
+        if (! app()->environment(['local', 'testing'])) {
+            throw new RuntimeException('DatabaseSeeder crea usuarios con contraseñas de ejemplo: solo se ejecuta en local o testing. Usa `php artisan app:install`.');
         }
 
         $this->call([
@@ -49,7 +50,7 @@ class DatabaseSeeder extends Seeder
             $user->syncRoles([$data['role']->value]);
 
             if ($data['role'] === Role::DepartmentManager) {
-                $design->update(['manager_user_id' => $user->id]);
+                $design->managers()->syncWithoutDetaching([$user->id]);
             }
         }
     }

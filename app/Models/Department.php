@@ -4,26 +4,26 @@ namespace App\Models;
 
 use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 /**
- * Departamento (SPEC §4.1). Un único responsable por departamento (duda abierta 6 de DECISIONES).
+ * Departamento (SPEC §4.1). Puede tener varios responsables con los mismos permisos (D-024).
  *
  * @property int $id
  * @property string $name
  * @property string $color
- * @property int|null $manager_user_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- * @property-read User|null $manager
+ * @property-read Collection<int, User> $managers
  */
-#[Fillable(['name', 'color', 'manager_user_id'])]
+#[Fillable(['name', 'color'])]
 class Department extends Model
 {
     /** @use HasFactory<DepartmentFactory> */
@@ -47,10 +47,12 @@ class Department extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * Responsables del departamento (pivote department_managers).
+     *
+     * @return BelongsToMany<User, $this>
      */
-    public function manager(): BelongsTo
+    public function managers(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'manager_user_id');
+        return $this->belongsToMany(User::class, 'department_managers')->withTimestamps();
     }
 }

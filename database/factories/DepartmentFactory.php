@@ -18,7 +18,6 @@ class DepartmentFactory extends Factory
         return [
             'name' => fake()->unique()->randomElement(['Diseño', 'Desarrollo', 'Marketing', 'Cuentas', 'Producción']),
             'color' => fake()->randomElement(['#0171FF', '#179FA5', '#5E2DAD']),
-            'manager_user_id' => null,
         ];
     }
 }

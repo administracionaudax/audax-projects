@@ -43,7 +43,7 @@ export default function PortalLayout({
                         className="flex items-baseline gap-3 rounded-md focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                         aria-label={t('portal.home_link')}
                     >
-                        <AudaxWordmark tone="inverse" className="text-lg" />
+                        <AudaxWordmark tone="inverse" className="h-4" />
                         <span className="hidden text-sm text-muted-foreground sm:inline">
                             {t('portal.name')}
                         </span>

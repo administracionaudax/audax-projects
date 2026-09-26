@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 | Cada ruta GET del contrato × cada tipo de usuario → código esperado.
 | 302 de invitado = al login; 302 de cliente en rutas internas = a /portal;
-| /ajustes/seguridad pide confirmar la contraseña (302) a todos.
+| /ajustes/seguridad y /ajustes/sesiones piden confirmar la contraseña (302) a todos.
 */
 
 const ACTORS = ['guest', 'admin', 'department_manager', 'employee', 'client'];
@@ -29,7 +29,7 @@ dataset('rutas', [
     '/ajustes/perfil' => ['/ajustes/perfil', [302, 200, 200, 200, 200]],
     '/ajustes/seguridad' => ['/ajustes/seguridad', [302, 302, 302, 302, 302]],
     '/ajustes/apariencia' => ['/ajustes/apariencia', [302, 200, 200, 200, 200]],
-    '/ajustes/sesiones' => ['/ajustes/sesiones', [302, 200, 200, 200, 200]],
+    '/ajustes/sesiones' => ['/ajustes/sesiones', [302, 302, 302, 302, 302]],
     '/health' => ['/health', [200, 200, 200, 200, 200]],
 ]);
 

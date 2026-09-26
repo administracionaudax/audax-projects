@@ -8,10 +8,10 @@ import { expect } from '@playwright/test';
 export const PASSWORD = process.env.E2E_PASSWORD ?? 'password';
 
 export const USERS = {
-    admin: process.env.E2E_ADMIN_EMAIL ?? 'admin@audax.test',
-    manager: process.env.E2E_MANAGER_EMAIL ?? 'responsable@audax.test',
-    employee: process.env.E2E_EMPLOYEE_EMAIL ?? 'empleado@audax.test',
-    client: process.env.E2E_CLIENT_EMAIL ?? 'cliente@audax.test',
+    admin: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
+    manager: process.env.E2E_MANAGER_EMAIL ?? 'responsable@example.com',
+    employee: process.env.E2E_EMPLOYEE_EMAIL ?? 'empleado@example.com',
+    client: process.env.E2E_CLIENT_EMAIL ?? 'cliente@example.com',
 } as const;
 
 /** Rutas de la barra lateral (URLs en español, contrato de routes/web.php). */

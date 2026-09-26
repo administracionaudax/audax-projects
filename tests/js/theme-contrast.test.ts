@@ -31,10 +31,14 @@ function parse(value: string, over: Rgb): Rgb {
     const hex = /^#([0-9a-f]{6})$/i.exec(value);
 
     if (hex) {
-        return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) as Rgb;
+        return [0, 2, 4].map((i) =>
+            parseInt(hex[1].slice(i, i + 2), 16),
+        ) as Rgb;
     }
 
-    const rgb = /^rgb\((\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+))?\)$/.exec(value);
+    const rgb = /^rgb\((\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+))?\)$/.exec(
+        value,
+    );
 
     if (rgb) {
         const a = rgb[4] === undefined ? 1 : Number(rgb[4]);
@@ -91,7 +95,10 @@ for (const [theme, selector] of [
         const textPairs: [string, string][] = [];
 
         for (const surface of Object.keys(surfaces)) {
-            textPairs.push(['foreground', surface], ['muted-foreground', surface]);
+            textPairs.push(
+                ['foreground', surface],
+                ['muted-foreground', surface],
+            );
         }
 
         textPairs.push(
@@ -104,6 +111,10 @@ for (const [theme, selector] of [
             ['warning', 'card'],
             ['danger', 'card'],
             ['info', 'card'],
+            ['success', 'success-soft'],
+            ['warning', 'warning-soft'],
+            ['danger', 'danger-soft'],
+            ['info', 'info-soft'],
         );
 
         it.each(textPairs)('texto %s sobre %s ≥ 4,5:1', (fg, surface) => {
@@ -118,6 +129,14 @@ for (const [theme, selector] of [
             expect(
                 contrast([255, 255, 255], on(card)('destructive')),
             ).toBeGreaterThanOrEqual(TEXT);
+            // Botón blanco sobre fondo oscuro: el color está en :root y no cambia en .dark.
+            const onDark = parse(
+                block(':root')['on-dark-foreground'],
+                [255, 255, 255],
+            );
+            expect(contrast(onDark, [255, 255, 255])).toBeGreaterThanOrEqual(
+                TEXT,
+            );
         });
 
         it.each(['input', 'ring'])('elemento no textual %s ≥ 3:1', (name) => {

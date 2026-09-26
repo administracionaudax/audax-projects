@@ -18,7 +18,7 @@ test('el seeder de desarrollo crea un usuario por rol y el responsable de Diseñ
 
     $manager = User::role(Role::DepartmentManager->value)->sole();
 
-    expect(Department::query()->where('name', 'Diseño')->value('manager_user_id'))->toBe($manager->id)
+    expect(Department::query()->where('name', 'Diseño')->sole()->managers->pluck('id')->all())->toBe([$manager->id])
         ->and(Setting::query()->count())->toBe(count(Setting::DEFAULTS));
 });
 
@@ -29,12 +29,12 @@ test('el seeder de desarrollo es repetible', function () {
     expect(User::query()->count())->toBe(4)->and(Department::query()->count())->toBe(3);
 });
 
-test('el seeder de desarrollo se niega a ejecutarse en producción', function () {
-    app()['env'] = 'production';
+test('el seeder de desarrollo se niega a ejecutarse fuera de local y testing', function (string $env) {
+    app()['env'] = $env;
 
     expect(fn () => (new DatabaseSeeder)->run())->toThrow(RuntimeException::class);
     expect(User::query()->count())->toBe(0);
-});
+})->with(['production', 'staging']);
 
 test('los seeders base son idempotentes y no pisan cambios', function () {
     $this->seed([RolesAndPermissionsSeeder::class, DefaultSettingsSeeder::class, DepartmentsSeeder::class]);
@@ -60,14 +60,17 @@ test('un departamento borrado no se vuelve a crear', function () {
         ->and(Department::withTrashed()->count())->toBe(3);
 });
 
-test('las relaciones de departamento funcionan', function () {
+test('un departamento puede tener varios responsables (D-024)', function () {
     $department = Department::factory()->create();
     $manager = userWithRole('department_manager', ['department_id' => $department->id]);
-    $department->update(['manager_user_id' => $manager->id]);
+    $coManager = userWithRole('department_manager', ['department_id' => $department->id]);
+    $department->managers()->attach([$manager->id, $coManager->id]);
     User::factory()->employee()->inDepartment($department)->create();
 
-    expect($department->fresh()?->users)->toHaveCount(2)
-        ->and($department->fresh()?->manager?->id)->toBe($manager->id)
+    expect($department->fresh()?->users)->toHaveCount(3)
+        ->and($department->fresh()?->managers->pluck('id')->sort()->values()->all())->toBe([$manager->id, $coManager->id])
+        ->and($manager->managesDepartment($department))->toBeTrue()
+        ->and(User::factory()->employee()->create()->managesDepartment($department))->toBeFalse()
         ->and($manager->department?->id)->toBe($department->id);
 });
 

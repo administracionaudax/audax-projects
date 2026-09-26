@@ -63,6 +63,10 @@ export default defineConfig({
         singleAttributePerLine: false,
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
+            // Documentación en prosa: no se reformatea con el formateador de código.
+            '**/*.md',
+            'playwright-report/**',
+            'test-results/**',
             '.github/**',
             'composer.json',
             'resources/js/components/ui/*',

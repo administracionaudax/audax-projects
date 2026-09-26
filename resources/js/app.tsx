@@ -10,6 +10,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import PortalLayout from '@/layouts/portal-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { t } from '@/lib/i18n';
+import { registerServiceWorker } from '@/lib/register-sw';
 import type { Auth } from '@/types';
 
 const appName = import.meta.env.VITE_APP_NAME || t('brand.app_name');
@@ -50,3 +51,6 @@ void createInertiaApp({
 
 // Aplica el tema claro/oscuro guardado antes del primer render.
 initializeTheme();
+
+// PWA: solo en producción (compilación) y si el navegador lo admite.
+registerServiceWorker();

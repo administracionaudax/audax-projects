@@ -25,9 +25,11 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('ajustes/apariencia', [AppearanceController::class, 'edit'])->name('appearance.edit');
     Route::patch('ajustes/apariencia', [AppearanceController::class, 'update'])->name('appearance.update');
 
-    Route::get('ajustes/sesiones', [SessionsController::class, 'index'])->name('sessions.index');
-    Route::delete('ajustes/sesiones/otras', [SessionsController::class, 'destroyOthers'])
+    Route::get('ajustes/sesiones', [SessionsController::class, 'index'])
         ->middleware(RequirePassword::class)
+        ->name('sessions.index');
+    Route::delete('ajustes/sesiones/otras', [SessionsController::class, 'destroyOthers'])
+        ->middleware([RequirePassword::class, 'throttle:6,1'])
         ->name('sessions.destroy-others');
     Route::delete('ajustes/sesiones/{session}', [SessionsController::class, 'destroy'])->name('sessions.destroy');
 });

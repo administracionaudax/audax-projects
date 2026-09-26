@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { ChevronDown, Monitor, Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { AudaxWordmark } from '@/components/app-logo';
 import { STYLEGUIDE_SECTIONS } from '@/components/styleguide/sections';
 import type { Appearance } from '@/hooks/use-appearance';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -77,10 +78,8 @@ export default function StyleguideLayout({
 
             <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-                    <div className="flex min-w-0 items-baseline gap-3">
-                        <span className="text-lg font-medium tracking-[0.2em] text-brand-navy dark:text-foreground">
-                            AUDAX
-                        </span>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <AudaxWordmark className="h-4" />
                         <span className="truncate text-sm text-muted-foreground">
                             Guía de estilo
                         </span>
