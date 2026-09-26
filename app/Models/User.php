@@ -286,7 +286,7 @@ class User extends Authenticatable
     {
         $request = app()->bound('request') ? app('request') : null;
 
-        if (! $request instanceof Request || $request->route() === null || $this->id === null) {
+        if (! $request instanceof Request || $request->route() === null || ! $this->exists) {
             return $compute();
         }
 
