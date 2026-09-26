@@ -7,6 +7,7 @@ import {
 } from '@/components/charts/chart-config';
 import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -273,7 +274,7 @@ export function CalendarHeatmap({
         >
             <div
                 ref={wrapperRef}
-                className="relative w-full rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className={cn('relative w-full rounded-md', FOCUS_RING)}
                 style={{ maxWidth: weeks.length * 20 + 28 }}
                 tabIndex={0}
                 onPointerOver={onPointer}

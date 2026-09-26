@@ -145,6 +145,18 @@ for (const [theme, selector] of [
             );
         });
 
+        // Anillo de foco (lib/focus-ring.ts): opaco y separado del control por un hueco del
+        // color de fondo, así que linda con el fondo, la tarjeta y las superficies suaves.
+        it.each(Object.keys(surfaces))(
+            'anillo de foco opaco ≥ 3:1 sobre %s',
+            (surface) => {
+                expect(v.ring).toMatch(/^#[0-9a-f]{6}$/i);
+                expect(
+                    contrast(on(surfaces[surface])('ring'), surfaces[surface]),
+                ).toBeGreaterThanOrEqual(NON_TEXT);
+            },
+        );
+
         it.each([1, 2, 3, 4, 5, 6])(
             'serie de datos chart-%i ≥ 3:1 sobre la tarjeta',
             (n) => {

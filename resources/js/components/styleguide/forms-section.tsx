@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 
 /** Mismo aspecto que <Input> para el textarea (el kit no trae uno propio). */
 const TEXTAREA =
-    'flex min-h-20 w-full rounded-[3px] border border-input bg-transparent px-3 py-2 text-base outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm';
+    'flex min-h-20 w-full rounded-[3px] border border-input bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm';
 
 function DurationField() {
     const id = useId();

@@ -2,6 +2,7 @@ import { ChartColumn, Table2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { cn } from '@/lib/utils';
 
 export type ChartTableColumn = {
@@ -100,7 +101,10 @@ export function ChartTable({
 }) {
     return (
         <div
-            className="max-h-80 overflow-auto rounded-md border outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className={cn(
+                'max-h-80 overflow-auto rounded-md border',
+                FOCUS_RING,
+            )}
             role="region"
             aria-label={`${caption} (tabla)`}
             tabIndex={0}

@@ -22,6 +22,8 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { confirm } from '@/routes/two-factor';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
 
 function GridScanIcon() {
@@ -136,7 +138,10 @@ function TwoFactorSetupStep({
                                     <button
                                         type="button"
                                         onClick={() => copy(manualSetupKey)}
-                                        className="border-l border-border px-3 hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                                        className={cn(
+                                            'border-l border-border px-3 hover:bg-muted',
+                                            FOCUS_RING,
+                                        )}
                                         aria-label={
                                             copiedText === manualSetupKey
                                                 ? t('two_factor.setup.copied')

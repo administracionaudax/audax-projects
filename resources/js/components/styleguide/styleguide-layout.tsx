@@ -5,6 +5,7 @@ import { AudaxWordmark } from '@/components/app-logo';
 import { STYLEGUIDE_SECTIONS } from '@/components/styleguide/sections';
 import type { Appearance } from '@/hooks/use-appearance';
 import { useAppearance } from '@/hooks/use-appearance';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { cn } from '@/lib/utils';
 
 const THEMES: { value: Appearance; label: string; icon: LucideIcon }[] = [
@@ -30,7 +31,8 @@ export function ThemeSwitcher() {
                     aria-pressed={appearance === value}
                     onClick={() => updateAppearance(value)}
                     className={cn(
-                        'inline-flex h-8 items-center gap-1.5 rounded-[2px] px-2.5 text-sm transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                        'inline-flex h-8 items-center gap-1.5 rounded-[2px] px-2.5 text-sm transition-colors',
+                        FOCUS_RING,
                         appearance === value
                             ? 'bg-accent font-medium text-accent-foreground'
                             : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -51,7 +53,10 @@ function SectionLinks({ className }: { className?: string }) {
                 <li key={section.id}>
                     <a
                         href={`#${section.id}`}
-                        className="block rounded-[3px] px-2 py-1.5 text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        className={cn(
+                            'block rounded-[3px] px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground',
+                            FOCUS_RING,
+                        )}
                     >
                         {section.label}
                     </a>

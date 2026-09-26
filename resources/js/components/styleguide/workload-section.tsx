@@ -2,6 +2,8 @@ import { LoadCell } from '@/components/charts/load-cell';
 import { LOAD_LEVELS } from '@/components/charts/thresholds';
 import type { LoadLevel } from '@/components/charts/thresholds';
 import { Section, Specimen } from '@/components/styleguide/section';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { cn } from '@/lib/utils';
 
 const LEGEND: {
     level: LoadLevel;
@@ -123,7 +125,7 @@ export function WorkloadSection() {
                 className="p-0 sm:p-0"
             >
                 <div
-                    className="overflow-x-auto outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className={cn('overflow-x-auto', FOCUS_RING)}
                     role="region"
                     aria-label="Matriz de carga"
                     tabIndex={0}

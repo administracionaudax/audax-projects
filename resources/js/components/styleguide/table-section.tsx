@@ -1,6 +1,8 @@
 import { Section, Specimen } from '@/components/styleguide/section';
 import { TimesheetBadge } from '@/components/styleguide/status-badges';
 import type { TimesheetStatus } from '@/components/styleguide/status-badges';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { cn } from '@/lib/utils';
 import { formatCurrency, formatDate, formatMinutes } from '@/lib/format';
 
 type Row = {
@@ -96,7 +98,7 @@ export function TableSection() {
         >
             <Specimen title="Entradas de horas" className="p-0 sm:p-0">
                 <div
-                    className="overflow-x-auto outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className={cn('overflow-x-auto', FOCUS_RING)}
                     role="region"
                     aria-label="Entradas de horas"
                     tabIndex={0}
