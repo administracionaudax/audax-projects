@@ -54,6 +54,15 @@ class TimesheetController extends TimeController
         $entries = $this->sheets->entries($viewer, $owner, $week);
         $gate = Gate::forUser($viewer);
         $isOwn = $viewer->id === $owner->id;
+        // Hoja completa o solo con las entradas de los proyectos que gestiona (D-021).
+        $scope = $isOwn || $gate->allows('view', $period) ? 'full' : 'managed_projects';
+        $periodData = Plain::of(new TimesheetPeriodResource($period));
+
+        if ($scope === 'managed_projects') {
+            // El comentario de quien devuelve la semana habla de toda ella, también de horas de
+            // otros proyectos que un gestor no ve (D-021): solo ve el estado.
+            $periodData['review_comment'] = null;
+        }
 
         return Inertia::render('time/index', [
             'week' => [
@@ -69,9 +78,8 @@ class TimesheetController extends TimeController
             'is_own' => $isOwn,
             // Sin contar a quien mira: si no ve a nadie más, la página no muestra el selector.
             'people' => Plain::of(UserSummaryResource::collection($this->sheets->visiblePeople($viewer))),
-            // Hoja completa o solo con las entradas de los proyectos que gestiona (D-021).
-            'scope' => $isOwn || $gate->allows('view', $period) ? 'full' : 'managed_projects',
-            'period' => Plain::of(new TimesheetPeriodResource($period)),
+            'scope' => $scope,
+            'period' => $periodData,
             'rows' => $this->rows($entries, $week),
             'totals' => $this->sheets->totals($entries, $week),
             'capacity' => $this->sheets->capacity($owner, $week),

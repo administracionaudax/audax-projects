@@ -572,16 +572,18 @@ function WeekStatus({
                               name: personName,
                           })}
                 </AlertTitle>
-                <AlertDescription className="text-foreground">
-                    <p>
-                        {period.reviewer
-                            ? t('hours.status.comment_by', {
-                                  name: period.reviewer.name,
-                              })
-                            : null}{' '}
-                        «{period.review_comment}»
-                    </p>
-                </AlertDescription>
+                {period.review_comment ? (
+                    <AlertDescription className="text-foreground">
+                        <p>
+                            {period.reviewer
+                                ? t('hours.status.comment_by', {
+                                      name: period.reviewer.name,
+                                  })
+                                : null}{' '}
+                            «{period.review_comment}»
+                        </p>
+                    </AlertDescription>
+                ) : null}
             </Alert>
         );
     }

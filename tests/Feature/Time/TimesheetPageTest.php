@@ -200,6 +200,37 @@ it('un gestor ve la hoja de los miembros de sus proyectos, solo con las entradas
     $this->actingAs($manager)->get("/horas?persona={$stranger->id}")->assertForbidden();
 });
 
+it('un gestor ve el estado de la semana de un miembro, pero no el comentario de quien la devolvió (D-021)', function () {
+    $manager = User::factory()->employee()->create();
+    $this->web->addMember($manager, isManager: true);
+    $head = User::factory()->departmentManager()->inDepartment($this->department)->create(['name' => 'Lucía']);
+    $this->department->managers()->attach($head);
+    ($this->log)($this->home, '2026-09-22', 60);
+    TimesheetPeriod::factory()->for($this->employee)->week('2026-09-21')->status(TimesheetStatus::Returned)->create([
+        'reviewed_by' => $head->id,
+        'reviewed_at' => now(),
+        'review_comment' => 'Sobran horas en BETA-APP',
+    ]);
+
+    $this->actingAs($manager)
+        ->get("/horas?persona={$this->employee->id}&semana=2026-W39")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('scope', 'managed_projects')
+            ->where('period.status', 'returned')
+            ->where('period.review_comment', null));
+
+    // Quien ve la hoja completa (su responsable y la propia persona) sí lo ve.
+    foreach ([$head, $this->employee] as $viewer) {
+        $this->actingAs($viewer)
+            ->get("/horas?persona={$this->employee->id}&semana=2026-W39")
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('scope', 'full')
+                ->where('period.review_comment', 'Sobran horas en BETA-APP')
+                ->where('period.reviewer.name', 'Lucía'));
+    }
+});
+
 it('el admin ve la hoja de cualquiera; un cliente nunca entra', function () {
     $admin = User::factory()->admin()->create();
     ($this->log)($this->api, '2026-09-24', 30);
