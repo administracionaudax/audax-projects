@@ -38,6 +38,8 @@ final class UserDeactivator
     public function deactivate(User $actor, User $user, array $assignments, ?int $defaultAssignee): DeactivationResult
     {
         return DB::transaction(function () use ($actor, $user, $assignments, $defaultAssignee): DeactivationResult {
+            $this->guard->lockActiveAdmins();
+
             /** @var User $locked */
             $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 

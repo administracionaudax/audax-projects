@@ -47,7 +47,10 @@ final class TaskStatusCatalog
             ]);
             $status->save();
 
-            if ($data['is_default'] || ! TaskStatus::query()->where('is_default', true)->exists()) {
+            // Si no hubiera ninguno por defecto (catálogo vacío), lo es el primero que no sea «done».
+            $noDefault = ! TaskStatus::query()->where('is_default', true)->exists();
+
+            if ($data['is_default'] || ($noDefault && $category !== TaskStatusCategory::Done)) {
                 $this->makeDefault($status);
             }
 

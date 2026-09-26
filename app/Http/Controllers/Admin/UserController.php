@@ -146,9 +146,10 @@ class UserController extends Controller
         $actor = $request->user();
         $role = $request->role();
 
-        $this->guard->assertCanChangeRole($actor, $user, $role);
+        DB::transaction(function () use ($request, $actor, $user, $role): void {
+            $this->guard->lockActiveAdmins();
+            $this->guard->assertCanChangeRole($actor, $user, $role);
 
-        DB::transaction(function () use ($request, $user, $role): void {
             $user->forceFill($request->userData())->save();
 
             if (! $user->hasRole($role->value)) {

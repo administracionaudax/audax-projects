@@ -83,4 +83,13 @@ final class UserGuard
             ->whereKeyNot($user->id)
             ->exists();
     }
+
+    /**
+     * Bloquea las filas de los admins activos hasta el final de la transacción: así dos admins
+     * que se degradan o desactivan a la vez no pueden dejar la app sin ninguno.
+     */
+    public function lockActiveAdmins(): void
+    {
+        User::role(Role::Admin->value)->where('is_active', true)->lockForUpdate()->pluck('id');
+    }
 }
