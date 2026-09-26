@@ -1,0 +1,25 @@
+# Filtros de rsync para sincronizar el Mac → servidor (D-002, RUNBOOK-DESPLIEGUE.md paso 8).
+# Sin barra final: en el servidor .env, .env.testing y storage son ENLACES, y "storage/" solo casaría con directorios.
+# P = proteger en el receptor (--delete no lo borra); - = no enviar.
+P /.env
+P /.env.testing
+P /storage
+P /vendor
+P /bootstrap/cache/*.php
+P /public/storage
+P /public/hot
+- /.env
+- /.env.*
+- /storage
+- /vendor
+- /node_modules
+- /.git
+- /.github
+- /.claude
+- /.DS_Store
+- /bootstrap/cache/*.php
+- /public/hot
+- /public/storage
+- /tests/e2e/.auth
+- /playwright-report
+- /test-results

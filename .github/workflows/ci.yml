@@ -1,0 +1,358 @@
+# CI de Audax Proyectos (CLAUDE.md, SPEC §15 y §17 Fase 0).
+# - php: Pint, PHPStan y Pest contra PostgreSQL 18 (base *_test, como exige tests/TestCase.php).
+# - js: formato/lint (vp check), tipos, Vitest y build.
+# - security: composer audit y npm audit.
+# - e2e: Playwright contra `php artisan serve` con el DatabaseSeeder de desarrollo.
+# Nada de esto toca el servidor: los E2E solo se ejecutan aquí o en local (docs/DECISIONES.md D-002).
+
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'fase-*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.4'
+  PHP_EXTENSIONS: pdo_pgsql, pgsql, redis, intl, bcmath, gd, zip, pcntl, posix, sodium, mbstring
+  NODE_VERSION: '22'
+
+jobs:
+  php:
+    name: PHP (Pint, PHPStan, Pest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: audax_projects_test
+          POSTGRES_USER: audax_test
+          # Contenedor efímero de la CI: no es un secreto.
+          POSTGRES_PASSWORD: audax_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U audax_test -d audax_projects_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Entorno de tests (.env y .env.testing para PostgreSQL)
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+          cat > .env.testing <<'EOF'
+          APP_NAME="Audax Proyectos"
+          APP_ENV=testing
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://localhost
+          APP_LOCALE=es
+          APP_FALLBACK_LOCALE=es
+          APP_FAKER_LOCALE=es_ES
+          DB_CONNECTION=pgsql
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_DATABASE=audax_projects_test
+          DB_USERNAME=audax_test
+          DB_PASSWORD=audax_test
+          BCRYPT_ROUNDS=4
+          CACHE_STORE=array
+          QUEUE_CONNECTION=sync
+          SESSION_DRIVER=array
+          MAIL_MAILER=array
+          BROADCAST_CONNECTION=null
+          EOF
+          php artisan key:generate --env=testing --ansi
+
+      # Las vistas Blade usan @vite: sin manifest, las pruebas que renderizan HTML fallan con 500.
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Build de Vite (genera Wayfinder)
+        run: npx vp build
+
+      - name: Pint
+        run: vendor/bin/pint --test
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Pest
+        run: |
+          php artisan config:clear --ansi
+          php artisan test
+
+  js:
+    name: JS (formato, lint, tipos, Vitest, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Wayfinder necesita PHP y la app instalada para generar resources/js/routes y actions.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar la app
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Wayfinder
+        run: php artisan wayfinder:generate --with-form
+
+      - name: Formato y lint (vp check)
+        run: npx vp check
+
+      - name: Tipos (tsc)
+        run: npx tsc --noEmit
+
+      # Vitest arranca internamente un servidor de Vite y laravel-vite-plugin lo prohíbe si detecta CI=true.
+      # En los tests es correcto: no se sirve nada, solo se transforman los módulos.
+      - name: Vitest
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: '1'
+        run: npx vp test run
+
+      - name: Build
+        run: npx vp build
+
+  security:
+    name: Auditoría de dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: composer audit
+        run: composer audit --locked --no-interaction
+
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: audax_projects_e2e
+          POSTGRES_USER: audax_e2e
+          # Contenedor efímero de la CI: no es un secreto.
+          POSTGRES_PASSWORD: audax_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U audax_e2e -d audax_projects_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      E2E_BASE_URL: http://127.0.0.1:8000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Entorno local efímero: sin Redis (colas síncronas, caché en ficheros), sesiones en BD.
+      - name: Entorno de la app (.env)
+        run: |
+          cat > .env <<'EOF'
+          APP_NAME="Audax Proyectos"
+          APP_ENV=local
+          APP_KEY=
+          APP_DEBUG=true
+          APP_URL=http://127.0.0.1:8000
+          APP_LOCALE=es
+          APP_FALLBACK_LOCALE=es
+          APP_FAKER_LOCALE=es_ES
+          APP_STYLEGUIDE_PUBLIC=true
+          LOG_CHANNEL=single
+          LOG_LEVEL=debug
+          DB_CONNECTION=pgsql
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_DATABASE=audax_projects_e2e
+          DB_USERNAME=audax_e2e
+          DB_PASSWORD=audax_e2e
+          SESSION_DRIVER=database
+          SESSION_LIFETIME=120
+          SESSION_SECURE_COOKIE=false
+          CACHE_STORE=file
+          QUEUE_CONNECTION=sync
+          BROADCAST_CONNECTION=log
+          MAIL_MAILER=log
+          VITE_APP_NAME="${APP_NAME}"
+          EOF
+          php artisan key:generate --ansi
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Build de Vite
+        run: npx vp build
+
+      - name: Migrar y sembrar (DatabaseSeeder de desarrollo)
+        run: php artisan migrate --seed --force --no-interaction
+
+      - name: Arrancar php artisan serve
+        env:
+          PHP_CLI_SERVER_WORKERS: '4'
+        run: |
+          nohup php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/serve.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null -w '%{http_code}' "$E2E_BASE_URL/login" | grep -q '^200$'; then
+              echo "Servidor listo"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "El servidor no responde" >&2
+          cat storage/logs/serve.log >&2
+          exit 1
+
+      - name: Instalar Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright
+        run: npx playwright test
+
+      - name: Informe de Playwright y logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            storage/logs/
+          retention-days: 7

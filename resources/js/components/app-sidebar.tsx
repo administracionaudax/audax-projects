@@ -1,0 +1,103 @@
+import { Link } from '@inertiajs/react';
+import {
+    BarChart3,
+    Building2,
+    CalendarRange,
+    Clock,
+    FolderKanban,
+    House,
+    ListChecks,
+    MessagesSquare,
+    Settings2,
+    Wallet,
+} from 'lucide-react';
+import AppLogo from '@/components/app-logo';
+import { NavMain } from '@/components/nav-main';
+import { NavUser } from '@/components/nav-user';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import { useAbilities } from '@/hooks/use-auth';
+import { t } from '@/lib/i18n';
+import { home } from '@/routes';
+import { index as adminIndex } from '@/routes/admin';
+import { index as chatIndex } from '@/routes/chat';
+import { index as clientsIndex } from '@/routes/clients';
+import { index as hourBanksIndex } from '@/routes/hour-banks';
+import { index as myTasksIndex } from '@/routes/my-tasks';
+import { index as projectsIndex } from '@/routes/projects';
+import { index as reportsIndex } from '@/routes/reports';
+import { index as timeIndex } from '@/routes/time';
+import { index as workloadIndex } from '@/routes/workload';
+import type { Abilities, NavItem } from '@/types';
+
+/**
+ * Navegación principal (SPEC §3), en este orden. Bolsas y Administración dependen de
+ * `auth.can` (gates view-hour-banks y rol admin); el servidor vuelve a comprobarlo en la ruta.
+ */
+export function mainNavItems(can: Abilities): NavItem[] {
+    const items: (NavItem | false)[] = [
+        { title: t('nav.home'), href: home(), icon: House },
+        { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
+        { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
+        { title: t('nav.clients'), href: clientsIndex(), icon: Building2 },
+        can.viewHourBanks && {
+            title: t('nav.hour_banks'),
+            href: hourBanksIndex(),
+            icon: Wallet,
+        },
+        { title: t('nav.time'), href: timeIndex(), icon: Clock },
+        {
+            title: t('nav.workload'),
+            href: workloadIndex(),
+            icon: CalendarRange,
+        },
+        { title: t('nav.reports'), href: reportsIndex(), icon: BarChart3 },
+        { title: t('nav.chat'), href: chatIndex(), icon: MessagesSquare },
+        can.viewAdmin && {
+            title: t('nav.admin'),
+            href: adminIndex(),
+            icon: Settings2,
+        },
+    ];
+
+    return items.filter((item): item is NavItem => item !== false);
+}
+
+export function AppSidebar() {
+    const can = useAbilities();
+
+    return (
+        <Sidebar collapsible="icon" variant="inset">
+            <SidebarHeader>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton size="lg" asChild>
+                            <Link
+                                href={home()}
+                                prefetch
+                                aria-label={t('brand.home_link')}
+                            >
+                                <AppLogo />
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarHeader>
+
+            <SidebarContent>
+                <NavMain items={mainNavItems(can)} />
+            </SidebarContent>
+
+            <SidebarFooter>
+                <NavUser />
+            </SidebarFooter>
+        </Sidebar>
+    );
+}
