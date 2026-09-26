@@ -31,6 +31,12 @@ export const urls = {
     /** Abre el panel lateral de la tarea sobre la lista de tareas de su proyecto. */
     task: (projectId: number, taskId: number) =>
         `/proyectos/${projectId}/tareas?tarea=${taskId}`,
+    /**
+     * Enlace estable a una tarea (/tareas/{id}): redirige al panel en el proyecto que tenga al
+     * abrirlo. Para los enlaces que se guardan (notificaciones) y pueden quedar viejos si la tarea
+     * se mueve de proyecto.
+     */
+    taskById: (taskId: number) => `/tareas/${taskId}`,
     hourBanks: () => '/bolsas',
     hourBank: (projectId: number, bankId: number) =>
         `/proyectos/${projectId}/bolsas/${bankId}`,

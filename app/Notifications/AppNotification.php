@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notification;
  *   kind   → identificador estable ("task.assigned", "hour_bank.threshold"…)
  *   title  → texto corto en español
  *   body   → detalle opcional (texto plano)
- *   url    → a dónde lleva al pulsar (relativa, p. ej. /proyectos/3/tareas?tarea=12)
+ *   url    → a dónde lleva al pulsar (relativa y estable, p. ej. /tareas/12)
  *   icon   → nombre de icono de lucide (opcional)
  * Van por cola: el email por la cola `mail` y el resto por `default`. Las preferencias por canal
  * llegan en la Fase 7; hasta entonces, cada subclase decide sus canales en via().

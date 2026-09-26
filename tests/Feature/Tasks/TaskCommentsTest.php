@@ -81,7 +81,7 @@ it('avisa solo a los mencionados internos y activos, sin el autor, y guarda las 
         $data = $notification->toArray($ana);
 
         return $data['kind'] === 'task.mentioned'
-            && $data['url'] === "/proyectos/{$this->project->id}/tareas?tarea={$this->task->id}"
+            && $data['url'] === "/tareas/{$this->task->id}"
             && str_contains($data['title'], 'Revisar la maqueta');
     });
     Notification::assertNotSentTo([$inactive, $client, $this->author], TaskMentionedNotification::class);

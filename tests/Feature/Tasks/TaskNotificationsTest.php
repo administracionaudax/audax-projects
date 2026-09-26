@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\NotifyDueTasks;
+use App\Domain\Tasks\TaskMover;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -46,7 +47,7 @@ it('avisa al nuevo responsable (una sola vez) y nunca a quien se asigna a sí mi
         $data = $notification->toArray($this->colleague);
 
         return $data['kind'] === 'task.assigned'
-            && $data['url'] === "/proyectos/{$this->project->id}/tareas?tarea={$task->id}"
+            && $data['url'] === "/tareas/{$task->id}"
             && $data['title'] === "{$this->actor->name} te ha asignado «Diseñar el logo»"
             && $data['body'] === 'App Clínica';
     });
@@ -122,6 +123,24 @@ it('las notificaciones se guardan en el canal database con el contrato de la cam
     expect($notification->type)->toBe(TaskAssignedNotification::class)
         ->and(array_keys($notification->data))->toBe(['kind', 'title', 'body', 'url', 'icon'])
         ->and($notification->data['icon'])->toBe('user-check');
+});
+
+it('el enlace del aviso sigue abriendo la tarea aunque después se mueva de proyecto', function () {
+    $task = Task::factory()->create(['project_id' => $this->project->id]);
+    $this->actingAs($this->actor)->patch("/tareas/{$task->id}", ['assignee_user_id' => $this->colleague->id])->assertSessionHasNoErrors();
+    $notification = $this->colleague->notifications()->firstOrFail();
+    expect($notification->data['url'])->toBe("/tareas/{$task->id}");
+
+    $target = Project::factory()->create();
+    app(TaskMover::class)->move($task->fresh(), $target, null);
+
+    // La campana lleva a /tareas/{id}, que redirige al panel en el proyecto actual.
+    $this->actingAs($this->colleague)
+        ->post("/notificaciones/{$notification->id}/abrir")
+        ->assertRedirect("/tareas/{$task->id}");
+    $this->actingAs($this->colleague)
+        ->get("/tareas/{$task->id}")
+        ->assertRedirect("/proyectos/{$target->id}/tareas?tarea={$task->id}");
 });
 
 describe('app:notify-due-tasks', function () {

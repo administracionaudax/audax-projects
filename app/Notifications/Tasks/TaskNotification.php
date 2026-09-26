@@ -6,8 +6,9 @@ use App\Notifications\AppNotification;
 
 /**
  * Base de las notificaciones de una tarea (SPEC §13): solo en la app (canal database) y con enlace
- * al panel de la tarea en su proyecto. Guarda datos planos (ids y textos) y no modelos: la cola
- * no falla si la tarea se borra antes de enviarse.
+ * estable a la tarea (/tareas/{id}), que redirige al panel en el proyecto que tenga AL PULSAR: el
+ * enlace sigue valiendo aunque la tarea se mueva de proyecto después del aviso. Guarda datos
+ * planos (ids y textos) y no modelos: la cola no falla si la tarea se borra antes de enviarse.
  */
 abstract class TaskNotification extends AppNotification
 {
@@ -20,14 +21,15 @@ abstract class TaskNotification extends AppNotification
 
     public function url(object $notifiable): ?string
     {
-        return self::taskUrl($this->projectId, $this->taskId);
+        return self::taskUrl($this->taskId);
     }
 
     /**
-     * /proyectos/{p}/tareas?tarea={t}: abre el panel de la tarea (resources/js/lib/urls.ts, task()).
+     * /tareas/{t} (tasks.show): abre el panel de la tarea en su proyecto actual
+     * (resources/js/lib/urls.ts, taskById()).
      */
-    public static function taskUrl(int $projectId, int $taskId): string
+    public static function taskUrl(int $taskId): string
     {
-        return "/proyectos/{$projectId}/tareas?tarea={$taskId}";
+        return "/tareas/{$taskId}";
     }
 }
