@@ -69,6 +69,8 @@ return [
         'deleted' => 'Versión de la jornada eliminada.',
         'must_follow' => 'La nueva jornada tiene que empezar después del :date, que es cuando empieza la anterior.',
         'from_must_be_future' => 'Una versión que se edita tiene que empezar después de hoy.',
+        'new_must_be_future' => 'Una versión nueva tiene que empezar después de hoy: la jornada de los días pasados no se cambia.',
+        'first_not_past' => 'La jornada no puede empezar antes de hoy.',
         'only_latest' => 'Solo se puede cambiar la última versión de la jornada.',
         'already_started' => 'Esta versión ya ha empezado: no se puede cambiar. Crea una versión nueva.',
         'day_range' => 'Cada día tiene que estar entre 0:00 y 24:00.',

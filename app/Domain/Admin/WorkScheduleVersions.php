@@ -14,8 +14,9 @@ use Illuminate\Validation\ValidationException;
  * Jornadas versionadas (SPEC §4.1, D-036). Reglas:
  * - las versiones no se solapan: una nueva empieza después de la última y cierra la vigente con
  *   valid_to = valid_from − 1 día,
- * - el histórico no se reescribe: solo se edita o borra la ÚLTIMA versión, y solo si aún no ha
- *   empezado (valid_from posterior a hoy en Madrid),
+ * - el histórico no se reescribe (la capacidad de semanas pasadas no cambia): una versión nueva
+ *   empieza después de hoy en Madrid (la primera de alguien sin jornada, desde hoy), y solo se
+ *   edita o borra la ÚLTIMA versión, y solo si aún no ha empezado,
  * - al borrar la última, la anterior vuelve a quedar abierta (sin valid_to).
  * Todo en una transacción con las versiones del usuario bloqueadas.
  */
@@ -40,7 +41,13 @@ final class WorkScheduleVersions
             $latest = $this->latest($user);
             $from = CarbonImmutable::parse($validFrom);
 
+            if ($latest === null && $from->toDateString() < LocalTime::todayString()) {
+                throw ValidationException::withMessages(['valid_from' => __('admin.schedules.first_not_past')]);
+            }
+
             if ($latest !== null) {
+                $this->assertNotStarted($from, 'valid_from', 'admin.schedules.new_must_be_future');
+
                 if ($from->toDateString() <= $latest->valid_from->toDateString()) {
                     throw ValidationException::withMessages([
                         'valid_from' => __('admin.schedules.must_follow', ['date' => $latest->valid_from->format('d/m/Y')]),

@@ -38,20 +38,43 @@ test('una versión nueva cierra la vigente el día anterior y se usa para la cap
         ->and($capacity->onDate($this->user, CarbonImmutable::parse('2026-10-03')))->toBe(0); // sábado
 });
 
-test('también puede empezar en el pasado (para corregir), pero siempre después de la versión anterior', function () {
+test('una versión nueva empieza después de hoy y de la versión anterior: el histórico no se reescribe', function () {
+    foreach (['2026-09-01', '2026-09-24'] as $startedOrPast) {
+        $this->actingAs($this->admin)
+            ->post($this->url, ['valid_from' => $startedOrPast, 'week' => $this->intensive])
+            ->assertSessionHasErrors(['valid_from' => __('admin.schedules.new_must_be_future')]);
+    }
+
+    expect($this->current->fresh()?->valid_to)->toBeNull();
+
     $this->actingAs($this->admin)
-        ->post($this->url, ['valid_from' => '2026-09-01', 'week' => $this->intensive])
+        ->post($this->url, ['valid_from' => '2026-09-25', 'week' => $this->intensive])
         ->assertSessionHasNoErrors();
 
-    expect($this->current->fresh()?->valid_to?->toDateString())->toBe('2026-08-31');
+    expect($this->current->fresh()?->valid_to?->toDateString())->toBe('2026-09-24');
 
-    foreach (['2026-09-01', '2026-08-15'] as $overlapping) {
+    foreach (['2026-09-25', '2026-09-20'] as $overlapping) {
         $this->actingAs($this->admin)
             ->post($this->url, ['valid_from' => $overlapping, 'week' => $this->intensive])
             ->assertSessionHasErrors('valid_from');
     }
 
     expect(WorkSchedule::query()->where('user_id', $this->user->id)->count())->toBe(2);
+});
+
+test('la primera jornada de alguien sin jornada puede empezar hoy, pero no antes', function () {
+    $newcomer = userWithRole('employee');
+    $url = "/admin/usuarios/{$newcomer->id}/jornadas";
+
+    $this->actingAs($this->admin)
+        ->post($url, ['valid_from' => '2026-09-23', 'week' => $this->intensive])
+        ->assertSessionHasErrors(['valid_from' => __('admin.schedules.first_not_past')]);
+
+    $this->actingAs($this->admin)
+        ->post($url, ['valid_from' => '2026-09-24', 'week' => $this->intensive])
+        ->assertSessionHasNoErrors();
+
+    expect(WorkSchedule::query()->where('user_id', $newcomer->id)->sole()->valid_from->toDateString())->toBe('2026-09-24');
 });
 
 test('valida la fecha y las horas de cada día (0 a 24 h, siete días)', function (array $payload, string $field) {
