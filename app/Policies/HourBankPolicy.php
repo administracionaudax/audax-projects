@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Gate;
  * - el % de consumo lo ve cualquier interno,
  * - el detalle por persona, los gestores del proyecto, los responsables y los admins
  *   (los importes, además, con view-financials),
- * - crear, editar, renovar y cerrar, quien gestiona el proyecto,
+ * - crear, editar, renovar y cerrar, quien gestiona el proyecto; crear y renovar, además, solo
+ *   si el proyecto admite horas (no archivado, como TaskPolicy::create): una bolsa nueva en un
+ *   proyecto archivado nunca podría recibir tareas ni horas,
  * - reabrir una bolsa cerrada no renovada, solo un admin.
  */
 class HourBankPolicy
@@ -37,7 +39,7 @@ class HourBankPolicy
 
     public function create(User $user, Project $project): bool
     {
-        return $user->canManageProject($project);
+        return $project->acceptsTime() && $user->canManageProject($project);
     }
 
     public function update(User $user, HourBank $hourBank): bool
@@ -47,7 +49,7 @@ class HourBankPolicy
 
     public function renew(User $user, HourBank $hourBank): bool
     {
-        return $this->update($user, $hourBank);
+        return $hourBank->project->acceptsTime() && $this->update($user, $hourBank);
     }
 
     public function close(User $user, HourBank $hourBank): bool

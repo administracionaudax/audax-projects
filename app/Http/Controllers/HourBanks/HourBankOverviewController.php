@@ -27,7 +27,9 @@ use Inertia\Response;
  * los clientes, ordenadas por % de consumo, para anticipar renovaciones y facturación.
  * - Responsables y admins ven todas; un gestor, solo las de sus proyectos (D-035).
  * - Filtros en la URL: ?cliente=&departamento=&estado=&proximas=1 (estado vacío = abiertas;
- *   «todas» incluye cerradas y renovadas).
+ *   «todas» incluye cerradas y renovadas). Las abiertas (activas y agotadas) y el resumen no
+ *   incluyen las de proyectos archivados: ya no admiten tareas ni horas.
+ *   Con «todas», «cerrada» o «renovada» sí salen, como histórico.
  * - Con un cliente elegido, además, el histórico de renovaciones de sus bolsas en todos sus
  *   proyectos (SPEC §8.8), con las mismas reglas de visibilidad.
  */
@@ -162,6 +164,10 @@ class HourBankOverviewController extends Controller
             $query->where('hour_banks.status', $filters['estado']);
         }
 
+        if (in_array($filters['estado'], ['', HourBankStatus::Active->value, HourBankStatus::Exhausted->value], true)) {
+            $query->whereHas('project', fn (Builder $project) => $project->notArchived());
+        }
+
         if ($filters['cliente'] !== null) {
             $query->whereHas('project', fn (Builder $project) => $project->where('client_id', $filters['cliente']));
         }
@@ -204,6 +210,7 @@ class HourBankOverviewController extends Controller
     {
         $row = (clone $visible)
             ->open()
+            ->whereHas('project', fn (Builder $project) => $project->notArchived())
             ->selectRaw(
                 'COUNT(*) AS open_count, '
                 .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS exhausted_count, '

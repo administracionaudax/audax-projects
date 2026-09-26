@@ -2,6 +2,7 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Enums\ProjectStatus;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
@@ -12,6 +13,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -289,4 +291,37 @@ test('sin N+1 en el histórico del cliente', function () {
     $many = $queries();
 
     expect($many)->toBe($few);
+});
+
+test('las bolsas de un proyecto archivado no salen como abiertas ni cuentan en el resumen; sí en «todas» (INT-07)', function () {
+    ($this->bank)('Viva', 10, 60);
+    $archived = Project::factory()->hourBank()->create(['status' => ProjectStatus::Archived]);
+    ($this->bank)('Del archivado', 10, 9 * 60, ['project_id' => $archived->id]);
+    $admin = userWithRole('admin');
+
+    expect(($this->names)($admin))->toBe(['Viva'])
+        ->and(($this->names)($admin, ['estado' => 'active']))->toBe(['Viva'])
+        ->and(($this->names)($admin, ['proximas' => 1]))->toBe([])
+        ->and(($this->names)($admin, ['estado' => 'todas']))->toContain('Del archivado');
+
+    $this->actingAs($admin)
+        ->get('/bolsas')
+        ->assertInertia(fn (Assert $page) => $page->where('stats.open', 1)->where('stats.near', 0));
+});
+
+test('en un proyecto archivado no se crean ni se renuevan bolsas, como no se crean tareas (INT-07)', function () {
+    $admin = userWithRole('admin');
+    $project = Project::factory()->hourBank()->create();
+    $bank = ($this->bank)('Agotada', 1, 60, ['project_id' => $project->id]);
+
+    expect(Gate::forUser($admin)->allows('create', [HourBank::class, $project]))->toBeTrue()
+        ->and(Gate::forUser($admin)->allows('renew', $bank))->toBeTrue();
+
+    $project->update(['status' => ProjectStatus::Archived]);
+    $project->refresh();
+    $bank->refresh();
+
+    expect(Gate::forUser($admin)->allows('create', [HourBank::class, $project]))->toBeFalse()
+        ->and(Gate::forUser($admin)->allows('renew', $bank))->toBeFalse()
+        ->and(Gate::forUser($admin)->allows('create', [Task::class, $project]))->toBeFalse();
 });
