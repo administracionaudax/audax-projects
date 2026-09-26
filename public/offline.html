@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <meta name="theme-color" content="#001B39" />
+        <title>Sin conexión · Audax Proyectos</title>
+        <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+        <style>
+            :root {
+                color-scheme: light dark;
+                --bg: #ffffff;
+                --fg: #001b39;
+                --muted: #56667a;
+                --border: #ccd1d7;
+                --brand: #0171ff;
+                --button: #0068eb;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #000f20;
+                    --fg: #e6e7e9;
+                    --muted: rgb(255 255 255 / 0.6);
+                    --border: rgb(255 255 255 / 0.12);
+                }
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                margin: 0;
+            }
+
+            body {
+                min-height: 100svh;
+                display: flex;
+                flex-direction: column;
+                background: var(--bg);
+                color: var(--fg);
+                font-family:
+                    'DM Sans',
+                    ui-sans-serif,
+                    system-ui,
+                    -apple-system,
+                    'Segoe UI',
+                    sans-serif;
+                font-weight: 400;
+                line-height: 1.5;
+            }
+
+            header {
+                display: flex;
+                align-items: center;
+                height: 56px;
+                padding: 0 16px;
+                border-bottom: 1px solid var(--border);
+                letter-spacing: 0.2em;
+                font-size: 18px;
+                font-weight: 500;
+            }
+
+            main {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 32px 16px;
+            }
+
+            .box {
+                max-width: 28rem;
+            }
+
+            svg {
+                color: var(--muted);
+            }
+
+            h1 {
+                margin: 16px 0 8px;
+                font-size: 30px;
+                font-weight: 400;
+                line-height: 1.2;
+            }
+
+            h1 span {
+                color: var(--brand);
+            }
+
+            p {
+                margin: 0 0 24px;
+                color: var(--muted);
+                font-size: 15px;
+            }
+
+            a.button {
+                display: inline-flex;
+                align-items: center;
+                height: 40px;
+                padding: 0 16px;
+                border-radius: 3px;
+                background: var(--button);
+                color: #ffffff;
+                font-size: 14px;
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            a.button:hover {
+                background: #005fd6;
+            }
+
+            a.button:focus-visible {
+                outline: 3px solid rgb(1 113 255 / 0.5);
+                outline-offset: 2px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>AUDAX</header>
+        <main>
+            <div class="box">
+                <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M12 20h.01" />
+                    <path d="M8.5 16.43a5 5 0 0 1 7 0" />
+                    <path d="M5 12.86a10 10 0 0 1 5.17-2.69" />
+                    <path d="M19 12.86a10 10 0 0 0-2-1.5" />
+                    <path d="M2 8.82a15 15 0 0 1 4.18-2.64" />
+                    <path d="M22 8.82a15 15 0 0 0-11.29-3.76" />
+                    <path d="m2 2 20 20" />
+                </svg>
+                <h1>Estás <span>sin conexión</span></h1>
+                <p>
+                    No hemos podido cargar la página. Comprueba tu conexión a
+                    internet y vuelve a intentarlo. Mientras no haya conexión no
+                    se puede consultar ni guardar nada.
+                </p>
+                <a class="button" href="/">Volver a intentarlo</a>
+            </div>
+        </main>
+    </body>
+</html>
