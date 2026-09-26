@@ -318,7 +318,7 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
 ### D-041 · Horas
 - **Aprobación automática** (responsables, admins o aprobación desactivada): la semana queda aprobada sin revisor y la interfaz la muestra como «aprobada automáticamente», sin notificación.
 - **Reabrir una semana bloqueada:** la deja abierta, pero sus entradas bloqueadas no cambian. Para cambiarlas hay que deshacer el bloqueo.
-- **Desbloquear:** las entradas vuelven a estar aprobadas. La semana solo vuelve a ser editable si se reabre, y hacerlo queda auditado.
+- **Desbloquear:** cada entrada vuelve al estado de su semana (aprobada, enviada o borrador; en los dos últimos casos pierde las instantáneas de tarifa y coste) y se recalculan sus bolsas. Así nunca queda una entrada aprobada en una semana editable.
 - **Filas sin horas de la hoja semanal** (añadidas a mano o copiadas de la semana anterior): no se guardan en la base; el navegador las recuerda hasta que se imputa en ellas.
 - **Hojas de otras personas:**
   - un gestor abre la hoja de los miembros de sus proyectos, solo con las entradas de esos proyectos,
