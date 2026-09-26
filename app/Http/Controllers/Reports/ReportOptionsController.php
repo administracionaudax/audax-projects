@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers\Reports;
 
-use App\Domain\Reports\ReportFilters;
-use App\Domain\Reports\ReportScope;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
@@ -21,11 +20,13 @@ use Illuminate\Http\Request;
  */
 class ReportOptionsController extends Controller
 {
+    use BuildsReportScope;
+
     public function __invoke(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
-        $scope = new ReportScope($user, ReportFilters::fromQuery([]));
+        $scope = $this->baseReportScope($request);
         $isAdmin = $user->isAdmin();
         $managed = $user->managedDepartmentIds();
 

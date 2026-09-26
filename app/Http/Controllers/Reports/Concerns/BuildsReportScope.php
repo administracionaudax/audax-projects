@@ -27,6 +27,17 @@ trait BuildsReportScope
     }
 
     /**
+     * Alcance sin filtros (el mes actual): lo que la persona puede ver, sin acotar por la URL.
+     */
+    protected function baseReportScope(Request $request): ReportScope
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return new ReportScope($user, ReportFilters::fromQuery([]));
+    }
+
+    /**
      * Props comunes de la barra de filtros (contrato con resources/js/types/reports.ts: ReportFiltersProps).
      *
      * @return array<string, mixed>
