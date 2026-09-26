@@ -106,6 +106,30 @@ Los ha pedido el propietario el 26/09 y se han sacado de audaxstudio.com: `Logo-
   - `apple-touch-icon.png` y los iconos de la PWA: triángulo blanco sobre navy, con versión *maskable*.
 - Si llega una versión oficial distinta (por ejemplo, con «Studio»), se sustituye en esos puntos.
 
+### D-026 · Endurecimiento tras la revisión adversarial (26/09)
+La revisión confirmó 42 hallazgos (unos 33 distintos): ningún crítico ni alto, 13 medios y el resto bajos. Todos corregidos, con tests:
+- **Sesiones:**
+  - `auth.session` (AuthenticateSession) en todo el grupo web,
+  - cerrar una sesión rota el «Recordarme»,
+  - cambiar la contraseña cierra las demás sesiones,
+  - restablecerla cierra todas,
+  - desactivar a un usuario cierra sus sesiones y su «Recordarme».
+  Servicio `App\Auth\SessionTerminator`.
+- **Registro público:** `/forgot-password` responde igual exista o no el correo, tiene límite por IP y por correo, y envía el email por la cola `mail`. El login iguala tiempos con un hash ficticio.
+- **Contraseñas:** se quita `Password::uncompromised()`, que consulta el servicio externo HIBP, por la regla del SPEC «ningún dato a terceros». Se mantienen: mínimo 12 caracteres, mayúsculas y minúsculas, números y símbolos.
+- **Correo del perfil:** se guarda en minúsculas, con índice único `lower(email)` en PostgreSQL, y **cambiarlo exige la contraseña actual**.
+- **Accesos:** se registran los códigos 2FA fallidos. El panel de Horizon exige sesión, usuario activo y 2FA. Las rutas de Fortify pasan por `active`.
+- **`app:install`** no convierte en admin a un usuario existente salvo con `--promote`.
+- **Arranque y `/health`:** fuera de local y testing la app exige `SESSION_DRIVER=database`, y `/health` lo comprueba.
+- **`robots.txt`** con `Disallow: /`, además del noindex. La extensión `unaccent` se crea por migración.
+- **Accesibilidad:**
+  - anillo de foco opaco (≥ 3:1),
+  - texto sobre el degradado AA en toda su superficie (velo navy),
+  - un `h1` por página,
+  - etiquetas ARIA y textos de gráficas en español,
+  - QR del 2FA sin invertir en oscuro.
+- **Pendiente para cuando haya SMTP (Fase 7):** avisar al correo anterior cuando se cambie el correo.
+
 ## 26/09/2026: Dudas de la Fase 1 resueltas con el propietario
 
 ### D-019 · Exceso de bolsa en una sola entrada **[cambia el SPEC §4.4, §8.6 y la aceptación de la Fase 1]**
