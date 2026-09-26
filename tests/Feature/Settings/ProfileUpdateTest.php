@@ -15,6 +15,7 @@ test('se puede actualizar el nombre y el correo', function () {
         ->patch(route('profile.update'), [
             'name' => 'Nombre Nuevo',
             'email' => 'nuevo@example.com',
+            'current_password' => 'password',
         ])
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('profile.edit'));
@@ -24,6 +25,69 @@ test('se puede actualizar el nombre y el correo', function () {
     expect($user->name)->toBe('Nombre Nuevo')
         ->and($user->email)->toBe('nuevo@example.com')
         ->and($user->email_verified_at)->toBeNull();
+});
+
+test('cambiar el correo exige la contraseña actual', function (?string $password, string $error) {
+    $user = userWithRole('employee', ['email' => 'ana@example.com']);
+
+    $this->actingAs($user)
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), array_filter([
+            'name' => $user->name,
+            'email' => 'atacante@example.com',
+            'current_password' => $password,
+        ]))
+        ->assertRedirect(route('profile.edit'))
+        ->assertSessionHasErrors(['current_password' => $error]);
+
+    expect($user->refresh()->email)->toBe('ana@example.com');
+})->with([
+    'sin contraseña' => [null, 'El campo contraseña actual es obligatorio.'],
+    'con una contraseña incorrecta' => ['incorrecta', 'La contraseña no es correcta.'],
+]);
+
+test('cambiar solo el nombre no pide la contraseña', function () {
+    $user = userWithRole('employee', ['email' => 'ana@example.com']);
+
+    $this->actingAs($user)
+        ->patch(route('profile.update'), ['name' => 'Ana Nueva', 'email' => ' Ana@Example.com '])
+        ->assertSessionHasNoErrors();
+
+    expect($user->refresh()->name)->toBe('Ana Nueva')
+        ->and($user->email)->toBe('ana@example.com');
+});
+
+test('el correo se guarda en minúsculas y se puede seguir iniciando sesión', function () {
+    $user = userWithRole('employee', ['email' => 'ana@example.com']);
+
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => '  Ana.Nueva@AudaxStudio.com ',
+            'current_password' => 'password',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($user->refresh()->email)->toBe('ana.nueva@audaxstudio.com');
+
+    $this->post(route('logout'));
+    $this->assertGuest();
+
+    $this->post(route('login.store'), ['email' => 'Ana.Nueva@AudaxStudio.com', 'password' => 'password']);
+    $this->assertAuthenticatedAs($user);
+});
+
+test('no se puede usar el correo de otra persona cambiando las mayúsculas', function () {
+    userWithRole('employee', ['email' => 'luis@example.com']);
+    $user = userWithRole('employee');
+
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => 'LUIS@example.com',
+            'current_password' => 'password',
+        ])
+        ->assertSessionHasErrors('email');
 });
 
 test('si el correo no cambia, se mantiene verificado', function () {
