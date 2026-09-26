@@ -63,6 +63,7 @@ export function ClientHourBankCard({
                     name={bank.name}
                     consumed={bank.consumed_minutes}
                     total={bank.total_minutes}
+                    overage={bank.overage_minutes}
                     committed={bank.committed_minutes}
                     thresholds={thresholds}
                 />

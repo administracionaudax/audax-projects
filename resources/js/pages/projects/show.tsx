@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
+import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { HourBankCard } from '@/components/hour-banks/hour-bank-card';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { PageSection } from '@/components/projects-list/page-section';
@@ -46,6 +47,7 @@ export default function ProjectShow({
         ],
     });
 
+    const thresholds = useHourBankThresholds();
     const owner = managers.find(
         (manager) => manager.id === project.owner_user_id,
     );
@@ -168,6 +170,7 @@ export default function ProjectShow({
                                                 projectId={project.id}
                                                 bank={bank}
                                                 headingLevel="h3"
+                                                thresholds={thresholds}
                                             />
                                         ))}
                                     </div>

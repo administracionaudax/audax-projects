@@ -4,7 +4,10 @@ import type { ReactNode } from 'react';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { HourBankStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
-import { HourBankActions } from '@/components/hour-banks/hour-bank-actions';
+import {
+    HourBankActions,
+    useHourBankThresholds,
+} from '@/components/hour-banks/hour-bank-actions';
 import { HourBankBreakdownTable } from '@/components/hour-banks/hour-bank-breakdown';
 import { bankDates } from '@/components/hour-banks/hour-bank-card';
 import { HourBankEntriesTable } from '@/components/hour-banks/hour-bank-entries-table';
@@ -43,6 +46,7 @@ export default function HourBankShow({
 }: HourBankShowProps) {
     const can = useAbilities();
     const errors = usePage().props.errors as Record<string, string> | undefined;
+    const thresholds = useHourBankThresholds();
 
     setLayoutProps({
         breadcrumbs: [
@@ -113,7 +117,9 @@ export default function HourBankShow({
                             name={bank.name}
                             consumed={bank.consumed_minutes}
                             total={bank.total_minutes}
+                            overage={bank.overage_minutes}
                             committed={bank.committed_minutes}
+                            thresholds={thresholds}
                         />
 
                         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">

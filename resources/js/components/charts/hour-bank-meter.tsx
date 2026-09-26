@@ -15,6 +15,11 @@ type HourBankMeterProps = {
     consumed: number;
     /** Minutos contratados. */
     total: number;
+    /**
+     * Exceso calculado por el servidor (overage_minutes). Con él, el saldo y el color coinciden
+     * con remaining_minutes y el estado de la bolsa. Sin él, se deduce de consumido − total.
+     */
+    overage?: number | null;
     /** Estimación restante de las tareas abiertas de la bolsa, en minutos. */
     committed?: number;
     /**
@@ -34,17 +39,19 @@ export function HourBankMeter({
     name,
     consumed,
     total,
+    overage,
     committed = 0,
     thresholds,
     className,
 }: HourBankMeterProps) {
-    const f = hourBankFigures(consumed, total, committed);
+    const f = hourBankFigures(consumed, total, committed, overage);
     const alerts = hourBankAlerts(thresholds);
-    const level = hourBankLevel(f.consumed, f.total, alerts[0]);
+    const level = hourBankLevel(f.inBank, f.total, alerts[0]);
     const meta = HOUR_BANK_LEVELS[level];
     const Icon = meta.icon;
-    const scale = Math.max(f.total, f.consumed, 1);
-    const inside = Math.min(f.consumed, f.total);
+    // El exceso se pinta siempre a partir del total (fuera de lo contratado).
+    const scale = Math.max(f.total + f.overage, f.inBank, 1);
+    const inside = Math.min(f.inBank, f.total);
     const pct = (minutes: number) => `${(minutes / scale) * 100}%`;
 
     const valueText = t(
@@ -108,7 +115,8 @@ export function HourBankMeter({
                     className={cn(
                         'absolute inset-y-0 left-0 rounded-l-[3px]',
                         meta.bar,
-                        f.overage === 0 && 'rounded-r-[3px]',
+                        (f.overage === 0 || inside < f.total) &&
+                            'rounded-r-[3px]',
                     )}
                     style={{ width: pct(inside) }}
                 />
@@ -153,7 +161,7 @@ export function HourBankMeter({
                 />
             </dl>
 
-            {f.shortfall > 0 && f.overage === 0 ? (
+            {f.shortfall > 0 && (f.overage === 0 || f.remaining > 0) ? (
                 <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">
                     <TriangleAlert
                         aria-hidden="true"

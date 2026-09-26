@@ -3,6 +3,7 @@ import { CircleAlert, SearchX, TriangleAlert, Wallet, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useId } from 'react';
 import { EmptyState } from '@/components/empty-state';
+import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { HourBankHistory } from '@/components/hour-banks/hour-bank-history';
 import { HourBanksOverviewTable } from '@/components/hour-banks/hour-banks-overview-table';
 import { overviewQuery } from '@/components/hour-banks/overview-query';
@@ -38,6 +39,7 @@ export default function HourBanksIndex({
     options,
 }: HourBanksIndexProps) {
     const id = useId();
+    const thresholds = useHourBankThresholds();
     const filtered = Object.keys(overviewQuery(filters)).length > 0;
     const client = options.clients.find(
         (option) => option.id === filters.cliente,
@@ -219,7 +221,10 @@ export default function HourBanksIndex({
                         )}
                     />
                 ) : (
-                    <HourBanksOverviewTable banks={banks.data} />
+                    <HourBanksOverviewTable
+                        banks={banks.data}
+                        thresholds={thresholds}
+                    />
                 )}
 
                 <ListPagination

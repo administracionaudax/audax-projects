@@ -337,10 +337,12 @@ describe('bolsas de horas (SPEC §8)', () => {
         expect(hourBankFigures(3150, 3000, 360)).toMatchObject({
             consumed: 3150,
             total: 3000,
+            inBank: 3000,
             remaining: 0,
             overage: 150,
             committed: 360,
-            shortfall: 510,
+            // Lo que va dentro (3000) + comprometido (360) − total.
+            shortfall: 360,
             ratio: 1.05,
         });
         expect(hourBankFigures(2460, 3000, 840)).toMatchObject({
@@ -349,5 +351,20 @@ describe('bolsas de horas (SPEC §8)', () => {
             shortfall: 300,
         });
         expect(hourBankFigures(1875, 3000, 600).shortfall).toBe(0);
+    });
+
+    it('con el exceso del servidor, el saldo es el total menos lo que va dentro (D-019)', () => {
+        // Bloqueada en exceso (1 h) y el total ampliado a 2 h después: queda 1 h libre.
+        expect(hourBankFigures(120, 120, 30, 60)).toMatchObject({
+            consumed: 120,
+            inBank: 60,
+            remaining: 60,
+            overage: 60,
+            shortfall: 0,
+        });
+        // Sin el dato del servidor, se deduce de consumido − total.
+        expect(hourBankFigures(150, 120, 0).overage).toBe(30);
+        // Nunca más exceso que consumo.
+        expect(hourBankFigures(30, 120, 0, 90).overage).toBe(30);
     });
 });

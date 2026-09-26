@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { FolderKanban, Plus, SearchX } from 'lucide-react';
 import { useCallback } from 'react';
 import { EmptyState } from '@/components/empty-state';
+import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { ListPagination } from '@/components/projects-list/list-pagination';
 import {
     hasActiveProjectFilters,
@@ -26,6 +27,7 @@ export default function ProjectsIndex({
     options,
 }: ProjectsIndexProps) {
     const can = useAbilities();
+    const thresholds = useHourBankThresholds();
 
     const applyFilters = useCallback((next: ProjectListFilters) => {
         router.get(index.url({ query: projectFiltersQuery(next) }), undefined, {
@@ -85,7 +87,10 @@ export default function ProjectsIndex({
                                 )}
                             />
                         ) : (
-                            <ProjectsTable projects={projects.data} />
+                            <ProjectsTable
+                                projects={projects.data}
+                                thresholds={thresholds}
+                            />
                         )}
 
                         <ListPagination

@@ -20,18 +20,32 @@ export function useFirstThreshold(): number {
 }
 
 /**
- * ¿Se ofrece renovar? Solo si está agotada o «próxima a agotarse» (consumo ≥ primer umbral,
- * D-035) y quien mira puede renovarla.
+ * Umbrales de alerta configurados, en % (config.hour_bank_thresholds), para los medidores de
+ * bolsa: el ámbar empieza en el primero (D-035). Sin configuración, los de por defecto.
+ */
+export function useHourBankThresholds(): readonly number[] | undefined {
+    return usePage().props.config?.hour_bank_thresholds;
+}
+
+/**
+ * ¿Se ofrece renovar? Solo si está agotada o «próxima a agotarse» (lo que va dentro de la bolsa
+ * ≥ primer umbral, D-035, como HourBankRenewal::isDue) y quien mira puede renovarla.
  */
 export function offersRenewal(
-    bank: Pick<HourBankCard, 'status' | 'consumed_pct'>,
+    bank: Pick<
+        HourBankCard,
+        'status' | 'consumed_minutes' | 'overage_minutes' | 'total_minutes'
+    >,
     can: Pick<HourBankAbilities, 'renew'>,
     threshold: number,
 ): boolean {
+    const inBank = bank.consumed_minutes - bank.overage_minutes;
+
     return (
         can.renew &&
         (bank.status === 'exhausted' ||
-            (bank.status === 'active' && bank.consumed_pct >= threshold))
+            (bank.status === 'active' &&
+                inBank * 100 >= threshold * bank.total_minutes))
     );
 }
 

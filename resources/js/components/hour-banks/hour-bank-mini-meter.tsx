@@ -1,5 +1,6 @@
 import {
     HOUR_BANK_LEVELS,
+    hourBankAlerts,
     hourBankFigures,
     hourBankLevel,
 } from '@/components/charts/thresholds';
@@ -9,25 +10,36 @@ import { cn } from '@/lib/utils';
 
 /**
  * Barra de consumo compacta para tablas (listado de proyectos y vista global de bolsas): color
- * por umbral (verde, ámbar, rojo; D-035) con icono y porcentaje, nunca solo color.
+ * por umbral (verde, ámbar desde el primer umbral configurado, rojo; D-035) con icono y
+ * porcentaje, nunca solo color. Mismas cifras que HourBankMeter.
  */
 export function HourBankMiniMeter({
     name,
     consumed,
     total,
+    overage,
+    thresholds,
     className,
 }: {
     /** Para el nombre accesible («Consumo de Bolsa Q4»). */
     name: string;
     consumed: number;
     total: number;
+    /** Exceso calculado por el servidor (overage_minutes). */
+    overage?: number | null;
+    /** Umbrales configurados en % (config.hour_bank_thresholds). Por defecto, 75, 90 y 100. */
+    thresholds?: readonly number[];
     className?: string;
 }) {
-    const figures = hourBankFigures(consumed, total);
-    const level = hourBankLevel(figures.consumed, figures.total);
+    const figures = hourBankFigures(consumed, total, 0, overage);
+    const level = hourBankLevel(
+        figures.inBank,
+        figures.total,
+        hourBankAlerts(thresholds)[0],
+    );
     const meta = HOUR_BANK_LEVELS[level];
     const Icon = meta.icon;
-    const inside = Math.min(figures.consumed, figures.total);
+    const inside = Math.min(figures.inBank, figures.total);
     const width = figures.total > 0 ? (inside / figures.total) * 100 : 0;
 
     return (

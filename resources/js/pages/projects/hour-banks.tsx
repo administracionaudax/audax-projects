@@ -2,7 +2,10 @@ import { Head, router, setLayoutProps, usePage } from '@inertiajs/react';
 import { Plus, TriangleAlert, Wallet } from 'lucide-react';
 import { useId } from 'react';
 import { EmptyState } from '@/components/empty-state';
-import { HourBankActions } from '@/components/hour-banks/hour-bank-actions';
+import {
+    HourBankActions,
+    useHourBankThresholds,
+} from '@/components/hour-banks/hour-bank-actions';
 import { HourBankCard } from '@/components/hour-banks/hour-bank-card';
 import { HourBankFormDialog } from '@/components/hour-banks/hour-bank-form-dialog';
 import { HourBankHistory } from '@/components/hour-banks/hour-bank-history';
@@ -34,6 +37,7 @@ export default function ProjectHourBanks({
 }: ProjectHourBanksProps) {
     const id = useId();
     const errors = usePage().props.errors as Record<string, string> | undefined;
+    const thresholds = useHourBankThresholds();
 
     setLayoutProps({
         breadcrumbs: [
@@ -130,6 +134,7 @@ export default function ProjectHourBanks({
                                         projectId={project.id}
                                         bank={bank}
                                         headingLevel="h3"
+                                        thresholds={thresholds}
                                         actions={
                                             <HourBankActions
                                                 projectId={project.id}

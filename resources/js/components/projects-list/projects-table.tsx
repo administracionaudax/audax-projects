@@ -13,7 +13,14 @@ import type { ProjectListItem } from '@/types';
  * Tabla del listado de proyectos (SPEC §6): código, nombre, cliente, estado, tipo, gestor
  * principal, consumo de bolsas y fechas. En móvil se desplaza dentro de su contenedor.
  */
-export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
+export function ProjectsTable({
+    projects,
+    thresholds,
+}: {
+    projects: ProjectListItem[];
+    /** Umbrales configurados en % (config.hour_bank_thresholds; D-035). */
+    thresholds?: readonly number[];
+}) {
     return (
         <div
             className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
@@ -103,7 +110,10 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
                                 {project.owner?.name ?? ''}
                             </td>
                             <td className="px-3 py-2">
-                                <BankConsumption project={project} />
+                                <BankConsumption
+                                    project={project}
+                                    thresholds={thresholds}
+                                />
                             </td>
                             <td className="tabular px-3 py-2 whitespace-nowrap">
                                 <ProjectDates project={project} />
@@ -116,7 +126,13 @@ export function ProjectsTable({ projects }: { projects: ProjectListItem[] }) {
     );
 }
 
-function BankConsumption({ project }: { project: ProjectListItem }) {
+function BankConsumption({
+    project,
+    thresholds,
+}: {
+    project: ProjectListItem;
+    thresholds?: readonly number[];
+}) {
     const banks = project.hour_banks;
 
     if (banks === null) {
@@ -141,6 +157,8 @@ function BankConsumption({ project }: { project: ProjectListItem }) {
                 name={project.name}
                 consumed={banks.consumed_minutes}
                 total={banks.total_minutes}
+                overage={banks.overage_minutes}
+                thresholds={thresholds}
             />
             <span className="tabular text-xs text-muted-foreground">
                 {t('projects.table.bank_figures', {

@@ -502,6 +502,9 @@ describe('detalle de bolsa', () => {
                     ],
                     bank: {
                         ...detailProps().bank,
+                        consumed_minutes: 480,
+                        remaining_minutes: 120,
+                        in_bank_minutes: 480,
                         consumed_pct: 80,
                         can: {
                             update: true,

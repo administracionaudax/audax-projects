@@ -80,34 +80,37 @@ function bank(overrides: Partial<HourBankCardData> = {}): HourBankCardData {
 describe('offersRenewal (D-035)', () => {
     const can = { renew: true };
 
+    /** Bolsa de 10 h con esos minutos consumidos (y de exceso). */
+    function state(
+        status: 'active' | 'exhausted' | 'closed' | 'renewed',
+        consumed: number,
+        overage = 0,
+    ) {
+        return {
+            status,
+            consumed_minutes: consumed,
+            overage_minutes: overage,
+            total_minutes: 600,
+        };
+    }
+
     it('se ofrece en una bolsa agotada o desde el primer umbral', () => {
-        expect(
-            offersRenewal({ status: 'exhausted', consumed_pct: 100 }, can, 75),
-        ).toBe(true);
-        expect(
-            offersRenewal({ status: 'active', consumed_pct: 75 }, can, 75),
-        ).toBe(true);
-        expect(
-            offersRenewal({ status: 'active', consumed_pct: 74.9 }, can, 75),
-        ).toBe(false);
-        expect(
-            offersRenewal({ status: 'active', consumed_pct: 71 }, can, 70),
-        ).toBe(true);
+        expect(offersRenewal(state('exhausted', 600), can, 75)).toBe(true);
+        expect(offersRenewal(state('active', 450), can, 75)).toBe(true);
+        expect(offersRenewal(state('active', 449), can, 75)).toBe(false);
+        expect(offersRenewal(state('active', 426), can, 70)).toBe(true);
+    });
+
+    it('cuenta lo que va dentro de la bolsa, como el servidor: el exceso de bloqueadas no la acerca a agotarse', () => {
+        // 10 h consumidas pero 5 h de exceso ya facturado: dentro solo hay 5 h (50 %).
+        expect(offersRenewal(state('active', 600, 300), can, 75)).toBe(false);
     });
 
     it('nunca en bolsas cerradas o renovadas, ni sin permiso', () => {
+        expect(offersRenewal(state('closed', 600), can, 75)).toBe(false);
+        expect(offersRenewal(state('renewed', 600), can, 75)).toBe(false);
         expect(
-            offersRenewal({ status: 'closed', consumed_pct: 100 }, can, 75),
-        ).toBe(false);
-        expect(
-            offersRenewal({ status: 'renewed', consumed_pct: 100 }, can, 75),
-        ).toBe(false);
-        expect(
-            offersRenewal(
-                { status: 'exhausted', consumed_pct: 120 },
-                { renew: false },
-                75,
-            ),
+            offersRenewal(state('exhausted', 720, 120), { renew: false }, 75),
         ).toBe(false);
     });
 });
@@ -191,6 +194,93 @@ describe('HourBankCard', () => {
             'Cerrada el 26/09/2026 con 0:00 sin consumir.',
         );
         expect(card.textContent).toContain('No admite exceso');
+    });
+});
+
+describe('medidores de bolsa: umbrales configurados y exceso del servidor (D-035, D-019)', () => {
+    /** Color de la barra del medidor (success, warning o danger). */
+    function levelOf(container: HTMLElement): string | null {
+        const bar = within(container)
+            .getByRole('meter')
+            .querySelector('.bg-success, .bg-warning, .bg-danger');
+
+        return (
+            bar
+                ?.getAttribute('class')
+                ?.match(/bg-(success|warning|danger)/)?.[1] ?? null
+        );
+    }
+
+    it('la tarjeta y la tabla global (mismo medidor que el listado de proyectos) ponen ámbar desde el primer umbral configurado', () => {
+        // 65 % con umbrales 60/90/100: ámbar, como el filtro «próximas» y el botón Renovar.
+        const at65 = bank({
+            consumed_minutes: 390,
+            remaining_minutes: 210,
+            in_bank_minutes: 390,
+            consumed_pct: 65,
+            committed_minutes: 0,
+        });
+
+        const card = render(
+            <HourBankCard
+                projectId={2}
+                bank={at65}
+                thresholds={[60, 90, 100]}
+            />,
+        );
+        expect(levelOf(card.container)).toBe('warning');
+        card.unmount();
+
+        const table = render(
+            <HourBanksOverviewTable
+                banks={[
+                    {
+                        ...at65,
+                        project: {
+                            id: 2,
+                            code: 'ACME-WEB',
+                            name: 'Web',
+                            color: '#0171FF',
+                            client: null,
+                        },
+                    },
+                ]}
+                thresholds={[60, 90, 100]}
+            />,
+        );
+        expect(levelOf(table.container)).toBe('warning');
+        table.unmount();
+
+        // Con los umbrales por defecto (75 %), sigue en verde.
+        const byDefault = render(<HourBankCard projectId={2} bank={at65} />);
+        expect(levelOf(byDefault.container)).toBe('success');
+    });
+
+    it('con una bloqueada en exceso y el total ampliado, el saldo y el color salen de lo que va dentro', () => {
+        render(
+            <HourBankCard
+                projectId={2}
+                bank={bank({
+                    total_minutes: 120,
+                    consumed_minutes: 120,
+                    overage_minutes: 60,
+                    remaining_minutes: 60,
+                    in_bank_minutes: 60,
+                    consumed_pct: 100,
+                    committed_minutes: 0,
+                })}
+            />,
+        );
+
+        const card = screen.getByRole('article');
+        const meter = within(card).getByRole('meter');
+        expect(meter.getAttribute('aria-valuenow')).toBe('60');
+        expect(levelOf(card)).toBe('success');
+        expect(card.textContent).toContain('+1:00 de exceso');
+        // Restantes: 1:00 (no 0:00).
+        expect(
+            within(card).getByText('Restantes').nextElementSibling?.textContent,
+        ).toBe('1:00');
     });
 });
 

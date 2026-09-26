@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { TriangleAlert } from 'lucide-react';
+import { hourBankFigures } from '@/components/charts/thresholds';
 import { HourBankStatusBadge } from '@/components/domain/badges';
 import { bankDates } from '@/components/hour-banks/hour-bank-card';
 import { HourBankMiniMeter } from '@/components/hour-banks/hour-bank-mini-meter';
@@ -15,7 +16,14 @@ import type { HourBankCard } from '@/types';
  * cifras, el exceso en rojo con icono, las horas comprometidas (y su aviso), las fechas y el
  * proyecto. En móvil se desplaza dentro de su contenedor.
  */
-export function HourBanksOverviewTable({ banks }: { banks: HourBankCard[] }) {
+export function HourBanksOverviewTable({
+    banks,
+    thresholds,
+}: {
+    banks: HourBankCard[];
+    /** Umbrales configurados en % (config.hour_bank_thresholds; D-035). */
+    thresholds?: readonly number[];
+}) {
     return (
         <div
             className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
@@ -63,12 +71,13 @@ export function HourBanksOverviewTable({ banks }: { banks: HourBankCard[] }) {
                 </thead>
                 <tbody>
                     {banks.map((bank) => {
-                        const shortfall = Math.max(
-                            bank.consumed_minutes +
-                                bank.committed_minutes -
-                                bank.total_minutes,
-                            0,
+                        const figures = hourBankFigures(
+                            bank.consumed_minutes,
+                            bank.total_minutes,
+                            bank.committed_minutes,
+                            bank.overage_minutes,
                         );
+                        const shortfall = figures.shortfall;
 
                         return (
                             <tr
@@ -130,6 +139,8 @@ export function HourBanksOverviewTable({ banks }: { banks: HourBankCard[] }) {
                                         name={bank.name}
                                         consumed={bank.consumed_minutes}
                                         total={bank.total_minutes}
+                                        overage={bank.overage_minutes}
+                                        thresholds={thresholds}
                                     />
                                     <span className="tabular mt-1 block text-xs text-muted-foreground">
                                         {t('hour_banks.overview.figures', {
@@ -166,7 +177,8 @@ export function HourBanksOverviewTable({ banks }: { banks: HourBankCard[] }) {
                                 <td className="tabular px-3 py-2 text-right whitespace-nowrap">
                                     {formatMinutes(bank.committed_minutes)}
                                     {shortfall > 0 &&
-                                    bank.overage_minutes === 0 ? (
+                                    (figures.overage === 0 ||
+                                        figures.remaining > 0) ? (
                                         <span className="mt-0.5 flex items-center justify-end gap-1 text-xs text-foreground">
                                             <TriangleAlert
                                                 aria-hidden="true"

@@ -32,11 +32,14 @@ export function HourBankCard({
     bank,
     actions,
     headingLevel = 'h2',
+    thresholds,
 }: {
     projectId: number;
     bank: HourBankCardData;
     actions?: ReactNode;
     headingLevel?: 'h2' | 'h3';
+    /** Umbrales configurados en % (config.hour_bank_thresholds; D-035). */
+    thresholds?: readonly number[];
 }) {
     const Heading = headingLevel;
     const closed = bank.status === 'closed' || bank.status === 'renewed';
@@ -84,7 +87,9 @@ export function HourBankCard({
                 name={bank.name}
                 consumed={bank.consumed_minutes}
                 total={bank.total_minutes}
+                overage={bank.overage_minutes}
                 committed={bank.committed_minutes}
+                thresholds={thresholds}
             />
 
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

@@ -104,6 +104,8 @@ export const HOUR_BANK_ALERTS = [0.75, 0.9, 1] as const;
  * verde: < 75 % · ámbar: 75 % a < 100 % · rojo: ≥ 100 % (agotada, con o sin exceso).
  * `firstAlert` (proporción, p. ej. 0.8) sustituye al 75 % cuando los umbrales están configurados
  * (props compartidas config.hour_bank_thresholds, D-035: ámbar desde el primer umbral).
+ * Los medidores le pasan lo que va dentro de la bolsa (HourBankFigures.inBank), como el servidor
+ * al decidir si está agotada o «próxima a agotarse».
  */
 export function hourBankLevel(
     consumedMinutes: number,
@@ -171,31 +173,48 @@ export const HOUR_BANK_LEVELS: Record<
 export type HourBankFigures = {
     consumed: number;
     total: number;
+    /** Lo que va dentro de la bolsa: consumido − exceso (D-019). */
+    inBank: number;
+    /** Saldo: total − lo que va dentro (el exceso no ocupa saldo). */
     remaining: number;
     overage: number;
     committed: number;
-    /** Minutos en que consumido + comprometido supera el total (0 si no lo supera). */
+    /** Minutos en que lo que va dentro + comprometido supera el total (0 si no lo supera). */
     shortfall: number;
+    /** Consumido / total (puede pasar del 100 %). */
     ratio: number;
 };
 
-/** Cifras de la tarjeta de bolsa, todas en minutos enteros. */
+/**
+ * Cifras de la tarjeta de bolsa, todas en minutos enteros. `overageMinutes` es el exceso que
+ * calcula el servidor (overage_minutes, suma del exceso de cada entrada, D-019/D-035): con él, el
+ * saldo y lo que va dentro coinciden siempre con remaining_minutes y el estado de la bolsa, también
+ * si hay entradas bloqueadas en exceso y el total se amplió después. Sin él, se deduce de
+ * consumido − total.
+ */
 export function hourBankFigures(
     consumedMinutes: number,
     totalMinutes: number,
     committedMinutes = 0,
+    overageMinutes?: number | null,
 ): HourBankFigures {
     const consumed = Math.max(Math.round(consumedMinutes), 0);
     const total = Math.max(Math.round(totalMinutes), 0);
     const committed = Math.max(Math.round(committedMinutes), 0);
+    const overage =
+        overageMinutes === undefined || overageMinutes === null
+            ? Math.max(consumed - total, 0)
+            : Math.min(Math.max(Math.round(overageMinutes), 0), consumed);
+    const inBank = consumed - overage;
 
     return {
         consumed,
         total,
-        remaining: Math.max(total - consumed, 0),
-        overage: Math.max(consumed - total, 0),
+        inBank,
+        remaining: Math.max(total - inBank, 0),
+        overage,
         committed,
-        shortfall: Math.max(consumed + committed - total, 0),
+        shortfall: Math.max(inBank + committed - total, 0),
         ratio: total > 0 ? consumed / total : 0,
     };
 }
