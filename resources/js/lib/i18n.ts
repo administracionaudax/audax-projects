@@ -4,7 +4,7 @@
  * - Fuentes:
  *   · `lang/es.json`: textos de la Fase 0 y claves del backend (`__()` de Laravel lo lee),
  *   · `lang/ui/*.json`: textos del frontend por área desde la Fase 1 (shared, admin, clients,
- *     projects, hour-banks, tasks, time y notifications). Laravel no los lee.
+ *     projects, hour-banks, tasks, time, notifications y reports). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -21,6 +21,7 @@ import clients from '../../../lang/ui/clients.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
 import projects from '../../../lang/ui/projects.json';
+import reports from '../../../lang/ui/reports.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import time from '../../../lang/ui/time.json';
@@ -35,6 +36,7 @@ const messages = {
     ...tasks,
     ...time,
     ...notifications,
+    ...reports,
 };
 
 export type TranslationKey = keyof typeof messages;
