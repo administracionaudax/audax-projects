@@ -1,1 +1,24 @@
-{}
+{
+    "notifications.title": "Notificaciones",
+    "notifications.description": "Avisos de tus tareas, horas y bolsas.",
+    "notifications.bell": "Notificaciones",
+    "notifications.bell_unread": "Notificaciones: :count sin leer",
+    "notifications.unread_badge": ":count sin leer",
+    "notifications.filter.label": "Mostrar",
+    "notifications.filter.all": "Todas",
+    "notifications.filter.unread": "Sin leer",
+    "notifications.mark_all_read": "Marcar todas como leídas",
+    "notifications.mark_read": "Marcar como leída",
+    "notifications.see_all": "Ver todas",
+    "notifications.empty.title": "No tienes notificaciones",
+    "notifications.empty.description": "Aquí verás las asignaciones, menciones, horas aprobadas o devueltas y los avisos de bolsas.",
+    "notifications.empty_unread.title": "Estás al día",
+    "notifications.empty_unread.description": "No tienes notificaciones sin leer.",
+    "notifications.unread": "Sin leer",
+    "notifications.error": "No se han podido cargar las notificaciones.",
+    "notifications.previous": "Anteriores",
+    "notifications.next": "Siguientes",
+    "notifications.page": "Página :current de :last",
+    "notifications.today": "Hoy",
+    "notifications.yesterday": "Ayer"
+}
