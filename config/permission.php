@@ -116,9 +116,12 @@ return [
     /*
      * When set to true, the method for checking permissions will be registered on the gate.
      * Set this to false if you want to implement custom logic for checking permissions.
+     *
+     * Audax: desactivado. AppServiceProvider define una gate por cada App\Enums\Permission y un
+     * Gate::before que niega todo a los usuarios desactivados (el de spatie los dejaría pasar).
      */
 
-    'register_permission_check_method' => true,
+    'register_permission_check_method' => false,
 
     /*
      * When set to true, Laravel\Octane\Events\OperationTerminated event listener will be registered

@@ -3,15 +3,21 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Support\Timebox;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\LoginRateLimiter;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -29,8 +35,44 @@ class FortifyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureActions();
+        $this->configureAuthentication();
         $this->configureViews();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Inicio de sesión con email y contraseña que además rechaza a los usuarios desactivados
+     * (SPEC §14). Sin registro público: la feature registration no está activa en config/fortify.php.
+     */
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            return (new Timebox)->call(function () use ($request): ?User {
+                $email = Str::lower(trim((string) $request->input(Fortify::username())));
+                $password = (string) $request->input('password');
+
+                $user = $email === '' ? null : User::query()->where('email', $email)->first();
+
+                if ($user === null || ! Hash::check($password, $user->password)) {
+                    return null;
+                }
+
+                if (! $user->isActive()) {
+                    event(new Failed((string) config('fortify.guard', 'web'), $user, [Fortify::username() => $email]));
+                    app(LoginRateLimiter::class)->increment($request);
+
+                    throw ValidationException::withMessages([
+                        Fortify::username() => __('app.account_inactive'),
+                    ]);
+                }
+
+                if (Hash::needsRehash($user->password)) {
+                    $user->forceFill(['password' => $password])->save();
+                }
+
+                return $user;
+            }, 200_000);
+        });
     }
 
     /**
