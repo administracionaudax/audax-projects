@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { expectTheme, login, SIDEBAR_PATHS, USERS } from './support';
+import {
+    expectTheme,
+    login,
+    saveUserTheme,
+    SIDEBAR_PATHS,
+    USERS,
+} from './support';
 
 /**
  * Aceptación de la Fase 0 (SPEC §17): un usuario inicia sesión, navega, cambia el tema y cierra sesión.
@@ -45,6 +51,10 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
             .first()
             .click();
         await expectTheme(page, 'light');
+
+        // Deja la cuenta como la sembró el seeder («según el sistema»): el login aplica el tema
+        // guardado y no debe colarse en otros specs (F09).
+        await saveUserTheme(page, 'system');
     });
 
     await test.step('cerrar sesión', async () => {

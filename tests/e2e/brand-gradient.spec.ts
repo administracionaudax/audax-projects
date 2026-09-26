@@ -61,7 +61,8 @@ test('degradado con velo y texto AA en móvil y en escritorio', async ({
         });
     }
 
-    await login(page, USERS.admin);
+    // Otro usuario que el admin: el límite de intentos de login es por correo e IP.
+    await login(page, USERS.employee);
 
     for (const viewport of VIEWPORTS) {
         await test.step(`estado vacío grande a ${viewport.width} px`, async () => {
