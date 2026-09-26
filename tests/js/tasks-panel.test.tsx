@@ -330,6 +330,9 @@ describe('abrir y cerrar el panel', () => {
         const [url, options] = server.visit.mock.calls.at(-1) ?? [];
         expect(url).toBe('/proyectos/1/tareas?agrupar=tipo');
         expect(options).toMatchObject({ only: ['panel'] });
+
+        // Se cierra al momento, sin esperar a la respuesta del servidor.
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 });
 

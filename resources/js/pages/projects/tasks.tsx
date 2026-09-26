@@ -31,6 +31,13 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
     const lookups = buildTaskLookups(props);
     const [selection, setSelection] = useState<Set<number>>(new Set());
     const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
+    const [closedTaskId, setClosedTaskId] = useState<number | null>(null);
+
+    // Cuando el servidor confirma el cierre (panel vacío), se olvida: así «Atrás» en el navegador
+    // vuelve a abrir la tarea (patrón de estado derivado de React, sin efectos).
+    if (panel === null && closedTaskId !== null) {
+        setClosedTaskId(null);
+    }
 
     // La selección solo conserva tareas que siguen en la lista.
     const visibleIds = new Set(
@@ -42,6 +49,7 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
     const selected = new Set([...selection].filter((id) => visibleIds.has(id)));
 
     const openTask = (taskId: number) => {
+        setClosedTaskId(null);
         setLoadingTaskId(taskId);
         router.visit(withTaskParam(page.url, taskId), {
             only: ['panel'],
@@ -52,6 +60,8 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
     };
 
     const closeTask = () => {
+        // Se cierra al momento; la recarga parcial quita ?tarea= de la URL por detrás.
+        setClosedTaskId(panel?.task.id ?? null);
         setLoadingTaskId(null);
         router.visit(withTaskParam(page.url, null), {
             only: ['panel'],
@@ -203,6 +213,7 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
             <TaskPanel
                 panel={panel}
                 loading={loadingTaskId !== null}
+                closing={panel !== null && panel.task.id === closedTaskId}
                 onOpen={openTask}
                 onClose={closeTask}
             />

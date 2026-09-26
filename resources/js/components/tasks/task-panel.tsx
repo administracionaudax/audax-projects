@@ -412,15 +412,18 @@ function PanelBody({
 export function TaskPanel({
     panel,
     loading,
+    closing = false,
     onOpen,
     onClose,
 }: {
     panel: TaskPanelData | null;
     loading: boolean;
+    /** Se está cerrando: se oculta ya, sin esperar a la respuesta del servidor. */
+    closing?: boolean;
     onOpen: (taskId: number) => void;
     onClose: () => void;
 }) {
-    const open = panel !== null || loading;
+    const open = (panel !== null && !closing) || loading;
     const parent = panel?.parent ?? null;
 
     return (
