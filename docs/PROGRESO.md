@@ -39,7 +39,7 @@ _Última actualización: 26/09/2026 13:20_
 3. Cerrar las dudas abiertas de `DECISIONES.md` antes de la Fase 1.
 
 ## Bloqueos: necesitamos del usuario
-- [ ] (Opcional) Añadir la clave `~/.ssh/audax_projects_ed25519.pub` al usuario `audaxprojects` para desplegar sin root (D-018).
+- [x] Clave SSH del usuario `audaxprojects` para desplegar sin root (hecho por el propietario el 26/09, D-018).
 - [ ] Confirmar la propuesta D-013 (Vite+ en lugar de ESLint y Prettier).
 - [ ] Más adelante: datos SMTP, logo SVG y favicon, destino de los backups.
 
