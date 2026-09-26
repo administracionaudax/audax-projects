@@ -1,4 +1,3 @@
-import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';
 import {
     DropdownMenu,
@@ -13,14 +12,16 @@ import {
 } from '@/components/ui/sidebar';
 import { UserInfo } from '@/components/user-info';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useUser } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { t } from '@/lib/i18n';
 
 export function NavUser() {
-    const { auth } = usePage().props;
+    const user = useUser();
     const { state } = useSidebar();
     const isMobile = useIsMobile();
 
-    if (!auth.user) {
+    if (!user) {
         return null;
     }
 
@@ -34,12 +35,18 @@ export function NavUser() {
                             className="group text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent"
                             data-test="sidebar-menu-button"
                         >
-                            <UserInfo user={auth.user} />
-                            <ChevronsUpDown className="ml-auto size-4" />
+                            <UserInfo user={user} />
+                            <span className="sr-only">
+                                {t('user_menu.open')}
+                            </span>
+                            <ChevronsUpDown
+                                aria-hidden="true"
+                                className="ml-auto size-4"
+                            />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-md"
                         align="end"
                         side={
                             isMobile
@@ -49,7 +56,7 @@ export function NavUser() {
                                   : 'bottom'
                         }
                     >
-                        <UserMenuContent user={auth.user} />
+                        <UserMenuContent user={user} />
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
