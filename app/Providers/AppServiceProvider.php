@@ -28,7 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->guardSharedRedis();
+        if (self::guardsRuntime($this->app->runningInConsole(), $_SERVER['argv'][1] ?? null)) {
+            $this->guardSharedRedis();
+        }
+
         $this->configureDefaults();
         $this->configureGates();
     }
@@ -54,6 +57,28 @@ class AppServiceProvider extends ServiceProvider
 
         // Datos económicos (costes, tarifas, rentabilidad): la gate view-financials definida arriba
         // exige el permiso del mismo nombre, que el admin recibe por defecto (RolesAndPermissionsSeeder).
+    }
+
+    /**
+     * Comandos de consola que mantienen conexiones con Redis (colas, Horizon, scheduler, Reverb).
+     *
+     * @var list<string>
+     */
+    public const array LONG_RUNNING_COMMANDS = [
+        'horizon', 'horizon:work', 'horizon:supervisor',
+        'queue:work', 'queue:listen',
+        'schedule:work', 'schedule:run',
+        'reverb:start',
+    ];
+
+    /**
+     * La guarda de Redis se aplica a las peticiones web y a los procesos de larga duración, que son
+     * los que usarían el Redis compartido. No a comandos de mantenimiento como package:discover,
+     * que Composer lanza sin .env (y por tanto como "production") en una instalación limpia o en la CI.
+     */
+    public static function guardsRuntime(bool $runningInConsole, ?string $command): bool
+    {
+        return ! $runningInConsole || in_array($command, self::LONG_RUNNING_COMMANDS, true);
     }
 
     /**

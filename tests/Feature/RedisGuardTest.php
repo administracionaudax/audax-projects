@@ -53,3 +53,13 @@ test('por defecto la configuración apunta al puerto 16379', function () {
     expect((string) config('database.redis.default.port'))->toBe('16379')
         ->and((string) config('database.redis.cache.port'))->toBe('16379');
 });
+
+test('la guarda se aplica a peticiones web y a procesos que usan Redis, no a comandos de mantenimiento', function () {
+    expect(AppServiceProvider::guardsRuntime(false, null))->toBeTrue()
+        ->and(AppServiceProvider::guardsRuntime(true, 'horizon'))->toBeTrue()
+        ->and(AppServiceProvider::guardsRuntime(true, 'queue:work'))->toBeTrue()
+        ->and(AppServiceProvider::guardsRuntime(true, 'schedule:work'))->toBeTrue()
+        ->and(AppServiceProvider::guardsRuntime(true, 'package:discover'))->toBeFalse()
+        ->and(AppServiceProvider::guardsRuntime(true, 'key:generate'))->toBeFalse()
+        ->and(AppServiceProvider::guardsRuntime(true, null))->toBeFalse();
+});
