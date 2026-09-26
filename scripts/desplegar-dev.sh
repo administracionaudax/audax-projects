@@ -57,5 +57,8 @@ fi
 EOF
 
 echo "== Comprobación"
-curl -s -o /dev/null -w "   /login  → %{http_code}\n" https://projects.audaxstudio.com/login
+code=$(curl -s -o /dev/null -w "%{http_code}" https://projects.audaxstudio.com/login)
+hdr=$(curl -s -D - -o /dev/null https://projects.audaxstudio.com/login | wc -c | tr -d ' ')
+echo "   /login  → $code (cabeceras: $hdr bytes; el proxy nginx admite unos 4 KB)"
+[ "$code" = 200 ] || { echo "ERROR: /login no responde 200" >&2; exit 1; }
 curl -s -w "\n" https://projects.audaxstudio.com/health | head -c 300; echo

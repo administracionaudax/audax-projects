@@ -38,7 +38,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
+            // Máximo 6 precargas en la cabecera Link: con todas (22) las cabeceras superaban los 4 KB
+            // del búfer del proxy nginx de Plesk y /login daba 502. El resto se precarga desde el HTML.
+            AddLinkHeadersForPreloadedAssets::using(6),
         ]);
 
         $middleware->alias([
