@@ -2,8 +2,10 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -58,6 +60,28 @@ test('la contraseña se restablece con un token válido', function () {
 
         return true;
     });
+});
+
+test('restablecer la contraseña cierra todas las sesiones abiertas del usuario', function () {
+    config(['session.driver' => 'database']);
+
+    $user = userWithRole('employee', ['remember_token' => Str::random(60)]);
+    $other = userWithRole('employee');
+    insertSession($user);
+    insertSession($user);
+    $foreign = insertSession($other);
+    $oldRememberToken = $user->remember_token;
+
+    $this->post(route('password.update'), [
+        'token' => Password::broker()->createToken($user),
+        'email' => $user->email,
+        'password' => 'nueva-contraseña',
+        'password_confirmation' => 'nueva-contraseña',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
+
+    expect(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(DB::table('sessions')->where('id', $foreign)->exists())->toBeTrue()
+        ->and($user->refresh()->remember_token)->not->toBe($oldRememberToken);
 });
 
 test('el token de restablecimiento es de un solo uso', function () {

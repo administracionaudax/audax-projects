@@ -43,6 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::using(6),
         ]);
 
+        // AuthenticateSession ('auth.session') en todo el grupo web: una sesión abierta con la
+        // contraseña anterior deja de valer en cuanto la contraseña cambia (SPEC §15).
+        $middleware->authenticateSessions();
+
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
             'internal' => EnsureInternalUser::class,

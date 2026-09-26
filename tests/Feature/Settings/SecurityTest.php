@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 
@@ -64,4 +66,36 @@ test('para cambiar la contraseña hay que dar la actual', function () {
         ])
         ->assertSessionHasErrors(['current_password' => 'La contraseña no es correcta.'])
         ->assertRedirect(route('security.edit'));
+});
+
+test('cambiar la contraseña cierra las demás sesiones y el «Recordarme», pero no la actual', function () {
+    config(['session.driver' => 'database']);
+
+    $user = userWithRole('employee', ['remember_token' => Str::random(60)]);
+    $other = userWithRole('employee');
+    $current = insertSession($user);
+    insertSession($user);
+    $foreign = insertSession($other);
+    $oldRememberToken = $user->remember_token;
+
+    $this->actingAs($user)
+        ->withCookie(config('session.cookie'), $current)
+        ->from(route('security.edit'))
+        ->put(route('user-password.update'), [
+            'current_password' => 'password',
+            'password' => 'nueva-contraseña',
+            'password_confirmation' => 'nueva-contraseña',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('security.edit'));
+
+    expect(DB::table('sessions')->where('user_id', $user->id)->pluck('id')->all())->toBe([$current])
+        ->and(DB::table('sessions')->where('id', $foreign)->exists())->toBeTrue()
+        ->and($user->refresh()->remember_token)->not->toBe($oldRememberToken);
+
+    // La sesión actual sigue abierta con la contraseña nueva (AuthenticateSession no la expulsa).
+    $this->withCookie(config('session.cookie'), $current)
+        ->get(route('home'))
+        ->assertOk();
+    $this->assertAuthenticatedAs($user);
 });

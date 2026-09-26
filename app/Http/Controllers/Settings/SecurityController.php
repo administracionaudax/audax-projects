@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Auth\SessionTerminator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -34,13 +36,20 @@ class SecurityController extends Controller
     }
 
     /**
-     * Update the user's password.
+     * Cambia la contraseña y cierra las demás sesiones y el «Recordarme» de los otros dispositivos:
+     * quien sospecha que le han robado el acceso cambia la contraseña para echar al intruso (SPEC §15).
+     * La sesión actual sigue abierta.
      */
-    public function update(PasswordUpdateRequest $request): RedirectResponse
+    public function update(PasswordUpdateRequest $request, SessionTerminator $terminator): RedirectResponse
     {
-        $request->user()->update([
+        /** @var User $user */
+        $user = $request->user();
+
+        $user->update([
             'password' => $request->password,
         ]);
+
+        $terminator->destroyOthers($request, $user);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('app.password_updated')]);
 

@@ -1,9 +1,16 @@
 <?php
 
+use App\Auth\SessionTerminator;
 use App\Models\User;
+use Illuminate\Auth\SessionGuard;
+use Illuminate\Cookie\CookieValuePrefix;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 /*
 | Estas pruebas usan el driver de sesión "database" (el de producción) y envían la cookie de sesión
@@ -13,23 +20,6 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     config(['session.driver' => 'database']);
 });
-
-function insertSession(?User $user, string $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0', ?int $lastActivity = null): string
-{
-    static $counter = 0;
-    $id = Str::random(40);
-
-    DB::table('sessions')->insert([
-        'id' => $id,
-        'user_id' => $user?->id,
-        'ip_address' => '10.0.'.intdiv(++$counter, 250).'.'.($counter % 250 + 1),
-        'user_agent' => $userAgent,
-        'payload' => base64_encode(serialize([])),
-        'last_activity' => $lastActivity ?? now()->getTimestamp(),
-    ]);
-
-    return $id;
-}
 
 test('lista solo las sesiones propias, marca la actual y no expone el id real', function () {
     $user = userWithRole('employee');
@@ -186,3 +176,117 @@ function sessionPublicId(User $user, string $current, string $target): string
 
     throw new RuntimeException('Sesión no encontrada en la lista.');
 }
+
+/**
+ * Valor de la cookie de «Recordarme» tal como la crea el guard (id|token|HMAC del hash).
+ */
+function recallerValue(User $user): string
+{
+    /** @var SessionGuard $guard */
+    $guard = Auth::guard('web');
+
+    return $user->id.'|'.$user->remember_token.'|'.$guard->hashPasswordForCookie($user->password);
+}
+
+/**
+ * Olvida el usuario autenticado, la sesión y las cookies de las peticiones anteriores, como un
+ * navegador distinto (en los tests, el almacén de sesión conserva sus datos entre peticiones).
+ */
+function freshDevice(TestCase $test): void
+{
+    Auth::forgetGuards();
+    app('session.store')->flush();
+    (fn () => $this->defaultCookies = [])->call($test);
+}
+
+test('la cookie de «Recordarme» de una sesión cerrada ya no vuelve a abrir sesión', function () {
+    $user = userWithRole('employee', ['remember_token' => Str::random(60)]);
+    $recallerName = Auth::guard('web')->getRecallerName();
+    $stolenRecaller = recallerValue($user);
+
+    // El otro dispositivo entra con su cookie de «Recordarme».
+    $this->withCookie($recallerName, $stolenRecaller)->get(route('home'))->assertOk();
+    $this->assertAuthenticatedAs($user);
+
+    freshDevice($this);
+    $current = insertSession($user);
+    $stolen = insertSession($user);
+    $publicId = sessionPublicId($user, $current, $stolen);
+
+    $this->actingAs($user)
+        ->withCookie(config('session.cookie'), $current)
+        ->from(route('sessions.index'))
+        ->delete(route('sessions.destroy', $publicId))
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.type', 'success');
+
+    expect(DB::table('sessions')->where('id', $stolen)->exists())->toBeFalse();
+
+    freshDevice($this);
+    $this->withCookie($recallerName, $stolenRecaller)->get(route('home'))->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
+test('al cerrar las demás sesiones, este dispositivo recibe la cookie de «Recordarme» con el formato del guard', function () {
+    $user = userWithRole('employee', ['remember_token' => Str::random(60)]);
+    $recallerName = Auth::guard('web')->getRecallerName();
+    $current = insertSession($user);
+
+    $response = $this->actingAs($user)
+        ->withCookie(config('session.cookie'), $current)
+        ->withCookie($recallerName, recallerValue($user))
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->from(route('sessions.index'))
+        ->delete(route('sessions.destroy-others'))
+        ->assertRedirect(route('sessions.index'));
+
+    $user->refresh();
+    $cookie = $response->getCookie($recallerName, decrypt: false);
+
+    expect($cookie)->not->toBeNull()
+        ->and(CookieValuePrefix::remove(Crypt::decryptString((string) $cookie->getValue())))->toBe(recallerValue($user))
+        ->and($cookie->getExpiresTime())->toBeGreaterThan(now()->addMinutes(SessionTerminator::REMEMBER_COOKIE_MINUTES - 5)->getTimestamp())
+        ->and($cookie->getExpiresTime())->toBeLessThan(now()->addMinutes(SessionTerminator::REMEMBER_COOKIE_MINUTES + 5)->getTimestamp());
+
+    // La cookie nueva sigue abriendo sesión en este dispositivo.
+    freshDevice($this);
+    $this->withCookie($recallerName, recallerValue($user))->get(route('home'))->assertOk();
+    $this->assertAuthenticatedAs($user);
+});
+
+test('sin el driver database, cerrar sesiones da un error y no un falso éxito', function () {
+    config(['session.driver' => 'array']);
+    $user = userWithRole('employee');
+    $oldRememberToken = $user->remember_token;
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->from(route('sessions.index'))
+        ->delete(route('sessions.destroy-others'))
+        ->assertRedirect(route('sessions.index'))
+        ->assertSessionHasErrors(['session' => __('app.sessions.unsupported')])
+        ->assertInertiaFlash('toast.type', 'error');
+
+    $this->actingAs($user)
+        ->from(route('sessions.index'))
+        ->delete(route('sessions.destroy', str_repeat('a', 40)))
+        ->assertRedirect(route('sessions.index'))
+        ->assertSessionHasErrors(['session' => __('app.sessions.unsupported')])
+        ->assertInertiaFlash('toast.type', 'error');
+
+    expect($user->refresh()->remember_token)->toBe($oldRememberToken);
+});
+
+test('una sesión abierta con la contraseña anterior deja de valer (auth.session)', function () {
+    $user = userWithRole('employee');
+
+    /** @var SessionGuard $guard */
+    $guard = Auth::guard('web');
+
+    $this->actingAs($user)
+        ->withSession(['password_hash_web' => $guard->hashPasswordForCookie(Hash::make('contraseña-anterior'))])
+        ->get(route('home'))
+        ->assertRedirect(route('login'));
+
+    $this->assertGuest();
+});
