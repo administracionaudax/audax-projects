@@ -21,6 +21,7 @@ import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { formatMinutes, formatPercent } from '@/lib/format';
+import { t } from '@/lib/i18n';
 
 export type WeeklyHoursPoint = {
     /** Identificador estable (p. ej. "2026-W36"). */
@@ -35,13 +36,13 @@ export type WeeklyHoursPoint = {
 
 /** Series en orden fijo: imputadas → var(--chart-1), capacidad → var(--chart-2). */
 export const WEEKLY_HOURS_SERIES = defineSeries([
-    { key: 'logged', label: 'Horas imputadas' },
-    { key: 'capacity', label: 'Capacidad' },
+    { key: 'logged', label: t('charts.weekly.series.logged') },
+    { key: 'capacity', label: t('charts.weekly.series.capacity') },
 ] as const);
 
 const DIRECT_LABELS: Record<string, string> = {
-    logged: 'Imputadas',
-    capacity: 'Capacidad',
+    logged: t('charts.weekly.end_label.logged'),
+    capacity: t('charts.weekly.end_label.capacity'),
 };
 
 type EndLabelProps = {
@@ -52,8 +53,8 @@ type EndLabelProps = {
 
 export function WeeklyHoursChart({
     data,
-    title = 'Horas imputadas frente a capacidad',
-    description = 'Por semana, en horas (h:mm en el detalle).',
+    title = t('charts.weekly.title'),
+    description = t('charts.weekly.description'),
     height = 260,
 }: {
     data: ReadonlyArray<WeeklyHoursPoint>;
@@ -98,16 +99,36 @@ export function WeeklyHoursChart({
         <ChartFrame
             title={title}
             description={description}
-            summary={`${title}. ${data.length} semanas: ${formatMinutes(totalLogged)} imputadas de ${formatMinutes(totalCapacity)} de capacidad (${formatPercent(totalCapacity > 0 ? totalLogged / totalCapacity : 0)}).`}
+            summary={t('charts.weekly.summary', {
+                title,
+                weeks: data.length,
+                logged: formatMinutes(totalLogged),
+                capacity: formatMinutes(totalCapacity),
+                ratio: formatPercent(
+                    totalCapacity > 0 ? totalLogged / totalCapacity : 0,
+                ),
+            })}
             legend={
                 <ChartLegend items={legendItems(WEEKLY_HOURS_SERIES, 'line')} />
             }
             table={{
                 columns: [
-                    { key: 'label', label: 'Semana' },
-                    { key: 'logged', label: 'Imputadas', numeric: true },
-                    { key: 'capacity', label: 'Capacidad', numeric: true },
-                    { key: 'ratio', label: 'Ocupación', numeric: true },
+                    { key: 'label', label: t('charts.weekly.column.week') },
+                    {
+                        key: 'logged',
+                        label: t('charts.weekly.column.logged'),
+                        numeric: true,
+                    },
+                    {
+                        key: 'capacity',
+                        label: t('charts.weekly.column.capacity'),
+                        numeric: true,
+                    },
+                    {
+                        key: 'ratio',
+                        label: t('charts.weekly.column.ratio'),
+                        numeric: true,
+                    },
                 ],
                 rows: data.map((d) => ({
                     id: d.id,
@@ -122,6 +143,7 @@ export function WeeklyHoursChart({
         >
             <ResponsiveContainer width="100%" height={height}>
                 <LineChart
+                    accessibilityLayer={false}
                     data={[...data]}
                     margin={{ top: 12, right: 76, bottom: 0, left: 0 }}
                 >
@@ -148,7 +170,9 @@ export function WeeklyHoursChart({
                         content={({ active, payload, label }) =>
                             active ? (
                                 <ChartTooltipCard
-                                    title={`Semana del ${String(label ?? '')}`}
+                                    title={t('charts.weekly.tooltip_title', {
+                                        label: String(label ?? ''),
+                                    })}
                                     rows={buildTooltipRows(
                                         payload,
                                         WEEKLY_HOURS_SERIES,

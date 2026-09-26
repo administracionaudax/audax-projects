@@ -23,6 +23,7 @@ import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { formatMinutes, formatPercent } from '@/lib/format';
+import { t } from '@/lib/i18n';
 
 export type BillablePoint = {
     id: string;
@@ -33,14 +34,14 @@ export type BillablePoint = {
 
 /** Orden fijo: facturable → var(--chart-1) (abajo), no facturable → var(--chart-2) (arriba). */
 export const BILLABLE_SERIES = defineSeries([
-    { key: 'billable', label: 'Facturable' },
-    { key: 'nonBillable', label: 'No facturable' },
+    { key: 'billable', label: t('charts.billable.series.billable') },
+    { key: 'nonBillable', label: t('charts.billable.series.non_billable') },
 ] as const);
 
 export function BillableHoursChart({
     data,
-    title = 'Horas facturables y no facturables',
-    description = 'Por mes. El total va sobre cada columna.',
+    title = t('charts.billable.title'),
+    description = t('charts.billable.description'),
     height = 260,
 }: {
     data: ReadonlyArray<BillablePoint>;
@@ -56,21 +57,44 @@ export function BillableHoursChart({
         <ChartFrame
             title={title}
             description={description}
-            summary={`${title}: ${rows.map((d) => `${d.label} ${formatMinutes(d.billable)} facturables de ${formatMinutes(d.total)}`).join('; ')}.`}
+            summary={t('charts.billable.summary', {
+                title,
+                items: rows
+                    .map((d) =>
+                        t('charts.billable.summary_item', {
+                            label: d.label,
+                            billable: formatMinutes(d.billable),
+                            total: formatMinutes(d.total),
+                        }),
+                    )
+                    .join('; '),
+            })}
             legend={
                 <ChartLegend items={legendItems(BILLABLE_SERIES, 'rect')} />
             }
             table={{
                 columns: [
-                    { key: 'label', label: 'Mes' },
-                    { key: 'billable', label: 'Facturable', numeric: true },
+                    { key: 'label', label: t('charts.billable.column.month') },
                     {
-                        key: 'nonBillable',
-                        label: 'No facturable',
+                        key: 'billable',
+                        label: t('charts.billable.column.billable'),
                         numeric: true,
                     },
-                    { key: 'total', label: 'Total', numeric: true },
-                    { key: 'ratio', label: 'Facturabilidad', numeric: true },
+                    {
+                        key: 'nonBillable',
+                        label: t('charts.billable.column.non_billable'),
+                        numeric: true,
+                    },
+                    {
+                        key: 'total',
+                        label: t('charts.billable.column.total'),
+                        numeric: true,
+                    },
+                    {
+                        key: 'ratio',
+                        label: t('charts.billable.column.ratio'),
+                        numeric: true,
+                    },
                 ],
                 rows: rows.map((d) => ({
                     id: d.id,
@@ -86,6 +110,7 @@ export function BillableHoursChart({
         >
             <ResponsiveContainer width="100%" height={height}>
                 <BarChart
+                    accessibilityLayer={false}
                     data={rows}
                     margin={{ top: 20, right: 8, bottom: 0, left: 0 }}
                 >

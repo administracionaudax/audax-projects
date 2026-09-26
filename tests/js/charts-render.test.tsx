@@ -9,8 +9,10 @@ import { CalendarHeatmap } from '@/components/charts/calendar-heatmap';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { DepartmentHoursChart } from '@/components/charts/department-hours-chart';
+import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { LoadCell } from '@/components/charts/load-cell';
 import { WeeklyHoursChart } from '@/components/charts/weekly-hours-chart';
+import { t } from '@/lib/i18n';
 
 /**
  * En jsdom no hay layout: el ResponsiveContainer de Recharts mediría 0 × 0 y no pintaría nada.
@@ -205,7 +207,8 @@ describe('gráficas Recharts', () => {
         render(<WeeklyHoursChart data={WEEKS} />);
 
         const toggle = screen.getByRole('button', { name: 'Ver como tabla' });
-        expect(toggle.getAttribute('aria-pressed')).toBe('false');
+        // La etiqueta cambia con el estado: sin aria-pressed, que la contradiría (UI-12).
+        expect(toggle.hasAttribute('aria-pressed')).toBe(false);
         await user.click(toggle);
 
         const table = screen.getByRole('table');
@@ -215,11 +218,76 @@ describe('gráficas Recharts', () => {
             '14/0985:3080:00106,9 %',
             '21/0972:0080:0090 %',
         ]);
+        const back = screen.getByRole('button', { name: 'Ver como gráfica' });
+        expect(back.hasAttribute('aria-pressed')).toBe(false);
+        expect(
+            screen.getByRole('region', {
+                name: 'Horas imputadas frente a capacidad (tabla)',
+            }),
+        ).toBeTruthy();
+    });
+
+    it.each([
+        ['línea semanal', () => <WeeklyHoursChart data={WEEKS} />],
+        [
+            'barras por departamento',
+            () => (
+                <DepartmentHoursChart
+                    data={[{ id: 'd', label: 'Diseño', minutes: 750 }]}
+                />
+            ),
+        ],
+        [
+            'barras apiladas',
+            () => (
+                <BillableHoursChart
+                    data={[
+                        {
+                            id: 'm1',
+                            label: 'jul',
+                            billable: 600,
+                            nonBillable: 120,
+                        },
+                    ]}
+                />
+            ),
+        ],
+    ])(
+        '%s: nada enfocable ni interactivo dentro de role="img" (UI-04)',
+        (_label, ui) => {
+            const { container } = render(ui());
+            const image = container.querySelector('[role="img"]');
+
+            expect(image).not.toBeNull();
+            const svg = image?.querySelector('svg.recharts-surface');
+            expect(svg).not.toBeNull();
+            // Con accessibilityLayer, Recharts 3 pone tabindex="0" y role="application" en el SVG.
+            expect(svg?.hasAttribute('tabindex')).toBe(false);
+            // Las capas internas de Recharts llevan tabindex="-1" (fuera del orden de tabulación):
+            // lo que no puede haber es nada alcanzable con el tabulador.
+            expect(
+                image?.querySelectorAll('[tabindex]:not([tabindex="-1"])'),
+            ).toHaveLength(0);
+            expect(
+                image?.querySelectorAll('[role="application"]'),
+            ).toHaveLength(0);
+        },
+    );
+
+    it('los textos salen de lang/es.json (UI-05)', () => {
+        render(<WeeklyHoursChart data={WEEKS} />);
+
+        expect(
+            screen.getByText(t('charts.weekly.title'), {
+                selector: 'figcaption',
+            }),
+        ).toBeTruthy();
         expect(
             screen
-                .getByRole('button', { name: 'Ver como gráfica' })
-                .getAttribute('aria-pressed'),
-        ).toBe('true');
+                .getByRole('img')
+                .getAttribute('aria-label')
+                ?.startsWith(`${t('charts.weekly.title')}. 3 semanas:`),
+        ).toBe(true);
     });
 });
 
@@ -279,5 +347,22 @@ describe('LoadCell', () => {
 
         expect(container.textContent).toContain('Festivo');
         expect(container.textContent).toContain('0:00 planificadas');
+    });
+});
+
+describe('HourBankMeter', () => {
+    it('etiqueta el medidor y el exceso con textos de lang/es.json', () => {
+        render(<HourBankMeter name="Bolsa web" consumed={3300} total={3000} />);
+
+        const meter = screen.getByRole('meter', {
+            name: 'Consumo de Bolsa web',
+        });
+        expect(norm(meter.getAttribute('aria-valuetext'))).toBe(
+            '55:00 de 50:00 (110 %), 5:00 de exceso',
+        );
+        expect(screen.getByText('+5:00 de exceso')).toBeTruthy();
+        expect(
+            screen.getByText(t('hour_bank.level.exhausted'), { exact: false }),
+        ).toBeTruthy();
     });
 });

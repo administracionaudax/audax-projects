@@ -1,5 +1,6 @@
 import { LOAD_LEVELS, loadLevel } from '@/components/charts/thresholds';
 import { formatMinutes, formatPercent } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type LoadCellProps = {
@@ -53,7 +54,7 @@ export function LoadCell({
             </span>
             <span className="tabular truncate text-xs text-muted-foreground">
                 {level === 'none'
-                    ? `${formatMinutes(planned)} planificadas`
+                    ? t('load.planned', { minutes: formatMinutes(planned) })
                     : `${formatMinutes(planned)} / ${formatMinutes(capacity)}`}
             </span>
         </div>

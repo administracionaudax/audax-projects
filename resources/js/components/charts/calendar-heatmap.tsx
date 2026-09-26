@@ -8,7 +8,8 @@ import {
 import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { FOCUS_RING } from '@/lib/focus-ring';
-import { formatDate, formatMinutes } from '@/lib/format';
+import { formatDate, formatMinutes, LOCALE } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -39,30 +40,27 @@ export type CalendarWeek = {
 };
 
 const DAY_MS = 86_400_000;
-const WEEKDAY_SHORT = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-const WEEKDAY_LONG = [
-    'lunes',
-    'martes',
-    'miércoles',
-    'jueves',
-    'viernes',
-    'sábado',
-    'domingo',
-];
-const MONTHS_SHORT = [
-    'ene',
-    'feb',
-    'mar',
-    'abr',
-    'may',
-    'jun',
-    'jul',
-    'ago',
-    'sep',
-    'oct',
-    'nov',
-    'dic',
-];
+
+/** Nombres de días y meses en es-ES (Intl), de lunes a domingo. Las fechas van en UTC. */
+function dayNames(weekday: 'narrow' | 'long'): string[] {
+    const format = new Intl.DateTimeFormat(LOCALE, {
+        weekday,
+        timeZone: 'UTC',
+    });
+
+    // 2024-01-01 fue lunes.
+    return Array.from({ length: 7 }, (_, i) =>
+        format.format(Date.UTC(2024, 0, 1 + i)),
+    );
+}
+
+const WEEKDAY_SHORT = dayNames('narrow');
+const WEEKDAY_LONG = dayNames('long');
+const monthFormat = new Intl.DateTimeFormat(LOCALE, {
+    month: 'short',
+    timeZone: 'UTC',
+});
+const monthShort = (ms: number) => monthFormat.format(ms).replace(/\.$/, '');
 
 function toUtc(date: string): number {
     const [y, m, d] = date.split('-').map(Number);
@@ -115,11 +113,11 @@ export function buildCalendarWeeks(
             const minutes = byDate.get(date) ?? 0;
 
             if (weeks.length === 0 && week.monthLabel === null) {
-                week.monthLabel = MONTHS_SHORT[new Date(ms).getUTCMonth()];
+                week.monthLabel = monthShort(ms);
             }
 
             if (new Date(ms).getUTCDate() === 1) {
-                week.monthLabel = MONTHS_SHORT[new Date(ms).getUTCMonth()];
+                week.monthLabel = monthShort(ms);
             }
 
             week.days.push({
@@ -151,25 +149,34 @@ export function scaleLabels(
     const h = (minutes: number) => formatMinutes(minutes).replace(/:00$/, '');
 
     return [
-        'Sin horas',
-        `< ${h(thresholds[0])} h`,
-        ...thresholds
-            .slice(1)
-            .map((limit, i) => `${h(thresholds[i])}–${h(limit)} h`),
-        `≥ ${h(thresholds[thresholds.length - 1])} h`,
+        t('charts.heatmap.scale.none'),
+        t('charts.heatmap.scale.below', { hours: h(thresholds[0]) }),
+        ...thresholds.slice(1).map((limit, i) =>
+            t('charts.heatmap.scale.range', {
+                from: h(thresholds[i]),
+                to: h(limit),
+            }),
+        ),
+        t('charts.heatmap.scale.above', {
+            hours: h(thresholds[thresholds.length - 1]),
+        }),
     ];
 }
 
 export function describeDay(cell: DayMinutes): string {
-    return `${WEEKDAY_LONG[weekdayIndex(cell.date)]}, ${formatDate(cell.date)}: ${formatMinutes(cell.minutes)} imputadas`;
+    return t('charts.heatmap.day', {
+        weekday: WEEKDAY_LONG[weekdayIndex(cell.date)],
+        date: formatDate(cell.date),
+        minutes: formatMinutes(cell.minutes),
+    });
 }
 
 type Active = { index: number; left: number; top: number };
 
 export function CalendarHeatmap({
     days,
-    title = 'Horas imputadas por día',
-    description = 'Cada columna es una semana, de lunes a domingo.',
+    title = t('charts.heatmap.title'),
+    description = t('charts.heatmap.description'),
 }: {
     days: ReadonlyArray<DayMinutes>;
     title?: string;
@@ -251,7 +258,7 @@ export function CalendarHeatmap({
 
         return {
             id: week.id,
-            week: `Semana del ${formatDate(week.id)}`,
+            week: t('charts.heatmap.week', { date: formatDate(week.id) }),
             minutes: formatMinutes(minutes),
             days: String(inRange.filter((d) => d.minutes > 0).length),
         };
@@ -262,12 +269,24 @@ export function CalendarHeatmap({
             title={title}
             description={description}
             chartRole="group"
-            summary={`${title}. ${formatMinutes(total)} en ${worked} días con horas.`}
+            summary={t('charts.heatmap.summary', {
+                title,
+                total: formatMinutes(total),
+                days: worked,
+            })}
             table={{
                 columns: [
-                    { key: 'week', label: 'Semana' },
-                    { key: 'minutes', label: 'Horas', numeric: true },
-                    { key: 'days', label: 'Días con horas', numeric: true },
+                    { key: 'week', label: t('charts.heatmap.column.week') },
+                    {
+                        key: 'minutes',
+                        label: t('charts.heatmap.column.hours'),
+                        numeric: true,
+                    },
+                    {
+                        key: 'days',
+                        label: t('charts.heatmap.column.days'),
+                        numeric: true,
+                    },
                 ],
                 rows: weekRows,
             }}
@@ -282,7 +301,7 @@ export function CalendarHeatmap({
                 onKeyDown={onKeyDown}
                 onBlur={() => setActive(null)}
                 role="group"
-                aria-label="Calendario: usa las flechas para recorrer los días"
+                aria-label={t('charts.heatmap.grid_label')}
             >
                 <div
                     className="grid gap-0.5"
@@ -342,11 +361,14 @@ export function CalendarHeatmap({
                         style={{ left: active.left, top: active.top }}
                     >
                         <ChartTooltipCard
-                            title={`${WEEKDAY_LONG[activeCell.weekday]}, ${formatDate(activeCell.date)}`}
+                            title={t('charts.heatmap.day_title', {
+                                weekday: WEEKDAY_LONG[activeCell.weekday],
+                                date: formatDate(activeCell.date),
+                            })}
                             rows={[
                                 {
                                     key: 'minutes',
-                                    label: 'imputadas',
+                                    label: t('charts.heatmap.logged'),
                                     color: sequentialColor(activeCell.step),
                                     value: formatMinutes(activeCell.minutes),
                                 },
@@ -362,7 +384,7 @@ export function CalendarHeatmap({
 
             <ul
                 className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
-                aria-label="Escala de horas por día"
+                aria-label={t('charts.heatmap.scale.label')}
             >
                 {labels.map((label, step) => (
                     <li key={label} className="flex items-center gap-1.5">

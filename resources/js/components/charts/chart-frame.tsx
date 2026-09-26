@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FOCUS_RING } from '@/lib/focus-ring';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export type ChartTableColumn = {
@@ -21,7 +22,11 @@ type ChartFrameProps = {
     description?: string;
     /** Resumen para lectores de pantalla. */
     summary: string;
-    /** "img" para gráficas estáticas; "group" si la gráfica tiene su propio control de teclado. */
+    /**
+     * "img" para gráficas estáticas; "group" si la gráfica tiene su propio control de teclado.
+     * Dentro de "img" todo es presentacional: las gráficas de Recharts van con
+     * accessibilityLayer={false} para no meter un SVG enfocable (role="application") (UI-04).
+     */
     chartRole?: 'img' | 'group';
     legend?: ReactNode;
     table: ChartTableData;
@@ -62,15 +67,22 @@ export function ChartFrame({
                         </p>
                     ) : null}
                 </div>
+                {/*
+                 * La etiqueta dice lo que hará el botón («Ver como tabla» / «Ver como gráfica»),
+                 * así que no lleva aria-pressed: «Ver como gráfica, pulsado» sería contradictorio (UI-12).
+                 */}
                 <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    aria-pressed={asTable}
                     onClick={() => setAsTable((value) => !value)}
                 >
-                    {asTable ? <ChartColumn /> : <Table2 />}
-                    {asTable ? 'Ver como gráfica' : 'Ver como tabla'}
+                    {asTable ? (
+                        <ChartColumn aria-hidden="true" />
+                    ) : (
+                        <Table2 aria-hidden="true" />
+                    )}
+                    {asTable ? t('charts.view_chart') : t('charts.view_table')}
                 </Button>
             </div>
 
@@ -106,7 +118,7 @@ export function ChartTable({
                 FOCUS_RING,
             )}
             role="region"
-            aria-label={`${caption} (tabla)`}
+            aria-label={t('charts.table_label', { title: caption })}
             tabIndex={0}
         >
             <table className="w-full text-sm">
