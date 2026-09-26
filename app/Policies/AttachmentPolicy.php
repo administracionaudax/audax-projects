@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Attachment;
+use App\Models\TaskComment;
 use App\Models\User;
 
 /**
@@ -14,11 +15,23 @@ class AttachmentPolicy
 {
     /**
      * Solo si lo que lo contiene sigue existiendo: una URL firmada (válida 1 h) de un adjunto de
-     * una tarea o un comentario ya borrados deja de servir el fichero en cuanto se borran.
+     * una tarea o un comentario ya borrados deja de servir el fichero en cuanto se borran (D-040).
+     * Al borrar una tarea sus comentarios se quedan, así que el de un comentario exige además que
+     * su tarea exista (como la pestaña Archivos).
      */
     public function view(User $user, Attachment $attachment): bool
     {
-        return $user->isInternal() && $attachment->attachable !== null;
+        if (! $user->isInternal()) {
+            return false;
+        }
+
+        $attachable = $attachment->attachable;
+
+        if ($attachable instanceof TaskComment) {
+            return $attachable->task()->exists();
+        }
+
+        return $attachable !== null;
     }
 
     public function delete(User $user, Attachment $attachment): bool

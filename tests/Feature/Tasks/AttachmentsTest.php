@@ -7,6 +7,7 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Task;
+use App\Models\TaskComment;
 use App\Models\TaskStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -230,6 +231,22 @@ it('la URL firmada deja de servir el fichero si se borra la tarea o el comentari
     $this->actingAs($this->user)->get($url)->assertOk();
 
     $this->task->delete();
+
+    $this->actingAs($this->user)->get($url)->assertForbidden();
+});
+
+it('el adjunto de un comentario deja de descargarse al borrar la tarea, aunque el comentario siga (SEG-03, D-040)', function () {
+    $this->actingAs($this->user)->post("/tareas/{$this->task->id}/comentarios", [
+        'body' => '<p>Adjunto el presupuesto</p>',
+        'files' => [UploadedFile::fake()->create('presupuesto.pdf', 10, 'application/pdf')],
+    ])->assertSessionHasNoErrors();
+    $attachment = Attachment::query()->sole();
+    $url = ($this->signed)('attachments.show', $attachment);
+
+    $this->actingAs($this->user)->get($url)->assertOk();
+
+    $this->actingAs($this->user)->delete("/tareas/{$this->task->id}")->assertSessionHasNoErrors();
+    expect(TaskComment::query()->count())->toBe(1);
 
     $this->actingAs($this->user)->get($url)->assertForbidden();
 });
