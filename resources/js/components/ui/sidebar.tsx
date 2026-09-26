@@ -180,10 +180,6 @@ function Sidebar({
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetHeader className="sr-only">
-          <SheetTitle>{t("nav.sidebar_title")}</SheetTitle>
-          <SheetDescription>{t("nav.sidebar_description")}</SheetDescription>
-        </SheetHeader>
         <SheetContent
           data-sidebar="sidebar"
           data-slot="sidebar"
@@ -196,6 +192,11 @@ function Sidebar({
           }
           side={side}
         >
+          {/* Dentro de SheetContent: fuera, se leía como texto suelto y no titulaba el diálogo. */}
+          <SheetHeader className="sr-only">
+            <SheetTitle>{t("nav.sidebar_title")}</SheetTitle>
+            <SheetDescription>{t("nav.sidebar_description")}</SheetDescription>
+          </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
       </Sheet>
