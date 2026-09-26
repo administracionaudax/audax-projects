@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -44,5 +45,23 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Los clientes solo acceden al portal (SPEC §5 y §11).
+     */
+    public function isClient(): bool
+    {
+        return $this->hasRole('client');
+    }
+
+    /**
+     * URL pública del avatar (o null). CONTRATO: el agente backend añade la columna avatar_path.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => null);
     }
 }

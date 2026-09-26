@@ -1,19 +1,30 @@
+/** Contrato con App\Http\Middleware\HandleInertiaRequests::share(). */
+
+export type Role = 'admin' | 'department_manager' | 'employee' | 'client';
+
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export type User = {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
-    email_verified_at: string | null;
-    two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
+    avatar: string | null;
+    theme_preference: ThemePreference;
+    two_factor_enabled: boolean;
+    roles: Role[];
+    is_client: boolean;
+};
+
+export type Abilities = {
+    viewHourBanks: boolean;
+    viewAdmin: boolean;
+    viewFinancials: boolean;
 };
 
 export type Auth = {
-    user: User;
+    user: User | null;
+    can: Abilities;
 };
-
 
 export type TwoFactorSetupData = {
     svg: string;

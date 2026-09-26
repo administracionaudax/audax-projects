@@ -13,7 +13,19 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Audax Proyectos'),
+
+    /*
+    | Guía de estilo visible sin login (solo durante el desarrollo, D-002).
+    */
+
+    'styleguide_public' => (bool) env('APP_STYLEGUIDE_PUBLIC', false),
+
+    /*
+    | Zona horaria de presentación (los instantes se guardan en UTC, SPEC §3).
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Madrid'),
 
     /*
     |--------------------------------------------------------------------------
