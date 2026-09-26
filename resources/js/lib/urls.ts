@@ -17,6 +17,14 @@ export const urls = {
     myTasks: () => '/mis-tareas',
     clients: () => '/clientes',
     client: (id: number) => `/clientes/${id}`,
+    /**
+     * Clientes activos para selectores (GET → [{id, name}], tipo Option). Con `include`, añade ese
+     * cliente aunque esté desactivado (p. ej. el cliente actual de un proyecto que se edita).
+     */
+    clientOptions: (include?: number) =>
+        include
+            ? `/clientes/opciones?incluir=${include}`
+            : '/clientes/opciones',
     projects: () => '/proyectos',
     project: (id: number, tab: ProjectTab = 'resumen') =>
         tab === 'resumen' ? `/proyectos/${id}` : `/proyectos/${id}/${tab}`,

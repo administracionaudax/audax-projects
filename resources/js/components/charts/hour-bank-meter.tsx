@@ -1,7 +1,7 @@
 import { TriangleAlert } from 'lucide-react';
 import {
-    HOUR_BANK_ALERTS,
     HOUR_BANK_LEVELS,
+    hourBankAlerts,
     hourBankFigures,
     hourBankLevel,
 } from '@/components/charts/thresholds';
@@ -17,22 +17,30 @@ type HourBankMeterProps = {
     total: number;
     /** Estimación restante de las tareas abiertas de la bolsa, en minutos. */
     committed?: number;
+    /**
+     * Umbrales de alerta configurados, en % (config.hour_bank_thresholds). Marcan la barra y el
+     * paso a ámbar (desde el primero). Por defecto, 75, 90 y 100.
+     */
+    thresholds?: readonly number[];
     className?: string;
 };
 
 /**
  * Consumo de una bolsa (SPEC §8, UI): barra con color por umbral, marcas de alerta
- * (75 % y 90 %) y del total, exceso en rojo con icono y aviso de horas comprometidas.
+ * (75 % y 90 %, o los umbrales configurados) y del total, exceso en rojo con icono y aviso de
+ * horas comprometidas.
  */
 export function HourBankMeter({
     name,
     consumed,
     total,
     committed = 0,
+    thresholds,
     className,
 }: HourBankMeterProps) {
     const f = hourBankFigures(consumed, total, committed);
-    const level = hourBankLevel(f.consumed, f.total);
+    const alerts = hourBankAlerts(thresholds);
+    const level = hourBankLevel(f.consumed, f.total, alerts[0]);
     const meta = HOUR_BANK_LEVELS[level];
     const Icon = meta.icon;
     const scale = Math.max(f.total, f.consumed, 1);
@@ -110,7 +118,7 @@ export function HourBankMeter({
                         style={{ left: pct(f.total), width: pct(f.overage) }}
                     />
                 ) : null}
-                {HOUR_BANK_ALERTS.map((alert) => (
+                {alerts.map((alert) => (
                     <span
                         key={alert}
                         aria-hidden="true"

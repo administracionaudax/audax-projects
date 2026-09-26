@@ -100,10 +100,15 @@ export type HourBankLevel = 'ok' | 'warning' | 'exhausted';
 /** Umbrales de alerta por defecto (configurables en la Fase 1): 75 %, 90 % y 100 %. */
 export const HOUR_BANK_ALERTS = [0.75, 0.9, 1] as const;
 
-/** verde: < 75 % · ámbar: 75 % a < 100 % · rojo: ≥ 100 % (agotada, con o sin exceso). */
+/**
+ * verde: < 75 % · ámbar: 75 % a < 100 % · rojo: ≥ 100 % (agotada, con o sin exceso).
+ * `firstAlert` (proporción, p. ej. 0.8) sustituye al 75 % cuando los umbrales están configurados
+ * (props compartidas config.hour_bank_thresholds, D-035: ámbar desde el primer umbral).
+ */
 export function hourBankLevel(
     consumedMinutes: number,
     totalMinutes: number,
+    firstAlert: number = HOUR_BANK_ALERTS[0],
 ): HourBankLevel {
     if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
         return 'exhausted';
@@ -115,7 +120,25 @@ export function hourBankLevel(
         return 'exhausted';
     }
 
-    return ratio >= HOUR_BANK_ALERTS[0] ? 'warning' : 'ok';
+    return ratio >= firstAlert ? 'warning' : 'ok';
+}
+
+/**
+ * Umbrales configurados en % ([75, 90, 100]) → proporciones ordenadas y sin repetir, de 0 a 1: los
+ * que pasan del 100 % se quedan en el 100 %, que siempre está. Sin umbrales, los de por defecto.
+ */
+export function hourBankAlerts(
+    thresholds?: readonly number[] | null,
+): number[] {
+    const ratios = (thresholds ?? [])
+        .filter((value) => Number.isFinite(value) && value > 0)
+        .map((value) => Math.min(value, 100) / 100);
+
+    if (ratios.length === 0) {
+        return [...HOUR_BANK_ALERTS];
+    }
+
+    return [...new Set([...ratios, 1])].sort((a, b) => a - b);
 }
 
 export const HOUR_BANK_LEVELS: Record<

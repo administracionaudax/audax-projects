@@ -72,7 +72,6 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
 })->with([
     ['/mis-tareas', 'my-tasks'],
     ['/proyectos', 'projects'],
-    ['/clientes', 'clients'],
     ['/bolsas', 'hour-banks'],
     ['/horas', 'time'],
     ['/carga', 'workload'],
