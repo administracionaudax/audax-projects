@@ -87,7 +87,7 @@ describe('vista global de bolsas', () => {
         expect(container.textContent).toContain(
             'Las bolsas abiertas de los proyectos que gestionas',
         );
-        expect(container.textContent).toContain('Al 75 % o más');
+        expect(container.textContent).toContain('Al 75\u00a0% o más');
         expect(screen.getByText('No hay bolsas abiertas')).toBeTruthy();
     });
 

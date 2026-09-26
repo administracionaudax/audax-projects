@@ -219,6 +219,7 @@ function ProjectDataForm({
                 clients={clients}
                 canViewFinancials={canViewFinancials}
                 statusEditable={!archived}
+                creating={false}
                 codeTouched
             />
             {hasHourBanks && form.data.billing_type !== 'hour_bank' ? (

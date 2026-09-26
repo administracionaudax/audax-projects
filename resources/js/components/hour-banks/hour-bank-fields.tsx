@@ -142,7 +142,7 @@ export function HourBankFields({
                     <InputError message={errors.total_minutes} />
                 </div>
 
-                <div className="grid content-start gap-2">
+                <div className="grid min-w-0 grid-cols-1 content-start gap-2">
                     <Label htmlFor={`${id}-department`}>
                         {t('hour_banks.form.department')}
                     </Label>
@@ -161,7 +161,7 @@ export function HourBankFields({
                     >
                         <SelectTrigger
                             id={`${id}-department`}
-                            className="w-full"
+                            className="w-full min-w-0"
                             aria-describedby={`${id}-department-help`}
                             aria-invalid={
                                 errors.department_id ? true : undefined

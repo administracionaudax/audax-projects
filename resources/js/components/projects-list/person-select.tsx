@@ -40,7 +40,12 @@ export function PersonSelect({
     className?: string;
 }) {
     return (
-        <div className={cn('grid content-start gap-2', className)}>
+        <div
+            className={cn(
+                'grid min-w-0 grid-cols-1 content-start gap-2',
+                className,
+            )}
+        >
             <Label htmlFor={id}>{label}</Label>
             <Select
                 value={value === null ? NONE : String(value)}
@@ -50,7 +55,7 @@ export function PersonSelect({
             >
                 <SelectTrigger
                     id={id}
-                    className="w-full"
+                    className="w-full min-w-0"
                     aria-invalid={error ? true : undefined}
                     aria-describedby={help ? `${id}-help` : undefined}
                 >

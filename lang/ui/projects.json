@@ -64,6 +64,7 @@
     "projects.form.internal_no_client": "Un proyecto interno no tiene cliente.",
     "projects.form.code": "Código",
     "projects.form.code_help": "Corto y único, por ejemplo ACME-WEB. Se sugiere con el cliente y el nombre; si lo dejas vacío, lo pone la aplicación.",
+    "projects.form.code_help_edit": "Corto y único, por ejemplo ACME-WEB.",
     "projects.form.color": "Color",
     "projects.form.description": "Descripción",
     "projects.form.optional": "Opcional",
@@ -153,7 +154,7 @@
     "projects.alerts.empty": "El proyecto no tiene gestores",
     "projects.alerts.read_only": "(solo puede cambiarlas su gestor o administración)",
     "projects.alerts.hour_bank_threshold": "Umbrales de consumo de las bolsas",
-    "projects.alerts.hour_bank_threshold_help": "Aviso cuando una bolsa llega a cada umbral de consumo (75 %, 90 % y 100 %, salvo otro ajuste).",
+    "projects.alerts.hour_bank_threshold_help": "Aviso cuando una bolsa llega a cada umbral de consumo (75 %, 90 % y 100 %, salvo otro ajuste).",
     "projects.alerts.hour_bank_overage": "Horas en exceso",
     "projects.alerts.hour_bank_overage_help": "Aviso, como mucho uno al día, cuando se imputa sobre una bolsa agotada."
 }

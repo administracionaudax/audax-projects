@@ -62,7 +62,7 @@ export default function HourBanksIndex({
                     )}
                 />
 
-                <dl className="grid gap-3 sm:grid-cols-3">
+                <dl className="grid grid-cols-3 gap-2 sm:gap-3">
                     <Stat
                         icon={Wallet}
                         label={t('hour_banks.overview.stat_open')}
@@ -112,7 +112,7 @@ export default function HourBanksIndex({
                         />
                         <FilterSelect
                             id={`${id}-department`}
-                            label={t('projects.filters.department')}
+                            label={t('hour_banks.overview.department_filter')}
                             allLabel={t('projects.filters.all_departments')}
                             value={
                                 filters.departamento === null
@@ -240,12 +240,15 @@ function Stat({
     value: number;
 }) {
     return (
-        <div className="grid gap-1 rounded-md border bg-card p-4">
-            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Icon aria-hidden="true" className={`size-3.5 ${tone}`} />
+        <div className="grid content-start gap-1 rounded-md border bg-card p-3 sm:p-4">
+            <dt className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                <Icon
+                    aria-hidden="true"
+                    className={`mt-px size-3.5 shrink-0 ${tone}`}
+                />
                 {label}
             </dt>
-            <dd className="tabular text-2xl">{value}</dd>
+            <dd className="tabular text-xl sm:text-2xl">{value}</dd>
         </div>
     );
 }

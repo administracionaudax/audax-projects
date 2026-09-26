@@ -35,7 +35,7 @@ export function FilterSelect({
     className?: string;
 }) {
     return (
-        <div className={cn('grid min-w-0 gap-1.5', className)}>
+        <div className={cn('grid min-w-0 grid-cols-1 gap-1.5', className)}>
             <Label htmlFor={id} className="text-xs text-muted-foreground">
                 {label}
             </Label>
@@ -43,7 +43,7 @@ export function FilterSelect({
                 value={value ?? ALL}
                 onValueChange={(next) => onChange(next === ALL ? null : next)}
             >
-                <SelectTrigger id={id} className="w-full">
+                <SelectTrigger id={id} className="w-full min-w-0">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

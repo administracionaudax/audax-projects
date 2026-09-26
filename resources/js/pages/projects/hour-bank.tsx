@@ -206,8 +206,8 @@ export default function HourBankShow({
                         />
                     </section>
 
-                    <PageSection title={t('hour_banks.detail.weekly')}>
-                        {weekly.length === 0 ? (
+                    {weekly.length === 0 ? (
+                        <PageSection title={t('hour_banks.detail.weekly')}>
                             <EmptyState
                                 icon={ChartColumn}
                                 title={t('hour_banks.detail.no_time')}
@@ -215,10 +215,13 @@ export default function HourBankShow({
                                     'hour_banks.detail.no_time_description',
                                 )}
                             />
-                        ) : (
+                        </PageSection>
+                    ) : (
+                        // La gráfica ya lleva su título (figcaption): sin h2 repetido.
+                        <section aria-label={t('hour_banks.detail.weekly')}>
                             <HourBankWeeklyChart weeks={weekly} />
-                        )}
-                    </PageSection>
+                        </section>
+                    )}
 
                     <div className="grid gap-8 lg:grid-cols-2">
                         {byPerson !== null ? (

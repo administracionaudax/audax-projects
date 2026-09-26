@@ -73,6 +73,7 @@ export function ProjectFields({
     statusEditable = true,
     codeTouched,
     onCodeTouched,
+    creating = true,
 }: {
     data: ProjectFormData;
     set: <K extends keyof ProjectFormData>(
@@ -87,6 +88,8 @@ export function ProjectFields({
     /** Si el código se ha tocado a mano, ya no se sugiere. */
     codeTouched: boolean;
     onCodeTouched?: () => void;
+    /** En el alta el código puede quedar vacío (lo genera el servidor); al editar, no. */
+    creating?: boolean;
 }) {
     const id = useId();
     const internal = data.billing_type === 'internal';
@@ -130,7 +133,7 @@ export function ProjectFields({
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
+                    <div className="grid min-w-0 grid-cols-1 gap-2">
                         <Label htmlFor={`${id}-billing`}>
                             {t('projects.form.billing_type')}
                         </Label>
@@ -148,7 +151,7 @@ export function ProjectFields({
                         >
                             <SelectTrigger
                                 id={`${id}-billing`}
-                                className="w-full"
+                                className="w-full min-w-0"
                                 aria-invalid={
                                     errors.billing_type ? true : undefined
                                 }
@@ -166,7 +169,7 @@ export function ProjectFields({
                         <InputError message={errors.billing_type} />
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid min-w-0 grid-cols-1 gap-2">
                         <Label htmlFor={internal ? undefined : `${id}-client`}>
                             {t('projects.form.client')}
                         </Label>
@@ -190,7 +193,7 @@ export function ProjectFields({
                             >
                                 <SelectTrigger
                                     id={`${id}-client`}
-                                    className="w-full"
+                                    className="w-full min-w-0"
                                     aria-invalid={
                                         errors.client_id ? true : undefined
                                     }
@@ -245,7 +248,11 @@ export function ProjectFields({
                         id={`${id}-code-help`}
                         className="text-sm text-muted-foreground"
                     >
-                        {t('projects.form.code_help')}
+                        {t(
+                            creating
+                                ? 'projects.form.code_help'
+                                : 'projects.form.code_help_edit',
+                        )}
                     </p>
                     <InputError message={errors.code} />
                 </div>
@@ -304,7 +311,7 @@ export function ProjectFields({
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {statusEditable ? (
-                        <div className="grid gap-2">
+                        <div className="grid min-w-0 grid-cols-1 gap-2">
                             <Label htmlFor={`${id}-status`}>
                                 {t('projects.form.status')}
                             </Label>
@@ -316,7 +323,7 @@ export function ProjectFields({
                             >
                                 <SelectTrigger
                                     id={`${id}-status`}
-                                    className="w-full"
+                                    className="w-full min-w-0"
                                     aria-invalid={
                                         errors.status ? true : undefined
                                     }

@@ -60,7 +60,7 @@ export default function ProjectShow({
             <ProjectShell project={project} tab="resumen" canManage={canManage}>
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="grid content-start gap-6 lg:col-span-2">
-                        <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                             <Figure
                                 icon={Target}
                                 label={t('projects.show.status')}
