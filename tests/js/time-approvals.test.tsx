@@ -133,7 +133,7 @@ describe('aprobaciones (PERF-01)', () => {
         await waitFor(() => expect(screen.getByText('Entrada 1')).toBeTruthy());
         expect(screen.getByText('Entrada 2')).toBeTruthy();
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(String(fetchMock.mock.calls[0][0])).toBe(
+        expect(fetchMock.mock.calls[0][0]).toBe(
             '/horas/aprobaciones/41/entradas',
         );
 

@@ -63,24 +63,36 @@ function Stat({
     label: string;
     value: string;
 }) {
+    // Un solo <div> por grupo dt/dd dentro del <dl> (UX-01): el icono va al lado, oculto a los
+    // lectores de pantalla, sin otro <div> entre el grupo y sus dt/dd.
     return (
-        <div className="flex min-w-0 items-start gap-3 rounded-md border bg-card p-3 sm:p-4">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-x-3 gap-y-0.5 rounded-md border bg-card p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-4">
             <Icon
                 aria-hidden="true"
-                className="mt-0.5 hidden size-5 shrink-0 text-muted-foreground sm:block"
+                className="row-span-2 mt-0.5 hidden size-5 shrink-0 text-muted-foreground sm:block"
                 strokeWidth={1.5}
             />
-            <div className="grid min-w-0 gap-0.5">
-                <dt className="text-sm text-muted-foreground">{label}</dt>
-                <dd className="tabular text-xl sm:text-2xl">{value}</dd>
-            </div>
+            <dt className="min-w-0 text-sm text-muted-foreground sm:col-start-2">
+                {label}
+            </dt>
+            <dd className="tabular min-w-0 text-xl sm:col-start-2 sm:text-2xl">
+                {value}
+            </dd>
         </div>
     );
 }
 
-function Detail({ label, children }: { label: string; children: ReactNode }) {
+function Detail({
+    label,
+    children,
+    className,
+}: {
+    label: string;
+    children: ReactNode;
+    className?: string;
+}) {
     return (
-        <div className="grid gap-0.5">
+        <div className={cn('grid gap-0.5', className)}>
             <dt className="text-xs text-muted-foreground">{label}</dt>
             <dd className="text-sm break-words">{children}</dd>
         </div>
@@ -314,19 +326,20 @@ export default function ClientShow({
                                         )}
                                     </Detail>
                                 ) : null}
-                                <div className="sm:col-span-2">
-                                    <Detail label={t('clients.form.notes')}>
-                                        {client.notes ? (
-                                            <span className="whitespace-pre-line">
-                                                {client.notes}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground">
-                                                —
-                                            </span>
-                                        )}
-                                    </Detail>
-                                </div>
+                                <Detail
+                                    label={t('clients.form.notes')}
+                                    className="sm:col-span-2"
+                                >
+                                    {client.notes ? (
+                                        <span className="whitespace-pre-line">
+                                            {client.notes}
+                                        </span>
+                                    ) : (
+                                        <span className="text-muted-foreground">
+                                            —
+                                        </span>
+                                    )}
+                                </Detail>
                             </dl>
                         </CardContent>
                     </Card>

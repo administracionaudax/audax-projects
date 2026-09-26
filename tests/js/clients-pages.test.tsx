@@ -323,6 +323,32 @@ describe('ficha de cliente', () => {
         expect(screen.getByText('Llega en la Fase 5')).toBeTruthy();
     });
 
+    it('sus listas de definición son válidas: cada grupo dt/dd en un único div (UX-01, axe definition-list y dlitem)', () => {
+        const { container } = render(<ClientShow {...showProps()} />);
+        const lists = [...container.querySelectorAll('dl')];
+        expect(lists.length).toBeGreaterThanOrEqual(2);
+
+        for (const list of lists) {
+            for (const group of list.children) {
+                expect(['DIV', 'DT', 'DD']).toContain(group.tagName);
+
+                if (group.tagName !== 'DIV') {
+                    continue;
+                }
+
+                // Dentro del grupo solo dt, dd o adornos ocultos a los lectores de pantalla.
+                for (const child of group.children) {
+                    const decorative =
+                        child.getAttribute('aria-hidden') === 'true';
+                    expect(
+                        decorative || ['DT', 'DD'].includes(child.tagName),
+                        `${child.tagName} dentro de un grupo del <dl>`,
+                    ).toBe(true);
+                }
+            }
+        }
+    });
+
     it('sin permiso no hay tarifa ni botones de edición', () => {
         render(<ClientShow {...showProps()} />);
 

@@ -207,21 +207,10 @@ const PAGES: readonly PageDef[] = [
  * Clave: `${página}` (todos los roles y temas), `${página}@${tema}` o `${página}@${tema}@${rol}`.
  * Quita la entrada cuando se arregle.
  */
-const KNOWN_AXE: Record<string, string> = {
-    // UX-01: los <dt>/<dd> de las cifras y del bloque de contacto van dentro de <div> anidados
-    // (Stat, y Detail dentro de div.sm:col-span-2) en resources/js/pages/clients/show.tsx.
-    'cliente-ficha':
-        'UX-01 · axe definition-list + dlitem (serious): dl.grid-cols-2.xl:grid-cols-4 y dl.sm:grid-cols-2 con div > div > dt/dd',
-};
+const KNOWN_AXE: Record<string, string> = {};
 
 /** Páginas con scroll horizontal a 375 px conocido. Clave: `${página}` o `${página}@${rol}`. */
-const KNOWN_OVERFLOW: Record<string, string> = {
-    // UX-02: la lista de semanas pendientes crece hasta la tabla de días (min-w-[40rem]) y el
-    // layout (overflow-x-clip) la corta: «Seleccionar todas» y «Aprobar las seleccionadas»
-    // quedan fuera de la pantalla en móvil (resources/js/pages/time/approvals.tsx).
-    'horas-aprobaciones':
-        'UX-02 · a 375 px la sección Pendientes mide 674 px y se recorta (botón «Aprobar las seleccionadas» en 445..690 px)',
-};
+const KNOWN_OVERFLOW: Record<string, string> = {};
 
 function known(
     map: Record<string, string>,
