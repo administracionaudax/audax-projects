@@ -20,6 +20,18 @@ class TimesheetPeriodPolicy
         return $user->canSeeHoursOf($period->user);
     }
 
+    /**
+     * Un gestor abre la hoja de los miembros de sus proyectos, pero solo con las entradas de esos
+     * proyectos (D-021; el filtro lo aplica TimeEntry::visibleTo). Añadido por el área Horas (1.6).
+     */
+    public function viewManagedProjects(User $user, TimesheetPeriod $period): bool
+    {
+        $projectIds = $user->managedProjectIds();
+
+        return $projectIds !== []
+            && $period->user->projects()->whereIn('projects.id', $projectIds)->exists();
+    }
+
     public function submit(User $user, TimesheetPeriod $period): bool
     {
         return $user->id === $period->user_id && $period->status->isEditable();
