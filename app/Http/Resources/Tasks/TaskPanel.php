@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Http\Resources\Tasks;
+
+use App\Domain\Tasks\TaskActivityFeed;
+use App\Http\Resources\TaskResource;
+use App\Http\Resources\TimeEntryResource;
+use App\Http\Resources\UserSummaryResource;
+use App\Models\ActiveTimer;
+use App\Models\CommentReaction;
+use App\Models\Project;
+use App\Models\Task;
+use App\Models\TimeEntry;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+
+/**
+ * Datos del panel lateral de una tarea (contrato: resources/js/types/tasks.ts, TaskPanelData).
+ * Se carga con una recarga parcial de Inertia (prop `panel`) al abrir ?tarea={id}.
+ *
+ * Las horas son solo las que quien mira puede ver (TimeEntry::visibleTo, D-021).
+ */
+final class TaskPanel
+{
+    public const int TIME_ENTRIES_LIMIT = 50;
+
+    public function __construct(private readonly TaskActivityFeed $activity) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function build(Task $task, Project $project, User $viewer): array
+    {
+        $task->setRelation('project', $project);
+        $task->load([
+            'assignee',
+            'creator',
+            'parent:id,title,project_id',
+            'subtasks' => fn ($query) => $query->with('assignee')->withSum('timeEntries', 'minutes')->orderBy('position')->orderBy('id'),
+            'watchers' => fn ($query) => $query->orderBy('name'),
+            'attachments' => fn ($query) => $query->with('uploader')->oldest('id'),
+            'comments' => fn ($query) => $query->with(['author', 'reactions.user', 'attachments' => fn ($attachments) => $attachments->with('uploader')->oldest('id')])->oldest('id'),
+        ]);
+        $task->loadSum('timeEntries', 'minutes');
+
+        $canUpdate = Gate::forUser($viewer)->allows('update', $task);
+        $canManage = $viewer->canManageProject($project);
+        $blocked = $this->deleteBlockedReason($task);
+
+        $entries = TimeEntry::query()
+            ->where('task_id', $task->id)
+            ->visibleTo($viewer)
+            ->with('user')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->limit(self::TIME_ENTRIES_LIMIT)
+            ->get();
+
+        $visibleMinutes = (int) TimeEntry::query()->where('task_id', $task->id)->visibleTo($viewer)->sum('minutes');
+        $fromSubtasks = $task->subtasks->whereNotNull('estimated_minutes')->isNotEmpty();
+        $subtaskIds = $task->subtasks->modelKeys();
+
+        return [
+            'task' => [
+                ...Plain::of(TaskResource::make($task)),
+                'creator' => $task->creator === null ? null : Plain::of(UserSummaryResource::make($task->creator)),
+                'created_at' => $task->created_at?->toIso8601ZuluString(),
+                'updated_at' => $task->updated_at?->toIso8601ZuluString(),
+            ],
+            'project' => [
+                'id' => $project->id,
+                'code' => $project->code,
+                'name' => $project->name,
+                'uses_hour_banks' => $project->usesHourBanks(),
+                'is_internal' => $project->isInternal(),
+            ],
+            'parent' => $task->parent === null ? null : ['id' => $task->parent->id, 'title' => $task->parent->title],
+            'subtasks' => Plain::of(TaskListItemResource::collection($task->subtasks)),
+            'estimate_from_subtasks' => $fromSubtasks,
+            'effective_estimated_minutes' => $fromSubtasks ? (int) $task->subtasks->sum('estimated_minutes') : $task->estimated_minutes,
+            'watchers' => Plain::of(UserSummaryResource::collection($task->watchers)),
+            'is_watching' => $task->watchers->contains('id', $viewer->id),
+            'attachments' => AttachmentResource::listFor($task->attachments, $viewer, $canManage),
+            'comments' => TaskCommentResource::listFor($task->comments, $viewer, $canManage),
+            'time_entries' => Plain::of(TimeEntryResource::collection($entries)),
+            'time_visible_minutes' => $visibleMinutes,
+            'has_time' => (int) ($task->time_entries_sum_minutes ?? 0) > 0
+                || ($subtaskIds !== [] && TimeEntry::query()->whereIn('task_id', $subtaskIds)->exists()),
+            'activity' => $this->activity->for($task),
+            'reaction_emojis' => CommentReaction::EMOJIS,
+            'delete_blocked' => $blocked,
+            'can' => [
+                'update' => $canUpdate,
+                'delete' => $canUpdate && $blocked === null,
+                'comment' => Gate::forUser($viewer)->allows('comment', $task),
+                'move' => $canUpdate && ! $task->isSubtask(),
+                'log_time' => ! $task->is_milestone && (Gate::forUser($viewer)->allows('logTime', $project) || $canManage),
+            ],
+        ];
+    }
+
+    /**
+     * Motivo por el que no se puede borrar (D-037: nada con horas se borra), o null.
+     *
+     * @return 'has_time'|'subtasks_have_time'|'timer_running'|null
+     */
+    public function deleteBlockedReason(Task $task): ?string
+    {
+        if ($task->timeEntries()->exists()) {
+            return 'has_time';
+        }
+
+        $subtaskIds = $task->subtasks()->pluck('id');
+
+        if ($subtaskIds->isNotEmpty() && TimeEntry::query()->whereIn('task_id', $subtaskIds)->exists()) {
+            return 'subtasks_have_time';
+        }
+
+        if (ActiveTimer::query()->whereIn('task_id', [$task->id, ...$subtaskIds])->exists()) {
+            return 'timer_running';
+        }
+
+        return null;
+    }
+}
