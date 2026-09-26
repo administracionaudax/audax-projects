@@ -1,0 +1,17 @@
+[Unit]
+Description=Audax Proyectos - copia nocturna (PostgreSQL y adjuntos)
+After=docker.service
+Documentation=file:///var/www/vhosts/projects.audaxstudio.com/app/current/docs/RUNBOOK-DESPLIEGUE.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/audax/audax-backup.sh
+Slice=system-audax.slice
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=50%
+MemoryLimit=512M
+TimeoutStartSec=3600
+PrivateTmp=yes
+NoNewPrivileges=yes
+SyslogIdentifier=audax-backup

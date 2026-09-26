@@ -659,7 +659,7 @@ systemctl start audax-projects.target
 - El modelo se elige tras medir `tiny`, `base` y `small` con un audio de 1 minuto (§12). La medición se anota en `DECISIONES.md`.
 - **Vuelta atrás:** `docker compose … rm -sf whisper`, parar y deshabilitar la unidad, y borrar la imagen.
 
-**A3. Backups (antes de meter datos reales):**
+**A3. Backups (antes de meter datos reales):** ✅ **Instalado el 26/09/2026** (D-029; `deploy/backup/audax-backup.sh` y `deploy/systemd/audax-backup.{service,timer}`). La comprobación del volcado exige los datos de todas las tablas de la base. La copia externa la cubre la copia diaria del servidor entero del propietario. Para restaurar: `docker exec -i audax-pg pg_restore -U audax_admin -d <base> --no-owner --exit-on-error < /var/backups/audax/daily/<fecha>/audax_projects.dump` y `tar -C …/shared/storage/app -xzf adjuntos.tar.gz`.
 - **Unidad** `audax-backup.service` más su `.timer`: root, cada día a las 03:40 con `RandomizedDelaySec=15m`, `Nice=19`, `IOSchedulingClass=idle`, `CPUQuota=50%`, `MemoryLimit=512M`, y el mismo candado `.heavy.lock`.
 - **Qué hace:**
   - `docker exec audax-pg pg_dump -U audax_admin -Fc audax_projects > fichero.tmp`. Sin `-U`, `docker exec` se conecta como el rol `root`, que no existe, y el volcado saldría vacío.

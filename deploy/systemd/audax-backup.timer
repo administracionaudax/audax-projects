@@ -1,0 +1,10 @@
+[Unit]
+Description=Audax Proyectos - copia nocturna a las 03:40
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
