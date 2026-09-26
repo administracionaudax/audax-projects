@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
  * - solo tareas raíz: sus subtareas se mueven con ella (mismo proyecto y misma bolsa, D-037),
  * - la bolsa se elige de nuevo entre las abiertas del proyecto destino (obligatoria si usa bolsas),
  * - las horas ya imputadas NO se mueven: sus entradas conservan su proyecto y su bolsa,
+ * - con un temporizador en marcha en la tarea o en sus subtareas no se mueve: al pararlo, esas
+ *   horas se imputarían al proyecto y a la bolsa de destino,
  * - los adjuntos de la tarea, de sus subtareas y de sus comentarios pasan a la pestaña Archivos
  *   del proyecto destino (project_id desnormalizado; el fichero no cambia de sitio).
  * La autorización (editar la tarea y crear en el destino) la hace el controlador.
@@ -37,6 +39,10 @@ final class TaskMover
 
         if ($task->project_id === $target->id) {
             throw ValidationException::withMessages(['project_id' => __('tasks.errors.move_same_project')]);
+        }
+
+        if ($this->writer->hasRunningTimer($task)) {
+            throw ValidationException::withMessages(['project_id' => __('tasks.errors.move_timer_running')]);
         }
 
         $bank = $this->writer->assertBank($target, $bankId);

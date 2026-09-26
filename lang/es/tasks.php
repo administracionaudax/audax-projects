@@ -21,6 +21,8 @@ return [
         'move_subtask' => 'Las subtareas se mueven con su tarea padre: mueve la tarea padre.',
         'move_same_project' => 'La tarea ya está en ese proyecto.',
         'move_forbidden' => 'No puedes crear tareas en ese proyecto.',
+        'move_timer_running' => 'Hay un temporizador en marcha en esta tarea o en una subtarea: hay que pararlo antes de moverla, para que esas horas se queden en este proyecto.',
+        'bank_timer_running' => 'Hay un temporizador en marcha en esta tarea o en una subtarea: hay que pararlo antes de cambiar la bolsa, para que esas horas se queden en la bolsa actual.',
         'bulk_not_found' => 'Alguna de las tareas seleccionadas ya no está en este proyecto. Recarga la página.',
         'bulk_empty' => 'Elige qué quieres cambiar en las tareas seleccionadas.',
         'bulk_task' => '«:task»: :message',

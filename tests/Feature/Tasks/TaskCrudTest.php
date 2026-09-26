@@ -264,6 +264,26 @@ it('cambiar la bolsa de la tarea mueve la de sus subtareas, pero no las horas ya
         ->assertSessionHasErrors(['hour_bank_id' => __('tasks.errors.bank_required')]);
 });
 
+it('no cambia de bolsa con un temporizador en marcha en la tarea o en una subtarea', function (string $where) {
+    $project = Project::factory()->hourBank()->create();
+    $project->addMember($this->user);
+    $from = HourBank::factory()->create(['project_id' => $project->id]);
+    $to = HourBank::factory()->create(['project_id' => $project->id]);
+    $parent = Task::factory()->inBank($from)->create();
+    $child = Task::factory()->subtaskOf($parent)->create();
+    ActiveTimer::query()->create(['user_id' => $this->user->id, 'task_id' => $where === 'tarea' ? $parent->id : $child->id, 'started_at' => now()->subHour()]);
+
+    ($this->update)($parent, ['hour_bank_id' => $to->id])
+        ->assertSessionHasErrors(['hour_bank_id' => __('tasks.errors.bank_timer_running')]);
+
+    expect($parent->fresh()->hour_bank_id)->toBe($from->id)
+        ->and($child->fresh()->hour_bank_id)->toBe($from->id);
+
+    // El resto de cambios sí se admiten con el temporizador en marcha.
+    ($this->update)($parent, ['title' => 'Otro título', 'hour_bank_id' => $from->id])->assertSessionHasNoErrors();
+    expect($parent->fresh()->title)->toBe('Otro título');
+})->with(['tarea', 'subtarea']);
+
 it('borra (papelera) una tarea sin horas, con sus subtareas', function () {
     $task = Task::factory()->create(['project_id' => $this->project->id]);
     $child = Task::factory()->subtaskOf($task)->create();

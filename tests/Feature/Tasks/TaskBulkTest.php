@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActiveTimer;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
@@ -72,6 +73,18 @@ it('cambia la bolsa de las tareas raíz (y sus subtareas), no las horas imputada
     expect(Task::query()->whereKey($this->tasks->modelKeys())->pluck('hour_bank_id')->unique()->all())->toBe([$this->bankB->id])
         ->and($child->fresh()->hour_bank_id)->toBe($this->bankB->id)
         ->and($entry->fresh()->hour_bank_id)->toBe($this->bankA->id);
+});
+
+it('no cambia la bolsa si alguna tarea tiene un temporizador en marcha, y dice cuál', function () {
+    ActiveTimer::query()->create(['user_id' => $this->user->id, 'task_id' => $this->tasks[1]->id, 'started_at' => now()->subHour()]);
+
+    ($this->bulk)(['ids' => $this->tasks->modelKeys(), 'hour_bank_id' => $this->bankB->id])
+        ->assertSessionHasErrors(['ids' => __('tasks.errors.bulk_task', [
+            'task' => $this->tasks[1]->title,
+            'message' => __('tasks.errors.bank_timer_running'),
+        ])]);
+
+    expect(Task::query()->whereKey($this->tasks->modelKeys())->pluck('hour_bank_id')->unique()->all())->toBe([$this->bankA->id]);
 });
 
 it('es todo o nada: si una tarea no admite el cambio, no cambia ninguna', function () {

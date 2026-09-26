@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Time\TimerService;
+use App\Models\ActiveTimer;
 use App\Models\Attachment;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -86,6 +88,33 @@ it('solo a proyectos donde puede crear tareas y nunca al mismo', function () {
     ($this->move)(['project_id' => $this->source->id, 'hour_bank_id' => $this->sourceBank->id])
         ->assertSessionHasErrors(['project_id' => __('tasks.errors.move_same_project')]);
 });
+
+it('no se mueve con un temporizador en marcha en la tarea o en una subtarea', function (string $where) {
+    $child = Task::factory()->subtaskOf($this->task)->create();
+    $colleague = userWithRole('employee');
+    $this->source->addMember($colleague);
+    $this->travelTo(now()->subHours(3));
+    app(TimerService::class)->start($colleague, $where === 'tarea' ? $this->task : $child);
+    $this->travelBack();
+
+    ($this->move)(['project_id' => $this->target->id, 'hour_bank_id' => $this->targetBank->id])
+        ->assertSessionHasErrors(['project_id' => __('tasks.errors.move_timer_running')]);
+
+    expect($this->task->fresh()->project_id)->toBe($this->source->id)
+        ->and($child->fresh()->project_id)->toBe($this->source->id);
+
+    // Parado el temporizador, sus horas se imputan al origen y ya se puede mover sin llevárselas.
+    app(TimerService::class)->stop($colleague);
+    expect(ActiveTimer::query()->count())->toBe(0);
+
+    ($this->move)(['project_id' => $this->target->id, 'hour_bank_id' => $this->targetBank->id])->assertSessionHasNoErrors();
+
+    expect($this->task->fresh()->project_id)->toBe($this->target->id)
+        ->and(TimeEntry::query()->where('user_id', $colleague->id)->sum('minutes'))->toBeGreaterThanOrEqual(179)
+        ->and(TimeEntry::query()->where('user_id', $colleague->id)->where('project_id', $this->source->id)->where('hour_bank_id', $this->sourceBank->id)->count())
+        ->toBe(TimeEntry::query()->where('user_id', $colleague->id)->count())
+        ->and($this->targetBank->fresh()->consumed_minutes)->toBe(0);
+})->with(['tarea', 'subtarea']);
 
 it('las subtareas no se mueven solas', function () {
     $child = Task::factory()->subtaskOf($this->task)->create();

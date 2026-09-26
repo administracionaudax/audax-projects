@@ -3,6 +3,7 @@
 namespace App\Domain\Tasks;
 
 use App\Enums\TaskPriority;
+use App\Models\ActiveTimer;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
@@ -11,6 +12,7 @@ use App\Models\TaskType;
 use App\Models\User;
 use App\Support\RichText;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +22,7 @@ use Illuminate\Validation\ValidationException;
  * - subtareas de un solo nivel, en el proyecto y con la bolsa de su padre (siempre),
  * - si una tarea tiene subtareas con estimación, la suya es la suma (solo lectura),
  * - un hito no lleva estimación ni horas; una tarea con horas no puede pasar a hito,
+ * - no cambia de bolsa con un temporizador en marcha en ella o en sus subtareas (hasRunningTimer),
  * - completed_at lo gestiona el modelo al cambiar de estado,
  * - las tareas nuevas van al final de su columna; al cambiar de estado, al final de la nueva,
  * - el creador y el responsable siguen la tarea; asignación, menciones y cambios de estado avisan
@@ -188,6 +191,10 @@ final class TaskWriter
                     throw ValidationException::withMessages(['hour_bank_id' => __('tasks.errors.subtask_bank')]);
                 }
 
+                if ($this->hasRunningTimer($task)) {
+                    throw ValidationException::withMessages(['hour_bank_id' => __('tasks.errors.bank_timer_running')]);
+                }
+
                 $task->hour_bank_id = $this->assertBank($project, $bankId)?->id;
                 $bankChanged = true;
             }
@@ -232,6 +239,19 @@ final class TaskWriter
 
             return $task;
         }));
+    }
+
+    /**
+     * ¿Hay un temporizador en marcha en la tarea o en alguna de sus subtareas? Mientras lo haya, la
+     * tarea no cambia de proyecto ni de bolsa: al pararlo, TimerService imputa con el proyecto y la
+     * bolsa que tenga la tarea en ese momento, y las horas medidas antes del cambio acabarían en el
+     * destino (SPEC §6: mover una tarea no mueve sus horas).
+     */
+    public function hasRunningTimer(Task $task): bool
+    {
+        return ActiveTimer::query()
+            ->where(fn (Builder $query) => $query->where('task_id', $task->id)->orWhereIn('task_id', $task->subtasks()->select('id')))
+            ->exists();
     }
 
     /**
