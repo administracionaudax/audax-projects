@@ -366,7 +366,8 @@ it('la página de aprobaciones lista las semanas enviadas de su equipo con total
             ->where('pending.0.total', 90)
             ->where('pending.0.capacity', 2400)
             ->where('pending.0.department', 'Diseño')
-            ->has('pending.0.entries', 2)
+            ->where('pending.0.entries_count', 2)
+            ->missing('pending.0.entries')
             ->where('pending.2.total', 210));
 
     // El admin ve también la del otro departamento.
@@ -375,7 +376,7 @@ it('la página de aprobaciones lista las semanas enviadas de su equipo con total
         ->assertInertia(fn ($page) => $page->has('pending', 4));
 });
 
-it('la página de aprobaciones hace las mismas consultas con 2 semanas pendientes que con 12, y solo carga sus entradas', function () {
+it('la página de aprobaciones hace las mismas consultas con 2 semanas pendientes que con 12, y no carga las entradas (PERF-01)', function () {
     // Personas del departamento con horario propio, semanas enviadas y otras ya revisadas (histórico).
     $team = function (int $people, array $pendingWeeks, array $historyWeeks): void {
         foreach (User::factory()->count($people)->employee()->inDepartment($this->department)->create() as $person) {
@@ -423,8 +424,9 @@ it('la página de aprobaciones hace las mismas consultas con 2 semanas pendiente
     });
 
     expect($queries())->toBe($few);
-    // Solo se cargan las entradas de las semanas pendientes (una por semana); el histórico se suma en la base de datos.
-    expect($retrieved)->toBe(12);
+    // Las cifras de las semanas pendientes y del histórico se suman en la base de datos: no se
+    // carga ninguna entrada (el detalle se pide al desplegarlo).
+    expect($retrieved)->toBe(0);
 
     $this->actingAs($this->head)
         ->get('/horas/aprobaciones')
@@ -433,7 +435,33 @@ it('la página de aprobaciones hace las mismas consultas con 2 semanas pendiente
             ->where('pending.0.period.week_start', '2026-07-06')
             ->where('pending.0.capacity', 34 * 60)
             ->where('pending.0.total', 60)
-            ->has('pending.0.entries', 1)
+            ->where('pending.0.entries_count', 1)
             ->has('history', 7)
             ->where('history.0.total', 30));
+});
+
+it('el detalle de una semana pendiente se pide aparte, solo con sus entradas y solo si se puede revisar', function () {
+    $person = User::factory()->employee()->inDepartment($this->department)->create();
+    $this->project->addMember($person);
+    ($this->log)($person, '2026-09-21', 60);
+    ($this->log)($person, '2026-09-23', 30);
+    ($this->log)($person, '2026-09-14', 45); // De otra semana.
+    ($this->submit)($person);
+    $period = TimesheetPeriod::query()->where('user_id', $person->id)->where('status', TimesheetStatus::Submitted)->sole();
+
+    $this->actingAs($this->head)
+        ->getJson("/horas/aprobaciones/{$period->id}/entradas")
+        ->assertOk()
+        ->assertJsonCount(2, 'entries')
+        ->assertJsonPath('entries.0.date', '2026-09-21')
+        ->assertJsonPath('entries.0.minutes', 60)
+        ->assertJsonPath('entries.0.task.id', $this->task->id)
+        ->assertJsonPath('entries.1.minutes', 30)
+        ->assertJsonMissingPath('entries.0.hourly_rate_snapshot');
+
+    // Un responsable de otro departamento no la revisa; un empleado no entra en aprobaciones.
+    $otherHead = userWithRole('department_manager');
+    $otherHead->managedDepartments()->attach(Department::factory()->create());
+    $this->actingAs($otherHead)->getJson("/horas/aprobaciones/{$period->id}/entradas")->assertForbidden();
+    $this->actingAs($person)->getJson("/horas/aprobaciones/{$period->id}/entradas")->assertForbidden();
 });

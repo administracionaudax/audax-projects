@@ -129,6 +129,12 @@ export type PendingWeek = {
     capacity_days: Record<string, number>;
     billable: number;
     overage: number;
+    /** Número de entradas; el detalle se pide al desplegarlo (PendingWeekEntriesResponse). */
+    entries_count: number;
+};
+
+/** GET /horas/aprobaciones/{period}/entradas: las entradas de una semana pendiente. */
+export type PendingWeekEntriesResponse = {
     entries: TimeEntry[];
 };
 

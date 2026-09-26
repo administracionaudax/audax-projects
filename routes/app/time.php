@@ -38,6 +38,7 @@ Route::get('horas/opciones', EntryOptionsController::class)->middleware('throttl
 // Aprobaciones: responsables y admins (D-020).
 Route::middleware('can:approve-time')->group(function () {
     Route::get('horas/aprobaciones', [ApprovalController::class, 'index'])->name('time.approvals.index');
+    Route::get('horas/aprobaciones/{period}/entradas', [ApprovalController::class, 'entries'])->middleware('throttle:120,1')->name('time.approvals.entries');
     Route::post('horas/aprobaciones/aprobar', [ApprovalController::class, 'approveMany'])->name('time.approvals.approve-many');
     Route::post('horas/aprobaciones/{period}/aprobar', [ApprovalController::class, 'approve'])->name('time.approvals.approve');
     Route::post('horas/aprobaciones/{period}/devolver', [ApprovalController::class, 'sendBack'])->name('time.approvals.send-back');

@@ -19,6 +19,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +31,10 @@ use Inertia\Response;
  * que supervisa quien revisa (un admin, todas: también las de personas sin departamento o de
  * departamentos sin responsables), con totales por día y detalle; aprobar, devolver con
  * comentario, aprobar varias y reabrir.
+ *
+ * Rendimiento (PERF-01): la carga inicial solo lleva los totales de cada semana (por día,
+ * facturable, exceso y número de entradas), sumados en la base de datos. Las entradas de una
+ * semana se piden al desplegar su detalle (GET /horas/aprobaciones/{period}/entradas).
  */
 class ApprovalController extends TimeController
 {
@@ -66,8 +71,7 @@ class ApprovalController extends TimeController
             ->limit(20)
             ->get();
 
-        $entries = $this->entriesFor($pending)
-            ->groupBy(fn (TimeEntry $entry): string => $this->weekKey($entry->user_id, $entry->date));
+        $figures = $this->pendingFigures($pending);
         // Capacidad de todas las semanas pendientes con una sola consulta (en el mismo orden).
         $capacities = $this->capacity->forRanges(array_values($pending->map(fn (TimesheetPeriod $period): array => [
             'user_id' => $period->user_id,
@@ -80,7 +84,7 @@ class ApprovalController extends TimeController
         return Inertia::render('time/approvals', [
             'pending' => $pending->values()->map(fn (TimesheetPeriod $period, int $index): array => $this->pendingWeek(
                 $period,
-                $entries->get($this->weekKey($period->user_id, $period->week_start)) ?? new Collection,
+                $figures[$this->weekKey($period->user_id, $period->week_start)] ?? [],
                 $capacities[$index],
             ))->all(),
             'history' => $history->map(fn (TimesheetPeriod $period): array => [
@@ -95,6 +99,30 @@ class ApprovalController extends TimeController
                 },
             ])->values()->all(),
             'limit' => self::PENDING_LIMIT,
+        ]);
+    }
+
+    /**
+     * GET /horas/aprobaciones/{period}/entradas (JSON): las entradas de esa semana, para el detalle
+     * que se despliega en la tarjeta. Solo quien puede revisarla.
+     */
+    public function entries(Request $request, TimesheetPeriod $period): JsonResponse
+    {
+        $this->authorize('review', $period);
+
+        $entries = TimeEntry::query()
+            ->where('user_id', $period->user_id)
+            ->whereBetween('date', [$period->week_start->toDateString(), $period->weekEnd()->toDateString()])
+            ->with([
+                'task:id,title,deleted_at',
+                'project:id,code,name,color,deleted_at',
+            ])
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'entries' => TimeEntryResource::collection($entries)->resolve($request),
         ]);
     }
 
@@ -196,26 +224,44 @@ class ApprovalController extends TimeController
     }
 
     /**
-     * Entradas de esas semanas (y solo de esas: nada de los días entre una y otra) en una consulta.
+     * Cifras de esas semanas (y solo de esas: nada de los días entre una y otra), sumadas en la
+     * base de datos en una consulta, sin cargar las entradas: minutos por día, facturables,
+     * exceso y número de entradas.
      *
      * @param  Collection<int, TimesheetPeriod>  $periods
-     * @return Collection<int, TimeEntry>
+     * @return array<string, array{days: array<string, int>, billable: int, overage: int, count: int}> weekKey → cifras
      */
-    private function entriesFor(Collection $periods): Collection
+    private function pendingFigures(Collection $periods): array
     {
         if ($periods->isEmpty()) {
-            return new Collection;
+            return [];
         }
 
-        return TimeEntry::query()
+        $rows = TimeEntry::query()
             ->where(fn (Builder $query) => $this->inWeeks($query, $periods))
-            ->with([
-                'task:id,title,deleted_at',
-                'project:id,code,name,color,deleted_at',
-            ])
-            ->orderBy('date')
-            ->orderBy('id')
+            ->select(['time_entries.user_id', 'time_entries.date'])
+            ->selectRaw('SUM(time_entries.minutes) as total')
+            ->selectRaw('SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable')
+            ->selectRaw('SUM(time_entries.overage_minutes) as overage')
+            ->selectRaw('COUNT(*) as entries')
+            ->groupBy('time_entries.user_id', 'time_entries.date')
+            ->toBase()
             ->get();
+
+        $figures = [];
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            $date = CarbonImmutable::parse((string) $row['date']);
+            $key = $this->weekKey((int) $row['user_id'], $date);
+            $figures[$key] ??= ['days' => [], 'billable' => 0, 'overage' => 0, 'count' => 0];
+            $day = $date->toDateString();
+            $figures[$key]['days'][$day] = ($figures[$key]['days'][$day] ?? 0) + (int) $row['total'];
+            $figures[$key]['billable'] += (int) $row['billable'];
+            $figures[$key]['overage'] += (int) $row['overage'];
+            $figures[$key]['count'] += (int) $row['entries'];
+        }
+
+        return $figures;
     }
 
     /**
@@ -275,17 +321,17 @@ class ApprovalController extends TimeController
     }
 
     /**
-     * @param  Collection<int, TimeEntry>  $weekEntries  Las de esa semana y persona.
+     * @param  array{days?: array<string, int>, billable?: int, overage?: int, count?: int}  $figures  Las de esa semana y persona.
      * @param  array<string, int>  $capacity
      * @return array<string, mixed>
      */
-    private function pendingWeek(TimesheetPeriod $period, Collection $weekEntries, array $capacity): array
+    private function pendingWeek(TimesheetPeriod $period, array $figures, array $capacity): array
     {
         $week = Week::containing($period->week_start);
         $days = array_fill_keys($week->days(), 0);
 
-        foreach ($weekEntries as $entry) {
-            $days[$entry->date->toDateString()] += $entry->minutes;
+        foreach ($figures['days'] ?? [] as $day => $minutes) {
+            $days[$day] = ($days[$day] ?? 0) + $minutes;
         }
 
         return [
@@ -295,9 +341,9 @@ class ApprovalController extends TimeController
             'total' => array_sum($days),
             'capacity' => array_sum($capacity),
             'capacity_days' => $capacity,
-            'billable' => (int) $weekEntries->where('is_billable', true)->sum('minutes'),
-            'overage' => (int) $weekEntries->sum('overage_minutes'),
-            'entries' => $weekEntries->map(fn (TimeEntry $entry): array => Plain::of(new TimeEntryResource($entry)))->all(),
+            'billable' => $figures['billable'] ?? 0,
+            'overage' => $figures['overage'] ?? 0,
+            'entries_count' => $figures['count'] ?? 0,
         ];
     }
 }

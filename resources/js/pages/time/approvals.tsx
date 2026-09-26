@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { CapacityCell } from '@/components/time/capacity-cell';
 import { ReturnWeekDialog } from '@/components/time/return-week-dialog';
+import { useWeekEntries } from '@/components/time/use-week-entries';
 import {
     dayMonthLabel,
     weekRangeLabel,
@@ -25,6 +26,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Collapsible,
     CollapsibleContent,
@@ -112,9 +114,11 @@ export default function Approvals({
                     description={t('hours.approvals.description')}
                 />
 
+                {/* min-w-0 (UX-02): sin él, la tabla de días (min-w-[40rem]) ensancha la sección,
+                    la lista y cada tarjeta, y en móvil el layout recorta los controles. */}
                 <section
                     aria-labelledby="pending-heading"
-                    className="grid gap-4"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 id="pending-heading" className="text-lg">
@@ -177,7 +181,7 @@ export default function Approvals({
                             description={t('hours.approvals.empty_description')}
                         />
                     ) : (
-                        <ul className="grid gap-3">
+                        <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
                             {pending.map((week) => (
                                 <PendingCard
                                     key={week.period.id ?? week.period.week}
@@ -399,12 +403,13 @@ function PendingCard({
     const { period } = week;
     const [processing, setProcessing] = useState(false);
     const [open, setOpen] = useState(false);
+    const detail = useWeekEntries(period.id, open && week.entries_count > 0);
     const name = period.user?.name ?? '';
     const range = weekRangeLabel(period.week_start, period.week_end);
     const days = Object.keys(week.days);
 
     return (
-        <li className="rounded-md border" data-test="pending-week">
+        <li className="min-w-0 rounded-md border" data-test="pending-week">
             <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
                 <div className="flex min-w-0 items-start gap-3 lg:w-64">
                     <Checkbox
@@ -547,14 +552,38 @@ function PendingCard({
                                 )}
                             />
                             {t('hours.approvals.detail', {
-                                count: week.entries.length,
+                                count: week.entries_count,
                             })}
                         </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                        {week.entries.length === 0 ? (
+                        {week.entries_count === 0 ? (
                             <p className="py-2 text-sm text-muted-foreground">
                                 {t('hours.approvals.no_entries')}
+                            </p>
+                        ) : detail.status === 'error' ? (
+                            <p
+                                className="flex flex-wrap items-center gap-2 py-2 text-sm"
+                                role="alert"
+                            >
+                                {t('hours.approvals.detail_error')}
+                                <Button
+                                    type="button"
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto p-0"
+                                    onClick={detail.retry}
+                                >
+                                    {t('hours.approvals.detail_retry')}
+                                </Button>
+                            </p>
+                        ) : detail.status !== 'ready' ? (
+                            <p
+                                className="flex items-center gap-2 py-2 text-sm text-muted-foreground"
+                                role="status"
+                            >
+                                <Spinner aria-hidden="true" />
+                                {t('hours.approvals.detail_loading')}
                             </p>
                         ) : (
                             <div className="mt-2 overflow-x-auto">
@@ -594,7 +623,7 @@ function PendingCard({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {week.entries.map((entry) => (
+                                        {detail.entries.map((entry) => (
                                             <tr
                                                 key={entry.id}
                                                 className="border-b last:border-b-0"
