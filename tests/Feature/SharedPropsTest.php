@@ -74,7 +74,6 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
     ['/proyectos', 'projects'],
     ['/clientes', 'clients'],
     ['/bolsas', 'hour-banks'],
-    ['/horas', 'time'],
     ['/carga', 'workload'],
     ['/informes', 'reports'],
     ['/chat', 'chat'],
