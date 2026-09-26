@@ -1,12 +1,14 @@
 <?php
 
 use App\Domain\Projects\ProjectActivityFeed;
+use App\Domain\Projects\ProjectSummary;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TimeEntry;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -46,6 +48,28 @@ test('horas estimadas: la estimación efectiva de las tareas raíz (la de un pad
             ->where('summary.budget_minutes', 1200)
             ->where('summary.total_tasks', 7)
             ->where('summary.open_tasks', 6));
+});
+
+test('la estimación se suma en la base de datos, sin cargar las tareas (PERF-05); las subtareas de una raíz borrada no cuentan', function () {
+    $bank = HourBank::factory()->hours(50)->create(['project_id' => $this->project->id]);
+    $parent = Task::factory()->inBank($bank)->create(['estimated_minutes' => 600]);
+    Task::factory()->subtaskOf($parent)->create(['estimated_minutes' => 120]);
+    Task::factory()->inBank($bank)->create(['estimated_minutes' => 90]);
+    // Una raíz borrada con una subtarea estimada: no cuenta ninguna de las dos.
+    $deleted = Task::factory()->inBank($bank)->create(['estimated_minutes' => 300]);
+    Task::factory()->subtaskOf($deleted)->create(['estimated_minutes' => 45]);
+    $deleted->delete();
+    // Una subtarea borrada no cuenta; su padre sin otras estimadas cuenta con la suya.
+    $other = Task::factory()->inBank($bank)->create(['estimated_minutes' => 30]);
+    Task::factory()->subtaskOf($other)->create(['estimated_minutes' => 999])->delete();
+
+    $hydrated = 0;
+    Event::listen('eloquent.retrieved: '.Task::class, function () use (&$hydrated): void {
+        $hydrated++;
+    });
+
+    expect(app(ProjectSummary::class)->for($this->project)['estimated_minutes'])->toBe(120 + 90 + 30)
+        ->and($hydrated)->toBe(0);
 });
 
 test('muestra las bolsas abiertas con sus horas comprometidas; no las cerradas', function () {
