@@ -64,12 +64,12 @@ El heatmap diario y la matriz de carga se hacen como componentes propios.
 - **Semáforo de carga:** tintes neutro, azul, verde, ámbar y rojo con texto navy (≥ 4,5:1).
 - **Departamentos por defecto:** Diseño `#0171FF`, Desarrollo `#179FA5`, Marketing `#5E2DAD` (editables).
 
-### D-013 · Herramientas de frontend: Vite+ en lugar de ESLint y Prettier **[PROPUESTA pendiente de tu confirmación; cambia el SPEC §2]**
+### D-013 · Herramientas de frontend: Vite+ en lugar de ESLint y Prettier **[APROBADA por el propietario el 26/09; cambia el SPEC §2]**
 El starter kit oficial trae **Vite+** (`vite-plus`, MIT), que incluye:
 - **Oxlint** (lint),
 - **Oxfmt** (formato),
 - **Vitest 4** (tests).
-Cumple la misma función que ESLint y Prettier, pero mucho más rápido y ya configurado. Se mantiene salvo que prefieras ESLint y Prettier. Comandos: `npx vp check` (lint + formato), `npx vp test run` y `npx vp build`.
+Cumple la misma función que ESLint y Prettier, pero mucho más rápido y ya configurado. Comandos: `npx vp check` (lint + formato), `npx vp test run` y `npx vp build`.
 
 ### D-014 · Sesiones en base de datos
 `SESSION_DRIVER=database` (PostgreSQL), para poder listar y cerrar las sesiones activas de cada usuario (SPEC §15). La caché y las colas van en Valkey.

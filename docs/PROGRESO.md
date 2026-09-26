@@ -59,8 +59,8 @@ _Última actualización: 26/09/2026 15:25_
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).
-- [ ] Ver el resultado de la CI: `gh auth login` en el Mac, o que el propietario mire la pestaña *Actions* del repositorio.
-- [ ] Confirmar la propuesta D-013 (Vite+ en lugar de ESLint y Prettier).
+- [ ] El propietario revisa la pestaña *Actions* de GitHub y nos dice el resultado de la CI (último run de `fase-0`).
+- [x] D-013 aprobada: se mantiene Vite+ (26/09).
 - [ ] Más adelante: datos SMTP (hasta entonces los emails van al log), destino de los backups y la lista inicial de empleados.
 
 ## Problemas abiertos
