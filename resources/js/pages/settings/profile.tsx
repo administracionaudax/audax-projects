@@ -1,7 +1,9 @@
 import { Form, Head } from '@inertiajs/react';
+import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +17,10 @@ import type { ProfilePageProps } from '@/types';
 // un admin desactivando al usuario (SPEC §14: nunca se borra a quien tiene horas).
 export default function Profile({ status }: ProfilePageProps) {
     const user = useRequiredUser();
+    const [email, setEmail] = useState(user.email);
+    // Cambiar el correo exige la contraseña actual (el backend la valida solo en ese caso).
+    const emailChanged =
+        email.trim().toLowerCase() !== user.email.toLowerCase();
 
     return (
         <>
@@ -75,7 +81,10 @@ export default function Profile({ status }: ProfilePageProps) {
                                     id="email"
                                     type="email"
                                     className="mt-1 block w-full"
-                                    defaultValue={user.email}
+                                    value={email}
+                                    onChange={(event) =>
+                                        setEmail(event.target.value)
+                                    }
                                     name="email"
                                     required
                                     autoComplete="username"
@@ -90,6 +99,40 @@ export default function Profile({ status }: ProfilePageProps) {
                                     message={errors.email}
                                 />
                             </div>
+
+                            {emailChanged && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="current_password">
+                                        {t('profile.current_password')}
+                                    </Label>
+
+                                    <PasswordInput
+                                        id="current_password"
+                                        name="current_password"
+                                        className="mt-1 block w-full"
+                                        required
+                                        autoComplete="current-password"
+                                        aria-describedby="current_password_help"
+                                        aria-invalid={
+                                            errors.current_password
+                                                ? true
+                                                : undefined
+                                        }
+                                    />
+
+                                    <p
+                                        id="current_password_help"
+                                        className="text-sm text-muted-foreground"
+                                    >
+                                        {t('profile.current_password_help')}
+                                    </p>
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.current_password}
+                                    />
+                                </div>
+                            )}
 
                             <div className="flex items-center gap-4">
                                 <Button

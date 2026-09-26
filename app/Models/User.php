@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Auth\SessionTerminator;
 use App\Enums\Role;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -141,6 +142,14 @@ class User extends Authenticatable
     /**
      * Los clientes solo acceden al portal (SPEC §5 y §11).
      */
+    /**
+     * El enlace de restablecimiento se envía por cola (SPEC §13).
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
     public function isClient(): bool
     {
         return $this->hasRole(Role::Client->value);

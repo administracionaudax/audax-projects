@@ -1,7 +1,8 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -24,7 +25,7 @@ test('se puede pedir el enlace de recuperación', function () {
     $this->post(route('password.email'), ['email' => $user->email])
         ->assertSessionHas('status', __('passwords.sent'));
 
-    Notification::assertSentTo($user, ResetPassword::class);
+    Notification::assertSentTo($user, ResetPasswordNotification::class);
 });
 
 test('la respuesta es la misma exista o no el correo, y aunque el envío esté limitado', function () {
@@ -44,7 +45,7 @@ test('la respuesta es la misma exista o no el correo, y aunque el envío esté l
             ->assertSessionHas('status', __('passwords.sent'));
     }
 
-    Notification::assertSentToTimes($user, ResetPassword::class, 1);
+    Notification::assertSentToTimes($user, ResetPasswordNotification::class, 1);
 
     $this->postJson(route('password.email'), ['email' => 'otro@example.com'])
         ->assertOk()
@@ -82,7 +83,7 @@ test('la pantalla de nueva contraseña se muestra con un token', function () {
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) {
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) {
         $this->get(route('password.reset', $notification->token))->assertOk();
 
         return true;
@@ -96,7 +97,7 @@ test('la contraseña se restablece con un token válido', function () {
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user) {
         $this->post(route('password.update'), [
             'token' => $notification->token,
             'email' => $user->email,
@@ -159,4 +160,15 @@ test('la contraseña no se restablece con un token inválido', function () {
         'password' => 'nueva-contraseña',
         'password_confirmation' => 'nueva-contraseña',
     ])->assertSessionHasErrors(['email' => __('passwords.token')]);
+});
+
+test('el enlace de restablecimiento se envía por la cola de correo', function () {
+    Notification::fake();
+    $user = User::factory()->create();
+
+    $this->post(route('password.email'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) {
+        return $notification instanceof ShouldQueue && $notification->queue === 'mail';
+    });
 });
