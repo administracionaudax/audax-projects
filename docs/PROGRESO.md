@@ -60,6 +60,7 @@ _Última actualización: 26/09/2026 16:45_
     - 90 tests nuevos de reglas de negocio.
   - ⏳ **Entregas 1.2 a 1.6, en paralelo:** administración y clientes, proyectos y bolsas, tareas, y horas.
   - ⏳ **Entrega 1.7, cierre:** notificaciones, búsqueda, seeders, E2E, revisión, despliegue y copias.
+    - ✅ **Revisión global de la Fase 1 (26/09):** 26 hallazgos confirmados (integración, seguridad, reglas de bolsas, rendimiento y UX), todos corregidos con sus tests (D-043 a D-045). Nueva migración `invitation_tokens` (se aplica con `desplegar-dev.sh`).
 
 ## Siguiente
 1. Integrar las entregas 1.2 a 1.6, revisión adversarial y despliegue. Después, Fase 2 sin esperar (D-027).
