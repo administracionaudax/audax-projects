@@ -115,7 +115,10 @@ export type AdminUserDeactivateProps = {
 /** DepartmentRowResource. */
 export type AdminDepartment = Department & {
     managers: UserSummary[];
+    /** Personas activas. */
     users_count: number;
+    /** Personas de baja que siguen en él (impiden borrarlo). */
+    inactive_users_count: number;
     open_hour_banks_count: number;
     can_delete: boolean;
 };

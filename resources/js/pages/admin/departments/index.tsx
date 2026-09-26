@@ -197,6 +197,17 @@ export default function AdminDepartments({
                                         </td>
                                         <td className="tabular px-3 py-2 text-right">
                                             {department.users_count}
+                                            {department.inactive_users_count >
+                                            0 ? (
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {t(
+                                                        'admin.departments.inactive_people',
+                                                        {
+                                                            count: department.inactive_users_count,
+                                                        },
+                                                    )}
+                                                </span>
+                                            ) : null}
                                         </td>
                                         <td className="tabular px-3 py-2 text-right">
                                             {department.open_hour_banks_count}

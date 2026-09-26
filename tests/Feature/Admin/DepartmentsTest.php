@@ -38,6 +38,8 @@ test('lista los departamentos con sus responsables, personas activas y bolsas ab
             ->where('departments.0.can_delete', false)
             ->where('departments.1.name', 'Diseño')
             ->where('departments.1.users_count', 2)
+            ->where('departments.1.inactive_users_count', 1)
+            ->where('departments.1.can_delete', false)
             ->has('departments.1.managers', 2)
             ->where('departments.1.managers.0.name', 'Bea')
             ->where('palette', ['#0171FF', '#179FA5', '#5E2DAD', '#E65FB3', '#3C41AE', '#0892C4', '#56667A'])
@@ -142,9 +144,27 @@ test('no se borra con personas activas ni con bolsas abiertas', function () {
         ->and($bank->fresh()?->department?->id)->toBe($department->id);
 });
 
-test('al borrarlo, las personas desactivadas, los responsables y los tipos de tarea se desvinculan', function () {
+test('no se borra si solo le quedan personas de baja: nunca se pierde a qué departamento pertenecían', function () {
     $department = Department::factory()->create();
     $former = User::factory()->employee()->inDepartment($department)->inactive()->create();
+
+    $this->actingAs($this->admin)
+        ->get('/admin/departamentos')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('departments.0.users_count', 0)
+            ->where('departments.0.inactive_users_count', 1)
+            ->where('departments.0.can_delete', false));
+
+    $this->actingAs($this->admin)
+        ->delete("/admin/departamentos/{$department->id}")
+        ->assertSessionHasErrors(['department' => __('admin.departments.errors.has_inactive_people')]);
+
+    expect(Department::query()->whereKey($department->id)->exists())->toBeTrue()
+        ->and($former->fresh()?->department_id)->toBe($department->id);
+});
+
+test('al borrarlo, los responsables y los tipos de tarea se desvinculan', function () {
+    $department = Department::factory()->create();
     $manager = userWithRole('department_manager');
     $department->managers()->attach($manager);
     $type = TaskType::factory()->create(['department_id' => $department->id]);
@@ -154,7 +174,7 @@ test('al borrarlo, las personas desactivadas, los responsables y los tipos de ta
         ->assertSessionHasNoErrors()
         ->assertInertiaFlash('toast.type', 'success');
 
-    expect($former->fresh()?->department_id)->toBeNull()
-        ->and($type->fresh()?->department_id)->toBeNull()
-        ->and($manager->managedDepartments()->count())->toBe(0);
+    expect($type->fresh()?->department_id)->toBeNull()
+        ->and($manager->managedDepartments()->count())->toBe(0)
+        ->and(Department::withTrashed()->whereKey($department->id)->exists())->toBeTrue();
 });

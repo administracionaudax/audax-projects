@@ -82,6 +82,7 @@ return [
             'name_taken' => 'Ya hay un departamento con este nombre.',
             'managers' => 'Los responsables tienen que ser personas activas con el rol de responsable o de administración.',
             'has_people' => 'No se puede eliminar: tiene personas activas. Cámbialas antes de departamento.',
+            'has_inactive_people' => 'No se puede eliminar: tiene personas desactivadas. Cámbialas antes de departamento desde su ficha.',
             'has_banks' => 'No se puede eliminar: tiene bolsas de horas abiertas.',
         ],
     ],

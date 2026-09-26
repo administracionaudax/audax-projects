@@ -24,8 +24,9 @@ use Inertia\Response;
 
 /**
  * Departamentos (SPEC §4.1 y §14, D-024): nombre, color de la paleta y varios responsables.
- * Borrar es un borrado lógico y solo se permite sin personas activas ni bolsas abiertas; las
- * personas desactivadas que quedaran en él pasan a «sin departamento». Gate manage-settings.
+ * Borrar es un borrado lógico y solo se permite sin personas (activas o de baja) ni bolsas
+ * abiertas: así nunca se pierde a qué departamento pertenecía nadie, tampoco quien está de baja
+ * (sus horas siguen contando en el histórico del departamento). Gate manage-settings.
  */
 class DepartmentController extends Controller
 {
@@ -35,7 +36,10 @@ class DepartmentController extends Controller
 
         $departments = Department::query()
             ->with(['managers' => fn ($query) => $query->orderBy('name')])
-            ->withCount(['users' => fn (Builder $query) => $query->where('is_active', true)])
+            ->withCount([
+                'users' => fn (Builder $query) => $query->where('is_active', true),
+                'users as inactive_users_count' => fn (Builder $query) => $query->where('is_active', false),
+            ])
             ->addSelect(['open_hour_banks_count' => HourBank::query()
                 ->selectRaw('count(*)')
                 ->whereColumn('hour_banks.department_id', 'departments.id')
@@ -97,11 +101,14 @@ class DepartmentController extends Controller
                 throw ValidationException::withMessages(['department' => __('admin.departments.errors.has_people')]);
             }
 
+            if (User::query()->where('department_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['department' => __('admin.departments.errors.has_inactive_people')]);
+            }
+
             if (HourBank::query()->where('department_id', $locked->id)->open()->exists()) {
                 throw ValidationException::withMessages(['department' => __('admin.departments.errors.has_banks')]);
             }
 
-            User::query()->where('department_id', $locked->id)->update(['department_id' => null]);
             TaskType::withTrashed()->where('department_id', $locked->id)->update(['department_id' => null]);
             $locked->managers()->detach();
             $locked->delete();
