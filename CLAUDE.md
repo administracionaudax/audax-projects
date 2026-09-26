@@ -12,7 +12,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Estado de las fases
 | Fase | Estado |
 |---|---|
-| 0. Fundaciones | En curso: esperando el acceso SSH y el repositorio de GitHub |
+| 0. Fundaciones | En curso: auditoría hecha; propuesta de despliegue pendiente de aprobar |
 | 1. Núcleo | Pendiente |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
@@ -24,8 +24,8 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Entorno (decidido el 26/09/2026, ver DECISIONES)
 - **No hay entorno local con Docker.** Se desarrolla en el servidor `svr.ztudio.es`, directamente en `projects.audaxstudio.com`, hasta que se separen producción y desarrollo.
 - Esta carpeta es la **copia de trabajo Git**. El código se sincroniza al servidor con `rsync` por SSH, y Composer, Artisan, los tests y la compilación se ejecutan por SSH con `nice`/`ionice`.
-- Alias SSH: `audax` (clave `~/.ssh/audax_projects_ed25519`). Pendiente de configurar cuando haya usuario.
-- Remoto Git: GitHub, privado, en la cuenta `administracion@audaxstudio.com`. Pendiente.
+- **SSH:** alias `audax` → `root@svr.ztudio.es:5222` (clave `~/.ssh/audax_projects_ed25519`). Todo lo que se haga en el servidor se anota en `docs/SERVIDOR-CAMBIOS.md`.
+- **Remoto Git:** `git@github-audax:administracionaudax/audax-projects.git` (deploy key `~/.ssh/audax_github_ed25519`, con escritura).
 
 ## Comandos
 _Se completan en la Fase 0.2, cuando exista la app._

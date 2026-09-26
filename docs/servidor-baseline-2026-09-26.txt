@@ -1,0 +1,60 @@
+# Línea base HTTP 2026-09-26 11:37 CEST desde el Mac (sitio código tiempo_s ip)
+abordo.endesarrollo.pro 200 3.410433 185.33.65.100
+ainia.endesarrollo.pro 200 6.079051 185.33.65.100
+altex.endesarrollo.pro 200 4.087198 185.33.65.100
+atalanta.endesarrollo.pro 200 3.730733 185.33.65.100
+audaxstudio.com 301 0.217035 188.114.97.5
+beevo.endesarrollo.pro 200 3.043094 185.33.65.100
+carwashbenidorm.es 301 1.368139 188.114.97.5
+chocolateshigon.com 200 0.829926 185.33.65.98
+climalgar.com 301 0.137589 185.33.65.98
+climalgarbenidorm.es 200 0.166760 104.21.11.24
+edicionesmonoculo.com 301 0.198394 185.33.65.103
+emineo.es 000 0.178667 185.33.65.98
+emineo.es ERR
+endesarrollo.pro 000 0.136345 185.33.65.100
+endesarrollo.pro ERR
+estepark.es 200 3.005323 185.33.65.98
+ezplus.endesarrollo.pro 000 0.106193 185.33.65.100
+ezplus.endesarrollo.pro ERR
+franciscosanahuja.com 200 2.160471 172.67.160.217
+hn.endesarrollo.pro 000 0.283395 185.33.65.100
+hn.endesarrollo.pro ERR
+hnosconmuchamiga.endesarrollo.pro 200 2.905877 185.33.65.100
+iamanagers.endesarrollo.pro 000 0.238103 185.33.65.100
+iamanagers.endesarrollo.pro ERR
+impactocespedartificial.com 000 0.069347 
+impactocespedartificial.com ERR
+impactodeck.com 200 3.843352 185.33.65.98
+impactoparquets.com 000 0.131438 
+impactoparquets.com ERR
+impactosagunto.com 000 0.140309 
+impactosagunto.com ERR
+impactotoldos.es 200 0.685869 185.33.65.98
+impactoworld.com 200 0.257162 104.21.5.190
+importaco.endesarrollo.pro 000 0.145081 185.33.65.100
+importaco.endesarrollo.pro ERR
+meetingpack.com 200 2.922459 185.33.65.98
+mfautomobile2021.com 200 2.616833 185.33.65.98
+musicson.endesarrollo.pro 000 0.116365 185.33.65.100
+musicson.endesarrollo.pro ERR
+nueva.climalgarbenidorm.es 401 0.131420 185.33.65.102
+paneles.audaxstudio.com 403 0.186289 188.114.96.5
+powerworks.es 200 2.058330 185.33.65.98
+sergicanos.com 200 4.223170 185.33.65.98
+staging.edicionesmonoculo.com 000 0.140282 185.33.65.103
+staging.edicionesmonoculo.com ERR
+staging.vitatrendy.com 200 7.025005 185.33.65.98
+trading.endesarrollo.pro 403 0.206293 185.33.65.100
+vitatrendy.com 200 0.361594 188.114.97.5
+ztudio.es 301 3.405038 185.33.65.109
+# Mismos sitios con -k (ignorando certificado) para los que fallan por SSL
+emineo.es 301 (-k, cert inválido preexistente)
+endesarrollo.pro 303 (-k, cert inválido preexistente)
+ezplus.endesarrollo.pro 303 (-k, cert inválido preexistente)
+hn.endesarrollo.pro 303 (-k, cert inválido preexistente)
+iamanagers.endesarrollo.pro 303 (-k, cert inválido preexistente)
+importaco.endesarrollo.pro 303 (-k, cert inválido preexistente)
+musicson.endesarrollo.pro 303 (-k, cert inválido preexistente)
+staging.edicionesmonoculo.com 303 (-k, cert inválido preexistente)
+impactocespedartificial.com impactoparquets.com impactosagunto.com: sin DNS (preexistente)
