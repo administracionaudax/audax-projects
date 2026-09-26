@@ -63,15 +63,15 @@ function Stat({
     value: string;
 }) {
     return (
-        <div className="flex items-start gap-3 rounded-md border bg-card p-4">
+        <div className="flex min-w-0 items-start gap-3 rounded-md border bg-card p-3 sm:p-4">
             <Icon
                 aria-hidden="true"
-                className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+                className="mt-0.5 hidden size-5 shrink-0 text-muted-foreground sm:block"
                 strokeWidth={1.5}
             />
-            <div className="grid gap-0.5">
+            <div className="grid min-w-0 gap-0.5">
                 <dt className="text-sm text-muted-foreground">{label}</dt>
-                <dd className="tabular text-2xl">{value}</dd>
+                <dd className="tabular text-xl sm:text-2xl">{value}</dd>
             </div>
         </div>
     );
@@ -203,7 +203,7 @@ export default function ClientShow({
                     <h2 id="client-hours-heading" className="sr-only">
                         {t('clients.show.summary')}
                     </h2>
-                    <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                         <Stat
                             icon={Clock}
                             label={t('clients.show.month_hours', {

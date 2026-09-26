@@ -320,7 +320,7 @@ export default function AdminUserEdit({
                                 <ScheduleDialog
                                     userId={user.id}
                                     initialWeek={
-                                        (current ?? latest)?.week ?? [
+                                        (latest ?? current)?.week ?? [
                                             480, 480, 480, 480, 480, 0, 0,
                                         ]
                                     }

@@ -563,6 +563,7 @@ export default function AdminSettings({
                         ) : null}
                     </Section>
 
+                    {/* La confirmación llega como aviso (toast) desde el servidor. */}
                     <div className="flex flex-wrap items-center gap-3">
                         <Button
                             type="submit"
@@ -571,14 +572,6 @@ export default function AdminSettings({
                             {form.processing && <Spinner />}
                             {t('admin.settings.save')}
                         </Button>
-                        {form.recentlySuccessful ? (
-                            <p
-                                role="status"
-                                className="text-sm text-muted-foreground"
-                            >
-                                {t('admin.settings.saved')}
-                            </p>
-                        ) : null}
                     </div>
                 </form>
             </AdminPage>

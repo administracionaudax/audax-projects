@@ -54,6 +54,8 @@ class UserDeactivationController extends Controller
             ->open()
             ->assignedTo($user)
             ->with(['project' => fn ($query) => $query->withTrashed()->select(['id', 'code', 'name', 'color'])])
+            // Primero las que vencen antes; las que no tienen fecha, al final (en SQLite y PostgreSQL).
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('due_date')
             ->orderBy('id')
             ->get(['id', 'title', 'project_id', 'due_date', 'assignee_user_id']);

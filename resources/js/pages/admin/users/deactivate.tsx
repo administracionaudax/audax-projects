@@ -8,6 +8,7 @@ import {
     TriangleAlert,
     UserX,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { NativeSelect } from '@/components/admin/native-select';
 import { EmptyState } from '@/components/empty-state';
@@ -34,12 +35,79 @@ import {
     edit,
     index as usersIndex,
 } from '@/routes/admin/users';
-import type { AdminUserDeactivateProps } from '@/types';
+import type { AdminDeactivationTask, AdminUserDeactivateProps } from '@/types';
 
 type DeactivationForm = {
     default_assignee_id: string;
     assignments: { task_id: number; assignee_user_id: string }[];
 };
+
+/** Una tarea abierta y a quién pasa: en el móvil, el selector va debajo de la tarea. */
+function TaskAssignment({
+    task,
+    selectId,
+    value,
+    error,
+    onChange,
+    options,
+}: {
+    task: AdminDeactivationTask;
+    selectId: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+    options: ReactNode;
+}) {
+    return (
+        <li
+            className="grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(12rem,16rem)] sm:items-center sm:gap-4"
+            data-test="deactivation-task"
+        >
+            <div className="min-w-0">
+                <Link
+                    href={urls.task(task.project.id, task.id)}
+                    className={cn(
+                        'rounded-sm break-words hover:underline',
+                        FOCUS_RING,
+                    )}
+                >
+                    {task.title}
+                </Link>
+                <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                        aria-hidden="true"
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: task.project.color }}
+                    />
+                    <span className="truncate">
+                        {task.project.code} · {task.project.name}
+                    </span>
+                </span>
+            </div>
+            <p className="tabular text-sm whitespace-nowrap text-muted-foreground">
+                {task.due_date
+                    ? t('admin.deactivation.due', {
+                          date: formatDate(task.due_date),
+                      })
+                    : t('admin.deactivation.no_due')}
+            </p>
+            <div className="grid gap-1">
+                <label htmlFor={selectId} className="sr-only">
+                    {t('admin.deactivation.assignee_for', { task: task.title })}
+                </label>
+                <NativeSelect
+                    id={selectId}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    aria-invalid={error ? true : undefined}
+                >
+                    {options}
+                </NativeSelect>
+                <InputError message={error} />
+            </div>
+        </li>
+    );
+}
 
 /**
  * Asistente de baja (SPEC §14). Enseña lo que la persona deja pendiente (tareas abiertas,
@@ -208,169 +276,33 @@ export default function AdminUserDeactivate({
                                         </p>
                                     </div>
 
-                                    <div
-                                        className={cn(
-                                            'overflow-x-auto rounded-md border',
-                                            FOCUS_RING,
-                                        )}
-                                        role="region"
+                                    <ul
+                                        className="divide-y rounded-md border"
                                         aria-label={t(
                                             'admin.deactivation.table_label',
                                         )}
-                                        tabIndex={0}
                                     >
-                                        <table className="w-full min-w-[36rem] text-sm">
-                                            <caption className="sr-only">
-                                                {t(
-                                                    'admin.deactivation.table_label',
-                                                )}
-                                            </caption>
-                                            <thead>
-                                                <tr className="border-b text-left">
-                                                    <th
-                                                        scope="col"
-                                                        className="px-3 py-2 font-medium"
-                                                    >
-                                                        {t(
-                                                            'admin.deactivation.columns.task',
-                                                        )}
-                                                    </th>
-                                                    <th
-                                                        scope="col"
-                                                        className="px-3 py-2 font-medium"
-                                                    >
-                                                        {t(
-                                                            'admin.deactivation.columns.due',
-                                                        )}
-                                                    </th>
-                                                    <th
-                                                        scope="col"
-                                                        className="px-3 py-2 font-medium"
-                                                    >
-                                                        {t(
-                                                            'admin.deactivation.columns.assignee',
-                                                        )}
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {tasks.map((task, index) => {
-                                                    const selectId = `${id}-task-${task.id}`;
-                                                    const error =
-                                                        errors[
-                                                            `assignments.${index}.assignee_user_id`
-                                                        ];
-
-                                                    return (
-                                                        <tr
-                                                            key={task.id}
-                                                            className="border-b last:border-b-0 even:bg-muted"
-                                                            data-test="deactivation-task"
-                                                        >
-                                                            <td className="px-3 py-2">
-                                                                <Link
-                                                                    href={urls.task(
-                                                                        task
-                                                                            .project
-                                                                            .id,
-                                                                        task.id,
-                                                                    )}
-                                                                    className={cn(
-                                                                        'rounded-sm hover:underline',
-                                                                        FOCUS_RING,
-                                                                    )}
-                                                                >
-                                                                    {task.title}
-                                                                </Link>
-                                                                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                    <span
-                                                                        aria-hidden="true"
-                                                                        className="size-2 rounded-full"
-                                                                        style={{
-                                                                            backgroundColor:
-                                                                                task
-                                                                                    .project
-                                                                                    .color,
-                                                                        }}
-                                                                    />
-                                                                    {
-                                                                        task
-                                                                            .project
-                                                                            .code
-                                                                    }{' '}
-                                                                    ·{' '}
-                                                                    {
-                                                                        task
-                                                                            .project
-                                                                            .name
-                                                                    }
-                                                                </span>
-                                                            </td>
-                                                            <td className="tabular px-3 py-2 whitespace-nowrap">
-                                                                {task.due_date
-                                                                    ? formatDate(
-                                                                          task.due_date,
-                                                                      )
-                                                                    : '—'}
-                                                            </td>
-                                                            <td className="px-3 py-2">
-                                                                <label
-                                                                    htmlFor={
-                                                                        selectId
-                                                                    }
-                                                                    className="sr-only"
-                                                                >
-                                                                    {t(
-                                                                        'admin.deactivation.assignee_for',
-                                                                        {
-                                                                            task: task.title,
-                                                                        },
-                                                                    )}
-                                                                </label>
-                                                                <NativeSelect
-                                                                    id={
-                                                                        selectId
-                                                                    }
-                                                                    className="min-w-48"
-                                                                    value={
-                                                                        form
-                                                                            .data
-                                                                            .assignments[
-                                                                            index
-                                                                        ]
-                                                                            ?.assignee_user_id ??
-                                                                        ''
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        assign(
-                                                                            task.id,
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    aria-invalid={
-                                                                        error
-                                                                            ? true
-                                                                            : undefined
-                                                                    }
-                                                                >
-                                                                    {options}
-                                                                </NativeSelect>
-                                                                <InputError
-                                                                    message={
-                                                                        error
-                                                                    }
-                                                                />
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                        {tasks.map((task, index) => (
+                                            <TaskAssignment
+                                                key={task.id}
+                                                task={task}
+                                                selectId={`${id}-task-${task.id}`}
+                                                value={
+                                                    form.data.assignments[index]
+                                                        ?.assignee_user_id ?? ''
+                                                }
+                                                error={
+                                                    errors[
+                                                        `assignments.${index}.assignee_user_id`
+                                                    ]
+                                                }
+                                                onChange={(value) =>
+                                                    assign(task.id, value)
+                                                }
+                                                options={options}
+                                            />
+                                        ))}
+                                    </ul>
                                     <p className="text-sm text-muted-foreground">
                                         {t(
                                             'admin.deactivation.membership_note',
