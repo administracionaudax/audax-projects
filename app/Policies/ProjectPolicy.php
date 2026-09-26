@@ -45,6 +45,15 @@ class ProjectPolicy
         return $user->canManageProject($project);
     }
 
+    /**
+     * Alertas de un gestor del proyecto (D-023): las edita el propio gestor y un admin, las de
+     * cualquiera. Solo los gestores tienen alertas.
+     */
+    public function updateAlerts(User $user, Project $project, User $manager): bool
+    {
+        return ($user->isAdmin() || $user->id === $manager->id) && $manager->isManagerOf($project);
+    }
+
     public function delete(User $user, Project $project): bool
     {
         return false;

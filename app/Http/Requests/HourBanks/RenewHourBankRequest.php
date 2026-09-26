@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Requests\HourBanks;
+
+use App\Http\Requests\HourBanks\Concerns\HourBankRules;
+use App\Models\HourBank;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Renovar una bolsa (SPEC §8.7): los parámetros de la bolsa nueva (editables en el diálogo) y si
+ * se mueven las tareas abiertas. Las horas nunca se mueven.
+ */
+class RenewHourBankRequest extends FormRequest
+{
+    use HourBankRules;
+
+    public function authorize(): bool
+    {
+        return $this->user()?->can('renew', $this->hourBank()) ?? false;
+    }
+
+    public function hourBank(): HourBank
+    {
+        /** @var HourBank */
+        return $this->route('hourBank');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            // Mismos parámetros: se puede conservar el departamento aunque se haya eliminado.
+            ...$this->hourBankRules(keepDepartmentId: $this->hourBank()->department_id),
+            'move_open_tasks' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->hourBankMessages();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return $this->hourBankAttributes();
+    }
+
+    /**
+     * Datos de la bolsa nueva (sin la opción de mover tareas).
+     *
+     * @return array<string, mixed>
+     */
+    public function bankAttributes(): array
+    {
+        return collect($this->validated())->except('move_open_tasks')->all();
+    }
+}
