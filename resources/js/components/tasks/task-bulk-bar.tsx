@@ -124,16 +124,36 @@ export function TaskBulkBar({
                     <p className="text-xs text-muted-foreground">
                         {t('task_bulk.dates_help')}
                     </p>
-                    <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                            setDatesOpen(false);
-                            apply({ start_date: start, due_date: due });
-                        }}
-                    >
-                        {t('task_bulk.apply_dates')}
-                    </Button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setDatesOpen(false);
+                                apply({ start_date: null, due_date: null });
+                            }}
+                        >
+                            {t('task_bulk.clear_dates')}
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            disabled={start === null && due === null}
+                            onClick={() => {
+                                setDatesOpen(false);
+                                // Solo cambian las fechas elegidas; las demás se quedan como están.
+                                apply({
+                                    ...(start !== null
+                                        ? { start_date: start }
+                                        : {}),
+                                    ...(due !== null ? { due_date: due } : {}),
+                                });
+                            }}
+                        >
+                            {t('task_bulk.apply_dates')}
+                        </Button>
+                    </div>
                 </PopoverContent>
             </Popover>
             {lookups.usesBanks ? (
