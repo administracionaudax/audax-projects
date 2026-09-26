@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\NotifyDueTasks;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -9,7 +10,9 @@ use App\Notifications\Tasks\TaskMentionedNotification;
 use App\Notifications\Tasks\TasksDueNotification;
 use App\Notifications\Tasks\TaskStatusChangedNotification;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 
 /*
 | Notificaciones de tareas en la app (SPEC §13): destinatarios de asignación, menciones en la
@@ -177,6 +180,36 @@ describe('app:notify-due-tasks', function () {
         $this->travelTo(CarbonImmutable::parse('2026-09-24 07:00:00', 'Europe/Madrid'));
         $this->artisan('app:notify-due-tasks')->assertSuccessful();
         expect($this->colleague->notifications()->where('type', TasksDueNotification::class)->count())->toBe(2);
+    });
+
+    it('escribe el aviso al momento, sin cola: dos ejecuciones antes de que corra Horizon no lo repiten', function () {
+        Queue::fake();
+        ($this->task)($this->colleague, 'Mañana', '2026-09-23');
+
+        $this->artisan('app:notify-due-tasks')->assertSuccessful();
+        $this->artisan('app:notify-due-tasks')->assertSuccessful();
+
+        Queue::assertNothingPushed();
+        $notifications = $this->colleague->notifications()->where('type', TasksDueNotification::class)->get();
+        expect($notifications)->toHaveCount(1)
+            ->and($notifications->first()->created_at->equalTo(now()))->toBeTrue();
+    });
+
+    it('no avisa si otra ejecución ya lo ha reclamado hoy, y la base de datos lo evita aunque se vacíe la caché', function () {
+        ($this->task)($this->colleague, 'Mañana', '2026-09-23');
+        ($this->task)($this->actor, 'Vencida', '2026-09-20');
+        Cache::add(NotifyDueTasks::claimKey($this->colleague->id, '2026-09-22'), true, now()->addDay());
+
+        $this->artisan('app:notify-due-tasks')->assertSuccessful();
+
+        expect($this->colleague->notifications()->count())->toBe(0)
+            ->and($this->actor->notifications()->where('type', TasksDueNotification::class)->count())->toBe(1);
+
+        Cache::flush();
+        $this->artisan('app:notify-due-tasks')->assertSuccessful();
+
+        expect($this->actor->notifications()->where('type', TasksDueNotification::class)->count())->toBe(1)
+            ->and($this->colleague->notifications()->where('type', TasksDueNotification::class)->count())->toBe(1);
     });
 
     it('ignora tareas completadas, sin responsable, de proyectos archivados y a personas inactivas', function () {
