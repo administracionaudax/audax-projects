@@ -58,5 +58,8 @@
     "reports.metric.cost.label": "Coste",
     "reports.metric.cost.definition": "Horas imputadas × coste por hora de cada persona (el congelado al aprobar, si existe).",
     "reports.metric.margin.label": "Rentabilidad",
-    "reports.metric.margin.definition": "Ingreso estimado − coste, y el margen en porcentaje sobre el ingreso."
+    "reports.metric.margin.definition": "Ingreso estimado − coste, y el margen en porcentaje sobre el ingreso.",
+    "reports.export.label": "Exportar",
+    "reports.export.xlsx": "Excel (.xlsx)",
+    "reports.export.csv": "CSV (.csv)"
 }

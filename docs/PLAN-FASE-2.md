@@ -130,6 +130,7 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
   - tipos en `resources/js/types/reports.ts`,
   - componentes en `resources/js/components/reports/`: `report-filter-bar.tsx` (con `show` para ocultar filtros), `kpi-card.tsx` (con variación) y `multi-select-filter.tsx`,
   - textos comunes en `lang/ui/reports.json` (`reports.*`: periodos, filtros y definiciones de cada métrica).
+- **Exportación:** `App\Domain\Reports\Export\TableExporter` (XLSX/CSV en streaming, con `hours()` y `money()` para las celdas) y el componente `components/reports/export-menu.tsx`. Cualquier controlador de informe exporta si recibe `?formato=xlsx|csv`.
 - **Librerías:** `openspout/openspout` 5.12 y `setasign/fpdf` 1.9 instaladas.
 - **Tests:**
   - `tests/Unit/Reports/ReportFiltersTest.php`,
@@ -141,5 +142,5 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 |---|---|
 | R1 | `app/Http/Controllers/Reports/{ReportIndex,Direction,Department,Person}*`; `resources/js/pages/reports/{index,direction,department,person}.tsx`; `components/reports/r1-*`; `lang/ui/reports-r1.json`; `tests/Feature/Reports/R1*`; `tests/js/reports-r1-*`; Inicio: la tarjeta «Mis indicadores» (`HomeController` y `home.tsx`) |
 | R2 | `app/Http/Controllers/Reports/{Client,Project}*`; `app/Http/Controllers/Reports/Exports/{HourBankPdf,Billing}*`; `app/Domain/Reports/Pdf/*`; `resources/js/pages/reports/{client,project,billing}.tsx`; `components/reports/r2-*`; `lang/ui/reports-r2.json`; `tests/Feature/Reports/R2*`; y el botón del PDF en el detalle de bolsa (`resources/js/pages/projects/hour-bank.tsx`) |
-| R3 | `app/Http/Controllers/Reports/{Detail,Export}*`; `app/Domain/Reports/Export/*`; `app/Console/Commands/SendWeeklyDigest.php`; `app/Notifications/Reports/*`; `resources/js/pages/reports/detail.tsx`; `components/reports/r3-*`; `lang/ui/reports-r3.json`; `tests/Feature/Reports/R3*`; la exportación de la pestaña Horas del proyecto (quitar el `PhaseBadge 2`); los ajustes nuevos en `Setting::DEFAULTS` y en la página de ajustes |
+| R3 | `app/Http/Controllers/Reports/{Detail,HoursExport}*`; `app/Console/Commands/SendWeeklyDigest.php`; `app/Notifications/Reports/*`; `resources/js/pages/reports/detail.tsx`; `components/reports/r3-*`; `lang/ui/reports-r3.json`; `tests/Feature/Reports/R3*`; la exportación de la pestaña Horas del proyecto (quitar el `PhaseBadge 2`); los ajustes nuevos en `Setting::DEFAULTS` y en la página de ajustes |
 | Todos | Añaden sus rutas a `routes/app/reports.php` en su propio bloque comentado. Los cambios mínimos de contrato se anotan |
