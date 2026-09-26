@@ -12,9 +12,13 @@ use App\Models\User;
  */
 class AttachmentPolicy
 {
+    /**
+     * Solo si lo que lo contiene sigue existiendo: una URL firmada (válida 1 h) de un adjunto de
+     * una tarea o un comentario ya borrados deja de servir el fichero en cuanto se borran.
+     */
     public function view(User $user, Attachment $attachment): bool
     {
-        return $user->isInternal();
+        return $user->isInternal() && $attachment->attachable !== null;
     }
 
     public function delete(User $user, Attachment $attachment): bool

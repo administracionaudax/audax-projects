@@ -10,9 +10,8 @@ use Illuminate\Notifications\Notification;
 
 /**
  * Invitación a la app (SPEC §14, D-017): email por la cola `mail` con un enlace de un solo uso para
- * que la persona fije su contraseña. El enlace es el de restablecimiento del Password broker (el
- * mismo que emite app:install): caduca según auth.passwords.users.expire y, si caduca, se puede
- * reenviar desde /admin/usuarios o pedir otro con «¿Has olvidado tu contraseña?».
+ * que la persona fije su contraseña en /invitacion/{token}. Usa el broker «invitations», que caduca
+ * a los 7 días (auth.passwords.invitations.expire); si caduca, se reenvía desde /admin/usuarios.
  */
 class UserInvitation extends Notification implements ShouldQueue
 {
@@ -37,8 +36,8 @@ class UserInvitation extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         $email = $notifiable->getEmailForPasswordReset();
-        $minutes = (int) config('auth.passwords.'.config('fortify.passwords', 'users').'.expire', 60);
-        $url = route('password.reset', ['token' => $this->token, 'email' => $email]);
+        $days = max(intdiv((int) config('auth.passwords.invitations.expire', 10080), 60 * 24), 1);
+        $url = route('invitation.show', ['token' => $this->token, 'email' => $email]);
 
         $message = (new MailMessage)
             ->subject(__('admin.invitation.subject', ['company' => $this->companyName]))
@@ -48,7 +47,7 @@ class UserInvitation extends Notification implements ShouldQueue
                 : __('admin.invitation.intro', ['company' => $this->companyName]))
             ->line(__('admin.invitation.instructions'))
             ->action(__('admin.invitation.action'), $url)
-            ->line(__('admin.invitation.expires', ['minutes' => $minutes]))
+            ->line(__('admin.invitation.expires', ['days' => $days]))
             ->line(__('admin.invitation.ignore'))
             ->salutation(__('admin.invitation.salutation', ['company' => $this->companyName]));
 

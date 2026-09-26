@@ -3,6 +3,7 @@
 namespace App\Domain\Admin;
 
 use App\Enums\Role;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\Admin\UserInvitation;
@@ -54,8 +55,10 @@ final class UserInviter
      */
     public function send(User $actor, User $user): void
     {
+        // Broker propio de invitaciones: el enlace dura 7 días (config/auth.php) y se acepta en
+        // /invitacion/{token} (App\Http\Controllers\Auth\InvitationController).
         /** @var PasswordBroker $broker */
-        $broker = Password::broker(config('fortify.passwords'));
+        $broker = Password::broker(InvitationController::BROKER);
         $token = $broker->createToken($user);
 
         $user->notify(new UserInvitation(

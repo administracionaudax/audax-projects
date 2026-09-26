@@ -273,3 +273,59 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
   - calendario de tareas y próximos hitos, a la F4,
   - exportación XLSX y CSV, a la F2,
   - campana en tiempo real, a la F6 (en la F1 se consulta cada 60 s).
+
+## 26/09/2026: Decisiones tomadas en autonomía durante la implementación de la Fase 1
+
+### D-038 · Administración
+- **Rol de admin:** solo un admin puede darlo o gestionar a otro admin. Nadie se quita su propio rol de admin, y no se puede degradar ni desactivar al último admin activo.
+- **Baja de una persona** (asistente):
+  - reasigna sus tareas abiertas, en bloque o una a una (si la nueva persona no es miembro del proyecto, pasa a serlo),
+  - traspasa la gestión principal de sus proyectos no archivados (D-032),
+  - para su temporizador (si no se puede imputar, se descarta y se avisa),
+  - la quita de responsable de sus departamentos, para que las aprobaciones no esperen a alguien de baja.
+- **Invitaciones:** el enlace dura 7 días y es de un solo uso. Tienen su propio *broker* (`invitations`) y se aceptan en `/invitacion/{token}`. El restablecimiento de contraseña sigue en 60 minutos.
+- **Jornadas:** una versión nueva empieza como pronto mañana; la primera de una persona puede empezar hoy. No se reescriben versiones ya iniciadas. Los días se editan con un campo propio que admite 0:00.
+- **Departamentos:** solo se borran si no tienen personas (activas ni de baja) ni bolsas abiertas.
+- **Estados:** el estado por defecto nunca es «done». Al borrar un estado, sus tareas pasan al final de la columna del estado de reemplazo. Los cambios masivos dejan una sola entrada en la auditoría.
+- **`app:install`:** solo siembra catálogos vacíos, así que no recrea lo que el admin haya renombrado.
+
+### D-039 · Proyectos y bolsas
+- **Código de proyecto:** opcional al crear. Se genera a partir del cliente y del nombre (`-2`, `-3`… si ya existe) y es único aunque el proyecto esté borrado.
+- **Cliente:** obligatorio salvo en proyectos internos. Solo se eligen clientes activos, aunque al editar se conserva el actual si se ha desactivado.
+- **Pasar un proyecto con tareas a «bolsas de horas»:** se pide su primera bolsa en el mismo paso.
+- **Desarchivar:** el proyecto recupera el estado anterior, que se toma de la auditoría.
+- **Renovar una bolsa:**
+  - el servidor acepta cualquier bolsa abierta; la interfaz solo lo ofrece si está agotada o desde el primer umbral,
+  - las tareas abiertas se mueven con todas sus subtareas; las horas nunca.
+- **Borrar una bolsa:** solo un admin, sin horas, sin tareas y sin renovación. Borrar una renovación devuelve la anterior a su estado.
+- **Destinatarios de las alertas de bolsa:** gestores con la alerta activada, responsables del departamento de la bolsa y todos los admins, sin duplicados. Las preferencias de los admins llegan en la F7.
+- **Horas comprometidas:** cuentan las de las subtareas, no las del padre que se calcula a partir de ellas. Las completadas y los hitos cuentan 0.
+- **Gráfica semanal de una bolsa:** lo que va dentro de la bolsa en `--chart-1`; el exceso, siempre en el rojo de estado (SPEC §8.6).
+
+### D-040 · Tareas y adjuntos **[cambia el plan de la Fase 1]**
+- **Miniaturas:** se generan con **GD en un job de Horizon**, no en la petición y no con Imagick (el plan decía «Imagick con límites»).
+  - Se descartan las imágenes enormes leyendo solo su cabecera.
+  - Se guardan en WebP y se corrige la orientación EXIF.
+  - Hasta que termina el job, se ve el icono del tipo.
+- **Subidas:** como mucho 10 ficheros por vez. Subir a una tarea exige poder editarla; a un comentario, poder comentar.
+- **Mover tareas:** solo se mueven las tareas raíz, con sus subtareas. Sus adjuntos cambian de proyecto en la pestaña Archivos.
+- **Temporizador en marcha:** mientras hay uno, la tarea no se puede mover ni cambiar de bolsa.
+- **Borrar tareas:** se bloquea si la tarea o sus subtareas tienen horas, o si hay un temporizador en marcha.
+- **Acciones masivas:** son todo o nada.
+- **Aviso de vencimientos:** un solo resumen al día por persona (vencen mañana y vencidas), a las 08:00 de Madrid.
+- **Adjuntos de una tarea o un comentario borrados:** dejan de descargarse aunque la URL firmada siga vigente.
+
+### D-041 · Horas
+- **Aprobación automática** (responsables, admins o aprobación desactivada): la semana queda aprobada sin revisor y la interfaz la muestra como «aprobada automáticamente», sin notificación.
+- **Reabrir una semana bloqueada:** la deja abierta, pero sus entradas bloqueadas no cambian. Para cambiarlas hay que deshacer el bloqueo.
+- **Desbloquear:** las entradas vuelven a estar aprobadas. La semana solo vuelve a ser editable si se reabre, y hacerlo queda auditado.
+- **Filas sin horas de la hoja semanal** (añadidas a mano o copiadas de la semana anterior): no se guardan en la base; el navegador las recuerda hasta que se imputa en ellas.
+- **Hojas de otras personas:**
+  - un gestor abre la hoja de los miembros de sus proyectos, solo con las entradas de esos proyectos,
+  - un responsable, la de su equipo,
+  - un admin, la de cualquiera.
+- **Temporizador y entrada manual:** no devuelven 403 a quien no puede imputar en una tarea; explican el motivo con los errores de las reglas.
+
+### D-042 · Contrato técnico
+- **Resources:** se envían a Inertia **sin envoltorio `{data}`** (`JsonResource::withoutWrapping()`), también los anidados; las colecciones paginadas mantienen `{data, links, meta}`. Algunas áreas pasan además sus props por un ayudante propio (`Plain::of`, `ResourceData::of`, `ResourceProps`), que sigue siendo válido.
+- **Tests:** necesitan 512 MB de memoria en un solo proceso (`phpunit.xml`).

@@ -136,7 +136,7 @@ return [
         'intro_by' => ':inviter te ha dado acceso a Audax Proyectos, la herramienta de :company para gestionar las tareas, las horas y los proyectos del estudio.',
         'instructions' => 'Para entrar, elige tu contraseña con este botón:',
         'action' => 'Elegir mi contraseña',
-        'expires' => 'El enlace caduca en :minutes minutos y solo sirve una vez. Si caduca, pide otro con «¿Has olvidado tu contraseña?» en la pantalla de acceso o pide que te reenvíen la invitación.',
+        'expires' => 'El enlace caduca en :days días y solo sirve una vez. Si caduca, pide que te reenvíen la invitación.',
         'ignore' => 'Si no esperabas este correo, puedes ignorarlo.',
         'salutation' => 'Un saludo, el equipo de :company',
     ],

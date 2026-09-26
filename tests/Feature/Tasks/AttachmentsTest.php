@@ -222,6 +222,18 @@ it('descarga con URL firmada: sin firma, caducada o alterada da 403', function (
     $this->actingAs($this->user)->get($expired)->assertForbidden();
 });
 
+it('la URL firmada deja de servir el fichero si se borra la tarea o el comentario que lo contiene', function () {
+    ($this->upload)([UploadedFile::fake()->create('acta.pdf', 5, 'application/pdf')])->assertSessionHasNoErrors();
+    $attachment = Attachment::query()->sole();
+    $url = ($this->signed)('attachments.show', $attachment);
+
+    $this->actingAs($this->user)->get($url)->assertOk();
+
+    $this->task->delete();
+
+    $this->actingAs($this->user)->get($url)->assertForbidden();
+});
+
 it('sirve los SVG y los documentos siempre como descarga, con nosniff y sandbox', function (string $name, string $mime) {
     ($this->upload)([UploadedFile::fake()->createWithContent($name, $name === 'logo.svg' ? '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' : 'contenido')->mimeType($mime)])
         ->assertSessionHasNoErrors();

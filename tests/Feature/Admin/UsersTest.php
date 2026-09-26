@@ -159,8 +159,9 @@ describe('alta por invitación', function () {
                 && $notification->companyName === 'Audax Studio'
                 && $notification->invitedBy === 'Ana Admin'
                 && str_contains((string) $mail->subject, 'Audax Studio')
-                && str_contains((string) $mail->actionUrl, '/reset-password/')
-                && Password::broker()->tokenExists($user, $notification->token);
+                && str_contains((string) $mail->actionUrl, '/invitacion/')
+                && str_contains(implode(' ', $mail->outroLines), '7 días')
+                && Password::broker('invitations')->tokenExists($user, $notification->token);
         });
     });
 
@@ -178,7 +179,9 @@ describe('alta por invitación', function () {
             return true;
         });
 
-        $this->post(route('password.update'), [
+        // El enlace sigue valiendo días después (broker de invitaciones, 7 días).
+        $this->travel(3)->days();
+        $this->post(route('invitation.store'), [
             'token' => $token,
             'email' => 'laura@audaxstudio.com',
             'password' => 'una-contraseña-larga',

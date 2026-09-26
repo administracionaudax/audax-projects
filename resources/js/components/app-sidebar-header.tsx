@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SearchTrigger } from '@/components/global-search';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { TimerChip } from '@/components/time/timer-chip';
 import { TimerStopDialog } from '@/components/time/timer-stop-dialog';
@@ -13,7 +14,8 @@ import { t } from '@/lib/i18n';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 /**
- * Cabecera de la app: menú, migas, temporizador activo (SPEC §7) o «Imputar horas», y búsqueda.
+ * Cabecera de la app: menú, migas, temporizador activo (SPEC §7) o «Imputar horas», búsqueda y
+ * campana de notificaciones (SPEC §13).
  * También pinta los avisos de imputación y el diálogo de «no se ha podido imputar» del
  * temporizador, que comparten todas las páginas.
  */
@@ -59,6 +61,7 @@ export function AppSidebarHeader({
             <SearchTrigger className="shrink-0" />
             {internal ? (
                 <>
+                    <NotificationBell />
                     <TimeEntryDialog open={logging} onOpenChange={setLogging} />
                     <TimerStopDialog />
                 </>
