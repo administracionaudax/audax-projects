@@ -1,0 +1,553 @@
+import { Head, Link, setLayoutProps, useForm } from '@inertiajs/react';
+import {
+    Building,
+    CircleAlert,
+    FolderKanban,
+    ListChecks,
+    Timer,
+    UserX,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
+import { useId, useState } from 'react';
+import { NativeSelect } from '@/components/admin/native-select';
+import { EmptyState } from '@/components/empty-state';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { formatDate, formatMinutes } from '@/lib/format';
+import { t } from '@/lib/i18n';
+import { urls } from '@/lib/urls';
+import { cn } from '@/lib/utils';
+import { index as adminIndex } from '@/routes/admin';
+import {
+    deactivate,
+    deactivation,
+    edit,
+    index as usersIndex,
+} from '@/routes/admin/users';
+import type {
+    AdminDeactivationProject,
+    AdminDeactivationTask,
+    AdminUserDeactivateProps,
+} from '@/types';
+
+type DeactivationForm = {
+    default_assignee_id: string;
+    assignments: { task_id: number; assignee_user_id: string }[];
+    /** '' = sigue como gestor principal. */
+    owners: { project_id: number; owner_user_id: string }[];
+};
+
+/** Una tarea abierta y a quién pasa: en el móvil, el selector va debajo de la tarea. */
+function TaskAssignment({
+    task,
+    selectId,
+    value,
+    error,
+    onChange,
+    options,
+}: {
+    task: AdminDeactivationTask;
+    selectId: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+    options: ReactNode;
+}) {
+    return (
+        <li
+            className="grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(12rem,16rem)] sm:items-center sm:gap-4"
+            data-test="deactivation-task"
+        >
+            <div className="min-w-0">
+                <Link
+                    href={urls.task(task.project.id, task.id)}
+                    className={cn(
+                        'rounded-sm break-words hover:underline',
+                        FOCUS_RING,
+                    )}
+                >
+                    {task.title}
+                </Link>
+                <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                        aria-hidden="true"
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: task.project.color }}
+                    />
+                    <span className="truncate">
+                        {task.project.code} · {task.project.name}
+                    </span>
+                </span>
+            </div>
+            <p className="tabular text-sm whitespace-nowrap text-muted-foreground">
+                {task.due_date
+                    ? t('admin.deactivation.due', {
+                          date: formatDate(task.due_date),
+                      })
+                    : t('admin.deactivation.no_due')}
+            </p>
+            <div className="grid gap-1">
+                <label htmlFor={selectId} className="sr-only">
+                    {t('admin.deactivation.assignee_for', { task: task.title })}
+                </label>
+                <NativeSelect
+                    id={selectId}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    aria-invalid={error ? true : undefined}
+                >
+                    {options}
+                </NativeSelect>
+                <InputError message={error} />
+            </div>
+        </li>
+    );
+}
+
+/** Un proyecto que dirige y quién pasa a ser su gestor principal (D-032). */
+function ProjectOwner({
+    project,
+    selectId,
+    value,
+    error,
+    onChange,
+    options,
+}: {
+    project: AdminDeactivationProject;
+    selectId: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+    options: ReactNode;
+}) {
+    return (
+        <li
+            className="grid gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] sm:items-center sm:gap-4"
+            data-test="deactivation-project"
+        >
+            <Link
+                href={urls.project(project.id)}
+                className={cn(
+                    'min-w-0 rounded-sm break-words hover:underline',
+                    FOCUS_RING,
+                )}
+            >
+                {project.code} · {project.name}
+            </Link>
+            <div className="grid gap-1">
+                <label htmlFor={selectId} className="sr-only">
+                    {t('admin.deactivation.owner_for', {
+                        project: project.name,
+                    })}
+                </label>
+                <NativeSelect
+                    id={selectId}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    aria-invalid={error ? true : undefined}
+                >
+                    {options}
+                </NativeSelect>
+                <InputError message={error} />
+            </div>
+        </li>
+    );
+}
+
+/**
+ * Asistente de baja (SPEC §14). Enseña lo que la persona deja pendiente (tareas abiertas,
+ * temporizador, departamentos y proyectos que dirige) y deja elegir a quién pasan sus tareas
+ * (todas a la vez o una a una) y quién dirige sus proyectos. Al confirmar se para su
+ * temporizador, se reasignan las tareas y los proyectos elegidos y pierde el acceso; su historial
+ * de horas no cambia.
+ */
+export default function AdminUserDeactivate({
+    user,
+    blocked,
+    tasks,
+    timer,
+    candidates,
+    managedDepartments,
+    ownedProjects,
+}: AdminUserDeactivateProps) {
+    const id = useId();
+    const [bulk, setBulk] = useState('');
+    const form = useForm<DeactivationForm>({
+        default_assignee_id: '',
+        assignments: tasks.map((task) => ({
+            task_id: task.id,
+            assignee_user_id: '',
+        })),
+        owners: ownedProjects.map((project) => ({
+            project_id: project.id,
+            owner_user_id: '',
+        })),
+    });
+    const errors = form.errors as Record<string, string | undefined>;
+    const generalError = errors.user ?? errors.default_assignee_id;
+
+    setLayoutProps({
+        breadcrumbs: [
+            { title: t('nav.admin'), href: adminIndex() },
+            { title: t('admin.users.title'), href: usersIndex() },
+            { title: user.name, href: edit(user.id) },
+            {
+                title: t('admin.deactivation.title'),
+                href: deactivation(user.id),
+            },
+        ],
+    });
+
+    const applyToAll = (value: string) => {
+        setBulk(value);
+        form.setData({
+            ...form.data,
+            default_assignee_id: value,
+            assignments: form.data.assignments.map((row) => ({
+                ...row,
+                assignee_user_id: value,
+            })),
+        });
+    };
+
+    const assign = (taskId: number, value: string) => {
+        form.setData(
+            'assignments',
+            form.data.assignments.map((row) =>
+                row.task_id === taskId
+                    ? { ...row, assignee_user_id: value }
+                    : row,
+            ),
+        );
+    };
+
+    const setOwner = (projectId: number, value: string) => {
+        form.setData(
+            'owners',
+            form.data.owners.map((row) =>
+                row.project_id === projectId
+                    ? { ...row, owner_user_id: value }
+                    : row,
+            ),
+        );
+    };
+
+    const submit = (event: React.FormEvent) => {
+        event.preventDefault();
+        form.transform((data) => ({
+            default_assignee_id:
+                data.default_assignee_id === ''
+                    ? null
+                    : Number(data.default_assignee_id),
+            assignments: data.assignments.map((row) => ({
+                task_id: row.task_id,
+                assignee_user_id:
+                    row.assignee_user_id === ''
+                        ? null
+                        : Number(row.assignee_user_id),
+            })),
+            owners: data.owners.map((row) => ({
+                project_id: row.project_id,
+                owner_user_id:
+                    row.owner_user_id === '' ? null : Number(row.owner_user_id),
+            })),
+        }));
+        form.post(deactivate.url(user.id), { preserveScroll: true });
+    };
+
+    const options = (
+        <>
+            <option value="">{t('admin.deactivation.unassigned')}</option>
+            {candidates.map((candidate) => (
+                <option key={candidate.id} value={String(candidate.id)}>
+                    {candidate.name}
+                </option>
+            ))}
+        </>
+    );
+
+    const ownerOptions = (
+        <>
+            <option value="">{t('admin.deactivation.keep_owner')}</option>
+            {candidates.map((candidate) => (
+                <option key={candidate.id} value={String(candidate.id)}>
+                    {candidate.name}
+                </option>
+            ))}
+        </>
+    );
+
+    return (
+        <>
+            <Head
+                title={t('admin.deactivation.page_title', { name: user.name })}
+            />
+
+            <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
+                <header className="space-y-1">
+                    <h1 className="text-2xl font-normal tracking-tight break-words">
+                        {t('admin.deactivation.heading', { name: user.name })}
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        {t('admin.deactivation.description')}
+                    </p>
+                </header>
+
+                {blocked ? (
+                    <div
+                        role="alert"
+                        className="flex items-start gap-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-foreground"
+                    >
+                        <CircleAlert
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0 text-danger"
+                        />
+                        {blocked}
+                    </div>
+                ) : null}
+
+                <form onSubmit={submit} className="grid gap-6" noValidate>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>
+                                <h2 className="flex items-center gap-2 text-base font-medium">
+                                    <ListChecks
+                                        aria-hidden="true"
+                                        className="size-4 text-muted-foreground"
+                                    />
+                                    {t('admin.deactivation.tasks_title', {
+                                        count: tasks.length,
+                                    })}
+                                </h2>
+                            </CardTitle>
+                            <CardDescription>
+                                {t('admin.deactivation.tasks_description')}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4">
+                            {tasks.length === 0 ? (
+                                <EmptyState
+                                    icon={ListChecks}
+                                    title={t('admin.deactivation.no_tasks')}
+                                />
+                            ) : (
+                                <>
+                                    <div className="grid max-w-md gap-2">
+                                        <Label htmlFor={`${id}-bulk`}>
+                                            {t('admin.deactivation.bulk_label')}
+                                        </Label>
+                                        <NativeSelect
+                                            id={`${id}-bulk`}
+                                            value={bulk}
+                                            onChange={(event) =>
+                                                applyToAll(event.target.value)
+                                            }
+                                            aria-describedby={`${id}-bulk-help`}
+                                        >
+                                            {options}
+                                        </NativeSelect>
+                                        <p
+                                            id={`${id}-bulk-help`}
+                                            className="text-sm text-muted-foreground"
+                                        >
+                                            {t('admin.deactivation.bulk_help')}
+                                        </p>
+                                    </div>
+
+                                    <ul
+                                        className="divide-y rounded-md border"
+                                        aria-label={t(
+                                            'admin.deactivation.table_label',
+                                        )}
+                                    >
+                                        {tasks.map((task, index) => (
+                                            <TaskAssignment
+                                                key={task.id}
+                                                task={task}
+                                                selectId={`${id}-task-${task.id}`}
+                                                value={
+                                                    form.data.assignments[index]
+                                                        ?.assignee_user_id ?? ''
+                                                }
+                                                error={
+                                                    errors[
+                                                        `assignments.${index}.assignee_user_id`
+                                                    ]
+                                                }
+                                                onChange={(value) =>
+                                                    assign(task.id, value)
+                                                }
+                                                options={options}
+                                            />
+                                        ))}
+                                    </ul>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t(
+                                            'admin.deactivation.membership_note',
+                                        )}
+                                    </p>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {ownedProjects.length > 0 ? (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    <h2 className="flex items-center gap-2 text-base font-medium">
+                                        <FolderKanban
+                                            aria-hidden="true"
+                                            className="size-4 text-muted-foreground"
+                                        />
+                                        {t(
+                                            'admin.deactivation.projects_title',
+                                            {
+                                                count: ownedProjects.length,
+                                            },
+                                        )}
+                                    </h2>
+                                </CardTitle>
+                                <CardDescription>
+                                    {t(
+                                        'admin.deactivation.projects_description',
+                                    )}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ul
+                                    className="divide-y rounded-md border"
+                                    aria-label={t(
+                                        'admin.deactivation.projects_label',
+                                    )}
+                                >
+                                    {ownedProjects.map((project, index) => (
+                                        <ProjectOwner
+                                            key={project.id}
+                                            project={project}
+                                            selectId={`${id}-project-${project.id}`}
+                                            value={
+                                                form.data.owners[index]
+                                                    ?.owner_user_id ?? ''
+                                            }
+                                            error={
+                                                errors[
+                                                    `owners.${index}.owner_user_id`
+                                                ]
+                                            }
+                                            onChange={(value) =>
+                                                setOwner(project.id, value)
+                                            }
+                                            options={ownerOptions}
+                                        />
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    ) : null}
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>
+                                <h2 className="text-base font-medium">
+                                    {t('admin.deactivation.more_title')}
+                                </h2>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="grid gap-3 text-sm">
+                                <li className="flex items-start gap-2">
+                                    <Timer
+                                        aria-hidden="true"
+                                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                    />
+                                    <span>
+                                        {timer
+                                            ? t(
+                                                  'admin.deactivation.timer_running',
+                                                  {
+                                                      task: timer.task_title,
+                                                      elapsed: formatMinutes(
+                                                          timer.elapsed_minutes,
+                                                      ),
+                                                  },
+                                              )
+                                            : t('admin.deactivation.no_timer')}
+                                    </span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <Building
+                                        aria-hidden="true"
+                                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                    />
+                                    <span>
+                                        {managedDepartments.length > 0
+                                            ? t(
+                                                  'admin.deactivation.departments',
+                                                  {
+                                                      departments:
+                                                          managedDepartments.join(
+                                                              ', ',
+                                                          ),
+                                                  },
+                                              )
+                                            : t(
+                                                  'admin.deactivation.no_departments',
+                                              )}
+                                    </span>
+                                </li>
+                                {ownedProjects.length === 0 ? (
+                                    <li className="flex items-start gap-2">
+                                        <FolderKanban
+                                            aria-hidden="true"
+                                            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                        />
+                                        <span>
+                                            {t(
+                                                'admin.deactivation.no_owned_projects',
+                                            )}
+                                        </span>
+                                    </li>
+                                ) : null}
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    <InputError message={generalError} />
+
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            disabled={form.processing || blocked !== null}
+                        >
+                            {form.processing ? (
+                                <Spinner />
+                            ) : (
+                                <UserX aria-hidden="true" />
+                            )}
+                            {t('admin.deactivation.submit', {
+                                name: user.name,
+                            })}
+                        </Button>
+                        <Button variant="secondary" asChild>
+                            <Link href={edit.url(user.id)}>
+                                {t('common.cancel')}
+                            </Link>
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </>
+    );
+}

@@ -3,11 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Auth\SessionTerminator;
+use App\Domain\Admin\WorkScheduleVersions;
 use App\Enums\Role;
 use App\Models\User;
 use Database\Seeders\DefaultSettingsSeeder;
 use Database\Seeders\DepartmentsSeeder;
+use Database\Seeders\InternalProjectSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\TaskStatusesSeeder;
+use Database\Seeders\TaskTypesSeeder;
 use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -21,20 +25,26 @@ use Illuminate\Support\Str;
 use function Laravel\Prompts\text;
 
 /**
- * Primer arranque (SPEC §14, D-010). Idempotente: se puede repetir sin duplicar nada.
+ * Primer arranque (SPEC §14, D-010). Idempotente: se puede repetir sin duplicar nada ni pisar lo
+ * que el admin haya editado.
  *
- * - Crea roles y permisos, ajustes por defecto y departamentos.
+ * - Crea roles y permisos y los ajustes por defecto que falten.
+ * - Crea los departamentos, los estados de tarea y los tipos de tarea por defecto (estos,
+ *   enlazados por nombre con los departamentos), cada catálogo solo si está vacío: repetir el
+ *   comando (por ejemplo, con --reset-link) nunca recrea lo que el admin haya renombrado o borrado.
  * - Crea el primer admin con una contraseña aleatoria que NUNCA se muestra, y emite un enlace de
  *   restablecimiento de un solo uso para que el admin fije la suya.
- *
- * Fase 1: añadirá estados y tipos de tarea por defecto y el proyecto interno.
+ * - Con el admin ya creado: le da su jornada por defecto (si no tiene) y crea el proyecto interno
+ *   «Interno – Agencia» (Project::INTERNAL_CODE, sin cliente, no facturable, gestor principal el
+ *   primer admin) con las tareas Reuniones, Formación, Gestión y Comercial (SPEC §7, D-033); las
+ *   tareas, solo si el proyecto aún no tiene ninguna.
  */
 #[Signature('app:install
     {--name= : Nombre del primer administrador}
     {--email= : Correo electrónico del primer administrador}
     {--reset-link : Emite un nuevo enlace de restablecimiento si el administrador ya existe}
     {--promote : Convierte en administrador a un usuario que ya existe con ese correo}')]
-#[Description('Instala los datos base (roles, ajustes, departamentos) y crea el primer administrador')]
+#[Description('Instala los datos base (roles, ajustes, departamentos, estados, tipos y proyecto interno) y crea el primer administrador')]
 class InstallCommand extends Command
 {
     public function handle(): int
@@ -44,18 +54,49 @@ class InstallCommand extends Command
         $this->components->task('Roles y permisos', fn () => $this->runSeeder(RolesAndPermissionsSeeder::class));
         $this->components->task('Ajustes por defecto', fn () => $this->runSeeder(DefaultSettingsSeeder::class));
         $this->components->task('Departamentos', fn () => $this->runSeeder(DepartmentsSeeder::class));
+        $this->components->task('Estados de tarea', fn () => $this->runSeeder(TaskStatusesSeeder::class));
+        $this->components->task('Tipos de tarea', fn () => $this->runSeeder(TaskTypesSeeder::class));
 
-        return $this->installFirstAdmin();
+        $result = $this->installFirstAdmin();
+
+        if ($result === self::SUCCESS) {
+            $this->installAdminDefaults();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Jornada del primer admin y proyecto interno, que necesita un gestor principal (D-032).
+     */
+    private function installAdminDefaults(): void
+    {
+        $admin = User::role(Role::Admin->value)->where('is_active', true)->orderBy('id')->first();
+
+        if ($admin === null) {
+            return;
+        }
+
+        $this->components->task('Jornada del administrador', function () use ($admin): bool {
+            if (! $admin->workSchedules()->exists()) {
+                $this->laravel->make(WorkScheduleVersions::class)->createDefault($admin);
+            }
+
+            return true;
+        });
+
+        $this->components->task('Proyecto interno', fn () => $this->runSeeder(InternalProjectSeeder::class, ['ownerId' => $admin->id]));
     }
 
     /**
      * @param  class-string<Seeder>  $seeder
+     * @param  array<string, mixed>  $parameters
      */
-    private function runSeeder(string $seeder): bool
+    private function runSeeder(string $seeder, array $parameters = []): bool
     {
         /** @var Seeder $instance */
         $instance = $this->laravel->make($seeder);
-        $instance->setContainer($this->laravel)->setCommand($this)->__invoke();
+        $instance->setContainer($this->laravel)->setCommand($this)->__invoke($parameters);
 
         return true;
     }
