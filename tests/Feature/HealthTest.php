@@ -10,6 +10,7 @@ test('/health responde 200 con las comprobaciones', function () {
                 'redis' => 'skipped',
                 'queue' => 'ok',
                 'disk' => 'ok',
+                'session' => 'skipped',
             ],
             'redis_port_ok' => true,
         ])
@@ -78,4 +79,24 @@ test('/health exige el puerto 16379 de Redis fuera de local y testing', function
     config(['database.redis.default.port' => '16379', 'database.redis.cache.port' => '16379']);
 
     $this->getJson('/health')->assertJsonPath('redis_port_ok', true);
+});
+
+test('/health se degrada fuera de local y testing si las sesiones no van en la base de datos', function () {
+    app()['env'] = 'staging';
+    config([
+        'database.redis.default.port' => '16379',
+        'database.redis.cache.port' => '16379',
+        'session.driver' => 'file',
+    ]);
+
+    $this->getJson('/health')
+        ->assertStatus(503)
+        ->assertJsonPath('status', 'degraded')
+        ->assertJsonPath('checks.session', 'fail');
+
+    config(['session.driver' => 'database']);
+
+    $this->getJson('/health')
+        ->assertOk()
+        ->assertJsonPath('checks.session', 'ok');
 });
