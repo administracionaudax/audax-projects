@@ -83,7 +83,9 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    // Como el resto de la app interna: sesión iniciada, usuario activo y 2FA si require_2fa está
+    // activo (SPEC §14). La gate viewHorizon (solo admin) se aplica además en HorizonServiceProvider.
+    'middleware' => ['web', 'auth', 'active', '2fa'],
 
     /*
     |--------------------------------------------------------------------------

@@ -14,6 +14,7 @@ use Throwable;
  *
  * Sin versiones, rutas, mensajes de error ni secretos: los detalles de un fallo van al log.
  * Cada comprobación vale "ok", "fail" o "skipped" (Redis no se usa en local ni en los tests).
+ * "session" falla fuera de local y testing si SESSION_DRIVER no es "database" (D-014).
  */
 class HealthController extends Controller
 {
@@ -40,6 +41,7 @@ class HealthController extends Controller
                 return true;
             }),
             'disk' => $this->run('disk', fn (): bool => $this->freeDiskPercent() >= self::MIN_FREE_DISK_PERCENT),
+            'session' => $this->sessionDriverCheck(),
         ];
 
         $redisPortOk = $this->redisPortOk();
@@ -67,6 +69,19 @@ class HealthController extends Controller
 
             return 'fail';
         }
+    }
+
+    /**
+     * Las sesiones deben ir en la base de datos (D-014): con otro driver no se pueden listar ni cerrar
+     * las sesiones activas (SPEC §15). En local y en los tests se admite cualquier driver.
+     */
+    private function sessionDriverCheck(): string
+    {
+        if (config('session.driver') === 'database') {
+            return 'ok';
+        }
+
+        return app()->environment(['local', 'testing']) ? 'skipped' : 'fail';
     }
 
     private function usesRedis(): bool

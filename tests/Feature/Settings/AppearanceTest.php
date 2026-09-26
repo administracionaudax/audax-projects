@@ -22,7 +22,9 @@ test('cambiar el tema lo guarda en el usuario y pone la cookie un año', functio
     $cookie = collect($response->headers->getCookies())->first(fn ($c) => $c->getName() === 'appearance');
 
     expect($user->refresh()->theme_preference)->toBe($theme)
-        ->and($cookie->getExpiresTime())->toBeGreaterThan(now()->addDays(360)->getTimestamp());
+        ->and($cookie->getExpiresTime())->toBeGreaterThan(now()->addDays(360)->getTimestamp())
+        // El JS la actualiza al cambiar de tema (use-appearance.tsx): no puede ser HttpOnly.
+        ->and($cookie->isHttpOnly())->toBeFalse();
 })->with(['light', 'dark', 'system']);
 
 test('el tema solo admite claro, oscuro o sistema', function (mixed $theme) {

@@ -8,10 +8,14 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 
 /**
  * Registra el inicio de sesión correcto (SPEC §15) y sincroniza la cookie "appearance" con la
  * preferencia guardada del usuario, para que el tema sea el suyo en cualquier dispositivo.
+ *
+ * Un usuario desactivado que vuelve con la cookie de «Recordarme» dispara Login antes de que
+ * EnsureUserIsActive lo expulse: ese acceso se registra como fallido, nunca como correcto.
  */
 class RecordSuccessfulLogin
 {
@@ -26,15 +30,27 @@ class RecordSuccessfulLogin
         }
 
         $user = $event->user;
+        $active = $user->isActive();
 
         LoginEvent::query()->create([
             'user_id' => $user->id,
             'email' => $user->email,
             'ip_address' => $this->request->ip(),
             'user_agent' => Str::limit((string) $this->request->userAgent(), 1000, ''),
-            'succeeded' => true,
+            'succeeded' => $active,
         ]);
 
-        Cookie::queue('appearance', $user->theme_preference, self::APPEARANCE_COOKIE_MINUTES);
+        if ($active) {
+            Cookie::queue(self::appearanceCookie($user->theme_preference));
+        }
+    }
+
+    /**
+     * Cookie "appearance" sin HttpOnly: el JS (use-appearance.tsx) la actualiza al cambiar de tema.
+     * No es un dato sensible y va sin cifrar (bootstrap/app.php).
+     */
+    public static function appearanceCookie(string $theme): SymfonyCookie
+    {
+        return cookie('appearance', $theme, self::APPEARANCE_COOKIE_MINUTES, httpOnly: false);
     }
 }

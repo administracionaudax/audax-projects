@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Auth\SessionTerminator;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\UserAgent;
-use Illuminate\Auth\SessionGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -29,6 +27,8 @@ use stdClass;
  */
 class SessionsController extends Controller
 {
+    public function __construct(private readonly SessionTerminator $terminator) {}
+
     public function index(Request $request): Response
     {
         $currentId = $request->session()->getId();
@@ -51,12 +51,16 @@ class SessionsController extends Controller
 
         return Inertia::render('settings/sessions', [
             'sessions' => $sessions,
-            'supported' => $this->supported(),
+            'supported' => $this->terminator->supported(),
         ]);
     }
 
     public function destroy(Request $request, string $session): RedirectResponse
     {
+        if (! $this->terminator->supported()) {
+            return $this->unsupported();
+        }
+
         $row = $this->userSessions($request)
             ->first(fn (array $row): bool => hash_equals($this->publicId($row['id']), $session));
 
@@ -66,7 +70,10 @@ class SessionsController extends Controller
             return back()->withErrors(['session' => __('app.sessions.cannot_close_current')]);
         }
 
-        DB::table($this->table())->where('id', $row['id'])->delete();
+        /** @var User $user */
+        $user = $request->user();
+
+        $this->terminator->destroy($request, $user, $row['id']);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('app.sessions.closed')]);
 
@@ -75,17 +82,14 @@ class SessionsController extends Controller
 
     public function destroyOthers(Request $request): RedirectResponse
     {
+        if (! $this->terminator->supported()) {
+            return $this->unsupported();
+        }
+
         /** @var User $user */
         $user = $request->user();
 
-        if ($this->supported()) {
-            DB::table($this->table())
-                ->where('user_id', $user->getAuthIdentifier())
-                ->where('id', '!=', $request->session()->getId())
-                ->delete();
-        }
-
-        $this->cycleRememberToken($request, $user);
+        $this->terminator->destroyOthers($request, $user);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('app.sessions.others_closed')]);
 
@@ -93,15 +97,27 @@ class SessionsController extends Controller
     }
 
     /**
+     * Sin el driver "database" no se puede cerrar ninguna sesión: se dice, en vez de dar un falso éxito.
+     */
+    private function unsupported(): RedirectResponse
+    {
+        $message = __('app.sessions.unsupported');
+
+        Inertia::flash('toast', ['type' => 'error', 'message' => $message]);
+
+        return back()->withErrors(['session' => $message]);
+    }
+
+    /**
      * @return Collection<int, array{id: string, ip_address: string|null, user_agent: string|null, last_activity: int}>
      */
     private function userSessions(Request $request): Collection
     {
-        if (! $this->supported()) {
+        if (! $this->terminator->supported()) {
             return collect();
         }
 
-        return DB::table($this->table())
+        return DB::table($this->terminator->table())
             ->where('user_id', $request->user()?->getAuthIdentifier())
             ->orderByDesc('last_activity')
             ->get(['id', 'ip_address', 'user_agent', 'last_activity'])
@@ -113,38 +129,8 @@ class SessionsController extends Controller
             ]);
     }
 
-    /**
-     * Un "recordarme" en otro dispositivo volvería a abrir sesión: se cambia el token y, si este
-     * dispositivo lo usaba, se le reenvía la cookie con el token nuevo.
-     */
-    private function cycleRememberToken(Request $request, User $user): void
-    {
-        $user->setRememberToken(Str::random(60));
-        $user->save();
-
-        $guard = Auth::guard('web');
-
-        if ($guard instanceof SessionGuard && $request->cookies->has($guard->getRecallerName())) {
-            Cookie::queue(
-                $guard->getRecallerName(),
-                $user->getAuthIdentifier().'|'.$user->getRememberToken().'|'.$user->getAuthPassword(),
-                60 * 24 * 365 * 5,
-            );
-        }
-    }
-
     private function publicId(string $sessionId): string
     {
         return substr(hash_hmac('sha256', $sessionId, (string) config('app.key')), 0, 40);
-    }
-
-    private function supported(): bool
-    {
-        return config('session.driver') === 'database';
-    }
-
-    private function table(): string
-    {
-        return (string) config('session.table', 'sessions');
     }
 }

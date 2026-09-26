@@ -55,6 +55,25 @@ test('la vista incluye manifest, theme-color y robots noindex', function () {
         ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
 });
 
+test('robots.txt no deja rastrear nada (app interna, D-002)', function () {
+    $lines = array_map('trim', file(public_path('robots.txt')) ?: []);
+
+    expect($lines)->toContain('User-agent: *')
+        ->and($lines)->toContain('Disallow: /');
+});
+
+test('el favicon ICO no lleva sizes="any" y el SVG adaptable va después', function () {
+    $html = $this->get('/login')->getContent();
+
+    $ico = strpos($html, '<link rel="icon" href="/favicon.ico" sizes="32x32">');
+    $svg = strpos($html, '<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
+
+    expect($ico)->not->toBeFalse()
+        ->and($svg)->not->toBeFalse()
+        ->and($svg)->toBeGreaterThan($ico)
+        ->and($html)->not->toContain('sizes="any"');
+});
+
 test('en desarrollo la CSP permite el servidor de Vite', function () {
     $this->withVite();
 

@@ -48,28 +48,51 @@ class PageSource implements SearchSource
     }
 
     /**
+     * Secciones con su clave de traducción en lang/es/search.php (pages.<clave>.title|subtitle|keywords).
+     *
      * @return list<array{route: string, title: string, subtitle: string, keywords: string, allowed: Closure(User): bool}>
      */
     protected function pages(): array
     {
         $always = fn (User $user): bool => true;
 
-        return [
-            ['route' => 'home', 'title' => 'Inicio', 'subtitle' => 'Tu panel personal', 'keywords' => 'panel dashboard resumen', 'allowed' => $always],
-            ['route' => 'my-tasks.index', 'title' => 'Mis tareas', 'subtitle' => 'Tareas asignadas a ti', 'keywords' => 'tareas pendientes', 'allowed' => $always],
-            ['route' => 'projects.index', 'title' => 'Proyectos', 'subtitle' => 'Proyectos y tareas', 'keywords' => 'proyecto', 'allowed' => $always],
-            ['route' => 'clients.index', 'title' => 'Clientes', 'subtitle' => 'Clientes de Audax Studio', 'keywords' => 'cliente empresa', 'allowed' => $always],
-            ['route' => 'hour-banks.index', 'title' => 'Bolsas', 'subtitle' => 'Bolsas de horas', 'keywords' => 'bolsas de horas consumo', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-hour-banks')],
-            ['route' => 'time.index', 'title' => 'Horas', 'subtitle' => 'Imputación de horas', 'keywords' => 'imputar temporizador hoja semanal', 'allowed' => $always],
-            ['route' => 'workload.index', 'title' => 'Carga', 'subtitle' => 'Capacidad y carga de trabajo', 'keywords' => 'capacidad planificacion ausencias', 'allowed' => $always],
-            ['route' => 'reports.index', 'title' => 'Informes', 'subtitle' => 'Informes y dashboards', 'keywords' => 'dashboard productividad rentabilidad', 'allowed' => $always],
-            ['route' => 'chat.index', 'title' => 'Chat', 'subtitle' => 'Conversaciones', 'keywords' => 'mensajes conversaciones', 'allowed' => $always],
-            ['route' => 'admin.index', 'title' => 'Administración', 'subtitle' => 'Usuarios, departamentos y ajustes', 'keywords' => 'admin usuarios departamentos ajustes configuracion', 'allowed' => fn (User $user): bool => $user->isAdmin()],
-            ['route' => 'profile.edit', 'title' => 'Perfil', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes nombre correo', 'allowed' => $always],
-            ['route' => 'security.edit', 'title' => 'Seguridad', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes contrasena 2fa doble factor', 'allowed' => $always],
-            ['route' => 'appearance.edit', 'title' => 'Apariencia', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes tema claro oscuro', 'allowed' => $always],
-            ['route' => 'sessions.index', 'title' => 'Sesiones activas', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes dispositivos cerrar sesion', 'allowed' => $always],
+        $pages = [
+            ['route' => 'home', 'key' => 'home', 'allowed' => $always],
+            ['route' => 'my-tasks.index', 'key' => 'my_tasks', 'allowed' => $always],
+            ['route' => 'projects.index', 'key' => 'projects', 'allowed' => $always],
+            ['route' => 'clients.index', 'key' => 'clients', 'allowed' => $always],
+            ['route' => 'hour-banks.index', 'key' => 'hour_banks', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-hour-banks')],
+            ['route' => 'time.index', 'key' => 'time', 'allowed' => $always],
+            ['route' => 'workload.index', 'key' => 'workload', 'allowed' => $always],
+            ['route' => 'reports.index', 'key' => 'reports', 'allowed' => $always],
+            ['route' => 'chat.index', 'key' => 'chat', 'allowed' => $always],
+            ['route' => 'admin.index', 'key' => 'admin', 'allowed' => fn (User $user): bool => $user->isAdmin()],
+            ['route' => 'profile.edit', 'key' => 'profile', 'allowed' => $always],
+            ['route' => 'security.edit', 'key' => 'security', 'allowed' => $always],
+            ['route' => 'appearance.edit', 'key' => 'appearance', 'allowed' => $always],
+            ['route' => 'sessions.index', 'key' => 'sessions', 'allowed' => $always],
         ];
+
+        $translated = [];
+
+        foreach ($pages as $page) {
+            $translated[] = [
+                'route' => $page['route'],
+                'title' => self::text($page['key'], 'title'),
+                'subtitle' => self::text($page['key'], 'subtitle'),
+                'keywords' => self::text($page['key'], 'keywords'),
+                'allowed' => $page['allowed'],
+            ];
+        }
+
+        return $translated;
+    }
+
+    private static function text(string $key, string $field): string
+    {
+        $text = __("search.pages.{$key}.{$field}");
+
+        return is_string($text) ? $text : '';
     }
 
     /**

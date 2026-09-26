@@ -95,14 +95,15 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
+        // Sin ->uncompromised(): consultaría la API externa de Have I Been Pwned con un fragmento del
+        // SHA-1 de cada contraseña, y el SPEC §15 prohíbe enviar datos a terceros (todo autoalojado).
         Password::defaults(fn (): ?Password => app()->environment(['local', 'testing'])
             ? null
             : Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
-                ->symbols()
-                ->uncompromised(),
+                ->symbols(),
         );
     }
 }

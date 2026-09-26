@@ -2,7 +2,11 @@
 
 use App\Models\LoginEvent;
 use App\Models\User;
+use Illuminate\Auth\SessionGuard;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 
@@ -133,9 +137,55 @@ test('se registra un inicio de sesión fallido sin guardar la contraseña', func
         ->and(json_encode($events->toArray()))->not->toContain('secreto-equivocado');
 });
 
+test('un correo que no es texto no rompe el limitador de intentos', function (mixed $email) {
+    $this->from(route('login'))
+        ->post(route('login.store'), ['email' => $email, 'password' => 'x'])
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    $this->postJson(route('login.store'), ['email' => $email, 'password' => 'x'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('email');
+
+    $this->assertGuest();
+})->with([
+    'array' => [['a@example.com']],
+    'vacío' => [null],
+]);
+
+test('con un correo inexistente también se comprueba la contraseña (tiempo constante)', function () {
+    $dummyHash = Hash::make('hash-ficticio');
+    Hash::shouldReceive('make')->andReturn($dummyHash);
+    Hash::shouldReceive('check')->once()->with('secreto', $dummyHash)->andReturnFalse();
+
+    $this->post(route('login.store'), ['email' => 'nadie@example.com', 'password' => 'secreto'])
+        ->assertSessionHasErrors(['email' => __('auth.failed')]);
+
+    $this->assertGuest();
+});
+
 test('al iniciar sesión se sincroniza la cookie de tema con la preferencia guardada', function () {
     $user = userWithRole('employee', ['theme_preference' => 'dark']);
 
-    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+    $response = $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
         ->assertCookie('appearance', 'dark', encrypted: false);
+
+    expect($response->getCookie('appearance', decrypt: false)?->isHttpOnly())->toBeFalse();
+});
+
+test('un usuario desactivado que vuelve con «Recordarme» no queda registrado como acceso correcto', function () {
+    $user = userWithRole('employee', ['is_active' => false, 'remember_token' => Str::random(60)]);
+
+    /** @var SessionGuard $guard */
+    $guard = Auth::guard('web');
+    $recaller = $user->id.'|'.$user->remember_token.'|'.$guard->hashPasswordForCookie($user->password);
+
+    $this->withCookie($guard->getRecallerName(), $recaller)
+        ->get('/')
+        ->assertRedirect(route('login'));
+
+    $this->assertGuest();
+
+    $event = LoginEvent::query()->sole();
+    expect($event->succeeded)->toBeFalse()->and($event->user_id)->toBe($user->id);
 });

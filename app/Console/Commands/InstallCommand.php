@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Auth\SessionTerminator;
 use App\Enums\Role;
 use App\Models\User;
 use Database\Seeders\DefaultSettingsSeeder;
@@ -31,7 +32,8 @@ use function Laravel\Prompts\text;
 #[Signature('app:install
     {--name= : Nombre del primer administrador}
     {--email= : Correo electrónico del primer administrador}
-    {--reset-link : Emite un nuevo enlace de restablecimiento si el administrador ya existe}')]
+    {--reset-link : Emite un nuevo enlace de restablecimiento si el administrador ya existe}
+    {--promote : Convierte en administrador a un usuario que ya existe con ese correo}')]
 #[Description('Instala los datos base (roles, ajustes, departamentos) y crea el primer administrador')]
 class InstallCommand extends Command
 {
@@ -95,24 +97,45 @@ class InstallCommand extends Command
         /** @var array{name: string, email: string} $data */
         $data = $validator->validated();
 
-        $admin = DB::transaction(function () use ($data): User {
-            $user = User::query()->firstOrCreate(
-                ['email' => $data['email']],
-                [
-                    'name' => $data['name'],
-                    // Contraseña aleatoria que nadie conoce: el admin fija la suya con el enlace.
-                    'password' => Str::password(40),
-                    'email_verified_at' => now(),
-                    'is_active' => true,
-                ],
-            );
+        $existing = User::query()->where('email', $data['email'])->first();
+
+        // Un usuario que ya existe (un cliente, alguien desactivado) no se convierte en admin sin
+        // pedirlo de forma expresa.
+        if ($existing !== null && ! $this->option('promote')) {
+            $this->components->error("Ya existe un usuario con el correo {$data['email']} y no se ha tocado.");
+            $this->line('  Para convertirlo en el primer administrador, vuelve a ejecutar el comando con --promote.');
+
+            return self::FAILURE;
+        }
+
+        $admin = DB::transaction(function () use ($data, $existing): User {
+            if ($existing !== null) {
+                // Se reactiva, se le pone una contraseña aleatoria que nadie conoce y se cierran sus
+                // sesiones y su «Recordarme»: fija la contraseña con el enlace, como un admin nuevo.
+                $existing->forceFill(['is_active' => true, 'password' => Str::password(40)])->save();
+                $this->laravel->make(SessionTerminator::class)->destroyAll($existing);
+                $existing->syncRoles([Role::Admin->value]);
+
+                return $existing;
+            }
+
+            $user = User::query()->forceCreate([
+                'email' => $data['email'],
+                'name' => $data['name'],
+                // Contraseña aleatoria que nadie conoce: el admin fija la suya con el enlace.
+                'password' => Str::password(40),
+                'email_verified_at' => now(),
+                'is_active' => true,
+            ]);
 
             $user->syncRoles([Role::Admin->value]);
 
             return $user;
         });
 
-        $this->components->info("Administrador creado: {$admin->email}");
+        $this->components->info($existing !== null
+            ? "Usuario existente convertido en administrador: {$admin->email}"
+            : "Administrador creado: {$admin->email}");
         $this->printResetLink($admin);
 
         return self::SUCCESS;

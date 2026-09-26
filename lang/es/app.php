@@ -19,5 +19,6 @@ return [
         'closed' => 'Sesión cerrada.',
         'others_closed' => 'Se han cerrado las demás sesiones.',
         'cannot_close_current' => 'No puedes cerrar la sesión que estás usando. Para salir, usa «Cerrar sesión».',
+        'unsupported' => 'No se pueden cerrar sesiones con la configuración actual del servidor. Avisa a la administración.',
     ],
 ];

@@ -35,7 +35,8 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
+        {{-- sizes="32x32" y no "any": con "any" Chrome elige el ICO (navy) en vez del SVG, que se adapta al tema oscuro (D-025) --}}
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="manifest" href="/manifest.webmanifest">

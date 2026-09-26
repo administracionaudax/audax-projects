@@ -61,4 +61,9 @@ code=$(curl -s -o /dev/null -w "%{http_code}" https://projects.audaxstudio.com/l
 hdr=$(curl -s -D - -o /dev/null https://projects.audaxstudio.com/login | wc -c | tr -d ' ')
 echo "   /login  → $code (cabeceras: $hdr bytes; el proxy nginx admite unos 4 KB)"
 [ "$code" = 200 ] || { echo "ERROR: /login no responde 200" >&2; exit 1; }
-curl -s -w "\n" https://projects.audaxstudio.com/health | head -c 300; echo
+health_body=$(mktemp)
+trap 'rm -f "$health_body"' EXIT
+health_code=$(curl -s -o "$health_body" -w "%{http_code}" https://projects.audaxstudio.com/health || true)
+echo "   /health → $health_code"
+head -c 300 "$health_body"; echo
+[ "$health_code" = 200 ] || { echo "ERROR: /health no responde 200 (estado degradado): revisa las comprobaciones de arriba" >&2; exit 1; }

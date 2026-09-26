@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Spatie\Permission\Models\Role as RoleModel;
@@ -120,6 +121,46 @@ test('app:install falla sin correo en modo no interactivo y no crea el admin', f
     expect($exitCode)->toBe(1)
         ->and(User::query()->count())->toBe(0)
         ->and(Department::query()->count())->toBe(3);
+});
+
+test('app:install no convierte en admin a un usuario que ya existe con ese correo', function () {
+    $client = User::factory()->client()->inactive()->create(['email' => 'ana@audaxstudio.com']);
+    $password = $client->password;
+
+    [$exitCode, $output] = runInstall();
+
+    $client->refresh();
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain('--promote')
+        ->and($output)->not->toContain('Administrador creado')
+        ->and($client->hasRole(Role::Admin->value))->toBeFalse()
+        ->and($client->hasRole(Role::Client->value))->toBeTrue()
+        ->and($client->is_active)->toBeFalse()
+        ->and($client->password)->toBe($password);
+});
+
+test('app:install --promote convierte al usuario existente en admin, lo reactiva y le cambia la contraseña', function () {
+    config(['session.driver' => 'database']);
+
+    $user = User::factory()->client()->inactive()->create([
+        'email' => 'ana@audaxstudio.com',
+        'remember_token' => 'token-anterior',
+    ]);
+    insertSession($user);
+
+    [$exitCode, $output] = runInstall(['--promote' => true]);
+
+    $user->refresh();
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain('Usuario existente convertido en administrador')
+        ->and($output)->toContain('/reset-password/')
+        ->and($user->getRoleNames()->all())->toBe([Role::Admin->value])
+        ->and($user->is_active)->toBeTrue()
+        ->and(Hash::check('password', $user->password))->toBeFalse()
+        ->and($user->remember_token)->not->toBe('token-anterior')
+        ->and(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 test('app:install rechaza un correo no válido', function () {
