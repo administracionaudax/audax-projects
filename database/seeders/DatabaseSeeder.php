@@ -9,7 +9,8 @@ use Illuminate\Database\Seeder;
 use RuntimeException;
 
 /**
- * Datos de DESARROLLO: un usuario por rol con contraseña de ejemplo ("password").
+ * Datos de DESARROLLO: un usuario por rol con contraseña de ejemplo ("password", los que usan los
+ * E2E) y los datos de ejemplo realistas del SPEC §15 (DemoDataSeeder).
  * Solo en local y testing (nunca en staging ni producción, que son accesibles desde Internet):
  * el primer admin real se crea con `php artisan app:install`.
  */
@@ -53,5 +54,7 @@ class DatabaseSeeder extends Seeder
                 $design->managers()->syncWithoutDetaching([$user->id]);
             }
         }
+
+        $this->call(DemoDataSeeder::class);
     }
 }
