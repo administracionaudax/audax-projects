@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
+use App\Domain\Workload\MyWorkload;
 use App\Enums\TimesheetStatus;
 use App\Http\Resources\Time\HomeTaskResource;
 use App\Http\Resources\Time\Plain;
@@ -25,6 +26,7 @@ use Inertia\Response;
  * - sus horas de hoy y de la semana frente a su capacidad,
  * - el estado de su semana (con el comentario si se la han devuelto),
  * - los días laborables sin imputar de las dos últimas semanas.
+ * - mi carga de esta semana y la que viene (Fase 3, prop diferida `workload`).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  */
 class HomeController extends Controller
@@ -60,6 +62,8 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio.
+            'workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today)),
         ]);
     }
 
