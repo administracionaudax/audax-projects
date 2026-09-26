@@ -2,6 +2,7 @@
 
 namespace App\Domain\Admin;
 
+use App\Domain\Tasks\TaskNotifier;
 use App\Domain\Time\TimerService;
 use App\Models\ActiveTimer;
 use App\Models\Project;
@@ -17,7 +18,9 @@ use stdClass;
  *   1. para su temporizador con TimerService::stop (imputa lo medido); si la imputación falla
  *      (semana enviada, bolsa `block` sin saldo…), lo descarta y lo cuenta en el resultado,
  *   2. reasigna sus tareas abiertas a otra persona interna activa o las deja sin asignar; si la
- *      persona nueva no es miembro del proyecto, se añade como miembro para que pueda imputar,
+ *      persona nueva no es miembro del proyecto, se añade como miembro para que pueda imputar.
+ *      Como al asignar desde la tarea (TaskWriter), la persona nueva pasa a seguirla y recibe el
+ *      aviso de asignación (SPEC §13), solo si toda la baja termina bien (TaskNotifier::capture),
  *   3. traspasa la gestión principal de los proyectos no archivados que dirige a quien se elija
  *      (D-032: el nuevo gestor principal queda como miembro gestor); los que no se elijan siguen
  *      igual y se pueden cambiar después en los ajustes del proyecto,
@@ -31,6 +34,7 @@ final class UserDeactivator
     public function __construct(
         private readonly TimerService $timers,
         private readonly UserGuard $guard,
+        private readonly TaskNotifier $notifier,
     ) {}
 
     /**
@@ -42,7 +46,7 @@ final class UserDeactivator
      */
     public function deactivate(User $actor, User $user, array $assignments, ?int $defaultAssignee, array $owners = []): DeactivationResult
     {
-        return DB::transaction(function () use ($actor, $user, $assignments, $defaultAssignee, $owners): DeactivationResult {
+        return $this->notifier->capture(fn (): DeactivationResult => DB::transaction(function () use ($actor, $user, $assignments, $defaultAssignee, $owners): DeactivationResult {
             $this->guard->lockActiveAdmins();
 
             /** @var User $locked */
@@ -53,7 +57,7 @@ final class UserDeactivator
             $result = new DeactivationResult;
 
             $this->stopTimer($locked, $result);
-            $this->reassignTasks($locked, $assignments, $defaultAssignee, $result);
+            $this->reassignTasks($actor, $locked, $assignments, $defaultAssignee, $result);
             $this->transferProjects($locked, $owners, $result);
 
             $result->departmentsLeft = $locked->managedDepartments()->count();
@@ -65,7 +69,7 @@ final class UserDeactivator
             $user->setRawAttributes($locked->getAttributes(), true);
 
             return $result;
-        });
+        }));
     }
 
     private function stopTimer(User $user, DeactivationResult $result): void
@@ -97,13 +101,13 @@ final class UserDeactivator
     /**
      * @param  array<int, int|null>  $assignments
      */
-    private function reassignTasks(User $user, array $assignments, ?int $defaultAssignee, DeactivationResult $result): void
+    private function reassignTasks(User $actor, User $user, array $assignments, ?int $defaultAssignee, DeactivationResult $result): void
     {
         $tasks = Task::query()
             ->open()
             ->assignedTo($user)
-            ->with(['project' => fn ($query) => $query->withTrashed()->select(['id', 'owner_user_id'])])
-            ->get(['id', 'project_id', 'assignee_user_id', 'status_id']);
+            ->with(['project' => fn ($query) => $query->withTrashed()->select(['id', 'owner_user_id', 'name'])])
+            ->get(['id', 'project_id', 'assignee_user_id', 'status_id', 'title']);
 
         if ($tasks->isEmpty()) {
             return;
@@ -122,9 +126,13 @@ final class UserDeactivator
 
             if ($targets[$task->id] === null) {
                 $result->unassigned++;
-            } else {
-                $result->reassigned++;
+
+                continue;
             }
+
+            $result->reassigned++;
+            $task->watchers()->syncWithoutDetaching([$targets[$task->id]]);
+            $this->notifier->assigned($task, $actor);
         }
     }
 

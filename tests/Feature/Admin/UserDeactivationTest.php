@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
+use App\Notifications\Tasks\TaskAssignedNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Support\SessionKey;
@@ -113,6 +114,39 @@ test('desactiva: reasigna las tareas (una a una y el resto en bloque), para el t
 
     // Y cada reasignación queda en la auditoría de la tarea.
     expect(DB::table('activity_log')->where('subject_type', (new Task)->getMorphClass())->where('subject_id', $this->taskA->id)->where('event', 'updated')->exists())->toBeTrue();
+});
+
+test('quien recibe las tareas de la baja pasa a seguirlas y recibe el aviso de asignación, como al asignar desde la tarea', function () {
+    $this->taskB->watchers()->attach($this->colleague->id);
+
+    $this->actingAs($this->admin)
+        ->post("/admin/usuarios/{$this->leaving->id}/baja", [
+            'default_assignee_id' => $this->colleague->id,
+            'assignments' => [
+                ['task_id' => $this->taskC->id, 'assignee_user_id' => $this->admin->id],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    // Sigue las tareas nuevas (A y B; la B ya la seguía) y no se duplica.
+    expect($this->taskA->watchers()->whereKey($this->colleague->id)->exists())->toBeTrue()
+        ->and($this->taskB->watchers()->whereKey($this->colleague->id)->count())->toBe(1)
+        ->and($this->taskC->watchers()->whereKey($this->admin->id)->exists())->toBeTrue();
+
+    // Un aviso de asignación por tarea recibida; quien hace la baja no se avisa a sí mismo.
+    $notifications = $this->colleague->fresh()->notifications()->where('type', TaskAssignedNotification::class)->get();
+    expect($notifications)->toHaveCount(2)
+        ->and($notifications->pluck('data.url')->sort()->values()->all())->toBe(["/tareas/{$this->taskA->id}", "/tareas/{$this->taskB->id}"])
+        ->and($this->admin->fresh()->notifications()->count())->toBe(0);
+});
+
+test('una baja rechazada no avisa a nadie', function () {
+    // Nadie se da de baja a sí mismo: no se reasigna nada ni sale ningún aviso.
+    $this->actingAs($this->admin)
+        ->post("/admin/usuarios/{$this->admin->id}/baja", ['default_assignee_id' => $this->colleague->id])
+        ->assertSessionHasErrors();
+
+    expect(DB::table('notifications')->count())->toBe(0);
 });
 
 test('si el temporizador no se puede imputar, se descarta y se avisa; la baja sigue adelante', function () {
