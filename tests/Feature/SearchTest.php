@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Client;
 use App\Models\Department;
+use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Search\Sources\PageSource;
 use Illuminate\Support\Facades\DB;
@@ -145,4 +148,71 @@ test('devuelve como máximo 20 resultados', function () {
     expect(searchTitles('persona'))->toHaveCount(20);
 
     $this->actingAs(userWithRole('employee'))->getJson('/buscar?q=persona&limit=50')->assertUnprocessable();
+});
+
+test('encuentra clientes, proyectos y tareas, sin distinguir mayúsculas, con su enlace (Fase 1)', function () {
+    $client = Client::factory()->create(['name' => 'Bodegas Zarzalejo', 'contact_name' => 'Ana']);
+    $project = Project::factory()->create(['client_id' => $client->id, 'name' => 'Web Zarzalejo', 'code' => 'ZAR-WEB']);
+    $task = Task::factory()->create(['project_id' => $project->id, 'title' => 'Maquetar ficha Zarzalejo']);
+
+    $results = collect($this->actingAs(searcher())->getJson('/buscar?q=zarzalejo')->assertOk()->json('results'));
+
+    expect($results->firstWhere('type', 'client'))->toMatchArray([
+        'id' => $client->id,
+        'url' => '/clientes/'.$client->id,
+        'subtitle' => '1 proyecto activo',
+    ])
+        ->and($results->firstWhere('type', 'project'))->toMatchArray([
+            'id' => $project->id,
+            'url' => '/proyectos/'.$project->id,
+            'subtitle' => 'ZAR-WEB · Bodegas Zarzalejo',
+        ])
+        ->and($results->firstWhere('type', 'task'))->toMatchArray([
+            'id' => $task->id,
+            'url' => "/proyectos/{$project->id}/tareas?tarea={$task->id}",
+        ]);
+});
+
+test('busca proyectos por código y deja los archivados al final', function () {
+    Project::factory()->archived()->create(['name' => 'Alfa antiguo', 'code' => 'ALFA-OLD']);
+    Project::factory()->create(['name' => 'Alfa nuevo', 'code' => 'ALFA-NEW']);
+
+    $projects = collect($this->actingAs(searcher())->getJson('/buscar?q=alfa-')->json('results'))->where('type', 'project')->values();
+
+    expect($projects->pluck('title')->all())->toBe(['Alfa nuevo', 'Alfa antiguo'])
+        ->and($projects[1]['subtitle'])->toContain('Archivado');
+});
+
+test('primero las tareas abiertas y las mías', function () {
+    $me = searcher();
+    $project = Project::factory()->create();
+    Task::factory()->completed()->create(['project_id' => $project->id, 'title' => 'Revisar textos A']);
+    Task::factory()->create(['project_id' => $project->id, 'title' => 'Revisar textos B']);
+    Task::factory()->assignedTo($me)->create(['project_id' => $project->id, 'title' => 'Revisar textos C']);
+
+    $titles = collect($this->actingAs($me)->getJson('/buscar?q=revisar textos')->json('results'))
+        ->where('type', 'task')->pluck('title')->all();
+
+    expect($titles)->toBe(['Revisar textos C', 'Revisar textos B', 'Revisar textos A']);
+});
+
+test('ninguna fuente acapara los resultados y los huecos se rellenan', function () {
+    $project = Project::factory()->create(['name' => 'Omega']);
+    Task::factory()->count(30)->create(['project_id' => $project->id, 'title' => 'Omega tarea']);
+    User::factory()->employee()->count(10)->sequence(fn ($sequence) => ['name' => 'Omega persona '.$sequence->index])->create();
+
+    $results = collect($this->actingAs(searcher())->getJson('/buscar?q=omega')->json('results'));
+
+    // Proyecto (1) + tareas (6 en la 1.ª ronda) + personas (4) y el resto, rellenado con tareas.
+    expect($results)->toHaveCount(20)
+        ->and($results->where('type', 'project'))->toHaveCount(1)
+        ->and($results->where('type', 'person')->count())->toBeGreaterThanOrEqual(4)
+        ->and($results->pluck('type')->unique()->values()->all())->toBe(['project', 'task', 'person']);
+});
+
+test('los escapes de LIKE no rompen la búsqueda de proyectos', function () {
+    Project::factory()->create(['name' => 'Cien por cien', 'code' => 'C100']);
+
+    expect(collect($this->actingAs(searcher())->getJson('/buscar?q='.urlencode('100%'))->json('results'))->where('type', 'project'))
+        ->toHaveCount(0);
 });

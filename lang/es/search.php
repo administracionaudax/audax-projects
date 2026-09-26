@@ -9,6 +9,13 @@
 */
 
 return [
+    'results' => [
+        'projects' => '{0} Sin proyectos activos|{1} :count proyecto activo|[2,*] :count proyectos activos',
+        'inactive' => 'Inactivo',
+        'internal' => 'Interno',
+        'archived' => 'Archivado',
+        'completed' => 'Completada',
+    ],
     'pages' => [
         'home' => ['title' => 'Inicio', 'subtitle' => 'Tu panel personal', 'keywords' => 'panel dashboard resumen'],
         'my_tasks' => ['title' => 'Mis tareas', 'subtitle' => 'Tareas asignadas a ti', 'keywords' => 'tareas pendientes'],
