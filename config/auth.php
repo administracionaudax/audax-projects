@@ -102,9 +102,10 @@ return [
 
         // Invitaciones de alta (Fase 1): mismo mecanismo que el restablecimiento, pero el enlace
         // dura 7 días y se acepta en /invitacion/{token} (App\Http\Controllers\Auth\InvitationController).
+        // Tabla propia: un token de restablecimiento no vale como invitación ni la pisa (D-038).
         'invitations' => [
             'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'table' => 'invitation_tokens',
             'expire' => 7 * 24 * 60,
             'throttle' => 60,
         ],

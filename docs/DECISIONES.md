@@ -283,7 +283,7 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
   - traspasa la gestión principal de sus proyectos no archivados (D-032),
   - para su temporizador (si no se puede imputar, se descarta y se avisa),
   - la quita de responsable de sus departamentos, para que las aprobaciones no esperen a alguien de baja.
-- **Invitaciones:** el enlace dura 7 días y es de un solo uso. Tienen su propio *broker* (`invitations`) y se aceptan en `/invitacion/{token}`. El restablecimiento de contraseña sigue en 60 minutos.
+- **Invitaciones:** el enlace dura 7 días y es de un solo uso. Tienen su propio *broker* (`invitations`) con su propia tabla (`invitation_tokens`) y se aceptan en `/invitacion/{token}`. El restablecimiento de contraseña sigue en 60 minutos: un token de restablecimiento no vale como invitación, y pedir un restablecimiento no invalida una invitación.
 - **Jornadas:** una versión nueva empieza como pronto mañana; la primera de una persona puede empezar hoy. No se reescriben versiones ya iniciadas. Los días se editan con un campo propio que admite 0:00.
 - **Departamentos:** solo se borran si no tienen personas (activas ni de baja) ni bolsas abiertas.
 - **Estados:** el estado por defecto nunca es «done». Al borrar un estado, sus tareas pasan al final de la columna del estado de reemplazo. Los cambios masivos dejan una sola entrada en la auditoría.

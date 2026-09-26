@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -71,4 +73,43 @@ test('una persona con sesión iniciada no ve el formulario', function () {
     $this->actingAs(User::factory()->employee()->create())
         ->get(InvitationController::urlFor($this->invited))
         ->assertRedirect();
+});
+
+test('un token de «he olvidado la contraseña» no vale como invitación (SEG-01: 60 minutos, no 7 días)', function () {
+    $user = User::factory()->employee()->create(['email' => 'ana@audaxstudio.com', 'password' => 'desconocida-123']);
+    $token = Password::broker('users')->createToken($user);
+
+    $this->travel(3)->days();
+    expect(Password::broker('users')->tokenExists($user, $token))->toBeFalse();
+
+    $this->post('/invitacion', [
+        'token' => $token,
+        'email' => 'ana@audaxstudio.com',
+        'password' => 'Una-Clave-Segura-2026',
+        'password_confirmation' => 'Una-Clave-Segura-2026',
+    ])->assertSessionHasErrors(['email' => __('app.invitation_invalid')]);
+
+    expect(Hash::check('Una-Clave-Segura-2026', $user->fresh()->password))->toBeFalse();
+});
+
+test('ni siquiera un token de restablecimiento recién creado vale en /invitacion', function () {
+    $user = User::factory()->employee()->create(['email' => 'ana@audaxstudio.com']);
+    $token = Password::broker('users')->createToken($user);
+
+    $this->post('/invitacion', [
+        'token' => $token,
+        'email' => 'ana@audaxstudio.com',
+        'password' => 'Una-Clave-Segura-2026',
+        'password_confirmation' => 'Una-Clave-Segura-2026',
+    ])->assertSessionHasErrors('email');
+});
+
+test('pedir «he olvidado la contraseña» con el email de un invitado no invalida su invitación (SEG-01)', function () {
+    $this->travel(2)->minutes();
+    $this->post('/forgot-password', ['email' => 'nueva@audaxstudio.com'])->assertSessionHasNoErrors();
+
+    expect(DB::table('password_reset_tokens')->where('email', 'nueva@audaxstudio.com')->exists())->toBeTrue();
+
+    ($this->accept)()->assertSessionHasNoErrors()->assertRedirect(route('login'));
+    expect(Hash::check('Una-Clave-Segura-2026', $this->invited->fresh()->password))->toBeTrue();
 });
