@@ -733,7 +733,10 @@ export function TaskKanban({
             </div>
             <DragOverlay>
                 {active ? (
-                    <div className="w-72 rounded-[3px] border bg-card shadow-md">
+                    <div
+                        className="w-72 rounded-[3px] border bg-card shadow-md"
+                        data-kanban-overlay={active.id}
+                    >
                         <CardBody task={active} />
                     </div>
                 ) : null}
