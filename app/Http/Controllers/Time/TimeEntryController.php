@@ -16,6 +16,9 @@ use Illuminate\Http\Request;
  * Entrada manual y hoja semanal (SPEC §7): crear, editar y borrar SIEMPRE con TimeEntryWriter,
  * que aplica las reglas de imputación y la política de las bolsas. Los avisos no bloqueantes
  * (tarea completada, jornada superada, exceso) vuelven como `time_warnings`.
+ *
+ * Con `quiet=1` (celdas de la hoja semanal, que se editan como una hoja de cálculo) no se envía el
+ * aviso de éxito; los avisos no bloqueantes, sí.
  */
 class TimeEntryController extends TimeController
 {
@@ -35,7 +38,7 @@ class TimeEntryController extends TimeController
 
         $result = $this->writer->create($actor, $request->toData($actor));
 
-        $this->toast(Messages::get('time.flash.entry_created', [
+        $this->success($request, Messages::get('time.flash.entry_created', [
             'minutes' => Duration::format($result->entry->minutes),
             'task' => $task->title,
         ]));
@@ -57,7 +60,7 @@ class TimeEntryController extends TimeController
 
         $result = $this->writer->update($actor, $entry, $request->toData($actor, $entry));
 
-        $this->toast(Messages::get('time.flash.entry_updated', [
+        $this->success($request, Messages::get('time.flash.entry_updated', [
             'minutes' => Duration::format($result->entry->minutes),
             'task' => $task->title,
         ]));
@@ -77,9 +80,16 @@ class TimeEntryController extends TimeController
         $actor = $request->user();
 
         $this->writer->delete($actor, $entry);
-        $this->toast(Messages::get('time.flash.entry_deleted'));
+        $this->success($request, Messages::get('time.flash.entry_deleted'));
 
         return back();
+    }
+
+    private function success(Request $request, string $message): void
+    {
+        if (! $request->boolean('quiet')) {
+            $this->toast($message);
+        }
     }
 
     private function task(int $id): Task
