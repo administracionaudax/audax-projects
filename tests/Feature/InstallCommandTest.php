@@ -1,10 +1,19 @@
 <?php
 
+use App\Enums\BillingType;
 use App\Enums\Permission;
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
+use App\Enums\TaskStatusCategory;
 use App\Models\Department;
+use App\Models\Project;
 use App\Models\Setting;
+use App\Models\Task;
+use App\Models\TaskStatus;
+use App\Models\TaskType;
 use App\Models\User;
+use App\Models\WorkSchedule;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -167,4 +176,93 @@ test('app:install rechaza un correo no válido', function () {
     [$exitCode] = runInstall(['--email' => 'no-es-un-correo']);
 
     expect($exitCode)->toBe(1)->and(User::query()->count())->toBe(0);
+});
+
+test('app:install crea los estados y los tipos de tarea por defecto, enlazados con sus departamentos', function () {
+    runInstall();
+
+    expect(TaskStatus::query()->ordered()->pluck('name')->all())->toBe(['Por hacer', 'En curso', 'En revisión', 'Bloqueada', 'Hecha'])
+        ->and(TaskStatus::query()->where('is_default', true)->sole()->name)->toBe('Por hacer')
+        ->and(TaskStatus::query()->where('name', 'Bloqueada')->sole()->category)->toBe(TaskStatusCategory::InProgress)
+        ->and(TaskType::query()->count())->toBe(count(TaskType::DEFAULTS));
+
+    $departments = Department::query()->pluck('id', 'name');
+
+    foreach (TaskType::DEFAULTS as $position => $default) {
+        $type = TaskType::query()->where('name', $default['name'])->sole();
+
+        expect($type->icon)->toBe($default['icon'])
+            ->and($type->color)->toBe($default['color'])
+            ->and($type->position)->toBe($position)
+            ->and($type->is_active)->toBeTrue()
+            ->and($type->department_id)->toBe($default['department'] !== null ? $departments[$default['department']] : null);
+    }
+});
+
+test('app:install crea el proyecto interno con sus tareas no facturables y la jornada del admin', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 10:00:00', 'Europe/Madrid'));
+    Setting::set('default_work_minutes', [420, 420, 420, 420, 420, 0, 0]);
+
+    runInstall();
+
+    $admin = User::query()->where('email', 'ana@audaxstudio.com')->sole();
+    $project = Project::query()->where('code', Project::INTERNAL_CODE)->sole();
+
+    expect($project->name)->toBe('Interno – Agencia')
+        ->and($project->billing_type)->toBe(BillingType::Internal)
+        ->and($project->status)->toBe(ProjectStatus::Active)
+        ->and($project->client_id)->toBeNull()
+        ->and($project->color)->toBe('#56667A')
+        ->and($project->owner_user_id)->toBe($admin->id)
+        ->and($admin->isManagerOf($project))->toBeTrue()
+        ->and($project->tasks()->orderBy('position')->pluck('title')->all())->toBe(Project::INTERNAL_TASKS)
+        ->and($project->tasks()->where('is_billable', true)->exists())->toBeFalse()
+        ->and($project->tasks()->where('title', 'Reuniones')->sole()->task_type_id)->toBe(TaskType::query()->where('name', 'Reunión')->value('id'));
+
+    $schedule = WorkSchedule::query()->where('user_id', $admin->id)->sole();
+    expect($schedule->valid_from->toDateString())->toBe('2026-09-24')
+        ->and($schedule->weekMinutes())->toBe([420, 420, 420, 420, 420, 0, 0]);
+});
+
+test('app:install ampliado es idempotente y respeta lo que el admin haya cambiado', function () {
+    runInstall();
+
+    TaskStatus::query()->where('name', 'Bloqueada')->update(['name' => 'En espera']);
+    TaskType::query()->where('name', 'SEO')->firstOrFail()->delete();
+    TaskType::query()->where('name', 'Bug')->update(['color' => '#56667A']);
+    Project::query()->where('code', Project::INTERNAL_CODE)->update(['name' => 'Interno']);
+    Task::query()->where('title', 'Comercial')->firstOrFail()->delete();
+
+    [$exitCode] = runInstall();
+
+    expect($exitCode)->toBe(0)
+        ->and(TaskStatus::query()->count())->toBe(5)
+        ->and(TaskStatus::query()->where('name', 'En espera')->exists())->toBeTrue()
+        ->and(TaskType::query()->count())->toBe(count(TaskType::DEFAULTS) - 1)
+        ->and(TaskType::withTrashed()->count())->toBe(count(TaskType::DEFAULTS))
+        ->and(TaskType::query()->where('name', 'Bug')->sole()->color)->toBe('#56667A')
+        ->and(Project::withTrashed()->where('code', Project::INTERNAL_CODE)->count())->toBe(1)
+        ->and(Project::query()->where('code', Project::INTERNAL_CODE)->sole()->name)->toBe('Interno')
+        ->and(Task::withTrashed()->count())->toBe(count(Project::INTERNAL_TASKS))
+        ->and(Task::query()->count())->toBe(count(Project::INTERNAL_TASKS) - 1)
+        ->and(WorkSchedule::query()->count())->toBe(1);
+});
+
+test('app:install crea el proyecto interno también cuando el admin ya existía', function () {
+    $admin = userWithRole('admin', ['email' => 'primero@audaxstudio.com']);
+
+    [$exitCode, $output] = runInstall();
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain('Ya existe un administrador')
+        ->and(Project::query()->where('code', Project::INTERNAL_CODE)->sole()->owner_user_id)->toBe($admin->id)
+        ->and(WorkSchedule::query()->where('user_id', $admin->id)->count())->toBe(1);
+});
+
+test('sin administrador no se crea el proyecto interno (necesita un gestor principal)', function () {
+    Artisan::call('app:install', ['--no-interaction' => true]);
+
+    expect(Project::query()->count())->toBe(0)
+        ->and(TaskStatus::query()->count())->toBe(5)
+        ->and(TaskType::query()->count())->toBe(count(TaskType::DEFAULTS));
 });
