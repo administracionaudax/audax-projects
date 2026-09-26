@@ -12,8 +12,8 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Estado de las fases
 | Fase | Estado |
 |---|---|
-| 0. Fundaciones | Aceptada (26/09): `/styleguide` aprobada; queda confirmar la CI en GitHub y fusionar en `main` |
-| 1. Núcleo | Pendiente (dudas resueltas: D-019 a D-024) |
+| 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0`) |
+| 1. Núcleo | Siguiente: presentar el plan en modo plan (dudas resueltas: D-019 a D-024) |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
 | 4. Gantt | Pendiente |
@@ -33,7 +33,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
   - Composer en `/opt/psa/var/modules/composer/composer.phar`.
 - **Datos:** PostgreSQL 18 en `127.0.0.1:15432` (bases `audax_projects` y `audax_projects_test`) y Valkey 9 en `127.0.0.1:16379`, en Docker (`/opt/audax/compose.yml`). **Nunca** el Redis compartido del 6379.
 - **Procesos:** `audax-horizon.service` y `audax-scheduler.service` (systemd, `system-audax.slice`, límites de memoria y CPU).
-- **Git:** `git@github-audax:administracionaudax/audax-projects.git` (deploy key `~/.ssh/audax_github_ed25519`). Rama de trabajo: `fase-0`.
+- **Git:** `git@github-audax:administracionaudax/audax-projects.git` (deploy key `~/.ssh/audax_github_ed25519`). Rama principal `main`; una rama por fase (`fase-1`, …). CI en GitHub Actions en cada push a `main` y `fase-*`.
 
 ## Comandos
 ```bash
