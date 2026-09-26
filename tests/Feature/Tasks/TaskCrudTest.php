@@ -105,6 +105,23 @@ it('las subtareas son de un solo nivel, del mismo proyecto y con la bolsa del pa
         ->assertSessionHasErrors('parent_task_id');
 });
 
+it('no se añaden subtareas a una tarea que se ha quedado en una bolsa cerrada o renovada (BRN-07)', function (string $status, string $label) {
+    $project = Project::factory()->hourBank()->create();
+    $project->addMember($this->user);
+    $bank = HourBank::factory()->create(['project_id' => $project->id]);
+    // Un padre terminado se queda en su bolsa al renovarla (solo se mueven las abiertas).
+    $parent = Task::factory()->inBank($bank)->completed()->create();
+    $bank->update(['status' => $status]);
+
+    ($this->store)(['title' => 'Hija', 'parent_task_id' => $parent->id], $project)
+        ->assertSessionHasErrors(['parent_task_id' => "La tarea está en la bolsa «{$bank->name}», que está {$label}: muévela antes a una bolsa abierta para añadirle subtareas."]);
+
+    expect(Task::query()->where('title', 'Hija')->exists())->toBeFalse();
+})->with([
+    'renovada' => ['renewed', 'renovada'],
+    'cerrada' => ['closed', 'cerrada'],
+]);
+
 it('las subtareas se colocan al final de sus hermanas', function () {
     $parent = Task::factory()->create(['project_id' => $this->project->id]);
     Task::factory()->subtaskOf($parent)->create(['position' => 3]);

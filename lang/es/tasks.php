@@ -9,6 +9,7 @@ return [
         'bank_required' => 'Elige una bolsa: en este proyecto cada tarea descuenta de una bolsa.',
         'bank_not_in_project' => 'Esa bolsa no es de este proyecto.',
         'bank_closed' => 'La bolsa «:bank» está :status: elige una bolsa abierta.',
+        'parent_bank_closed' => 'La tarea está en la bolsa «:bank», que está :status: muévela antes a una bolsa abierta para añadirle subtareas.',
         'subtask_bank' => 'Las subtareas usan siempre la bolsa de su tarea padre.',
         'parent_not_found' => 'La tarea padre no existe en este proyecto.',
         'single_level' => 'Las subtareas no pueden tener subtareas.',

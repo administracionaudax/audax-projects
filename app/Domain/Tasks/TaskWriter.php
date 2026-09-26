@@ -45,7 +45,7 @@ final class TaskWriter
     {
         $parent = $this->parent($project, $data['parent_task_id'] ?? null);
         $bank = $parent !== null
-            ? $this->bankById($parent->hour_bank_id)
+            ? $this->parentBank($parent)
             : $this->assertBank($project, $this->intOrNull($data['hour_bank_id'] ?? null));
         $type = $this->type($this->intOrNull($data['task_type_id'] ?? null));
         $statusId = $this->statusId($this->intOrNull($data['status_id'] ?? null));
@@ -292,6 +292,27 @@ final class TaskWriter
 
         if (! $bank->acceptsTime()) {
             throw ValidationException::withMessages([$field => __('tasks.errors.bank_closed', [
+                'bank' => $bank->name,
+                'status' => mb_strtolower($bank->status->label()),
+            ])]);
+        }
+
+        return $bank;
+    }
+
+    /**
+     * Bolsa de una subtarea nueva: la del padre (D-037), que tiene que admitir horas. En una bolsa
+     * cerrada o renovada se crearía una tarea abierta en la que no se puede imputar: antes hay que
+     * mover el padre a una bolsa abierta.
+     *
+     * @throws ValidationException
+     */
+    private function parentBank(Task $parent): ?HourBank
+    {
+        $bank = $this->bankById($parent->hour_bank_id);
+
+        if ($bank !== null && ! $bank->acceptsTime()) {
+            throw ValidationException::withMessages(['parent_task_id' => __('tasks.errors.parent_bank_closed', [
                 'bank' => $bank->name,
                 'status' => mb_strtolower($bank->status->label()),
             ])]);
