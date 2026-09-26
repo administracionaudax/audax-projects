@@ -465,8 +465,8 @@ while sleep 5; do cat /proc/loadavg; top -b -n1 -o %CPU | head -15 | grep -Ei 'i
 |---|---|
 | Aplicación | `APP_ENV=staging`, `APP_KEY=` (vacía hasta `key:generate`), `APP_DEBUG=false`, `APP_URL=https://projects.audaxstudio.com` |
 | Base de datos | `DB_CONNECTION=pgsql`, `DB_HOST=127.0.0.1`, `DB_PORT=15432`, `DB_DATABASE=audax_projects`, `DB_USERNAME=audax_app` |
-| Valkey | `REDIS_CLIENT=phpredis`, `REDIS_HOST=127.0.0.1`, `REDIS_PORT=16379`, `REDIS_PASSWORD=<secreto>`, `REDIS_PREFIX=audaxp_`, `REDIS_DB=0`, `REDIS_CACHE_DB=1`, conexión `session` en la db 2 |
-| Colas, caché y sesiones | `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis`, `SESSION_DRIVER=redis` |
+| Valkey | `REDIS_CLIENT=phpredis`, `REDIS_HOST=127.0.0.1`, `REDIS_PORT=16379`, `REDIS_PASSWORD=<secreto>`, `REDIS_PREFIX=audaxp_`, `REDIS_DB=0`, `REDIS_CACHE_DB=1` |
+| Colas, caché y sesiones | `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis`, **`SESSION_DRIVER=database`** (D-014: la pantalla de sesiones activas necesita las sesiones en PostgreSQL; la app se niega a arrancar fuera de local/testing con otro driver) |
 | Tiempo real | `BROADCAST_CONNECTION=log`, hasta que se active Reverb |
 | Correo | `MAIL_MAILER=log`, hasta tener los datos SMTP |
 | Logs | `LOG_CHANNEL=daily`, `LOG_DAILY_DAYS=14` |

@@ -85,7 +85,7 @@ Sirve para compararla después de cada cambio (regla 16.3.7).
 - **Problemas que ya existían antes de empezar:**
   - **certificado SSL no válido** (por HTTPS sin validar responden 301/303): emineo.es, endesarrollo.pro, ezplus, hn, iamanagers, importaco y musicson (`*.endesarrollo.pro`), y staging.edicionesmonoculo.com,
   - **sin DNS**: impactocespedartificial.com, impactoparquets.com e impactosagunto.com.
-- Listado completo con códigos y tiempos: se regenera con el script de comprobación de `docs/DEPLOY.md`. La copia de hoy está en el registro de cambios.
+- Listado completo con códigos y tiempos: `docs/servidor-baseline-2026-09-26.txt`. Se compara con `scripts/server/comparar-webs.sh` (ver `RUNBOOK-DESPLIEGUE.md`, batería V).
 
 ## 9. Permisos
 - Usuario `root`, sin restricciones. La responsabilidad de no tocar nada ajeno a la app es total (sección 16 del SPEC).
