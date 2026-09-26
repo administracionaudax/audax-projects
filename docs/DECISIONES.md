@@ -88,7 +88,8 @@ Del kit se mantienen solo **2FA** y la **confirmación de contraseña**. Se elim
 Tampoco se puede **borrar la propia cuenta**: los usuarios se desactivan (SPEC §14).
 
 ### D-018 · Despliegue durante D-002
-- **Cómo se despliega:** `scripts/desplegar-dev.sh` compila en el Mac (PHP 8.4 y Composer de Homebrew) y sincroniza con rsync como **root** con `--chown=audaxprojects:psacln`. Los comandos de la app se ejecutan como `audaxprojects` (`runuser`). No se instaló la clave SSH de `audaxprojects` porque el control de permisos de Claude bloqueó crear ese acceso persistente; el propietario puede añadirla para trabajar sin root.
+- **Cómo se despliega:** `scripts/desplegar-dev.sh` compila en el Mac (PHP 8.4 y Composer de Homebrew) y sincroniza con rsync.
+- **Sin root** (desde el 26/09 ~13:10): el propietario añadió la clave al usuario `audaxprojects` (alias SSH `audax-projects`). El día a día (rsync, composer, migraciones, tests, Horizon) se hace con ese usuario, que solo puede tocar su webspace. Root (`audax`) se reserva para cambios de sistema aprobados (systemd, Docker, Plesk).
 - **Tests en local:** en SQLite en memoria, para iterar rápido.
 - **Tests completos:** en el servidor contra PostgreSQL 18 (`audax_projects_test`) y en CI, contra PostgreSQL 18.
 - **Scheduler:** con `schedule:work` en systemd (no con cron), para no sumar sesiones de cron, PAM, logind y dbus.

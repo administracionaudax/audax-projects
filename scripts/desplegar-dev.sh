@@ -1,7 +1,8 @@
 #!/bin/bash
 # Despliegue de desarrollo (D-002): Mac → projects.audaxstudio.com (app/releases/dev).
 # Compila los assets en el Mac, sincroniza con rsync (con --dry-run de seguridad) y en el servidor ejecuta,
-# como el usuario de la app: composer install (si cambió composer.lock), migraciones y reinicio de Horizon.
+# como el usuario de la app (SIN root: alias SSH audax-projects), composer install (si cambió composer.lock),
+# migraciones y reinicio de Horizon.
 #
 # Uso: scripts/desplegar-dev.sh [--sin-build] [--tests]
 set -euo pipefail
@@ -9,6 +10,7 @@ cd "$(dirname "$0")/.."
 
 export PATH=/usr/local/opt/php@8.4/bin:$PATH
 RSYNC=/usr/local/bin/rsync        # GNU rsync 3.x (el de macOS es openrsync y no se usa)
+HOST=audax-projects                # usuario audaxprojects: solo puede tocar su webspace
 DEST=/var/www/vhosts/projects.audaxstudio.com/app/releases/dev
 PHP=/opt/plesk/php/8.4/bin/php
 COMPOSER=/opt/psa/var/modules/composer/composer.phar
@@ -28,7 +30,7 @@ if [ "$build" = 1 ]; then
 fi
 
 echo "== Simulación de rsync"
-plan=$($RSYNC -az --delete --dry-run --itemize-changes --filter='merge .rsync-filter' --chown=audaxprojects:psacln ./ "audax:$DEST/")
+plan=$($RSYNC -az --delete --dry-run --itemize-changes --no-owner --no-group --filter='merge .rsync-filter' ./ "$HOST:$DEST/")
 if echo "$plan" | grep -E '^\*deleting +(\.env|\.env\.testing|storage|vendor)(/|$)'; then
   echo "ABORTADO: rsync borraría rutas protegidas" >&2
   exit 1
@@ -36,10 +38,10 @@ fi
 echo "   $(echo "$plan" | grep -c . || true) cambios"
 
 echo "== Sincronizando"
-$RSYNC -az --delete --filter='merge .rsync-filter' --chown=audaxprojects:psacln ./ "audax:$DEST/"
+$RSYNC -az --delete --no-owner --no-group --filter='merge .rsync-filter' ./ "$HOST:$DEST/"
 
 echo "== Servidor (usuario audaxprojects)"
-ssh -o BatchMode=yes audax "cd /tmp && runuser -u audaxprojects -- bash -s" <<EOF
+ssh -o BatchMode=yes "$HOST" "bash -s" <<EOF
 set -euo pipefail
 cd $DEST
 test -L storage && test -L .env && test -L .env.testing || { echo "Faltan enlaces a shared/"; exit 1; }

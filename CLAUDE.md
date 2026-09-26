@@ -24,9 +24,9 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Entorno (D-002, D-018)
 - **Desarrollo:** se desarrolla en `https://projects.audaxstudio.com` (servidor `svr.ztudio.es`, Plesk) hasta que la plantilla empiece a usar la app. No hay Docker local.
 - **Mac:** esta carpeta es la copia de trabajo Git, con PHP 8.4, Composer y GNU rsync de Homebrew y Node 25.
-- **SSH:**
-  - alias `audax` → `root@svr.ztudio.es:5222` (clave `~/.ssh/audax_projects_ed25519`),
-  - la app corre como el usuario `audaxprojects` (`runuser -u audaxprojects -- …`).
+- **SSH** (clave `~/.ssh/audax_projects_ed25519`, puerto 5222):
+  - `audax-projects` → usuario de la app `audaxprojects`: **el día a día**, que solo puede tocar su webspace,
+  - `audax` → root: **solo** para cambios de sistema aprobados (systemd, Docker, Plesk), anotados en `SERVIDOR-CAMBIOS.md`.
 - **Servidor:**
   - app en `/var/www/vhosts/projects.audaxstudio.com/app/{current → releases/dev, shared/{.env,.env.testing,storage}}`,
   - PHP en `/opt/plesk/php/8.4/bin/php` (**nunca** el `php` del PATH del sistema, que es 8.2),
