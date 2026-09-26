@@ -1,0 +1,72 @@
+<?php
+
+namespace App\Domain\Tasks;
+
+use App\Models\Attachment;
+use App\Models\Project;
+use App\Models\Task;
+use App\Models\TaskComment;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Mover una tarea a otro proyecto (SPEC §6):
+ * - solo tareas raíz: sus subtareas se mueven con ella (mismo proyecto y misma bolsa, D-037),
+ * - la bolsa se elige de nuevo entre las abiertas del proyecto destino (obligatoria si usa bolsas),
+ * - las horas ya imputadas NO se mueven: sus entradas conservan su proyecto y su bolsa,
+ * - los adjuntos de la tarea, de sus subtareas y de sus comentarios pasan a la pestaña Archivos
+ *   del proyecto destino (project_id desnormalizado; el fichero no cambia de sitio).
+ * La autorización (editar la tarea y crear en el destino) la hace el controlador.
+ */
+final class TaskMover
+{
+    public function __construct(
+        private readonly TaskWriter $writer,
+        private readonly TaskPositions $positions,
+    ) {}
+
+    /**
+     * @throws ValidationException
+     */
+    public function move(Task $task, Project $target, ?int $bankId): Task
+    {
+        if ($task->isSubtask()) {
+            throw ValidationException::withMessages(['project_id' => __('tasks.errors.move_subtask')]);
+        }
+
+        if ($task->project_id === $target->id) {
+            throw ValidationException::withMessages(['project_id' => __('tasks.errors.move_same_project')]);
+        }
+
+        $bank = $this->writer->assertBank($target, $bankId);
+
+        return DB::transaction(function () use ($task, $target, $bank): Task {
+            $task->project_id = $target->id;
+            $task->hour_bank_id = $bank?->id;
+            $task->position = $this->positions->next($target->id, $task->status_id);
+            $task->save();
+            $task->setRelation('project', $target);
+
+            $subtasks = $task->subtasks()->get();
+
+            foreach ($subtasks as $subtask) {
+                $subtask->project_id = $target->id;
+                $subtask->hour_bank_id = $task->hour_bank_id;
+                $subtask->save();
+            }
+
+            $taskIds = [$task->id, ...$subtasks->modelKeys()];
+
+            Attachment::query()
+                ->where(function (Builder $query) use ($taskIds): void {
+                    $query->where(fn (Builder $tasks) => $tasks->where('attachable_type', (new Task)->getMorphClass())->whereIn('attachable_id', $taskIds))
+                        ->orWhere(fn (Builder $comments) => $comments->where('attachable_type', (new TaskComment)->getMorphClass())
+                            ->whereIn('attachable_id', TaskComment::query()->withTrashed()->select('id')->whereIn('task_id', $taskIds)));
+                })
+                ->update(['project_id' => $target->id]);
+
+            return $task;
+        });
+    }
+}
