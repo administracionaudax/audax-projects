@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
- * @property-read Model $attachable
+ * @property-read Model|null $attachable (null si la tarea o el comentario se han borrado)
  * @property-read Project|null $project
  * @property-read User|null $uploader
  */
