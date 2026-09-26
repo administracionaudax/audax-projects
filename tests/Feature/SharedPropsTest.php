@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\ActiveTimer;
+use App\Models\Task;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -77,3 +79,47 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
     ['/informes', 'reports'],
     ['/chat', 'chat'],
 ]);
+
+test('los internos reciben el temporizador activo, las notificaciones sin leer y la configuración (Fase 1)', function () {
+    $employee = User::factory()->employee()->create();
+    $task = Task::factory()->create(['title' => 'Maquetar home']);
+    ActiveTimer::query()->create([
+        'user_id' => $employee->id,
+        'task_id' => $task->id,
+        'started_at' => '2026-09-25 08:00:00',
+    ]);
+
+    $this->actingAs($employee)
+        ->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('timer.task_id', $task->id)
+            ->where('timer.task_title', 'Maquetar home')
+            ->where('timer.project_code', $task->project->code)
+            ->where('timer.started_at', '2026-09-25T08:00:00Z')
+            ->where('notifications.unread', 0)
+            ->where('config.hour_bank_thresholds', [75, 90, 100])
+            ->where('config.timer_warning_hours', 10)
+            ->where('auth.can.createProjects', false)
+            ->where('auth.can.approveTime', false));
+});
+
+test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar', function () {
+    $manager = userWithRole('department_manager');
+
+    $this->actingAs($manager)
+        ->get('/')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('timer', null)
+            ->where('auth.can.createClients', true)
+            ->where('auth.can.createProjects', true)
+            ->where('auth.can.approveTime', true)
+            ->where('auth.can.lockTime', false));
+});
+
+test('el portal de cliente no recibe temporizador ni configuración interna', function () {
+    $this->actingAs(userWithRole('client'))
+        ->get('/portal')
+        ->assertInertia(fn (Assert $page) => $page
+            ->missing('timer')
+            ->missing('config'));
+});

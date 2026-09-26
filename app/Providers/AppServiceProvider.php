@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -37,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Permisos globales (SPEC §5). Los permisos por proyecto llegan con Policies en la Fase 1.
+     * Permisos globales (SPEC §5). Los permisos por proyecto están en app/Policies.
      */
     protected function configureGates(): void
     {
@@ -49,11 +50,20 @@ class AppServiceProvider extends ServiceProvider
             Gate::define($permission->value, fn (User $user): bool => $user->checkPermissionTo($permission->value));
         }
 
-        // Bolsas de horas: admin y responsables; en la Fase 1, también los gestores de proyecto (D-005).
+        // Vista global de bolsas: admin, responsables y gestores de algún proyecto (D-005, D-035).
         Gate::define('view-hour-banks', fn (User $user): bool => $user->hasAnyRole([
             Role::Admin->value,
             Role::DepartmentManager->value,
+        ]) || $user->managedProjects()->exists());
+
+        // Aprobaciones de horas (/horas/aprobaciones): responsables y admins (D-020).
+        Gate::define('approve-time', fn (User $user): bool => $user->hasAnyRole([
+            Role::Admin->value,
+            Role::DepartmentManager->value,
         ]));
+
+        // Bloquear y desbloquear horas al facturar: solo admins (SPEC §7, D-034).
+        Gate::define('lock-time', fn (User $user): bool => $user->isAdmin());
 
         // Datos económicos (costes, tarifas, rentabilidad): la gate view-financials definida arriba
         // exige el permiso del mismo nombre, que el admin recibe por defecto (RolesAndPermissionsSeeder).
@@ -115,6 +125,9 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Consultas N+1 (SPEC §19): en local y en los tests, cargar una relación sin eager loading falla.
+        Model::preventLazyLoading(! app()->isProduction());
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

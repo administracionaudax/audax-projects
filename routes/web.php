@@ -26,14 +26,12 @@ Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
     Route::redirect('dashboard', '/')->name('dashboard');
 
-    // Secciones de la barra lateral: se construyen en las fases 1 a 6.
-    Route::inertia('mis-tareas', 'placeholder', ['section' => 'my-tasks'])->name('my-tasks.index');
-    Route::inertia('proyectos', 'placeholder', ['section' => 'projects'])->name('projects.index');
-    Route::inertia('clientes', 'placeholder', ['section' => 'clients'])->name('clients.index');
-    Route::inertia('bolsas', 'placeholder', ['section' => 'hour-banks'])
-        ->middleware('can:view-hour-banks')
-        ->name('hour-banks.index');
-    Route::inertia('horas', 'placeholder', ['section' => 'time'])->name('time.index');
+    // Fase 1: una ruta por área (routes/app/*.php).
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications'] as $area) {
+        require __DIR__."/app/{$area}.php";
+    }
+
+    // Secciones de la barra lateral que se construyen en las fases 2 a 6.
     Route::inertia('carga', 'placeholder', ['section' => 'workload'])->name('workload.index');
     Route::inertia('informes', 'placeholder', ['section' => 'reports'])->name('reports.index');
     Route::inertia('chat', 'placeholder', ['section' => 'chat'])->name('chat.index');

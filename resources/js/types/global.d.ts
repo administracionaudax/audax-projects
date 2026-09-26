@@ -1,4 +1,4 @@
-import type { Auth } from '@/types/auth';
+import type { ActiveTimer, AppConfig, Auth } from '@/types/auth';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -12,6 +12,10 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** Solo en páginas de usuarios internos autenticados. */
+            timer?: ActiveTimer | null;
+            notifications?: { unread: number };
+            config?: AppConfig;
             [key: string]: unknown;
         };
     }

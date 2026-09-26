@@ -1,0 +1,43 @@
+{
+    "_comment": "Casos compartidos por App\\Support\\Duration (tests/Unit/DurationTest.php) y resources/js/lib/duration.ts (tests/js/duration.test.ts). null = no válido. with_max: [texto, max, esperado].",
+    "cases": [
+        ["1:30", 90],
+        ["0:05", 5],
+        ["10:00", 600],
+        ["24:00", 1440],
+        ["24:01", null],
+        ["1:60", null],
+        ["1.5", 90],
+        ["1,5", 90],
+        [" 1,25 ", 75],
+        ["0.1", 6],
+        ["90m", 90],
+        ["90min", 90],
+        ["45 m", 45],
+        ["1h30", 90],
+        ["1h 30m", 90],
+        ["1h30min", 90],
+        ["2h", 120],
+        ["2H", 120],
+        ["1.5h", 90],
+        ["2", 120],
+        ["8", 480],
+        ["25", null],
+        ["1h75", null],
+        ["0", null],
+        ["0:00", null],
+        ["", null],
+        ["   ", null],
+        ["abc", null],
+        ["-1", null],
+        ["1:3", null],
+        ["1,5,5", null],
+        ["100:00", null]
+    ],
+    "with_max": [
+        ["100:00", 60000, 6000],
+        ["40h", 60000, 2400],
+        ["120", 60000, 7200],
+        ["1001h", 60000, null]
+    ]
+}

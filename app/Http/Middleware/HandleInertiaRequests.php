@@ -2,6 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\HourBanks\HourBankLedger;
+use App\Models\ActiveTimer;
+use App\Models\Client;
+use App\Models\Project;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -58,9 +63,49 @@ class HandleInertiaRequests extends Middleware
                     'viewHourBanks' => $user ? Gate::forUser($user)->allows('view-hour-banks') : false,
                     'viewAdmin' => $user?->hasRole('admin') ?? false,
                     'viewFinancials' => $user ? Gate::forUser($user)->allows('view-financials') : false,
+                    'createClients' => $user ? Gate::forUser($user)->allows('create', Client::class) : false,
+                    'createProjects' => $user ? Gate::forUser($user)->allows('create', Project::class) : false,
+                    'approveTime' => $user ? Gate::forUser($user)->allows('approve-time') : false,
+                    'lockTime' => $user ? Gate::forUser($user)->allows('lock-time') : false,
+                    'manageUsers' => $user ? Gate::forUser($user)->allows('manage-users') : false,
+                    'manageSettings' => $user ? Gate::forUser($user)->allows('manage-settings') : false,
                 ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            ...($user !== null && $user->isInternal() ? $this->internalProps($user) : []),
+        ];
+    }
+
+    /**
+     * Temporizador activo, notificaciones sin leer y configuración (Fase 1). Dos consultas
+     * ligeras por petición; la configuración sale de la caché de ajustes.
+     *
+     * @return array<string, mixed>
+     */
+    private function internalProps(User $user): array
+    {
+        $timer = ActiveTimer::query()
+            ->with(['task' => fn ($query) => $query->withTrashed()->select(['id', 'title', 'project_id'])->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])])])
+            ->find($user->id);
+
+        return [
+            'timer' => $timer === null ? null : [
+                'task_id' => $timer->task_id,
+                'task_title' => $timer->task->title,
+                'project_id' => $timer->task->project_id,
+                'project_code' => $timer->task->project->code,
+                'project_name' => $timer->task->project->name,
+                'started_at' => $timer->started_at->toIso8601ZuluString(),
+                'description' => $timer->description,
+            ],
+            'notifications' => [
+                'unread' => $user->unreadNotifications()->count(),
+            ],
+            'config' => [
+                'hour_bank_thresholds' => app(HourBankLedger::class)->thresholds(),
+                'timer_warning_hours' => (int) Setting::get('timer_warning_hours', 10),
+                'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
+            ],
         ];
     }
 }

@@ -1,16 +1,41 @@
 /**
  * Traducciones de la interfaz (SPEC §15: textos en ficheros de idioma, `es` completo).
  *
- * - Fuente única: `lang/es.json`, el mismo fichero que usa Laravel para `__()`.
- *   Se importa en la compilación (Vite lo incrusta en el bundle): no hay petición ni coste en runtime.
+ * - Fuentes:
+ *   · `lang/es.json`: textos de la Fase 0 y claves del backend (`__()` de Laravel lo lee),
+ *   · `lang/ui/*.json`: textos del frontend por área desde la Fase 1 (shared, admin, clients,
+ *     projects, hour-banks, tasks, time y notifications). Laravel no los lee.
+ *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
+ * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
- *   Nunca empiezan por `auth.`, `pagination.`, `passwords.` ni `validation.`, para no pisar
- *   los grupos PHP de Laravel (`__('auth.failed')` busca primero en el JSON).
- * - Claves del backend: el texto de origen en inglés, como hace Laravel (`"Profile updated."`).
+ *   Nunca empiezan por `auth.`, `pagination.`, `passwords.`, `validation.` ni `time.`, para no
+ *   pisar los grupos PHP de `lang/es/*.php` (`__('auth.failed')` busca primero en el JSON).
+ * - Claves del backend: el texto de origen en inglés, como hace Laravel (`"Profile updated."`),
+ *   o grupos PHP en `lang/es/*.php` (`__('time.errors.future_date')`).
  * - Reemplazos al estilo Laravel: `:name` → valor, `:Name` → primera letra en mayúscula,
  *   `:NAME` → todo en mayúsculas.
  */
-import messages from '../../../lang/es.json';
+import base from '../../../lang/es.json';
+import admin from '../../../lang/ui/admin.json';
+import clients from '../../../lang/ui/clients.json';
+import hourBanks from '../../../lang/ui/hour-banks.json';
+import notifications from '../../../lang/ui/notifications.json';
+import projects from '../../../lang/ui/projects.json';
+import shared from '../../../lang/ui/shared.json';
+import tasks from '../../../lang/ui/tasks.json';
+import time from '../../../lang/ui/time.json';
+
+const messages = {
+    ...base,
+    ...shared,
+    ...admin,
+    ...clients,
+    ...projects,
+    ...hourBanks,
+    ...tasks,
+    ...time,
+    ...notifications,
+};
 
 export type TranslationKey = keyof typeof messages;
 

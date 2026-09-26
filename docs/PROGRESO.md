@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 26/09/2026 15:55_
+_Última actualización: 26/09/2026 16:45_
 
 ## Hecho
 
@@ -52,16 +52,24 @@ _Última actualización: 26/09/2026 15:55_
 - ✅ **FASE 0 CERRADA el 26/09/2026.** `fase-0` fusionada en `main` (etiqueta `fase-0-cerrada`). Servidor desplegado con el mismo código: 301 tests en PostgreSQL y 35/35 webs iguales.
 
 ## En curso
-- Nada. La Fase 0 está cerrada.
+- **Fase 1 en modo autónomo (D-027).** Plan en `docs/PLAN-FASE-1.md`, rama `fase-1`.
+  - ✅ **Entrega 1.1, contrato de dominio:**
+    - esquema completo (18 migraciones), modelos y políticas,
+    - motor de bolsas `HourBankLedger` (D-019), `TimeEntryWriter` y `TimeEntryRules` (§7), temporizador y capacidad,
+    - Resources y tipos TS, props compartidas y componentes base,
+    - 90 tests nuevos de reglas de negocio.
+  - ⏳ **Entregas 1.2 a 1.6, en paralelo:** administración y clientes, proyectos y bolsas, tareas, y horas.
+  - ⏳ **Entrega 1.7, cierre:** notificaciones, búsqueda, seeders, E2E, revisión, despliegue y copias.
 
 ## Siguiente
-1. **Fase 1** (dudas ya resueltas: D-019 a D-024). Presentar el plan en modo plan antes de implementar (SPEC §0.3).
+1. Integrar las entregas 1.2 a 1.6, revisión adversarial y despliegue. Después, Fase 2 sin esperar (D-027).
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).
-- [x] CI revisada por el propietario: todo en verde (26/09). Para ver la CI sin depender de él, puede ejecutar `gh auth login` en el Mac.
+- [x] CI revisada por el propietario: todo en verde (26/09). `gh auth login` hecho el 26/09: la CI se revisa ya sin depender de él.
 - [x] D-013 aprobada: se mantiene Vite+ (26/09).
-- [ ] Más adelante: datos SMTP (hasta entonces los emails van al log), destino de los backups y la lista inicial de empleados.
+- [ ] **Al final del proyecto (D-030):** datos SMTP (hasta entonces los emails van al log), lista inicial de empleados y revisión del texto RGPD.
+- [x] Copias: el servidor entero se copia a diario; además, volcado nocturno local de PostgreSQL (D-029).
 
 ## Problemas abiertos
 - Ninguno.

@@ -4,6 +4,16 @@ import { hasTranslation, t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import messages from '../../lang/es.json';
 
+// Textos del frontend por área (Fase 1): lang/ui/*.json. Laravel no los lee.
+const areaFiles = import.meta.glob<Record<string, string>>(
+    '../../lang/ui/*.json',
+    { eager: true, import: 'default' },
+);
+const allFiles: Record<string, Record<string, string>> = {
+    'lang/es.json': messages,
+    ...areaFiles,
+};
+
 describe('t()', () => {
     it('devuelve la traducción de una clave', () => {
         expect(t('nav.home')).toBe('Inicio');
@@ -40,8 +50,9 @@ describe('t()', () => {
         expect(hasTranslation('nav.nope')).toBe(false);
     });
 
-    it('no usa los prefijos de los grupos PHP de Laravel en las claves del frontend', () => {
-        const reserved = /^(auth|pagination|passwords|validation)\./;
+    it('no usa los prefijos de los grupos PHP de Laravel en las claves de lang/es.json', () => {
+        // lang/es.json es el único JSON que lee Laravel: sus claves pisarían los grupos PHP.
+        const reserved = /^(auth|pagination|passwords|validation|time)\./;
 
         expect(
             Object.keys(messages).filter((key) => reserved.test(key)),
@@ -55,12 +66,39 @@ describe('t()', () => {
         expect(t('portal.home_link')).toContain(t('portal.name'));
     });
 
-    it('no deja textos vacíos', () => {
-        const empty = Object.entries(messages)
-            .filter(([, value]) => value.trim() === '')
-            .map(([key]) => key);
+    it('no deja textos vacíos en ningún fichero', () => {
+        const empty = Object.entries(allFiles).flatMap(([file, entries]) =>
+            Object.entries(entries)
+                .filter(([, value]) => value.trim() === '')
+                .map(([key]) => `${file}: ${key}`),
+        );
 
         expect(empty).toEqual([]);
+    });
+
+    it('cada clave está en un solo fichero (lang/es.json o lang/ui/*.json)', () => {
+        const seen = new Map<string, string>();
+        const duplicated: string[] = [];
+
+        for (const [file, entries] of Object.entries(allFiles)) {
+            for (const key of Object.keys(entries)) {
+                const previous = seen.get(key);
+
+                if (previous) {
+                    duplicated.push(`${key} (${previous} y ${file})`);
+                }
+
+                seen.set(key, file);
+            }
+        }
+
+        expect(Object.keys(areaFiles).length).toBeGreaterThanOrEqual(8);
+        expect(duplicated).toEqual([]);
+    });
+
+    it('traduce las claves de los ficheros por área', () => {
+        expect(t('duration.preview', { duration: '1:30' })).toBe('= 1:30');
+        expect(t('project_tabs.summary')).toBe('Resumen');
     });
 });
 

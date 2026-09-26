@@ -1,6 +1,6 @@
 import { CircleAlert, Kanban, List } from 'lucide-react';
 import { useId, useState } from 'react';
-import { parseDuration } from '@/components/styleguide/duration';
+import { parseDuration } from '@/lib/duration';
 import { Section, Specimen } from '@/components/styleguide/section';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';

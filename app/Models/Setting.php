@@ -38,6 +38,8 @@ class Setting extends Model
         'allow_future_time_entries' => false,
         'time_entry_description_required' => false,
         'max_attachment_mb' => 50,
+        // Jornada por defecto de los usuarios sin horario propio, lunes primero (D-036).
+        'default_work_minutes' => [480, 480, 480, 480, 480, 0, 0],
     ];
 
     protected static function booted(): void

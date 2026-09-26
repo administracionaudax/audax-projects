@@ -19,6 +19,37 @@ export type Abilities = {
     viewHourBanks: boolean;
     viewAdmin: boolean;
     viewFinancials: boolean;
+    /** Crear clientes y proyectos (D-022). */
+    createClients: boolean;
+    createProjects: boolean;
+    /** Aprobar o devolver semanas (D-020). */
+    approveTime: boolean;
+    /** Bloquear horas al facturar (D-034). */
+    lockTime: boolean;
+    manageUsers: boolean;
+    manageSettings: boolean;
+};
+
+/** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */
+export type ActiveTimer = {
+    task_id: number;
+    task_title: string;
+    project_id: number;
+    project_code: string;
+    project_name: string;
+    /** Instante ISO en UTC. */
+    started_at: string;
+    description: string | null;
+};
+
+/** Configuración compartida con todas las páginas internas. */
+export type AppConfig = {
+    /** Umbrales de alerta de bolsa en % (por defecto 75, 90, 100; D-035). */
+    hour_bank_thresholds: number[];
+    /** Aviso del temporizador pasadas estas horas (SPEC §7). */
+    timer_warning_hours: number;
+    /** Redondeo del temporizador en minutos. */
+    timer_rounding_minutes: number;
 };
 
 export type Auth = {

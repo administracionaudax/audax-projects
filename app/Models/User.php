@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -30,6 +32,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property int|null $department_id
+ * @property int|null $client_id
  * @property string|null $hourly_cost
  * @property string|null $default_hourly_rate
  * @property bool $is_active
@@ -45,12 +48,16 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property-read string|null $avatar_url
  * @property-read Department|null $department
+ * @property-read Client|null $client
+ * @property-read ActiveTimer|null $activeTimer
+ * @property-read ProjectMember|null $membership
  */
 #[Fillable([
     'name',
     'email',
     'password',
     'department_id',
+    'client_id',
     'hourly_cost',
     'default_hourly_rate',
     'is_active',
@@ -140,8 +147,149 @@ class User extends Authenticatable
     }
 
     /**
-     * Los clientes solo acceden al portal (SPEC §5 y §11).
+     * Cliente al que pertenece un usuario del portal (Fase 5).
+     *
+     * @return BelongsTo<Client, $this>
      */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * @return HasMany<WorkSchedule, $this>
+     */
+    public function workSchedules(): HasMany
+    {
+        return $this->hasMany(WorkSchedule::class);
+    }
+
+    /**
+     * Proyectos de los que es miembro (con is_manager y alert_preferences en `membership`).
+     *
+     * @return BelongsToMany<Project, $this, ProjectMember, 'membership'>
+     */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_members')
+            ->using(ProjectMember::class)
+            ->as('membership')
+            ->withPivot(['is_manager', 'alert_preferences'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Proyectos que gestiona (principal o co-gestor, D-005).
+     *
+     * @return BelongsToMany<Project, $this, ProjectMember, 'membership'>
+     */
+    public function managedProjects(): BelongsToMany
+    {
+        return $this->projects()->wherePivot('is_manager', true);
+    }
+
+    /**
+     * @return HasMany<Task, $this>
+     */
+    public function assignedTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'assignee_user_id');
+    }
+
+    /**
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    /**
+     * @return HasOne<ActiveTimer, $this>
+     */
+    public function activeTimer(): HasOne
+    {
+        return $this->hasOne(ActiveTimer::class);
+    }
+
+    /**
+     * @return HasMany<TimesheetPeriod, $this>
+     */
+    public function timesheetPeriods(): HasMany
+    {
+        return $this->hasMany(TimesheetPeriod::class);
+    }
+
+    /**
+     * Rol de responsable de departamento (qué departamentos dirige lo marca el pivote, D-024).
+     */
+    public function isDepartmentManager(): bool
+    {
+        return $this->hasRole(Role::DepartmentManager->value);
+    }
+
+    /**
+     * Ids de los departamentos que dirige (D-024).
+     *
+     * @return list<int>
+     */
+    public function managedDepartmentIds(): array
+    {
+        /** @var list<int> */
+        return $this->managedDepartments()->pluck('departments.id')->map(fn ($id): int => (int) $id)->values()->all();
+    }
+
+    /**
+     * Ids de los proyectos que gestiona (D-005).
+     *
+     * @return list<int>
+     */
+    public function managedProjectIds(): array
+    {
+        /** @var list<int> */
+        return $this->managedProjects()->pluck('projects.id')->map(fn ($id): int => (int) $id)->values()->all();
+    }
+
+    public function isMemberOf(Project|int $project): bool
+    {
+        $id = $project instanceof Project ? $project->id : $project;
+
+        return $this->projects()->whereKey($id)->exists();
+    }
+
+    public function isManagerOf(Project|int $project): bool
+    {
+        $id = $project instanceof Project ? $project->id : $project;
+
+        return $this->managedProjects()->whereKey($id)->exists();
+    }
+
+    /**
+     * Gestionar un proyecto (tareas, bolsas, miembros, ajustes): admin, responsables y sus gestores
+     * (D-022, plan de la Fase 1).
+     */
+    public function canManageProject(Project $project): bool
+    {
+        return $this->isAdmin() || $this->isDepartmentManager() || $this->isManagerOf($project);
+    }
+
+    /**
+     * ¿Dirige el departamento de $other? (ve y aprueba sus horas, D-020 y D-021).
+     */
+    public function supervises(User $other): bool
+    {
+        return $other->department_id !== null && $this->managesDepartment($other->department_id);
+    }
+
+    /**
+     * ¿Puede ver las horas de $other? Las suyas, las de su equipo o todas si es admin (D-021).
+     * Los gestores ven además las horas de sus proyectos: eso se filtra por entrada, no por persona.
+     */
+    public function canSeeHoursOf(User $other): bool
+    {
+        return $this->id === $other->id || $this->isAdmin() || $this->supervises($other);
+    }
+
     /**
      * El enlace de restablecimiento se envía por cola (SPEC §13).
      */
@@ -150,6 +298,9 @@ class User extends Authenticatable
         $this->notify(new ResetPasswordNotification($token));
     }
 
+    /**
+     * Los clientes solo acceden al portal (SPEC §5 y §11).
+     */
     public function isClient(): bool
     {
         return $this->hasRole(Role::Client->value);

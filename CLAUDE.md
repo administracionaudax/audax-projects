@@ -13,7 +13,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | Fase | Estado |
 |---|---|
 | 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0-cerrada`) |
-| 1. Núcleo | Siguiente: presentar el plan en modo plan (dudas resueltas: D-019 a D-024) |
+| 1. Núcleo | En curso, en **modo autónomo** (D-027): `docs/PLAN-FASE-1.md` |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
 | 4. Gantt | Pendiente |
@@ -21,8 +21,11 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 6. Chat | Pendiente |
 | 7. Pulido | Pendiente |
 
-## Entorno (D-002, D-018)
-- **Desarrollo:** se desarrolla en `https://projects.audaxstudio.com` (servidor `svr.ztudio.es`, Plesk) hasta que la plantilla empiece a usar la app. No hay Docker local.
+## Modo autónomo (D-027)
+Desde la Fase 1 se trabaja fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md` y las decisiones de producto se registran en `docs/DECISIONES.md`. Solo se contacta al propietario para SMTP, lista de empleados y texto RGPD (al final), o por un imprevisto del servidor que no se pueda revertir.
+
+## Entorno (D-002, D-018, D-028)
+- **Desarrollo:** entorno único en `https://projects.audaxstudio.com` (servidor `svr.ztudio.es`, Plesk); no se separa producción (D-028). No hay Docker local.
 - **Mac:** esta carpeta es la copia de trabajo Git, con PHP 8.4, Composer y GNU rsync de Homebrew y Node 25.
 - **SSH** (clave `~/.ssh/audax_projects_ed25519`, puerto 5222):
   - `audax-projects` → usuario de la app `audaxprojects`: **el día a día**, que solo puede tocar su webspace,
@@ -69,6 +72,8 @@ ssh audax "bash -s -- '<T0>' \"\$(cat /root/audax-backup/ULTIMO)\"" < scripts/se
   - gráficas con `--chart-1..6` en orden fijo (D-012).
 - **Commits:** Conventional Commits en español, pequeños. Una rama por fase.
 - **Tests obligatorios** para cualquier regla de negocio y permiso: Pest, Vitest y Playwright (E2E, en la CI).
+- **Horas y bolsas:** las entradas se escriben SIEMPRE con `App\Domain\Time\TimeEntryWriter`; el consumo y el exceso solo los calcula `App\Domain\HourBanks\HourBankLedger` (contrato en `docs/PLAN-FASE-1.md`).
+- **Textos por área:** `lang/ui/<área>.json` en React y `lang/es/<área>.php` en PHP; `lang/es.json` queda para la Fase 0 y el backend.
 - **Secretos:** nunca en Git. Usa `.env.example` con valores ficticios.
 - **Dependencias:** comprueba la versión estable y la licencia antes de instalar (MIT/Apache/BSD/ISC; las fuentes, OFL). Nada de GPL en el navegador sin avisar.
 

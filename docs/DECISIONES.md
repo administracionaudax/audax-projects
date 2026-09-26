@@ -170,3 +170,106 @@ La revisión confirmó 42 hallazgos (unos 33 distintos): ningún crítico ni alt
 - `departments.manager_user_id` se sustituye por el pivote **`department_managers`** (`department_id`, `user_id`).
 - Todos los responsables de un departamento tienen los mismos permisos: aprobar horas y ausencias de su equipo, y ver y gestionar su carga y productividad.
 - El rol `department_manager` indica que el usuario puede ser responsable. Qué departamentos gestiona lo marca el pivote.
+
+## 26/09/2026: Modo autónomo hasta el final del proyecto
+
+### D-027 · Modo autónomo **[acordado con el propietario]**
+- **Cómo se trabaja:** desde la Fase 1, fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md`. Las decisiones de producto se toman según el SPEC y las decisiones previas y se registran aquí, en «Decisiones tomadas en autonomía», para que el propietario las revise cuando quiera.
+- **Servidor:** se permite lo necesario, con salvaguardas.
+  - **Permitido:** recargas *graceful* de nginx y Apache vía Plesk solo por ajustes de `projects.audaxstudio.com`; unidades y timers systemd de la app; contenedores Docker propios con límites; directivas de Plesk del dominio.
+  - **Prohibido siempre:** actualizaciones globales, reiniciar servicios compartidos, firewall, SSH, DNS, correo, desinstalar y tocar otras webs.
+  - **En cada cambio:** copia previa, batería V, comparación de las webs, vuelta atrás inmediata ante cualquier desviación y registro en `SERVIDOR-CAMBIOS.md`. Si algo inesperado no se puede revertir, se avisa al propietario.
+- **Solo se contacta al propietario para:**
+  - los datos SMTP (al final),
+  - la lista de empleados (al final),
+  - revisar el texto RGPD (quedará un borrador marcado «pendiente de asesor»),
+  - un imprevisto del servidor que no se pueda revertir.
+
+### D-028 · Entorno único **[cambia D-002]**
+No se separan producción y desarrollo: todo sigue en `projects.audaxstudio.com`. Cuando la plantilla empiece a usar la app:
+- el despliegue pasa a `deploy.sh`, con modo mantenimiento solo si hay migraciones y vuelta atrás automática,
+- los E2E y los seeders de ejemplo siguen sin ejecutarse nunca en el servidor.
+
+### D-029 · Copias de la base de datos
+Además de la copia diaria del servidor entero (que hace el propietario), se hace un **volcado nocturno local de PostgreSQL**:
+- `pg_dump` en formato *custom* en `/var/backups/audax`, con rotación de 7 días,
+- se verifica con `pg_restore --list`,
+- así la copia del servidor siempre contiene un volcado coherente y restaurable (un volcado de ficheros de PostgreSQL en caliente no lo garantiza).
+
+### D-030 · SMTP y empleados, al final
+- **SMTP:** hasta que el propietario facilite los datos, `MAIL_MAILER=log`. Todos los emails van por la cola `mail` y funcionarán al configurar el `.env`.
+- **Empleados:** la lista real llega al final. Mientras tanto se trabaja con los seeders de desarrollo (nunca en el servidor).
+
+## 26/09/2026: Decisiones tomadas en autonomía (Fase 1)
+
+### D-031 · Quién trabaja con las tareas **[concreta D-022]**
+- **Crear, editar, mover y borrar:** los miembros del proyecto, sus gestores, los responsables y los administradores.
+- **Comentar:** cualquier usuario interno (todos ven todos los proyectos, D-021).
+- «Los empleados no crean» (D-022) se refiere a clientes y proyectos, no a tareas.
+
+### D-032 · Gestor principal
+- **`owner_user_id` es el gestor principal y es obligatorio.** Siempre es miembro con `is_manager`. Los co-gestores son miembros con `is_manager`.
+- El filtro «responsable» del listado de proyectos usa el gestor principal.
+
+### D-033 · Proyecto interno
+En los proyectos con `billing_type = internal`, cualquier interno activo puede imputar sin ser miembro (reuniones, formación, administración).
+
+### D-034 · Bloqueo y reapertura de horas
+- **Bloquear y desbloquear:** solo un administrador, por cliente o proyecto y un rango de fechas («al facturar»). Queda en la auditoría.
+- **Semana enviada:** el propio usuario puede **retirarla** mientras no esté revisada.
+- **Semana aprobada:** la reabre quien puede aprobarla (o un administrador).
+- **Semana bloqueada:** solo un administrador puede reabrirla.
+- **Semana devuelta:** las entradas vuelven a borrador. El comentario se guarda en `timesheet_periods.review_comment` y el historial en la auditoría.
+- **Aprobación automática:** se aprueba sola la semana de quien tiene el **rol** de responsable o de administrador. Si el departamento no tiene responsables, aprueba un administrador.
+- **Instantáneas:** la tarifa y el coste se congelan cada vez que una entrada pasa a aprobada (también en la aprobación automática). Reabrir las borra y las entradas bloqueadas no cambian nunca.
+
+### D-035 · Cálculo de las bolsas **[concreta D-019]**
+- **Recálculo cronológico:** una entrada con fecha anterior puede desplazar el exceso a entradas posteriores no bloqueadas.
+- **Exceso de la bolsa:** es la suma de `overage_minutes` de sus entradas. Cambiar el total o la política recalcula.
+- **Política `block`:** solo impide imputaciones **nuevas** que superen el saldo; el exceso existente se conserva.
+- **Temporizador sobre una bolsa `block` sin saldo:** no se puede iniciar. Si al pararlo supera el saldo, no se guarda: se ofrece ajustar la duración o cambiar de tarea, sin perder lo medido.
+- **Alertas:**
+  - cada umbral avisa **una sola vez** por bolsa; el exceso, como máximo una vez al día,
+  - una bolsa sin departamento avisa a sus gestores y a los administradores.
+- **Estados:**
+  - una bolsa agotada vuelve a activa si baja el consumo,
+  - un administrador puede reabrir una bolsa cerrada si no está renovada,
+  - «próxima a agotarse» significa a partir del primer umbral configurado (75 % por defecto).
+- **Color de la barra de consumo:** verde por debajo del primer umbral, ámbar hasta el 100 % y rojo desde el 100 %.
+- **Vista global de bolsas:** los gestores ven las de sus proyectos; responsables y administradores, todas.
+
+### D-036 · Imputación de horas
+- **Imputar por otra persona:**
+  - un gestor, en sus proyectos,
+  - un responsable, para las personas de su departamento,
+  - un administrador, para cualquiera.
+  La persona destino debe cumplir las reglas (ser miembro y el departamento de la bolsa).
+- **Capacidad en la F1:** solo `WorkSchedule`. Nuevo ajuste `default_work_minutes` (lunes a viernes 8 h; sábado y domingo 0) que recibe cada usuario nuevo. Festivos y ausencias llegan en la F3.
+- **Formatos de duración:** `1:30`, `1.5`, `1,5`, `90m`, `1h30`, `2h`, y un número suelto se lee como horas. Máximo 24 h, con una vista previa en vivo («= 1:30»).
+- **Temporizador:**
+  - redondeo al múltiplo más cercano de `timer_rounding_minutes`; si queda en 0, se descarta con aviso,
+  - si cruza la medianoche de Madrid, se parte en entradas por día,
+  - iniciar otro temporizador para el anterior y lo imputa.
+- **Hoja semanal:** «Copiar la semana anterior» copia las filas (tareas), no las horas.
+
+### D-037 · Tareas, proyectos y adjuntos
+- **Mis tareas** (solo las abiertas asignadas a mí):
+  - vencidas: `due_date` anterior a hoy,
+  - hoy: `due_date` o `start_date` hoy,
+  - esta semana: `due_date` hasta el domingo,
+  - próximas: el resto con fecha,
+  - sin fecha.
+- **Subtareas:** mismo proyecto y misma bolsa que la tarea padre. La estimación del padre es la suma de las de sus subtareas.
+- **Estados «En revisión» y «Bloqueada»:** tienen la categoría `in_progress`.
+- **Nada con horas se borra:**
+  - las tareas con horas no se pueden borrar,
+  - los proyectos se archivan,
+  - los clientes se desactivan.
+- **Adjuntos:**
+  - formatos permitidos: imágenes, PDF, ofimática (Office y ODF), texto, CSV y ZIP,
+  - miniatura solo de imágenes rasterizadas,
+  - los SVG siempre se descargan, nunca se muestran en la página.
+- **Fuera de la F1:**
+  - calendario de tareas y próximos hitos, a la F4,
+  - exportación XLSX y CSV, a la F2,
+  - campana en tiempo real, a la F6 (en la F1 se consulta cada 60 s).
