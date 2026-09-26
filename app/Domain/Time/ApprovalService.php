@@ -32,6 +32,24 @@ use Illuminate\Validation\ValidationException;
  */
 final class ApprovalService
 {
+    /**
+     * Entradas pendientes de aprobar en una semana sin aprobar. Las aprobadas solo deberían estar en
+     * semanas aprobadas o bloqueadas; si alguna quedara en otra (red de seguridad), enviar,
+     * devolver, retirar y aprobar la tratan como pendiente y le quitan la aprobación y las
+     * instantáneas (o las congelan de nuevo). Las bloqueadas nunca se tocan.
+     */
+    private const array PENDING = [TimeEntryStatus::Draft, TimeEntryStatus::Submitted, TimeEntryStatus::Approved];
+
+    /**
+     * Lo que se borra al quitar la aprobación de una entrada.
+     */
+    private const array UNAPPROVED = [
+        'approved_by' => null,
+        'approved_at' => null,
+        'hourly_rate_snapshot' => null,
+        'hourly_cost_snapshot' => null,
+    ];
+
     public function __construct(
         private readonly RateResolver $rates,
     ) {}
@@ -61,10 +79,11 @@ final class ApprovalService
             $period = $this->lockPeriod($owner, $week);
             Gate::forUser($actor)->authorize('submit', $period);
 
+            // Una semana abierta o devuelta no debería tener entradas aprobadas; si alguna quedó
+            // así, se trata como pendiente: se envía sin su aprobación ni sus instantáneas.
             $count = 0;
-            foreach ($this->entries($period, [TimeEntryStatus::Draft]) as $entry) {
-                $entry->status = TimeEntryStatus::Submitted;
-                $entry->save();
+            foreach ($this->entries($period, [TimeEntryStatus::Draft, TimeEntryStatus::Approved]) as $entry) {
+                $entry->fill(['status' => TimeEntryStatus::Submitted, ...self::UNAPPROVED])->save();
                 $count++;
             }
 
@@ -142,7 +161,7 @@ final class ApprovalService
             $current = $this->relock($period);
             $this->assertSubmitted($current);
 
-            $count = $this->toDraft($current, [TimeEntryStatus::Submitted]);
+            $count = $this->toDraft($current, [TimeEntryStatus::Submitted, TimeEntryStatus::Approved]);
             $current->fill([
                 'status' => TimesheetStatus::Returned,
                 'reviewed_by' => $reviewer->id,
@@ -171,7 +190,7 @@ final class ApprovalService
             $current = $this->relock($period);
             Gate::forUser($actor)->authorize('withdraw', $current);
 
-            $count = $this->toDraft($current, [TimeEntryStatus::Submitted]);
+            $count = $this->toDraft($current, [TimeEntryStatus::Submitted, TimeEntryStatus::Approved]);
             $current->fill([
                 'status' => TimesheetStatus::Open,
                 'submitted_at' => null,
@@ -272,14 +291,15 @@ final class ApprovalService
     }
 
     /**
-     * Aprueba las entradas pendientes (borrador o enviadas) y congela tarifa y coste.
+     * Aprueba las entradas pendientes (borrador o enviadas, y las aprobadas que hubiera en una semana
+     * sin aprobar) y congela tarifa y coste.
      */
     private function approveEntries(TimesheetPeriod $period, User $owner, ?User $reviewer): int
     {
         $cost = $this->rates->cost($owner);
         $count = 0;
 
-        foreach ($this->entries($period, [TimeEntryStatus::Draft, TimeEntryStatus::Submitted], withRates: true) as $entry) {
+        foreach ($this->entries($period, self::PENDING, withRates: true) as $entry) {
             $entry->fill([
                 'status' => TimeEntryStatus::Approved,
                 'approved_by' => $reviewer?->id,
@@ -303,13 +323,7 @@ final class ApprovalService
         $count = 0;
 
         foreach ($this->entries($period, $statuses) as $entry) {
-            $entry->fill([
-                'status' => TimeEntryStatus::Draft,
-                'approved_by' => null,
-                'approved_at' => null,
-                'hourly_rate_snapshot' => null,
-                'hourly_cost_snapshot' => null,
-            ])->save();
+            $entry->fill(['status' => TimeEntryStatus::Draft, ...self::UNAPPROVED])->save();
             $count++;
         }
 

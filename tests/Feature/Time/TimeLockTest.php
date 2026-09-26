@@ -5,6 +5,7 @@ use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
+use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
@@ -152,6 +153,151 @@ it('desbloquear devuelve las entradas a aprobadas y sus semanas a aprobadas', fu
 
     // Deshacerlo dos veces, no.
     $this->actingAs($this->admin)->delete("/horas/bloqueo/{$lock->id}")->assertSessionHasErrors('lock');
+});
+
+it('bloquear, reabrir, desbloquear y editar: la entrada desbloqueada vuelve a borrador y se aprueba de nuevo', function () {
+    $department = Department::factory()->create();
+    $head = User::factory()->departmentManager()->inDepartment($department)->create();
+    $department->managers()->attach($head);
+    $this->employee->forceFill(['department_id' => $department->id, 'hourly_cost' => '20.00'])->save();
+    $this->web->update(['hourly_rate' => '60.00']);
+    $this->web->addMember($this->employee);
+    $this->other->addMember($this->employee);
+
+    $web = TimeEntry::factory()->forTask(Task::factory()->create(['project_id' => $this->web->id]))->on('2026-09-07')->minutes(60)->create(['user_id' => $this->employee->id]);
+    $other = TimeEntry::factory()->forTask(Task::factory()->create(['project_id' => $this->other->id]))->on('2026-09-08')->minutes(30)->create(['user_id' => $this->employee->id]);
+
+    // Semana del 07/09 enviada y aprobada por su responsable.
+    $this->actingAs($this->employee)->post('/horas/semana/enviar', ['week' => '2026-W37'])->assertSessionHasNoErrors();
+    $period = TimesheetPeriod::query()->where('user_id', $this->employee->id)->sole();
+    $this->actingAs($head)->post("/horas/aprobaciones/{$period->id}/aprobar")->assertSessionHasNoErrors();
+    expect($web->fresh()->hourly_rate_snapshot)->toBe('60.00');
+
+    // Se factura solo la web: la semana sigue aprobada (la otra entrada no está bloqueada).
+    $this->actingAs($this->admin)->post('/horas/bloqueo', ['project_id' => $this->web->id, 'date_from' => '2026-09-01', 'date_to' => '2026-09-30'])->assertSessionHasNoErrors();
+    $lock = TimeEntryLock::query()->sole();
+    expect($period->fresh()->status)->toBe(TimesheetStatus::Approved)
+        ->and($web->fresh()->status)->toBe(TimeEntryStatus::Locked);
+
+    // El responsable la reabre: la otra vuelve a borrador y la bloqueada no cambia.
+    $this->actingAs($head)->post("/horas/semanas/{$period->id}/reabrir")->assertSessionHasNoErrors();
+    expect($period->fresh()->status)->toBe(TimesheetStatus::Open)
+        ->and($other->fresh()->status)->toBe(TimeEntryStatus::Draft)
+        ->and($web->fresh()->status)->toBe(TimeEntryStatus::Locked);
+
+    // Al desbloquear, la entrada sigue a su semana (abierta): borrador, sin aprobación ni instantáneas.
+    $this->actingAs($this->admin)->delete("/horas/bloqueo/{$lock->id}")->assertSessionHasNoErrors();
+    $web->refresh();
+    expect($web->status)->toBe(TimeEntryStatus::Draft)
+        ->and($web->approved_by)->toBeNull()
+        ->and($web->approved_at)->toBeNull()
+        ->and($web->hourly_rate_snapshot)->toBeNull()
+        ->and($web->hourly_cost_snapshot)->toBeNull()
+        ->and($web->time_entry_lock_id)->toBeNull()
+        ->and($period->fresh()->status)->toBe(TimesheetStatus::Open);
+
+    $activity = Activity::query()->where('subject_type', $lock->getMorphClass())->where('event', 'unlocked')->sole();
+    expect($activity->properties['draft'])->toBe(1)
+        ->and($activity->properties['approved'])->toBe(0);
+
+    // Su dueño la cambia: sigue en borrador y, al enviar y aprobar, se congela de nuevo con la tarifa de hoy.
+    $this->actingAs($this->employee)
+        ->put("/horas/entradas/{$web->id}", ['task_id' => $web->task_id, 'date' => '2026-09-07', 'minutes' => 90])
+        ->assertSessionHasNoErrors();
+    expect($web->fresh()->minutes)->toBe(90)
+        ->and($web->fresh()->status)->toBe(TimeEntryStatus::Draft);
+
+    $this->web->update(['hourly_rate' => '70.00']);
+    $this->actingAs($this->employee)->post('/horas/semana/enviar', ['week' => '2026-W37'])->assertSessionHasNoErrors();
+    expect($web->fresh()->status)->toBe(TimeEntryStatus::Submitted);
+    $this->actingAs($head)->post("/horas/aprobaciones/{$period->id}/aprobar")->assertSessionHasNoErrors();
+
+    $web->refresh();
+    expect($web->status)->toBe(TimeEntryStatus::Approved)
+        ->and($web->approved_by)->toBe($head->id)
+        ->and($web->hourly_rate_snapshot)->toBe('70.00')
+        ->and($web->hourly_cost_snapshot)->toBe('20.00');
+});
+
+it('al desbloquear, cada entrada vuelve al estado de su semana', function (?TimesheetStatus $week, TimeEntryStatus $expected) {
+    $lock = TimeEntryLock::query()->create([
+        'project_id' => $this->web->id,
+        'date_from' => '2026-09-01',
+        'date_to' => '2026-09-30',
+        'locked_by' => $this->admin->id,
+        'entries_count' => 1,
+    ]);
+    $entry = ($this->entry)($this->web, '2026-09-13', TimeEntryStatus::Locked); // domingo
+    $entry->forceFill([
+        'time_entry_lock_id' => $lock->id,
+        'approved_by' => $this->admin->id,
+        'approved_at' => now(),
+        'hourly_rate_snapshot' => '50.00',
+        'hourly_cost_snapshot' => '20.00',
+    ])->save();
+    if ($week !== null) {
+        TimesheetPeriod::factory()->for($this->employee)->week('2026-09-07')->status($week)->create();
+    }
+
+    $this->actingAs($this->admin)->delete("/horas/bloqueo/{$lock->id}")->assertSessionHasNoErrors();
+
+    $entry->refresh();
+    expect($entry->status)->toBe($expected)
+        ->and($entry->locked_at)->toBeNull()
+        ->and($entry->time_entry_lock_id)->toBeNull();
+
+    if ($expected === TimeEntryStatus::Approved) {
+        expect($entry->approved_by)->toBe($this->admin->id)
+            ->and($entry->hourly_rate_snapshot)->toBe('50.00');
+    } else {
+        expect($entry->approved_by)->toBeNull()
+            ->and($entry->approved_at)->toBeNull()
+            ->and($entry->hourly_rate_snapshot)->toBeNull()
+            ->and($entry->hourly_cost_snapshot)->toBeNull();
+    }
+
+    if ($week !== null) {
+        expect(TimesheetPeriod::query()->sole()->status)->toBe($week === TimesheetStatus::Locked ? TimesheetStatus::Approved : $week);
+    }
+})->with([
+    'semana bloqueada' => [TimesheetStatus::Locked, TimeEntryStatus::Approved],
+    'semana aprobada' => [TimesheetStatus::Approved, TimeEntryStatus::Approved],
+    'semana enviada' => [TimesheetStatus::Submitted, TimeEntryStatus::Submitted],
+    'semana devuelta' => [TimesheetStatus::Returned, TimeEntryStatus::Draft],
+    'semana abierta' => [TimesheetStatus::Open, TimeEntryStatus::Draft],
+    'sin semana' => [null, TimeEntryStatus::Draft],
+]);
+
+it('una entrada aprobada que quedara en una semana abierta se trata como pendiente al enviar', function () {
+    $this->web->addMember($this->employee);
+    $entry = ($this->entry)($this->web, '2026-09-21', TimeEntryStatus::Approved);
+    $entry->forceFill(['approved_by' => $this->admin->id, 'approved_at' => now(), 'hourly_rate_snapshot' => '50.00', 'hourly_cost_snapshot' => '20.00'])->save();
+
+    $this->actingAs($this->employee)->post('/horas/semana/enviar', ['week' => '2026-W39'])->assertSessionHasNoErrors();
+
+    $entry->refresh();
+    expect($entry->status)->toBe(TimeEntryStatus::Submitted)
+        ->and($entry->approved_by)->toBeNull()
+        ->and($entry->hourly_rate_snapshot)->toBeNull()
+        ->and($entry->hourly_cost_snapshot)->toBeNull();
+});
+
+it('desbloquear recalcula la bolsa: el exceso de las entradas bloqueadas ya no está congelado', function () {
+    $bank = HourBank::factory()->create(['project_id' => $this->web->id, 'total_minutes' => 600]);
+    $task = Task::factory()->create(['project_id' => $this->web->id, 'hour_bank_id' => $bank->id]);
+    $entry = TimeEntry::factory()->forTask($task)->on('2026-09-07')->minutes(360)->status(TimeEntryStatus::Approved)->create(['user_id' => $this->employee->id]);
+    TimesheetPeriod::factory()->for($this->employee)->week('2026-09-07')->status(TimesheetStatus::Approved)->create();
+    $this->actingAs($this->admin)->post('/horas/bloqueo', ['project_id' => $this->web->id, 'date_from' => '2026-09-01', 'date_to' => '2026-09-30']);
+    $lock = TimeEntryLock::query()->sole();
+
+    // Mientras está bloqueada, bajan el total de la bolsa: su exceso sigue congelado en 0.
+    $bank->fresh()->update(['total_minutes' => 300]);
+    expect($entry->fresh()->overage_minutes)->toBe(0);
+
+    $this->actingAs($this->admin)->delete("/horas/bloqueo/{$lock->id}")->assertSessionHasNoErrors();
+
+    expect($entry->fresh()->overage_minutes)->toBe(60)
+        ->and($bank->fresh()->overage_minutes)->toBe(60);
 });
 
 it('solo un admin bloquea, desbloquea o ve la página (D-034)', function (string $role) {

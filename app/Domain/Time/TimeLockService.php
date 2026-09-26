@@ -2,6 +2,7 @@
 
 namespace App\Domain\Time;
 
+use App\Domain\HourBanks\HourBankLedger;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
@@ -12,7 +13,9 @@ use App\Models\TimesheetPeriod;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -24,11 +27,15 @@ use Illuminate\Validation\ValidationException;
  * - las no aprobadas del rango no se tocan (la vista previa las avisa),
  * - es una actualización masiva: no cambia minutos, así que no hace falta recalcular las bolsas,
  * - las semanas cuyas entradas quedan todas bloqueadas pasan a `locked`; al desbloquear vuelven a
- *   `approved`,
+ *   `approved`, y cada entrada vuelve al estado de su semana (ver unlock),
  * - queda en la auditoría del bloqueo (quién, cuándo, alcance y número de entradas).
  */
 final class TimeLockService
 {
+    public function __construct(
+        private readonly HourBankLedger $ledger,
+    ) {}
+
     /**
      * Entradas del alcance (cliente o proyecto) en el rango, en cualquier estado.
      *
@@ -114,7 +121,7 @@ final class TimeLockService
                 ]);
             }
 
-            $this->syncWeeks($entries->map(fn (TimeEntry $entry): array => [$entry->user_id, $entry->date->toDateString()])->all(), locking: true);
+            $this->lockWeeks($entries->map(fn (TimeEntry $entry): array => [$entry->user_id, $entry->date->toDateString()])->all());
 
             $this->log($lock, $admin, 'locked', [
                 'entries' => $entries->count(),
@@ -126,7 +133,12 @@ final class TimeLockService
     }
 
     /**
-     * Deshace un bloqueo: sus entradas vuelven a aprobadas y sus semanas, de bloqueadas a aprobadas.
+     * Deshace un bloqueo. Cada entrada vuelve al estado que corresponde a su semana, para que nunca
+     * quede una entrada «aprobada» en una semana que se puede editar:
+     * - semana aprobada o bloqueada → aprobada (y la semana bloqueada, a aprobada),
+     * - semana enviada → enviada, y abierta, devuelta o sin fila → borrador; en los dos casos se
+     *   borran la aprobación y las instantáneas de tarifa y coste (se congelan de nuevo al aprobar).
+     * Luego se recalculan sus bolsas: mientras estaban bloqueadas, su exceso estaba congelado.
      *
      * @throws ValidationException
      */
@@ -148,35 +160,91 @@ final class TimeLockService
                 ->where('time_entry_lock_id', $current->id)
                 ->where('status', TimeEntryStatus::Locked->value)
                 ->lockForUpdate()
-                ->get(['id', 'user_id', 'date']);
+                ->get(['id', 'user_id', 'date', 'hour_bank_id']);
 
             $now = now();
-            foreach ($entries->pluck('id')->chunk(500) as $chunk) {
-                TimeEntry::query()->whereKey($chunk->all())->update([
-                    'status' => TimeEntryStatus::Approved->value,
-                    'locked_at' => null,
-                    'time_entry_lock_id' => null,
-                    'updated_at' => $now,
-                ]);
-            }
-
-            $this->syncWeeks($entries->map(fn (TimeEntry $entry): array => [$entry->user_id, $entry->date->toDateString()])->all(), locking: false);
+            $restored = $this->restore($entries, $now);
 
             $current->forceFill(['unlocked_at' => $now, 'unlocked_by' => $admin->id])->save();
 
-            $this->log($current, $admin, 'unlocked', ['entries' => $entries->count()]);
+            foreach ($entries->pluck('hour_bank_id')->filter()->unique() as $bankId) {
+                $this->ledger->recalculateById((int) $bankId);
+            }
+
+            $this->log($current, $admin, 'unlocked', ['entries' => $entries->count(), ...$restored]);
 
             return $entries->count();
         });
     }
 
     /**
-     * Semanas afectadas: al bloquear, pasan a `locked` las que ya no tienen entradas sin bloquear;
-     * al desbloquear, las `locked` vuelven a `approved`.
+     * Devuelve las entradas desbloqueadas al estado de su semana (una consulta por semana).
+     *
+     * @param  Collection<int, TimeEntry>  $entries
+     * @return array{approved: int, submitted: int, draft: int} Entradas que quedan en cada estado.
+     */
+    private function restore(Collection $entries, CarbonInterface $now): array
+    {
+        /** @var array<int, array<string, list<int>>> $weeks user_id → week_start → ids */
+        $weeks = [];
+        foreach ($entries as $entry) {
+            $weeks[$entry->user_id][Week::containing($entry->date)->startString()][] = $entry->id;
+        }
+
+        $restored = ['approved' => 0, 'submitted' => 0, 'draft' => 0];
+
+        foreach ($weeks as $userId => $starts) {
+            foreach ($starts as $start => $ids) {
+                $period = TimesheetPeriod::query()
+                    ->where('user_id', $userId)
+                    ->where('week_start', $start)
+                    ->lockForUpdate()
+                    ->first();
+
+                $status = match ($period?->status) {
+                    TimesheetStatus::Approved, TimesheetStatus::Locked => TimeEntryStatus::Approved,
+                    TimesheetStatus::Submitted => TimeEntryStatus::Submitted,
+                    default => TimeEntryStatus::Draft,
+                };
+
+                if ($period !== null && $period->status === TimesheetStatus::Locked) {
+                    $period->status = TimesheetStatus::Approved;
+                    $period->save();
+                }
+
+                $attributes = [
+                    'status' => $status->value,
+                    'locked_at' => null,
+                    'time_entry_lock_id' => null,
+                    'updated_at' => $now,
+                ];
+
+                if ($status !== TimeEntryStatus::Approved) {
+                    $attributes += [
+                        'approved_by' => null,
+                        'approved_at' => null,
+                        'hourly_rate_snapshot' => null,
+                        'hourly_cost_snapshot' => null,
+                    ];
+                }
+
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    TimeEntry::query()->whereKey($chunk)->update($attributes);
+                }
+
+                $restored[$status->value] += count($ids);
+            }
+        }
+
+        return $restored;
+    }
+
+    /**
+     * Al bloquear, pasan a `locked` las semanas afectadas que ya no tienen entradas sin bloquear.
      *
      * @param  array<int, array{0: int, 1: string}>  $userDates
      */
-    private function syncWeeks(array $userDates, bool $locking): void
+    private function lockWeeks(array $userDates): void
     {
         /** @var array<int, array<string, true>> $weeks user_id → [week_start => true] */
         $weeks = [];
@@ -188,22 +256,20 @@ final class TimeLockService
             $starts = array_keys($starts);
             sort($starts);
 
+            // Una consulta por persona: fechas con entradas aún sin bloquear en esas semanas.
             $unlockedByWeek = [];
-            if ($locking) {
-                // Una consulta por persona: fechas con entradas aún sin bloquear en esas semanas.
-                $dates = TimeEntry::query()
-                    ->where('user_id', $userId)
-                    ->between($starts[0], CarbonImmutable::parse($starts[count($starts) - 1])->addDays(6)->toDateString())
-                    ->where('status', '!=', TimeEntryStatus::Locked->value)
-                    ->pluck('date');
+            $dates = TimeEntry::query()
+                ->where('user_id', $userId)
+                ->between($starts[0], CarbonImmutable::parse($starts[count($starts) - 1])->addDays(6)->toDateString())
+                ->where('status', '!=', TimeEntryStatus::Locked->value)
+                ->pluck('date');
 
-                foreach ($dates as $date) {
-                    $unlockedByWeek[Week::containing($date)->startString()] = true;
-                }
+            foreach ($dates as $date) {
+                $unlockedByWeek[Week::containing($date)->startString()] = true;
             }
 
             foreach ($starts as $start) {
-                if ($locking && isset($unlockedByWeek[$start])) {
+                if (isset($unlockedByWeek[$start])) {
                     continue;
                 }
 
@@ -213,14 +279,9 @@ final class TimeLockService
                     ->lockForUpdate()
                     ->first();
 
-                if ($locking) {
-                    $period ??= new TimesheetPeriod(['user_id' => $userId, 'week_start' => $start]);
-                    $period->status = TimesheetStatus::Locked;
-                    $period->save();
-                } elseif ($period !== null && $period->status === TimesheetStatus::Locked) {
-                    $period->status = TimesheetStatus::Approved;
-                    $period->save();
-                }
+                $period ??= new TimesheetPeriod(['user_id' => $userId, 'week_start' => $start]);
+                $period->status = TimesheetStatus::Locked;
+                $period->save();
             }
         }
     }
