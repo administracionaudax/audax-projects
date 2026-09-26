@@ -2,9 +2,11 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Domain\HourBanks\FirstHourBank;
 use App\Domain\Time\TimeEntryData;
 use App\Domain\Time\TimeEntryWarning;
 use App\Domain\Time\TimeEntryWriter;
+use App\Enums\BillingType;
 use App\Enums\OveragePolicy;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
@@ -355,6 +357,37 @@ it('un admin que reduce o amplía una entrada bloqueada recalcula su exceso (nun
         ->and($extended->status)->toBe(TimeEntryStatus::Locked)
         ->and($bank->fresh()->only(['consumed_minutes', 'overage_minutes']))->toBe(['consumed_minutes' => 180, 'overage_minutes' => 120])
         ->and($bank->fresh()->in_bank_minutes)->toBeLessThanOrEqual($bank->fresh()->total_minutes);
+});
+
+it('al pasar el proyecto a bolsas, sus entradas anteriores se siguen corrigiendo sin bolsa (FirstHourBank no mueve horas)', function () {
+    $task = memberTask($this->employee, ['billing_type' => BillingType::TimeAndMaterials]);
+    $project = $task->project;
+    $entry = $this->writer->create($this->employee, entryData($this->employee, $task, 90))->entry;
+
+    $project->update(['billing_type' => BillingType::HourBank]);
+    $bank = app(FirstHourBank::class)->create($project->fresh(), [
+        'name' => 'Bolsa inicial',
+        'total_minutes' => 600,
+        'start_date' => '2026-09-01',
+    ])['bank'];
+    expect($task->fresh()->hour_bank_id)->toBe($bank->id);
+
+    // Corregir la descripción o los minutos: la entrada conserva su bolsa (ninguna).
+    $updated = $this->writer->update($this->employee, $entry, entryData($this->employee, $task, 60, description: 'Corregida'))->entry;
+
+    expect($updated->description)->toBe('Corregida')
+        ->and($updated->minutes)->toBe(60)
+        ->and($updated->hour_bank_id)->toBeNull()
+        ->and($bank->fresh()->consumed_minutes)->toBe(0);
+
+    // Una entrada nueva en la misma tarea sí va a la bolsa.
+    $new = $this->writer->create($this->employee, entryData($this->employee, $task, 30))->entry;
+    expect($new->hour_bank_id)->toBe($bank->id);
+
+    // Pasarla a otra tarea sin bolsa del proyecto sigue sin poder hacerse.
+    $unbanked = Task::factory()->create(['project_id' => $project->id]);
+    expect(validationErrors(fn () => $this->writer->update($this->employee, $updated, entryData($this->employee, $unbanked, 60))))
+        ->toBe(['task_id' => ['La tarea no tiene bolsa. Asígnale una antes de imputar.']]);
 });
 
 it('no mueve una entrada fuera de una semana cerrada', function () {

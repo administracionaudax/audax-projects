@@ -48,7 +48,14 @@ final class TimeEntryRules
         // Solo un admin edita entradas bloqueadas, y sin reabrir la semana (SPEC §7).
         $adminEditingLocked = $existing !== null && $existing->isLocked() && $actor->isAdmin();
 
-        $errors = $this->subjectErrors($actor, $target, $task, $project, $bank, $adminEditingLocked);
+        // Una entrada de antes de que el proyecto pasara a bolsas (FirstHourBank no mueve horas) se
+        // puede seguir corrigiendo sin bolsa mientras no cambie de tarea.
+        $keepsNoBank = $existing !== null
+            && $bank === null
+            && $existing->getOriginal('hour_bank_id') === null
+            && (int) $existing->getOriginal('task_id') === $task->id;
+
+        $errors = $this->subjectErrors($actor, $target, $task, $project, $bank, $adminEditingLocked, $keepsNoBank);
 
         // Fecha
         if ($date->toDateString() > LocalTime::todayString() && ! (bool) Setting::get('allow_future_time_entries', false)) {
@@ -144,7 +151,7 @@ final class TimeEntryRules
      *
      * @return array<string, list<string>>
      */
-    private function subjectErrors(User $actor, User $target, Task $task, Project $project, ?HourBank $bank, bool $adminEditingLocked): array
+    private function subjectErrors(User $actor, User $target, Task $task, Project $project, ?HourBank $bank, bool $adminEditingLocked, bool $keepsNoBank = false): array
     {
         $errors = [];
 
@@ -169,7 +176,7 @@ final class TimeEntryRules
         if ($task->is_milestone) {
             $errors['task_id'][] = $this->message('time.errors.milestone');
         }
-        if ($project->usesHourBanks() && $bank === null) {
+        if ($project->usesHourBanks() && $bank === null && ! $keepsNoBank) {
             $errors['task_id'][] = $this->message('time.errors.task_without_bank');
         }
         if ($bank !== null && ! $bank->acceptsTime() && ! $adminEditingLocked) {
