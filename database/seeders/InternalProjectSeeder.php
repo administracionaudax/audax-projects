@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\DB;
  * sin ser miembro. El gestor principal es el primer admin.
  *
  * Idempotente: se reconoce por su código (Project::INTERNAL_CODE), también si se archivó o borró,
- * y solo crea las tareas que falten.
+ * y sus tareas solo se crean si el proyecto no tiene ninguna (contando las borradas): así, volver
+ * a ejecutar app:install nunca recrea una tarea que el admin haya renombrado o eliminado.
  */
 class InternalProjectSeeder extends Seeder
 {
@@ -76,19 +77,17 @@ class InternalProjectSeeder extends Seeder
 
     private function ensureTasks(Project $project): void
     {
-        $existing = Task::withTrashed()->where('project_id', $project->id)->pluck('title')->all();
+        if (Task::withTrashed()->where('project_id', $project->id)->exists()) {
+            return;
+        }
+
         $types = TaskType::query()->whereIn('name', array_values(self::TASK_TYPES))->pluck('id', 'name');
-        $max = Task::withTrashed()->where('project_id', $project->id)->max('position');
-        $position = $max === null ? 0 : (int) $max + 1;
+        $position = 0;
 
         TaskStatus::ensureDefaults();
         $status = TaskStatus::defaultStatus();
 
         foreach (Project::INTERNAL_TASKS as $title) {
-            if (in_array($title, $existing, true)) {
-                continue;
-            }
-
             $typeName = self::TASK_TYPES[$title] ?? null;
 
             Task::query()->create([

@@ -28,14 +28,16 @@ use function Laravel\Prompts\text;
  * Primer arranque (SPEC §14, D-010). Idempotente: se puede repetir sin duplicar nada ni pisar lo
  * que el admin haya editado.
  *
- * - Crea roles y permisos, ajustes por defecto y departamentos.
- * - Crea los estados de tarea por defecto (si no hay ninguno) y los tipos de tarea por defecto,
- *   enlazados por nombre con los departamentos.
+ * - Crea roles y permisos y los ajustes por defecto que falten.
+ * - Crea los departamentos, los estados de tarea y los tipos de tarea por defecto (estos,
+ *   enlazados por nombre con los departamentos), cada catálogo solo si está vacío: repetir el
+ *   comando (por ejemplo, con --reset-link) nunca recrea lo que el admin haya renombrado o borrado.
  * - Crea el primer admin con una contraseña aleatoria que NUNCA se muestra, y emite un enlace de
  *   restablecimiento de un solo uso para que el admin fije la suya.
  * - Con el admin ya creado: le da su jornada por defecto (si no tiene) y crea el proyecto interno
  *   «Interno – Agencia» (Project::INTERNAL_CODE, sin cliente, no facturable, gestor principal el
- *   primer admin) con las tareas Reuniones, Formación, Gestión y Comercial (SPEC §7, D-033).
+ *   primer admin) con las tareas Reuniones, Formación, Gestión y Comercial (SPEC §7, D-033); las
+ *   tareas, solo si el proyecto aún no tiene ninguna.
  */
 #[Signature('app:install
     {--name= : Nombre del primer administrador}

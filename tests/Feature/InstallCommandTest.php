@@ -248,6 +248,23 @@ test('app:install ampliado es idempotente y respeta lo que el admin haya cambiad
         ->and(WorkSchedule::query()->count())->toBe(1);
 });
 
+test('volver a ejecutar app:install no recrea lo que el admin haya renombrado', function () {
+    runInstall();
+
+    Department::query()->where('name', 'Diseño')->update(['name' => 'Diseño y UX']);
+    TaskType::query()->where('name', 'Reunión')->update(['name' => 'Reunión de equipo']);
+    Task::query()->where('title', 'Reuniones')->update(['title' => 'Reuniones de equipo']);
+
+    [$exitCode] = runInstall(['--reset-link' => true]);
+
+    expect($exitCode)->toBe(0)
+        ->and(Department::query()->pluck('name')->sort()->values()->all())->toBe(['Desarrollo', 'Diseño y UX', 'Marketing'])
+        ->and(TaskType::query()->where('name', 'Reunión')->exists())->toBeFalse()
+        ->and(TaskType::query()->count())->toBe(count(TaskType::DEFAULTS))
+        ->and(Task::query()->where('title', 'Reuniones')->exists())->toBeFalse()
+        ->and(Task::query()->count())->toBe(count(Project::INTERNAL_TASKS));
+});
+
 test('app:install crea el proyecto interno también cuando el admin ya existía', function () {
     $admin = userWithRole('admin', ['email' => 'primero@audaxstudio.com']);
 
