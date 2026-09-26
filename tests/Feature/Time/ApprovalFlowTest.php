@@ -13,9 +13,11 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Notifications\Time\TimesheetApproved;
 use App\Notifications\Time\TimesheetReturned;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
@@ -371,4 +373,67 @@ it('la página de aprobaciones lista las semanas enviadas de su equipo con total
     $this->actingAs($this->admin)
         ->get('/horas/aprobaciones')
         ->assertInertia(fn ($page) => $page->has('pending', 4));
+});
+
+it('la página de aprobaciones hace las mismas consultas con 2 semanas pendientes que con 12, y solo carga sus entradas', function () {
+    // Personas del departamento con horario propio, semanas enviadas y otras ya revisadas (histórico).
+    $team = function (int $people, array $pendingWeeks, array $historyWeeks): void {
+        foreach (User::factory()->count($people)->employee()->inDepartment($this->department)->create() as $person) {
+            WorkSchedule::factory()->intensive()->create(['user_id' => $person->id]);
+            $this->project->addMember($person);
+
+            foreach ($pendingWeeks as $monday) {
+                ($this->log)($person, $monday, 60);
+                TimesheetPeriod::factory()->for($person)->week($monday)->status(TimesheetStatus::Submitted)->create();
+            }
+
+            foreach ($historyWeeks as $monday) {
+                ($this->log)($person, $monday, 30);
+                TimesheetPeriod::factory()->for($person)->week($monday)->status(TimesheetStatus::Approved)
+                    ->create(['reviewed_by' => $this->head->id, 'reviewed_at' => now()]);
+            }
+        }
+    };
+
+    $queries = function (): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($this->head)->get('/horas/aprobaciones')->assertOk();
+        DB::disableQueryLog();
+
+        return count(DB::getQueryLog());
+    };
+
+    $team(1, ['2026-09-14', '2026-09-21'], ['2026-09-07']);
+    $queries(); // Calienta lo que se carga una vez por proceso (ajustes, permisos…).
+    $few = $queries();
+
+    // En total, 12 semanas pendientes (6 personas × 2, una de ellas muy antigua) y 7 en el histórico.
+    $team(4, ['2026-09-14', '2026-09-21'], ['2026-09-07']);
+    $team(1, ['2026-07-06', '2026-09-21'], ['2026-08-03', '2026-08-10']);
+    // Entre la semana antigua y las recientes hay horas que no son de ninguna semana de la página.
+    $stray = User::query()->latest('id')->firstOrFail();
+    foreach (['2026-07-20', '2026-08-17', '2026-08-31'] as $date) {
+        ($this->log)($stray, $date, 45);
+    }
+
+    $retrieved = 0;
+    Event::listen('eloquent.retrieved: '.TimeEntry::class, function () use (&$retrieved): void {
+        $retrieved++;
+    });
+
+    expect($queries())->toBe($few);
+    // Solo se cargan las entradas de las semanas pendientes (una por semana); el histórico se suma en la base de datos.
+    expect($retrieved)->toBe(12);
+
+    $this->actingAs($this->head)
+        ->get('/horas/aprobaciones')
+        ->assertInertia(fn ($page) => $page
+            ->has('pending', 12)
+            ->where('pending.0.period.week_start', '2026-07-06')
+            ->where('pending.0.capacity', 34 * 60)
+            ->where('pending.0.total', 60)
+            ->has('pending.0.entries', 1)
+            ->has('history', 7)
+            ->where('history.0.total', 30));
 });

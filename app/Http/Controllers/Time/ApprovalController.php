@@ -15,11 +15,12 @@ use App\Http\Resources\TimeEntryResource;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,14 +66,33 @@ class ApprovalController extends TimeController
             ->limit(20)
             ->get();
 
-        $entries = $this->entriesFor($pending->concat($history));
+        $entries = $this->entriesFor($pending)
+            ->groupBy(fn (TimeEntry $entry): string => $this->weekKey($entry->user_id, $entry->date));
+        // Capacidad de todas las semanas pendientes con una sola consulta (en el mismo orden).
+        $capacities = $this->capacity->forRanges(array_values($pending->map(fn (TimesheetPeriod $period): array => [
+            'user_id' => $period->user_id,
+            'from' => $period->week_start,
+            'to' => $period->weekEnd(),
+        ])->all()));
+        $historyTotals = $this->weekTotals($history);
+        $isAdmin = $reviewer->isAdmin();
 
         return Inertia::render('time/approvals', [
-            'pending' => $pending->map(fn (TimesheetPeriod $period): array => $this->pendingWeek($period, $entries))->values()->all(),
+            'pending' => $pending->values()->map(fn (TimesheetPeriod $period, int $index): array => $this->pendingWeek(
+                $period,
+                $entries->get($this->weekKey($period->user_id, $period->week_start)) ?? new Collection,
+                $capacities[$index],
+            ))->all(),
             'history' => $history->map(fn (TimesheetPeriod $period): array => [
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
-                'total' => (int) $this->weekEntries($entries, $period)->sum('minutes'),
-                'can_reopen' => Gate::forUser($reviewer)->allows('reopen', $period),
+                'total' => $historyTotals[$this->weekKey($period->user_id, $period->week_start)] ?? 0,
+                // Igual que TimesheetPeriodPolicy::reopen, sin una consulta por fila: scoped() ya
+                // limita a las personas que supervisa (o a todas, si es admin).
+                'can_reopen' => match ($period->status) {
+                    TimesheetStatus::Approved => true,
+                    TimesheetStatus::Locked => $isAdmin,
+                    default => false,
+                },
             ])->values()->all(),
             'limit' => self::PENDING_LIMIT,
         ]);
@@ -176,23 +196,19 @@ class ApprovalController extends TimeController
     }
 
     /**
-     * Entradas de todas esas semanas en una consulta (evita N+1).
+     * Entradas de esas semanas (y solo de esas: nada de los días entre una y otra) en una consulta.
      *
-     * @param  \Illuminate\Support\Collection<int, TimesheetPeriod>  $periods
+     * @param  Collection<int, TimesheetPeriod>  $periods
      * @return Collection<int, TimeEntry>
      */
-    private function entriesFor(\Illuminate\Support\Collection $periods): Collection
+    private function entriesFor(Collection $periods): Collection
     {
         if ($periods->isEmpty()) {
             return new Collection;
         }
 
-        $from = $periods->min(fn (TimesheetPeriod $period): string => $period->week_start->toDateString());
-        $to = $periods->max(fn (TimesheetPeriod $period): string => $period->weekEnd()->toDateString());
-
         return TimeEntry::query()
-            ->whereIn('user_id', $periods->pluck('user_id')->unique()->values()->all())
-            ->between((string) $from, (string) $to)
+            ->where(fn (Builder $query) => $this->inWeeks($query, $periods))
             ->with([
                 'task:id,title,deleted_at',
                 'project:id,code,name,color,deleted_at',
@@ -203,31 +219,74 @@ class ApprovalController extends TimeController
     }
 
     /**
-     * @param  Collection<int, TimeEntry>  $entries
-     * @return Collection<int, TimeEntry>
+     * Minutos de cada semana del histórico, sumados en la base de datos (una consulta, sin cargar
+     * las entradas).
+     *
+     * @param  Collection<int, TimesheetPeriod>  $periods
+     * @return array<string, int> weekKey → minutos
      */
-    private function weekEntries(Collection $entries, TimesheetPeriod $period): Collection
+    private function weekTotals(Collection $periods): array
     {
-        $week = Week::containing($period->week_start);
+        if ($periods->isEmpty()) {
+            return [];
+        }
 
-        return $entries->filter(fn (TimeEntry $entry): bool => $entry->user_id === $period->user_id && $week->contains($entry->date))->values();
+        $rows = TimeEntry::query()
+            ->where(fn (Builder $query) => $this->inWeeks($query, $periods))
+            ->select(['time_entries.user_id', 'time_entries.date'])
+            ->selectRaw('COALESCE(SUM(time_entries.minutes), 0) as total')
+            ->groupBy('time_entries.user_id', 'time_entries.date')
+            ->toBase()
+            ->get();
+
+        $totals = [];
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            $key = $this->weekKey((int) $row['user_id'], CarbonImmutable::parse((string) $row['date']));
+            $totals[$key] = ($totals[$key] ?? 0) + (int) $row['total'];
+        }
+
+        return $totals;
     }
 
     /**
-     * @param  Collection<int, TimeEntry>  $entries
+     * Filtro por pares (persona, semana): una condición por persona con los rangos de sus semanas.
+     *
+     * @param  Builder<TimeEntry>  $query
+     * @param  Collection<int, TimesheetPeriod>  $periods
+     */
+    private function inWeeks(Builder $query, Collection $periods): void
+    {
+        foreach ($periods->groupBy('user_id') as $userId => $userPeriods) {
+            $query->orWhere(function (Builder $person) use ($userId, $userPeriods): void {
+                $person->where('time_entries.user_id', (int) $userId)
+                    ->where(function (Builder $weeks) use ($userPeriods): void {
+                        foreach ($userPeriods as $period) {
+                            $weeks->orWhereBetween('time_entries.date', [$period->week_start->toDateString(), $period->weekEnd()->toDateString()]);
+                        }
+                    });
+            });
+        }
+    }
+
+    private function weekKey(int $userId, CarbonInterface $date): string
+    {
+        return $userId.'|'.Week::containing($date)->startString();
+    }
+
+    /**
+     * @param  Collection<int, TimeEntry>  $weekEntries  Las de esa semana y persona.
+     * @param  array<string, int>  $capacity
      * @return array<string, mixed>
      */
-    private function pendingWeek(TimesheetPeriod $period, Collection $entries): array
+    private function pendingWeek(TimesheetPeriod $period, Collection $weekEntries, array $capacity): array
     {
         $week = Week::containing($period->week_start);
-        $weekEntries = $this->weekEntries($entries, $period);
         $days = array_fill_keys($week->days(), 0);
 
         foreach ($weekEntries as $entry) {
             $days[$entry->date->toDateString()] += $entry->minutes;
         }
-
-        $capacity = $this->capacity->forRange($period->user, $week->start, $week->end());
 
         return [
             'period' => Plain::of(new TimesheetPeriodResource($period)),

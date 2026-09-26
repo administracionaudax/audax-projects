@@ -8,6 +8,7 @@ use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Collection;
 
 /**
  * Capacidad de trabajo (SPEC §9): minutos de jornada de un usuario por fecha según su
@@ -52,10 +53,59 @@ final class Capacity
             ->orderByDesc('valid_from')
             ->get();
 
+        return self::days($schedules, self::defaultWeek(), $fromDay, $toDay);
+    }
+
+    /**
+     * Como forRange, para varias personas y rangos a la vez, con UNA consulta en total (p. ej. las
+     * semanas pendientes de /horas/aprobaciones). Añadido por el área Horas (1.6).
+     *
+     * @param  list<array{user_id: int, from: CarbonInterface, to: CarbonInterface}>  $ranges
+     * @return list<array<string, int>> Minutos por fecha (Y-m-d) de cada rango, en el mismo orden.
+     */
+    public function forRanges(array $ranges): array
+    {
+        if ($ranges === []) {
+            return [];
+        }
+
+        $days = array_map(fn (array $range): array => [
+            'user_id' => $range['user_id'],
+            'from' => CarbonImmutable::parse($range['from']->toDateString()),
+            'to' => CarbonImmutable::parse($range['to']->toDateString()),
+        ], $ranges);
+
+        $from = min(array_map(fn (array $range): string => $range['from']->toDateString(), $days));
+        $to = max(array_map(fn (array $range): string => $range['to']->toDateString(), $days));
+
+        $schedules = WorkSchedule::query()
+            ->whereIn('user_id', array_values(array_unique(array_column($days, 'user_id'))))
+            ->where('valid_from', '<=', $to)
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $from))
+            ->orderByDesc('valid_from')
+            ->get()
+            ->groupBy('user_id');
+
         $default = self::defaultWeek();
+
+        return array_map(
+            fn (array $range): array => self::days($schedules->get($range['user_id']) ?? new Collection, $default, $range['from'], $range['to']),
+            $days,
+        );
+    }
+
+    /**
+     * Minutos por fecha con los horarios de UNA persona (ordenados del más reciente al más antiguo).
+     *
+     * @param  Collection<int, WorkSchedule>  $schedules
+     * @param  list<int>  $default
+     * @return array<string, int>
+     */
+    private static function days(Collection $schedules, array $default, CarbonImmutable $from, CarbonImmutable $to): array
+    {
         $capacity = [];
 
-        foreach (CarbonPeriod::create($fromDay, $toDay) as $day) {
+        foreach (CarbonPeriod::create($from, $to) as $day) {
             $schedule = $schedules->first(fn (WorkSchedule $candidate): bool => $candidate->coversDate($day));
             $capacity[$day->toDateString()] = $schedule?->minutesFor($day) ?? $default[$day->dayOfWeekIso - 1];
         }
