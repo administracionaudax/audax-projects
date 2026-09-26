@@ -2,10 +2,12 @@ import { cn } from '@/lib/utils';
 
 /**
  * Estilos del texto enriquecido (descripción y comentarios), en el editor y al leerlo: párrafos,
- * listas, citas, código, enlaces y menciones (@persona en azul de texto, AA).
+ * listas, citas, código, enlaces y menciones (@persona en azul de texto, AA). La «negrita» se pinta
+ * con el peso 500 de DM Sans: el tema nunca usa negritas (ni sintéticas).
  */
 export const RICH_TEXT_CLASSES = cn(
     'text-sm leading-relaxed break-words',
+    '[&_b]:font-medium [&_strong]:font-medium',
     '[&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
     '[&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-medium [&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:font-medium',
     '[&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5',
