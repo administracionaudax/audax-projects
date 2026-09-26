@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,9 +13,18 @@ use Inertia\Response;
  */
 class StyleguideController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
-        // CONTRATO: implementar la comprobación de acceso (agente backend).
+        if (! config('app.styleguide_public')) {
+            $user = $request->user();
+
+            if (! $user instanceof User) {
+                return redirect()->guest(route('login'));
+            }
+
+            abort_unless($user->isActive() && $user->isAdmin(), 403);
+        }
+
         return Inertia::render('styleguide');
     }
 }

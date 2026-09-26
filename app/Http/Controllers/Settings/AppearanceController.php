@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Listeners\RecordSuccessfulLogin;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +23,18 @@ class AppearanceController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        // CONTRATO: validar theme ∈ {light,dark,system}, guardar en el usuario y en la cookie (agente backend).
-        return back();
+        $validated = $request->validate([
+            'theme' => ['required', 'string', Rule::in(User::THEMES)],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+        $user->forceFill(['theme_preference' => $validated['theme']])->save();
+
+        return back()->withCookie(cookie(
+            'appearance',
+            $validated['theme'],
+            RecordSuccessfulLogin::APPEARANCE_COOKIE_MINUTES,
+        ));
     }
 }
