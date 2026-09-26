@@ -61,7 +61,9 @@ export function formatDate(value: string | Date | null | undefined): string {
 }
 
 /** Instante → "26/09/2026 14:05" en Europe/Madrid. */
-export function formatDateTime(value: string | Date | null | undefined): string {
+export function formatDateTime(
+    value: string | Date | null | undefined,
+): string {
     if (value === null || value === undefined || value === '') {
         return '';
     }
@@ -82,7 +84,9 @@ const currencyFormatter = new Intl.NumberFormat(LOCALE, {
 });
 
 /** 1234.56 → "1.234,56 €". Acepta los decimales que llegan de Laravel como string. */
-export function formatCurrency(amount: number | string | null | undefined): string {
+export function formatCurrency(
+    amount: number | string | null | undefined,
+): string {
     if (amount === null || amount === undefined || amount === '') {
         return '';
     }
@@ -101,7 +105,10 @@ export function formatNumber(value: number, maximumFractionDigits = 2): string {
 }
 
 /** 0.756 → "75,6 %". Admite valores > 1 (p. ej. consumo de bolsa 104 %). */
-export function formatPercent(ratio: number, maximumFractionDigits = 1): string {
+export function formatPercent(
+    ratio: number,
+    maximumFractionDigits = 1,
+): string {
     if (!Number.isFinite(ratio)) {
         return '';
     }
