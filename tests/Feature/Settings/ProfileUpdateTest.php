@@ -1,99 +1,79 @@
 <?php
 
-namespace Tests\Feature\Settings;
+use Illuminate\Support\Facades\Route;
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+test('la página de perfil se muestra', function () {
+    $this->actingAs(userWithRole('employee'))
+        ->get(route('profile.edit'))
+        ->assertOk();
+});
 
-class ProfileUpdateTest extends TestCase
-{
-    use RefreshDatabase;
+test('se puede actualizar el nombre y el correo', function () {
+    $user = userWithRole('employee');
 
-    public function test_profile_page_is_displayed()
-    {
-        $user = User::factory()->create();
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Nombre Nuevo',
+            'email' => 'nuevo@example.com',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
 
-        $response = $this
-            ->actingAs($user)
-            ->get(route('profile.edit'));
+    $user->refresh();
 
-        $response->assertOk();
-    }
+    expect($user->name)->toBe('Nombre Nuevo')
+        ->and($user->email)->toBe('nuevo@example.com')
+        ->and($user->email_verified_at)->toBeNull();
+});
 
-    public function test_profile_information_can_be_updated()
-    {
-        $user = User::factory()->create();
+test('si el correo no cambia, se mantiene verificado', function () {
+    $user = userWithRole('employee');
 
-        $response = $this
-            ->actingAs($user)
-            ->patch(route('profile.update'), [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-            ]);
+    $this->actingAs($user)
+        ->patch(route('profile.update'), ['name' => 'Otro Nombre', 'email' => $user->email])
+        ->assertSessionHasNoErrors();
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('profile.edit'));
+    expect($user->refresh()->email_verified_at)->not->toBeNull();
+});
 
-        $user->refresh();
+test('el perfil no permite tocar datos económicos, rol ni estado', function () {
+    $user = userWithRole('employee', ['hourly_cost' => '20.00']);
 
-        $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
-    }
+    $this->actingAs($user)->patch(route('profile.update'), [
+        'name' => 'Pepa',
+        'email' => $user->email,
+        'hourly_cost' => '999.00',
+        'default_hourly_rate' => '999.00',
+        'is_active' => false,
+        'department_id' => 999,
+    ])->assertSessionHasNoErrors();
 
-    public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged()
-    {
-        $user = User::factory()->create();
+    $user->refresh();
 
-        $response = $this
-            ->actingAs($user)
-            ->patch(route('profile.update'), [
-                'name' => 'Test User',
-                'email' => $user->email,
-            ]);
+    expect($user->hourly_cost)->toBe('20.00')
+        ->and($user->default_hourly_rate)->toBeNull()
+        ->and($user->is_active)->toBeTrue()
+        ->and($user->department_id)->toBeNull();
+});
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('profile.edit'));
+test('los errores de validación del perfil están en español', function () {
+    $this->actingAs(userWithRole('employee'))
+        ->from(route('profile.edit'))
+        ->patch(route('profile.update'), ['name' => '', 'email' => 'no-es-un-correo'])
+        ->assertSessionHasErrors([
+            'name' => 'El campo nombre es obligatorio.',
+            'email' => 'El campo correo electrónico debe ser un correo electrónico válido.',
+        ]);
+});
 
-        $this->assertNotNull($user->refresh()->email_verified_at);
-    }
+test('no existe el borrado de la propia cuenta', function () {
+    $user = userWithRole('employee');
 
-    public function test_user_can_delete_their_account()
-    {
-        $user = User::factory()->create();
+    expect(Route::has('profile.destroy'))->toBeFalse();
 
-        $response = $this
-            ->actingAs($user)
-            ->delete(route('profile.destroy'), [
-                'password' => 'password',
-            ]);
+    $this->actingAs($user)
+        ->delete('/ajustes/perfil', ['password' => 'password'])
+        ->assertMethodNotAllowed();
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('home'));
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account()
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from(route('profile.edit'))
-            ->delete(route('profile.destroy'), [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect(route('profile.edit'));
-
-        $this->assertNotNull($user->fresh());
-    }
-}
+    expect($user->fresh())->not->toBeNull();
+});

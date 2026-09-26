@@ -1,95 +1,90 @@
 <?php
 
-namespace Tests\Feature\Auth;
-
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
-use Tests\TestCase;
 
-class PasswordResetTest extends TestCase
-{
-    use RefreshDatabase;
+beforeEach(function () {
+    $this->skipUnlessFortifyHas(Features::resetPasswords());
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+test('la pantalla de recuperar contraseña se muestra', function () {
+    $this->get(route('password.request'))->assertOk();
+});
 
-        $this->skipUnlessFortifyHas(Features::resetPasswords());
-    }
+test('se puede pedir el enlace de recuperación', function () {
+    Notification::fake();
 
-    public function test_reset_password_link_screen_can_be_rendered()
-    {
-        $response = $this->get(route('password.request'));
+    $user = userWithRole('employee');
 
-        $response->assertOk();
-    }
+    $this->post(route('password.email'), ['email' => $user->email])
+        ->assertSessionHas('status', __('passwords.sent'));
 
-    public function test_reset_password_link_can_be_requested()
-    {
-        Notification::fake();
+    Notification::assertSentTo($user, ResetPassword::class);
+});
 
-        $user = User::factory()->create();
+test('la pantalla de nueva contraseña se muestra con un token', function () {
+    Notification::fake();
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+    $user = userWithRole('employee');
 
-        Notification::assertSentTo($user, ResetPassword::class);
-    }
+    $this->post(route('password.email'), ['email' => $user->email]);
 
-    public function test_reset_password_screen_can_be_rendered()
-    {
-        Notification::fake();
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) {
+        $this->get(route('password.reset', $notification->token))->assertOk();
 
-        $user = User::factory()->create();
+        return true;
+    });
+});
 
-        $this->post(route('password.email'), ['email' => $user->email]);
+test('la contraseña se restablece con un token válido', function () {
+    Notification::fake();
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-            $response = $this->get(route('password.reset', $notification->token));
+    $user = userWithRole('employee');
 
-            $response->assertOk();
+    $this->post(route('password.email'), ['email' => $user->email]);
 
-            return true;
-        });
-    }
-
-    public function test_password_can_be_reset_with_valid_token()
-    {
-        Notification::fake();
-
-        $user = User::factory()->create();
-
-        $this->post(route('password.email'), ['email' => $user->email]);
-
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-            $response = $this->post(route('password.update'), [
-                'token' => $notification->token,
-                'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
-            ]);
-
-            $response
-                ->assertSessionHasNoErrors()
-                ->assertRedirect(route('login'));
-
-            return true;
-        });
-    }
-
-    public function test_password_cannot_be_reset_with_invalid_token(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->post(route('password.update'), [
-            'token' => 'invalid-token',
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+        $this->post(route('password.update'), [
+            'token' => $notification->token,
             'email' => $user->email,
-            'password' => 'newpassword123',
-            'password_confirmation' => 'newpassword123',
-        ]);
+            'password' => 'nueva-contraseña',
+            'password_confirmation' => 'nueva-contraseña',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
 
-        $response->assertSessionHasErrors('email');
-    }
-}
+        expect(Hash::check('nueva-contraseña', $user->refresh()->password))->toBeTrue();
+
+        return true;
+    });
+});
+
+test('el token de restablecimiento es de un solo uso', function () {
+    $user = userWithRole('employee');
+    $token = Password::broker()->createToken($user);
+
+    $payload = [
+        'token' => $token,
+        'email' => $user->email,
+        'password' => 'nueva-contraseña',
+        'password_confirmation' => 'nueva-contraseña',
+    ];
+
+    $this->post(route('password.update'), $payload)->assertSessionHasNoErrors();
+    $this->post(route('password.update'), [...$payload, 'password' => 'otra', 'password_confirmation' => 'otra'])
+        ->assertSessionHasErrors('email');
+
+    expect(Hash::check('nueva-contraseña', User::query()->findOrFail($user->id)->password))->toBeTrue();
+});
+
+test('la contraseña no se restablece con un token inválido', function () {
+    $user = userWithRole('employee');
+
+    $this->post(route('password.update'), [
+        'token' => 'token-invalido',
+        'email' => $user->email,
+        'password' => 'nueva-contraseña',
+        'password_confirmation' => 'nueva-contraseña',
+    ])->assertSessionHasErrors(['email' => __('passwords.token')]);
+});
