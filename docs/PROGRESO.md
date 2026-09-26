@@ -36,7 +36,7 @@ _Última actualización: 26/09/2026 13:20_
 ## Siguiente
 1. Aprobación de `/styleguide`. Es un criterio de aceptación de la Fase 0.
 2. Crear el primer admin con `app:install --email=desarrollo@audaxstudio.com` (lo indicó el propietario el 26/09) y probar el login.
-3. Cerrar las dudas abiertas de `DECISIONES.md` antes de la Fase 1.
+3. ~~Cerrar las dudas abiertas~~ **Resueltas el 26/09** (D-019 a D-024). Aplicar D-024, el pivote `department_managers`, al integrar la rama del backend.
 
 ## Bloqueos: necesitamos del usuario
 - [x] Clave SSH del usuario `audaxprojects` para desplegar sin root (hecho por el propietario el 26/09, D-018).

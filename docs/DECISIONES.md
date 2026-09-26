@@ -23,7 +23,7 @@ Repositorio privado en GitHub (cuenta `administracion@audaxstudio.com`), con CI 
 Cada proyecto puede tener **varios gestores** (principal y co-gestores), elegidos en ese proyecto. Cada gestor puede escoger **qué alertas recibe** de ese proyecto. "Gestor" no es un rol global: es una relación por proyecto. Se implementa en la Fase 1.
 
 ### D-006 · Visibilidad del responsable de departamento **[concreta el SPEC §5]**
-El responsable **solo ve lo de su departamento**. La interpretación exacta está pendiente de confirmar antes de la Fase 1 (ver "Dudas abiertas").
+~~El responsable solo ve lo de su departamento.~~ **Sustituida por D-021** (26/09): los proyectos los ve todo el mundo; el responsable ve y gestiona solo las horas de su equipo.
 
 ### D-007 · Gráficas: Recharts
 Motivos para elegir **Recharts** (MIT) frente a ECharts:
@@ -94,10 +94,43 @@ Tampoco se puede **borrar la propia cuenta**: los usuarios se desactivan (SPEC �
 - **Tests completos:** en el servidor contra PostgreSQL 18 (`audax_projects_test`) y en CI, contra PostgreSQL 18.
 - **Scheduler:** con `schedule:work` en systemd (no con cron), para no sumar sesiones de cron, PAM, logind y dbus.
 
-## Dudas abiertas (a cerrar antes de la Fase 1)
-1. **Exceso de bolsa:** proponemos `overage_minutes` en cada entrada en lugar de partir la entrada en dos. `is_overage` pasaría a derivarse.
-2. **Aprobación de horas de responsables y admins:** proponemos que las de los responsables las apruebe el admin y que las de los admins se aprueben solas. Además, añadir el estado "devuelta con comentario".
-3. **Visibilidad del responsable:** proponemos que vea los proyectos con al menos un miembro o una bolsa de su departamento, más aquellos en los que es miembro o gestor. En horas, carga y productividad, solo su departamento.
-4. **Creación de clientes y proyectos:** proponemos admin y responsables.
-5. **Alertas por gestor:** proponemos que cada gestor elija las suyas, todas activadas por defecto, y que el admin pueda editarlas.
-6. **Un solo responsable por departamento** (`manager_user_id`): proponemos que sí.
+## 26/09/2026: Dudas de la Fase 1 resueltas con el propietario
+
+### D-019 · Exceso de bolsa en una sola entrada **[cambia el SPEC §4.4, §8.6 y la aceptación de la Fase 1]**
+- **Qué se guarda:** una imputación que cruza el saldo de la bolsa **no se parte**. Se guarda una sola entrada con `overage_minutes`, que indica cuántos de sus minutos son exceso (de 0 a `minutes`). `is_overage` pasa a ser un valor derivado (`overage_minutes > 0`).
+- **Cómo se ve:** informes, portal y facturación muestran por separado las horas en bolsa (`minutes − overage_minutes`) y las de exceso.
+- **Recálculo:** al editar o borrar entradas de una bolsa, se recalcula `overage_minutes` de las entradas **no bloqueadas**, en orden cronológico (`date` y después `created_at`). Las bloqueadas no cambian nunca.
+- **Aceptación de la Fase 1:** con política `allow`, una imputación que cruza el límite registra correctamente sus minutos de exceso. Con `block`, se rechaza indicando el saldo disponible (sin cambios respecto al SPEC).
+
+### D-020 · Aprobación de horas **[concreta el SPEC §7]**
+- Las horas de un **empleado** las aprueba (o **devuelve con comentario**) un responsable de su departamento. Si hay varios, cualquiera de ellos (D-024).
+- Las horas de **responsables y administradores se aprueban solas** al enviar la semana.
+- Un empleado **sin departamento** lo aprueba un administrador.
+- Estados de la semana: abierta, enviada, **devuelta** (con comentario; vuelve a ser editable), aprobada y bloqueada.
+- El ajuste global «aprobación obligatoria», si se desactiva, aprueba todo al enviar.
+
+### D-021 · Visibilidad de proyectos y horas **[cambia el SPEC §5 y §5.1]**
+- **Todos los usuarios internos ven todos los proyectos:** ficha, tareas, Gantt, chat del proyecto y consumo de las bolsas en %.
+- **Imputar horas** sigue reservado a los **miembros del proyecto** (SPEC §7), con la restricción de departamento de la bolsa. Ser miembro también determina quién participa en el chat del proyecto y quién recibe notificaciones.
+- **Horas, carga y productividad por persona:**
+  - un empleado solo ve las **suyas**,
+  - un responsable ve y gestiona (aprobar, devolver, reasignar carga) las de **las personas de su departamento**,
+  - un gestor ve las horas imputadas **a sus proyectos**,
+  - un administrador lo ve todo.
+- El detalle por persona de las bolsas y la pestaña «Horas» de un proyecto con las entradas de todos solo lo ven gestores del proyecto, responsables (con las horas de su equipo) y administradores. El empleado ve solo sus entradas.
+- Los datos económicos siguen protegidos por `view-financials`.
+
+### D-022 · Altas de clientes y proyectos
+- Crean **clientes y proyectos**: administradores y responsables de departamento.
+- Los **gestores** gestionan los proyectos que tienen asignados: tareas, bolsas, planificación, miembros y sus alertas.
+- Los **empleados** no crean.
+
+### D-023 · Alertas de los gestores **[concreta D-005]**
+- Cada gestor elige **sus** alertas en cada proyecto. Por defecto están todas activadas: umbrales de bolsa, exceso, etc.
+- Un administrador también puede ajustarlas.
+- Se guardan en el pivote `project_members`, con `is_manager` y `alert_preferences` (JSON).
+
+### D-024 · Varios responsables por departamento **[cambia el SPEC §4.1]**
+- `departments.manager_user_id` se sustituye por el pivote **`department_managers`** (`department_id`, `user_id`).
+- Todos los responsables de un departamento tienen los mismos permisos: aprobar horas y ausencias de su equipo, y ver y gestionar su carga y productividad.
+- El rol `department_manager` indica que el usuario puede ser responsable. Qué departamentos gestiona lo marca el pivote.

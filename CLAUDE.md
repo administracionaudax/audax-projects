@@ -13,7 +13,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | Fase | Estado |
 |---|---|
 | 0. Fundaciones | En curso: servidor desplegado; backend, frontend, styleguide, PWA y CI en integración |
-| 1. Núcleo | Pendiente (antes hay que cerrar las dudas abiertas de `DECISIONES.md`) |
+| 1. Núcleo | Pendiente (dudas resueltas: D-019 a D-024) |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
 | 4. Gantt | Pendiente |
