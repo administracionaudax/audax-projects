@@ -229,9 +229,13 @@ class ClientController extends Controller
             return [];
         }
 
+        // Solo las horas de las tareas de esas bolsas (por tarea y no por time_entries.hour_bank_id,
+        // que conserva la bolsa del momento de imputar): PostgreSQL no lleva la condición del join
+        // dentro de una subconsulta agrupada, y sin este filtro agregaría todas las horas.
         $logged = DB::table('time_entries')
             ->select('task_id')
             ->selectRaw('SUM(minutes) AS logged')
+            ->whereIn('task_id', DB::table('tasks')->select('id')->whereIn('hour_bank_id', $bankIds))
             ->groupBy('task_id');
 
         return DB::table('tasks')

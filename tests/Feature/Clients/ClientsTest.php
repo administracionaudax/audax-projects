@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -224,6 +225,25 @@ describe('ficha', function () {
                 ->where('hours.month_start', '2026-09-01')
                 ->where('hours.year', 2026)
                 ->where('can.update', false));
+    });
+
+    test('las horas comprometidas solo agregan las horas de las tareas de sus bolsas', function () {
+        $elsewhere = Task::factory()->inBank(HourBank::factory()->create())->create(['estimated_minutes' => 60]);
+        TimeEntry::factory()->forTask($elsewhere)->minutes(30)->on('2026-09-01')->create();
+
+        $sql = [];
+        DB::listen(function (QueryExecuted $query) use (&$sql): void {
+            $sql[] = $query->sql;
+        });
+
+        $this->actingAs($this->employee)
+            ->get("/clientes/{$this->client->id}")
+            ->assertInertia(fn (Assert $page) => $page->where('hourBanks.0.committed_minutes', (300 - 180) + 60));
+
+        $aggregations = array_values(array_filter($sql, fn (string $query): bool => str_contains($query, 'SUM(minutes) AS logged')));
+
+        expect($aggregations)->toHaveCount(1)
+            ->and($aggregations[0])->toContain('"task_id" in (select "id" from "tasks" where "hour_bank_id" in');
     });
 
     test('con view-financials llegan la tarifa del cliente y los importes de las bolsas', function () {
