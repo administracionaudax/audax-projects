@@ -107,5 +107,38 @@ Solo se han observado; **no se ha tocado nada**. Algunas afectan a la estabilida
 7. **SSH admite login de root** (con clave; la contraseña también está permitida por defecto). Recomendación, no urgente: `PermitRootLogin prohibit-password`.
 8. **Certificados caducados o no válidos** en varios sitios de `endesarrollo.pro`, emineo.es y staging.edicionesmonoculo.com (ver la línea base).
 
-## 11. Propuesta de despliegue
-_En preparación. Se añadirá aquí para tu aprobación._
+## 11. Propuesta de despliegue (resumen, **pendiente de aprobación**)
+
+> El runbook completo, con los comandos exactos, las comprobaciones, la vuelta atrás de cada paso y los riesgos, está en **[`RUNBOOK-DESPLIEGUE.md`](RUNBOOK-DESPLIEGUE.md)**.
+> Se elaboró con 3 diseños independientes, 2 jueces y 3 revisores adversariales; se incorporaron 34 objeciones, 1 de ellas bloqueante.
+
+### Arquitectura
+```
+Internet → Cloudflare (nube GRIS) → nginx de Plesk (compartido; los otros 38 sitios no cambian)
+  └─ projects.audaxstudio.com = SUSCRIPCIÓN PLESK PROPIA (usuario audaxprojects)
+       → Apache → PHP-FPM 8.4 DEDICADO (ondemand, máx. 6 procesos)
+       → Laravel: webspace/app/current/public (current → releases/dev)
+
+Docker (solo en 127.0.0.1): PostgreSQL 18 :15432 (1 GiB, 1,5 CPU) · Valkey 9 :16379 (contraseña, 448 MiB)
+systemd (usuario audaxprojects, grupo con techo de 768 MiB y 1,5 CPU): Horizon (colas) · scheduler
+Aplazados a su fase: Reverb (websockets), whisper (transcripción), backups (antes de meter datos reales)
+```
+
+### Por qué así
+- **Suscripción propia:** tiene usuario, pool PHP, logs y certificado propios. El WordPress de `audaxstudio.com` no puede leer el `.env`, y todo se elimina con un solo comando.
+- **Docker solo para lo que el servidor no tiene en buenas condiciones:**
+  - no hay PostgreSQL,
+  - MariaDB 10.3 está en fin de vida,
+  - el Redis compartido no tiene contraseña.
+  Ya hay otro proyecto (`ainia`) funcionando así.
+- **Nada escucha fuera de `127.0.0.1`.** No se abren puertos ni se toca el firewall de Plesk.
+- **Todo lleva límite de RAM y CPU.** Uso típico: 0,8–1,4 GB; techo permanente: ~3,9 GiB de los ~9–10 GiB disponibles.
+
+### Qué afecta a lo compartido (requiere tu aprobación y una franja de poco tráfico)
+1. **Unos 4 reinicios _graceful_ de Apache con recarga de nginx**, al crear la suscripción, ajustar PHP, emitir el certificado y activar la redirección HTTPS. Plesk los hace uno a uno. No cortan conexiones, y entre uno y otro se comprueban las 38 webs.
+2. **Docker añade reglas de iptables propias y una red interna** (172.30.50.0/24) para los dos contenedores. El firewall de Plesk no se toca.
+3. **El primer `composer install`** crea unos 15.000 ficheros que Imunify y maldet escanearán. Se vigila y se aborta si la carga se dispara.
+4. **Un `systemctl daemon-reload`** para registrar los servicios de la app.
+
+### Vuelta atrás global
+Parar y borrar las unidades `audax-*`, `docker compose down`, eliminar la suscripción y borrar el registro de Cloudflare. El procedimiento completo y sus comprobaciones están en el runbook, §5.

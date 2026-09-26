@@ -5,7 +5,7 @@ Registro de decisiones del proyecto. Las que cambian el SPEC llevan la etiqueta 
 ## 26/09/2026: Arranque de la Fase 0
 
 ### D-001 · Servidor de la app
-`svr.ztudio.es` (185.33.65.98, SSH por el puerto 22). La app va en `projects.audaxstudio.com`.
+`svr.ztudio.es` (185.33.65.98, **SSH por el puerto 5222**; el 22 está en DROP). La app va en `projects.audaxstudio.com`.
 
 ### D-002 · Desarrollo en el servidor **[cambia el SPEC §16.4 y §2 "Desarrollo local"]**
 El usuario ha decidido no montar Docker en el Mac y desarrollar directamente en `projects.audaxstudio.com`.
