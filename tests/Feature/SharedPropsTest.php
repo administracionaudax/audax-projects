@@ -3,6 +3,8 @@
 use App\Models\ActiveTimer;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('las props compartidas incluyen el usuario, su tema, sus roles y sus permisos', function () {
@@ -118,4 +120,27 @@ test('el portal de cliente no recibe temporizador ni configuración interna', fu
         ->assertInertia(fn (Assert $page) => $page
             ->missing('timer')
             ->missing('config'));
+});
+
+test('los endpoints JSON y las acciones con redirección no calculan las props compartidas (PERF-03)', function () {
+    $employee = User::factory()->employee()->create();
+    $this->actingAs($employee)->getJson('/notificaciones/recientes')->assertOk(); // Calienta las cachés.
+
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($employee)->getJson('/notificaciones/recientes')->assertOk()->assertJsonPath('unread', 0);
+
+    $unreadCounts = array_filter($queries, fn (string $sql): bool => str_contains($sql, 'count(*)') && str_contains($sql, '"notifications"'));
+    $timers = array_filter($queries, fn (string $sql): bool => str_contains($sql, '"active_timers"'));
+
+    expect($unreadCounts)->toHaveCount(1)
+        ->and($timers)->toBeEmpty();
+
+    // Y una página Inertia sí las lleva.
+    $this->actingAs($employee)
+        ->get('/')
+        ->assertInertia(fn (Assert $page) => $page->has('timer')->where('notifications.unread', 0)->has('config')->has('auth.can'));
 });
