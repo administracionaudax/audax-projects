@@ -55,6 +55,8 @@ beforeEach(function () {
  */
 dataset('rutas de horas', [
     'hoja semanal propia' => ['get', '/horas', [], ['ok', 'ok', 'ok']],
+    'enviar la semana propia' => ['post', '/horas/semana/enviar', ['week' => '2026-W39'], ['ok', 'ok', 'ok']],
+    'descartar el temporizador propio' => ['delete', '/temporizador', [], ['ok', 'ok', 'ok']],
     'hoja de otra persona' => ['get', '/horas?persona={owner}', [], ['ok', 'ok', 403]],
     'buscador de tareas' => ['get', '/horas/tareas?q=a', [], ['ok', 'ok', 'ok']],
     'buscador para otra persona' => ['get', '/horas/tareas?user_id={owner}', [], ['ok', 'ok', 403]],

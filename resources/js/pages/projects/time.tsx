@@ -59,11 +59,11 @@ export default function ProjectTime({
 }: ProjectTimePageProps) {
     const id = useId();
 
+    // Dos niveles: la pestaña ya se ve en la cabecera del proyecto (y en móvil no se amontonan).
     setLayoutProps({
         breadcrumbs: [
             { title: t('nav.projects'), href: urls.projects() },
-            { title: project.name, href: urls.project(project.id) },
-            { title: t('project_tabs.time'), href: projectTime(project.id) },
+            { title: project.name, href: projectTime(project.id) },
         ],
     });
 
