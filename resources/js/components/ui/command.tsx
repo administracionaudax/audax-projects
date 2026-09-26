@@ -88,11 +88,14 @@ function CommandInput({
 
 function CommandList({
   className,
+  label = t("command.list_label"),
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  // Sin label, cmdk etiqueta el listbox en inglés («Suggestions»).
   return (
     <CommandPrimitive.List
       data-slot="command-list"
+      label={label}
       className={cn(
         "max-h-[min(400px,60vh)] scroll-py-1 overflow-x-hidden overflow-y-auto",
         className

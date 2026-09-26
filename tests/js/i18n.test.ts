@@ -48,6 +48,13 @@ describe('t()', () => {
         ).toEqual([]);
     });
 
+    it('los nombres accesibles contienen el texto visible (WCAG 2.5.3)', () => {
+        expect(t('search.open', { shortcut: 'Ctrl K' })).toContain(
+            t('search.trigger'),
+        );
+        expect(t('portal.home_link')).toContain(t('portal.name'));
+    });
+
     it('no deja textos vacíos', () => {
         const empty = Object.entries(messages)
             .filter(([, value]) => value.trim() === '')

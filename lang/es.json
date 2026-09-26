@@ -97,6 +97,8 @@
     "load.level.under": "Holgada",
     "load.planned": ":minutes planificadas",
 
+    "toast.region": "Avisos",
+
     "nav.admin": "Administración",
     "nav.breadcrumbs": "Ruta de navegación",
     "nav.chat": "Chat",
@@ -119,6 +121,7 @@
     "user_menu.settings": "Ajustes",
 
     "command.description": "Busca un comando para ejecutarlo.",
+    "command.list_label": "Resultados",
     "command.title": "Paleta de comandos",
 
     "search.description": "Busca páginas, personas, clientes, proyectos, tareas y mensajes.",
@@ -133,7 +136,8 @@
     "search.input_label": "Buscar en la aplicación",
     "search.loading": "Buscando…",
     "search.min_length": "Escribe al menos :min caracteres para buscar.",
-    "search.open": "Abrir la búsqueda (:shortcut)",
+    "search.open": "Buscar… (:shortcut)",
+    "search.results_label": "Resultados de la búsqueda",
     "search.placeholder": "Buscar clientes, proyectos, tareas, personas…",
     "search.title": "Búsqueda global",
     "search.trigger": "Buscar…",
@@ -280,7 +284,7 @@
     "portal.cards.projects.empty": "Pronto verás aquí tus proyectos.",
     "portal.cards.projects.title": "Tus proyectos",
     "portal.greeting": "Hola, [[:name]]",
-    "portal.home_link": "Audax: ir al inicio del portal",
+    "portal.home_link": "Audax · Portal de clientes: ir al inicio",
     "portal.name": "Portal de clientes",
     "portal.subtitle": "Consulta el estado de tus bolsas de horas y de tus proyectos con Audax Studio.",
     "portal.title": "Portal de cliente",

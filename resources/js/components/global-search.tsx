@@ -173,7 +173,7 @@ export function SearchPalette({
                 placeholder={t('search.placeholder')}
                 aria-label={t('search.input_label')}
             />
-            <CommandList>
+            <CommandList label={t('search.results_label')}>
                 <div aria-live="polite" className="empty:hidden">
                     {status === 'idle' && (
                         <SearchMessage>
