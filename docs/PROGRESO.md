@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 26/09/2026 14:40_
+_Última actualización: 26/09/2026 15:25_
 
 ## Hecho
 
@@ -43,16 +43,23 @@ _Última actualización: 26/09/2026 14:40_
 - **Tests:** 300 de Pest en PostgreSQL 18 (en el servidor) y 284 de Vitest. PHPStan nivel 7 sin errores; lint y formato limpios.
 - **Primer admin creado:** `desarrollo@audaxstudio.com`, con enlace de un solo uso para fijar la contraseña.
 
+### Aceptación de la Fase 0 (26/09)
+- ✅ **`/styleguide` aprobada** por el propietario (15:20).
+- ✅ **El propietario entró** con `desarrollo@audaxstudio.com` (15:17, en el registro de accesos).
+- ✅ **E2E con Playwright y axe en local:** 5/5 (accesibilidad AA en claro y oscuro, contraste sobre el degradado, aislamiento del portal, y login con navegación, tema y cierre de sesión).
+- ✅ Tests de permisos, `SERVIDOR.md` y propuesta aprobada, primer despliegue sin afectar a otras webs.
+- ⏳ **CI de GitHub Actions:** se ejecuta en cada push a `fase-*`, pero con la deploy key no podemos leer su resultado (ver bloqueos).
+
 ## En curso
-- **Aprobación de `/styleguide` por el propietario.** Es un criterio de aceptación de la Fase 0.
-- **Primera entrada del admin**, para comprobar a mano login, tema y navegación, y activar el 2FA.
+- Cierre de la Fase 0: confirmar la CI en GitHub y fusionar `fase-0` en `main`.
 
 ## Siguiente
 1. Con `/styleguide` aprobada: cerrar la Fase 0, fusionar `fase-0` en `main` y comprobar que la CI de GitHub pasa.
 2. **Fase 1** (dudas ya resueltas: D-019 a D-024). Presentar el plan en modo plan antes de implementar (SPEC §0.3).
 
 ## Bloqueos: necesitamos del usuario
-- [ ] Aprobar `/styleguide`.
+- [x] Aprobar `/styleguide` (26/09).
+- [ ] Ver el resultado de la CI: `gh auth login` en el Mac, o que el propietario mire la pestaña *Actions* del repositorio.
 - [ ] Confirmar la propuesta D-013 (Vite+ en lugar de ESLint y Prettier).
 - [ ] Más adelante: datos SMTP (hasta entonces los emails van al log), destino de los backups y la lista inicial de empleados.
 

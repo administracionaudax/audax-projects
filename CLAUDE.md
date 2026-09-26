@@ -12,7 +12,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Estado de las fases
 | Fase | Estado |
 |---|---|
-| 0. Fundaciones | Casi terminada: desplegada y revisada; falta que el propietario apruebe `/styleguide` |
+| 0. Fundaciones | Aceptada (26/09): `/styleguide` aprobada; queda confirmar la CI en GitHub y fusionar en `main` |
 | 1. Núcleo | Pendiente (dudas resueltas: D-019 a D-024) |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
