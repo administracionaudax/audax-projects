@@ -12,7 +12,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 ## Estado de las fases
 | Fase | Estado |
 |---|---|
-| 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0`) |
+| 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0-cerrada`) |
 | 1. Núcleo | Siguiente: presentar el plan en modo plan (dudas resueltas: D-019 a D-024) |
 | 2. Informes | Pendiente |
 | 3. Carga | Pendiente |
