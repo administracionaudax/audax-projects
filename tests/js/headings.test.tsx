@@ -73,7 +73,7 @@ describe('jerarquía de encabezados por página', () => {
 
     it.each([
         ['apariencia', () => <Appearance />],
-        ['sesiones', () => <Sessions sessions={[]} />],
+        ['sesiones', () => <Sessions sessions={[]} supported />],
     ])(
         'ajustes (%s): «Ajustes» es el único h1, antes de los h2',
         (_n, page) => {

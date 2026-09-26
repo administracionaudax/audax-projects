@@ -334,5 +334,7 @@
     "sessions.title": "Sesiones",
     "sessions.unknown_browser": "Navegador desconocido",
     "sessions.unknown_ip": "IP desconocida",
-    "sessions.unknown_platform": "sistema desconocido"
+    "sessions.unknown_platform": "sistema desconocido",
+    "sessions.unsupported_description": "El servidor no guarda las sesiones en la base de datos, así que desde aquí no se pueden ver ni cerrar. Si crees que alguien ha entrado en tu cuenta, cambia tu contraseña y avisa a un administrador.",
+    "sessions.unsupported_title": "No se pueden gestionar las sesiones"
 }
