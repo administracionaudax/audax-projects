@@ -120,7 +120,9 @@ describe('aprobaciones (PERF-01)', () => {
             ),
         );
 
-        render(<Approvals pending={[pendingWeek()]} history={[]} limit={100} />);
+        render(
+            <Approvals pending={[pendingWeek()]} history={[]} limit={100} />,
+        );
 
         expect(fetchMock).not.toHaveBeenCalled();
 
@@ -128,9 +130,7 @@ describe('aprobaciones (PERF-01)', () => {
             screen.getByRole('button', { name: 'Ver el detalle (2)' }),
         );
 
-        await waitFor(() =>
-            expect(screen.getByText('Entrada 1')).toBeTruthy(),
-        );
+        await waitFor(() => expect(screen.getByText('Entrada 1')).toBeTruthy());
         expect(screen.getByText('Entrada 2')).toBeTruthy();
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(String(fetchMock.mock.calls[0][0])).toBe(
@@ -187,9 +187,7 @@ describe('aprobaciones (PERF-01)', () => {
         );
 
         await user.click(screen.getByRole('button', { name: 'Reintentar' }));
-        await waitFor(() =>
-            expect(screen.getByText('Entrada 1')).toBeTruthy(),
-        );
+        await waitFor(() => expect(screen.getByText('Entrada 1')).toBeTruthy());
 
         await user.click(
             screen.getByRole('button', { name: 'Ver el detalle (0)' }),
