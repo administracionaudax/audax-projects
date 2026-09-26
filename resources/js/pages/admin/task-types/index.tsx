@@ -5,6 +5,7 @@ import { AdminPage } from '@/components/admin/admin-page';
 import { ReorderButtons } from '@/components/admin/reorder-buttons';
 import { TaskTypeDialog } from '@/components/admin/task-type-dialog';
 import { TaskTypeIcon } from '@/components/admin/task-type-icon';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/styleguide/status-badges';
@@ -80,6 +81,7 @@ function DeleteTaskType({ taskType }: { taskType: AdminTaskType }) {
             onConfirm={() =>
                 router.delete(destroy.url(taskType.id), {
                     preserveScroll: true,
+                    onError: toastVisitErrors,
                     onStart: () => setProcessing(true),
                     onFinish: () => {
                         setProcessing(false);

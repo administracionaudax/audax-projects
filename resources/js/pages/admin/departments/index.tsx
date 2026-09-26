@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AdminPage } from '@/components/admin/admin-page';
 import { ColorDot } from '@/components/admin/color-picker';
 import { DepartmentDialog } from '@/components/admin/department-dialog';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,7 @@ function DeleteDepartment({ department }: { department: AdminDepartment }) {
             onConfirm={() =>
                 router.delete(destroy.url(department.id), {
                     preserveScroll: true,
+                    onError: toastVisitErrors,
                     onStart: () => setProcessing(true),
                     onFinish: () => {
                         setProcessing(false);

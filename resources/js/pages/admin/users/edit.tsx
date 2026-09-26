@@ -17,6 +17,7 @@ import {
     UserFormFields,
 } from '@/components/admin/user-form-fields';
 import type { UserFormData } from '@/components/admin/user-form-fields';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { WEEK_DAYS_SHORT } from '@/components/admin/week-minutes-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
@@ -107,6 +108,7 @@ export default function AdminUserEdit({
             {},
             {
                 preserveScroll: true,
+                onError: toastVisitErrors,
                 onStart: () => setResending(true),
                 onFinish: () => setResending(false),
             },
@@ -119,6 +121,7 @@ export default function AdminUserEdit({
             {},
             {
                 preserveScroll: true,
+                onError: toastVisitErrors,
                 onStart: () => setReactivating(true),
                 onFinish: () => setReactivating(false),
             },
@@ -137,6 +140,7 @@ export default function AdminUserEdit({
             }),
             {
                 preserveScroll: true,
+                onError: toastVisitErrors,
                 onStart: () => setDeleting(true),
                 onFinish: () => {
                     setDeleting(false);

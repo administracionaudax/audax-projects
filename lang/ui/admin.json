@@ -310,5 +310,6 @@
     "admin.settings.attachments.max": "Tamaño máximo de un adjunto",
     "admin.settings.attachments.max_help": "Entre 1 y 200 MB. El servidor también puede limitar la subida.",
     "admin.settings.attachments.server_limit": "Entre 1 y 200 MB. El servidor admite ahora subidas de hasta :mb MB.",
-    "admin.settings.attachments.over_server_limit": "El servidor solo admite subidas de hasta :mb MB: los archivos más grandes fallarán aunque este ajuste los permita."
+    "admin.settings.attachments.over_server_limit": "El servidor solo admite subidas de hasta :mb MB: los archivos más grandes fallarán aunque este ajuste los permita.",
+    "admin.errors.action_failed": "No se ha podido completar. Recarga la página y vuelve a intentarlo."
 }

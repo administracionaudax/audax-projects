@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { ClientDialog } from '@/components/clients/client-dialog';
 import { ClientHourBankCard } from '@/components/clients/client-hour-bank-card';
 import { ClientStatusBadge } from '@/components/clients/client-status-badge';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
     HourBankStatusBadge,
@@ -122,6 +123,7 @@ export default function ClientShow({
             {},
             {
                 preserveScroll: true,
+                onError: toastVisitErrors,
                 onStart: () => setProcessing(true),
                 onFinish: () => {
                     setProcessing(false);

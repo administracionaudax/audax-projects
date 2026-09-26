@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useState } from 'react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 
@@ -35,6 +36,7 @@ export function ReorderButtons({
             {
                 preserveScroll: true,
                 preserveState: true,
+                onError: toastVisitErrors,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
             },
