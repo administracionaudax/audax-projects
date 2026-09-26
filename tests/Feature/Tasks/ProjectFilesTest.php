@@ -109,3 +109,10 @@ it('pagina y no hace N+1', function () {
 
     expect($count())->toBe($few);
 });
+
+it('ignora filtros mal formados', function () {
+    ($this->file)(['original_name' => 'acta.pdf']);
+
+    expect(($this->names)('?tipo[]=pdf&tarea_id[]=1'))->toBe(['acta.pdf'])
+        ->and(($this->names)('?tarea_id=abc'))->toBe(['acta.pdf']);
+});

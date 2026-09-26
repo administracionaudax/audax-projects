@@ -229,8 +229,8 @@ class ProjectTasksController extends Controller
     private function filters(Request $request): array
     {
         $assignee = $request->query(self::QUERY['assignee']);
-        $priority = TaskPriority::tryFrom((string) $request->query(self::QUERY['priority'], ''));
-        $group = (string) $request->query(self::QUERY['group'], 'status');
+        $priority = TaskPriority::tryFrom($this->stringOrEmpty($request->query(self::QUERY['priority'])));
+        $group = $this->stringOrEmpty($request->query(self::QUERY['group']));
 
         return [
             'assignee' => $assignee === 'ninguno' ? 'none' : $this->intOrNull($assignee),
@@ -242,6 +242,14 @@ class ProjectTasksController extends Controller
             'completed' => $request->boolean(self::QUERY['completed']),
             'group' => in_array($group, self::GROUPS, true) ? $group : 'status',
         ];
+    }
+
+    /**
+     * Los parámetros de la URL pueden llegar como arrays (?tipo[]=…): se ignoran.
+     */
+    private function stringOrEmpty(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 
     private function intOrNull(mixed $value): ?int

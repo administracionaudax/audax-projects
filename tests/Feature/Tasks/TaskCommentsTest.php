@@ -188,3 +188,16 @@ it('el panel agrupa las reacciones y marca las propias', function () {
         ->and($panel['comments'][0]['can_delete'])->toBeTrue()
         ->and($panel['reaction_emojis'])->toBe(CommentReaction::EMOJIS);
 });
+
+it('los comentarios de una tarea borrada ya no se editan ni reciben reacciones', function () {
+    $comment = TaskComment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->author->id, 'body' => '<p>Original</p>']);
+    $this->task->delete();
+
+    $this->actingAs($this->author)->patch("/comentarios/{$comment->id}", ['body' => '<p>Cambiado</p>'])->assertNotFound();
+    $this->actingAs($this->author)->post("/comentarios/{$comment->id}/reacciones", ['emoji' => '👍'])->assertNotFound();
+    $this->actingAs($this->author)->post("/tareas/{$this->task->id}/comentarios", ['body' => '<p>Hola</p>'])->assertNotFound();
+
+    expect($comment->fresh()?->body)->toBe('<p>Original</p>')
+        ->and($comment->fresh()?->edited_at)->toBeNull()
+        ->and(CommentReaction::query()->count())->toBe(0);
+});

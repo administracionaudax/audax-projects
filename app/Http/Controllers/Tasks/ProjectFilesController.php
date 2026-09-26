@@ -58,12 +58,13 @@ class ProjectFilesController extends Controller
         /** @var User $user */
         $user = $request->user();
         $project->loadMissing(['client', 'owner']);
-        $category = (string) $request->query('tipo', '');
+        // Los parámetros pueden llegar como arrays (?tipo[]=…): entonces se ignoran.
+        $type = $request->query('tipo');
+        $category = is_string($type) ? $type : '';
         $mimes = self::CATEGORIES[$category] ?? null;
         $category = $mimes === null ? null : $category;
-        $taskId = is_string($request->query('tarea_id')) && ctype_digit((string) $request->query('tarea_id'))
-            ? (int) $request->query('tarea_id')
-            : null;
+        $taskParam = $request->query('tarea_id');
+        $taskId = is_string($taskParam) && ctype_digit($taskParam) ? (int) $taskParam : null;
 
         $taskMorph = (new Task)->getMorphClass();
         $commentMorph = (new TaskComment)->getMorphClass();

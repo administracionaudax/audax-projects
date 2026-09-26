@@ -83,6 +83,8 @@ class TaskCommentController extends Controller
         $body = RichText::sanitize($request->string('body')->toString()) ?? '';
         $mentioned = $this->mentionable(RichText::mentionedUserIds($body));
         $previous = array_map('intval', $comment->mentioned_user_ids ?? []);
+        // Un comentario de una tarea borrada ya no se edita (404).
+        $task = $comment->task()->with('project')->firstOrFail();
 
         $comment->forceFill([
             'body' => $body,
@@ -90,7 +92,6 @@ class TaskCommentController extends Controller
             'edited_at' => now(),
         ])->save();
 
-        $task = $comment->task()->with('project')->firstOrFail();
         $this->notifier->mentioned($task, $user, array_values(array_diff($mentioned, $previous)), TaskMentionedNotification::IN_COMMENT, $body);
 
         return back();

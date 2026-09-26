@@ -302,3 +302,19 @@ it('el panel con varios comentarios, reacciones y adjuntos no hace N+1', functio
 
     expect($count())->toBe($few);
 });
+
+it('ignora parámetros de la URL mal formados (arrays o valores desconocidos)', function () {
+    Task::factory()->create(['project_id' => $this->project->id]);
+
+    $this->actingAs($this->user)
+        ->get($this->url.'?prioridad[]=urgent&agrupar[]=tipo&responsable[]=1&estado=abc&vista=otra&tarea[]=1')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('view', 'list')
+            ->where('filters.priority', null)
+            ->where('filters.group', 'status')
+            ->where('filters.assignee', null)
+            ->where('filters.status', null)
+            ->where('panel', null)
+            ->has('tasks', 1));
+});
