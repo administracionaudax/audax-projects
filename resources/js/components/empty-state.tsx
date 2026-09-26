@@ -74,8 +74,9 @@ export function EmptyState({
 
 /**
  * Estado vacío grande con el degradado de marca (SPEC §3.1: solo login, cabecera del portal
- * y estados vacíos grandes). El bloque se pinta con los tokens del tema oscuro (clase `dark`)
- * para que el texto y la palabra clave cumplan el contraste sobre el degradado.
+ * y estados vacíos grandes). El bloque se pinta con los tokens del tema oscuro (clase `dark`);
+ * el texto secundario y la palabra clave usan los colores `on-gradient-*`, que cumplen AA en toda
+ * la superficie del degradado con su velo (tests/js/brand-gradient-contrast.test.ts).
  */
 export function HeroEmptyState({
     icon: Icon,
@@ -113,18 +114,18 @@ export function HeroEmptyState({
                     </span>
                 )}
                 {eyebrow && (
-                    <p className="text-sm tracking-wide text-muted-foreground uppercase">
+                    <p className="text-sm tracking-wide text-on-gradient-muted uppercase">
                         {eyebrow}
                     </p>
                 )}
                 <h1 className="text-3xl leading-tight font-normal text-balance sm:text-4xl">
                     <KeywordText
                         text={title}
-                        keywordClassName="text-primary-text"
+                        keywordClassName="text-on-gradient-keyword"
                     />
                 </h1>
                 {description && (
-                    <p className="max-w-xl text-base text-muted-foreground">
+                    <p className="max-w-xl text-base text-on-gradient-muted">
                         {description}
                     </p>
                 )}

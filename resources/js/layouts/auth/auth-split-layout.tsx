@@ -7,8 +7,10 @@ import type { AuthLayoutProps } from '@/types';
 /**
  * Layout de autenticación (SPEC §3.1): panel con el degradado de marca y formulario sobre el fondo.
  * En móvil el degradado queda como cabecera compacta.
- * El panel usa los tokens del tema oscuro (clase `dark`) para que el texto y la palabra clave
- * en azul claro (`text-primary-text`) cumplan AA sobre el degradado en cualquier tema.
+ * El panel usa los tokens del tema oscuro (clase `dark`). Sobre el degradado (que lleva su velo
+ * navy, ver --brand-veil en app.css) el texto secundario va en `text-on-gradient-muted` (blanco
+ * al 85 %) y la palabra clave en `text-on-gradient-keyword`: ambos cumplen AA en toda la
+ * superficie, también en la franja inferior clara (tests/js/brand-gradient-contrast.test.ts).
  */
 export default function AuthSplitLayout({
     children,
@@ -25,15 +27,15 @@ export default function AuthSplitLayout({
                     <p className="max-w-md text-2xl leading-tight text-balance lg:text-4xl">
                         <KeywordText
                             text={t('brand.tagline')}
-                            keywordClassName="text-primary-text"
+                            keywordClassName="text-on-gradient-keyword"
                         />
                     </p>
-                    <p className="hidden max-w-md text-base text-muted-foreground lg:block">
+                    <p className="hidden max-w-md text-base text-on-gradient-muted lg:block">
                         {t('brand.tagline_description')}
                     </p>
                 </div>
 
-                <p className="hidden text-sm text-muted-foreground lg:block">
+                <p className="hidden text-sm text-on-gradient-muted lg:block">
                     {t('brand.company')}
                 </p>
             </aside>

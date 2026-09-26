@@ -43,6 +43,8 @@
     --color-primary-foreground: var(--primary-foreground);
     --color-primary-text: var(--primary-text);
     --color-on-dark-foreground: var(--on-dark-foreground);
+    --color-on-gradient-muted: var(--on-gradient-muted);
+    --color-on-gradient-keyword: var(--on-gradient-keyword);
 
     --color-brand: var(--brand);
     --color-brand-navy: var(--brand-navy);
@@ -122,6 +124,26 @@
             rgb(77 53 137 / 0) 100%
         ),
         #001b39;
+    /*
+     * Velo navy del degradado (UI-02). El degradado tiene zonas claras abajo (turquesa
+     * rgb(0 189 206) a la derecha y azul claro rgb(186 218 255) a la izquierda) en las que
+     * ningún texto claro llega a AA. bg-brand-gradient pinta este velo ENCIMA del degradado:
+     * navy al 75 % en el borde inferior que se desvanece hacia arriba. Criterio, comprobado en
+     * TODA la superficie (el degradado escala con la caja, así que vale para cualquier tamaño)
+     * por tests/js/brand-gradient-contrast.test.ts:
+     *   - texto normal (foreground del tema oscuro, blanco, --on-gradient-muted) ≥ 4,5:1,
+     *   - palabra clave --on-gradient-keyword ≥ 4,5:1 (aunque suela ir en texto grande),
+     *   - anillo de foco (--ring del tema oscuro) ≥ 3:1.
+     * Si cambias el velo, el degradado o estos colores, el test dirá si sigue cumpliendo.
+     */
+    --brand-veil: linear-gradient(
+        to top,
+        rgb(0 27 57 / 0.75) 0%,
+        rgb(0 27 57 / 0) 100%
+    );
+    /* Texto secundario y palabra clave sobre el degradado (fijos en ambos temas). */
+    --on-gradient-muted: rgb(255 255 255 / 0.85);
+    --on-gradient-keyword: #8cbbff;
 
     --background: #ffffff;
     --foreground: #001b39;
@@ -243,6 +265,7 @@
     }
 }
 
+/* Degradado de marca con su velo navy encima (ver --brand-veil): nunca se usa sin el velo. */
 @utility bg-brand-gradient {
-    background: var(--brand-gradient);
+    background: var(--brand-veil), var(--brand-gradient);
 }

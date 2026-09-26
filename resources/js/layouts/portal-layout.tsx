@@ -44,7 +44,7 @@ export default function PortalLayout({
                         aria-label={t('portal.home_link')}
                     >
                         <AudaxWordmark tone="inverse" className="h-4" />
-                        <span className="hidden text-sm text-muted-foreground sm:inline">
+                        <span className="hidden text-sm text-on-gradient-muted sm:inline">
                             {t('portal.name')}
                         </span>
                     </Link>
@@ -74,7 +74,7 @@ export default function PortalLayout({
                                     </span>
                                     <ChevronDown
                                         aria-hidden="true"
-                                        className="size-4 text-muted-foreground"
+                                        className="size-4 text-on-gradient-muted"
                                     />
                                 </button>
                             </DropdownMenuTrigger>
