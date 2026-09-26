@@ -61,5 +61,20 @@
     "invitation.title": "Te damos la bienvenida",
     "invitation.description": "Elige tu contraseña para empezar a usar Audax Proyectos.",
     "invitation.password": "Contraseña",
-    "invitation.submit": "Guardar y entrar"
+    "invitation.submit": "Guardar y entrar",
+    "error_page.code": "Error :status",
+    "error_page.home": "Ir a Inicio",
+    "error_page.back": "Volver atrás",
+    "error_page.403.title": "No tienes acceso a esta página",
+    "error_page.403.description": "Tu cuenta no tiene permiso para ver esto. Si crees que deberías tenerlo, pídeselo a un administrador.",
+    "error_page.404.title": "No encontramos esta página",
+    "error_page.404.description": "Puede que la dirección esté mal escrita o que lo que buscas se haya eliminado.",
+    "error_page.419.title": "La página ha caducado",
+    "error_page.419.description": "Ha pasado demasiado tiempo sin actividad. Recarga la página y vuelve a intentarlo.",
+    "error_page.429.title": "Demasiadas peticiones seguidas",
+    "error_page.429.description": "Espera un momento antes de volver a intentarlo.",
+    "error_page.500.title": "Algo ha salido mal",
+    "error_page.500.description": "Ha ocurrido un error inesperado. Vuelve a intentarlo dentro de unos minutos.",
+    "error_page.503.title": "Estamos haciendo mantenimiento",
+    "error_page.503.description": "La aplicación vuelve en unos minutos."
 }

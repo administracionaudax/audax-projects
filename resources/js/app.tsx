@@ -19,8 +19,9 @@ void createInertiaApp({
     title: (title) => (title ? `${title} · ${appName}` : appName),
     layout: (name, page) => {
         switch (true) {
-            // La guía de estilo es pública en desarrollo y trae su propia maquetación.
-            case name === 'styleguide':
+            // La guía de estilo es pública en desarrollo y trae su propia maquetación. La página
+            // de error, también: en un 404 de una ruta que no existe no hay props compartidas.
+            case name === 'styleguide' || name === 'error':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

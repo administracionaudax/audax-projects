@@ -12,6 +12,7 @@ return [
     'forbidden' => 'No tienes permiso para acceder a esta sección.',
     'two_factor_required' => 'Para seguir usando la aplicación, activa la verificación en dos pasos.',
     'profile_updated' => 'Perfil actualizado.',
+    'page_expired' => 'La página ha caducado. Vuelve a intentarlo.',
     'password_updated' => 'Contraseña actualizada.',
     'appearance_updated' => 'Tema actualizado.',
     'invitation_accepted' => 'Tu contraseña está lista. Ya puedes entrar.',

@@ -69,3 +69,38 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
         await expect(page).toHaveURL(/\/login(?:\?|$)/);
     });
 });
+
+/**
+ * UX-03: los errores se explican en español, con el tema de la app, y sin el mensaje en inglés de
+ * la excepción (403 por rol de Spatie, 404 de un recurso que no existe).
+ */
+test('una página sin permiso o que no existe se explica en español', async ({
+    page,
+}) => {
+    await login(page, USERS.employee);
+
+    const forbidden = await page.goto('/admin');
+    expect(forbidden?.status()).toBe(403);
+    await expect(
+        page.getByRole('heading', {
+            level: 1,
+            name: 'No tienes acceso a esta página',
+        }),
+    ).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(
+        page.getByText('User does not have the right roles'),
+    ).toHaveCount(0);
+
+    const missing = await page.goto('/proyectos/999999');
+    expect(missing?.status()).toBe(404);
+    await expect(
+        page.getByRole('heading', {
+            level: 1,
+            name: 'No encontramos esta página',
+        }),
+    ).toBeVisible();
+
+    await page.getByRole('link', { name: 'Ir a Inicio' }).click();
+    await expect(page).toHaveURL(/\/$/);
+});
