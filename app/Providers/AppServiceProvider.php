@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -128,6 +129,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Consultas N+1 (SPEC §19): en local y en los tests, cargar una relación sin eager loading falla.
         Model::preventLazyLoading(! app()->isProduction());
+
+        // Los Resources se envían tal cual a Inertia, sin el envoltorio {data: …} (también los
+        // anidados): el contrato es resources/js/types/domain.ts. Las colecciones PAGINADAS siguen
+        // llegando como {data, links, meta}.
+        JsonResource::withoutWrapping();
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
