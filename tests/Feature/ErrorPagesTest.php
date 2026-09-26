@@ -56,6 +56,23 @@ test('en una visita de Inertia el error llega como página de Inertia (no como H
         ->assertJsonPath('props.status', 403);
 });
 
+test('en una acción de Inertia dentro de la página (PATCH, recarga parcial) llega la respuesta de Laravel, en español, para que la página la trate sin salir', function () {
+    $employee = User::factory()->employee()->create();
+    $version = (string) app(HandleInertiaRequests::class)->version(request());
+    $headers = ['X-Inertia' => 'true', 'X-Inertia-Version' => $version];
+
+    $response = $this->actingAs($employee)->patch('/tareas/999999', ['title' => 'x'], $headers);
+    $response->assertNotFound();
+    expect($response->headers->has('X-Inertia'))->toBeFalse()
+        ->and($response->getContent())->toContain('Página no encontrada');
+
+    $response = $this->actingAs($employee)->get('/admin', [...$headers, 'X-Inertia-Partial-Component' => 'admin/index', 'X-Inertia-Partial-Data' => 'x']);
+    $response->assertForbidden();
+    expect($response->headers->has('X-Inertia'))->toBeFalse()
+        ->and($response->getContent())->toContain('No tienes permiso para ver esta página.')
+        ->not->toContain('User does not have the right roles');
+});
+
 test('las peticiones JSON siguen recibiendo JSON', function () {
     $employee = User::factory()->employee()->create();
 

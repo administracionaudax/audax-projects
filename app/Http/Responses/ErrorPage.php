@@ -12,9 +12,14 @@ use Throwable;
  * 403, 404, 419, 429, 500 y 503 de las peticiones que no esperan JSON se pintan con la página
  * Inertia «error», con el tema de la app y un mensaje propio (nunca el texto en inglés de la
  * excepción, p. ej. el de Spatie «User does not have the right roles.»).
+ * - Solo en las visitas de página completa: la carga normal del navegador y la navegación de
+ *   Inertia (GET sin recarga parcial). Las acciones de Inertia dentro de una página (POST, PATCH,
+ *   DELETE… y las recargas parciales) siguen recibiendo la respuesta de Laravel, que sus
+ *   onHttpException tratan sin salir de la página (deshacer y avisar); si alguna no la trata,
+ *   el modal de Inertia la enseña en español (lang/es.json traduce las vistas de error).
  * - Las peticiones JSON (fetch de la campana, buscadores…) siguen recibiendo JSON.
  * - Con APP_DEBUG, un 500 muestra la página de depuración de Laravel.
- * - Un 419 (sesión o CSRF caducados) en una visita de Inertia vuelve a la página anterior con un
+ * - Un 419 (sesión o CSRF caducados) en una acción de Inertia vuelve a la página anterior con un
  *   aviso, en lugar de sustituirla y perder el formulario.
  */
 final class ErrorPage
@@ -32,11 +37,17 @@ final class ErrorPage
             return $response;
         }
 
+        $inertia = $request->hasHeader('X-Inertia');
+
         try {
-            if ($status === 419 && $request->hasHeader('X-Inertia') && $request->hasSession()) {
+            if ($status === 419 && $inertia && $request->hasSession()) {
                 Inertia::flash('toast', ['type' => 'warning', 'message' => __('app.page_expired')]);
 
                 return redirect()->back(303);
+            }
+
+            if ($inertia && (! $request->isMethod('GET') || $request->hasHeader('X-Inertia-Partial-Data'))) {
+                return $response;
             }
 
             return Inertia::render('error', ['status' => $status])

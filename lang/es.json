@@ -322,5 +322,17 @@
     "two_factor.setup.verify_title": "Verifica el código",
     "user_menu.logout": "Cerrar sesión",
     "user_menu.open": "Abrir el menú de usuario",
-    "user_menu.settings": "Ajustes"
+    "user_menu.settings": "Ajustes",
+    "Forbidden": "Sin acceso",
+    "Not Found": "Página no encontrada",
+    "Page Expired": "Página caducada",
+    "Server Error": "Error del servidor",
+    "Too Many Requests": "Demasiadas peticiones",
+    "Service Unavailable": "En mantenimiento",
+    "Unauthorized": "Sin sesión",
+    "Payment Required": "Pago requerido",
+    "This action is unauthorized.": "No tienes permiso para hacer esto.",
+    "User does not have the right roles.": "No tienes permiso para ver esta página.",
+    "User does not have the right permissions.": "No tienes permiso para ver esta página.",
+    "User is not logged in.": "Inicia sesión para continuar."
 }
