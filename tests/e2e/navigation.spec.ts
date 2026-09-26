@@ -101,6 +101,6 @@ test('una página sin permiso o que no existe se explica en español', async ({
         }),
     ).toBeVisible();
 
-    await page.getByRole('link', { name: 'Ir a Inicio' }).click();
+    await page.getByRole('link', { name: 'Ir a Inicio', exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
 });

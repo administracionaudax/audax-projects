@@ -113,6 +113,130 @@ test('el temporizador se inicia desde Mis tareas, aparece en la cabecera y se pu
     await expect(page.locator('[data-test="header-log-time"]')).toBeVisible();
 });
 
+/**
+ * Flujo crítico del plan de la Fase 1 (BRN-09): crear la bolsa y una tarea, imputar con el
+ * temporizador y a mano, comprobar el consumo y el exceso en la tarjeta (política allow) y renovar.
+ */
+test('bolsa de principio a fin: crearla, tarea, temporizador imputado, consumo y exceso, renovación', async ({
+    page,
+}) => {
+    test.setTimeout(120_000);
+    const stamp = Date.now();
+    const bankName = `Bolsa E2E ${stamp}`;
+    const taskTitle = `Tarea E2E ${stamp}`;
+    const sections = page.getByRole('navigation', {
+        name: 'Secciones del proyecto',
+    });
+
+    await login(page, USERS.manager);
+    await page.goto('/proyectos?buscar=ARR-WEB');
+    await page.getByRole('link', { name: 'Web corporativa' }).first().click();
+
+    await test.step('crear una bolsa de 1 h (de cualquier departamento, admite exceso)', async () => {
+        await sections.getByRole('link', { name: 'Bolsas' }).click();
+        await page.getByRole('button', { name: 'Nueva bolsa' }).click();
+        const form = page.getByRole('dialog', { name: 'Nueva bolsa de horas' });
+        await form.getByLabel('Nombre').fill(bankName);
+        await form.getByLabel('Total de horas').fill('1:00');
+        await form.getByRole('button', { name: 'Crear la bolsa' }).click();
+        await expect(form).toBeHidden();
+        await expect(
+            page
+                .locator('[data-test="hour-bank-card"]')
+                .filter({ hasText: bankName }),
+        ).toContainText('0:00 / 1:00');
+    });
+
+    await test.step('crear una tarea en la bolsa', async () => {
+        await sections.getByRole('link', { name: 'Tareas' }).click();
+        await page
+            .getByRole('combobox', { name: 'Bolsa de la nueva tarea' })
+            .first()
+            .click();
+        await page.getByRole('option', { name: bankName }).click();
+        const input = page.locator('[data-test="quick-add-input"]').first();
+        await input.fill(taskTitle);
+        await input.press('Enter');
+        await expect(
+            page
+                .locator('[data-test="task-row"]')
+                .filter({ hasText: taskTitle }),
+        ).toBeVisible();
+    });
+
+    await test.step('el temporizador imputa lo medido al pararlo', async () => {
+        await page
+            .getByRole('button', {
+                name: `Iniciar el temporizador en «${taskTitle}»`,
+            })
+            .first()
+            .click();
+        await expect(page.locator('[data-test="timer-chip"]')).toBeVisible();
+
+        // Más de medio minuto: con el redondeo por defecto (al minuto) se imputa 0:01.
+        await page.waitForTimeout(35_000);
+        await page
+            .locator('[data-test="timer-chip"]')
+            .getByRole('button', {
+                name: `Parar el temporizador de «${taskTitle}»`,
+            })
+            .click();
+        await expect(
+            page.getByText(
+                `Temporizador parado: 0:01 imputadas en «${taskTitle}».`,
+            ),
+        ).toBeVisible();
+        await expect(page.locator('[data-test="timer-chip"]')).toBeHidden();
+    });
+
+    await test.step('una imputación que cruza el límite va en parte como exceso', async () => {
+        const dialog = await openLogDialog(page);
+        await pickTask(page, taskTitle, 'ARR-WEB');
+        await dialog.getByLabel('Duración').fill('1:30');
+        await dialog.getByRole('button', { name: 'Guardar horas' }).click();
+        await expect(dialog).toBeHidden();
+        await expect(
+            page.getByText(/0:31 de esta entrada se registrarán como exceso/),
+        ).toBeVisible();
+    });
+
+    await test.step('la tarjeta de la bolsa refleja el consumo y el exceso', async () => {
+        await sections.getByRole('link', { name: 'Bolsas' }).click();
+        const card = page
+            .locator('[data-test="hour-bank-card"]')
+            .filter({ hasText: bankName });
+        await expect(card).toContainText('1:31 / 1:00');
+        await expect(card).toContainText('+0:31 de exceso');
+        await expect(card).toContainText('Agotada');
+    });
+
+    await test.step('renovar crea una bolsa nueva y la anterior queda renovada', async () => {
+        const card = page
+            .locator('[data-test="hour-bank-card"]')
+            .filter({ hasText: bankName });
+        await card.getByRole('button', { name: 'Renovar' }).click();
+        const dialog = page.getByRole('dialog', {
+            name: `Renovar «${bankName}»`,
+        });
+        await expect(dialog).toContainText(
+            'Las horas ya imputadas (1:31) se quedan en la bolsa actual',
+        );
+        await dialog.getByRole('button', { name: 'Renovar la bolsa' }).click();
+        await expect(dialog).toBeHidden();
+
+        // Se abre el detalle de la bolsa nueva: sin consumo, activa y enlazada a la anterior, que
+        // queda renovada (las horas no se mueven).
+        await expect(page).toHaveURL(/\/bolsas\/\d+$/);
+        const detail = page.getByRole('region').filter({
+            has: page.getByRole('heading', { level: 2, name: bankName }),
+        });
+        await expect(detail).toContainText('0:00 / 1:00');
+        await expect(detail).toContainText('Activa');
+        await expect(detail).toContainText('Renueva a');
+        await expect(detail).toContainText('Renovada');
+    });
+});
+
 test.describe.serial('aprobación de la semana (D-020)', () => {
     test('la persona envía su semana y su responsable la aprueba', async ({
         page,
