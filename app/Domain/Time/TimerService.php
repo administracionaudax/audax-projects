@@ -20,8 +20,10 @@ use Illuminate\Validation\ValidationException;
  * - al parar se crean entradas en borrador con TimeEntryWriter: una por día local (Europe/Madrid)
  *   si cruza la medianoche, con los minutos redondeados al múltiplo más cercano del ajuste
  *   timer_rounding_minutes; los tramos que quedan en 0 se descartan,
- * - si la imputación falla (p. ej. bolsa `block`), el temporizador sigue en marcha: nada se pierde.
- *   Se puede parar indicando otra duración ($minutes) o descartarlo.
+ * - si la imputación falla (p. ej. bolsa `block` o descripción obligatoria), el temporizador sigue
+ *   en marcha: nada se pierde. Se puede parar indicando otra duración, otra tarea u otra
+ *   descripción, o descartarlo. Si falla al iniciar otro, el error lleva además la clave
+ *   `running_timer` para que la interfaz abra el diálogo de parar el que está en marcha.
  */
 final class TimerService
 {
@@ -51,7 +53,17 @@ final class TimerService
                     return [];
                 }
 
-                $previous = $this->persist($user, $timer);
+                try {
+                    $previous = $this->persist($user, $timer);
+                } catch (ValidationException $exception) {
+                    throw ValidationException::withMessages([
+                        'running_timer' => __('time.errors.running_timer_failed', [
+                            'task' => (string) Task::query()->withTrashed()->whereKey($timer->task_id)->value('title'),
+                        ]),
+                        ...$exception->errors(),
+                    ]);
+                }
+
                 $timer->delete();
             }
 
@@ -68,22 +80,23 @@ final class TimerService
 
     /**
      * Para el temporizador e imputa. Con $minutes se imputa esa duración en una sola entrada, en el
-     * día (local) en que empezó; con $task, en otra tarea (diálogo al parar, D-035).
+     * día (local) en que empezó; con $task, en otra tarea; con $description, con esa descripción
+     * en lugar de la del temporizador (diálogo al parar, D-035).
      *
      * @return list<TimeEntryResult> Vacío si la duración redondeada es 0 (el temporizador se descarta).
      *
      * @throws ValidationException
      */
-    public function stop(User $user, ?int $minutes = null, ?Task $task = null): array
+    public function stop(User $user, ?int $minutes = null, ?Task $task = null, ?string $description = null): array
     {
-        return DB::transaction(function () use ($user, $minutes, $task): array {
+        return DB::transaction(function () use ($user, $minutes, $task, $description): array {
             $timer = ActiveTimer::query()->whereKey($user->id)->lockForUpdate()->first();
 
             if ($timer === null) {
                 throw ValidationException::withMessages(['timer' => __('time.errors.no_timer')]);
             }
 
-            $results = $this->persist($user, $timer, $minutes, $task);
+            $results = $this->persist($user, $timer, $minutes, $task, $description);
             $timer->delete();
 
             return $results;
@@ -131,9 +144,10 @@ final class TimerService
     /**
      * @return list<TimeEntryResult>
      */
-    private function persist(User $user, ActiveTimer $timer, ?int $minutes = null, ?Task $task = null): array
+    private function persist(User $user, ActiveTimer $timer, ?int $minutes = null, ?Task $task = null, ?string $description = null): array
     {
         $taskId = $task->id ?? $timer->task_id;
+        $description = trim((string) $description) !== '' ? $description : $timer->description;
         $start = CarbonImmutable::instance($timer->started_at);
         $end = CarbonImmutable::now();
 
@@ -148,7 +162,7 @@ final class TimerService
                 taskId: $taskId,
                 date: CarbonImmutable::parse($piece['date']),
                 minutes: $piece['minutes'],
-                description: $timer->description,
+                description: $description,
                 startedAt: $piece['started_at'],
                 endedAt: $piece['ended_at'],
             ));

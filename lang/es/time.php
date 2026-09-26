@@ -25,6 +25,7 @@ return [
         'description_required' => 'Escribe una descripción de lo que has hecho.',
         'timer_bank_empty' => 'La bolsa «:bank» no tiene saldo y no admite exceso: no se puede iniciar el temporizador.',
         'no_timer' => 'No tienes ningún temporizador en marcha.',
+        'running_timer_failed' => 'No se ha podido imputar el temporizador que tienes en marcha en «:task». Páralo antes de iniciar otro.',
         // Flujo de la semana (D-020, D-034)
         'week_future' => 'Esta semana aún no ha empezado: no se puede enviar.',
         'week_not_submitted' => 'Solo se pueden aprobar o devolver semanas enviadas. La del :week está :status.',

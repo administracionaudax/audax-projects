@@ -71,6 +71,7 @@ class TimerController extends TimeController
             $user,
             $request->filled('minutes') ? $request->integer('minutes') : null,
             $task,
+            $request->filled('description') ? $request->string('description')->toString() : null,
         );
 
         if ($results === []) {

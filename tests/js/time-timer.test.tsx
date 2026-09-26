@@ -187,7 +187,11 @@ describe('chip del temporizador de la cabecera', () => {
             VisitOptions,
         ];
         expect(url).toBe('/temporizador/parar');
-        expect(data).toEqual({ minutes: null, task_id: null });
+        expect(data).toEqual({
+            minutes: null,
+            task_id: null,
+            description: null,
+        });
         expect(visit.errorBag).toBe('timer');
     });
 });
@@ -250,6 +254,35 @@ describe('botón de temporizador de una tarea', () => {
         expect(post.mock.calls[0][0]).toBe('/temporizador/parar');
     });
 
+    it('si al iniciar no se puede imputar el que está en marcha, abre su diálogo en lugar de avisar', () => {
+        render(<TimerButton task={{ id: 12, title: 'Maquetar la home' }} />);
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Iniciar el temporizador en «Maquetar la home»',
+            }),
+        );
+        const visit = post.mock.calls[0][2] as VisitOptions;
+
+        act(() => {
+            visit.onError?.({
+                running_timer:
+                    'No se ha podido imputar el temporizador que tienes en marcha.',
+                description: 'Escribe una descripción de lo que has hecho.',
+            });
+        });
+
+        expect(toastError).not.toHaveBeenCalled();
+        expect(timerStopDialog.getSnapshot()).toEqual({
+            open: true,
+            errors: {
+                running_timer:
+                    'No se ha podido imputar el temporizador que tienes en marcha.',
+                description: 'Escribe una descripción de lo que has hecho.',
+            },
+        });
+    });
+
     it('está desactivado en los hitos', () => {
         render(
             <TimerButton
@@ -271,16 +304,24 @@ describe('diálogo al parar cuando la imputación no es válida', () => {
         hour_bank_thresholds: [75, 90, 100],
         timer_warning_hours: 10,
         timer_rounding_minutes: 15,
+        description_required: false,
     };
 
-    function openDialog(secondsAgo: number) {
+    function openDialog(
+        secondsAgo: number,
+        errors: Record<string, string> = {
+            timer: 'La bolsa de horas no tiene saldo.',
+        },
+        descriptionRequired = false,
+    ) {
         vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
-        page.props = { timer: timerStartedSecondsAgo(secondsAgo), config };
+        page.props = {
+            timer: timerStartedSecondsAgo(secondsAgo),
+            config: { ...config, description_required: descriptionRequired },
+        };
         render(<TimerStopDialog />);
         act(() => {
-            timerStopDialog.open({
-                timer: 'La bolsa de horas no tiene saldo.',
-            });
+            timerStopDialog.open(errors);
         });
     }
 
@@ -319,7 +360,11 @@ describe('diálogo al parar cuando la imputación no es válida', () => {
             screen.getByRole('button', { name: 'Imputar y parar' }),
         );
 
-        expect(sentData()).toEqual({ minutes: null, task_id: 12 });
+        expect(sentData()).toEqual({
+            minutes: null,
+            task_id: 12,
+            description: null,
+        });
     });
 
     it('con la duración cambiada, la envía para imputarla en una sola entrada', () => {
@@ -332,7 +377,11 @@ describe('diálogo al parar cuando la imputación no es válida', () => {
             screen.getByRole('button', { name: 'Imputar y parar' }),
         );
 
-        expect(sentData()).toEqual({ minutes: 45, task_id: 12 });
+        expect(sentData()).toEqual({
+            minutes: 45,
+            task_id: 12,
+            description: null,
+        });
     });
 
     it('un temporizador de más de 24 h muestra el máximo y, sin tocarlo, se reparte por días', () => {
@@ -347,6 +396,49 @@ describe('diálogo al parar cuando la imputación no es válida', () => {
             screen.getByRole('button', { name: 'Imputar y parar' }),
         );
 
-        expect(sentData()).toEqual({ minutes: null, task_id: 12 });
+        expect(sentData()).toEqual({
+            minutes: null,
+            task_id: 12,
+            description: null,
+        });
+    });
+
+    it('sin el ajuste ni el error, no pide descripción', () => {
+        openDialog(3718);
+
+        expect(screen.queryByLabelText(/^Descripción/u)).toBeNull();
+    });
+
+    it('si el servidor pide la descripción, la pide y la envía (con la del temporizador de partida)', () => {
+        openDialog(
+            3718,
+            { description: 'Escribe una descripción de lo que has hecho.' },
+            true,
+        );
+
+        const field = screen.getByLabelText(
+            'Descripción',
+        ) as HTMLTextAreaElement;
+        expect(field.value).toBe('');
+
+        // Vacía y obligatoria: no se envía y se explica en el campo.
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Imputar y parar' }),
+        );
+        expect(post).not.toHaveBeenCalled();
+        expect(field.getAttribute('aria-invalid')).toBe('true');
+
+        fireEvent.change(field, {
+            target: { value: 'Maquetación de la cabecera' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Imputar y parar' }),
+        );
+
+        expect(sentData()).toEqual({
+            minutes: null,
+            task_id: 12,
+            description: 'Maquetación de la cabecera',
+        });
     });
 });

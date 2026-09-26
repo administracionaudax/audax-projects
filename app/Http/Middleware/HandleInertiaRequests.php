@@ -105,6 +105,7 @@ class HandleInertiaRequests extends Middleware
                 'hour_bank_thresholds' => app(HourBankLedger::class)->thresholds(),
                 'timer_warning_hours' => (int) Setting::get('timer_warning_hours', 10),
                 'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
+                'description_required' => (bool) Setting::get('time_entry_description_required', false),
             ],
         ];
     }

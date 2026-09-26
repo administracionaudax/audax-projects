@@ -186,6 +186,43 @@ describe('diálogo de imputación', () => {
         expect(server.post).not.toHaveBeenCalled();
     });
 
+    it('propone la duración escrita en la hoja semanal (celda que necesita descripción)', async () => {
+        const user = userEvent.setup();
+        server.post.mockImplementation(
+            (_url: string, _data: unknown, visit: VisitOptions) => {
+                visit.onSuccess?.();
+                visit.onFinish?.();
+            },
+        );
+
+        render(
+            <TimeEntryDialog
+                open
+                onOpenChange={vi.fn()}
+                task={task}
+                date="2026-09-23"
+                minutes={90}
+            />,
+        );
+
+        expect(
+            (screen.getByLabelText('Duración') as HTMLInputElement).value,
+        ).toBe('1:30');
+        await user.type(
+            screen.getByLabelText('Descripción (opcional)'),
+            'Cabecera',
+        );
+        await user.click(screen.getByRole('button', { name: 'Guardar horas' }));
+
+        expect(server.post.mock.calls[0][1]).toEqual({
+            task_id: 12,
+            user_id: 7,
+            date: '2026-09-23',
+            minutes: 90,
+            description: 'Cabecera',
+        });
+    });
+
     it('sin tarea pide elegirla', async () => {
         const user = userEvent.setup();
 

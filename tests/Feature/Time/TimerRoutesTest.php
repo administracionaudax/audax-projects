@@ -205,6 +205,61 @@ it('descarta sin imputar; parar sin temporizador da un error comprensible', func
         ->assertSessionHasErrors(['timer' => 'No tienes ningún temporizador en marcha.']);
 });
 
+it('con la descripción obligatoria, parar pide la descripción y se imputa al darla (el temporizador no se pierde)', function () {
+    Setting::set('time_entry_description_required', true);
+    $this->actingAs($this->user)->post('/temporizador', ['task_id' => $this->task->id])->assertSessionHasNoErrors();
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 10:00:00', 'Europe/Madrid'));
+
+    // Sin descripción: error de validación y el temporizador sigue en marcha (también con otra
+    // duración u otra tarea).
+    $this->actingAs($this->user)
+        ->post('/temporizador/parar')
+        ->assertSessionHasErrors(['description' => 'Escribe una descripción de lo que has hecho.']);
+    $this->actingAs($this->user)
+        ->post('/temporizador/parar', ['minutes' => 30, 'task_id' => $this->other->id])
+        ->assertSessionHasErrors('description');
+
+    expect(ActiveTimer::query()->count())->toBe(1)
+        ->and(TimeEntry::query()->count())->toBe(0);
+
+    // Con la descripción del diálogo, se imputa lo medido con ella.
+    $this->actingAs($this->user)
+        ->post('/temporizador/parar', ['description' => 'Maquetación de la cabecera'])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.message', 'Temporizador parado: 1:00 imputadas en «Maquetar la home».');
+
+    $entry = TimeEntry::query()->sole();
+    expect($entry->minutes)->toBe(60)
+        ->and($entry->description)->toBe('Maquetación de la cabecera')
+        ->and(ActiveTimer::query()->count())->toBe(0);
+});
+
+it('con la descripción obligatoria, la del temporizador vale al parar', function () {
+    Setting::set('time_entry_description_required', true);
+    $this->actingAs($this->user)->post('/temporizador', ['task_id' => $this->task->id, 'description' => 'Cabecera']);
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 09:30:00', 'Europe/Madrid'));
+
+    $this->actingAs($this->user)->post('/temporizador/parar')->assertSessionHasNoErrors();
+
+    expect(TimeEntry::query()->sole()->description)->toBe('Cabecera');
+});
+
+it('si al iniciar otro no se puede imputar el que está en marcha, lo explica con running_timer y no cambia nada', function () {
+    Setting::set('time_entry_description_required', true);
+    $this->actingAs($this->user)->post('/temporizador', ['task_id' => $this->task->id]);
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 09:45:00', 'Europe/Madrid'));
+
+    $this->actingAs($this->user)
+        ->post('/temporizador', ['task_id' => $this->other->id])
+        ->assertSessionHasErrors([
+            'running_timer' => 'No se ha podido imputar el temporizador que tienes en marcha en «Maquetar la home». Páralo antes de iniciar otro.',
+            'description' => 'Escribe una descripción de lo que has hecho.',
+        ]);
+
+    expect(ActiveTimer::query()->sole()->task_id)->toBe($this->task->id)
+        ->and(TimeEntry::query()->count())->toBe(0);
+});
+
 it('valida la petición: tarea obligatoria y duración válida', function () {
     $this->actingAs($this->user)->post('/temporizador', [])->assertSessionHasErrors('task_id');
     $this->actingAs($this->user)->post('/temporizador', ['task_id' => 999999])->assertSessionHasErrors('task_id');
@@ -212,6 +267,7 @@ it('valida la petición: tarea obligatoria y duración válida', function () {
     $this->actingAs($this->user)->post('/temporizador', ['task_id' => $this->task->id]);
     $this->actingAs($this->user)->post('/temporizador/parar', ['minutes' => 'mucho'])->assertSessionHasErrors('minutes');
     $this->actingAs($this->user)->post('/temporizador/parar', ['minutes' => 24 * 60 + 1])->assertSessionHasErrors('minutes');
+    $this->actingAs($this->user)->post('/temporizador/parar', ['description' => str_repeat('a', 2001)])->assertSessionHasErrors('description');
 });
 
 it('el temporizador de cada uno es suyo: descartar no toca el de otra persona', function () {

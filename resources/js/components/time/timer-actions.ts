@@ -8,9 +8,11 @@ import { discard, start, stop } from '@/routes/timer';
  * e Inicio. Los errores van en su propia bolsa (`timer`) para no mezclarse con los formularios de
  * la página.
  *
- * Si al PARAR la imputación no es válida (bolsa `block` sin saldo, semana enviada…), el servidor
- * deja el temporizador en marcha y devuelve los errores: se abre el diálogo de la cabecera
- * (TimerStopDialog) para ajustar la duración, elegir otra tarea o descartarlo.
+ * Si al PARAR la imputación no es válida (bolsa `block` sin saldo, semana enviada, descripción
+ * obligatoria…), el servidor deja el temporizador en marcha y devuelve los errores: se abre el
+ * diálogo de la cabecera (TimerStopDialog) para ajustar la duración, elegir otra tarea, escribir
+ * la descripción o descartarlo. Lo mismo si al INICIAR otro no se puede imputar el que estaba en
+ * marcha (el servidor lo marca con la clave `running_timer`).
  */
 
 export type TimerErrors = Record<string, string>;
@@ -68,7 +70,13 @@ function firstMessages(errors: TimerErrors): string[] {
     return Object.values(errors).filter((message) => message !== '');
 }
 
-/** Inicia el temporizador en una tarea. Los errores (no ser miembro, bolsa sin saldo…) van como avisos. */
+/** Clave con la que el servidor avisa de que no ha podido imputar el temporizador en marcha. */
+export const RUNNING_TIMER_ERROR = 'running_timer';
+
+/**
+ * Inicia el temporizador en una tarea. Los errores de la tarea nueva (no ser miembro, bolsa sin
+ * saldo…) van como avisos; si lo que falla es imputar el que estaba en marcha, se abre su diálogo.
+ */
 export function startTimer(
     taskId: number,
     callbacks: VisitCallbacks = {},
@@ -82,6 +90,12 @@ export function startTimer(
             onFinish: () => callbacks.onFinish?.(),
             onSuccess: () => callbacks.onSuccess?.(),
             onError: (errors) => {
+                if (errors[RUNNING_TIMER_ERROR]) {
+                    timerStopDialog.open(errors);
+
+                    return;
+                }
+
                 firstMessages(errors).forEach((message) =>
                     toast.error(message),
                 );
@@ -91,13 +105,14 @@ export function startTimer(
 }
 
 /**
- * Para el temporizador e imputa. Con `minutes` o `taskId`, imputa esa duración o en esa tarea
- * (diálogo al parar). Si falla, abre el diálogo con los errores.
+ * Para el temporizador e imputa. Con `minutes`, `taskId` o `description`, imputa esa duración, en
+ * esa tarea o con esa descripción (diálogo al parar). Si falla, abre el diálogo con los errores.
  */
 export function stopTimer(
     options: VisitCallbacks & {
         minutes?: number | null;
         taskId?: number | null;
+        description?: string | null;
     } = {},
 ): void {
     router.post(
@@ -105,6 +120,7 @@ export function stopTimer(
         {
             minutes: options.minutes ?? null,
             task_id: options.taskId ?? null,
+            description: options.description?.trim() || null,
         },
         {
             ...BASE,

@@ -94,6 +94,7 @@ test('los internos reciben el temporizador activo, las notificaciones sin leer y
             ->where('notifications.unread', 0)
             ->where('config.hour_bank_thresholds', [75, 90, 100])
             ->where('config.timer_warning_hours', 10)
+            ->where('config.description_required', false)
             ->where('auth.can.createProjects', false)
             ->where('auth.can.approveTime', false));
 });

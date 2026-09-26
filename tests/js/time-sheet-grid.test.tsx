@@ -375,6 +375,49 @@ describe('hoja semanal', () => {
         );
     });
 
+    it('si el ajuste exige descripción, abre el diálogo de la entrada con la duración escrita', async () => {
+        const user = userEvent.setup();
+        server.respond = (visit) => {
+            visit.onError?.({
+                description: 'Escribe una descripción de lo que has hecho.',
+            });
+            visit.onFinish?.();
+        };
+        const onNeedsDescription = vi.fn();
+        renderGrid({ onNeedsDescription });
+
+        // Celda vacía: entrada nueva.
+        const wednesday = cell('Maquetar la home', 'miércoles 23/09');
+        await user.click(wednesday);
+        await user.type(wednesday, '1:30');
+        await user.keyboard('{Tab}');
+
+        await waitFor(() =>
+            expect(onNeedsDescription).toHaveBeenCalledWith(
+                expect.objectContaining({ task: home }),
+                2,
+                null,
+                90,
+            ),
+        );
+        // No se avisa del error: lo explica el diálogo.
+        expect(toastError).not.toHaveBeenCalled();
+
+        // Celda con una entrada sin descripción: esa entrada.
+        const tuesday = cell('Maquetar la home', 'martes 22/09');
+        await user.tripleClick(tuesday);
+        await user.keyboard('2{Tab}');
+
+        await waitFor(() =>
+            expect(onNeedsDescription).toHaveBeenLastCalledWith(
+                expect.objectContaining({ task: home }),
+                1,
+                expect.objectContaining({ id: 3 }),
+                120,
+            ),
+        );
+    });
+
     it('los días futuros y las semanas cerradas no se editan', () => {
         renderGrid({ editable: false });
 

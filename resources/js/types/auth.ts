@@ -50,6 +50,8 @@ export type AppConfig = {
     timer_warning_hours: number;
     /** Redondeo del temporizador en minutos. */
     timer_rounding_minutes: number;
+    /** Ajuste «descripción obligatoria» de las entradas de horas (SPEC §7). */
+    description_required: boolean;
 };
 
 export type Auth = {

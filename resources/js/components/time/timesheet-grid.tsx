@@ -54,7 +54,14 @@ type Visit = (options: {
     onFinish: () => void;
 }) => void;
 
-function visitPromise(visit: Visit): Promise<SaveResult> {
+/**
+ * Hace la visita y resuelve si ha ido bien. Los errores van como avisos, salvo los que
+ * `handle` se queda (devuelve las claves que ya ha tratado).
+ */
+function visitPromise(
+    visit: Visit,
+    handle: (errors: Record<string, string>) => string[] = () => [],
+): Promise<SaveResult> {
     return new Promise((resolve) => {
         let ok = false;
 
@@ -63,9 +70,14 @@ function visitPromise(visit: Visit): Promise<SaveResult> {
                 ok = true;
             },
             onError: (errors) => {
-                [...new Set(Object.values(errors))].forEach((message) =>
-                    toast.error(message),
-                );
+                const handled = handle(errors);
+                [
+                    ...new Set(
+                        Object.entries(errors)
+                            .filter(([key]) => !handled.includes(key))
+                            .map(([, message]) => message),
+                    ),
+                ].forEach((message) => toast.error(message));
             },
             onFinish: () => resolve(ok),
         });
@@ -79,6 +91,8 @@ function visitPromise(visit: Visit): Promise<SaveResult> {
  * - Enter guarda y baja, Mayús + Enter sube, las flechas se mueven entre celdas (izquierda y
  *   derecha cuando el cursor está en el borde del texto), Tab avanza y Escape deshace,
  * - vaciar una celda con una entrada la borra,
+ * - si el ajuste exige descripción y la celda no la tiene, el servidor la pide: se abre el
+ *   diálogo de la entrada con la duración escrita (onNeedsDescription) en lugar de perderla,
  * - fila de totales por día y de la semana frente a la capacidad, con el semáforo de carga.
  */
 export function TimesheetGrid({
@@ -92,6 +106,7 @@ export function TimesheetGrid({
     personId,
     onOpenCell,
     onRemoveRow,
+    onNeedsDescription,
 }: {
     rows: GridRow[];
     days: string[];
@@ -104,6 +119,16 @@ export function TimesheetGrid({
     personId: number;
     onOpenCell: (row: GridRow, dayIndex: number) => void;
     onRemoveRow: (taskId: number) => void;
+    /**
+     * El servidor exige una descripción (ajuste «descripción obligatoria»): abrir el diálogo de
+     * la entrada (nueva o esa) con esos minutos.
+     */
+    onNeedsDescription?: (
+        row: GridRow,
+        dayIndex: number,
+        entry: TimeEntry | null,
+        minutes: number,
+    ) => void;
 }) {
     const container = useRef<HTMLDivElement>(null);
     const enqueue = useSaveQueue();
@@ -153,53 +178,68 @@ export function TimesheetGrid({
         minutes: number | null,
     ): Promise<SaveResult> =>
         enqueue(() =>
-            visitPromise((callbacks) => {
-                const options = {
-                    preserveScroll: true,
-                    preserveState: true,
-                    errorBag: 'timesheet',
-                    ...callbacks,
-                    onSuccess: () => {
-                        callbacks.onSuccess();
-                        setStatus(t('hours.sheet.saved'));
-                    },
-                };
-
-                setStatus(t('hours.sheet.saving'));
-
-                if (entry && minutes === null) {
-                    router.delete(
-                        destroy.url(entry.id, { query: { quiet: 1 } }),
-                        options,
-                    );
-                } else if (entry) {
-                    router.put(
-                        update.url(entry.id),
-                        {
-                            task_id: entry.task_id,
-                            user_id: entry.user_id,
-                            date: entry.date,
-                            minutes,
-                            description: entry.description,
-                            is_billable: entry.is_billable,
-                            quiet: 1,
+            visitPromise(
+                (callbacks) => {
+                    const options = {
+                        preserveScroll: true,
+                        preserveState: true,
+                        errorBag: 'timesheet',
+                        ...callbacks,
+                        onSuccess: () => {
+                            callbacks.onSuccess();
+                            setStatus(t('hours.sheet.saved'));
                         },
-                        options,
-                    );
-                } else {
-                    router.post(
-                        store.url(),
-                        {
-                            task_id: row.task.id,
-                            user_id: personId,
-                            date: days[dayIndex],
-                            minutes,
-                            quiet: 1,
-                        },
-                        options,
-                    );
-                }
-            }),
+                    };
+
+                    setStatus(t('hours.sheet.saving'));
+
+                    if (entry && minutes === null) {
+                        router.delete(
+                            destroy.url(entry.id, { query: { quiet: 1 } }),
+                            options,
+                        );
+                    } else if (entry) {
+                        router.put(
+                            update.url(entry.id),
+                            {
+                                task_id: entry.task_id,
+                                user_id: entry.user_id,
+                                date: entry.date,
+                                minutes,
+                                description: entry.description,
+                                is_billable: entry.is_billable,
+                                quiet: 1,
+                            },
+                            options,
+                        );
+                    } else {
+                        router.post(
+                            store.url(),
+                            {
+                                task_id: row.task.id,
+                                user_id: personId,
+                                date: days[dayIndex],
+                                minutes,
+                                quiet: 1,
+                            },
+                            options,
+                        );
+                    }
+                },
+                (errors) => {
+                    if (
+                        errors.description === undefined ||
+                        minutes === null ||
+                        !onNeedsDescription
+                    ) {
+                        return [];
+                    }
+
+                    onNeedsDescription(row, dayIndex, entry, minutes);
+
+                    return ['description'];
+                },
+            ),
         );
 
     return (

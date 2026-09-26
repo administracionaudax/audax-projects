@@ -3,6 +3,7 @@ import { CircleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { DurationInput } from '@/components/domain/duration-input';
+import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
 import { MAX_MINUTES, roundToNearest } from '@/lib/duration';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -31,8 +33,9 @@ import { elapsedSeconds } from './use-elapsed';
 
 /**
  * Diálogo que se abre si al parar el temporizador la imputación no es válida (D-035): el
- * temporizador sigue en marcha y se puede ajustar la duración, imputar en otra tarea o
- * descartarlo, sin perder lo medido. Vive en la cabecera: una sola instancia por página.
+ * temporizador sigue en marcha y se puede ajustar la duración, imputar en otra tarea, escribir
+ * la descripción (si el ajuste la exige) o descartarlo, sin perder lo medido. Vive en la
+ * cabecera: una sola instancia por página.
  */
 export function TimerStopDialog() {
     const { open, errors } = useTimerStopDialog();
@@ -54,6 +57,9 @@ export function TimerStopDialog() {
                         timer={timer}
                         errors={errors}
                         rounding={config?.timer_rounding_minutes ?? 1}
+                        descriptionRequired={
+                            config?.description_required ?? false
+                        }
                     />
                 ) : null}
             </DialogContent>
@@ -79,10 +85,12 @@ function StopForm({
     timer,
     errors,
     rounding,
+    descriptionRequired,
 }: {
     timer: ActiveTimer;
     errors: Record<string, string>;
     rounding: number;
+    descriptionRequired: boolean;
 }) {
     const id = useId();
     const [measured] = useState(() =>
@@ -103,6 +111,13 @@ function StopForm({
             is_internal: false,
         },
     });
+    const [description, setDescription] = useState(timer.description ?? '');
+    const [descriptionError, setDescriptionError] = useState<string | null>(
+        null,
+    );
+    // El campo sale si el ajuste la exige o si el servidor la ha pedido (SPEC §7).
+    const askDescription =
+        descriptionRequired || errors.description !== undefined;
     const [processing, setProcessing] = useState(false);
     const messages = [...new Set(Object.values(errors))];
 
@@ -118,12 +133,21 @@ function StopForm({
             return;
         }
 
+        if (descriptionRequired && description.trim() === '') {
+            setDescriptionError(t('hours.dialog.errors.description'));
+
+            return;
+        }
+
+        setDescriptionError(null);
+
         // Si no se toca la duración, el servidor imputa lo medido hasta ahora, repartido por días y
         // redondeado (D-036); solo una duración cambiada va como una única entrada.
         stopTimer({
             ...callbacks,
             minutes: minutes === initial ? null : minutes,
             taskId: task?.id ?? null,
+            description: askDescription ? description : null,
         });
     };
 
@@ -177,6 +201,35 @@ function StopForm({
                 <Label htmlFor={`${id}-task`}>{t('hours.dialog.task')}</Label>
                 <TaskPicker id={`${id}-task`} value={task} onChange={setTask} />
             </div>
+
+            {askDescription ? (
+                <div className="grid gap-2">
+                    <Label htmlFor={`${id}-description`}>
+                        {descriptionRequired
+                            ? t('hours.dialog.description_label_required')
+                            : t('hours.dialog.description_label')}
+                    </Label>
+                    <Textarea
+                        id={`${id}-description`}
+                        value={description}
+                        onChange={(event) => setDescription(event.target.value)}
+                        maxLength={2000}
+                        rows={3}
+                        placeholder={t('hours.dialog.description_placeholder')}
+                        aria-invalid={descriptionError ? true : undefined}
+                        aria-describedby={
+                            descriptionError
+                                ? `${id}-description-error`
+                                : undefined
+                        }
+                        data-test="timer-stop-description"
+                    />
+                    <InputError
+                        id={`${id}-description-error`}
+                        message={descriptionError ?? undefined}
+                    />
+                </div>
+            ) : null}
 
             <DialogFooter className="gap-2 sm:justify-between">
                 <Button

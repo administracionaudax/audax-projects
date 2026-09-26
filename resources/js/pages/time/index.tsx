@@ -50,11 +50,12 @@ import type { TimeEntry, TimesheetPageProps } from '@/types';
 type DialogState =
     | { kind: 'none' }
     | { kind: 'cell'; row: GridRow; dayIndex: number }
-    | { kind: 'entry'; entry: TimeEntry }
+    | { kind: 'entry'; entry: TimeEntry; minutes?: number }
     | {
           kind: 'new';
           task: { id: number; title: string; project_id: number } | null;
           date: string;
+          minutes?: number;
       };
 
 function sheetUrl(week: string, personId: number | null) {
@@ -496,6 +497,22 @@ export default function TimesheetPage({
                             setDialog({ kind: 'cell', row, dayIndex })
                         }
                         onRemoveRow={extras.remove}
+                        onNeedsDescription={(row, dayIndex, entry, minutes) =>
+                            setDialog(
+                                entry
+                                    ? { kind: 'entry', entry, minutes }
+                                    : {
+                                          kind: 'new',
+                                          task: {
+                                              id: row.task.id,
+                                              title: row.task.title,
+                                              project_id: row.task.project_id,
+                                          },
+                                          date: week.days[dayIndex],
+                                          minutes,
+                                      },
+                            )
+                        }
                     />
                 )}
             </div>
@@ -542,6 +559,11 @@ export default function TimesheetPage({
                 entry={dialog.kind === 'entry' ? dialog.entry : null}
                 task={dialog.kind === 'new' ? dialog.task : null}
                 date={dialog.kind === 'new' ? dialog.date : undefined}
+                minutes={
+                    dialog.kind === 'new' || dialog.kind === 'entry'
+                        ? dialog.minutes
+                        : undefined
+                }
                 userId={isOwn ? undefined : person.id}
             />
         </>

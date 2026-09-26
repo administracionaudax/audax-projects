@@ -44,6 +44,8 @@ export type TimeEntryDialogProps = {
     entry?: TimeEntry | null;
     /** Fecha propuesta "YYYY-MM-DD" (por defecto, hoy en Madrid). */
     date?: string;
+    /** Duración propuesta en minutos (p. ej. la escrita en la hoja semanal). */
+    minutes?: number | null;
     /** Imputar en nombre de otra persona (gestores, responsables y admin, SPEC §7). */
     userId?: number;
 };
@@ -121,6 +123,7 @@ export function TimeEntryDialog({
     task,
     entry,
     date,
+    minutes,
     userId,
 }: TimeEntryDialogProps) {
     return (
@@ -131,6 +134,7 @@ export function TimeEntryDialog({
                         task={task}
                         entry={entry}
                         date={date}
+                        minutes={minutes}
                         userId={userId}
                         onDone={() => onOpenChange(false)}
                     />
@@ -144,6 +148,7 @@ function TimeEntryForm({
     task,
     entry,
     date,
+    minutes: proposedMinutes,
     userId,
     onDone,
 }: Omit<TimeEntryDialogProps, 'open' | 'onOpenChange'> & {
@@ -160,7 +165,7 @@ function TimeEntryForm({
         entry?.date ?? date ?? todayInMadrid(),
     );
     const [minutes, setMinutes] = useState<number | null>(
-        entry?.minutes ?? null,
+        proposedMinutes ?? entry?.minutes ?? null,
     );
     const [description, setDescription] = useState(entry?.description ?? '');
     const [personId, setPersonId] = useState<number>(
