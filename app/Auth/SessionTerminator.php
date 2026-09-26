@@ -90,8 +90,7 @@ class SessionTerminator
             DB::table($this->table())->where('user_id', $user->getAuthIdentifier())->delete();
         }
 
-        $user->setRememberToken(Str::random(60));
-        $user->save();
+        $this->storeNewRememberToken($user);
     }
 
     /**
@@ -100,8 +99,7 @@ class SessionTerminator
      */
     private function cycleRememberToken(Request $request, User $user): void
     {
-        $user->setRememberToken(Str::random(60));
-        $user->save();
+        $this->storeNewRememberToken($user);
 
         $guard = Auth::guard(self::GUARD);
 
@@ -114,5 +112,19 @@ class SessionTerminator
             $user->getAuthIdentifier().'|'.$user->getRememberToken().'|'.$guard->hashPasswordForCookie($user->getAuthPassword()),
             self::REMEMBER_COOKIE_MINUTES,
         );
+    }
+
+    /**
+     * Guarda un remember_token nuevo con una consulta directa, sin eventos de modelo: destroyAll()
+     * se llama desde el evento "updated" del propio usuario (al desactivarlo) y un save() ahí
+     * volvería a dispararlo.
+     */
+    private function storeNewRememberToken(User $user): void
+    {
+        $column = $user->getRememberTokenName();
+
+        $user->setRememberToken(Str::random(60));
+        $user->newQuery()->whereKey($user->getKey())->update([$column => $user->getRememberToken()]);
+        $user->syncOriginalAttribute($column);
     }
 }

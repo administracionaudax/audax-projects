@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Auth\SessionTerminator;
 use App\Enums\Role;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -148,6 +149,19 @@ class User extends Authenticatable
     public function isInternal(): bool
     {
         return ! $this->isClient();
+    }
+
+    /**
+     * Al desactivar a un usuario se cierran todas sus sesiones y su «Recordarme» (SPEC §14): no
+     * basta con que EnsureUserIsActive lo expulse en la siguiente petición.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (User $user): void {
+            if ($user->wasChanged('is_active') && ! $user->is_active) {
+                app(SessionTerminator::class)->destroyAll($user);
+            }
+        });
     }
 
     public function isActive(): bool

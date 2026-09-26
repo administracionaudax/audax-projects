@@ -2,6 +2,7 @@
 
 use App\Models\LoginEvent;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 test('un usuario desactivado no puede iniciar sesión', function () {
     $user = User::factory()->inactive()->employee()->create();
@@ -61,6 +62,24 @@ test('un usuario desactivado no puede gestionar su 2FA en las rutas de Fortify',
 
     $this->assertGuest();
     expect($user->refresh()->two_factor_secret)->toBeNull();
+});
+
+test('al desactivar a un usuario se cierran sus sesiones y su «Recordarme»', function () {
+    config(['session.driver' => 'database']);
+
+    $user = userWithRole('employee', ['remember_token' => 'token-anterior']);
+    $other = userWithRole('employee');
+    insertSession($user);
+    $foreign = insertSession($other);
+
+    $user->update(['name' => 'Sin cambios de estado']);
+    expect(DB::table('sessions')->where('user_id', $user->id)->count())->toBe(1);
+
+    $user->update(['is_active' => false]);
+
+    expect(DB::table('sessions')->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(DB::table('sessions')->where('id', $foreign)->exists())->toBeTrue()
+        ->and($user->refresh()->remember_token)->not->toBe('token-anterior');
 });
 
 test('una petición JSON de un usuario desactivado recibe 401', function () {
