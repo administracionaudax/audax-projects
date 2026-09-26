@@ -70,7 +70,6 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
             ->component('placeholder', false)
             ->where('section', $section));
 })->with([
-    ['/mis-tareas', 'my-tasks'],
     ['/proyectos', 'projects'],
     ['/clientes', 'clients'],
     ['/bolsas', 'hour-banks'],

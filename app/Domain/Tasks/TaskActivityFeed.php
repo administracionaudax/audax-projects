@@ -154,12 +154,13 @@ final class TaskActivityFeed
             }
         }
 
+        // Una consulta por tipo, y solo si la actividad cita alguno.
         return [
-            'statuses' => $this->pluck(TaskStatus::query()->whereKey(array_unique($ids['statuses']))->pluck('name', 'id')),
-            'users' => $this->pluck(User::query()->whereKey(array_unique($ids['users']))->pluck('name', 'id')),
-            'banks' => $this->pluck(HourBank::query()->withTrashed()->whereKey(array_unique($ids['banks']))->pluck('name', 'id')),
-            'types' => $this->pluck(TaskType::query()->withTrashed()->whereKey(array_unique($ids['types']))->pluck('name', 'id')),
-            'projects' => $this->pluck(Project::query()->withTrashed()->whereKey(array_unique($ids['projects']))->pluck('name', 'id')),
+            'statuses' => $ids['statuses'] === [] ? [] : $this->pluck(TaskStatus::query()->whereKey(array_unique($ids['statuses']))->pluck('name', 'id')),
+            'users' => $ids['users'] === [] ? [] : $this->pluck(User::query()->whereKey(array_unique($ids['users']))->pluck('name', 'id')),
+            'banks' => $ids['banks'] === [] ? [] : $this->pluck(HourBank::query()->withTrashed()->whereKey(array_unique($ids['banks']))->pluck('name', 'id')),
+            'types' => $ids['types'] === [] ? [] : $this->pluck(TaskType::query()->withTrashed()->whereKey(array_unique($ids['types']))->pluck('name', 'id')),
+            'projects' => $ids['projects'] === [] ? [] : $this->pluck(Project::query()->withTrashed()->whereKey(array_unique($ids['projects']))->pluck('name', 'id')),
         ];
     }
 
