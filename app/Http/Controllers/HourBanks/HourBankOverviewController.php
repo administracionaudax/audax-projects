@@ -171,8 +171,11 @@ class HourBankOverviewController extends Controller
         }
 
         if ($filters['proximas']) {
-            // «Próxima a agotarse» (D-035): desde el primer umbral configurado; incluye las agotadas.
-            $query->whereRaw('consumed_minutes * 100 >= ? * total_minutes', [$threshold]);
+            // «Próxima a agotarse» (D-035): desde el primer umbral configurado, con lo que va dentro
+            // de la bolsa (como el color de la barra y el saldo); incluye las agotadas.
+            $query->where(fn (Builder $near) => $near
+                ->where('hour_banks.status', HourBankStatus::Exhausted->value)
+                ->orWhereRaw('(consumed_minutes - overage_minutes) * 100 >= ? * total_minutes', [$threshold]));
         }
     }
 
@@ -204,7 +207,7 @@ class HourBankOverviewController extends Controller
             ->selectRaw(
                 'COUNT(*) AS open_count, '
                 .'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS exhausted_count, '
-                .'SUM(CASE WHEN status = ? AND consumed_minutes * 100 >= ? * total_minutes THEN 1 ELSE 0 END) AS near_count',
+                .'SUM(CASE WHEN status = ? AND (consumed_minutes - overage_minutes) * 100 >= ? * total_minutes THEN 1 ELSE 0 END) AS near_count',
                 [HourBankStatus::Exhausted->value, HourBankStatus::Active->value, $threshold],
             )
             ->toBase()

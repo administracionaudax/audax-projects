@@ -3,6 +3,8 @@
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Time\TimeEntryData;
+use App\Domain\Time\TimeEntryWriter;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
 use App\Enums\TimeEntryStatus;
@@ -12,6 +14,7 @@ use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 
@@ -234,6 +237,41 @@ it('cambiar el total de la bolsa recalcula el exceso y el estado', function () {
     expect($entry->fresh()->overage_minutes)->toBe(0)
         ->and($bank->fresh()->status)->toBe(HourBankStatus::Active)
         ->and($bank->fresh()->overage_minutes)->toBe(0);
+});
+
+it('saldo, estado y block usan lo que va dentro: una bloqueada en exceso no ocupa el total ampliado', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 10:00:00', 'Europe/Madrid'));
+    $employee = User::factory()->employee()->create();
+    [$bank, $task] = bankWithTask(1, ['overage_policy' => OveragePolicy::Block]);
+    $task->project->addMember($employee);
+    logEntry($task, 60, '2026-09-01', ['user_id' => $employee->id]);
+    logEntry($task, 60, '2026-09-02', ['user_id' => $employee->id, 'status' => TimeEntryStatus::Locked, 'overage_minutes' => 60]);
+    app(HourBankLedger::class)->recalculate($bank);
+
+    $bank->refresh()->update(['total_minutes' => 120]);
+    $bank->refresh();
+
+    // El motor deja 1 h libre: la tarjeta, el estado y la regla block dicen lo mismo.
+    expect($bank->only(['consumed_minutes', 'overage_minutes']))->toBe(['consumed_minutes' => 120, 'overage_minutes' => 60])
+        ->and($bank->in_bank_minutes)->toBe(60)
+        ->and($bank->remaining_minutes)->toBe(60)
+        ->and(app(HourBankLedger::class)->available($bank))->toBe(60)
+        ->and($bank->status)->toBe(HourBankStatus::Active);
+
+    $entry = app(TimeEntryWriter::class)->create($employee, new TimeEntryData(
+        userId: $employee->id,
+        taskId: $task->id,
+        date: CarbonImmutable::parse('2026-09-24'),
+        minutes: 30,
+        description: null,
+    ))->entry;
+
+    expect($entry->overage_minutes)->toBe(0)
+        ->and($bank->fresh()->remaining_minutes)->toBe(30);
+
+    // Lo que no cabe en el saldo real se sigue rechazando con ese saldo.
+    expect(fn () => app(HourBankLedger::class)->assertFits($bank->fresh(), 45))
+        ->toThrow(ValidationException::class, 'Saldo disponible: 0:30');
 });
 
 it('no cambia el estado de una bolsa cerrada o renovada al recalcular', function (HourBankStatus $status) {

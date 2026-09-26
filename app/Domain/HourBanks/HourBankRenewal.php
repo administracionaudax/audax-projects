@@ -35,14 +35,14 @@ final class HourBankRenewal
     public function __construct(private readonly HourBankLedger $ledger) {}
 
     /**
-     * ¿Toca renovarla? Agotada, o activa con un consumo igual o superior al primer umbral de
-     * alerta («próxima a agotarse», D-035).
+     * ¿Toca renovarla? Agotada, o activa con lo que va dentro de la bolsa igual o superior al primer
+     * umbral de alerta («próxima a agotarse», D-035). Sin exceso es lo mismo que el consumo.
      */
     public function isDue(HourBank $bank): bool
     {
         return match ($bank->status) {
             HourBankStatus::Exhausted => true,
-            HourBankStatus::Active => $bank->consumed_minutes * 100 >= $this->firstThreshold() * $bank->total_minutes,
+            HourBankStatus::Active => $bank->in_bank_minutes * 100 >= $this->firstThreshold() * $bank->total_minutes,
             default => false,
         };
     }

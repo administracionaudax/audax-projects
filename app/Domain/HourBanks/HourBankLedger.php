@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  *
  * Reglas:
  * - Consumo = suma de minutes de TODAS las entradas de la bolsa, en cualquier estado (SPEC §8.4).
+ * - Saldo = total − lo que va dentro (consumo − exceso). Agotada cuando el saldo llega a 0. Una
+ *   sola fuente para available(), remaining_minutes, el estado y la regla `block`.
  * - Exceso por entrada (D-019): las entradas bloqueadas conservan su overage_minutes y reservan su
  *   parte dentro de la bolsa; el saldo restante se reparte entre las no bloqueadas en orden
  *   cronológico (date, created_at, id). Una entrada que cruza el límite queda con la parte que no
@@ -47,15 +49,19 @@ final class HourBankLedger
 
     /**
      * Minutos que caben aún en la bolsa, sin contar $excluding (la entrada que se está editando).
+     * Es el total menos lo que ya va DENTRO de la bolsa (minutos − exceso de cada entrada): el
+     * exceso no ocupa saldo. Es la misma cifra que remaining_minutes de la bolsa y la que decide
+     * el paso a agotada, así que la política `block`, la tarjeta y el estado nunca se contradicen
+     * (p. ej. con una bloqueada en exceso y el total ampliado después).
      */
     public function available(HourBank $bank, ?TimeEntry $excluding = null): int
     {
-        $consumed = (int) TimeEntry::query()
+        $inBank = (int) TimeEntry::query()
             ->where('hour_bank_id', $bank->id)
             ->when($excluding?->exists, fn ($query) => $query->whereKeyNot($excluding?->id))
-            ->sum('minutes');
+            ->sum(DB::raw('minutes - overage_minutes'));
 
-        return max($bank->total_minutes - $consumed, 0);
+        return max($bank->total_minutes - $inBank, 0);
     }
 
     /**
@@ -192,8 +198,9 @@ final class HourBankLedger
                 'overage_minutes' => $overage,
             ]);
 
+            // Agotada cuando lo que va dentro de la bolsa llega al total (el exceso no cuenta).
             if ($locked->status->acceptsTime()) {
-                $locked->status = $consumed >= $locked->total_minutes ? HourBankStatus::Exhausted : HourBankStatus::Active;
+                $locked->status = $consumed - $overage >= $locked->total_minutes ? HourBankStatus::Exhausted : HourBankStatus::Active;
             }
 
             $locked->save();

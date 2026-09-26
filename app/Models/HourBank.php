@@ -202,13 +202,14 @@ class HourBank extends Model
     }
 
     /**
-     * Saldo restante: nunca negativo (SPEC §4.2).
+     * Saldo restante: el total menos lo que va dentro de la bolsa (el exceso no ocupa saldo).
+     * Nunca negativo (SPEC §4.2). Es la misma cifra que HourBankLedger::available().
      *
      * @return Attribute<int<0, max>, never>
      */
     protected function remainingMinutes(): Attribute
     {
-        return Attribute::get(fn (): int => max($this->total_minutes - $this->consumed_minutes, 0));
+        return Attribute::get(fn (): int => max($this->total_minutes - ($this->consumed_minutes - $this->overage_minutes), 0));
     }
 
     /**
