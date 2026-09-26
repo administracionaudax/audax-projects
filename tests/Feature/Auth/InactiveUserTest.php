@@ -50,6 +50,19 @@ test('un usuario desactivado tampoco llega a sus ajustes ni al portal', function
     'portal de cliente' => ['client', '/portal'],
 ]);
 
+test('un usuario desactivado no puede gestionar su 2FA en las rutas de Fortify', function () {
+    $user = userWithRole('employee', ['is_active' => false]);
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->post(route('two-factor.enable'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['email' => __('app.account_inactive')]);
+
+    $this->assertGuest();
+    expect($user->refresh()->two_factor_secret)->toBeNull();
+});
+
 test('una petición JSON de un usuario desactivado recibe 401', function () {
     $user = userWithRole('employee', ['is_active' => false]);
 

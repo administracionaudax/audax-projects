@@ -27,6 +27,54 @@ test('se puede pedir el enlace de recuperación', function () {
     Notification::assertSentTo($user, ResetPassword::class);
 });
 
+test('la respuesta es la misma exista o no el correo, y aunque el envío esté limitado', function () {
+    Notification::fake();
+
+    $user = userWithRole('employee');
+
+    $responses = [
+        'existe' => $this->from(route('password.request'))->post(route('password.email'), ['email' => $user->email]),
+        'limitado por el broker' => $this->from(route('password.request'))->post(route('password.email'), ['email' => $user->email]),
+        'no existe' => $this->from(route('password.request'))->post(route('password.email'), ['email' => 'nadie@example.com']),
+    ];
+
+    foreach ($responses as $response) {
+        $response->assertRedirect(route('password.request'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', __('passwords.sent'));
+    }
+
+    Notification::assertSentToTimes($user, ResetPassword::class, 1);
+
+    $this->postJson(route('password.email'), ['email' => 'otro@example.com'])
+        ->assertOk()
+        ->assertExactJson(['message' => __('passwords.sent')]);
+});
+
+test('pedir enlaces de recuperación está limitado por IP', function () {
+    Notification::fake();
+
+    foreach (range(1, 5) as $i) {
+        $this->post(route('password.email'), ['email' => "persona{$i}@example.com"])->assertRedirect();
+    }
+
+    $this->post(route('password.email'), ['email' => 'persona6@example.com'])->assertTooManyRequests();
+});
+
+test('pedir enlaces de recuperación está limitado por correo, desde cualquier IP', function () {
+    Notification::fake();
+
+    foreach (range(1, 5) as $i) {
+        $this->withServerVariables(['REMOTE_ADDR' => "10.1.0.{$i}"])
+            ->post(route('password.email'), ['email' => 'Victima@example.com'])
+            ->assertRedirect();
+    }
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.1.0.99'])
+        ->post(route('password.email'), ['email' => 'victima@example.com'])
+        ->assertTooManyRequests();
+});
+
 test('la pantalla de nueva contraseña se muestra con un token', function () {
     Notification::fake();
 

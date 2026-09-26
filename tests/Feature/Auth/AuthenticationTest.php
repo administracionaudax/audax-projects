@@ -2,6 +2,7 @@
 
 use App\Models\LoginEvent;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
@@ -131,6 +132,33 @@ test('se registra un inicio de sesión fallido sin guardar la contraseña', func
         ->and($events[1]->user_id)->toBeNull()
         ->and($events[1]->email)->toBe('nadie@example.com')
         ->and(json_encode($events->toArray()))->not->toContain('secreto-equivocado');
+});
+
+test('un correo que no es texto no rompe el limitador de intentos', function (mixed $email) {
+    $this->from(route('login'))
+        ->post(route('login.store'), ['email' => $email, 'password' => 'x'])
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    $this->postJson(route('login.store'), ['email' => $email, 'password' => 'x'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('email');
+
+    $this->assertGuest();
+})->with([
+    'array' => [['a@example.com']],
+    'vacío' => [null],
+]);
+
+test('con un correo inexistente también se comprueba la contraseña (tiempo constante)', function () {
+    $dummyHash = Hash::make('hash-ficticio');
+    Hash::shouldReceive('make')->andReturn($dummyHash);
+    Hash::shouldReceive('check')->once()->with('secreto', $dummyHash)->andReturnFalse();
+
+    $this->post(route('login.store'), ['email' => 'nadie@example.com', 'password' => 'secreto'])
+        ->assertSessionHasErrors(['email' => __('auth.failed')]);
+
+    $this->assertGuest();
 });
 
 test('al iniciar sesión se sincroniza la cookie de tema con la preferencia guardada', function () {

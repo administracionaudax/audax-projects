@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ThrottlePasswordResetLinkRequests;
 use Laravel\Fortify\Features;
 
 return [
@@ -101,7 +102,10 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    // 'active': un usuario desactivado con cookie de «Recordarme» no puede gestionar su 2FA ni
+    // confirmar la contraseña (SPEC §14). No afecta a los invitados.
+    // ThrottlePasswordResetLinkRequests: límite por IP y por correo de POST /forgot-password.
+    'middleware' => ['web', 'active', ThrottlePasswordResetLinkRequests::class],
 
     /*
     |--------------------------------------------------------------------------
