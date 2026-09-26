@@ -433,14 +433,14 @@ function PendingCard({
                     aria-label={t('hours.approvals.days_label', { name })}
                     tabIndex={0}
                 >
-                    <table className="w-full min-w-[30rem] text-center text-xs">
+                    <table className="w-full min-w-[40rem] text-center text-xs">
                         <thead>
                             <tr>
                                 {days.map((day) => (
                                     <th
                                         key={day}
                                         scope="col"
-                                        className="px-1 font-normal text-muted-foreground"
+                                        className="px-1 font-normal whitespace-nowrap text-muted-foreground"
                                     >
                                         <span className="capitalize">
                                             {weekdayShortLabel(day)}
@@ -460,7 +460,7 @@ function PendingCard({
                                                 week.capacity_days[day] ?? 0
                                             }
                                             compact
-                                            className="justify-center"
+                                            className="justify-center whitespace-nowrap"
                                         />
                                     </td>
                                 ))}

@@ -326,31 +326,30 @@ export default function ProjectTime({
                         ) : null}
                     </section>
 
-                    <dl
-                        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
-                        aria-label={t('hours.project.totals')}
-                    >
-                        <Stat
-                            label={t('hours.project.total')}
-                            value={formatMinutes(totals.minutes)}
-                            hint={t('hours.project.entries', {
-                                count: totals.entries,
-                            })}
-                        />
-                        <Stat
-                            label={t('hours.project.in_bank')}
-                            value={formatMinutes(totals.in_bank_minutes)}
-                        />
-                        <Stat
-                            label={t('hours.project.overage')}
-                            value={formatMinutes(totals.overage_minutes)}
-                            danger={totals.overage_minutes > 0}
-                        />
-                        <Stat
-                            label={t('hours.project.billable')}
-                            value={formatMinutes(totals.billable_minutes)}
-                        />
-                    </dl>
+                    <section aria-label={t('hours.project.totals')}>
+                        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <Stat
+                                label={t('hours.project.total')}
+                                value={formatMinutes(totals.minutes)}
+                                hint={t('hours.project.entries', {
+                                    count: totals.entries,
+                                })}
+                            />
+                            <Stat
+                                label={t('hours.project.in_bank')}
+                                value={formatMinutes(totals.in_bank_minutes)}
+                            />
+                            <Stat
+                                label={t('hours.project.overage')}
+                                value={formatMinutes(totals.overage_minutes)}
+                                danger={totals.overage_minutes > 0}
+                            />
+                            <Stat
+                                label={t('hours.project.billable')}
+                                value={formatMinutes(totals.billable_minutes)}
+                            />
+                        </dl>
+                    </section>
 
                     {entries.data.length === 0 ? (
                         <EmptyState

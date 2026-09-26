@@ -19,12 +19,6 @@ const weekdayLong = new Intl.DateTimeFormat(LOCALE, {
     timeZone: 'UTC',
 });
 
-const dayMonth = new Intl.DateTimeFormat(LOCALE, {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'UTC',
-});
-
 const dayMonthYear = new Intl.DateTimeFormat(LOCALE, {
     day: 'numeric',
     month: 'short',
@@ -48,9 +42,11 @@ export function weekdayLongLabel(date: string): string {
     return weekdayLong.format(utcDate(date));
 }
 
-/** "21/09" */
+/** "21/09" (sin conversión de zona: se toma de la propia fecha). */
 export function dayMonthLabel(date: string): string {
-    return dayMonth.format(utcDate(date));
+    const [, month, day] = date.split('-');
+
+    return `${day}/${month}`;
 }
 
 /** "21 sept – 27 sept 2026" */

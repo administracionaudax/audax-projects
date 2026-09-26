@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     CalendarCheck,
     ChevronLeft,
@@ -84,6 +84,7 @@ export default function TimesheetPage({
     settings,
 }: TimesheetPageProps) {
     const user = useRequiredUser();
+    const timer = usePage().props.timer ?? null;
     const abilities = useAbilities();
     const personParam = isOwn ? null : person.id;
     const extras = useExtraRows(person.id, week.iso);
@@ -134,6 +135,17 @@ export default function TimesheetPage({
     };
 
     const weekLabel = weekRangeLabel(week.start, week.end);
+    const submitDescription = [
+        t('hours.sheet.submit_description', {
+            minutes: formatMinutes(totals.week),
+            week: weekLabel,
+        }),
+        timer && week.days.includes(settings.today)
+            ? t('hours.sheet.submit_timer_warning')
+            : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
     const openCell =
         dialog.kind === 'cell'
             ? {
@@ -150,7 +162,7 @@ export default function TimesheetPage({
             <Head title={t('hours.sheet.page_title')} />
 
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-x-4 [&>header]:mb-0">
                     <Heading
                         as="h1"
                         title={
@@ -162,7 +174,7 @@ export default function TimesheetPage({
                         }
                         description={t('hours.sheet.description')}
                     />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 empty:hidden">
                         {abilities.approveTime ? (
                             <Button asChild variant="outline" size="sm">
                                 <Link href={approvalsIndex()}>
@@ -188,7 +200,7 @@ export default function TimesheetPage({
                 >
                     <nav
                         aria-label={t('hours.sheet.week_nav')}
-                        className="flex flex-wrap items-center gap-2"
+                        className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
                     >
                         <Button asChild variant="outline" size="icon">
                             <Link
@@ -200,7 +212,10 @@ export default function TimesheetPage({
                                 <ChevronLeft aria-hidden="true" />
                             </Link>
                         </Button>
-                        <p className="min-w-0 text-base" aria-live="polite">
+                        <p
+                            className="order-first w-full min-w-0 text-base sm:order-none sm:w-auto"
+                            aria-live="polite"
+                        >
                             <span className="font-medium">{weekLabel}</span>{' '}
                             <span className="text-sm text-muted-foreground">
                                 {t('hours.sheet.week_number', {
@@ -358,13 +373,7 @@ export default function TimesheetPage({
                                     </Button>
                                 }
                                 title={t('hours.sheet.submit_title')}
-                                description={t(
-                                    'hours.sheet.submit_description',
-                                    {
-                                        minutes: formatMinutes(totals.week),
-                                        week: weekLabel,
-                                    },
-                                )}
+                                description={submitDescription}
                                 confirmLabel={t('hours.sheet.submit')}
                                 destructive={false}
                                 processing={processing}

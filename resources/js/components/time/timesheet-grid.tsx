@@ -211,7 +211,7 @@ export function TimesheetGrid({
                 tabIndex={0}
                 ref={container}
             >
-                <table className="w-full min-w-[52rem] border-collapse text-sm">
+                <table className="w-full min-w-[48rem] border-collapse text-sm sm:min-w-[56rem]">
                     <caption className="sr-only">
                         {t('hours.sheet.grid_caption')}
                     </caption>
@@ -219,7 +219,7 @@ export function TimesheetGrid({
                         <tr className="border-b bg-muted text-left">
                             <th
                                 scope="col"
-                                className="sticky left-0 z-10 min-w-[14rem] bg-muted px-3 py-2 font-medium"
+                                className="sticky left-0 z-10 w-36 min-w-36 bg-muted px-3 py-2 font-medium sm:w-auto sm:min-w-56"
                             >
                                 {t('hours.sheet.task')}
                             </th>
@@ -250,7 +250,7 @@ export function TimesheetGrid({
                             ))}
                             <th
                                 scope="col"
-                                className="w-24 px-3 py-2 text-right font-medium"
+                                className="w-32 px-3 py-2 text-right font-medium"
                             >
                                 {t('hours.sheet.total')}
                             </th>
@@ -352,7 +352,7 @@ export function TimesheetGrid({
                                     logged={totals.week}
                                     capacity={capacity.week}
                                     compact
-                                    className="justify-end font-medium"
+                                    className="justify-end font-medium whitespace-nowrap"
                                 />
                             </td>
                         </tr>
@@ -484,11 +484,11 @@ function GridCell({
 
     if (entries.length === 0) {
         return (
-            <span
-                className="block text-center text-muted-foreground"
-                aria-label={t('hours.sheet.cell_empty', { cell: label })}
-            >
-                –
+            <span className="block text-center text-muted-foreground">
+                <span aria-hidden="true">–</span>
+                <span className="sr-only">
+                    {t('hours.sheet.cell_empty', { cell: label })}
+                </span>
             </span>
         );
     }

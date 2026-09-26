@@ -201,3 +201,22 @@ it('no cambia la persona de una entrada al editar', function () {
         ->put("/horas/entradas/{$entry->id}", ($this->payload)(['user_id' => $admin->id]))
         ->assertSessionHasErrors('user_id');
 });
+
+it('con quiet (celdas de la hoja semanal) no envía el aviso de éxito, pero sí los avisos de imputación', function () {
+    $this->task->update(['status_id' => Task::factory()->completed()->make()->status_id]);
+
+    $this->actingAs($this->employee)
+        ->post('/horas/entradas', ($this->payload)(['quiet' => 1]))
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlashMissing('toast')
+        ->assertInertiaFlash('time_warnings.0.code', 'task_completed');
+
+    $entry = TimeEntry::query()->sole();
+
+    $this->actingAs($this->employee)
+        ->delete("/horas/entradas/{$entry->id}?quiet=1")
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlashMissing('toast');
+
+    expect(TimeEntry::query()->count())->toBe(0);
+});

@@ -79,6 +79,7 @@
     "hours.sheet.submit": "Enviar la semana",
     "hours.sheet.submit_title": "¿Enviar la semana?",
     "hours.sheet.submit_description": "Vas a enviar :minutes h de la semana :week. Después no podrás cambiarlas salvo que la retires antes de que la revisen.",
+    "hours.sheet.submit_timer_warning": "Tienes un temporizador en marcha: páralo antes de enviar para que sus horas entren en esta semana.",
     "hours.sheet.withdraw": "Retirar la semana",
     "hours.sheet.withdraw_title": "¿Retirar la semana?",
     "hours.sheet.withdraw_description": "La semana vuelve a estar abierta y podrás cambiar sus horas. Tendrás que enviarla de nuevo.",
@@ -169,7 +170,7 @@
 
     "hours.locks.title": "Bloqueo de horas",
     "hours.locks.heading": "Bloqueo de [[horas]]",
-    "hours.locks.description": "Al facturar, bloquea las horas aprobadas de un cliente o un proyecto en un rango de fechas. Solo tú, como administrador, podrás cambiarlas después.",
+    "hours.locks.description": "Al facturar, bloquea las horas aprobadas de un cliente o un proyecto en un rango de fechas. Después solo un administrador podrá cambiarlas.",
     "hours.locks.form_title": "Qué quieres bloquear",
     "hours.locks.scope": "Alcance",
     "hours.locks.by_client": "Por cliente",
