@@ -78,11 +78,21 @@ ssh audax "bash -s -- '<T0>' \"\$(cat /root/audax-backup/ULTIMO)\"" < scripts/se
 - **Dependencias:** comprueba la versión estable y la licencia antes de instalar (MIT/Apache/BSD/ISC; las fuentes, OFL). Nada de GPL en el navegador sin avisar.
 
 ## Estructura
-- `app/`: Laravel. En `Http/Middleware` están `active`, `internal`, `portal`, `2fa`, `SecurityHeaders` y las props compartidas; en `Enums` los roles y permisos; en `Search` la búsqueda global.
+- `app/`: Laravel.
+  - `Http/Middleware`: `active`, `internal`, `portal`, `2fa`, `SecurityHeaders` y las props compartidas (`auth`, `timer`, `notifications`, `config`).
+  - `Enums`: roles, permisos y estados del dominio.
+  - `Domain`: reglas de negocio. En `HourBanks/HourBankLedger` el consumo y el exceso; en `Time` `TimeEntryWriter`, `TimeEntryRules`, `TimerService` y `Capacity`.
+  - `Policies`: permisos por entidad (D-021, D-022, D-031 a D-036).
+  - `Http/Resources`: contrato JSON con `resources/js/types/domain.ts`.
+  - `Search`: búsqueda global (páginas, proyectos, tareas, clientes y personas).
+  - `Notifications/AppNotification`: base de las notificaciones en la app.
+- `routes/app/<área>.php`: rutas de cada área de la Fase 1, cargadas desde `routes/web.php`.
 - `resources/js/`:
   - `pages/` (Inertia), `layouts/`, `components/` (en `ui/`, shadcn),
   - `lib/format.ts` e `i18n.ts`,
   - `routes/` y `actions/`, generados por Wayfinder y fuera de Git.
 - `resources/css/app.css`: tema Audax (claro y oscuro).
-- `tests/`: `Feature/` y `Unit/` (Pest), `js/` (Vitest) y `e2e/` (Playwright).
-- `deploy/systemd/`: unidades del servidor. `scripts/` contiene los scripts de despliegue y verificación. `docs/`, la documentación viva.
+- `lang/`: `es.json` (Fase 0 y backend), `es/*.php` (mensajes PHP por grupo) y `ui/*.json` (textos del frontend por área).
+- `tests/`: `Feature/` y `Unit/` (Pest), `js/` (Vitest), `e2e/` (Playwright) y `fixtures/` (casos compartidos PHP/TS).
+- `database/seeders/DemoDataSeeder.php`: 12 meses de datos de ejemplo (solo local, tests y CI).
+- `deploy/`: unidades systemd del servidor y la copia nocturna (`backup/audax-backup.sh`, D-029). `scripts/` contiene los scripts de despliegue y verificación. `docs/`, la documentación viva.
