@@ -298,7 +298,6 @@ export default function RichTextEditor({
                 autolink: true,
                 linkOnPaste: true,
                 defaultProtocol: 'https',
-                protocols: ['http', 'https', 'mailto'],
                 HTMLAttributes: {
                     rel: 'noopener noreferrer nofollow',
                     target: '_blank',

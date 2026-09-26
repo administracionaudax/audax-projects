@@ -2,7 +2,6 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { TimeEntryStatusBadge } from '@/components/domain/badges';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
-import { TimerButton } from '@/components/time/timer-button';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -27,7 +26,6 @@ export function TaskTime({ panel }: { panel: TaskPanelData }) {
                 </p>
                 {panel.can.log_time ? (
                     <div className="flex items-center gap-2">
-                        <TimerButton task={task} size="sm" />
                         <Button
                             type="button"
                             variant="outline"

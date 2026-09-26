@@ -6,7 +6,6 @@
     "task_page.empty_filtered": "Ninguna tarea cumple los filtros",
     "task_page.empty_filtered_description": "Cambia o limpia los filtros para ver más tareas.",
     "task_page.hidden_completed": "Hay :count tareas completadas ocultas.",
-
     "task_filters.label": "Filtros de tareas",
     "task_filters.view": "Vista",
     "task_filters.list": "Lista",
@@ -30,7 +29,8 @@
     "task_filters.all_priorities": "Todas las prioridades",
     "task_filters.all_statuses": "Todos los estados",
     "task_filters.clear": "Limpiar filtros",
-
+    "task_filters.toggle": "Filtros",
+    "task_filters.toggle_active": "Filtros (:count activos)",
     "task_list.all_tasks": "Todas las tareas",
     "task_list.group_count": "(:count)",
     "task_list.group_empty": "No hay tareas en este grupo.",
@@ -49,7 +49,6 @@
     "task_list.column.estimate": "Estimación",
     "task_list.column.logged": "Imputadas",
     "task_list.column.timer": "Temporizador",
-
     "task_fields.no_assignee": "Sin responsable",
     "task_fields.no_bank": "Sin bolsa",
     "task_fields.no_type": "Sin tipo",
@@ -76,7 +75,6 @@
     "task_fields.subtasks_count": "Subtareas: :count",
     "task_fields.comments_count": "Comentarios: :count",
     "task_fields.attachments_count": "Adjuntos: :count",
-
     "quick_add.label": "Nueva tarea",
     "quick_add.label_in": "Nueva tarea en «:group»",
     "quick_add.subtask_label": "Nueva subtarea de «:task»",
@@ -84,7 +82,6 @@
     "quick_add.subtask_placeholder": "Añade una subtarea y pulsa Intro",
     "quick_add.bank_label": "Bolsa de la nueva tarea",
     "quick_add.bank_required": "Elige la bolsa de la que descontará la tarea.",
-
     "task_board.label": "Tablero kanban (desplázate en horizontal para ver todas las columnas)",
     "task_board.column_tasks": "Tareas en «:status»",
     "task_board.role_description": "tarea que se puede mover",
@@ -104,7 +101,6 @@
     "task_board.announce.outside": "La tarea «:task» no está sobre ninguna columna.",
     "task_board.announce.end": "Has soltado la tarea «:task» en la :position.",
     "task_board.announce.cancel": "Movimiento cancelado. La tarea «:task» vuelve a su sitio.",
-
     "task_bulk.selected": "Tareas seleccionadas: :count",
     "task_bulk.status": "Cambiar estado",
     "task_bulk.assignee": "Cambiar responsable",
@@ -116,7 +112,6 @@
     "task_bulk.bank_description": "Las horas ya imputadas no se mueven: se quedan en la bolsa donde se imputaron. Las subtareas siguen la bolsa de su tarea padre.",
     "task_bulk.bank_confirm": "Cambiar la bolsa",
     "task_bulk.clear": "Quitar la selección",
-
     "task_panel.loading": "Cargando la tarea…",
     "task_panel.title_label": "Título de la tarea",
     "task_panel.parent": "Subtarea de «:task»",
@@ -169,12 +164,10 @@
     "task_panel.no_watchers": "Nadie sigue esta tarea.",
     "task_panel.activity": "Actividad (:count)",
     "task_panel.created": "Creada por :who el :date.",
-
     "task_time.total": "Ves :visible de :total imputadas a esta tarea.",
     "task_time.empty": "Aún no hay horas imputadas que puedas ver.",
     "task_time.milestone": "Los hitos no llevan horas.",
     "task_time.list": "Horas imputadas a la tarea",
-
     "task_files.list": "Adjuntos",
     "task_files.empty": "Sin adjuntos.",
     "task_files.upload": "Adjuntar archivos",
@@ -189,7 +182,6 @@
     "task_files.bytes": ":size B",
     "task_files.kilobytes": ":size KB",
     "task_files.megabytes": ":size MB",
-
     "task_comments.list": "Comentarios",
     "task_comments.empty_list": "Aún no hay comentarios.",
     "task_comments.placeholder": "Escribe un comentario…",
@@ -212,7 +204,6 @@
     "task_comments.react_with": "Reaccionar con :emoji",
     "task_comments.reaction_add_same": ":emoji :count (:people). Reaccionar también",
     "task_comments.reaction_remove": ":emoji :count (:people). Quitar tu reacción",
-
     "task_activity.list": "Actividad de la tarea",
     "task_activity.empty": "Sin actividad registrada.",
     "task_activity.system": "El sistema",
@@ -236,12 +227,10 @@
     "task_activity.field.is_milestone": "Hito",
     "task_activity.field.project_id": "Proyecto",
     "task_activity.field.description": "Descripción",
-
     "task_errors.generic": "No se ha podido guardar el cambio. Revisa los datos e inténtalo de nuevo.",
     "task_errors.server": "Algo ha fallado en el servidor. Recarga la página e inténtalo de nuevo.",
     "task_errors.network": "Sin conexión con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
     "task_errors.move_failed": "No se ha podido mover la tarea: ha vuelto a su sitio.",
-
     "move_task.title": "Mover a otro proyecto",
     "move_task.description": "«:task» y sus subtareas pasarán al proyecto que elijas.",
     "move_task.project": "Proyecto de destino",
@@ -252,7 +241,6 @@
     "move_task.no_targets": "No hay otros proyectos donde puedas crear tareas.",
     "move_task.warning": "Las horas ya imputadas no se mueven: se quedan en el proyecto y la bolsa actuales.",
     "move_task.submit": "Mover la tarea",
-
     "rich_text.toolbar": "Formato del texto",
     "rich_text.bold": "Negrita",
     "rich_text.italic": "Cursiva",
@@ -267,7 +255,6 @@
     "rich_text.mention_list": "Personas que puedes mencionar",
     "rich_text.no_people": "No hay nadie con ese nombre.",
     "rich_text.loading": "Cargando el editor…",
-
     "my_tasks.heading": "Mis [[tareas]]",
     "my_tasks.description": "Tus tareas abiertas, ordenadas por cuándo vencen. Pulsa una para abrirla en su proyecto.",
     "my_tasks.empty": "No tienes tareas abiertas asignadas",
@@ -284,7 +271,6 @@
     "my_tasks.section_empty.no_date": "Todas tus tareas tienen fecha.",
     "my_tasks.in_parent": "Subtarea de «:task»",
     "my_tasks.logged": "Imputadas :minutes",
-
     "project_files.title": "Archivos · :project",
     "project_files.filters": "Filtros de archivos",
     "project_files.type": "Tipo",

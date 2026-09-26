@@ -127,12 +127,12 @@ function TitleField({ panel }: { panel: TaskPanelData }) {
                         event.preventDefault();
                         event.currentTarget.blur();
                     } else if (event.key === 'Escape') {
-                        // Que Escape deshaga el cambio del título sin cerrar el panel.
-                        event.stopPropagation();
+                        // Escape deshace el cambio del título (el panel no se cierra si había cambios).
                         setValue(panel.task.title);
                     }
                 }}
-                className="h-auto border-transparent px-2 py-1 text-lg hover:border-input"
+                data-dirty={value !== panel.task.title ? 'true' : undefined}
+                className="h-auto border-transparent px-2 py-1 text-lg hover:border-input md:text-lg"
                 data-test="task-title-input"
             />
         </div>
@@ -434,10 +434,26 @@ export function TaskPanel({
         >
             <SheetContent
                 side="right"
-                className="w-full gap-0 overflow-y-auto sm:max-w-2xl"
+                className="w-full gap-0 overflow-y-auto outline-none sm:max-w-2xl"
+                tabIndex={-1}
+                // Al abrir, el foco va al panel y no al título: así una tecla no lo sobrescribe.
+                onOpenAutoFocus={(event) => {
+                    event.preventDefault();
+                    (event.target as HTMLElement | null)?.focus({
+                        preventScroll: true,
+                    });
+                }}
                 onEscapeKeyDown={(event) => {
-                    // Escape cierra primero las sugerencias de menciones abiertas.
-                    if (document.querySelector('[data-mention-popup]')) {
+                    // Escape cierra primero lo que se está escribiendo (sugerencias de menciones,
+                    // un texto enriquecido o un campo con cambios sin guardar) y no el panel.
+                    const active = document.activeElement;
+
+                    if (
+                        document.querySelector('[data-mention-popup]') ||
+                        (active instanceof HTMLElement &&
+                            (active.closest('[data-rich-text]') !== null ||
+                                active.dataset.dirty === 'true'))
+                    ) {
                         event.preventDefault();
                     }
                 }}

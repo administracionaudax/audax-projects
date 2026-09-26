@@ -550,9 +550,9 @@ describe('panel de la tarea', () => {
         ).toBeGreaterThan(0);
     });
 
-    it('el título vuelve a su valor con Escape sin guardar', async () => {
+    it('el título vuelve a su valor con Escape sin guardar ni cerrar el panel', async () => {
         const user = userEvent.setup();
-        renderPanel(panelData());
+        const { onClose } = renderPanel(panelData());
 
         const input = screen.getByRole('textbox', {
             name: 'Título de la tarea',
@@ -564,5 +564,17 @@ describe('panel de la tarea', () => {
             expect((input as HTMLInputElement).value).toBe('Maquetar la home'),
         );
         expect(server.patch).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+
+        // Sin cambios pendientes, Escape cierra el panel.
+        await user.keyboard('{Escape}');
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('al abrirse, el foco va al panel y no al título', async () => {
+        renderPanel(panelData());
+
+        const dialog = await screen.findByRole('dialog');
+        await waitFor(() => expect(document.activeElement).toBe(dialog));
     });
 });

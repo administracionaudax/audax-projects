@@ -144,6 +144,7 @@ export function QuickAddTask({
                         aria-describedby={error ? errorId : undefined}
                         aria-busy={processing || undefined}
                         className="pl-8"
+                        data-dirty={title.trim() !== '' ? 'true' : undefined}
                         data-test="quick-add-input"
                     />
                 </div>

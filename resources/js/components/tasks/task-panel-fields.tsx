@@ -148,7 +148,7 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
     };
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
                 <Label htmlFor={ids.status}>{t('task_panel.status')}</Label>
                 <StatusSelect

@@ -1,5 +1,5 @@
-import { Kanban, List, X } from 'lucide-react';
-import { useId } from 'react';
+import { Kanban, List, SlidersHorizontal, X } from 'lucide-react';
+import { useId, useState } from 'react';
 import { NONE, PRIORITIES } from '@/components/tasks/task-fields';
 import { useTaskLookups } from '@/components/tasks/task-lookups';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import type { TaskFilters, TaskGroupBy, TaskPriority, TaskView } from '@/types';
 
 export const EMPTY_FILTERS: Omit<TaskFilters, 'group' | 'completed'> = {
@@ -84,6 +85,9 @@ export function TaskToolbar({
     const completedId = useId();
     const groupId = useId();
     const viewLabelId = useId();
+    const filtersId = useId();
+    // En el móvil los filtros se pliegan para no ocupar media pantalla; en escritorio, siempre a la vista.
+    const [showFilters, setShowFilters] = useState(false);
     const set = (changes: Partial<TaskFilters>) =>
         onChange(view, { ...filters, ...changes });
     const active =
@@ -95,6 +99,13 @@ export function TaskToolbar({
         filters.mine;
     const toId = (value: string): number | null =>
         value === NONE ? null : Number(value);
+    const activeCount = [
+        filters.assignee !== null,
+        filters.bank !== null,
+        filters.type !== null,
+        filters.priority !== null,
+        filters.status !== null,
+    ].filter(Boolean).length;
 
     return (
         <div className="flex flex-col gap-4">
@@ -159,8 +170,26 @@ export function TaskToolbar({
                     </div>
                 </div>
             </div>
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit sm:hidden"
+                aria-expanded={showFilters}
+                aria-controls={filtersId}
+                onClick={() => setShowFilters((value) => !value)}
+            >
+                <SlidersHorizontal aria-hidden="true" />
+                {activeCount > 0
+                    ? t('task_filters.toggle_active', { count: activeCount })
+                    : t('task_filters.toggle')}
+            </Button>
             <div
-                className="flex flex-wrap items-end gap-3"
+                id={filtersId}
+                className={cn(
+                    'flex-wrap items-end gap-3 sm:flex',
+                    showFilters ? 'flex' : 'hidden',
+                )}
                 role="group"
                 aria-label={t('task_filters.label')}
             >
