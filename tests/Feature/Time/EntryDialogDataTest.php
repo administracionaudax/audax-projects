@@ -20,8 +20,10 @@ beforeEach(function () {
     $this->user = User::factory()->employee()->inDepartment($this->department)->create(['name' => 'Ana']);
     $this->web = Project::factory()->create(['code' => 'ACME-WEB', 'name' => 'Web de Acme']);
     $this->web->addMember($this->user);
-    $this->foreign = Project::factory()->create(['code' => 'BETA']);
-    $this->internal = Project::factory()->internal()->create(['code' => 'INTERNO']);
+    $this->foreign = Project::factory()->create(['code' => 'BETA', 'name' => 'Beta']);
+    // Nombres fijos: las búsquedas con q=a no pueden depender de un nombre aleatorio de la factoría
+    // («Reuniones» coincide por el nombre de su proyecto, «Agencia»).
+    $this->internal = Project::factory()->internal()->create(['code' => 'INTERNO', 'name' => 'Agencia']);
 
     $this->home = Task::factory()->assignedTo($this->user)->create(['project_id' => $this->web->id, 'title' => 'Maquetar la home']);
     $this->menu = Task::factory()->create(['project_id' => $this->web->id, 'title' => 'Menú principal']);

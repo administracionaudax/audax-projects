@@ -16,7 +16,8 @@ use Carbon\CarbonImmutable;
 | Matriz de permisos del área de horas (SPEC §5, D-020, D-021, D-034)
 |--------------------------------------------------------------------------
 | Cada ruta × invitado, admin, responsable (del departamento de la persona), empleado (otra persona
-| del mismo departamento, sin permisos sobre la entrada) y cliente. Los recursos (entrada, semana,
+| del mismo departamento, sin permisos sobre la entrada), gestor (empleado de otro departamento que
+| gestiona el proyecto de la persona: D-021, D-036) y cliente. Los recursos (entrada, semana,
 | bloqueo) son de una tercera persona del departamento.
 | 302 de invitado = al login; 302 de cliente = a /portal; «ok» = 2xx o 302 de vuelta (back()).
 */
@@ -31,12 +32,14 @@ beforeEach(function () {
         'admin' => User::factory()->admin()->create(),
         'department_manager' => User::factory()->departmentManager()->inDepartment($department)->create(),
         'employee' => User::factory()->employee()->inDepartment($department)->create(),
+        'project_manager' => User::factory()->employee()->inDepartment(Department::factory()->create())->create(),
         'client' => userWithRole('client'),
     ];
     $department->managers()->attach($this->actors['department_manager']);
 
     $this->project = Project::factory()->create(['client_id' => Client::factory()->create()->id]);
     $this->project->addMember($this->owner);
+    $this->project->addMember($this->actors['project_manager'], isManager: true);
     $this->task = Task::factory()->create(['project_id' => $this->project->id]);
     $this->entry = TimeEntry::factory()->forTask($this->task)->on('2026-09-14')->create(['user_id' => $this->owner->id]);
     $this->period = TimesheetPeriod::factory()->for($this->owner)->week('2026-09-21')->status(TimesheetStatus::Submitted)->create();
@@ -50,28 +53,28 @@ beforeEach(function () {
 });
 
 /**
- * [método, URL (con marcadores), datos, [admin, responsable, empleado]] → 'ok' o código HTTP.
+ * [método, URL (con marcadores), datos, [admin, responsable, empleado, gestor]] → 'ok' o código HTTP.
  * Invitado → login y cliente → portal, siempre.
  */
 dataset('rutas de horas', [
-    'hoja semanal propia' => ['get', '/horas', [], ['ok', 'ok', 'ok']],
-    'enviar la semana propia' => ['post', '/horas/semana/enviar', ['week' => '2026-W39'], ['ok', 'ok', 'ok']],
-    'descartar el temporizador propio' => ['delete', '/temporizador', [], ['ok', 'ok', 'ok']],
-    'hoja de otra persona' => ['get', '/horas?persona={owner}', [], ['ok', 'ok', 403]],
-    'buscador de tareas' => ['get', '/horas/tareas?q=a', [], ['ok', 'ok', 'ok']],
-    'buscador para otra persona' => ['get', '/horas/tareas?user_id={owner}', [], ['ok', 'ok', 403]],
-    'opciones del diálogo' => ['get', '/horas/opciones', [], ['ok', 'ok', 'ok']],
-    'aprobaciones' => ['get', '/horas/aprobaciones', [], ['ok', 'ok', 403]],
-    'aprobar una semana' => ['post', '/horas/aprobaciones/{period}/aprobar', [], ['ok', 'ok', 403]],
-    'devolver una semana' => ['post', '/horas/aprobaciones/{period}/devolver', ['comment' => 'Revisa'], ['ok', 'ok', 403]],
-    'aprobar varias' => ['post', '/horas/aprobaciones/aprobar', ['periods' => ['{period}']], ['ok', 'ok', 403]],
-    'reabrir una aprobada' => ['post', '/horas/semanas/{approved}/reabrir', [], ['ok', 'ok', 403]],
-    'bloqueo' => ['get', '/horas/bloqueo', [], ['ok', 403, 403]],
-    'vista previa del bloqueo' => ['get', '/horas/bloqueo/vista-previa?project_id={project}&date_from=2026-09-01&date_to=2026-09-30', [], ['ok', 403, 403]],
-    'desbloquear' => ['delete', '/horas/bloqueo/{lock}', [], ['ok', 403, 403]],
-    'editar la entrada de otro' => ['put', '/horas/entradas/{entry}', ['task_id' => '{task}', 'date' => '2026-09-14', 'minutes' => 30], ['ok', 'ok', 403]],
-    'borrar la entrada de otro' => ['delete', '/horas/entradas/{entry}', [], ['ok', 'ok', 403]],
-    'pestaña Horas del proyecto' => ['get', '/proyectos/{project}/horas', [], ['ok', 'ok', 'ok']],
+    'hoja semanal propia' => ['get', '/horas', [], ['ok', 'ok', 'ok', 'ok']],
+    'enviar la semana propia' => ['post', '/horas/semana/enviar', ['week' => '2026-W39'], ['ok', 'ok', 'ok', 'ok']],
+    'descartar el temporizador propio' => ['delete', '/temporizador', [], ['ok', 'ok', 'ok', 'ok']],
+    'hoja de otra persona' => ['get', '/horas?persona={owner}', [], ['ok', 'ok', 403, 'ok']],
+    'buscador de tareas' => ['get', '/horas/tareas?q=a', [], ['ok', 'ok', 'ok', 'ok']],
+    'buscador para otra persona' => ['get', '/horas/tareas?user_id={owner}', [], ['ok', 'ok', 403, 'ok']],
+    'opciones del diálogo' => ['get', '/horas/opciones', [], ['ok', 'ok', 'ok', 'ok']],
+    'aprobaciones' => ['get', '/horas/aprobaciones', [], ['ok', 'ok', 403, 403]],
+    'aprobar una semana' => ['post', '/horas/aprobaciones/{period}/aprobar', [], ['ok', 'ok', 403, 403]],
+    'devolver una semana' => ['post', '/horas/aprobaciones/{period}/devolver', ['comment' => 'Revisa'], ['ok', 'ok', 403, 403]],
+    'aprobar varias' => ['post', '/horas/aprobaciones/aprobar', ['periods' => ['{period}']], ['ok', 'ok', 403, 403]],
+    'reabrir una aprobada' => ['post', '/horas/semanas/{approved}/reabrir', [], ['ok', 'ok', 403, 403]],
+    'bloqueo' => ['get', '/horas/bloqueo', [], ['ok', 403, 403, 403]],
+    'vista previa del bloqueo' => ['get', '/horas/bloqueo/vista-previa?project_id={project}&date_from=2026-09-01&date_to=2026-09-30', [], ['ok', 403, 403, 403]],
+    'desbloquear' => ['delete', '/horas/bloqueo/{lock}', [], ['ok', 403, 403, 403]],
+    'editar la entrada de otro' => ['put', '/horas/entradas/{entry}', ['task_id' => '{task}', 'date' => '2026-09-14', 'minutes' => 30], ['ok', 'ok', 403, 'ok']],
+    'borrar la entrada de otro' => ['delete', '/horas/entradas/{entry}', [], ['ok', 'ok', 403, 'ok']],
+    'pestaña Horas del proyecto' => ['get', '/proyectos/{project}/horas', [], ['ok', 'ok', 'ok', 'ok']],
 ]);
 
 test('matriz de permisos de horas', function (string $method, string $url, array $data, array $expected, string $role) {
@@ -102,7 +105,7 @@ test('matriz de permisos de horas', function (string $method, string $url, array
         return;
     }
 
-    $status = $expected[array_search($role, ['admin', 'department_manager', 'employee'], true)];
+    $status = $expected[array_search($role, ['admin', 'department_manager', 'employee', 'project_manager'], true)];
 
     if ($status === 'ok') {
         expect($response->status())->toBeIn([200, 302])
@@ -117,6 +120,7 @@ test('matriz de permisos de horas', function (string $method, string $url, array
     'admin' => 'admin',
     'responsable' => 'department_manager',
     'empleado' => 'employee',
+    'gestor' => 'project_manager',
     'cliente' => 'client',
 ]);
 
