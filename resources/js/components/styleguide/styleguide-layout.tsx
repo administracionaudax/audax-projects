@@ -80,7 +80,7 @@ export default function StyleguideLayout({
                 <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
                     <div className="flex min-w-0 items-center gap-3">
                         <AudaxWordmark className="h-4" />
-                        <span className="truncate text-sm text-muted-foreground">
+                        <span className="hidden truncate text-sm text-muted-foreground sm:inline">
                             Guía de estilo
                         </span>
                     </div>
