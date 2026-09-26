@@ -35,7 +35,7 @@ _Última actualización: 26/09/2026 13:20_
 
 ## Siguiente
 1. Aprobación de `/styleguide`. Es un criterio de aceptación de la Fase 0.
-2. Crear el primer admin con `app:install` y probar el login.
+2. Crear el primer admin con `app:install --email=desarrollo@audaxstudio.com` (lo indicó el propietario el 26/09) y probar el login.
 3. Cerrar las dudas abiertas de `DECISIONES.md` antes de la Fase 1.
 
 ## Bloqueos: necesitamos del usuario
