@@ -203,3 +203,90 @@ test('sin N+1: las consultas no crecen con las bolsas', function () {
 
     expect($many)->toBe($few);
 });
+
+test('con un cliente elegido, el histórico de renovaciones de todos sus proyectos (SPEC §8.8)', function () {
+    $acme = Client::factory()->create();
+    $web = Project::factory()->hourBank()->create(['client_id' => $acme->id, 'code' => 'ACME-WEB']);
+    $seo = Project::factory()->hourBank()->create(['client_id' => $acme->id, 'code' => 'ACME-SEO']);
+
+    $t1 = HourBank::factory()->renewed()->create(['project_id' => $web->id, 'name' => 'Web T1', 'start_date' => '2026-01-01']);
+    HourBank::factory()->create(['project_id' => $web->id, 'name' => 'Web T2', 'start_date' => '2026-04-01', 'renewed_from_id' => $t1->id]);
+    $s1 = HourBank::factory()->renewed()->create(['project_id' => $seo->id, 'name' => 'SEO 1', 'start_date' => '2026-02-01']);
+    $s2 = HourBank::factory()->renewed()->create(['project_id' => $seo->id, 'name' => 'SEO 2', 'start_date' => '2026-05-01', 'renewed_from_id' => $s1->id]);
+    HourBank::factory()->closed()->create(['project_id' => $seo->id, 'name' => 'SEO 3', 'start_date' => '2026-08-01', 'renewed_from_id' => $s2->id]);
+    // Sin renovaciones, u otro cliente: no salen.
+    HourBank::factory()->create(['project_id' => $web->id, 'name' => 'Suelta']);
+    $other = HourBank::factory()->renewed()->create(['name' => 'Ajena']);
+    HourBank::factory()->create(['project_id' => $other->project_id, 'renewed_from_id' => $other->id]);
+
+    $admin = userWithRole('admin');
+
+    $this->actingAs($admin)
+        ->get("/bolsas?cliente={$acme->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('history.chains', 2)
+            ->where('history.chains.0.0.name', 'Web T1')
+            ->where('history.chains.0.0.project_id', $web->id)
+            ->where('history.chains.0.1.name', 'Web T2')
+            ->has('history.chains.1', 3)
+            ->where('history.chains.1.0.name', 'SEO 1')
+            ->where('history.chains.1.2.name', 'SEO 3')
+            ->where('history.chains.1.2.status', 'closed')
+            ->has('history.projects', 2)
+            ->where('history.projects.0.code', 'ACME-SEO')
+            ->where('history.projects.1.code', 'ACME-WEB'));
+
+    // Sin cliente elegido no hay histórico.
+    $this->actingAs($admin)->get('/bolsas')->assertInertia(fn (Assert $page) => $page->where('history', null));
+});
+
+test('el histórico del cliente solo lleva las bolsas que ve quien mira (D-035)', function () {
+    $acme = Client::factory()->create();
+    $manager = userWithRole('employee');
+    $mine = Project::factory()->hourBank()->create(['client_id' => $acme->id, 'owner_user_id' => $manager->id]);
+    $notMine = Project::factory()->hourBank()->create(['client_id' => $acme->id]);
+
+    foreach ([$mine, $notMine] as $project) {
+        $first = HourBank::factory()->renewed()->create(['project_id' => $project->id, 'name' => "Primera {$project->id}"]);
+        HourBank::factory()->create(['project_id' => $project->id, 'renewed_from_id' => $first->id]);
+    }
+
+    $this->actingAs($manager)
+        ->get("/bolsas?cliente={$acme->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('history.chains', 1)
+            ->where('history.chains.0.0.name', "Primera {$mine->id}")
+            ->has('history.projects', 1)
+            ->where('history.projects.0.id', $mine->id));
+});
+
+test('sin N+1 en el histórico del cliente', function () {
+    $acme = Client::factory()->create();
+    $admin = userWithRole('admin');
+    $queries = function () use ($admin, $acme): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get("/bolsas?cliente={$acme->id}&estado=todas")->assertOk();
+        DB::disableQueryLog();
+
+        return count(DB::getQueryLog());
+    };
+
+    $seed = function () use ($acme): void {
+        $project = Project::factory()->hourBank()->create(['client_id' => $acme->id]);
+        $first = HourBank::factory()->renewed()->create(['project_id' => $project->id]);
+        HourBank::factory()->create(['project_id' => $project->id, 'renewed_from_id' => $first->id]);
+    };
+
+    $seed();
+    $seed();
+    $queries();
+    $few = $queries();
+
+    $seed();
+    $seed();
+    $seed();
+    $many = $queries();
+
+    expect($many)->toBe($few);
+});

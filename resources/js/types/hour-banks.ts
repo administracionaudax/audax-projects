@@ -149,6 +149,11 @@ export type HourBanksIndexProps = {
     threshold: number;
     /** 'managed' = solo las bolsas de mis proyectos (gestor, D-035). */
     scope: 'all' | 'managed';
+    /** Histórico de renovaciones del cliente filtrado (SPEC §8.8); null sin filtro de cliente. */
+    history: {
+        chains: HourBankChainItem[][];
+        projects: HourBankHistoryProject[];
+    } | null;
     options: { clients: Option[]; departments: Option[] };
 };
 

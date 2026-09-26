@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\HourBanks;
 
 use App\Domain\HourBanks\HourBankCommitment;
+use App\Domain\HourBanks\HourBankHistory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Enums\HourBankStatus;
 use App\Enums\Role;
@@ -13,6 +14,7 @@ use App\Http\Resources\Projects\ResourceData;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -26,6 +28,8 @@ use Inertia\Response;
  * - Responsables y admins ven todas; un gestor, solo las de sus proyectos (D-035).
  * - Filtros en la URL: ?cliente=&departamento=&estado=&proximas=1 (estado vacío = abiertas;
  *   «todas» incluye cerradas y renovadas).
+ * - Con un cliente elegido, además, el histórico de renovaciones de sus bolsas en todos sus
+ *   proyectos (SPEC §8.8), con las mismas reglas de visibilidad.
  */
 class HourBankOverviewController extends Controller
 {
@@ -35,8 +39,12 @@ class HourBankOverviewController extends Controller
 
     public const string ALL = 'todas';
 
-    public function __invoke(Request $request, HourBankCommitment $commitment, HourBankLedger $ledger): Response
-    {
+    public function __invoke(
+        Request $request,
+        HourBankCommitment $commitment,
+        HourBankLedger $ledger,
+        HourBankHistory $history,
+    ): Response {
         $this->authorize('viewAny', HourBank::class);
 
         /** @var User $user */
@@ -76,6 +84,7 @@ class HourBankOverviewController extends Controller
             'stats' => $this->stats($visible, $threshold),
             'threshold' => $threshold,
             'scope' => $this->seesAll($user) ? 'all' : 'managed',
+            'history' => $filters['cliente'] !== null ? $this->clientHistory($visible, $filters['cliente'], $history) : null,
             'options' => [
                 'clients' => Client::query()
                     ->whereIn('id', (clone $visible)->join('projects', 'projects.id', '=', 'hour_banks.project_id')->select('projects.client_id'))
@@ -90,6 +99,40 @@ class HourBankOverviewController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    /**
+     * Histórico de renovaciones de un cliente (SPEC §8.8): las cadenas de bolsas de todos sus
+     * proyectos que ve quien mira, sea cual sea su estado, con los datos de cada proyecto.
+     *
+     * @param  Builder<HourBank>  $visible
+     * @return array{chains: list<list<array{id: int, project_id: int, name: string, status: string, start_date: string, end_date: string|null}>>, projects: list<array{id: int, code: string, name: string, color: string}>}
+     */
+    private function clientHistory(Builder $visible, int $clientId, HourBankHistory $history): array
+    {
+        $banks = (clone $visible)
+            ->whereHas('project', fn (Builder $project) => $project->where('client_id', $clientId))
+            ->get([
+                'hour_banks.id', 'hour_banks.project_id', 'hour_banks.name', 'hour_banks.status',
+                'hour_banks.start_date', 'hour_banks.end_date', 'hour_banks.renewed_from_id',
+            ]);
+
+        $chains = $history->chains($banks);
+        $projectIds = array_values(array_unique(array_map(fn (array $chain): int => $chain[0]['project_id'], $chains)));
+
+        $projects = $projectIds === [] ? [] : Project::query()
+            ->whereKey($projectIds)
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'color'])
+            ->map(fn (Project $project): array => [
+                'id' => $project->id,
+                'code' => $project->code,
+                'name' => $project->name,
+                'color' => $project->color,
+            ])
+            ->all();
+
+        return ['chains' => $chains, 'projects' => array_values($projects)];
     }
 
     /**

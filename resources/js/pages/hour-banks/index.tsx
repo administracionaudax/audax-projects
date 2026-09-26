@@ -3,11 +3,13 @@ import { CircleAlert, SearchX, TriangleAlert, Wallet, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useId } from 'react';
 import { EmptyState } from '@/components/empty-state';
+import { HourBankHistory } from '@/components/hour-banks/hour-bank-history';
 import { HourBanksOverviewTable } from '@/components/hour-banks/hour-banks-overview-table';
 import { overviewQuery } from '@/components/hour-banks/overview-query';
 import { FilterSelect } from '@/components/projects-list/filter-select';
 import { ListPagination } from '@/components/projects-list/list-pagination';
 import { PageHeader } from '@/components/projects-list/page-header';
+import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -24,6 +26,7 @@ const STATUSES: HourBankStatus[] = ['active', 'exhausted', 'closed', 'renewed'];
 /**
  * Vista global de bolsas (SPEC §8): las abiertas de todos los clientes, de más a menos consumida,
  * para anticipar renovaciones y facturación. Un gestor ve solo las de sus proyectos (D-035).
+ * Con un cliente elegido, también el histórico de renovaciones de ese cliente (SPEC §8.8).
  */
 export default function HourBanksIndex({
     banks,
@@ -31,10 +34,14 @@ export default function HourBanksIndex({
     stats,
     threshold,
     scope,
+    history,
     options,
 }: HourBanksIndexProps) {
     const id = useId();
     const filtered = Object.keys(overviewQuery(filters)).length > 0;
+    const client = options.clients.find(
+        (option) => option.id === filters.cliente,
+    );
 
     const apply = (next: HourBankOverviewFilters) =>
         router.get(index.url({ query: overviewQuery(next) }), undefined, {
@@ -219,6 +226,25 @@ export default function HourBanksIndex({
                     page={banks}
                     label={t('hour_banks.overview.pages')}
                 />
+
+                {history ? (
+                    <PageSection
+                        title={t('hour_banks.overview.history_heading', {
+                            client: client?.name ?? '',
+                        })}
+                        description={t(
+                            'hour_banks.overview.history_description',
+                        )}
+                    >
+                        <HourBankHistory
+                            chains={history.chains}
+                            projects={history.projects}
+                            emptyDescription={t(
+                                'hour_banks.overview.history_empty_description',
+                            )}
+                        />
+                    </PageSection>
+                ) : null}
             </div>
         </>
     );

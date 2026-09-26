@@ -146,5 +146,8 @@
     "hour_banks.overview.empty": "No hay bolsas abiertas",
     "hour_banks.overview.empty_description": "Las bolsas se crean en la pestaña «Bolsas» de cada proyecto.",
     "hour_banks.overview.no_results": "Ninguna bolsa coincide con los filtros",
-    "hour_banks.overview.no_results_description": "Prueba con otros filtros o quítalos."
+    "hour_banks.overview.no_results_description": "Prueba con otros filtros o quítalos.",
+    "hour_banks.overview.history_heading": "Histórico de renovaciones de :client",
+    "hour_banks.overview.history_description": "Las bolsas renovadas de todos sus proyectos, de la más antigua a la más reciente.",
+    "hour_banks.overview.history_empty_description": "Cuando se renueve una bolsa de este cliente, aquí verás la cadena de bolsas."
 }

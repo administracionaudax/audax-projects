@@ -74,6 +74,7 @@ describe('vista global de bolsas', () => {
         stats: { open: 4, exhausted: 1, near: 2 },
         threshold: 75,
         scope: 'managed',
+        history: null,
         options: {
             clients: [{ id: 1, name: 'Acme' }],
             departments: [{ id: 2, name: 'Diseño' }],
@@ -89,6 +90,63 @@ describe('vista global de bolsas', () => {
         );
         expect(container.textContent).toContain('Al 75\u00a0% o más');
         expect(screen.getByText('No hay bolsas abiertas')).toBeTruthy();
+    });
+
+    it('sin cliente elegido no hay histórico; con cliente, el de sus renovaciones (SPEC §8.8)', () => {
+        const { unmount } = render(<HourBanksIndex {...props} />);
+        expect(
+            screen.queryByRole('heading', {
+                name: /Histórico de renovaciones/,
+            }),
+        ).toBeNull();
+        unmount();
+
+        render(
+            <HourBanksIndex
+                {...props}
+                filters={{ ...props.filters, cliente: 1 }}
+                history={{
+                    chains: [
+                        [
+                            {
+                                id: 10,
+                                project_id: 7,
+                                name: 'Web T1',
+                                status: 'renewed',
+                                start_date: '2026-01-01',
+                                end_date: '2026-03-31',
+                            },
+                            {
+                                id: 11,
+                                project_id: 7,
+                                name: 'Web T2',
+                                status: 'active',
+                                start_date: '2026-04-01',
+                                end_date: null,
+                            },
+                        ],
+                    ],
+                    projects: [
+                        {
+                            id: 7,
+                            code: 'ACME-WEB',
+                            name: 'Web',
+                            color: '#0171FF',
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', {
+                name: 'Histórico de renovaciones de Acme',
+            }),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('link', { name: 'Web T2' }).getAttribute('href'),
+        ).toBe('/proyectos/7/bolsas/11');
+        expect(screen.getByRole('link', { name: /ACME-WEB/ })).toBeTruthy();
     });
 
     it('«próximas a agotarse» se aplica con la URL', async () => {
