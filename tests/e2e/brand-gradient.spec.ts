@@ -67,7 +67,8 @@ test('degradado con velo y texto AA en móvil y en escritorio', async ({
     for (const viewport of VIEWPORTS) {
         await test.step(`estado vacío grande a ${viewport.width} px`, async () => {
             await page.setViewportSize(viewport);
-            await page.goto('/proyectos');
+            // Una sección que aún llega en otra fase: su estado vacío grande lleva el degradado.
+            await page.goto('/carga');
             const hero = page.locator('section.bg-brand-gradient');
             await expect(hero).toBeVisible();
             await expectVeiledGradient(hero);

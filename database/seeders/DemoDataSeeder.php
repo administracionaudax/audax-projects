@@ -72,25 +72,25 @@ class DemoDataSeeder extends Seeder
      */
     private const array PROJECTS = [
         ['code' => 'ARR-WEB', 'name' => 'Web corporativa', 'client' => 'Bodegas Arrieta', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'raul', 'members' => ['elena', 'lucia', 'pablo', 'sergio', 'marta'], 'from' => 10, 'to' => 0, 'rate' => null,
-            'banks' => [['Bolsa Diseño 40h', 'Diseño', 'exhausted', 'allow', 10, 0], ['Bolsa Desarrollo 80h', 'Desarrollo', 'near', 'inherit', 9, 0]]],
+            'banks' => [['Bolsa Diseño', 'Diseño', 'exhausted', 'allow', 10, 0], ['Bolsa Desarrollo', 'Desarrollo', 'near', 'inherit', 9, 0]]],
         ['code' => 'ARR-MKT', 'name' => 'Campañas 2026', 'client' => 'Bodegas Arrieta', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'nuria', 'members' => ['irene', 'daniel'], 'from' => 12, 'to' => 0, 'rate' => null,
-            'banks' => [['Marketing 30h – 1.er semestre', 'Marketing', 'renewed', 'inherit', 12, 6], ['Marketing 30h – 2.º semestre', 'Marketing', 'renewal', 'inherit', 6, 0]]],
+            'banks' => [['Marketing – 1.er semestre', 'Marketing', 'renewed', 'inherit', 12, 6], ['Marketing – 2.º semestre', 'Marketing', 'renewal', 'inherit', 6, 0]]],
         ['code' => 'SON-APP', 'name' => 'App de citas', 'client' => 'Clínica Dental Sonrisas', 'billing' => 'fixed_price', 'status' => 'active', 'owner' => 'marta', 'members' => ['pablo', 'sergio', 'elena'], 'from' => 7, 'to' => 0, 'rate' => null, 'price' => '18500.00', 'banks' => []],
         ['code' => 'SON-SEO', 'name' => 'SEO local', 'client' => 'Clínica Dental Sonrisas', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'nuria', 'members' => ['irene', 'daniel'], 'from' => 5, 'to' => 0, 'rate' => '58.00',
-            'banks' => [['Bolsa SEO 20h', 'Marketing', 'block', 'block', 5, 0]]],
+            'banks' => [['Bolsa SEO', 'Marketing', 'block', 'block', 5, 0]]],
         ['code' => 'MIR-WEB', 'name' => 'Rediseño web', 'client' => 'Hoteles Mirador', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'raul', 'members' => ['elena', 'lucia', 'sergio'], 'from' => 4, 'to' => 0, 'rate' => null,
-            'banks' => [['Bolsa general 60h', null, 'healthy', 'inherit', 4, 0]]],
+            'banks' => [['Bolsa general', null, 'healthy', 'inherit', 4, 0]]],
         ['code' => 'MIR-SOP', 'name' => 'Soporte y mantenimiento', 'client' => 'Hoteles Mirador', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'marta', 'members' => ['pablo', 'sergio'], 'from' => 12, 'to' => 0, 'rate' => '52.00',
-            'banks' => [['Soporte 20h – 2025', 'Desarrollo', 'closed', 'allow', 12, 5], ['Soporte 20h – 2026', 'Desarrollo', 'healthy', 'allow', 5, 0]]],
+            'banks' => [['Soporte – año anterior', 'Desarrollo', 'closed', 'allow', 12, 5], ['Soporte – año en curso', 'Desarrollo', 'healthy', 'allow', 5, 0]]],
         ['code' => 'LAM-INT', 'name' => 'Intranet de obra', 'client' => 'Construcciones Lamas', 'billing' => 'time_and_materials', 'status' => 'active', 'owner' => 'marta', 'members' => ['pablo', 'sergio', 'lucia'], 'from' => 8, 'to' => 0, 'rate' => '60.00', 'banks' => []],
         ['code' => 'FAR-SHOP', 'name' => 'Tienda online', 'client' => 'Librería El Faro', 'billing' => 'fixed_price', 'status' => 'active', 'owner' => 'marta', 'members' => ['sergio', 'elena', 'lucia'], 'from' => 6, 'to' => 0, 'rate' => null, 'price' => '9800.00', 'banks' => []],
         ['code' => 'FAR-RRSS', 'name' => 'Redes sociales', 'client' => 'Librería El Faro', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'nuria', 'members' => ['irene', 'daniel'], 'from' => 9, 'to' => 0, 'rate' => null,
-            'banks' => [['Bolsa contenidos 25h', 'Marketing', 'exhausted', 'allow', 9, 0]]],
+            'banks' => [['Bolsa contenidos', 'Marketing', 'exhausted', 'allow', 9, 0]]],
         ['code' => 'FER-MARCA', 'name' => 'Identidad de marca', 'client' => 'Grupo Ferrán Logística', 'billing' => 'fixed_price', 'status' => 'completed', 'owner' => 'raul', 'members' => ['elena', 'lucia'], 'from' => 11, 'to' => 7, 'rate' => null, 'price' => '6400.00', 'banks' => []],
         ['code' => 'FER-PORTAL', 'name' => 'Portal de clientes', 'client' => 'Grupo Ferrán Logística', 'billing' => 'hour_bank', 'status' => 'active', 'owner' => 'marta', 'members' => ['pablo', 'sergio', 'lucia'], 'from' => 7, 'to' => 0, 'rate' => '62.00',
-            'banks' => [['Bolsa desarrollo 100h', 'Desarrollo', 'healthy', 'inherit', 7, 0]]],
+            'banks' => [['Bolsa desarrollo', 'Desarrollo', 'healthy', 'inherit', 7, 0]]],
         ['code' => 'MON-TEMP', 'name' => 'Lanzamiento cerveza de temporada', 'client' => 'Cervezas Montaña', 'billing' => 'hour_bank', 'status' => 'on_hold', 'owner' => 'nuria', 'members' => ['irene', 'daniel', 'elena'], 'from' => 4, 'to' => 1, 'rate' => null,
-            'banks' => [['Bolsa campaña 35h', null, 'healthy', 'inherit', 4, 1]]],
+            'banks' => [['Bolsa campaña', null, 'healthy', 'inherit', 4, 1]]],
         ['code' => 'AUL-WEB', 'name' => 'Web de la fundación', 'client' => 'Fundación Aula Viva', 'billing' => 'time_and_materials', 'status' => 'archived', 'owner' => 'raul', 'members' => ['elena', 'sergio'], 'from' => 12, 'to' => 9, 'rate' => '50.00', 'banks' => []],
         ['code' => 'MON-MICRO', 'name' => 'Microsite de verano', 'client' => 'Cervezas Montaña', 'billing' => 'time_and_materials', 'status' => 'planned', 'owner' => 'nuria', 'members' => ['daniel', 'lucia'], 'from' => -1, 'to' => -2, 'rate' => null, 'banks' => []],
     ];
@@ -562,7 +562,10 @@ class DemoDataSeeder extends Seeder
         foreach ($projects as $data) {
             foreach ($data['banks'] as ['bank' => $bank, 'state' => $state]) {
                 $consumed = (int) TimeEntry::query()->where('hour_bank_id', $bank->id)->sum('minutes');
-                $total = max((int) round($consumed / self::TARGET_RATIO[$state] / 300) * 300, 600);
+                // La bolsa «block» se queda con 0:45 libres exactos: los E2E comprueban que rechaza lo que no cabe.
+                $total = $state === 'block'
+                    ? $consumed + 45
+                    : max((int) round($consumed / self::TARGET_RATIO[$state] / 300) * 300, 600);
 
                 HourBank::withoutEvents(fn () => $bank->forceFill([
                     'total_minutes' => $total,
