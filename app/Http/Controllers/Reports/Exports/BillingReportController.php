@@ -40,7 +40,8 @@ class BillingReportController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $urlFilters = ReportFilters::fromQuery($request->query());
+        // Facturación no compara con el periodo anterior (INT-05): sin comparar=1 en la barra ni en sus enlaces.
+        $urlFilters = ReportFilters::fromQuery($request->query())->withoutComparison();
         $client = $urlFilters->clientIds === [] ? null : Client::query()->find($urlFilters->clientIds[0], ['id', 'name', 'is_active']);
 
         $format = $this->exportFormat($request);

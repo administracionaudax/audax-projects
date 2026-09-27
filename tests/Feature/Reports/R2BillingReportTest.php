@@ -58,6 +58,17 @@ test('permisos: admins y quien tenga view-financials; el resto no', function () 
     $this->get(($this->url)())->assertRedirect(route('login'));
 });
 
+test('no compara con el periodo anterior: sin comparar en la barra ni en sus enlaces (INT-05)', function () {
+    $this->actingAs($this->s->admin)->get(($this->url)(['comparar' => '1']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.compare', false)
+            ->where('filters.comparison', null)
+            ->missing('filters.query.comparar')
+            ->missing('filters.previous.comparar')
+            ->missing('filters.next.comparar'));
+});
+
 test('sin cliente, la página pide elegir uno y la exportación no se hace', function () {
     $s = $this->s;
 

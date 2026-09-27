@@ -108,6 +108,16 @@ final readonly class ReportFilters
         return $this->shifted(-1);
     }
 
+    /**
+     * Los mismos filtros sin comparar con el periodo anterior (para las páginas que no comparan,
+     * como Facturación: sin comparar=1 en sus enlaces).
+     */
+    public function withoutComparison(): self
+    {
+        return new self($this->period, $this->from, $this->to, false, $this->userIds, $this->departmentIds,
+            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable);
+    }
+
     public function withDates(CarbonImmutable $from, CarbonImmutable $to): self
     {
         return new self($this->period, $from, $to, $this->compare, $this->userIds, $this->departmentIds,

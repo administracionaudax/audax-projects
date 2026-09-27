@@ -101,6 +101,28 @@ describe('ReportFilterBar', () => {
         );
     });
 
+    it('sin comparación (compare=false) no ofrece el interruptor ni el tramo comparado', () => {
+        render(
+            <ReportFilterBar
+                filters={{
+                    ...filters,
+                    compare: true,
+                    comparison: { from: '2026-08-01', to: '2026-08-31' },
+                }}
+                show={['facturable']}
+                compare={false}
+                url="/informes/facturacion"
+            />,
+        );
+
+        expect(
+            screen.queryByRole('switch', {
+                name: 'Comparar con el periodo anterior',
+            }),
+        ).toBeNull();
+        expect(screen.queryByText(/Comparado con/)).toBeNull();
+    });
+
     it('muestra el filtro de personas con la selección actual y oculta los no pedidos', async () => {
         render(
             <ReportFilterBar filters={filters} show={['persona']} url="/x" />,
