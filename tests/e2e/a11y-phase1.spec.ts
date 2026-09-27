@@ -230,6 +230,21 @@ const PAGES: readonly PageDef[] = [
         roles: ADMIN,
         path: (i) => `/informes/facturacion?cliente[]=${i.client}`,
     },
+    // Fase 3: ausencias, festivos y carga.
+    { id: 'ausencias', roles: ALL, path: () => '/ausencias' },
+    {
+        id: 'ausencias-solicitar',
+        roles: ALL,
+        path: () => '/ausencias?solicitar=1',
+    },
+    { id: 'ausencias-equipo', roles: STAFF, path: () => '/ausencias/equipo' },
+    { id: 'admin-festivos', roles: ADMIN, path: () => '/admin/festivos' },
+    { id: 'carga', roles: ALL, path: () => '/carga' },
+    {
+        id: 'carga-4-semanas',
+        roles: STAFF,
+        path: () => '/carga?horizonte=4-semanas',
+    },
     {
         id: 'admin-invitar-dialogo',
         roles: ADMIN,
