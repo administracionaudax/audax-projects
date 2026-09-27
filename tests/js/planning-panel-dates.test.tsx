@@ -49,7 +49,8 @@ vi.mock('@/components/planning/reschedule-requests', () => ({
     ) => mocks.save(taskId, body, options),
 }));
 
-// El calendario del selector necesita medidas del navegador: se sustituye por un campo de fecha.
+// Aquí solo importan las peticiones: basta un campo de fecha. El selector real, con su popover y
+// el foco, se prueba en planning-panel-focus.test.tsx.
 vi.mock('@/components/domain/date-picker', () => ({
     DatePicker: ({
         id,
