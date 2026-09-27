@@ -335,3 +335,24 @@ export function pageProps(
         ...overrides,
     };
 }
+
+/** Elemento con `data-test` (la convención del proyecto, también en Playwright). */
+export function byTest(
+    id: string,
+    container: ParentNode = document,
+): HTMLElement {
+    const element = container.querySelector<HTMLElement>(`[data-test="${id}"]`);
+
+    if (!element) {
+        throw new Error(`No hay ningún [data-test="${id}"]`);
+    }
+
+    return element;
+}
+
+export function allByTest(
+    id: string,
+    container: ParentNode = document,
+): HTMLElement[] {
+    return [...container.querySelectorAll<HTMLElement>(`[data-test="${id}"]`)];
+}

@@ -344,7 +344,7 @@ function TrayItem({
                 <ExternalLink
                     aria-hidden="true"
                     className="size-3.5 shrink-0 text-muted-foreground"
-                />
+                />{' '}
                 <span className="sr-only">{t('workload_task.open')}</span>
             </Link>
             <WorkloadTaskMeta task={task} />
