@@ -37,6 +37,16 @@ class HourBankPolicy
         return $user->isAdmin() || $user->isDepartmentManager() || $user->isManagerOf($hourBank->project_id);
     }
 
+    /**
+     * PDF de consumo de la bolsa (D-045): lleva el detalle de las entradas con la persona, así que
+     * exige ver el detalle por persona (viewBreakdown). Un responsable que no gestiona el proyecto
+     * solo verá en él las horas de su equipo (el PDF lo avisa).
+     */
+    public function downloadPdf(User $user, HourBank $hourBank): bool
+    {
+        return $this->viewBreakdown($user, $hourBank);
+    }
+
     public function create(User $user, Project $project): bool
     {
         return $project->acceptsTime() && $user->canManageProject($project);
