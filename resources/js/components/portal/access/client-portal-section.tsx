@@ -166,18 +166,16 @@ export function ClientPortalSection({
                             <li key={project.id} className="grid gap-1">
                                 <Link
                                     href={urls.project(project.id, 'ajustes')}
+                                    aria-label={t(
+                                        'portal_access.projects.settings_link',
+                                        { project: project.name },
+                                    )}
                                     className={cn(
                                         'w-fit rounded-sm text-sm text-primary-text hover:underline',
                                         FOCUS_RING,
                                     )}
                                 >
                                     {project.name}
-                                    <span className="sr-only">
-                                        {' '}
-                                        {t(
-                                            'portal_access.projects.settings_link',
-                                        )}
-                                    </span>
                                 </Link>
                                 <div className="flex flex-wrap gap-1.5">
                                     {project.project_visible ? (

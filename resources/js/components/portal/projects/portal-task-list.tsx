@@ -118,7 +118,7 @@ export function PortalTaskList({
                                 className="gap-1.5 px-3"
                                 data-test={`portal-tasks-filter-${item}`}
                             >
-                                {t(`portal_projects.tasks.filter_${item}`)}
+                                {t(`portal_projects.tasks.filter_${item}`)}{' '}
                                 <span className="tabular text-muted-foreground">
                                     {counts[item]}
                                 </span>

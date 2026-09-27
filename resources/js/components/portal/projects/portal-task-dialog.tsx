@@ -3,13 +3,10 @@ import type { ReactNode } from 'react';
 import { TaskStatusBadge } from '@/components/domain/badges';
 import { describeDates } from '@/components/gantt/labels';
 import type { GanttTask } from '@/components/gantt/types';
-import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -163,14 +160,6 @@ export function PortalTaskDialog({
                                 )}
                             </Row>
                         </dl>
-
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button variant="secondary">
-                                    {t('common.close')}
-                                </Button>
-                            </DialogClose>
-                        </DialogFooter>
                     </>
                 ) : null}
             </DialogContent>

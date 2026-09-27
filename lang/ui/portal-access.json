@@ -60,7 +60,7 @@
 
     "portal_access.projects.title": "Proyectos abiertos al portal",
     "portal_access.projects.empty": "Ninguno. Se abren desde los ajustes de cada proyecto.",
-    "portal_access.projects.settings_link": "(ajustes del proyecto)",
+    "portal_access.projects.settings_link": ":project: ajustes del portal del proyecto",
     "portal_access.projects.tasks": "Tareas",
     "portal_access.projects.hours": "Horas por tarea",
     "portal_access.projects.gantt": "Gantt",
