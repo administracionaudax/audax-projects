@@ -2,6 +2,7 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Enums\HourBankStatus;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
@@ -154,3 +155,17 @@ it('una escritura que se deshace no deja la bolsa apuntada: la siguiente sí se 
     $approved();
     Notification::assertSentTo($this->portalUser, ClientHourBankThreshold::class, fn (ClientHourBankThreshold $n) => $n->threshold === 90);
 });
+
+it('no avisa de una bolsa cerrada o renovada aunque se aprueben sus horas (D-053)', function (HourBankStatus $status) {
+    $period = ($this->submitWeek)(600);
+    $this->bank->forceFill(['status' => $status])->save();
+
+    ($this->approve)($period)->assertRedirect('/horas/aprobaciones')->assertSessionHasNoErrors();
+
+    expect(TimeEntry::query()->sole()->status)->toBe(TimeEntryStatus::Approved)
+        ->and(HourBankAlert::query()->where('key', 'like', 'client:%')->exists())->toBeFalse();
+    Notification::assertNotSentTo($this->portalUser, ClientHourBankThreshold::class);
+})->with([
+    'renovada' => [HourBankStatus::Renewed],
+    'cerrada' => [HourBankStatus::Closed],
+]);

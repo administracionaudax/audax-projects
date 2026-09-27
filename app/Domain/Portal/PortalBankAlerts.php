@@ -16,6 +16,7 @@ use Throwable;
 /**
  * Aviso opcional al cliente cuando su bolsa llega al 90 % y al 100 % (SPEC §11, D-065):
  * - solo si el cliente está activo y lo tiene activado (clients.portal_notify_thresholds),
+ * - solo de bolsas abiertas (activas o agotadas): nunca de una cerrada o renovada,
  * - con lo que el cliente VE (PortalBankFigures): nunca le avisa por horas que aún no puede ver,
  * - cada umbral una sola vez por bolsa (hour_bank_alerts, clave client:90 / client:100),
  * - por email (cola mail) a los usuarios del portal activos de ese cliente.
@@ -83,7 +84,9 @@ final class PortalBankAlerts
 
     public function check(HourBank $bank): void
     {
-        if ($bank->total_minutes <= 0) {
+        // Una bolsa cerrada o renovada ya no se agota ni se renueva (como los avisos internos,
+        // HourBankLedger): aprobar sus horas (D-053) no le dice al cliente «hablemos para renovarla».
+        if (! $bank->status->acceptsTime() || $bank->total_minutes <= 0) {
             return;
         }
 
