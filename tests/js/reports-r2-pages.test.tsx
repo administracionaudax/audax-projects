@@ -238,14 +238,12 @@ describe('informe de cliente', () => {
         ).toBeTruthy();
         expect(screen.queryByRole('combobox', { name: /Clientes/ })).toBeNull();
 
+        // Con view-financials, el PDF se ofrece para el cliente o con importes (uso interno).
         expect(
-            screen.getByRole('link', {
-                name: 'PDF de consumo de Bolsa Diseño ñ',
+            screen.getByRole('button', {
+                name: 'Descargar el PDF de consumo de Bolsa Diseño ñ',
             }),
-        ).toHaveProperty(
-            'href',
-            expect.stringContaining('/proyectos/10/bolsas/2/pdf'),
-        );
+        ).toBeTruthy();
         expect(
             screen.getByRole('link', { name: 'Horas para facturar' }),
         ).toHaveProperty(
@@ -275,6 +273,25 @@ describe('informe de cliente', () => {
                 '/informes/clientes/4?periodo=semana&fecha=2026-09-21&persona%5B%5D=3&tabla=proyectos&formato=xlsx',
             ),
         );
+        await user.keyboard('{Escape}');
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Descargar el PDF de consumo de Bolsa Diseño ñ',
+            }),
+        );
+        expect(
+            screen.getByRole('menuitem', { name: /^Para el cliente/ }),
+        ).toHaveProperty(
+            'href',
+            expect.stringMatching(/\/proyectos\/10\/bolsas\/2\/pdf$/),
+        );
+        expect(
+            screen.getByRole('menuitem', { name: /^Con importes/ }),
+        ).toHaveProperty(
+            'href',
+            expect.stringContaining('/proyectos/10/bolsas/2/pdf?importes=1'),
+        );
     });
 
     it('sin view-financials no hay importes, ni enlace para facturar; avisa del alcance', () => {
@@ -292,6 +309,15 @@ describe('informe de cliente', () => {
         expect(
             screen.queryByRole('link', { name: 'Horas para facturar' }),
         ).toBeNull();
+        // Sin view-financials, solo el PDF para el cliente (sin importes).
+        expect(
+            screen.getByRole('link', {
+                name: 'Descargar el PDF de consumo de Bolsa Diseño ñ',
+            }),
+        ).toHaveProperty(
+            'href',
+            expect.stringMatching(/\/proyectos\/10\/bolsas\/2\/pdf$/),
+        );
         expect(
             screen.getByText(
                 'Ves las horas de las personas de tu departamento y todas las de los proyectos que gestionas.',

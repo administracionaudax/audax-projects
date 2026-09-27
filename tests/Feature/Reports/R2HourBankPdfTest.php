@@ -3,6 +3,7 @@
 use App\Domain\Reports\Pdf\AudaxPdf;
 use App\Domain\Reports\Pdf\HourBankStatement;
 use App\Domain\Reports\Pdf\HourBankStatementPdf;
+use App\Enums\TimeEntryStatus;
 use App\Models\HourBank;
 use App\Models\Setting;
 use Tests\Feature\Reports\R2Scenario;
@@ -11,7 +12,7 @@ use Tests\Feature\Reports\R2Scenario;
 | PDF de consumo de bolsa (D-045; R2) de B1 en el escenario calculado a mano (R2Scenario): solo
 | las horas aprobadas o bloqueadas (E1 y E2; el borrador E3 no sale), cifras y barra de esas horas
 | (700 consumidos: 600 dentro y 100 de exceso sobre 600 contratados), consumo por mes, acentos,
-| eñes, ¿¡ y € bien codificados, e importes solo con view-financials.
+| eñes, ¿¡ y € bien codificados, e importes solo en el PDF de uso interno y con view-financials.
 */
 
 beforeEach(function () {
@@ -103,9 +104,18 @@ test('lista solo las entradas aprobadas o bloqueadas, con acentos, ñ, ¿¡ y �
         ->not->toContain(AudaxPdf::encode('Horas de agosto'));
 });
 
-test('con view-financials lleva precio, tarifa e ingreso estimado; sin él, ningún importe', function () {
+test('el PDF para el cliente nunca lleva importes; el de uso interno, solo con view-financials', function () {
     $s = $this->s;
-    $admin = ($this->text)((string) $this->actingAs($s->admin)->get(($this->url)())->getContent());
+
+    // Por defecto (el que se envía al cliente), ni siquiera un admin ve importes.
+    $plainAdmin = ($this->text)((string) $this->actingAs($s->admin)->get(($this->url)())->getContent());
+    expect($plainAdmin)
+        ->not->toContain(AudaxPdf::encode('Datos económicos'))
+        ->not->toContain(AudaxPdf::encode('1.116,67 €'));
+
+    $response = $this->actingAs($s->admin)->get(($this->url)().'?importes=1');
+    expect($response->headers->get('Content-Disposition'))->toBe('attachment; filename=NAN-WEB-consumo-bolsa-diseno-n-interno-2026-09-25.pdf');
+    $admin = ($this->text)((string) $response->getContent());
 
     // 1000 × 600/600 + 100 × 70/60 = 1116,67 €.
     expect($admin)
@@ -114,8 +124,11 @@ test('con view-financials lleva precio, tarifa e ingreso estimado; sin él, ning
         ->toContain(($this->pdfString)('70,00 €/h'))
         ->toContain(($this->pdfString)('1.116,67 €'));
 
+    // Sin view-financials, ?importes=1 no cambia nada (ni el nombre del fichero).
     foreach ([$s->gema, $s->raul] as $viewer) {
-        $plain = ($this->text)((string) $this->actingAs($viewer)->get(($this->url)())->getContent());
+        $response = $this->actingAs($viewer)->get(($this->url)().'?importes=1');
+        expect($response->headers->get('Content-Disposition'))->not->toContain('interno');
+        $plain = ($this->text)((string) $response->getContent());
 
         expect($plain)
             ->not->toContain(AudaxPdf::encode('Datos económicos'))
@@ -137,7 +150,7 @@ test('un responsable que no gestiona el proyecto recibe el aviso de que el PDF p
 
 test('sin compresión (SetCompression(false)) el texto va tal cual en el flujo; sin horas aprobadas lo dice', function () {
     $s = $this->s;
-    $statement = app(HourBankStatement::class)->build($s->admin, $s->b1);
+    $statement = app(HourBankStatement::class)->build($s->admin, $s->b1, withFinancials: true);
     $pdf = app(HourBankStatementPdf::class)->render($statement, compress: false);
 
     expect($statement['figures'])->toBe(['consumed' => 700, 'in_bank' => 600, 'overage' => 100, 'remaining' => 0, 'ratio' => 1.1667])
@@ -154,4 +167,16 @@ test('sin compresión (SetCompression(false)) el texto va tal cual en el flujo; 
     expect($empty['figures']['consumed'])->toBe(0)
         ->and($empty['entries'])->toBe([])
         ->and($emptyPdf)->toContain(($this->pdfString)('Todavía no hay horas aprobadas en esta bolsa.'));
+});
+
+test('las cifras del PDF van en la caché de informes y se renuevan al aprobar horas (D-046)', function () {
+    $s = $this->s;
+    $draft = AudaxPdf::encode('Borrador que no sale en el PDF');
+
+    expect(($this->text)((string) $this->actingAs($s->gema)->get(($this->url)())->getContent()))->not->toContain($draft);
+
+    // Aprobar la entrada en borrador invalida la caché (ReportsServiceProvider): ya sale.
+    $s->e3->forceFill(['status' => TimeEntryStatus::Approved])->save();
+
+    expect(($this->text)((string) $this->actingAs($s->gema)->get(($this->url)())->getContent()))->toContain($draft);
 });

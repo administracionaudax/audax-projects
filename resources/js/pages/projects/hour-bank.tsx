@@ -1,11 +1,5 @@
 import { Head, Link, setLayoutProps, usePage } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    ChartColumn,
-    FileDown,
-    Info,
-    TriangleAlert,
-} from 'lucide-react';
+import { ArrowLeft, ChartColumn, Info, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { HourBankStatusBadge } from '@/components/domain/badges';
@@ -22,8 +16,8 @@ import { HourBankWeeklyChart } from '@/components/hour-banks/hour-bank-weekly-ch
 import { ProjectShell } from '@/components/projects/project-shell';
 import { ListPagination } from '@/components/projects-list/list-pagination';
 import { PageSection } from '@/components/projects-list/page-section';
+import { R2BankPdfMenu } from '@/components/reports/r2-bank-pdf-menu';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatDate, formatMinutes } from '@/lib/format';
@@ -32,7 +26,6 @@ import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { index as projectsIndex, show as projectShow } from '@/routes/projects';
 import { index as banksIndex, show } from '@/routes/projects/hour-banks';
-import { hourBankPdf } from '@/routes/reports';
 import type { HourBankShowProps } from '@/types';
 
 /**
@@ -125,21 +118,12 @@ export default function HourBankShow({
                                  * entradas con la persona, así que solo con el detalle por persona.
                                  */}
                                 {byPerson !== null ? (
-                                    <Button variant="outline" size="sm" asChild>
-                                        <a
-                                            href={hourBankPdf.url({
-                                                project: project.id,
-                                                hourBank: bank.id,
-                                            })}
-                                            download
-                                            title={t(
-                                                'reports_r2.link.bank_pdf_description',
-                                            )}
-                                        >
-                                            <FileDown aria-hidden="true" />
-                                            {t('reports_r2.link.bank_pdf')}
-                                        </a>
-                                    </Button>
+                                    <R2BankPdfMenu
+                                        projectId={project.id}
+                                        bankId={bank.id}
+                                        bankName={bank.name}
+                                        size="sm"
+                                    />
                                 ) : null}
                             </div>
                         </header>

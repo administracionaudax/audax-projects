@@ -1,9 +1,10 @@
 import { Link } from '@inertiajs/react';
-import { ArrowRight, FileDown, History, Wallet } from 'lucide-react';
+import { ArrowRight, History, Wallet } from 'lucide-react';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { HourBankStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
 import { bankDates } from '@/components/hour-banks/hour-bank-card';
+import { R2BankPdfMenu } from '@/components/reports/r2-bank-pdf-menu';
 import { R2OverageValue } from '@/components/reports/r2-breakdown-table';
 import type { R2ClientBank } from '@/components/reports/r2-types';
 import { FOCUS_RING } from '@/lib/focus-ring';
@@ -11,7 +12,6 @@ import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
-import { hourBankPdf } from '@/routes/reports';
 
 /**
  * Bolsas de un cliente en su informe (SPEC §10.2): cada una con su barra de consumo (dentro y
@@ -96,20 +96,12 @@ export function R2BankList({
                                 />
                             ) : null}
                         </p>
-                        <a
-                            href={hourBankPdf.url({
-                                project: bank.project.id,
-                                hourBank: bank.id,
-                            })}
-                            download
-                            className={cn(
-                                'inline-flex items-center gap-1.5 rounded-[3px] text-primary-text hover:underline',
-                                FOCUS_RING,
-                            )}
-                        >
-                            <FileDown aria-hidden="true" className="size-4" />
-                            {t('reports_r2.banks.pdf', { name: bank.name })}
-                        </a>
+                        <R2BankPdfMenu
+                            projectId={bank.project.id}
+                            bankId={bank.id}
+                            bankName={bank.name}
+                            size="sm"
+                        />
                     </div>
                 </li>
             ))}

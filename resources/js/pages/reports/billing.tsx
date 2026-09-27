@@ -274,6 +274,6 @@ export default function BillingReport({
 BillingReport.layout = {
     breadcrumbs: [
         { title: t('nav.reports'), href: reportsIndex() },
-        { title: t('reports_r2.billing.heading'), href: billing() },
+        { title: t('reports_r2.billing.title'), href: billing() },
     ],
 };

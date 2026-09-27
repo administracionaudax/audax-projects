@@ -4,6 +4,7 @@ namespace App\Domain\Reports\Pdf;
 
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\EstimateComparison;
+use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportPeriod;
 use App\Domain\Reports\ReportScope;
@@ -27,11 +28,17 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Las horas salen de ReportScope::entries() (D-044): un gestor del proyecto o un admin ven todas;
  * un responsable que no gestiona el proyecto, solo las de su equipo (el PDF lo avisa: partial).
- * Los datos económicos (precio, tarifa e ingreso estimado, D-043) solo con view-financials.
+ * Los datos económicos (precio, tarifa e ingreso estimado, D-043) solo si se piden
+ * ($withFinancials, «PDF con importes (uso interno)») y quien lo descarga tiene view-financials:
+ * el PDF normal es el que se envía al cliente y nunca los lleva.
+ * Las cifras y el listado se guardan en ReportCache (D-046); la fecha del informe, no.
  */
 final class HourBankStatement
 {
-    public function __construct(private readonly RevenueCalculator $revenue) {}
+    public function __construct(
+        private readonly RevenueCalculator $revenue,
+        private readonly ReportCache $cache,
+    ) {}
 
     /**
      * @return array{
@@ -45,7 +52,7 @@ final class HourBankStatement
      *     partial: bool
      * }
      */
-    public function build(User $viewer, HourBank $bank): array
+    public function build(User $viewer, HourBank $bank, bool $withFinancials = false): array
     {
         /** @var Project $project */
         $project = Project::query()->withTrashed()->findOrFail($bank->project_id, ['id', 'code', 'name', 'client_id', 'hourly_rate', 'billing_type']);
@@ -64,51 +71,55 @@ final class HourBankStatement
 
         $approved = fn (): Builder => (clone $scope->entries())
             ->whereIn('time_entries.status', [TimeEntryStatus::Approved->value, TimeEntryStatus::Locked->value]);
+        $financials = $withFinancials && $scope->canSeeFinancials();
 
-        $totals = $approved()->toBase()
-            ->selectRaw('COALESCE(SUM(time_entries.minutes), 0) as minutes, COALESCE(SUM(time_entries.overage_minutes), 0) as overage')
-            ->first();
-        $consumed = (int) ($totals->minutes ?? 0);
-        $overage = (int) ($totals->overage ?? 0);
-        $inBank = $consumed - $overage;
+        /** @var array{consumed: int, overage: int, months: list<array{month: string, in_bank: int, overage: int}>, entries: list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>, income: string|null} $data */
+        $data = $this->cache->remember($scope, 'r2.bank-pdf.'.$bank->id.($financials ? '.f' : ''), function () use ($approved, $financials): array {
+            $totals = $approved()->toBase()
+                ->selectRaw('COALESCE(SUM(time_entries.minutes), 0) as minutes, COALESCE(SUM(time_entries.overage_minutes), 0) as overage')
+                ->first();
 
-        $month = Dimension::Month->expression();
-        $months = array_values($approved()->toBase()
-            ->selectRaw($month.' as month, SUM(time_entries.minutes) as minutes, SUM(time_entries.overage_minutes) as overage')
-            ->groupByRaw($month)
-            ->orderByRaw($month)
-            ->get()
-            ->map(fn (object $row): array => [
-                'month' => substr((string) $row->month, 0, 10),
-                'in_bank' => (int) $row->minutes - (int) $row->overage,
-                'overage' => (int) $row->overage,
-            ])
-            ->all());
+            $month = Dimension::Month->expression();
+            $months = array_values($approved()->toBase()
+                ->selectRaw($month.' as month, SUM(time_entries.minutes) as minutes, SUM(time_entries.overage_minutes) as overage')
+                ->groupByRaw($month)
+                ->orderByRaw($month)
+                ->get()
+                ->map(fn (object $row): array => [
+                    'month' => substr((string) $row->month, 0, 10),
+                    'in_bank' => (int) $row->minutes - (int) $row->overage,
+                    'overage' => (int) $row->overage,
+                ])
+                ->all());
 
-        $entries = array_values($approved()
-            ->with(['user:id,name', 'task' => fn ($query) => $query->select(['id', 'title'])])
-            ->orderBy('time_entries.date')
-            ->orderBy('time_entries.id')
-            ->get(['time_entries.id', 'time_entries.user_id', 'time_entries.task_id', 'time_entries.date',
-                'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description'])
-            ->map(fn (TimeEntry $entry): array => [
-                'date' => $entry->date->toDateString(),
-                'person' => $entry->user->name,
-                'task' => $entry->task->title,
-                'in_bank' => $entry->minutes - $entry->overage_minutes,
-                'overage' => $entry->overage_minutes,
-                'description' => (string) $entry->description,
-            ])
-            ->all());
+            $entries = array_values($approved()
+                ->with(['user:id,name', 'task' => fn ($query) => $query->select(['id', 'title'])])
+                ->orderBy('time_entries.date')
+                ->orderBy('time_entries.id')
+                ->get(['time_entries.id', 'time_entries.user_id', 'time_entries.task_id', 'time_entries.date',
+                    'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description'])
+                ->map(fn (TimeEntry $entry): array => [
+                    'date' => $entry->date->toDateString(),
+                    'person' => $entry->user->name,
+                    'task' => $entry->task->title,
+                    'in_bank' => $entry->minutes - $entry->overage_minutes,
+                    'overage' => $entry->overage_minutes,
+                    'description' => (string) $entry->description,
+                ])
+                ->all());
 
-        $financials = null;
-        if ($scope->canSeeFinancials()) {
-            $financials = [
-                'price_amount' => $bank->price_amount,
-                'rate' => $this->revenue->rate($bank, $project, $client, null),
-                'income' => $this->revenue->compute($approved())['all']['income'] ?? '0.00',
+            return [
+                'consumed' => (int) ($totals->minutes ?? 0),
+                'overage' => (int) ($totals->overage ?? 0),
+                'months' => $months,
+                'entries' => $entries,
+                'income' => $financials ? ($this->revenue->compute($approved())['all']['income'] ?? '0.00') : null,
             ];
-        }
+        });
+
+        $consumed = $data['consumed'];
+        $overage = $data['overage'];
+        $inBank = $consumed - $overage;
 
         return [
             'company' => (string) Setting::get('company_name', Setting::DEFAULTS['company_name']),
@@ -129,9 +140,13 @@ final class HourBankStatement
                 'remaining' => max($bank->total_minutes - $inBank, 0),
                 'ratio' => $bank->total_minutes > 0 ? round($consumed / $bank->total_minutes, 4) : 0.0,
             ],
-            'months' => $months,
-            'entries' => $entries,
-            'financials' => $financials,
+            'months' => $data['months'],
+            'entries' => $data['entries'],
+            'financials' => $financials ? [
+                'price_amount' => $bank->price_amount,
+                'rate' => $this->revenue->rate($bank, $project, $client, null),
+                'income' => $data['income'] ?? '0.00',
+            ] : null,
             'partial' => ! $viewer->isAdmin() && ! $viewer->isManagerOf($project),
         ];
     }
