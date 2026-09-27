@@ -124,9 +124,11 @@ final class ProjectTemplateService
         $tasks = Task::query()->where('project_id', $project->id)->orderBy('parent_task_id')->orderBy('position')->orderBy('id')
             ->get(['id', 'parent_task_id', 'title', 'task_type_id', 'priority', 'estimated_minutes', 'is_milestone', 'start_date', 'due_date']);
 
-        $base = $project->start_date !== null
-            ? CarbonImmutable::parse($project->start_date->toDateString())
-            : CarbonImmutable::parse((string) ($tasks->min(fn (Task $t) => $t->start_date?->toDateString() ?? $t->due_date?->toDateString()) ?? now()->toDateString()));
+        // Día 0: el inicio del proyecto o, si alguna tarea empieza antes, esa tarea (así ningún día
+        // relativo queda negativo y las tareas anteriores al inicio conservan su orden y separación).
+        $earliest = $tasks->map(fn (Task $t): ?string => $t->start_date?->toDateString() ?? $t->due_date?->toDateString())->filter()->min();
+        $candidates = array_values(array_filter([$project->start_date?->toDateString(), $earliest], fn (?string $date): bool => $date !== null));
+        $base = CarbonImmutable::parse($candidates === [] ? now()->toDateString() : min($candidates));
 
         $items = [];
         foreach ($tasks as $task) {
