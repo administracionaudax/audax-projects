@@ -23,12 +23,13 @@ final class TranscribeAudioMessage implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 900;
+    // small en la CPU del servidor: ~5,3 × la duración del audio; un audio de 5 min, ~27 min (D-070).
+    public int $timeout = 2400;
 
     /** @var list<int> */
     public array $backoff = [60, 300, 900];
 
-    public int $uniqueFor = 3600;
+    public int $uniqueFor = 7200;
 
     public function __construct(public readonly int $transcriptionId)
     {

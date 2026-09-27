@@ -2,7 +2,7 @@
 Description=Audax Proyectos - tope conjunto de los procesos de la app
 
 [Slice]
-MemoryLimit=768M
+MemoryLimit=1280M
 CPUQuota=150%
 CPUShares=256
 TasksMax=128

@@ -52,20 +52,39 @@ final class WhisperServerTranscriber implements TranscriptionService
             throw new TranscriptionFailed('Respuesta del transcriptor sin texto');
         }
 
-        $duration = null;
-        $segments = $data['segments'] ?? null;
-        if (is_array($segments) && $segments !== []) {
-            $last = end($segments);
-            if (is_array($last) && is_numeric($last['end'] ?? null)) {
-                $duration = (int) round(((float) $last['end']) * 1000);
+        // whisper-server corta los segmentos por tiempo, a veces a mitad de palabra («fer» +
+        // «retería»): el texto se une tal cual, sin separadores, y después se normalizan espacios.
+        $segments = is_array($data['segments'] ?? null) ? $data['segments'] : [];
+        $joined = '';
+        $lastEnd = null;
+        foreach ($segments as $segment) {
+            if (is_array($segment) && is_string($segment['text'] ?? null)) {
+                $joined .= $segment['text'];
+                $lastEnd = is_numeric($segment['end'] ?? null) ? (float) $segment['end'] : $lastEnd;
             }
         }
+        $text = $segments === [] ? $data['text'] : $joined;
+
+        $seconds = is_numeric($data['duration'] ?? null) ? (float) $data['duration'] : $lastEnd;
 
         return new TranscriptionResult(
-            text: trim(preg_replace('/\s+/u', ' ', $data['text']) ?? ''),
-            language: is_string($data['language'] ?? null) ? $data['language'] : $language,
-            durationMs: $duration,
+            text: trim(preg_replace('/\s+/u', ' ', $text) ?? ''),
+            language: is_string($data['language'] ?? null) ? self::languageCode($data['language'], $language) : $language,
+            durationMs: $seconds === null ? null : (int) round($seconds * 1000),
         );
+    }
+
+    /**
+     * whisper-server devuelve el idioma por su nombre en inglés («spanish»).
+     */
+    private static function languageCode(string $language, string $requested): string
+    {
+        return match (mb_strtolower($language)) {
+            'spanish', 'es' => 'es',
+            'english', 'en' => 'en',
+            'catalan', 'ca' => 'ca',
+            default => mb_strlen($language) <= 3 ? mb_strtolower($language) : $requested,
+        };
     }
 
     public function engine(): string

@@ -128,16 +128,17 @@ it('backfill transcribe los audios sin transcripción', function () {
 
 it('el motor whisper envía el audio al servidor local y lee el texto y la duración', function () {
     Http::fake(['127.0.0.1:18091/inference' => Http::response([
-        'text' => '  Hola,   equipo. ',
-        'language' => 'es',
-        'segments' => [['start' => 0.0, 'end' => 2.5, 'text' => 'Hola, equipo.']],
+        'text' => " Hola, equipo de fer\nretería. ",
+        'language' => 'spanish',
+        'duration' => 2.5,
+        'segments' => [['start' => 0.0, 'end' => 1.2, 'text' => ' Hola, equipo de fer'], ['start' => 1.2, 'end' => 2.4, 'text' => 'retería.']],
     ])]);
     $path = tempnam(sys_get_temp_dir(), 'audio');
     file_put_contents($path, 'audio');
 
     $result = (new WhisperServerTranscriber('http://127.0.0.1:18091', 'small', 60))->transcribe($path, 'es');
 
-    expect($result->text)->toBe('Hola, equipo.')
+    expect($result->text)->toBe('Hola, equipo de ferretería.')
         ->and($result->durationMs)->toBe(2500)
         ->and($result->language)->toBe('es');
     Http::assertSent(fn ($request) => $request->url() === 'http://127.0.0.1:18091/inference');

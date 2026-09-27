@@ -69,7 +69,7 @@ final class AudioTranscriptions
                 $query->where(fn ($q) => $q->where('status', TranscriptionStatus::Pending)
                     ->where(fn ($q) => $q->whereNull('queued_at')->orWhere('queued_at', '<', $now->subMinutes(15))))
                     ->orWhere(fn ($q) => $q->where('status', TranscriptionStatus::Processing)
-                        ->where('started_at', '<', $now->subMinutes(20)))
+                        ->where('started_at', '<', $now->subMinutes(50)))
                     ->orWhere(fn ($q) => $q->where('status', TranscriptionStatus::Failed)
                         ->where(fn ($q) => $q->whereNull('queued_at')->orWhere('queued_at', '<', $now->subMinutes(15))));
             })

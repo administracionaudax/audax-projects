@@ -1,0 +1,37 @@
+[Unit]
+Description=Audax Proyectos - Reverb (tiempo real, WebSockets)
+After=network-online.target docker.service
+Wants=network-online.target
+PartOf=audax-projects.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=audaxprojects
+Group=psacln
+Slice=system-audax.slice
+WorkingDirectory=/var/www/vhosts/projects.audaxstudio.com/app/current
+Environment=XDEBUG_MODE=off
+ExecStartPre=/usr/local/lib/audax/esperar-puerto.sh 16379 60
+# Solo en 127.0.0.1: nginx le pasa /app/ desde el 443 (directiva adicional del dominio en Plesk).
+ExecStart=/opt/plesk/php/8.4/bin/php -d memory_limit=192M artisan reverb:start --host=127.0.0.1 --port=18080 --no-interaction
+TimeoutStartSec=90
+KillSignal=SIGTERM
+TimeoutStopSec=30
+Restart=always
+RestartSec=5
+MemoryLimit=256M
+CPUQuota=50%
+TasksMax=32
+Nice=5
+OOMScoreAdjust=1000
+LimitNOFILE=8192
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+SyslogIdentifier=audax-reverb
+
+[Install]
+WantedBy=audax-projects.target

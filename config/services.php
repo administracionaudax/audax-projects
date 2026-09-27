@@ -46,8 +46,8 @@ return [
         'whisper' => [
             'url' => env('WHISPER_URL', 'http://127.0.0.1:18091'),
             'model' => env('WHISPER_MODEL', 'small'),
-            // Menor que el timeout del job (900 s).
-            'timeout' => (int) env('WHISPER_TIMEOUT', 870),
+            // Menor que el timeout del job (2400 s).
+            'timeout' => (int) env('WHISPER_TIMEOUT', 2340),
         ],
     ],
 

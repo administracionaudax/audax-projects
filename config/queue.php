@@ -76,12 +76,12 @@ return [
 
         // Transcripción de audios (Fase 6, RUNBOOK A2): su propia conexión y su propio worker de un
         // solo proceso (audax-transcriber.service); Horizon no la atiende. retry_after, mayor que el
-        // timeout del job (900 s), para que un audio largo nunca se transcriba dos veces a la vez.
+        // timeout del job (2400 s), para que un audio largo nunca se transcriba dos veces a la vez.
         'redis-transcriptions' => [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => 'transcriptions',
-            'retry_after' => 1000,
+            'retry_after' => 2700,
             'block_for' => null,
             'after_commit' => true,
         ],

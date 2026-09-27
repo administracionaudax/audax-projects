@@ -53,7 +53,7 @@ Se trabaja en modo autónomo (D-027). Esta fase no depende de las Fases 2 a 5, a
 - **Motor:** whisper.cpp v1.9.4 (MIT) en el contenedor `audax-whisper` (`whisper-server --convert`, que usa ffmpeg para los formatos del navegador) en `127.0.0.1:18091`.
   - **La CPU virtual del servidor solo expone SSE2/SSE3** (sin AVX, AVX2, FMA ni F16C). La imagen oficial fallaría, así que se compila en GitHub Actions para x86-64 básico (`deploy/whisper/Dockerfile`) y se prueba con QEMU emulando esa CPU.
   - Hay dos variantes: sin BLAS y con OpenBLAS fijado a las rutinas SSE3 (Prescott).
-- **Modelo:** elegido tras medir en el servidor real (tabla de abajo).
+- **Modelo:** `small` con OpenBLAS, elegido tras medir en el servidor real (tabla de abajo).
 - **Arquitectura:**
   - interfaz `TranscriptionService` (`WhisperServerTranscriber` en el servidor; `FakeTranscriber` en local y tests),
   - job `TranscribeAudioMessage` en la conexión `redis-transcriptions`, atendida por `audax-transcriber.service` con **un único proceso**, Nice 19 y E/S idle; Horizon no la atiende,
@@ -80,7 +80,32 @@ Se trabaja en modo autónomo (D-027). Esta fase no depende de las Fases 2 a 5, a
 - **Preferencias por canal:** llegan en la F7. En la F6, activar o desactivar Web Push por navegador.
 
 ## Medición de los modelos (SPEC §12)
-_Pendiente de completar con los resultados del servidor (`scripts/server/whisper-bench.sh`)._
+Medido el 27/09/2026 en el servidor real (VM KVM, CPU genérica **solo SSE2/SSE3**), con `scripts/server/whisper-bench.sh`.
+- **Condiciones:** contenedores efímeros con 2 CPU fijadas a los núcleos 6-7, `cpu-shares` 64 y memoria acotada; whisper.cpp v1.9.4 compilado para x86-64 básico.
+- **Audio:** 59 s de voz en español con un texto conocido, sintetizado en el Mac; limpio y con ruido rosa y filtro de teléfono.
+- **WER:** error por palabras frente al texto, normalizado (mayúsculas, tildes, signos y cifras).
+
+| Modelo | Variante | Tiempo (59 s de audio) | × duración | Pico de RAM | WER limpio | WER con ruido |
+|---|---|---|---|---|---|---|
+| tiny | sin BLAS | 67 s | 1,1 | 302 MB | 6,5 % | — |
+| tiny | OpenBLAS | 47 s | 0,8 | 313 MB | 5,9 % | 6,5 % |
+| base | sin BLAS | 149 s | 2,5 | 478 MB | 1,6 % | — |
+| base | OpenBLAS | 99 s | 1,7 | 438 MB | 1,6 % | 1,6 % |
+| small | sin BLAS | 526 s | 8,9 | 1.203 MB | 1,1 % | — |
+| small | OpenBLAS | 317 s | 5,3 | 1.012 MB | 1,1 % | 1,1 % |
+| medium | OpenBLAS | 808 s | 13,6 | 3.072 MB (en el límite de 3 GB) | 1,1 % | — |
+| **small (whisper-server, webm/opus del navegador)** | OpenBLAS | **211 s** | **3,6** | **906 MB** | — | **1,1 %** |
+
+**Elección: `small` con OpenBLAS**, servido por `whisper-server --convert`.
+- **Por qué no `base`:** con voz sintética `base` ya acierta mucho, pero en voz real (micrófono de móvil, acentos, ruido) `small` comete aproximadamente la mitad de errores. Además, la búsqueda por palabras dichas en un audio (aceptación de la F6) depende de esa precisión.
+- **No sobrecarga el servidor:**
+  - usa 2 núcleos fijos (6-7) con la prioridad más baja y menos de 1 GB,
+  - la carga media del servidor pasó de ~2,5 a ~3,8 durante la medición, sin afectar a las demás webs.
+- **Tiempo de espera:** un audio de 1 minuto tarda unos 3,5 minutos; uno de 5 minutos (el máximo), unos 18. El audio se escucha desde el primer momento y el texto llega después («Transcribiendo…»).
+  - Límites ajustados: job de 2.400 s, `retry_after` de 2.700 s y petición de 2.340 s.
+- **`medium`, descartado:** triplica el tiempo de `small` y necesita 3 GB, sin mejora medible.
+- **Si con audios reales la cola se acumula**, se puede cambiar a `base` con `WHISPER_MODEL` y el contenedor, sin tocar el código.
+- **Recomendación al propietario:** con el tipo de CPU «host» en el hipervisor (AVX2), el tiempo bajaría varias veces.
 
 ## Contrato técnico (hecho, con tests)
 - **Esquema** (`2026_10_01_100000_create_chat_tables`): `conversations`, `conversation_participants`, `messages`, `message_reactions`, `message_mentions` y `audio_transcriptions`.
