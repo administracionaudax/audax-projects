@@ -3,6 +3,7 @@
 use App\Http\Controllers\Realtime\ConversationLinkController;
 use App\Http\Controllers\Realtime\ConversationViewingController;
 use App\Http\Controllers\Realtime\PresenceController;
+use App\Http\Controllers\Realtime\PushSubscriptionController;
 use App\Http\Controllers\Realtime\ReadReceiptController;
 use App\Http\Controllers\Realtime\UnreadController;
 use Illuminate\Support\Facades\Route;
@@ -44,3 +45,13 @@ Route::get('tiempo-real/conversaciones/{conversation}/abrir', ConversationLinkCo
     ->whereNumber('conversation')
     ->name('realtime.conversations.open');
 
+// Avisos en este navegador (Web Push, D-072).
+Route::get('avisos-navegador', [PushSubscriptionController::class, 'show'])
+    ->middleware('throttle:60,1,push')
+    ->name('push.show');
+Route::post('avisos-navegador/suscripciones', [PushSubscriptionController::class, 'store'])
+    ->middleware('throttle:30,1,push-write')
+    ->name('push.subscribe');
+Route::delete('avisos-navegador/suscripciones', [PushSubscriptionController::class, 'destroy'])
+    ->middleware('throttle:30,1,push-write')
+    ->name('push.unsubscribe');

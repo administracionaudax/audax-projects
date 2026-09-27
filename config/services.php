@@ -51,4 +51,22 @@ return [
         ],
     ],
 
+    /*
+    | Web Push (SPEC §12 y §13, D-072). Las claves VAPID se generan en el servidor con
+    | `php artisan push:vapid-keys` y se guardan en .env (nunca en Git). Sin claves válidas el
+    | canal queda desactivado sin errores. Solo se envía a los servicios de push de los navegadores
+    | (allowed_hosts): el endpoint lo manda el navegador y nunca puede apuntar a otro sitio (SSRF).
+    */
+    'webpush' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject' => env('VAPID_SUBJECT', 'mailto:no-responder@audaxstudio.com'),
+        // Un aviso del chat que no se entrega en 12 horas ya no sirve.
+        'ttl' => (int) env('WEBPUSH_TTL', 43200),
+        'timeout' => (int) env('WEBPUSH_TIMEOUT', 10),
+        'allowed_hosts' => ['googleapis.com', 'mozilla.com', 'push.apple.com', 'notify.windows.com'],
+        // Suscripciones como mucho por persona (se borran las más antiguas).
+        'max_per_user' => 10,
+    ],
+
 ];
