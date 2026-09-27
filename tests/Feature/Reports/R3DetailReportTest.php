@@ -197,6 +197,32 @@ it('agrupa por bolsa × tipo de tarea y por cliente, con «Sin bolsa», «Sin ti
             ->where('pivot.rows.3', ['key' => null, 'name' => 'Interno (sin cliente)']));
 });
 
+it('nombra cada tarea con el código de su proyecto (muchas se llaman igual), en la página y en la exportación', function () {
+    $s = $this->s;
+    // «App» (FIX) pasa a llamarse como la de TM; la tarea de la bolsa se borra: sus horas siguen.
+    Task::query()->where('title', 'App')->update(['title' => 'Maquetación']);
+    Task::query()->where('title', 'Soporte')->sole()->delete();
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows', [
+                ['key' => (string) Task::withTrashed()->where('title', 'Soporte')->value('id'), 'name' => 'BOL · Soporte'],
+                ['key' => (string) $s->tmTask->id, 'name' => 'TM · Maquetación'],
+                ['key' => (string) Task::query()->where('project_id', $s->fixed->id)->value('id'), 'name' => 'FIX · Maquetación'],
+                ['key' => (string) Task::query()->where('project_id', $s->internal->id)->value('id'), 'name' => 'INT · Reunión'],
+            ])
+            ->where('pivot.columns.0.name', 'Luis')
+            ->where('pivot.total', 1420));
+
+    // En columnas, igual; y la exportación lleva los mismos nombres.
+    $rows = ($this->readXlsx)($this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'persona', 'columnas' => 'tarea', 'departamento' => [$s->design->id], 'formato' => 'xlsx']))
+        ->streamedContent());
+
+    expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total']);
+});
+
 it('con semanas en las filas, van en orden de fecha (en la página y en la exportación)', function () {
     $s = $this->s;
     // Agosto (60 min) tiene menos horas que septiembre (1420): por horas iría detrás.

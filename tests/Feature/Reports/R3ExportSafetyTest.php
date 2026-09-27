@@ -103,14 +103,21 @@ it('la exportación del detallado no convierte en fórmula las cabeceras de fila
     $s = R3Scenario::build($this);
     $s->tmTask->update(['title' => $this->hyperlink]);
     $s->ana->update(['name' => '=Ana']);
-    $url = '/informes/detalle?'.http_build_query(R3Scenario::week(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id]]));
+    $url = fn (string $rows, string $columns): string => '/informes/detalle?'.http_build_query(R3Scenario::week(['filas' => $rows, 'columnas' => $columns, 'departamento' => [$s->design->id]]));
 
-    $sheet = ($this->sheet)($this->actingAs($s->admin)->get($url.'&formato=xlsx')->assertOk()->streamedContent());
-    $csv = $this->actingAs($s->admin)->get($url.'&formato=csv')->assertOk()->streamedContent();
+    // Personas en las filas (la primera celda de la fila) y en las columnas (la cabecera).
+    foreach ([['persona', 'proyecto'], ['proyecto', 'persona']] as [$rows, $columns]) {
+        $sheet = ($this->sheet)($this->actingAs($s->admin)->get($url($rows, $columns).'&formato=xlsx')->assertOk()->streamedContent());
+        $csv = $this->actingAs($s->admin)->get($url($rows, $columns).'&formato=csv')->assertOk()->streamedContent();
+
+        expect($sheet['xml'])->not->toContain('<f>')
+            ->and($rows === 'persona' ? array_column($sheet['rows'], 0) : $sheet['rows'][0])->toContain('=Ana')
+            ->and($csv)->toContain("'=Ana;");
+    }
+
+    // Las tareas llevan delante el código de su proyecto: nunca empiezan por «=».
+    $sheet = ($this->sheet)($this->actingAs($s->admin)->get($url('tarea', 'persona').'&formato=xlsx')->assertOk()->streamedContent());
 
     expect($sheet['xml'])->not->toContain('<f>')
-        ->and($sheet['rows'][0])->toContain('=Ana')
-        ->and(array_column($sheet['rows'], 0))->toContain($this->hyperlink)
-        ->and($csv)->toContain(";'=Ana;")
-        ->and($csv)->toContain("\"'".str_replace('"', '""', $this->hyperlink).'"');
+        ->and(array_column($sheet['rows'], 0))->toContain('TM · '.$this->hyperlink);
 });

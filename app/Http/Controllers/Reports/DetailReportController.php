@@ -10,6 +10,7 @@ use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportScope;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
+use App\Models\Task;
 use App\Models\TimeEntry;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -70,7 +71,11 @@ class DetailReportController extends Controller
             "r3.detail.pivot.{$rows->value}.{$columns->value}.{$measure}",
             // Sin las celdas a 0: con facturables, dentro o exceso, solo los grupos que tienen esas horas
             // (y, si no hay ninguno, el estado vacío en vez de una tabla de ceros).
-            fn (): array => self::chronological($pivot->run($scope, $rows, $columns, self::MEASURES[$measure], withoutEmpty: true), $rows),
+            fn (): array => self::withTaskProjects(
+                self::chronological($pivot->run($scope, $rows, $columns, self::MEASURES[$measure], withoutEmpty: true), $rows),
+                $rows,
+                $columns,
+            ),
         );
 
         if ($request->filled('formato')) {
@@ -174,6 +179,52 @@ class DetailReportController extends Controller
     {
         if ($rows->isTime()) {
             usort($result['rows'], fn (array $a, array $b): int => strcmp((string) $a['key'], (string) $b['key']));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Con tareas en filas o columnas, cada una con el código de su proyecto delante («TM · Maquetación»):
+     * muchas tareas se llaman igual en proyectos distintos («Entrega al cliente»). Una consulta.
+     *
+     * @param  array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
+     *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
+     *     total: int, truncated: bool}  $result
+     * @return array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
+     *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
+     *     total: int, truncated: bool}
+     */
+    private static function withTaskProjects(array $result, Dimension $rows, Dimension $columns): array
+    {
+        $sides = array_keys(array_filter(['rows' => $rows, 'columns' => $columns], fn (Dimension $dimension): bool => $dimension === Dimension::Task));
+
+        $ids = [];
+        foreach ($sides as $side) {
+            foreach ($result[$side] as $header) {
+                if ($header['key'] !== null) {
+                    $ids[] = (int) $header['key'];
+                }
+            }
+        }
+
+        if ($ids === []) {
+            return $result;
+        }
+
+        // Tareas y proyectos también borrados: sus horas siguen en los informes.
+        $codes = Task::query()->withTrashed()
+            ->join('projects', 'projects.id', '=', 'tasks.project_id')
+            ->whereIn('tasks.id', array_values(array_unique($ids)))
+            ->toBase()
+            ->pluck('projects.code', 'tasks.id');
+
+        foreach ($sides as $side) {
+            $result[$side] = array_map(function (array $header) use ($codes): array {
+                $code = $header['key'] !== null ? $codes->get((int) $header['key']) : null;
+
+                return is_string($code) && $code !== '' ? ['key' => $header['key'], 'name' => $code.' · '.$header['name']] : $header;
+            }, $result[$side]);
         }
 
         return $result;
