@@ -98,29 +98,47 @@ final class EntryValuation
      */
     public function value(TimeEntry $entry): array
     {
-        if (! $entry->is_billable) {
+        return $this->valueOf(
+            $entry->project_id,
+            $entry->hour_bank_id,
+            $entry->user_id,
+            $entry->is_billable,
+            $entry->minutes,
+            $entry->overage_minutes,
+            $entry->getRawOriginal('hourly_rate_snapshot'),
+        );
+    }
+
+    /**
+     * La misma valoración a partir de las columnas de la entrada (filas sin hidratar: la exportación
+     * para facturar lee miles de entradas sin crear un modelo por cada una).
+     *
+     * @return array{rate: string|null, income: numeric-string, basis: string}
+     */
+    public function valueOf(int $projectId, ?int $bankId, int $userId, bool $billable, int $minutes, int $overage, mixed $rateSnapshot): array
+    {
+        if (! $billable) {
             return ['rate' => null, 'income' => '0', 'basis' => self::NOT_BILLABLE];
         }
 
-        $context = $this->context($entry->project_id, $entry->hour_bank_id, $entry->user_id);
-        $minutes = (string) $entry->minutes;
+        $context = $this->context($projectId, $bankId, $userId);
 
         return match ($context['basis']) {
             self::INTERNAL => ['rate' => null, 'income' => '0', 'basis' => self::INTERNAL],
             self::FIXED_PRICE => [
                 'rate' => null,
-                'income' => $context['price'] === null ? '0' : Money::div(Money::mul($context['price'], $minutes), (string) $context['total']),
+                'income' => $context['price'] === null ? '0' : Money::div(Money::mul($context['price'], (string) $minutes), (string) $context['total']),
                 'basis' => self::FIXED_PRICE,
             ],
             self::BANK_PRICE => [
                 'rate' => $context['rate'],
                 'income' => Money::add(
-                    Money::div(Money::mul((string) $context['price'], (string) ($entry->minutes - $entry->overage_minutes)), (string) $context['total']),
-                    Money::forMinutes($entry->overage_minutes, $context['rate']),
+                    Money::div(Money::mul((string) $context['price'], (string) ($minutes - $overage)), (string) $context['total']),
+                    Money::forMinutes($overage, $context['rate']),
                 ),
                 'basis' => self::BANK_PRICE,
             ],
-            default => $this->hourly($entry, $context['rate']),
+            default => $this->hourly($minutes, $rateSnapshot, $context['rate']),
         };
     }
 
@@ -130,23 +148,21 @@ final class EntryValuation
      *
      * @return array{rate: string|null, income: numeric-string, basis: string}
      */
-    private function hourly(TimeEntry $entry, ?string $rate): array
+    private function hourly(int $minutes, mixed $snapshot, ?string $rate): array
     {
-        $snapshot = $entry->getRawOriginal('hourly_rate_snapshot');
-
-        if ($snapshot !== null && $snapshot !== '') {
-            $snapshot = Money::round((string) $snapshot);
+        if (is_numeric($snapshot)) {
+            $snapshot = Money::round(Money::of(is_string($snapshot) ? $snapshot : (float) $snapshot));
 
             return [
                 'rate' => $snapshot,
-                'income' => Money::forMinutes($entry->minutes, $snapshot),
+                'income' => Money::forMinutes($minutes, $snapshot),
                 'basis' => self::SNAPSHOT,
             ];
         }
 
         return [
             'rate' => $rate,
-            'income' => Money::forMinutes($entry->minutes, $rate),
+            'income' => Money::forMinutes($minutes, $rate),
             'basis' => $rate === null ? self::NO_RATE : self::RATE,
         ];
     }

@@ -7,9 +7,8 @@ use App\Enums\TimeEntryStatus;
 use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
-use App\Models\TimeEntry;
 use Generator;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * Horas para facturar (SPEC §10 «Exportación», D-045; R2): de un alcance ya acotado (normalmente
@@ -153,36 +152,61 @@ final class BillingReport
     }
 
     /**
-     * Entradas del alcance para el detalle (fecha y id ascendentes), con persona, proyecto, bolsa y
-     * tarea cargados por lotes (sin N+1) y su valoración con view-financials.
+     * Entradas del alcance para el detalle (fecha e id ascendentes), con los nombres de la persona,
+     * el proyecto, la bolsa y la tarea en la misma consulta (filas sin hidratar, por lotes de 1.000:
+     * miles de entradas en poco tiempo y memoria) y su valoración con view-financials.
      *
-     * @return Generator<int, array{entry: TimeEntry, valuation: array{rate: string|null, income: numeric-string, basis: string}|null}>
+     * @return Generator<int, array{entry: array{id: int, date: string, person: string, project_code: string, project_name: string,
+     *     bank: string|null, task: string, description: string, minutes: int, overage_minutes: int, is_billable: bool,
+     *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: numeric-string, basis: string}|null}>
      */
     public function entries(ReportScope $scope): Generator
     {
-        $query = $this->detailQuery($scope);
         $valuation = $scope->canSeeFinancials() ? EntryValuation::for($scope->entries()) : null;
 
-        foreach ($query->lazy(1000) as $entry) {
-            yield ['entry' => $entry, 'valuation' => $valuation?->value($entry)];
+        foreach ($this->detailQuery($scope)->lazy(1000) as $row) {
+            $billable = (bool) $row->is_billable;
+            $minutes = (int) $row->minutes;
+            $overage = (int) $row->overage_minutes;
+            $bankId = $row->hour_bank_id === null ? null : (int) $row->hour_bank_id;
+
+            yield [
+                'entry' => [
+                    'id' => (int) $row->id,
+                    'date' => substr((string) $row->date, 0, 10),
+                    'person' => (string) $row->person_name,
+                    'project_code' => (string) $row->project_code,
+                    'project_name' => (string) $row->project_name,
+                    'bank' => $bankId === null ? null : (string) $row->bank_name,
+                    'task' => (string) $row->task_title,
+                    'description' => (string) $row->description,
+                    'minutes' => $minutes,
+                    'overage_minutes' => $overage,
+                    'is_billable' => $billable,
+                    'status' => TimeEntryStatus::from((string) $row->status),
+                ],
+                'valuation' => $valuation?->valueOf((int) $row->project_id, $bankId, (int) $row->user_id, $billable, $minutes, $overage, $row->hourly_rate_snapshot),
+            ];
         }
     }
 
     /**
-     * @return Builder<TimeEntry>
+     * Detalle sin hidratar: las columnas de la entrada y los nombres por LEFT JOIN (los mismos alias
+     * que Dimension::ensureJoin; las tareas y bolsas borradas conservan su nombre).
      */
-    private function detailQuery(ReportScope $scope): Builder
+    private function detailQuery(ReportScope $scope): QueryBuilder
     {
-        return (clone $scope->entries())
-            ->with([
-                'user:id,name',
-                'project' => fn ($query) => $query->select(['id', 'code', 'name']),
-                'hourBank' => fn ($query) => $query->select(['id', 'name']),
-                'task' => fn ($query) => $query->select(['id', 'title']),
-            ])
-            ->select(['time_entries.id', 'time_entries.user_id', 'time_entries.task_id', 'time_entries.project_id',
-                'time_entries.hour_bank_id', 'time_entries.date', 'time_entries.minutes', 'time_entries.overage_minutes',
-                'time_entries.description', 'time_entries.is_billable', 'time_entries.status', 'time_entries.hourly_rate_snapshot'])
+        $query = clone $scope->entries();
+        foreach (['users', 'projects', 'hour_banks', 'tasks'] as $table) {
+            Dimension::ensureJoin($query, $table);
+        }
+
+        return $query->toBase()
+            ->select(['time_entries.id', 'time_entries.user_id', 'time_entries.project_id', 'time_entries.hour_bank_id',
+                'time_entries.date', 'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description',
+                'time_entries.is_billable', 'time_entries.status', 'time_entries.hourly_rate_snapshot',
+                'report_users.name as person_name', 'report_projects.code as project_code', 'report_projects.name as project_name',
+                'report_hour_banks.name as bank_name', 'report_tasks.title as task_title'])
             ->orderBy('time_entries.date')
             ->orderBy('time_entries.id');
     }

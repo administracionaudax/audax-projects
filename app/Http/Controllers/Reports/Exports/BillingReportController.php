@@ -113,23 +113,23 @@ class BillingReportController extends Controller
         $labels = [];
 
         foreach ($billing->entries($scope) as ['entry' => $entry, 'valuation' => $valuation]) {
-            $inside = $entry->hour_bank_id !== null;
-            $minutes += $entry->minutes;
-            $inBank += $inside ? $entry->minutes - $entry->overage_minutes : 0;
-            $overage += $entry->overage_minutes;
+            $inside = $entry['bank'] !== null;
+            $minutes += $entry['minutes'];
+            $inBank += $inside ? $entry['minutes'] - $entry['overage_minutes'] : 0;
+            $overage += $entry['overage_minutes'];
 
             $row = [
-                $entry->date->toDateString(),
-                $entry->user->name,
-                $entry->project->code.' · '.$entry->project->name,
-                $entry->hourBank !== null ? $entry->hourBank->name : $noBank,
-                $entry->task->title,
-                (string) $entry->description,
-                TableExporter::hours($entry->minutes),
-                $inside ? TableExporter::hours($entry->minutes - $entry->overage_minutes) : null,
-                $inside ? TableExporter::hours($entry->overage_minutes) : null,
-                $entry->is_billable,
-                $labels['status.'.$entry->status->value] ??= $entry->status->label(),
+                $entry['date'],
+                $entry['person'],
+                $entry['project_code'].' · '.$entry['project_name'],
+                $entry['bank'] ?? $noBank,
+                $entry['task'],
+                $entry['description'],
+                TableExporter::hours($entry['minutes']),
+                $inside ? TableExporter::hours($entry['minutes'] - $entry['overage_minutes']) : null,
+                $inside ? TableExporter::hours($entry['overage_minutes']) : null,
+                $entry['is_billable'],
+                $labels['status.'.$entry['status']->value] ??= $entry['status']->label(),
             ];
 
             if ($financials && $valuation !== null) {

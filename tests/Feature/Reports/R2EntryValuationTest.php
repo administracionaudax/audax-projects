@@ -96,3 +96,25 @@ it('la suma de las entradas es el ingreso estimado de RevenueCalculator', functi
     expect(Money::round($sum))->toBe('2346.67')
         ->and(app(RevenueCalculator::class)->compute($this->scope->entries())['all']['income'])->toBe('2346.67');
 });
+
+it('valora igual las filas sin hidratar (valueOf) que los modelos (value)', function () {
+    $valuation = EntryValuation::for($this->scope->entries());
+    $models = (clone $this->scope->entries())->orderBy('time_entries.id')->get();
+    $rows = (clone $this->scope->entries())->toBase()->orderBy('time_entries.id')->get();
+
+    expect($rows)->toHaveCount($models->count());
+
+    foreach ($models as $index => $entry) {
+        $row = $rows[$index];
+
+        expect($valuation->valueOf(
+            (int) $row->project_id,
+            $row->hour_bank_id === null ? null : (int) $row->hour_bank_id,
+            (int) $row->user_id,
+            (bool) $row->is_billable,
+            (int) $row->minutes,
+            (int) $row->overage_minutes,
+            $row->hourly_rate_snapshot,
+        ))->toBe($valuation->value($entry));
+    }
+});

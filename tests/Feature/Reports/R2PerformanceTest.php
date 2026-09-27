@@ -62,7 +62,7 @@ beforeEach(function () {
         'reports.project.export' => 40,
         'reports.billing' => 22,
         'reports.billing.empty' => 12,
-        'reports.billing.export' => 22,
+        'reports.billing.export' => 11,
         'reports.hour-bank-pdf' => 18,
     ];
 
