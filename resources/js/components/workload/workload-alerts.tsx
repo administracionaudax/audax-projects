@@ -32,9 +32,16 @@ function describe(row: WorkloadRow): string {
 /**
  * La pregunta principal (SPEC §9): quién va sobrecargado en el horizonte. Por el total de cada
  * persona (más del 120 % o carga sin capacidad; del 100 % al 120 %) y, aunque el total cuadre, quién
- * tiene días (o semanas) sobrecargados. Siempre con icono y texto, nunca solo color.
+ * tiene días (o semanas, en el horizonte de 3 meses) sobrecargados. Siempre con icono y texto, nunca solo color.
  */
-export function WorkloadAlerts({ rows }: { rows: WorkloadRow[] }) {
+export function WorkloadAlerts({
+    rows,
+    byWeek = false,
+}: {
+    rows: WorkloadRow[];
+    /** Horizonte de 3 meses: las columnas son semanas. */
+    byWeek?: boolean;
+}) {
     const over = rows.filter((row) => isOverloaded(row.total));
     const high = rows.filter(
         (row) =>
@@ -84,9 +91,19 @@ export function WorkloadAlerts({ rows }: { rows: WorkloadRow[] }) {
             <Alert
                 icon={CalendarRange}
                 tone="text-danger"
-                title={t('workload_page.peaks', { count: peaks.length })}
+                title={t(
+                    byWeek
+                        ? 'workload_page.peaks_weeks'
+                        : 'workload_page.peaks',
+                    { count: peaks.length },
+                )}
                 items={peaks.map(({ row, count }) =>
-                    t('workload_page.peak_days', { name: row.name, count }),
+                    t(
+                        byWeek
+                            ? 'workload_page.peak_weeks'
+                            : 'workload_page.peak_days',
+                        { name: row.name, count },
+                    ),
                 )}
             />
         </ul>

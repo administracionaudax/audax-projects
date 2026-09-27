@@ -185,7 +185,10 @@ export default function WorkloadIndex({
                     ) : (
                         <>
                             {filters.sees_team ? (
-                                <WorkloadAlerts rows={rows} />
+                                <WorkloadAlerts
+                                    rows={rows}
+                                    byWeek={horizon.by_week}
+                                />
                             ) : null}
                             <WorkloadLegend />
                             <WorkloadMatrix

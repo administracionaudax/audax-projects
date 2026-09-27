@@ -134,7 +134,7 @@ describe('vista Carga', () => {
         );
 
         expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
-            'Sobrecarga (más del 120 %): 1. Elena Empleada, 125 % (40:00 de 32:00)',
+            'Sobrecarga, más del 120 % (1): Elena Empleada, 125 % (40:00 de 32:00)',
         );
     });
 
@@ -142,7 +142,22 @@ describe('vista Carga', () => {
         render(<WorkloadIndex {...pageProps()} />);
 
         expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
-            'Con días sobrecargados: 1. Elena Empleada (días o semanas: 2)',
+            'Con días sobrecargados (1): Elena Empleada (días: 2)',
+        );
+    });
+
+    it('en el horizonte de 3 meses habla de semanas sobrecargadas', () => {
+        const props = pageProps();
+
+        render(
+            <WorkloadIndex
+                {...props}
+                horizon={{ ...props.horizon, key: '3-meses', by_week: true }}
+            />,
+        );
+
+        expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
+            'Con semanas sobrecargadas (1): Elena Empleada (semanas: 2)',
         );
     });
 
@@ -170,7 +185,7 @@ describe('vista Carga', () => {
         );
 
         expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
-            'Sobrecarga (más del 120 %): 1. Lucía Martín, 30:00 sin capacidad',
+            'Sobrecarga, más del 120 % (1): Lucía Martín, 30:00 sin capacidad',
         );
     });
 
