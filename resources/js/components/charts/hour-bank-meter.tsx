@@ -23,6 +23,11 @@ type HourBankMeterProps = {
     /** Estimación restante de las tareas abiertas de la bolsa, en minutos. */
     committed?: number;
     /**
+     * Enseña las horas comprometidas y su aviso (por defecto). El portal de cliente no los enseña:
+     * son planificación interna (SPEC §11).
+     */
+    showCommitted?: boolean;
+    /**
      * Umbrales de alerta configurados, en % (config.hour_bank_thresholds). Marcan la barra y el
      * paso a ámbar (desde el primero). Por defecto, 75, 90 y 100.
      */
@@ -41,6 +46,7 @@ export function HourBankMeter({
     total,
     overage,
     committed = 0,
+    showCommitted = true,
     thresholds,
     className,
 }: HourBankMeterProps) {
@@ -139,7 +145,12 @@ export function HourBankMeter({
                 ))}
             </div>
 
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm @md:grid-cols-4">
+            <dl
+                className={cn(
+                    'grid grid-cols-2 gap-x-4 gap-y-2 text-sm',
+                    showCommitted ? '@md:grid-cols-4' : '@md:grid-cols-3',
+                )}
+            >
                 <Figure
                     label={t('hour_bank.consumed')}
                     value={formatMinutes(f.consumed)}
@@ -155,13 +166,17 @@ export function HourBankMeter({
                     }
                     danger={f.overage > 0}
                 />
-                <Figure
-                    label={t('hour_bank.committed')}
-                    value={formatMinutes(f.committed)}
-                />
+                {showCommitted ? (
+                    <Figure
+                        label={t('hour_bank.committed')}
+                        value={formatMinutes(f.committed)}
+                    />
+                ) : null}
             </dl>
 
-            {f.shortfall > 0 && (f.overage === 0 || f.remaining > 0) ? (
+            {showCommitted &&
+            f.shortfall > 0 &&
+            (f.overage === 0 || f.remaining > 0) ? (
                 <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">
                     <TriangleAlert
                         aria-hidden="true"

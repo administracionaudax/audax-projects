@@ -52,9 +52,8 @@ Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
 });
 
 Route::middleware(['auth', 'active', 'portal'])->prefix('portal')->name('portal.')->group(function () {
-    Route::inertia('/', 'portal/home')->name('home');
-
     // Fase 5: una ruta por área del portal (routes/portal/*.php). Todo sale de PortalScope (D-064).
+    // El inicio (portal.home) está en routes/portal/banks.php: son las bolsas del cliente.
     foreach (['banks', 'projects'] as $area) {
         require __DIR__."/portal/{$area}.php";
     }

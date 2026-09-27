@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Client;
+use App\Models\User;
+
 /*
 |--------------------------------------------------------------------------
 | Matriz de permisos (SPEC §5)
@@ -39,7 +42,8 @@ test('matriz de permisos', function (string $path, array $expected, string $acto
     $status = $expected[array_search($actor, ACTORS, true)];
 
     if ($actor !== 'guest') {
-        $this->actingAs(userWithRole($actor));
+        // El cliente es un usuario del portal de un cliente activo (D-063): sin cliente, /portal da 403.
+        $this->actingAs($actor === 'client' ? User::factory()->portalOf(Client::factory()->create())->create() : userWithRole($actor));
     }
 
     $response = $this->get($path);

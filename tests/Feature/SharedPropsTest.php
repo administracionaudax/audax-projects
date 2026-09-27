@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ActiveTimer;
+use App\Models\Client;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
@@ -45,7 +46,8 @@ test('un empleado no tiene permisos de bolsas, administración ni datos económi
 });
 
 test('un cliente se identifica como tal en su portal', function () {
-    $client = userWithRole('client');
+    // Un usuario del portal es de un cliente activo (D-063); sin cliente, el portal da 403.
+    $client = User::factory()->portalOf(Client::factory()->create())->create();
 
     $this->actingAs($client)
         ->get('/portal')
@@ -113,7 +115,7 @@ test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar',
 });
 
 test('el portal de cliente no recibe temporizador ni configuración interna', function () {
-    $this->actingAs(userWithRole('client'))
+    $this->actingAs(User::factory()->portalOf(Client::factory()->create())->create())
         ->get('/portal')
         ->assertInertia(fn (Assert $page) => $page
             ->missing('timer')
