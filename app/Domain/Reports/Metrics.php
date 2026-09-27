@@ -84,6 +84,35 @@ final class Metrics
     }
 
     /**
+     * Solo los totales de horas del alcance, con las mismas definiciones que summary() y una sola
+     * consulta: imputadas, facturables, dentro de bolsa, exceso y facturabilidad. Para los informes
+     * que no muestran capacidad, estimación ni importes (el detallado), que así no los calculan: la
+     * capacidad de un año de toda la agencia es lo más caro de summary(). Añadido por R3.
+     *
+     * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
+     */
+    public function hours(ReportScope $scope): array
+    {
+        $totals = (clone $scope->entries())->toBase()->selectRaw(
+            'COALESCE(SUM(time_entries.minutes), 0) as logged,
+             COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
+        )->first();
+
+        $logged = (int) ($totals->logged ?? 0);
+        $billable = (int) ($totals->billable ?? 0);
+        $overage = (int) ($totals->overage ?? 0);
+
+        return [
+            'logged_minutes' => $logged,
+            'billable_minutes' => $billable,
+            'in_bank_minutes' => $logged - $overage,
+            'overage_minutes' => $overage,
+            'billability' => self::ratio($billable, $logged),
+        ];
+    }
+
+    /**
      * Capacidad por fecha (Y-m-d) del alcance, con una sola consulta de horarios.
      *
      * @return array<string, int>
