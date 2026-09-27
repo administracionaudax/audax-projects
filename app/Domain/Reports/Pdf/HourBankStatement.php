@@ -2,6 +2,8 @@
 
 namespace App\Domain\Reports\Pdf;
 
+use App\Domain\Portal\PortalBankFigures;
+use App\Domain\Portal\PortalScope;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\EstimateComparison;
 use App\Domain\Reports\ReportCache;
@@ -9,6 +11,7 @@ use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportPeriod;
 use App\Domain\Reports\ReportScope;
 use App\Domain\Reports\RevenueCalculator;
+use App\Enums\PortalPersonDisplay;
 use App\Enums\TimeEntryStatus;
 use App\Models\Client;
 use App\Models\HourBank;
@@ -37,6 +40,9 @@ use Illuminate\Database\Eloquent\Builder;
  * ($withFinancials, «PDF con importes (uso interno)») y quien lo descarga tiene view-financials:
  * el PDF normal es el que se envía al cliente y nunca los lleva.
  * Las cifras y el listado se guardan en ReportCache (D-046); la fecha del informe, no.
+ *
+ * El portal de cliente descarga el mismo PDF en modo portal (forPortal, D-066): lo que ve el
+ * cliente según su ajuste, las personas como las ve él y nunca importes.
  */
 final class HourBankStatement
 {
@@ -161,6 +167,90 @@ final class HourBankStatement
                 'income' => $data['income'] ?? '0.00',
             ] : null,
             'partial' => ! $viewer->isAdmin() && ! $viewer->isManagerOf($project),
+        ];
+    }
+
+    /**
+     * El mismo PDF en modo portal (D-066), para /portal/bolsas/{bolsa}/pdf: solo las horas que ve
+     * el cliente según su ajuste (PortalScope::bankEntries), las personas como las ve él
+     * (PortalScope::personLabel) y NUNCA datos económicos. Las cifras, el consumo por mes y el
+     * estado salen de PortalBankFigures, los mismos de la barra y el listado del portal, así que
+     * cuadran entre sí y no hay horas «sin aprobar» aparte: por dentro la bolsa puede ir más
+     * avanzada y la nota del PDF lo explica. Sin caché: son unas pocas consultas sobre una bolsa.
+     *
+     * @return array{
+     *     company: string, client: string|null, project: array{code: string, name: string},
+     *     bank: array{name: string, start_date: string, end_date: string|null, status: string, total_minutes: int},
+     *     generated_at: CarbonImmutable,
+     *     figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float},
+     *     months: list<array{month: string, in_bank: int, overage: int}>,
+     *     entries: list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>,
+     *     financials: null,
+     *     partial: false,
+     *     portal: array{visibility: string}
+     * }
+     */
+    public function forPortal(PortalScope $scope, HourBank $bank): array
+    {
+        /** @var Project $project */
+        $project = $bank->relationLoaded('project')
+            ? $bank->project
+            : Project::query()->withTrashed()->findOrFail($bank->project_id, ['id', 'code', 'name']);
+        $figures = PortalBankFigures::one($scope, $bank);
+        $display = $scope->client->portal_person_display;
+        $named = $display !== PortalPersonDisplay::Team;
+
+        $query = $scope->bankEntries($bank)
+            ->with(['task' => fn ($task) => $task->select(['id', 'title'])])
+            ->orderBy('date')
+            ->orderBy('id');
+        if ($named) {
+            $query->with(['user' => fn ($user) => $user->select(['id', 'name'])]);
+        }
+
+        $entries = [];
+        foreach ($query->get(['id', 'user_id', 'task_id', 'date', 'minutes', 'overage_minutes', 'description']) as $entry) {
+            $entries[] = [
+                'date' => $entry->date->toDateString(),
+                'person' => $scope->personLabel($named ? $entry->user : null),
+                'task' => $entry->task->title,
+                'in_bank' => $entry->minutes - $entry->overage_minutes,
+                'overage' => $entry->overage_minutes,
+                'description' => (string) $entry->description,
+            ];
+        }
+
+        $months = [];
+        foreach (PortalBankFigures::byMonth($scope, $bank) as $month) {
+            $months[] = ['month' => $month['month'], 'in_bank' => $month['within_minutes'], 'overage' => $month['overage_minutes']];
+        }
+
+        return [
+            'company' => (string) Setting::get('company_name', Setting::DEFAULTS['company_name']),
+            'client' => $scope->client->name,
+            'project' => ['code' => $project->code, 'name' => $project->name],
+            'bank' => [
+                'name' => $bank->name,
+                'start_date' => $bank->start_date->toDateString(),
+                'end_date' => $bank->end_date?->toDateString(),
+                'status' => PortalBankFigures::status($bank, $figures)->label(),
+                'total_minutes' => $figures['total_minutes'],
+            ],
+            'generated_at' => LocalTime::now(),
+            'figures' => [
+                'consumed' => $figures['within_minutes'] + $figures['overage_minutes'],
+                'in_bank' => $figures['within_minutes'],
+                'overage' => $figures['overage_minutes'],
+                'pending_in_bank' => 0,
+                'pending_overage' => 0,
+                'remaining' => $figures['remaining_minutes'],
+                'ratio' => $figures['percent'],
+            ],
+            'months' => $months,
+            'entries' => $entries,
+            'financials' => null,
+            'partial' => false,
+            'portal' => ['visibility' => $scope->client->portal_entry_visibility->value],
         ];
     }
 }

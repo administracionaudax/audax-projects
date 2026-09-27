@@ -11,6 +11,20 @@ return [
     'person' => [
         'team' => 'Equipo',
     ],
+    // P1 · Bolsas del portal: textos del PDF de consumo en modo portal (D-066).
+    'banks' => [
+        'pdf' => [
+            'consumed' => [
+                'approved' => 'Horas aprobadas',
+                'submitted' => 'Horas enviadas y aprobadas',
+            ],
+            'note' => [
+                'approved' => 'Solo incluye las horas ya aprobadas a fecha de :date. Las horas en curso aparecerán cuando se aprueben.',
+                'submitted' => 'Incluye las horas enviadas y las ya aprobadas a fecha de :date. Las horas en borrador no aparecen.',
+            ],
+            'no_entries' => 'Todavía no hay horas que mostrar en esta bolsa.',
+        ],
+    ],
     'mail' => [
         'greeting' => 'Hola, :name:',
         'salutation' => 'Un saludo, el equipo de :company',

@@ -3,6 +3,7 @@
 namespace App\Domain\Portal;
 
 use App\Domain\Reports\Dimension;
+use App\Enums\HourBankStatus;
 use App\Models\HourBank;
 use Illuminate\Support\Facades\DB;
 
@@ -86,6 +87,23 @@ final class PortalBankFigures
         }
 
         return $series;
+    }
+
+    /**
+     * Estado de la bolsa tal como lo ve el cliente (P1): las cerradas y renovadas, tal cual; una
+     * abierta está agotada cuando lo que ve dentro de la bolsa llega al total (la regla de
+     * HourBankLedger, con sus horas visibles), para que el estado cuadre con la barra, el listado
+     * y el PDF. Por dentro puede ir más avanzada (D-064).
+     *
+     * @param  array{total_minutes: int, within_minutes: int, overage_minutes: int, remaining_minutes: int, percent: float}  $figures
+     */
+    public static function status(HourBank $bank, array $figures): HourBankStatus
+    {
+        if (! $bank->status->acceptsTime()) {
+            return $bank->status;
+        }
+
+        return $figures['within_minutes'] >= $figures['total_minutes'] ? HourBankStatus::Exhausted : HourBankStatus::Active;
     }
 
     /**

@@ -10,6 +10,8 @@ use Carbon\CarbonImmutable;
  * la bolsa en azul y el exceso aparte, en rojo; lo que no sale en el listado, en tono claro),
  * consumo por mes y listado de las entradas aprobadas o bloqueadas con sus totales. Los importes,
  * solo si el statement los trae. Todos los textos, con __() (lang/es/reports.php, r2.pdf).
+ * En modo portal (statement con `portal`, D-066), la etiqueta de las horas, la nota y el aviso de
+ * «sin horas» dicen lo que ve el cliente (lang/es/portal.php, banks.pdf).
  */
 final class HourBankStatementPdf
 {
@@ -25,8 +27,9 @@ final class HourBankStatementPdf
      *     months: list<array{month: string, in_bank: int, overage: int}>,
      *     entries: list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>,
      *     financials: array{price_amount: string|null, rate: string|null, income: string}|null,
-     *     partial: bool
-     * }  $statement
+     *     partial: bool,
+     *     portal?: array{visibility: string}
+     * }  $statement  Con `portal` (HourBankStatement::forPortal, D-066), los textos del portal.
      */
     public function render(array $statement, bool $compress = true): string
     {
@@ -51,7 +54,7 @@ final class HourBankStatementPdf
         }
 
         $this->months($pdf, $statement['months']);
-        $this->entries($pdf, $statement['entries'], $statement['figures']);
+        $this->entries($pdf, $statement['entries'], $statement['figures'], self::t(isset($statement['portal']) ? 'portal.banks.pdf.no_entries' : 'reports.r2.pdf.no_entries'));
 
         return $pdf->Output('S');
     }
@@ -161,15 +164,20 @@ final class HourBankStatementPdf
      * Cifras: las de las horas aprobadas (las del listado), las que no salen en él (sin aprobar; en
      * un PDF parcial, también las de otras personas) y el saldo restante de la bolsa.
      *
-     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}, partial: bool}  $statement
+     * En modo portal, «Horas aprobadas» (o «enviadas y aprobadas») según lo que ve el cliente.
+     *
+     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}, partial: bool, portal?: array{visibility: string}}  $statement
      */
     private function figures(AudaxPdf $pdf, array $statement): void
     {
         $f = $statement['figures'];
         $pending = $f['pending_in_bank'] + $f['pending_overage'];
+        $consumed = isset($statement['portal'])
+            ? self::t('portal.banks.pdf.consumed.'.$statement['portal']['visibility'])
+            : self::t('reports.r2.pdf.consumed');
         $items = [
             [self::t('reports.r2.pdf.contracted'), self::minutes($statement['bank']['total_minutes']), null, AudaxPdf::NAVY],
-            [self::t('reports.r2.pdf.consumed'), self::minutes($f['consumed']), self::t('reports.r2.pdf.consumed_pct', ['pct' => self::percent($f['ratio'])]), AudaxPdf::NAVY],
+            [$consumed, self::minutes($f['consumed']), self::t('reports.r2.pdf.consumed_pct', ['pct' => self::percent($f['ratio'])]), AudaxPdf::NAVY],
             [self::t('reports.r2.pdf.in_bank'), self::minutes($f['in_bank']), null, AudaxPdf::NAVY],
             [self::t('reports.r2.pdf.overage'), self::overage($f['overage']), null, $f['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY],
         ];
@@ -302,13 +310,20 @@ final class HourBankStatementPdf
     }
 
     /**
-     * @param  array{generated_at: CarbonImmutable, figures: array{pending_in_bank: int, pending_overage: int}, partial: bool}  $statement
+     * En modo portal, qué horas ve el cliente según su ajuste (D-064).
+     *
+     * @param  array{generated_at: CarbonImmutable, figures: array{pending_in_bank: int, pending_overage: int}, partial: bool, portal?: array{visibility: string}}  $statement
      */
     private function notes(AudaxPdf $pdf, array $statement): void
     {
+        $date = ['date' => $statement['generated_at']->format('d/m/Y')];
+        $note = isset($statement['portal'])
+            ? self::t('portal.banks.pdf.note.'.$statement['portal']['visibility'], $date)
+            : self::t('reports.r2.pdf.approved_only', $date);
+
         $pdf->SetFont('Helvetica', '', 8);
         $pdf->textColor(AudaxPdf::MUTED);
-        $pdf->MultiCell(0, 4, AudaxPdf::encode(self::t('reports.r2.pdf.approved_only', ['date' => $statement['generated_at']->format('d/m/Y')])));
+        $pdf->MultiCell(0, 4, AudaxPdf::encode($note));
 
         $pending = $statement['figures']['pending_in_bank'] + $statement['figures']['pending_overage'];
         if ($pending > 0 && ! $statement['partial']) {
@@ -389,14 +404,14 @@ final class HourBankStatementPdf
      * @param  list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>  $entries
      * @param  array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}  $figures
      */
-    private function entries(AudaxPdf $pdf, array $entries, array $figures): void
+    private function entries(AudaxPdf $pdf, array $entries, array $figures, string $empty): void
     {
         $this->heading($pdf, self::t('reports.r2.pdf.entries'));
 
         if ($entries === []) {
             $pdf->SetFont('Helvetica', '', 9);
             $pdf->textColor(AudaxPdf::MUTED);
-            $pdf->Cell(0, 6, AudaxPdf::encode(self::t('reports.r2.pdf.no_entries')), 0, 1);
+            $pdf->Cell(0, 6, AudaxPdf::encode($empty), 0, 1);
 
             return;
         }
