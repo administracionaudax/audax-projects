@@ -3,6 +3,8 @@ import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DatePicker } from '@/components/domain/date-picker';
 import { DurationInput } from '@/components/domain/duration-input';
+import { RescheduleDialog } from '@/components/planning/reschedule-dialog';
+import { useReschedule } from '@/components/planning/use-reschedule';
 import {
     AssigneePicker,
     BankSelect,
@@ -135,6 +137,24 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
 
     const save = (changes: TaskChanges) => updateTask(task.id, changes);
 
+    // Con sucesoras, cambiar la entrega pasa por reprogramar con propuesta (D-057): si alguna
+    // quedaría en conflicto, el diálogo pregunta antes de guardar. Sin sucesoras (o al quitar la
+    // fecha, que no crea conflictos), se guarda como cualquier otro campo.
+    const reschedule = useReschedule();
+    const hasSuccessors = (panel.dependencies?.successors.length ?? 0) > 0;
+    const changeDue = (date: string | null) => {
+        if (hasSuccessors && date !== null && date !== task.due_date) {
+            void reschedule.request(
+                { id: task.id, title: task.title },
+                { start_date: task.start_date, due_date: date },
+            );
+
+            return;
+        }
+
+        save({ due_date: date });
+    };
+
     const changeBank = (bankId: number | null) => {
         if (bankId === task.hour_bank_id) {
             return;
@@ -243,8 +263,8 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                 <DatePicker
                     id={ids.due}
                     value={task.due_date}
-                    onChange={(date) => save({ due_date: date })}
-                    disabled={disabled}
+                    onChange={changeDue}
+                    disabled={disabled || reschedule.moving !== null}
                 />
             </div>
             <EstimateField key={task.id} panel={panel} disabled={disabled} />
@@ -308,6 +328,12 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
 
                     setPendingBank(undefined);
                 }}
+            />
+            <RescheduleDialog
+                pending={reschedule.pending}
+                saving={reschedule.saving}
+                onConfirm={reschedule.confirm}
+                onCancel={reschedule.cancel}
             />
             {panel.has_time && !panel.parent && lookups.usesBanks ? (
                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground sm:col-span-2">
