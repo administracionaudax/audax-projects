@@ -22,6 +22,9 @@ import type {
     RecurringRuleItem,
 } from '@/types/templates';
 
+/** Con userEvent se escribe tecla a tecla: con la máquina cargada, 5 s no bastan. */
+const SLOW = { timeout: 20_000 };
+
 /*
 | Tareas recurrentes (D-059) en el navegador: la frase legible y las fechas (gemelas del servidor),
 | el formulario con su vista previa en vivo y la lista de reglas de los Ajustes.
@@ -250,7 +253,7 @@ const item = (
     ...overrides,
 });
 
-describe('formulario de una regla', () => {
+describe('formulario de una regla', SLOW, () => {
     const openDialog = async (rule?: RecurringRuleItem) => {
         const user = userEvent.setup();
         render(
@@ -382,7 +385,7 @@ describe('formulario de una regla', () => {
     );
 });
 
-describe('lista de reglas de los Ajustes', () => {
+describe('lista de reglas de los Ajustes', SLOW, () => {
     const settings = (
         overrides: Partial<ProjectRecurringSettings> = {},
     ): ProjectRecurringSettings => ({

@@ -12,6 +12,9 @@ import type {
     TemplatesIndexProps,
 } from '@/types/templates';
 
+/** Con userEvent se escribe tecla a tecla: con la máquina cargada, 5 s no bastan. */
+const SLOW = { timeout: 20_000 };
+
 /*
 | /admin/plantillas y /admin/tareas-recurrentes (D-058, D-059): listados con estado en texto,
 | acciones con nombre accesible, papelera y estados vacíos.
@@ -80,7 +83,7 @@ const row = (overrides: Partial<TemplateRow> = {}): TemplateRow => ({
     ...overrides,
 });
 
-describe('/admin/plantillas', () => {
+describe('/admin/plantillas', SLOW, () => {
     const props = (
         overrides: Partial<TemplatesIndexProps> = {},
     ): TemplatesIndexProps => ({
@@ -212,7 +215,7 @@ describe('/admin/plantillas', () => {
     });
 });
 
-describe('/admin/tareas-recurrentes', () => {
+describe('/admin/tareas-recurrentes', SLOW, () => {
     const rule: RecurringRuleItem = {
         id: 5,
         project_id: 9,

@@ -24,6 +24,9 @@ import {
 import TemplateEdit from '@/pages/admin/templates/edit';
 import type { TemplateEditProps, TemplateStructure } from '@/types/templates';
 
+/** Con userEvent se escribe tecla a tecla: con la máquina cargada, 5 s no bastan. */
+const SLOW = { timeout: 20_000 };
+
 /*
 | Editor de plantillas (D-058): filas, subtareas de un solo nivel, dependencias sin ciclos, errores
 | del servidor junto a cada campo y envío de la estructura.
@@ -289,7 +292,7 @@ describe('estado del editor', () => {
     });
 });
 
-describe('tabla del editor', () => {
+describe('tabla del editor', SLOW, () => {
     function Harness({ initial }: { initial: EditorRow[] }) {
         const [rows, setRows] = useState(initial);
 
@@ -466,7 +469,7 @@ describe('tabla del editor', () => {
     });
 });
 
-describe('página del editor', () => {
+describe('página del editor', SLOW, () => {
     const props = (
         overrides: Partial<TemplateEditProps> = {},
     ): TemplateEditProps => ({

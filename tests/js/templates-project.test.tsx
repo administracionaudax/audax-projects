@@ -18,6 +18,9 @@ import type {
     TemplateOption,
 } from '@/types/templates';
 
+/** Con userEvent se escribe tecla a tecla: con la máquina cargada, 5 s no bastan. */
+const SLOW = { timeout: 20_000 };
+
 /*
 | Plantillas en los proyectos (D-058): «Desde plantilla» en el alta (con la primera bolsa si es de
 | bolsas) y la sección «Plantilla» de los Ajustes (aplicar con confirmación y guardar).
@@ -148,7 +151,7 @@ const templates: TemplateOption[] = [
     },
 ];
 
-describe('«Desde plantilla» en el alta', () => {
+describe('«Desde plantilla» en el alta', SLOW, () => {
     function Harness({ billingType }: { billingType: BillingType }) {
         const [data, setData] = useState<TemplateStartData>(
             emptyTemplateStart('2026-10-05'),
@@ -301,7 +304,7 @@ describe('«Desde plantilla» en el alta', () => {
     });
 });
 
-describe('sección «Plantilla» de los Ajustes', () => {
+describe('sección «Plantilla» de los Ajustes', SLOW, () => {
     const settings = (
         overrides: Partial<ProjectTemplatingSettings> = {},
     ): ProjectTemplatingSettings => ({
