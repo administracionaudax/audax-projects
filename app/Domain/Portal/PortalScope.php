@@ -23,7 +23,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 final class PortalScope
 {
     private function __construct(
-        public readonly User $user,
+        /** El usuario del portal; null en el alcance de un cliente sin usuario (forClient). */
+        public readonly ?User $user,
         public readonly Client $client,
     ) {}
 
@@ -41,6 +42,17 @@ final class PortalScope
         }
 
         return new self($user, $client);
+    }
+
+    /**
+     * Lo que ve un cliente sin pasar por uno de sus usuarios, para lo que corre fuera de una
+     * petición del portal (los avisos de bolsa, D-065): todo depende del cliente, así que es lo
+     * mismo que ve cualquiera de sus usuarios. Nunca lanza: no comprueba que el cliente esté activo
+     * (lo decide quien lo usa; los avisos se saltan un cliente desactivado).
+     */
+    public static function forClient(Client $client): self
+    {
+        return new self(null, $client);
     }
 
     /**
