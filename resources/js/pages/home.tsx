@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { MyAbsencesCard } from '@/components/absences/my-absences-card';
+import type { MyAbsencesSummary } from '@/components/absences/types';
 import {
     TaskStatusBadge,
     TimesheetStatusBadge,
@@ -88,14 +90,6 @@ const LATER: LaterCard[] = [
         empty: 'home.cards.mentions.empty',
         phase: 6,
     },
-    {
-        id: 'absences',
-        icon: CalendarOff,
-        title: 'home.cards.absences.title',
-        description: 'home.cards.absences.description',
-        empty: 'home.cards.absences.empty',
-        phase: 3,
-    },
 ];
 
 function PanelCard({
@@ -149,7 +143,8 @@ export default function Home({
     week,
     unlogged_days: unloggedDays,
     indicators,
-}: HomePageProps & { indicators: MyIndicators }) {
+    absences,
+}: HomePageProps & { indicators: MyIndicators; absences: MyAbsencesSummary }) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
@@ -381,6 +376,16 @@ export default function Home({
                             indicators={indicators}
                             userId={user.id}
                         />
+                    </PanelCard>
+
+                    {/* Fase 3 (área de ausencias): «Mis ausencias», antes de las tarjetas de fases futuras. */}
+                    <PanelCard
+                        id="absences"
+                        icon={CalendarOff}
+                        title={t('home.cards.absences.title')}
+                        description={t('home.cards.absences.description')}
+                    >
+                        <MyAbsencesCard absences={absences} />
                     </PanelCard>
 
                     {LATER.map((card) => (

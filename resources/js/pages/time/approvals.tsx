@@ -13,6 +13,7 @@ import {
     TimeEntryStatusBadge,
     TimesheetStatusBadge,
 } from '@/components/domain/badges';
+import { PendingAbsencesNotice } from '@/components/absences/pending-absences-notice';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { CapacityCell } from '@/components/time/capacity-cell';
@@ -113,6 +114,9 @@ export default function Approvals({
                     title={t('hours.approvals.heading')}
                     description={t('hours.approvals.description')}
                 />
+
+                {/* Fase 3: solicitudes de ausencia pendientes (componente del área de ausencias). */}
+                <PendingAbsencesNotice />
 
                 {/* min-w-0 (UX-02): sin él, la tabla de días (min-w-[40rem]) ensancha la sección,
                     la lista y cada tarjeta, y en móvil el layout recorta los controles. */}

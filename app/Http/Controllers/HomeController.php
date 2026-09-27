@@ -7,6 +7,7 @@ use App\Domain\Reports\Metrics;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Domain\Absences\MyAbsencesSummary;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Enums\TimesheetStatus;
@@ -72,6 +73,8 @@ class HomeController extends Controller
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
             'indicators' => $this->indicators($user, $metrics, $cache),
+            // Fase 3: tarjeta «Mis ausencias» (próximas aprobadas y solicitudes pendientes).
+            'absences' => app(MyAbsencesSummary::class)->for($user),
         ]);
     }
 

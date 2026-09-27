@@ -104,7 +104,13 @@ describe('panel de administración', () => {
                 .getByRole('link', { name: 'Abrir los ajustes' })
                 .getAttribute('href'),
         ).toBe('/admin/ajustes');
-        expect(screen.getByText('Llega en la Fase 3')).toBeTruthy();
+        // Fase 3: los festivos ya tienen su página (/admin/festivos).
+        expect(
+            screen
+                .getByRole('link', { name: 'Gestionar los festivos' })
+                .getAttribute('href'),
+        ).toBe('/admin/festivos');
+        expect(screen.queryByText('Llega en la Fase 3')).toBeNull();
         expect(screen.getByText('Llega en la Fase 7')).toBeTruthy();
     });
 

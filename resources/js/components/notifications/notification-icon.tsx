@@ -2,7 +2,11 @@ import type { LucideIcon } from 'lucide-react';
 import {
     AtSign,
     Bell,
+    CalendarCheck,
     CalendarClock,
+    CalendarOff,
+    CalendarPlus,
+    CalendarX,
     CircleCheck,
     CircleDot,
     Clock,
@@ -25,7 +29,11 @@ import {
 const ICONS: Record<string, LucideIcon> = {
     bell: Bell,
     'at-sign': AtSign,
+    'calendar-check': CalendarCheck,
     'calendar-clock': CalendarClock,
+    'calendar-off': CalendarOff,
+    'calendar-plus': CalendarPlus,
+    'calendar-x': CalendarX,
     'circle-check': CircleCheck,
     'check-circle': CircleCheck,
     'circle-dot': CircleDot,
