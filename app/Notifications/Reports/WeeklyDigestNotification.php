@@ -170,10 +170,19 @@ class WeeklyDigestNotification extends AppNotification
 
     /**
      * Texto seguro dentro del Markdown del email: sin HTML y sin marcas de Markdown.
+     *
+     * - HTML: solo & < > (ENT_NOQUOTES). Las comillas no necesitan escaparse en el texto, y la
+     *   entidad del apóstrofo (&#039;) se rompería al escapar «#» para el Markdown y se vería tal
+     *   cual («D&#039;Amico»).
+     * - Markdown: las marcas en línea y, al principio, lo que abriría otra lista dentro de la lista
+     *   («- », «+ », «1. », «1) »).
      */
     public static function escape(string $text): string
     {
-        return (string) preg_replace('/([\\\\`*_\[\]#|~])/', '\\\\$1', e(trim((string) preg_replace('/\s+/', ' ', $text))));
+        $text = htmlspecialchars(trim((string) preg_replace('/\s+/u', ' ', $text)), ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $text = (string) preg_replace('/([\\\\`*_\[\]#|~])/', '\\\\$1', $text);
+
+        return (string) preg_replace(['/^([-+])(?=\s|$)/', '/^(\d+)([.)])(?=\s|$)/'], ['\\\\$1', '$1\\\\$2'], $text);
     }
 
     private function day(string $date, string $format = 'd/m'): string

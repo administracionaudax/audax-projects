@@ -246,6 +246,22 @@ it('en el email, los nombres nunca se interpretan como HTML ni Markdown', functi
         ->and($html)->toContain('<li>&lt;b&gt;Ana&lt;/b&gt; *la* [jefa](http://x): lunes 21/09, viernes 25/09</li>');
 });
 
+it('en el email, los apóstrofos y los guiones del principio se ven tal cual', function () {
+    $s = $this->s;
+    $s->ana->update(['name' => "Jordi D'Amico & Co"]);
+    $s->luis->update(['name' => '- Luis']);
+    $s->bank->update(['name' => "L'Oréal"]);
+    Task::query()->where('title', 'Revisar textos')->update(['title' => "Web d'Audax"]);
+    $html = ($this->mailHtml)(new WeeklyDigestNotification(($this->digest)($s->head)), $s->head);
+
+    expect($html)->not->toContain('&#039;')
+        ->and($html)->not->toContain('&amp;#039;')
+        ->and($html)->toContain("<li>Jordi D'Amico &amp; Co: lunes 21/09, viernes 25/09</li>")
+        ->and($html)->toContain('<li>- Luis: lunes 21/09, miércoles 23/09</li>')
+        ->and($html)->toContain("<li>BOL · L'Oréal: 117 % consumido, con 1:40 de exceso</li>")
+        ->and($html)->toContain("«Web d'Audax» (TM), de Jordi D'Amico &amp; Co, vencía el 20/09/2026");
+});
+
 it('cita como mucho 10 elementos por sección y resume el resto', function () {
     $s = $this->s;
     foreach (range(1, 12) as $n) {
