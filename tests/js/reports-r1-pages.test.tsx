@@ -512,6 +512,7 @@ describe('dashboard de departamento', () => {
                 logged_minutes: 760,
                 billable_minutes: 700,
                 occupancy: 0.6333,
+                pace: null,
                 billability: 0.9211,
                 billable_productivity: 0.5833,
                 income: null,

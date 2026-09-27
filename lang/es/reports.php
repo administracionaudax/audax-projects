@@ -190,6 +190,8 @@ return [
             'billable' => 'Horas facturables',
             'share' => '% del total',
             'occupancy' => 'Ocupación (%)',
+            // D-080: imputadas / capacidad transcurrida hasta ayer, en un periodo en curso.
+            'pace' => 'Ritmo (%)',
             'billability' => 'Facturabilidad (%)',
             'billable_productivity' => 'Productividad facturable (%)',
             'income' => 'Ingreso estimado (€)',
