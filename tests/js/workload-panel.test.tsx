@@ -15,6 +15,7 @@ vi.setConfig({ testTimeout: 20_000 });
 
 type Options = {
     onError?: (errors: Record<string, string>) => void;
+    onSuccess?: () => void;
     onStart?: () => void;
     onFinish?: () => void;
 };
@@ -204,6 +205,37 @@ describe('panel de una celda', () => {
         const [url, data] = server.patch.mock.calls[0];
         expect(url).toBe('/carga/tareas/41');
         expect(data).toEqual({ assignee_user_id: 2 });
+    });
+});
+
+describe('foco tras guardar', () => {
+    it('va al título de la lista de tareas del panel (la tarea puede haber salido de la celda)', async () => {
+        const user = userEvent.setup();
+        server.patch.mockImplementation((_url, _data, options) =>
+            options.onSuccess?.(),
+        );
+        const dialog = renderPanel();
+        const [first] = allByTest('workload-cell-task', dialog);
+
+        await user.click(
+            within(first).getByRole('button', {
+                name: 'Reasignar o replanificar',
+            }),
+        );
+        const estimate = within(first).getByRole('textbox', {
+            name: 'Estimación',
+        });
+        await user.clear(estimate);
+        await user.type(estimate, '4');
+        await user.click(
+            within(first).getByRole('button', { name: 'Guardar' }),
+        );
+
+        expect(document.activeElement).toBe(
+            within(dialog).getByRole('heading', {
+                name: 'Tareas que forman esta carga (2)',
+            }),
+        );
     });
 });
 

@@ -86,6 +86,7 @@ export function WorkloadTaskEditor({
     people,
     extraPeople = [],
     submitLabel,
+    onSaved,
     className,
 }: {
     task: WorkloadTask;
@@ -94,6 +95,8 @@ export function WorkloadTaskEditor({
     people: WorkloadPerson[];
     extraPeople?: WorkloadExtraPerson[];
     submitLabel?: string;
+    /** Tras guardar (la tarea puede haber salido de la lista): el foco va a un sitio estable. */
+    onSaved?: () => void;
     className?: string;
 }) {
     const id = useId();
@@ -128,6 +131,7 @@ export function WorkloadTaskEditor({
             preserveState: true,
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
+            onSuccess: () => onSaved?.(),
             onError: (received) => {
                 setErrors(received as Partial<Record<Field, string>>);
                 const first = Object.values(received)[0];

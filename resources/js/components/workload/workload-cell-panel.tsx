@@ -7,7 +7,7 @@ import {
     ExternalLink,
     Lock,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { LoadCell } from '@/components/charts/load-cell';
 import { EmptyState } from '@/components/empty-state';
 import type {
@@ -147,6 +147,7 @@ function PanelBody({
     byWeek: boolean;
     people: WorkloadPerson[];
 }) {
+    const tasksHeading = useRef<HTMLHeadingElement>(null);
     const isWeek = cell.days.length > 1;
 
     return (
@@ -250,7 +251,12 @@ function PanelBody({
                 aria-labelledby="workload-panel-tasks"
                 className="grid gap-3"
             >
-                <h3 id="workload-panel-tasks" className="text-sm font-medium">
+                <h3
+                    ref={tasksHeading}
+                    id="workload-panel-tasks"
+                    tabIndex={-1}
+                    className="text-sm font-medium focus:outline-none"
+                >
                     {t('workload_panel.tasks', { count: cell.tasks.length })}
                 </h3>
 
@@ -274,6 +280,7 @@ function PanelBody({
                                 people={people}
                                 cell={cell}
                                 expandedByDefault={cell.tasks.length === 1}
+                                onSaved={() => tasksHeading.current?.focus()}
                             />
                         ))}
                     </ul>
@@ -289,12 +296,14 @@ function TaskCard({
     people,
     cell,
     expandedByDefault,
+    onSaved,
 }: {
     task: WorkloadCellTask;
     week: boolean;
     people: WorkloadPerson[];
     cell: WorkloadCellPanelData;
     expandedByDefault: boolean;
+    onSaved: () => void;
 }) {
     const [open, setOpen] = useState(expandedByDefault && task.can_edit);
 
@@ -368,6 +377,7 @@ function TaskCard({
                             task={task}
                             people={people}
                             extraPeople={cell.extra_people}
+                            onSaved={onSaved}
                         />
                     </CollapsibleContent>
                 </Collapsible>

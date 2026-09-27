@@ -165,6 +165,7 @@ export function WorkloadTrays({
                                                     people={people}
                                                     trays={trays}
                                                     fields={['assignee']}
+                                                    trayId="workload-unassigned"
                                                     actionLabel={t(
                                                         'workload_trays.assign',
                                                     )}
@@ -213,7 +214,8 @@ function TraySection({
             <header className="grid gap-1">
                 <h2
                     id={`${id}-title`}
-                    className="flex items-center gap-2 text-base"
+                    tabIndex={-1}
+                    className="flex items-center gap-2 text-base focus:outline-none"
                 >
                     <Icon
                         aria-hidden="true"
@@ -263,6 +265,7 @@ function UnplannedItem({
             fields={['assignee', 'dates', 'estimate']}
             actionLabel={t('workload_trays.plan')}
             hideMissing
+            trayId="workload-unplanned"
             header={
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     {task.missing.map((missing) => (
@@ -308,6 +311,7 @@ function TrayItem({
     submitLabel,
     header,
     hideMissing = false,
+    trayId,
 }: {
     task: WorkloadTask;
     people: WorkloadPerson[];
@@ -317,6 +321,8 @@ function TrayItem({
     submitLabel?: string;
     header?: ReactNode;
     hideMissing?: boolean;
+    /** Bandeja: tras guardar, el foco vuelve a su título (la tarea puede haber salido). */
+    trayId: string;
 }) {
     const [open, setOpen] = useState(false);
 
@@ -380,6 +386,11 @@ function TrayItem({
                             people={people}
                             extraPeople={trays.extra_people}
                             submitLabel={submitLabel}
+                            onSaved={() =>
+                                document
+                                    .getElementById(`${trayId}-title`)
+                                    ?.focus()
+                            }
                         />
                     </CollapsibleContent>
                 </Collapsible>
