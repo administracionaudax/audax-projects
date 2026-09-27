@@ -143,8 +143,8 @@ final class WorkloadBoard
     }
 
     /**
-     * Columnas: días (sin sábados ni domingos si nadie de las filas trabaja ni tiene carga) o
-     * semanas de lunes a domingo (la primera, desde hoy).
+     * Columnas: días (sin sábados ni domingos si nadie de las filas trabaja ni tiene carga, salvo
+     * que no quede ningún otro) o semanas de lunes a domingo (la primera, desde hoy).
      *
      * @return list<Column>
      */
@@ -187,6 +187,15 @@ final class WorkloadBoard
             }
 
             $columns[] = ['key' => $date, 'from' => $date, 'to' => $date, 'today' => $date === $today, 'weekend' => $weekend];
+        }
+
+        // Un sábado o un domingo, la semana actual puede quedarse sin días laborables: se enseñan
+        // los que quedan (grises, «no laborable»), nunca una matriz sin columnas.
+        if ($columns === []) {
+            foreach (CarbonPeriod::create($this->from, $this->to) as $day) {
+                $date = $day->toDateString();
+                $columns[] = ['key' => $date, 'from' => $date, 'to' => $date, 'today' => $date === $today, 'weekend' => $day->dayOfWeekIso >= 6];
+            }
         }
 
         return $this->columns = $columns;

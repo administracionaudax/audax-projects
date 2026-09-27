@@ -5,6 +5,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Workload\Concerns\BuildsWorkloadScenario;
 
@@ -130,6 +131,24 @@ describe('horizontes', function () {
 
     it('un horizonte desconocido abre el de por defecto', function () {
         expect(($this->page)('ana', 'horizonte=siempre')['horizon']['key'])->toBe('semana-que-viene');
+    });
+
+    it('un domingo, la semana actual enseña el domingo (no laborable) en vez de quedarse sin columnas', function () {
+        $this->travelTo(CarbonImmutable::parse('2026-10-11 10:00', 'Europe/Madrid'));
+
+        $matrix = ($this->page)('sergio', 'horizonte=semana-actual')['matrix'];
+
+        expect($matrix['columns'])->toBe([['key' => '2026-10-11', 'from' => '2026-10-11', 'to' => '2026-10-11', 'today' => true, 'weekend' => true]])
+            ->and($this->workloadCell($matrix, 'sergio', '2026-10-11'))->toMatchArray(['planned' => 0, 'capacity' => 0, 'reason' => ['type' => 'off', 'label' => null]]);
+    });
+
+    it('un sábado, la semana actual enseña el sábado y el domingo', function () {
+        $this->travelTo(CarbonImmutable::parse('2026-10-10 18:00', 'Europe/Madrid'));
+
+        $columns = ($this->page)('sergio', 'horizonte=semana-actual')['matrix']['columns'];
+
+        expect(array_column($columns, 'key'))->toBe(['2026-10-10', '2026-10-11'])
+            ->and(array_column($columns, 'weekend'))->toBe([true, true]);
     });
 
     it('enseña el sábado si alguien de las filas trabaja ese día', function () {

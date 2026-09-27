@@ -10,6 +10,8 @@
     "workload_page.empty_title": "No hay nadie que mostrar",
     "workload_page.empty_filtered": "Ninguna persona de tu vista cumple estos filtros. Quita alguno para ver su carga.",
     "workload_page.empty_description": "No hay personas activas en tu vista de carga.",
+    "workload_page.no_working_days": "No quedan días laborables esta semana.",
+    "workload_page.see_next_week": "Ver la semana que viene",
     "workload_page.no_load": "No hay carga planificada en este horizonte. Una tarea suma carga cuando tiene responsable, estimación y fecha de entrega.",
     "workload_page.nobody_over": "Nadie supera su capacidad en este horizonte.",
     "workload_page.over": "Sobrecarga, más del 120 % (:count):",

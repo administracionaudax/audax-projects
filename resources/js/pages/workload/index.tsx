@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import type { VisitOptions } from '@inertiajs/core';
-import { Info, Users, X } from 'lucide-react';
+import { ArrowRight, CalendarOff, Info, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/empty-state';
@@ -110,6 +110,12 @@ export default function WorkloadIndex({
         (filters.query.persona?.length ?? 0) > 0 ||
         (filters.query.departamento?.length ?? 0) > 0;
 
+    // Un sábado o un domingo, «esta semana» ya no tiene días laborables: se dice y se ofrece la que viene.
+    const noWorkingDays =
+        horizon.key === 'semana-actual' &&
+        matrix.columns.length > 0 &&
+        matrix.columns.every((column) => column.weekend);
+
     return (
         <>
             <Head title={t('workload_page.title')} />
@@ -190,6 +196,34 @@ export default function WorkloadIndex({
                                     byWeek={horizon.by_week}
                                 />
                             ) : null}
+                            {noWorkingDays ? (
+                                <div
+                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+                                    data-test="workload-no-working-days"
+                                >
+                                    <p className="flex items-start gap-1.5">
+                                        <CalendarOff
+                                            aria-hidden="true"
+                                            className="mt-0.5 size-4 shrink-0"
+                                        />
+                                        {t('workload_page.no_working_days')}
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            visit({
+                                                ...filters.query,
+                                                horizonte: 'semana-que-viene',
+                                            })
+                                        }
+                                    >
+                                        <ArrowRight aria-hidden="true" />
+                                        {t('workload_page.see_next_week')}
+                                    </Button>
+                                </div>
+                            ) : null}
                             <WorkloadLegend />
                             <WorkloadMatrix
                                 matrix={matrix}
@@ -200,7 +234,7 @@ export default function WorkloadIndex({
                                 loading={navigating}
                                 onOpen={openCell}
                             />
-                            {matrix.total.planned === 0 ? (
+                            {matrix.total.planned === 0 && !noWorkingDays ? (
                                 <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
                                     <Info
                                         aria-hidden="true"

@@ -302,6 +302,87 @@ describe('vista Carga', () => {
         );
     });
 
+    it('un sábado o un domingo, «esta semana» dice que no quedan días laborables y ofrece la que viene', async () => {
+        const user = userEvent.setup();
+        const props = pageProps();
+        const sunday = {
+            key: '2026-10-18',
+            from: '2026-10-18',
+            to: '2026-10-18',
+            today: true,
+            weekend: true,
+        };
+        const noCapacity = {
+            planned: 0,
+            capacity: 0,
+            reason: { type: 'off' as const, label: null },
+            reduced: null,
+            overdue: false,
+        };
+        const row = {
+            ...ELENA,
+            cells: [noCapacity],
+            total: { planned: 0, capacity: 0 },
+        };
+
+        render(
+            <WorkloadIndex
+                {...props}
+                horizon={{
+                    ...props.horizon,
+                    key: 'semana-actual',
+                    from: '2026-10-18',
+                    to: '2026-10-18',
+                    today: '2026-10-18',
+                }}
+                filters={{
+                    ...props.filters,
+                    query: { horizonte: 'semana-actual', proyecto: [8] },
+                }}
+                matrix={{
+                    columns: [sunday],
+                    groups: [
+                        {
+                            department: props.matrix.groups[1].department,
+                            people: [row],
+                            totals: [{ planned: 0, capacity: 0 }],
+                            total: { planned: 0, capacity: 0 },
+                        },
+                    ],
+                    totals: [{ planned: 0, capacity: 0 }],
+                    total: { planned: 0, capacity: 0 },
+                }}
+            />,
+        );
+
+        // La matriz sigue teniendo su celda (gris, con su motivo) para el teclado.
+        expect(screen.getByRole('grid')).toBeTruthy();
+        expect(
+            within(byTest('workload-no-working-days')).getByText(
+                'No quedan días laborables esta semana.',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen.queryByText(/Una tarea suma carga cuando tiene responsable/),
+        ).toBeNull();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Ver la semana que viene' }),
+        );
+
+        expect(decodeURIComponent(server.visit.mock.calls[0][0])).toBe(
+            '/carga?horizonte=semana-que-viene&proyecto[]=8',
+        );
+    });
+
+    it('un día laborable no enseña ese aviso', () => {
+        render(<WorkloadIndex {...pageProps()} />);
+
+        expect(
+            document.querySelector('[data-test="workload-no-working-days"]'),
+        ).toBeNull();
+    });
+
     it('sin carga en el horizonte explica cuándo suma carga una tarea', () => {
         const props = pageProps();
 
