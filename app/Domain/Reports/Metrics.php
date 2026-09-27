@@ -31,6 +31,17 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class Metrics
 {
+    /**
+     * Capacidades ya calculadas en esta instancia (el resumen y la serie de un mismo alcance piden
+     * la misma), por persona que mira y filtros. Metrics se resuelve por petición o por tarea: la
+     * memoria no sobrevive a otra escritura. Con un tope para no crecer sin límite.
+     *
+     * @var array<string, array<int, array<string, int>>>
+     */
+    private array $capacityMemo = [];
+
+    private const int CAPACITY_MEMO_SIZE = 8;
+
     public function __construct(
         private readonly RevenueCalculator $revenue,
         private readonly Capacity $capacity,
@@ -90,6 +101,44 @@ final class Metrics
      */
     public function capacityByDate(ReportScope $scope): array
     {
+        $byDate = [];
+        foreach ($this->capacityByPerson($scope) as $days) {
+            foreach ($days as $date => $minutes) {
+                $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
+            }
+        }
+
+        return $byDate;
+    }
+
+    /**
+     * Capacidad de cada persona del alcance por fecha (id → Y-m-d → minutos), con las mismas reglas
+     * que capacityByDate (que es su suma): desde el alta o el primer horario y, si está
+     * desactivada, hasta su última entrada del periodo. Las personas sin capacidad en el periodo no
+     * salen. Añadido por R1 (miembros del departamento).
+     *
+     * @return array<int, array<string, int>>
+     */
+    public function capacityByPerson(ReportScope $scope): array
+    {
+        $key = $scope->viewer->id.':'.$scope->filters->cacheKey();
+
+        if (! array_key_exists($key, $this->capacityMemo)) {
+            if (count($this->capacityMemo) >= self::CAPACITY_MEMO_SIZE) {
+                array_shift($this->capacityMemo);
+            }
+
+            $this->capacityMemo[$key] = $this->computeCapacityByPerson($scope);
+        }
+
+        return $this->capacityMemo[$key];
+    }
+
+    /**
+     * @return array<int, array<string, int>>
+     */
+    private function computeCapacityByPerson(ReportScope $scope): array
+    {
         $f = $scope->filters;
         $people = $scope->people();
 
@@ -117,14 +166,12 @@ final class Metrics
             $ranges[] = ['user_id' => $person->id, 'from' => CarbonImmutable::parse($start), 'to' => CarbonImmutable::parse($end)];
         }
 
-        $byDate = [];
-        foreach ($this->capacity->forRanges($ranges) as $days) {
-            foreach ($days as $date => $minutes) {
-                $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
-            }
+        $byPerson = [];
+        foreach ($this->capacity->forRanges($ranges) as $index => $days) {
+            $byPerson[$ranges[$index]['user_id']] = $days;
         }
 
-        return $byDate;
+        return $byPerson;
     }
 
     /**
