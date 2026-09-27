@@ -62,6 +62,7 @@ Se trabaja en modo autónomo (D-027).
   - verde: del 70 % al 100 %,
   - ámbar: del 100 % al 120 %,
   - rojo: más del 120 %.
+  - El nivel se decide con el porcentaje redondeado que se enseña, para que la cifra y el color no se contradigan: 481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde (revisión global).
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
 

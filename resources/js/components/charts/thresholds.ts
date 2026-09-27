@@ -12,6 +12,7 @@ import {
     OctagonAlert,
     TriangleAlert,
 } from 'lucide-react';
+import { formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 
 /* ------------------------------------------------------------------ */
@@ -30,28 +31,56 @@ export type LevelMeta = {
 };
 
 /**
+ * Porcentaje de carga que se enseña (planificado / capacidad), entero y redondeado como en
+ * pantalla; null sin capacidad. Se calcula con minutos enteros (× 100 antes de dividir) para que
+ * el redondeo sea exacto.
+ */
+export function loadPercent(
+    plannedMinutes: number,
+    capacityMinutes: number,
+): number | null {
+    if (!Number.isFinite(capacityMinutes) || capacityMinutes <= 0) {
+        return null;
+    }
+
+    return Math.round((Math.max(plannedMinutes, 0) * 100) / capacityMinutes);
+}
+
+/** El porcentaje de carga con el formato de la app («100 %»); vacío sin capacidad. */
+export function formatLoadPercent(
+    plannedMinutes: number,
+    capacityMinutes: number,
+): string {
+    const percent = loadPercent(plannedMinutes, capacityMinutes);
+
+    return percent === null ? '' : formatPercent(percent / 100, 0);
+}
+
+/**
  * gris: sin capacidad · azul: < 70 % · verde: 70–100 % · ámbar: > 100–120 % · rojo: > 120 %.
- * Los límites exactos (70 %, 100 %, 120 %) caen en el tramo inferior salvo el 70 %, que ya es verde.
+ * Se decide sobre el porcentaje redondeado que se enseña (loadPercent): la cifra y el color nunca
+ * se contradicen (481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde).
+ * Los límites exactos (100 % y 120 %) caen en el tramo inferior; el 70 % ya es verde.
  */
 export function loadLevel(
     plannedMinutes: number,
     capacityMinutes: number,
 ): LoadLevel {
-    if (!Number.isFinite(capacityMinutes) || capacityMinutes <= 0) {
+    const percent = loadPercent(plannedMinutes, capacityMinutes);
+
+    if (percent === null) {
         return 'none';
     }
 
-    const ratio = Math.max(plannedMinutes, 0) / capacityMinutes;
-
-    if (ratio < 0.7) {
+    if (percent < 70) {
         return 'under';
     }
 
-    if (ratio <= 1) {
+    if (percent <= 100) {
         return 'balanced';
     }
 
-    if (ratio <= 1.2) {
+    if (percent <= 120) {
         return 'high';
     }
 
