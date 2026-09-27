@@ -304,7 +304,7 @@ describe('rejilla del mes', () => {
         ).toBeTruthy();
     });
 
-    it('una tarea que solo cruza el mes (vence después) no cuenta como entrega del mes', () => {
+    it('una tarea que solo cruza el mes (vence después) no cuenta como entrega del mes, pero su franja se ve', () => {
         renderCalendar(
             data({
                 tasks: [calendarTask(40, 'Larga', '2026-09-20', '2026-11-20')],
@@ -315,6 +315,200 @@ describe('rejilla del mes', () => {
             screen.getByText('No hay tareas con entrega en octubre de 2026.'),
         ).toBeTruthy();
         expect(screen.queryByRole('button', { name: /^Larga\./ })).toBeNull();
+        // Cruza las cinco semanas de la rejilla (del 28/09 al 01/11), de lunes a domingo.
+        const spans = screen.getAllByRole('button', {
+            name: '«Larga», del 20/09/2026 al 20/11/2026',
+        });
+        expect(spans.map((span) => dayOf(span))).toEqual([
+            '2026-09-28',
+            '2026-10-05',
+            '2026-10-12',
+            '2026-10-19',
+            '2026-10-26',
+        ]);
+        expect(spans.map((span) => span.getAttribute('data-days'))).toEqual([
+            '7',
+            '7',
+            '7',
+            '7',
+            '7',
+        ]);
+    });
+});
+
+/** Día (data-date) de la celda donde está un elemento del calendario. */
+function dayOf(element: Element): string | null | undefined {
+    return element.closest('[data-date]')?.getAttribute('data-date');
+}
+
+describe('franjas en el mes (D-061)', () => {
+    it('una tarea que cruza el mes se ve como franja en cada semana que toca, desde su inicio', async () => {
+        const user = userEvent.setup();
+        const { onOpen } = renderCalendar(
+            data({
+                tasks: [
+                    calendarTask(40, 'Migración', '2026-10-10', '2026-11-15'),
+                ],
+            }),
+        );
+
+        const spans = screen.getAllByRole('button', {
+            name: '«Migración», del 10/10/2026 al 15/11/2026',
+        });
+        // Del sábado 10 al domingo 11, y las semanas del 12, del 19 y del 26 enteras; la del 28/09
+        // no la toca y la entrega (en noviembre) queda fuera del mes.
+        expect(spans.map((span) => dayOf(span))).toEqual([
+            '2026-10-10',
+            '2026-10-12',
+            '2026-10-19',
+            '2026-10-26',
+        ]);
+        expect(spans.map((span) => span.getAttribute('data-days'))).toEqual([
+            '2',
+            '7',
+            '7',
+            '7',
+        ]);
+        expect(
+            screen.queryByRole('button', { name: /^Migración\./ }),
+        ).toBeNull();
+
+        // Una franja no se arrastra: es un botón que abre la tarea, con el anillo de foco.
+        expect(spans[1].getAttribute('aria-roledescription')).toBeNull();
+        expect(spans[1].className).toContain('focus-visible:ring-2');
+        expect(spans[1].getAttribute('title')).toBe(
+            '«Migración», del 10/10/2026 al 15/11/2026',
+        );
+        spans[1].focus();
+        await user.keyboard('{Enter}');
+        expect(onOpen).toHaveBeenCalledWith(40);
+    });
+
+    it('una tarea de un día o sin inicio solo se ve el día de su entrega', () => {
+        renderCalendar(
+            data({
+                tasks: [
+                    calendarTask(41, 'Un día', '2026-10-14', '2026-10-14'),
+                    calendarTask(42, 'Sin inicio', null, '2026-10-15'),
+                ],
+            }),
+        );
+
+        expect(
+            document.querySelectorAll('[data-test="calendar-span"]'),
+        ).toHaveLength(0);
+        expect(
+            document.querySelectorAll('[data-test="calendar-lanes"]'),
+        ).toHaveLength(0);
+        expect(dayOf(chip('Un día'))).toBe('2026-10-14');
+        expect(dayOf(chip('Sin inicio'))).toBe('2026-10-15');
+    });
+
+    it('en una semana, cada franja va en su fila y a la misma altura en todos los días', () => {
+        renderCalendar(
+            data({
+                tasks: [
+                    calendarTask(43, 'Diseño', '2026-10-05', '2026-10-07'),
+                    calendarTask(44, 'Textos', '2026-10-06', '2026-10-09'),
+                    calendarTask(45, 'Fotos', '2026-10-08', '2026-10-09'),
+                ],
+            }),
+        );
+
+        // Diseño (lun-mié) y Fotos (jue-vie) comparten la primera fila; Textos va en la segunda.
+        const week = document
+            .querySelector('[data-date="2026-10-05"]')
+            ?.closest('tr');
+        const lanes = [...(week?.querySelectorAll('td') ?? [])].map((cell) =>
+            [...cell.querySelectorAll('[data-test="calendar-lanes"] > *')].map(
+                (slot) =>
+                    slot.getAttribute('data-test') === 'calendar-span'
+                        ? slot.getAttribute('data-task-id')
+                        : '-',
+            ),
+        );
+        expect(lanes).toEqual([
+            ['43', '-'],
+            ['-', '44'],
+            ['-', '-'],
+            ['45', '-'],
+            ['-', '-'],
+            ['-', '-'],
+            ['-', '-'],
+        ]);
+        // La semana siguiente no tiene franjas.
+        expect(
+            document
+                .querySelector('[data-date="2026-10-12"]')
+                ?.querySelector('[data-test="calendar-lanes"]'),
+        ).toBeNull();
+    });
+
+    it('la celda de cada día sigue siendo donde se suelta una tarea, también bajo una franja', async () => {
+        mocks.preview.mockResolvedValue([]);
+        const calendar = data({
+            tasks: [
+                calendarTask(46, 'Larga', '2026-10-05', '2026-10-09'),
+                calendarTask(47, 'Corta', null, '2026-10-06'),
+            ],
+        });
+        renderCalendar(calendar);
+
+        // El miércoles 7 queda bajo la franja de «Larga», que se pinta en la celda del lunes.
+        const wednesday = document.querySelector('[data-date="2026-10-07"]');
+        expect(wednesday?.tagName).toBe('TD');
+        expect(
+            wednesday?.querySelector('[data-test="calendar-lanes"] > div'),
+        ).not.toBeNull();
+
+        await act(async () => {
+            mocks.dragEnd?.({
+                active: {
+                    id: 'grid:47',
+                    data: { current: { task: calendar.tasks[1] } },
+                },
+                over: { id: 'day:2026-10-07' },
+            });
+        });
+
+        expect(mocks.preview).toHaveBeenCalledWith(47, {
+            start_date: null,
+            due_date: '2026-10-07',
+        });
+    });
+
+    it('mientras se mueve una tarea, su franja ya se ve en las fechas nuevas', async () => {
+        mocks.preview.mockReturnValue(new Promise<ShiftProposal[]>(() => {}));
+        const calendar = data();
+        renderCalendar(calendar);
+
+        await act(async () => {
+            mocks.dragEnd?.({
+                active: {
+                    id: 'grid:10',
+                    data: { current: { task: calendar.tasks[0] } },
+                },
+                over: { id: 'day:2026-10-13' },
+            });
+        });
+
+        // Del viernes 9 al martes 13: dos franjas, una en cada semana.
+        const spans = screen.getAllByRole('button', {
+            name: '«Diseño», del 09/10/2026 al 13/10/2026',
+        });
+        expect(spans.map((span) => dayOf(span))).toEqual([
+            '2026-10-09',
+            '2026-10-12',
+        ]);
+        expect(spans.map((span) => span.getAttribute('data-days'))).toEqual([
+            '3',
+            '2',
+        ]);
+        expect(
+            screen.queryByRole('button', {
+                name: '«Diseño», del 05/10/2026 al 09/10/2026',
+            }),
+        ).toBeNull();
     });
 });
 
