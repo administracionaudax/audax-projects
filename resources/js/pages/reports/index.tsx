@@ -1,6 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, Building2, Table2, UserRound } from 'lucide-react';
+import {
+    ArrowRight,
+    Building2,
+    Receipt,
+    Table2,
+    UserRound,
+} from 'lucide-react';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { R1LinkList } from '@/components/reports/r1-link-list';
@@ -64,6 +70,7 @@ function DashboardCard({
 export default function ReportsIndex({
     me,
     direction,
+    billing,
     departments,
     clients,
     projects,
@@ -110,6 +117,17 @@ export default function ReportsIndex({
                             href={reportUrls.detail()}
                             test="r1-index-detail"
                         />
+                        {billing ? (
+                            <DashboardCard
+                                icon={Receipt}
+                                title={t('reports_r1.index.billing')}
+                                description={t(
+                                    'reports_r1.index.billing_description',
+                                )}
+                                href="/informes/facturacion"
+                                test="r1-index-billing"
+                            />
+                        ) : null}
                     </ul>
                 </PageSection>
 

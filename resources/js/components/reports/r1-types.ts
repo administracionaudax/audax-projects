@@ -100,6 +100,8 @@ type Dashboard = {
 export type ReportIndexProps = {
     me: { id: number; name: string };
     direction: boolean;
+    /** Exportación para facturar (R2): admins y quien tenga view-financials. */
+    billing: boolean;
     departments: { id: number; name: string; color: string }[];
     clients: { id: number; name: string; is_active: boolean }[] | null;
     projects:

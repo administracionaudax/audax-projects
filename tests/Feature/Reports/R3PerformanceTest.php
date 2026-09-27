@@ -119,9 +119,10 @@ it('la exportación de horas de un año hace las mismas consultas por bloque, si
     $entries = TimeEntry::query()->whereBetween('date', [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()])->count();
     $chunks = (int) ceil($entries / HoursExportController::CHUNK);
 
-    // Por bloque: las entradas, sus 6 relaciones y la valoración (RevenueCalculator: 7 consultas).
+    // Por bloque: las entradas, sus 6 relaciones y la valoración (RevenueCalculator: 8 consultas,
+    // una de ellas la base de los proyectos a precio cerrado con la estimación de sus tareas raíz).
     expect($result['status'])->toBe(200)
         ->and($entries)->toBeGreaterThan(1000)
-        ->and($result['queries'])->toBeLessThanOrEqual(3 + $chunks * 14)
+        ->and($result['queries'])->toBeLessThanOrEqual(3 + $chunks * 15)
         ->and($result['repeats'])->toBeLessThanOrEqual($chunks);
 });

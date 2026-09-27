@@ -32,14 +32,7 @@ final class RevenueCalculator
      */
     public function compute(Builder $entries, ?Dimension $groupBy = null): array
     {
-        $result = $this->computeExact($entries, $groupBy);
-
-        foreach ($result as $key => $values) {
-            $result[$key]['income'] = Money::round($values['income']);
-            $result[$key]['cost'] = Money::round($values['cost']);
-        }
-
-        return $result;
+        return self::rounded($this->computeExact($entries, $groupBy));
     }
 
     /**
@@ -67,7 +60,23 @@ final class RevenueCalculator
      */
     public function perEntry(Builder $entries): array
     {
-        return $this->valuate(clone $entries, 'time_entries.id');
+        return self::rounded($this->valuate(clone $entries, 'time_entries.id'));
+    }
+
+    /**
+     * Importes redondeados a céntimos (compute() y perEntry(); computeExact() no redondea).
+     *
+     * @param  array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>  $result
+     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
+     */
+    private static function rounded(array $result): array
+    {
+        foreach ($result as $key => $values) {
+            $result[$key]['income'] = Money::round($values['income']);
+            $result[$key]['cost'] = Money::round($values['cost']);
+        }
+
+        return $result;
     }
 
     /**

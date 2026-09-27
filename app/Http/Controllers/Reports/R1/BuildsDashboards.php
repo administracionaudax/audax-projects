@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports\R1;
 
+use App\Domain\Reports\ComparisonPeriod;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
@@ -13,7 +14,6 @@ use App\Models\Client;
 use App\Models\Department;
 use App\Models\Project;
 use App\Support\LocalTime;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
 /**
@@ -56,45 +56,26 @@ trait BuildsDashboards
         $summary = $cache->remember($scope, self::daily('r1.summary'), fn (): array => $metrics->summary($scope)
             + ['capacity_to_date_minutes' => $metrics->elapsedCapacity($scope)]);
 
-        if (! $scope->filters->compare) {
-            return ['summary' => $summary, 'comparison' => null, 'comparison_range' => null, 'comparison_partial' => false];
-        }
-
-        $previous = $scope->withFilters($scope->filters->comparison());
-        $days = self::elapsedDays($scope->filters);
-        $partial = $days !== null && $days < $previous->filters->days();
-        $comparison = $partial
-            ? $cache->remember($previous, 'r1.summary.first.'.$days, fn (): array => $metrics->summaryFirstDays($previous, $days))
-            : $cache->remember($previous, 'r1.summary.previous', fn (): array => $metrics->summary($previous));
-        $to = $partial ? $previous->filters->from->addDays($days - 1) : $previous->filters->to;
+        $comparison = ComparisonPeriod::summary($scope, $metrics, $cache, 'r1.summary');
 
         return [
             'summary' => $summary,
-            'comparison' => $comparison,
-            'comparison_range' => ['from' => $previous->filters->from->toDateString(), 'to' => $to->toDateString()],
-            'comparison_partial' => $partial,
+            'comparison' => $comparison['summary'],
+            'comparison_range' => $comparison['range'],
+            'comparison_partial' => $comparison['partial'],
         ];
     }
 
     /**
-     * Días transcurridos de un periodo en curso, hoy incluido (hoy ya tiene horas), o null si el
-     * periodo ya ha acabado o aún no ha empezado.
+     * Días transcurridos de un periodo en curso, hoy incluido, o null (ComparisonPeriod).
      */
     protected static function elapsedDays(ReportFilters $filters): ?int
     {
-        $today = LocalTime::todayString();
-
-        if ($today < $filters->from->toDateString() || $today > $filters->to->toDateString()) {
-            return null;
-        }
-
-        // Fechas de calendario en UTC: sin horas ni cambios de hora de por medio.
-        return (int) CarbonImmutable::parse($filters->from->toDateString(), 'UTC')->diffInDays(CarbonImmutable::parse($today, 'UTC')) + 1;
+        return ComparisonPeriod::elapsedDays($filters);
     }
 
     /**
-     * Props de la barra de filtros con el tramo de comparación real (en un periodo en curso, los
-     * mismos días del periodo anterior: summaries()).
+     * Props de la barra de filtros con el tramo de comparación real (ComparisonPeriod).
      *
      * @param  array<string, mixed>  $props
      * @param  array{from: string, to: string}|null  $range
@@ -102,11 +83,7 @@ trait BuildsDashboards
      */
     protected static function withComparisonRange(array $props, ?array $range): array
     {
-        if ($range !== null) {
-            $props['comparison'] = $range;
-        }
-
-        return $props;
+        return ComparisonPeriod::withRange($props, $range);
     }
 
     /**

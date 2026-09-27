@@ -80,6 +80,7 @@ class ReportIndexController extends Controller
         return Inertia::render('reports/index', [
             'me' => ['id' => $user->id, 'name' => $user->name],
             'direction' => Gate::forUser($user)->allows('viewDirectionReport', Department::class),
+            'billing' => Gate::forUser($user)->allows('viewBilling', Client::class),
             'departments' => array_values(Department::query()
                 ->when(! $isAdmin, fn (Builder $query) => $query->whereKey($managedDepartments))
                 ->orderBy('name')

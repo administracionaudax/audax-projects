@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reports;
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\HourBanks\HourBankHistory;
 use App\Domain\Reports\BankUsage;
+use App\Domain\Reports\ComparisonPeriod;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
@@ -94,21 +95,18 @@ class ClientReportController extends Controller
             return $this->export($exporter, $client, $scope, $data, $request->query('tabla'), $format);
         }
 
-        $comparison = null;
-        if ($scope->filters->compare) {
-            $previous = $scope->withFilters($scope->filters->comparison());
-            $comparison = $cache->remember($previous, 'r2.client.'.$client->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false, everyAssignee: $everyAssignee));
-        }
+        // Periodo en curso: comparación «al mismo punto», como el resto de dashboards (D-079).
+        $comparison = ComparisonPeriod::summary($scope, $metrics, $cache, 'r2.client.'.$client->id.'.summary', withCapacity: false, everyAssignee: $everyAssignee);
 
         return Inertia::render('reports/client', [
             'client' => ['id' => $client->id, 'name' => $client->name, 'is_active' => $client->is_active],
-            'filters' => $this->filterProps(new ReportScope($user, $urlFilters)),
+            'filters' => ComparisonPeriod::withRange($this->filterProps(new ReportScope($user, $urlFilters)), $comparison['range']),
             'scope' => [
                 'projects_only' => $limited,
                 'team_only' => ! $user->isAdmin(),
             ],
             'summary' => $data['summary'],
-            'comparison' => $comparison,
+            'comparison' => $comparison['summary'],
             'banked' => $data['banked'],
             'projects' => $data['projects'],
             'timeline' => $data['timeline'],

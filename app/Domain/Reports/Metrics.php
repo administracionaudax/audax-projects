@@ -77,12 +77,12 @@ final class Metrics
      *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
      *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
      */
-    public function summaryFirstDays(ReportScope $scope, int $days): array
+    public function summaryFirstDays(ReportScope $scope, int $days, bool $withCapacity = true, bool $everyAssignee = false): array
     {
         $filters = $scope->filters;
 
         if ($days >= $filters->days()) {
-            return $this->summary($scope);
+            return $this->summary($scope, $withCapacity, $everyAssignee);
         }
 
         // Con $days < 1 el tramo acaba el día antes de empezar: ninguna entrada ni tarea cae en él.
@@ -91,7 +91,7 @@ final class Metrics
             $partial = $partial->withoutFinancials();
         }
 
-        return $this->summaryAgainst($partial, array_sum($this->capacityByDate($scope)));
+        return $this->summaryAgainst($partial, $withCapacity ? array_sum($this->capacityByDate($scope)) : null, $everyAssignee);
     }
 
     /**
@@ -108,6 +108,7 @@ final class Metrics
         $totals = (clone $scope->entries())->toBase()->selectRaw(
             'COALESCE(SUM(time_entries.minutes), 0) as logged,
              COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
              COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
         )->first();
 
@@ -121,7 +122,7 @@ final class Metrics
             'capacity_minutes' => $capacity,
             'logged_minutes' => $logged,
             'billable_minutes' => $billable,
-            'in_bank_minutes' => $logged - $overage,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
             'overage_minutes' => $overage,
             'occupancy' => $withCapacity ? self::ratio($logged, $capacity) : null,
             'billability' => self::ratio($billable, $logged),
@@ -151,10 +152,8 @@ final class Metrics
      * importes (el detallado), que así no los calculan: la capacidad de un año de toda la agencia es
      * lo más caro de summary(). Añadido por R3.
      *
-     * Las mismas definiciones que summary() salvo in_bank_minutes, que aquí son solo los minutos de
-     * las entradas con bolsa sin su exceso (PivotReport::IN_BANK_SQL, como la medida «dentro» del
-     * detallado y la exportación de horas). El in_bank_minutes de summary() y breakdown() es
-     * imputadas − exceso: también cuenta las entradas sin bolsa.
+     * Las mismas definiciones que summary() y breakdown(): in_bank_minutes son solo los minutos de
+     * las entradas con bolsa sin su exceso (PivotReport::IN_BANK_SQL, D-078).
      *
      * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
      */
@@ -351,6 +350,7 @@ final class Metrics
         $rows = $query->toBase()
             ->selectRaw($expression.' as group_key, SUM(time_entries.minutes) as logged,
                 SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable,
+                '.PivotReport::IN_BANK_SQL.' as in_bank,
                 SUM(time_entries.overage_minutes) as overage')
             ->groupByRaw($expression)
             ->orderByDesc('logged')
@@ -371,7 +371,7 @@ final class Metrics
                 'color' => $label['color'],
                 'logged_minutes' => $logged,
                 'billable_minutes' => (int) $row->billable,
-                'in_bank_minutes' => $logged - (int) $row->overage,
+                'in_bank_minutes' => (int) $row->in_bank,
                 'overage_minutes' => (int) $row->overage,
                 'income' => $scope->canSeeFinancials() ? ($money[$key ?? '']['income'] ?? '0.00') : null,
                 'cost' => $scope->canSeeFinancials() ? ($money[$key ?? '']['cost'] ?? '0.00') : null,

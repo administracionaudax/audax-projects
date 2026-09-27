@@ -69,6 +69,8 @@
     "reports_r1.index.direction_description": "Cómo va la agencia: horas, capacidad, ingresos, bolsas en riesgo y tareas vencidas.",
     "reports_r1.index.detail": "Informe detallado",
     "reports_r1.index.detail_description": "Tabla dinámica de horas por dos dimensiones, con subtotales.",
+    "reports_r1.index.billing": "Horas para facturar",
+    "reports_r1.index.billing_description": "Detalle de las horas de un cliente para facturar, con dentro de bolsa y exceso por separado.",
     "reports_r1.index.departments": "Departamentos",
     "reports_r1.index.departments_description": "Ocupación y facturabilidad de cada miembro y reparto por cliente.",
     "reports_r1.index.clients": "Clientes",

@@ -63,7 +63,8 @@ test('cifras del cliente en la semana, calculadas a mano (admin)', function () {
             ->where('summary.logged_minutes', 940)
             ->where('summary.billable_minutes', 910)
             ->where('summary.overage_minutes', 190)
-            ->where('summary.in_bank_minutes', 750)
+            // Dentro de bolsa (D-078): solo las horas con bolsa sin su exceso (790 − 190), no las del proyecto sin bolsa.
+            ->where('summary.in_bank_minutes', 600)
             ->where('summary.income', '1337.67')
             ->where('summary.cost', '390.00')
             ->where('summary.margin', '947.67')
@@ -189,7 +190,8 @@ test('filtra por proyecto, facturable y bolsa, y compara con el periodo anterior
             ->where('summary.logged_minutes', 150)
             ->has('banks', 0)
             ->where('comparison.logged_minutes', 0)
-            ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-20']));
+            // Semana en curso (hoy es viernes 25): se compara «al mismo punto», lunes a viernes (D-079).
+            ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-18']));
 
     $this->actingAs($s->admin)->get(($this->url)(['facturable' => 'no']))
         ->assertInertia(fn (Assert $page) => $page->where('summary.logged_minutes', 30));

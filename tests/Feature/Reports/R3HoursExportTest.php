@@ -223,7 +223,8 @@ it('no repite consultas por entrada: las mismas con 30 que con 90 entradas más'
     $before = $count();
     $grow(60);
 
-    expect($count())->toBe($before)->and($before)->toBeLessThanOrEqual(14);
+    // 15: las entradas, sus relaciones y la valoración (8 consultas con la base de precio cerrado).
+    expect($count())->toBe($before)->and($before)->toBeLessThanOrEqual(15);
 });
 
 // --- Pestaña Horas del proyecto (D-021) ---

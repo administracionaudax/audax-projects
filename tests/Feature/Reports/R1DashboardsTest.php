@@ -486,6 +486,7 @@ describe('índice', function () {
         $this->actingAs($this->admin)->get('/informes')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('reports/index')
             ->where('direction', true)
+            ->where('billing', true)
             ->has('departments', 2)
             ->where('clients', fn ($clients) => collect($clients)->pluck('id')->contains($this->tmClient->id))
             ->where('projects', fn ($projects) => collect($projects)->pluck('id')->contains($this->fixed->id))
@@ -500,6 +501,7 @@ describe('índice', function () {
         $this->actingAs($this->ana)->get('/informes')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('me', ['id' => $this->ana->id, 'name' => 'Ana'])
             ->where('direction', false)
+            ->where('billing', false)
             ->where('departments', [])
             ->where('clients', null)
             ->where('projects', null)

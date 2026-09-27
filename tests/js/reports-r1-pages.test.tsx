@@ -175,6 +175,7 @@ describe('índice de informes', () => {
     const base: ReportIndexProps = {
         me: { id: 5, name: 'Ana' },
         direction: false,
+        billing: false,
         departments: [],
         clients: null,
         projects: null,
@@ -191,6 +192,16 @@ describe('índice de informes', () => {
         ]);
         expect(screen.queryByText('Dirección')).toBeNull();
         expect(screen.queryByRole('heading', { name: 'Personas' })).toBeNull();
+    });
+
+    it('quien puede facturar ve también la exportación para facturar', () => {
+        render(<ReportsIndex {...base} billing />);
+
+        expect(
+            screen
+                .getByRole('link', { name: /Horas para facturar/ })
+                .getAttribute('href'),
+        ).toBe('/informes/facturacion');
     });
 
     it('un admin ve dirección, departamentos, clientes, proyectos y personas', () => {

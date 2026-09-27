@@ -54,7 +54,7 @@ class ProjectTimeController extends TimeController
 
         $totals = (array) (clone $filtered)
             ->toBase()
-            ->selectRaw('COUNT(*) as entries, COALESCE(SUM(minutes), 0) as minutes, COALESCE(SUM(overage_minutes), 0) as overage, COALESCE(SUM(CASE WHEN is_billable THEN minutes ELSE 0 END), 0) as billable')
+            ->selectRaw('COUNT(*) as entries, COALESCE(SUM(minutes), 0) as minutes, COALESCE(SUM(overage_minutes), 0) as overage, COALESCE(SUM(CASE WHEN hour_bank_id IS NOT NULL THEN minutes - overage_minutes ELSE 0 END), 0) as in_bank, COALESCE(SUM(CASE WHEN is_billable THEN minutes ELSE 0 END), 0) as billable')
             ->first();
 
         $paginator = $filtered
@@ -93,7 +93,8 @@ class ProjectTimeController extends TimeController
                 'entries' => (int) ($totals['entries'] ?? 0),
                 'minutes' => (int) ($totals['minutes'] ?? 0),
                 'overage_minutes' => (int) ($totals['overage'] ?? 0),
-                'in_bank_minutes' => (int) ($totals['minutes'] ?? 0) - (int) ($totals['overage'] ?? 0),
+                // Dentro de bolsa (D-078): solo las entradas con bolsa, sin su exceso.
+                'in_bank_minutes' => (int) ($totals['in_bank'] ?? 0),
                 'billable_minutes' => (int) ($totals['billable'] ?? 0),
             ],
             'filters' => $filters,

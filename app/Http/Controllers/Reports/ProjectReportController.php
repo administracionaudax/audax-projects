@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Domain\Reports\ComparisonPeriod;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\EstimateComparison;
 use App\Domain\Reports\Export\TableExporter;
@@ -73,11 +74,8 @@ class ProjectReportController extends Controller
             return $this->export($exporter, $project, $scope, $data, $request->query('tabla'), $format);
         }
 
-        $comparison = null;
-        if ($scope->filters->compare) {
-            $previous = $scope->withFilters($scope->filters->comparison());
-            $comparison = $cache->remember($previous, 'r2.project.'.$project->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false, everyAssignee: $everyAssignee));
-        }
+        // Periodo en curso: comparación «al mismo punto», como el resto de dashboards (D-079).
+        $comparison = ComparisonPeriod::summary($scope, $metrics, $cache, 'r2.project.'.$project->id.'.summary', withCapacity: false, everyAssignee: $everyAssignee);
 
         $project->loadMissing(['client' => fn ($query) => $query->withTrashed()->select(['id', 'name'])]);
 
@@ -92,10 +90,10 @@ class ProjectReportController extends Controller
                 'budget_minutes' => $project->budget_minutes,
                 'client' => $project->client === null ? null : ['id' => $project->client->id, 'name' => $project->client->name],
             ],
-            'filters' => $this->filterProps(new ReportScope($user, ReportFilters::fromQuery($request->query())->with(['projectIds' => [], 'clientIds' => []]))),
+            'filters' => ComparisonPeriod::withRange($this->filterProps(new ReportScope($user, ReportFilters::fromQuery($request->query())->with(['projectIds' => [], 'clientIds' => []]))), $comparison['range']),
             'scope' => ['team_only' => ! $user->isAdmin() && ! $user->isManagerOf($project)],
             'summary' => $data['summary'],
-            'comparison' => $comparison,
+            'comparison' => $comparison['summary'],
             'byPerson' => $data['by_person'],
             'byType' => $data['by_type'],
             'weekly' => $data['weekly'],
