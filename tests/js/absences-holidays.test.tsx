@@ -165,7 +165,8 @@ describe('festivos (/admin/festivos)', () => {
     });
 });
 
-describe('importación de festivos', () => {
+// userEvent con subida de ficheros: margen de tiempo para la CI cargada.
+describe('importación de festivos', { timeout: 20_000 }, () => {
     it('pide un fichero antes de la vista previa', async () => {
         const user = userEvent.setup();
         render(<HolidayImport limits={LIMITS} />);

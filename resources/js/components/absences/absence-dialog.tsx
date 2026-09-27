@@ -115,6 +115,17 @@ export function AbsenceDialog({
 
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
+
+        // Sin horas, una «parte del día» se guardaría como el día entero: se piden antes.
+        if (partial && form.data.partial_minutes === null) {
+            form.setError(
+                'partial_minutes',
+                t('absences.form.partial_required'),
+            );
+
+            return;
+        }
+
         form.transform((data) => ({
             ...(register
                 ? { user_id: data.user_id === '' ? null : Number(data.user_id) }

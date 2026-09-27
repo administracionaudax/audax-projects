@@ -22,7 +22,6 @@
     "absences.days_none": "Sin días laborables",
     "absences.partial_label": "Parte del día: :minutes h",
     "absences.auto_approved": "Aprobada al registrarla",
-    "absences.reviewed_by": "Revisada por :name",
     "absences.approved_by": "Aprobada por :name",
     "absences.rejected_by": "Motivo de :name:",
     "absences.rejected_comment": "Motivo:",
@@ -40,8 +39,6 @@
     "absences.mine.history": "Historial del último año (:count)",
     "absences.mine.empty": "Aún no tienes ausencias",
     "absences.mine.empty_description": "Cuando pidas vacaciones o un permiso, aparecerá aquí con su estado.",
-    "absences.mine.section_empty": "Nada por aquí.",
-    "absences.mine.list_label": ":section: lista de ausencias",
 
     "absences.cancel.button": "Cancelar",
     "absences.cancel.label": "Cancelar la ausencia :period",
@@ -54,7 +51,6 @@
     "absences.annul.title": "¿Anular la ausencia de :name?",
     "absences.annul.description": "La ausencia :period deja de estar aprobada: esos días vuelven a contar como jornada normal. Avisaremos a :name y quedará en la auditoría.",
     "absences.annul.confirm": "Anular la ausencia",
-    "absences.keep": "Mantenerla",
 
     "absences.form.request_title": "Solicitar una ausencia",
     "absences.form.request_description": "Tu responsable recibirá un aviso para aprobarla. Mientras tanto no resta de tu capacidad.",
@@ -71,6 +67,7 @@
     "absences.form.end": "Hasta (incluido)",
     "absences.form.day": "Día",
     "absences.form.partial_minutes": "Horas que faltas",
+    "absences.form.partial_required": "Indica cuántas horas faltas ese día (por ejemplo, 2:30).",
     "absences.form.partial_help": "Por ejemplo 2:30 o 2h30. Se restan de tu jornada de ese día.",
     "absences.form.dates_help": "Como mucho, un año. Los festivos y los días sin jornada no cuentan.",
     "absences.form.notes": "Notas",
@@ -109,6 +106,7 @@
     "absences.team.no_people_description": "Cuando haya personas activas en los departamentos que diriges, verás aquí sus ausencias.",
 
     "absences.calendar.heading": "Calendario del equipo",
+    "absences.calendar.nav": "Cambiar de mes",
     "absences.calendar.previous": "Mes anterior",
     "absences.calendar.next": "Mes siguiente",
     "absences.calendar.today": "Mes actual",
@@ -139,7 +137,6 @@
     "holidays.heading": "[[Festivos]]",
     "holidays.description": "Un festivo deja a 0 la capacidad de todo el equipo ese día: se nota en la carga y en los informes.",
     "holidays.admin_link": "Gestionar los festivos",
-    "holidays.back_to_admin": "Volver a Administración",
     "holidays.new": "Añadir festivo",
     "holidays.new_title": "Añadir un festivo",
     "holidays.edit_title": "Editar «:name»",

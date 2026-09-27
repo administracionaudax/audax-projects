@@ -5,6 +5,7 @@ use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Time\Capacity;
 use App\Models\Department;
 use App\Models\Holiday;
+use App\Models\Project;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
@@ -335,6 +336,7 @@ test('solo quien gestiona los ajustes entra en los festivos', function (Closure 
 })->with([
     'admin' => [fn () => userWithRole('admin'), 200],
     'responsable' => [fn () => tap(User::factory()->departmentManager()->inDepartment(Department::factory()->create())->create(), fn (User $user) => $user->department?->managers()->attach($user)), 403],
+    'gestor de proyecto' => [fn () => tap(userWithRole('employee'), fn (User $user) => Project::factory()->create()->addMember($user, true)), 403],
     'empleado' => [fn () => userWithRole('employee'), 403],
 ]);
 

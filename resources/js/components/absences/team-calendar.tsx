@@ -108,7 +108,7 @@ export function TeamCalendarView({
                     <span className="text-muted-foreground">· {label}</span>
                 </h2>
                 <nav
-                    aria-label={t('absences.calendar.heading')}
+                    aria-label={t('absences.calendar.nav')}
                     className="flex flex-wrap items-center gap-2"
                 >
                     <Button asChild variant="outline" size="sm">

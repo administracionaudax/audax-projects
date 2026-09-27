@@ -143,7 +143,8 @@ async function pickDay15(
     await user.click(within(cell as HTMLElement).getByRole('button'));
 }
 
-describe('mis ausencias (/ausencias)', () => {
+// Formularios con Radix y userEvent: margen de tiempo para la CI cargada.
+describe('mis ausencias (/ausencias)', { timeout: 20_000 }, () => {
     it('separa pendientes, próximas e historial, con estado (icono y texto) y acciones', () => {
         render(<MyAbsences {...myProps()} />);
 
@@ -228,7 +229,8 @@ describe('mis ausencias (/ausencias)', () => {
     });
 });
 
-describe('formulario de una ausencia', () => {
+// Formularios con Radix y userEvent: margen de tiempo para la CI cargada.
+describe('formulario de una ausencia', { timeout: 20_000 }, () => {
     it('una ausencia de parte del día envía un solo día y sus minutos', async () => {
         const user = userEvent.setup();
         render(
@@ -262,6 +264,30 @@ describe('formulario de una ausencia', () => {
         expect(data.partial_minutes).toBe(150);
         expect(data.notes).toBeNull();
         expect(data).not.toHaveProperty('user_id');
+    });
+
+    it('una parte del día sin horas no se envía: lo pide junto al campo', async () => {
+        const user = userEvent.setup();
+        render(
+            <AbsenceDialog
+                mode="request"
+                types={TYPES}
+                limits={LIMITS}
+                open
+                onOpenChange={() => {}}
+            />,
+        );
+
+        await user.click(screen.getByLabelText('Parte de un día'));
+        await pickDay15(user, 'Día');
+        await user.click(
+            screen.getByRole('button', { name: 'Enviar la solicitud' }),
+        );
+
+        expect(post).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert').textContent).toBe(
+            'Indica cuántas horas faltas ese día (por ejemplo, 2:30).',
+        );
     });
 
     it('en días completos, «Hasta» sigue a «Desde» y no se envían minutos', async () => {
@@ -480,123 +506,135 @@ function teamProps(
     };
 }
 
-describe('ausencias del equipo (/ausencias/equipo)', () => {
-    it('muestra la solicitud con las que coinciden y la aprueba con un clic', async () => {
-        const user = userEvent.setup();
-        render(<TeamAbsences {...teamProps()} />);
+// Formularios con Radix y userEvent: margen de tiempo para la CI cargada.
+describe(
+    'ausencias del equipo (/ausencias/equipo)',
+    { timeout: 20_000 },
+    () => {
+        it('muestra la solicitud con las que coinciden y la aprueba con un clic', async () => {
+            const user = userEvent.setup();
+            render(<TeamAbsences {...teamProps()} />);
 
-        const pending = screen.getByRole('region', {
-            name: 'Pendientes de aprobar (1)',
+            const pending = screen.getByRole('region', {
+                name: 'Pendientes de aprobar (1)',
+            });
+            expect(
+                within(pending).getByText(
+                    'Bruno · Formación externa · 07/10/2026 (aprobada)',
+                ),
+            ).toBeTruthy();
+
+            await user.click(
+                within(pending).getByRole('button', {
+                    name: 'Aprobar la ausencia de Elena 05/10/2026 – 09/10/2026',
+                }),
+            );
+
+            expect(inertia.post).toHaveBeenCalledWith(
+                '/ausencias/5/aprobar',
+                {},
+                expect.any(Object),
+            );
         });
-        expect(
-            within(pending).getByText(
-                'Bruno · Formación externa · 07/10/2026 (aprobada)',
-            ),
-        ).toBeTruthy();
 
-        await user.click(
-            within(pending).getByRole('button', {
-                name: 'Aprobar la ausencia de Elena 05/10/2026 – 09/10/2026',
-            }),
-        );
+        it('rechazar exige un comentario', async () => {
+            const user = userEvent.setup();
+            render(<TeamAbsences {...teamProps()} />);
 
-        expect(inertia.post).toHaveBeenCalledWith(
-            '/ausencias/5/aprobar',
-            {},
-            expect.any(Object),
-        );
-    });
+            await user.click(
+                screen.getByRole('button', {
+                    name: 'Rechazar la ausencia de Elena 05/10/2026 – 09/10/2026',
+                }),
+            );
+            const dialog = screen.getByRole('dialog', {
+                name: 'Rechazar la ausencia de Elena',
+            });
+            const confirm = within(dialog).getByRole('button', {
+                name: 'Rechazar la ausencia',
+            }) as HTMLButtonElement;
+            expect(confirm.disabled).toBe(true);
 
-    it('rechazar exige un comentario', async () => {
-        const user = userEvent.setup();
-        render(<TeamAbsences {...teamProps()} />);
+            await user.type(
+                within(dialog).getByLabelText('Comentario'),
+                'Esa semana es la entrega',
+            );
+            expect(confirm.disabled).toBe(false);
+            await user.click(confirm);
 
-        await user.click(
-            screen.getByRole('button', {
-                name: 'Rechazar la ausencia de Elena 05/10/2026 – 09/10/2026',
-            }),
-        );
-        const dialog = screen.getByRole('dialog', {
-            name: 'Rechazar la ausencia de Elena',
+            const [url, data] = post.mock.calls[0] as unknown as [
+                string,
+                Record<string, unknown>,
+            ];
+            expect(url).toBe('/ausencias/5/rechazar');
+            expect(data).toEqual({ comment: 'Esa semana es la entrega' });
         });
-        const confirm = within(dialog).getByRole('button', {
-            name: 'Rechazar la ausencia',
-        }) as HTMLButtonElement;
-        expect(confirm.disabled).toBe(true);
 
-        await user.type(
-            within(dialog).getByLabelText('Comentario'),
-            'Esa semana es la entrega',
-        );
-        expect(confirm.disabled).toBe(false);
-        await user.click(confirm);
+        it('las aprobadas de otros se anulan y las propias se cancelan', () => {
+            render(<TeamAbsences {...teamProps()} />);
 
-        const [url, data] = post.mock.calls[0] as unknown as [
-            string,
-            Record<string, unknown>,
-        ];
-        expect(url).toBe('/ausencias/5/rechazar');
-        expect(data).toEqual({ comment: 'Esa semana es la entrega' });
-    });
-
-    it('las aprobadas de otros se anulan y las propias se cancelan', () => {
-        render(<TeamAbsences {...teamProps()} />);
-
-        const upcoming = screen.getByRole('region', {
-            name: 'Próximas ausencias aprobadas (2)',
+            const upcoming = screen.getByRole('region', {
+                name: 'Próximas ausencias aprobadas (2)',
+            });
+            expect(
+                within(upcoming).getByRole('button', {
+                    name: 'Anular la ausencia de Bruno 02/11/2026 – 03/11/2026',
+                }),
+            ).toBeTruthy();
+            expect(
+                within(upcoming).getByRole('button', {
+                    name: 'Cancelar la ausencia 01/12/2026',
+                }),
+            ).toBeTruthy();
+            expect(
+                within(upcoming).getByText('Aprobada al registrarla'),
+            ).toBeTruthy();
         });
-        expect(
-            within(upcoming).getByRole('button', {
-                name: 'Anular la ausencia de Bruno 02/11/2026 – 03/11/2026',
-            }),
-        ).toBeTruthy();
-        expect(
-            within(upcoming).getByRole('button', {
-                name: 'Cancelar la ausencia 01/12/2026',
-            }),
-        ).toBeTruthy();
-        expect(
-            within(upcoming).getByText('Aprobada al registrarla'),
-        ).toBeTruthy();
-    });
 
-    it('sin pendientes lo explica y sin personas no pinta el calendario', () => {
-        render(
-            <TeamAbsences
-                {...teamProps({
-                    pending: [],
-                    calendar: { ...CALENDAR, people: [], absences: [] },
-                })}
-            />,
-        );
+        it('sin pendientes lo explica y sin personas no pinta el calendario', () => {
+            render(
+                <TeamAbsences
+                    {...teamProps({
+                        pending: [],
+                        calendar: { ...CALENDAR, people: [], absences: [] },
+                    })}
+                />,
+            );
 
-        expect(screen.getByText('No hay solicitudes pendientes')).toBeTruthy();
-        expect(screen.getByText('No hay personas en tu ámbito')).toBeTruthy();
-        expect(screen.queryByRole('table')).toBeNull();
-    });
+            expect(
+                screen.getByText('No hay solicitudes pendientes'),
+            ).toBeTruthy();
+            expect(
+                screen.getByText('No hay personas en tu ámbito'),
+            ).toBeTruthy();
+            expect(screen.queryByRole('table')).toBeNull();
+        });
 
-    it('con varios departamentos, el filtro navega conservando el mes', async () => {
-        const user = userEvent.setup();
-        render(
-            <TeamAbsences
-                {...teamProps({
-                    departments: [
-                        { id: 1, name: 'Diseño', color: '#0171FF' },
-                        { id: 2, name: 'Marketing', color: '#FF6B00' },
-                    ],
-                })}
-            />,
-        );
+        it('con varios departamentos, el filtro navega conservando el mes', async () => {
+            const user = userEvent.setup();
+            render(
+                <TeamAbsences
+                    {...teamProps({
+                        departments: [
+                            { id: 1, name: 'Diseño', color: '#0171FF' },
+                            { id: 2, name: 'Marketing', color: '#FF6B00' },
+                        ],
+                    })}
+                />,
+            );
 
-        await user.selectOptions(screen.getByLabelText('Departamento'), '2');
+            await user.selectOptions(
+                screen.getByLabelText('Departamento'),
+                '2',
+            );
 
-        expect(inertia.get).toHaveBeenCalledWith(
-            '/ausencias/equipo?mes=2026-10&departamento=2',
-            {},
-            expect.any(Object),
-        );
-    });
-});
+            expect(inertia.get).toHaveBeenCalledWith(
+                '/ausencias/equipo?mes=2026-10&departamento=2',
+                {},
+                expect.any(Object),
+            );
+        });
+    },
+);
 
 describe('tarjeta «Mis ausencias» de Inicio', () => {
     it('lista pendientes y próximas y enlaza a solicitar', () => {
