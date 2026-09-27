@@ -54,8 +54,6 @@ class BillingReportController extends Controller
 
         $scope = $this->reportScope($request, ['clientIds' => [$client->id]]);
 
-        $summary = fn (): array => $cache->remember($scope, 'r2.billing.'.$client->id, fn (): array => $billing->summary($scope));
-
         if ($format !== null) {
             $entries = (clone $scope->entries())->count();
             abort_if($entries + 1 > $exporter->maxRows(), 422, self::text('reports.r2.billing.too_many_rows', [
@@ -63,13 +61,12 @@ class BillingReportController extends Controller
                 'max' => number_format($exporter->maxRows() - 1, 0, ',', '.'),
             ]));
 
-            // El total del detalle es el del resumen (el mismo que enseña la página).
-            $total = $scope->canSeeFinancials() ? $summary()['totals']['income'] : null;
-
-            return $this->export($exporter, $billing, $scope, $client, $format, $total);
+            return $this->export($exporter, $billing, $scope, $client, $format);
         }
 
-        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $summary(), $exporter->maxRows() - 1);
+        $summary = $cache->remember($scope, 'r2.billing.'.$client->id, fn (): array => $billing->summary($scope));
+
+        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $summary, $exporter->maxRows() - 1);
     }
 
     /**
@@ -92,7 +89,7 @@ class BillingReportController extends Controller
         ]);
     }
 
-    private function export(TableExporter $exporter, BillingReport $billing, ReportScope $scope, Client $client, string $format, ?string $total): StreamedResponse
+    private function export(TableExporter $exporter, BillingReport $billing, ReportScope $scope, Client $client, string $format): StreamedResponse
     {
         $financials = $scope->canSeeFinancials();
         $c = fn (string $key): string => self::text('reports.r2.billing.columns.'.$key);
@@ -106,18 +103,19 @@ class BillingReportController extends Controller
         return $exporter->download(
             self::text('reports.r2.billing.export_name', ['client' => $client->name]),
             $headers,
-            $this->rows($billing, $scope, $financials, $total),
+            $this->rows($billing, $scope, $financials),
             $format,
         );
     }
 
     /**
-     * Una fila por entrada y una de totales al final. El total del importe es el ingreso del
-     * resumen ($total) y los importes de las entradas, en céntimos, suman exactamente ese total.
+     * Una fila por entrada y una de totales al final. El total del importe sale de las mismas
+     * entradas que se exportan (la suma de sus importes, que es su total canónico redondeado: con
+     * los mismos datos, el de la página) y sus importes en céntimos suman exactamente ese total.
      *
      * @return Generator<int, array<int, string|int|float|bool|null>>
      */
-    private function rows(BillingReport $billing, ReportScope $scope, bool $financials, ?string $total): Generator
+    private function rows(BillingReport $billing, ReportScope $scope, bool $financials): Generator
     {
         $minutes = 0;
         $inBank = 0;
@@ -127,7 +125,7 @@ class BillingReportController extends Controller
         /** @var array<string, string> $labels textos de estado y de valoración, traducidos una vez */
         $labels = [];
 
-        foreach ($billing->entries($scope, $total) as ['entry' => $entry, 'valuation' => $valuation, 'amount' => $line]) {
+        foreach ($billing->entries($scope) as ['entry' => $entry, 'valuation' => $valuation, 'amount' => $line]) {
             $inside = $entry['bank'] !== null;
             $minutes += $entry['minutes'];
             $inBank += $inside ? $entry['minutes'] - $entry['overage_minutes'] : 0;

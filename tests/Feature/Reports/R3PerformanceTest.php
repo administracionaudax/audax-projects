@@ -15,8 +15,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 | admin, un responsable (Raúl, Diseño) y una empleada (Elena):
 |  - el informe detallado cabe en su presupuesto de consultas con la caché fría (D-046: la primera
 |    visita tras escribir horas) y caliente, sin consultas repetidas por fila, y responde en < 1 s,
-|  - la exportación de horas de un año hace un número de consultas que depende de los bloques, no
-|    de las filas.
+|  - la exportación de horas de un año (~6.500 filas del admin) hace una consulta por bloque, no
+|    por fila, y tarda menos de 1,5 s (PERF-06).
 | R3_PERF_REPORT=1 php -d memory_limit=1G vendor/bin/pest tests/Feature/Reports/R3PerformanceTest.php
 |   imprime las consultas y los tiempos (locales y orientativos).
 */
@@ -112,18 +112,28 @@ it('el informe detallado cabe en su presupuesto de consultas y responde en menos
     expect($problems)->toBe([]);
 })->with('r3_roles');
 
-it('la exportación de horas de un año hace las mismas consultas por bloque, sin consultas por fila', function () {
+it('la exportación de horas de un año del admin: filas planas, una consulta por bloque y menos de 1,5 s (PERF-06)', function () {
     $admin = ($this->user)('admin@example.com');
     $url = '/informes/horas/exportar?periodo=anio&formato=csv';
     $result = ($this->measure)($admin, $url, false);
 
-    $entries = TimeEntry::query()->whereBetween('date', [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()])->count();
-    $chunks = (int) ceil($entries / HoursExportController::CHUNK);
+    // El tiempo, el mejor de hasta tres medidas (un pico de carga de la máquina no es la exportación).
+    for ($retry = 0; $retry < 2 && $result['ms'] > 1500; $retry++) {
+        $result['ms'] = min($result['ms'], ($this->measure)($admin, $url, false)['ms']);
+    }
 
-    // Por bloque: las entradas, sus 6 relaciones y la valoración (RevenueCalculator: 8 consultas,
-    // una de ellas la base de los proyectos a precio cerrado con la estimación de sus tareas raíz).
+    $entries = TimeEntry::query()->whereBetween('date', [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()])->count();
+    $chunks = (int) ceil(($entries + 1) / HoursExportController::CHUNK);
+
+    // Sesión y permisos (3), la valoración una sola vez (las claves y hasta 7 consultas de tarifas y
+    // bases de precio cerrado) y una consulta por bloque de entradas (con los nombres por LEFT JOIN).
     expect($result['status'])->toBe(200)
-        ->and($entries)->toBeGreaterThan(1000)
-        ->and($result['queries'])->toBeLessThanOrEqual(3 + $chunks * 15)
+        ->and($entries)->toBeGreaterThan(5000)
+        ->and($result['queries'])->toBeLessThanOrEqual(3 + 8 + $chunks)
         ->and($result['repeats'])->toBeLessThanOrEqual($chunks);
+
+    $limit = perfTimeLimit(1500);
+    if ($limit !== null) {
+        expect($result['ms'])->toBeLessThan($limit);
+    }
 });

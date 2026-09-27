@@ -104,13 +104,14 @@ test('resumen por proyecto y bolsa con tarifas e importes (D-043), calculado a m
                 'bank' => ['id' => $s->b1->id, 'name' => 'Bolsa Diseño ñ', 'status' => 'exhausted'],
                 'logged_minutes' => 790, 'in_bank_minutes' => 600, 'overage_minutes' => 190,
                 'billable_minutes' => 790, 'non_billable_minutes' => 0, 'pending_minutes' => 90,
-                'pricing' => 'bank_price', 'rate' => '70.00', 'price_amount' => '1000.00', 'income' => '1221.67',
+                // 1000 × 600/600 + 100 × 55/60 (exceso de E1, aprobada: su tarifa congelada) + 90 × 70/60 (E3).
+                'pricing' => 'bank_price', 'rate' => '70.00', 'price_amount' => '1000.00', 'income' => '1196.67',
             ])
             ->where('export_limit', 19999)
             ->where('can.viewReport', true)
             ->where('summary.totals', [
                 'entries' => 5, 'logged_minutes' => 940, 'in_bank_minutes' => 600, 'overage_minutes' => 190, 'billable_minutes' => 910,
-                'non_billable_minutes' => 30, 'pending_minutes' => 120, 'income' => '1337.67',
+                'non_billable_minutes' => 30, 'pending_minutes' => 120, 'income' => '1312.67',
             ]));
 });
 
@@ -127,10 +128,10 @@ test('el detalle de cada entrada en XLSX: dentro y exceso por separado, tarifa, 
     expect($rows)->toHaveCount(7)
         ->and($rows[0])->toBe(['Fecha', 'Persona', 'Proyecto', 'Bolsa', 'Tarea', 'Descripción', 'Horas', 'Horas dentro de bolsa',
             'Horas en exceso', 'Facturable', 'Estado', 'Tarifa (€/h)', 'Importe (€)', 'Valoración'])
-        // E1: la bloqueada E2 no cambia, así que E1 queda con 200 dentro y 100 de exceso:
-        // 1000 × 200/600 + 100 × 70/60 = 450,00.
+        // E1: la bloqueada E2 no cambia, así que E1 queda con 200 dentro y 100 de exceso. Está
+        // aprobada: su exceso va a su tarifa congelada (D-043, BIZ-01): 1000 × 200/600 + 100 × 55/60 = 425,00.
         ->and($rows[1])->toBe(['2026-09-22', 'Ana', 'NAN-WEB · Web corporativa', 'Bolsa Diseño ñ', 'Versión móvil', '¿Qué tal? ¡Sí! 12 €',
-            5, 3.33, 1.67, true, 'Aprobada', 70, 450, $bankPrice])
+            5, 3.33, 1.67, true, 'Aprobada', 55, 425, $bankPrice])
         ->and($rows[2])->toBe(['2026-09-22', 'Marta', 'NAN-CAMP · Campaña otoño', 'Sin bolsa', 'Plan de medios', 'Plan',
             2, '', '', true, 'Aprobada', 58, 116, 'Tarifa congelada al aprobar'])
         // E2: 1000 × 400/600 = 666,67.
@@ -142,7 +143,7 @@ test('el detalle de cada entrada en XLSX: dentro y exceso por separado, tarifa, 
         ->and($rows[5])->toBe(['2026-09-25', 'Ana', 'NAN-CAMP · Campaña otoño', 'Sin bolsa', 'Plan de medios', 'Reunión interna',
             0.5, '', '', false, 'Borrador', '', 0, 'No facturable'])
         // La suma de los importes es el ingreso estimado del resumen.
-        ->and($rows[6])->toBe(['Total', '', '', '', '', '', 15.67, 10, 3.17, '', '', '', 1337.67, '']);
+        ->and($rows[6])->toBe(['Total', '', '', '', '', '', 15.67, 10, 3.17, '', '', '', 1312.67, '']);
 });
 
 test('el CSV sale para Excel en español; quien tiene view-financials sin ser admin solo exporta las horas que ve', function () {
@@ -158,8 +159,8 @@ test('el CSV sale para Excel en español; quien tiene view-financials sin ser ad
     expect(array_column(array_slice($rows, 1, -1), 1))->toBe(['Ana', 'Luis', 'Ana', 'Ana'])
         ->and($rows[1][6])->toBe('5,00')
         ->and($rows[1][9])->toBe('Sí')
-        ->and($rows[1][12])->toBe('450,00')
-        ->and(end($rows))->toBe(['Total', '', '', '', '', '', '13,67', '10,00', '3,17', '', '', '', '1221,67', '']);
+        ->and($rows[1][12])->toBe('425,00')
+        ->and(end($rows))->toBe(['Total', '', '', '', '', '', '13,67', '10,00', '3,17', '', '', '', '1196,67', '']);
 });
 
 test('un admin sin view-financials exporta las horas sin tarifas ni importes', function () {
@@ -270,6 +271,24 @@ test('si el total del resumen difiere por el truncado de cada entrada, la últim
     $rows = ($this->read)($this->actingAs($s->admin)->get($url.'&formato=csv')->streamedContent(), 'csv');
     expect(array_column(array_slice($rows, 1, -1), 12))->toBe(['0,00', '0,00', '0,01', '0,00'])
         ->and(end($rows)[12])->toBe('0,01');
+});
+
+test('la exportación calcula su total con las mismas entradas que exporta, aunque el resumen de la página esté en caché (PERF-02)', function () {
+    $s = $this->s;
+    $this->actingAs($s->admin)->get(($this->url)())->assertInertia(fn (Assert $page) => $page->where('summary.totals.income', '1312.67'));
+
+    // Un cambio que no invalida la caché de informes (una actualización sin eventos): E4 pasa de 120 a 150 min.
+    TimeEntry::query()->whereKey($s->e4->id)->update(['minutes' => 150]);
+    $this->actingAs($s->admin)->get(($this->url)())->assertInertia(fn (Assert $page) => $page->where('summary.totals.income', '1312.67'));
+
+    // El fichero no fuerza el total de la página: E4 vale 150 × 58/60 = 145, ninguna línea recoge la
+    // diferencia y el total es la suma de sus líneas (1312,67 − 116 + 145).
+    $rows = ($this->read)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->streamedContent(), 'xlsx');
+    $lines = array_column(array_slice($rows, 1, -1), 12);
+
+    expect($lines)->toBe([425, 145, 666.67, 105, 0])
+        ->and(end($rows)[12])->toBe(1341.67)
+        ->and(round(array_sum($lines), 2))->toBe(1341.67);
 });
 
 test('si las entradas no caben en la exportación responde 422 en vez de recortarla; la página lo avisa', function () {

@@ -4,6 +4,7 @@ use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Metrics;
+use App\Domain\Reports\Money;
 use App\Domain\Reports\PivotReport;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
@@ -120,10 +121,32 @@ it('da la serie diaria con capacidad e ingreso, sin huecos', function () {
     $scope = new ReportScope($this->admin, ($this->week)(['departamento' => [$this->design->id]]));
     $series = collect($this->metrics->series($scope, Dimension::Day))->keyBy('bucket');
 
+    // El 22: 275 + 1000 × 500/600 = 1108,333…; el 24: 1000 × 100/600 + 100 × 70/60 + 600 = 883,333….
+    // Redondeados por separado sumarían 2111,66: los céntimos del total (2111,67) se reparten por
+    // resto mayor (INT-04) y el del 22, con más resto, sube a 1108,34. La serie suma el resumen.
     expect($series)->toHaveCount(7)
-        ->and($series['2026-09-22'])->toMatchArray(['logged_minutes' => 800, 'billable_minutes' => 800, 'capacity_minutes' => 720, 'income' => '1108.33'])
+        ->and($series['2026-09-22'])->toMatchArray(['logged_minutes' => 800, 'billable_minutes' => 800, 'capacity_minutes' => 720, 'income' => '1108.34'])
+        ->and($series['2026-09-24']['income'])->toBe('883.33')
+        ->and(array_sum(array_map(fn (array $point): float => (float) $point['income'], $series->all())))->toEqualWithDelta(2111.67, 0.001)
         ->and($series['2026-09-24']['logged_minutes'])->toBe(440)
         ->and($series['2026-09-26'])->toMatchArray(['logged_minutes' => 0, 'capacity_minutes' => 0, 'income' => '0.00']);
+});
+
+it('todos los repartos suman exactamente el ingreso y el coste del resumen: los mismos céntimos en cada pantalla (INT-04)', function () {
+    $scope = new ReportScope($this->admin, ($this->week)(['departamento' => [$this->design->id]]));
+    $summary = $this->metrics->summary($scope);
+    $sum = fn (array $rows, string $key): string => Money::round(Money::add('0', ...array_map(fn (array $row): string => (string) $row[$key], $rows)));
+
+    foreach ([Dimension::Day, Dimension::Week, Dimension::Person, Dimension::Department, Dimension::Client, Dimension::Project, Dimension::HourBank, Dimension::TaskType, Dimension::Task] as $dimension) {
+        $rows = $this->metrics->breakdown($scope, $dimension);
+
+        expect($sum($rows, 'income'))->toBe($summary['income'], "ingreso por {$dimension->value}")
+            ->and($sum($rows, 'cost'))->toBe($summary['cost'], "coste por {$dimension->value}");
+    }
+
+    // Y la serie diaria (redondeando cada día por separado sumaría 2111,66).
+    expect($sum($this->metrics->series($scope, Dimension::Day), 'income'))->toBe('2111.67')
+        ->and($summary['income'])->toBe('2111.67');
 });
 
 it('agrupa por semana y mes con los lunes y los días 1', function () {

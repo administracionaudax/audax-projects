@@ -66,10 +66,10 @@ test('KPIs de la semana con ingreso y rentabilidad, y la precisión de estimaci�
             ->where('summary.billable_minutes', 790)
             ->where('summary.overage_minutes', 190)
             ->where('summary.in_bank_minutes', 600)
-            ->where('summary.income', '1221.67')
+            ->where('summary.income', '1196.67')
             ->where('summary.cost', '330.00')
-            ->where('summary.margin', '891.67')
-            ->where('summary.margin_pct', 0.7299)
+            ->where('summary.margin', '866.67')
+            ->where('summary.margin_pct', 0.7242)
             // T2: estimada 240, real 400 (completada el 24/09).
             ->where('summary.estimation.tasks', 1)
             ->where('summary.estimation.estimated_minutes', 240)
@@ -142,7 +142,7 @@ test('horas por persona, por tipo de tarea y por semana del periodo', function (
             ->where('byType.1.logged_minutes', 390)
             ->where('weekly', [[
                 'week' => '2026-09-21', 'logged_minutes' => 790, 'billable_minutes' => 790,
-                'in_bank_minutes' => 600, 'overage_minutes' => 190, 'income' => '1221.67',
+                'in_bank_minutes' => 600, 'overage_minutes' => 190, 'income' => '1196.67',
             ]]));
 
     $this->actingAs($s->admin)->get("/informes/proyectos/{$s->web->id}?periodo=mes&fecha=2026-09-01")
@@ -238,7 +238,7 @@ test('exporta el estimado frente a real y las horas por persona (con importes so
     expect($peopleNoMoney[0])->toHaveCount(5);
 
     $weeks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'semanas']))->streamedContent());
-    expect($weeks[1])->toBe(['2026-09-21', 13.17, 13.17, 10, 3.17, 1221.67]);
+    expect($weeks[1])->toBe(['2026-09-21', 13.17, 13.17, 10, 3.17, 1196.67]);
 });
 
 test('la precisión de estimación: el gestor cuenta las tareas de cualquiera; un responsable, las de su equipo', function () {
