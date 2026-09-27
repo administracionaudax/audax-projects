@@ -148,6 +148,14 @@ class DemoDataSeeder extends Seeder
             $internal = $this->internalProject();
             $projects[] = $internal;
 
+            // Portal (Fase 5, D-064): el cliente de cliente@example.com ve ARR-WEB (tareas, horas por
+            // tarea y Gantt); ARR-MKT sigue cerrado al portal.
+            Project::query()->where('code', 'ARR-WEB')->update([
+                'portal_project_visible' => true,
+                'portal_show_task_hours' => true,
+                'portal_gantt_visible' => true,
+            ]);
+
             $this->timeEntries($projects, $internal);
             $this->sizeBanks($projects);
             $this->approvalWorkflow();

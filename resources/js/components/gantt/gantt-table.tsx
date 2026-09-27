@@ -50,7 +50,8 @@ function groupRows(rows: ReadonlyArray<GanttRow>): Group[] {
  * Vista de tabla del Gantt (alternativa accesible al diagrama, D-060): título, responsable,
  * inicio, entrega, predecesoras (con el conflicto en texto e icono) y estado. Mismas filas que el
  * diagrama (las tareas sin fechas están en su lista aparte). En el Gantt multiproyecto, cada
- * proyecto es un grupo de filas (<tbody>) con su cabecera (scope="rowgroup").
+ * proyecto es un grupo de filas (<tbody>) con su cabecera (scope="rowgroup"). Con `hideAssignee`
+ * (portal de cliente, F5) no lleva la columna de responsable.
  */
 export function GanttTable({
     caption,
@@ -58,6 +59,7 @@ export function GanttTable({
     tasks,
     dependencies,
     onOpen,
+    hideAssignee = false,
 }: {
     caption: string;
     rows: ReadonlyArray<GanttRow>;
@@ -65,6 +67,7 @@ export function GanttTable({
     tasks: ReadonlyArray<GanttTask>;
     dependencies: ReadonlyArray<TaskDependencyItem>;
     onOpen: (task: GanttTask) => void;
+    hideAssignee?: boolean;
 }) {
     const byId = new Map(tasks.map((task) => [task.id, task]));
     const predecessors = new Map<number, TaskDependencyItem[]>();
@@ -87,9 +90,11 @@ export function GanttTable({
                         <TableHead scope="col">
                             {t('gantt.column.task')}
                         </TableHead>
-                        <TableHead scope="col">
-                            {t('gantt.column.assignee')}
-                        </TableHead>
+                        {hideAssignee ? null : (
+                            <TableHead scope="col">
+                                {t('gantt.column.assignee')}
+                            </TableHead>
+                        )}
                         <TableHead scope="col">
                             {t('gantt.column.start')}
                         </TableHead>
@@ -110,7 +115,7 @@ export function GanttTable({
                             <TableRow className="bg-muted/60">
                                 <TableHead
                                     scope="rowgroup"
-                                    colSpan={6}
+                                    colSpan={hideAssignee ? 5 : 6}
                                     className="text-foreground"
                                 >
                                     {group.project.project.code} ·{' '}
@@ -161,13 +166,17 @@ export function GanttTable({
                                             ) : null}
                                         </span>
                                     </TableHead>
-                                    <TableCell>
-                                        {task.assignee?.name ?? (
-                                            <span className="text-muted-foreground">
-                                                {t('gantt.legend.unassigned')}
-                                            </span>
-                                        )}
-                                    </TableCell>
+                                    {hideAssignee ? null : (
+                                        <TableCell>
+                                            {task.assignee?.name ?? (
+                                                <span className="text-muted-foreground">
+                                                    {t(
+                                                        'gantt.legend.unassigned',
+                                                    )}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    )}
                                     <TableCell className="whitespace-nowrap">
                                         {task.start_date
                                             ? formatDate(task.start_date)

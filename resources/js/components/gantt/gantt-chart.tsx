@@ -114,6 +114,8 @@ export type GanttChartProps = {
     colors: GanttColors;
     /** Solo lectura (el portal de la F5, o quien no puede editar). */
     readOnly?: boolean;
+    /** Sin responsables en los nombres de las barras (portal de cliente, F5). */
+    hideAssignees?: boolean;
     /** Tareas que se están guardando. */
     saving?: ReadonlySet<number>;
     /** Espera antes de guardar los cambios hechos con el teclado (ms). 0: al momento. */
@@ -154,6 +156,7 @@ export function GanttChart({
     today,
     colors,
     readOnly = false,
+    hideAssignees = false,
     saving,
     keyboardCommitDelay = 700,
     onReschedule,
@@ -1196,6 +1199,7 @@ export function GanttChart({
                                                 layout.task.id,
                                             ) ?? [],
                                         readOnly: !canEdit(layout.task),
+                                        hideAssignee: hideAssignees,
                                         parentTitle:
                                             layout.task.parent_task_id !== null
                                                 ? (titles.get(
