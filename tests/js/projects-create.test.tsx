@@ -81,7 +81,8 @@ describe('alta de proyecto', () => {
 
         await user.type(screen.getByLabelText('Nombre'), ' 2026');
         expect(code.value).toBe('FORM-26');
-    });
+        // Teclea unas 30 letras, cada una con su render: con la máquina cargada pasa de los 5 s.
+    }, 20_000);
 
     it('un proyecto interno no pide cliente; el gestor principal ya cuenta como miembro', () => {
         render(<ProjectCreate {...props} />);
