@@ -94,4 +94,11 @@ return [
         'settings_hint' => 'Recibes este resumen porque lo tienes activado: mientras lo esté, estos avisos no te llegan en emails sueltos.',
         'settings_link' => 'Cambiar mis preferencias de notificación',
     ],
+
+    // Recordatorio de enviar la semana (time:remind-week, App\Notifications\Time\WeekSubmissionReminder).
+    'reminder' => [
+        'title' => 'Recuerda enviar tu semana',
+        'body' => 'Llevas :logged de :capacity imputadas en la semana del :week.',
+        'body_returned' => 'Te devolvieron la semana del :week para corregirla: llevas :logged de :capacity imputadas.',
+    ],
 ];
