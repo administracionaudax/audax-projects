@@ -95,7 +95,10 @@ export type ProjectMilestones = {
     today: string;
 };
 
-/** Prop `milestones` de Inicio (UpcomingMilestones::forUser): como mucho 8. */
+/**
+ * Prop `milestones` de Inicio (UpcomingMilestones::forUser): como mucho 8, por entrega, con los
+ * vencidos (como mucho 3 si los próximos llenan la tarjeta) delante de los de los próximos 30 días.
+ */
 export type HomeMilestone = MilestoneItem & {
     project: { id: number; code: string; name: string; color: string };
 };

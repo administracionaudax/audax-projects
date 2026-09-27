@@ -33,7 +33,7 @@ beforeEach(function () {
 
     // Presupuesto: lo medido (el máximo de los tres roles) + 3, como en la Fase 1.
     $this->budgets = [
-        'home' => 15,
+        'home' => 16,
         'projects.show' => 24,
         'calendar.month' => 21,
         'calendar.week' => 21,

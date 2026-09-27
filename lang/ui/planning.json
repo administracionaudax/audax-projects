@@ -91,7 +91,7 @@
     "planning.milestones.empty_description": "Marca una tarea como hito en su panel para seguirla aquí.",
     "planning.milestones.open_calendar": "Ver el calendario",
     "planning.home.title": "Mis próximos hitos",
-    "planning.home.description": "Vencidos y de los próximos 30 días, en los proyectos donde participas.",
+    "planning.home.description": "Vencidos y de los próximos 30 días, en los proyectos activos o planificados donde participas.",
     "planning.home.empty": "No tienes hitos en los próximos 30 días",
     "planning.home.empty_description": "Aquí verás los hitos de tus proyectos cuando se acerquen."
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Planning\UpcomingMilestones;
+use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -165,7 +166,7 @@ describe('«Próximos hitos» del resumen del proyecto', function () {
 });
 
 describe('«Mis próximos hitos» de Inicio', function () {
-    it('los de mis proyectos no archivados, vencidos y de los próximos 30 días, por entrega y con su proyecto', function () {
+    it('los de mis proyectos activos, vencidos y de los próximos 30 días, por entrega y con su proyecto', function () {
         $other = Project::factory()->create(['code' => 'BETA']);
         $other->addMember($this->user);
         $notMine = Project::factory()->create();
@@ -216,7 +217,59 @@ describe('«Mis próximos hitos» de Inicio', function () {
         $this->actingAs($this->user)->get('/')->assertInertia(fn (Assert $page) => $page->has('milestones', 1));
     });
 
-    it('es una sola consulta, aunque tenga muchos proyectos e hitos', function () {
+    it('solo los proyectos planificados o activos: los en pausa, completados y archivados, fuera', function () {
+        $planned = Project::factory()->create(['code' => 'PLAN', 'status' => ProjectStatus::Planned]);
+        $onHold = Project::factory()->create(['status' => ProjectStatus::OnHold]);
+        $completed = Project::factory()->create(['status' => ProjectStatus::Completed]);
+        foreach ([$planned, $onHold, $completed] as $project) {
+            $project->addMember($this->user);
+        }
+
+        ($this->milestone)('Activo', '2026-10-15');
+        ($this->milestone)('Planificado', '2026-10-16', [], $planned);
+        ($this->milestone)('En pausa', '2026-10-14', [], $onHold);
+        ($this->milestone)('Completado sin cerrar', '2026-10-01', [], $completed);
+
+        $this->actingAs($this->user)
+            ->get('/')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('milestones', fn ($items) => array_column($items->all(), 'title') === ['Activo', 'Planificado']));
+    });
+
+    it('los vencidos antiguos no desplazan a los próximos: el de mañana sale aunque haya 8 vencidos', function () {
+        foreach (range(1, 8) as $month) {
+            ($this->milestone)("Vencido {$month}", sprintf('2026-%02d-10', $month));
+        }
+        ($this->milestone)('Mañana', '2026-10-14');
+
+        $this->actingAs($this->user)
+            ->get('/')
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('milestones', UpcomingMilestones::HOME_LIMIT)
+                // Los 7 vencidos más recientes (del más atrasado al más reciente) y el de mañana.
+                ->where('milestones', fn ($items) => array_column($items->all(), 'title') === [
+                    'Vencido 2', 'Vencido 3', 'Vencido 4', 'Vencido 5', 'Vencido 6', 'Vencido 7', 'Vencido 8', 'Mañana',
+                ])
+                ->where('milestones.7.is_overdue', false)
+                ->where('milestones.7.days', 1));
+    });
+
+    it('si los próximos llenan la tarjeta, los vencidos ocupan como mucho 3 huecos (los más recientes)', function () {
+        foreach (range(1, 5) as $day) {
+            ($this->milestone)("Vencido {$day}", sprintf('2026-10-%02d', $day));
+        }
+        foreach (range(1, 10) as $day) {
+            ($this->milestone)("Próximo {$day}", sprintf('2026-10-%02d', 13 + $day));
+        }
+
+        $titles = array_column(app(UpcomingMilestones::class)->forUser($this->user), 'title');
+
+        expect($titles)->toBe([
+            'Vencido 3', 'Vencido 4', 'Vencido 5', 'Próximo 1', 'Próximo 2', 'Próximo 3', 'Próximo 4', 'Próximo 5',
+        ]);
+    });
+
+    it('son dos consultas acotadas, aunque tenga muchos proyectos e hitos', function () {
         foreach (range(1, 6) as $i) {
             $project = Project::factory()->create();
             $project->addMember($this->user);
@@ -232,6 +285,6 @@ describe('«Mis próximos hitos» de Inicio', function () {
         $items = $milestones->forUser($user);
         app('events')->forget(QueryExecuted::class);
 
-        expect($queries)->toBe(1)->and($items)->toHaveCount(6);
+        expect($queries)->toBe(2)->and($items)->toHaveCount(6);
     });
 });

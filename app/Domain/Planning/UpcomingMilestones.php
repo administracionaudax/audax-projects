@@ -8,12 +8,14 @@ use App\Models\Task;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
  * Próximos hitos (SPEC §5.1 y §6, D-062). Un hito es una tarea con is_milestone; «sin completar»
- * es sin completed_at; las fechas de tarea son fechas locales (hoy en Madrid). Una consulta por
- * lista. Contrato: resources/js/types/planning.ts (ProjectMilestones y HomeMilestone).
+ * es sin completed_at; las fechas de tarea son fechas locales (hoy en Madrid). Una consulta en el
+ * resumen del proyecto y dos acotadas en Inicio. Contrato: resources/js/types/planning.ts
+ * (ProjectMilestones y HomeMilestone).
  */
 final class UpcomingMilestones
 {
@@ -28,6 +30,14 @@ final class UpcomingMilestones
 
     /** Inicio: vencidos y los de los próximos días. */
     public const int HOME_DAYS = 30;
+
+    /** Inicio: huecos para los vencidos cuando los próximos llenan la tarjeta. */
+    public const int HOME_OVERDUE = 3;
+
+    private const array HOME_COLUMNS = [
+        'tasks.id', 'tasks.project_id', 'tasks.title', 'tasks.due_date',
+        'projects.code as project_code', 'projects.name as project_name', 'projects.color as project_color',
+    ];
 
     /**
      * Hitos sin completar del proyecto: los vencidos (destacados) y los 5 siguientes por entrega,
@@ -75,9 +85,14 @@ final class UpcomingMilestones
     }
 
     /**
-     * Inicio, «Mis próximos hitos»: hitos sin completar de los proyectos no archivados de los que
-     * soy miembro (D-021: solo lo mío), vencidos y de los próximos 30 días, como mucho 8, por
-     * entrega. Una consulta, con los datos del proyecto por join.
+     * Inicio, «Mis próximos hitos»: hitos sin completar de los proyectos planificados o activos de
+     * los que soy miembro (D-021: solo lo mío; los en pausa, completados y archivados, fuera), con
+     * los vencidos arriba y después los de los próximos 30 días, por entrega; como mucho 8.
+     *
+     * Los vencidos no pueden desplazar a los próximos (la tarjeta es de «próximos»): se piden por
+     * separado y, si hay próximos que llenen la tarjeta, los vencidos ocupan como mucho 3 huecos
+     * (los más recientes). Si hay menos próximos, los vencidos llenan el resto. Dos consultas
+     * acotadas (LIMIT 8 cada una), con los datos del proyecto por join.
      *
      * @return list<array<string, mixed>>
      */
@@ -86,25 +101,27 @@ final class UpcomingMilestones
         $day = CarbonImmutable::parse(($today ?? LocalTime::today())->toDateString());
         $todayString = $day->toDateString();
 
-        $rows = Task::query()
-            ->join('projects', 'projects.id', '=', 'tasks.project_id')
-            ->whereNull('projects.deleted_at')
-            ->where('projects.status', '!=', ProjectStatus::Archived->value)
-            ->whereExists(fn (QueryBuilder $member) => $member->selectRaw('1')
-                ->from('project_members')
-                ->whereColumn('project_members.project_id', 'tasks.project_id')
-                ->where('project_members.user_id', $user->id))
-            ->where('tasks.is_milestone', true)
-            ->whereNull('tasks.completed_at')
-            ->whereNotNull('tasks.due_date')
+        // Los vencidos más recientes primero (los muy antiguos no llenan la tarjeta).
+        $overdue = $this->homeQuery($user)
+            ->where('tasks.due_date', '<', $todayString)
+            ->orderByDesc('tasks.due_date')
+            ->orderByDesc('tasks.id')
+            ->limit(self::HOME_LIMIT)
+            ->get(self::HOME_COLUMNS);
+
+        $upcoming = $this->homeQuery($user)
+            ->where('tasks.due_date', '>=', $todayString)
             ->where('tasks.due_date', '<=', $day->addDays(self::HOME_DAYS)->toDateString())
             ->orderBy('tasks.due_date')
             ->orderBy('tasks.id')
             ->limit(self::HOME_LIMIT)
-            ->get([
-                'tasks.id', 'tasks.project_id', 'tasks.title', 'tasks.due_date',
-                'projects.code as project_code', 'projects.name as project_name', 'projects.color as project_color',
-            ]);
+            ->get(self::HOME_COLUMNS);
+
+        $overdueShown = min($overdue->count(), max(self::HOME_OVERDUE, self::HOME_LIMIT - $upcoming->count()));
+        $upcomingShown = min($upcoming->count(), self::HOME_LIMIT - $overdueShown);
+
+        // Todo por entrega: los vencidos elegidos (del más atrasado al más reciente) y los próximos.
+        $rows = $overdue->take($overdueShown)->reverse()->concat($upcoming->take($upcomingShown));
 
         return array_values($rows->map(fn (Task $milestone): array => [
             ...$this->item($milestone, (string) $milestone->due_date?->toDateString(), $todayString),
@@ -115,6 +132,26 @@ final class UpcomingMilestones
                 'color' => (string) $milestone->getAttribute('project_color'),
             ],
         ])->all());
+    }
+
+    /**
+     * Hitos con fecha y sin completar de los proyectos planificados o activos de los que soy miembro.
+     *
+     * @return Builder<Task>
+     */
+    private function homeQuery(User $user): Builder
+    {
+        return Task::query()
+            ->join('projects', 'projects.id', '=', 'tasks.project_id')
+            ->whereNull('projects.deleted_at')
+            ->whereIn('projects.status', [ProjectStatus::Planned->value, ProjectStatus::Active->value])
+            ->whereExists(fn (QueryBuilder $member) => $member->selectRaw('1')
+                ->from('project_members')
+                ->whereColumn('project_members.project_id', 'tasks.project_id')
+                ->where('project_members.user_id', $user->id))
+            ->where('tasks.is_milestone', true)
+            ->whereNull('tasks.completed_at')
+            ->whereNotNull('tasks.due_date');
     }
 
     /**
