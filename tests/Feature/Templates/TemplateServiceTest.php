@@ -3,6 +3,7 @@
 use App\Domain\Schedule\DependencyService;
 use App\Domain\Templates\ProjectTemplateService;
 use App\Models\Project;
+use App\Models\ProjectTemplate;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 | Añadidos de la Fase 4 (G3) a ProjectTemplateService (D-058): normalize() rechaza los ciclos
 | (directos e indirectos) y no repite dependencias; findCycle() dice qué tareas lo forman; stats()
 | da las cifras de los listados; capture() cuenta los días desde la tarea más temprana si empieza
-| antes que el proyecto.
+| antes que el proyecto y rechaza, con las fechas extremas, lo que pasaría de 3650 días.
 */
 
 beforeEach(function () {
@@ -100,4 +101,54 @@ it('guardar como plantilla sigue contando desde el inicio del proyecto si ningun
 
     expect($tasks['Diseño']['start_offset_days'])->toBe(7)
         ->and($tasks['Sin fechas']['start_offset_days'])->toBe(0);
+});
+
+it('no guarda como plantilla si una fecha mal escrita la estira más de 3650 días, y dice cuáles son las fechas extremas', function (array $projectStart, array $tasks, string $message) {
+    $admin = User::factory()->admin()->create();
+    $project = Project::factory()->create($projectStart);
+    foreach ($tasks as $task) {
+        Task::factory()->create(['project_id' => $project->id, ...$task]);
+    }
+
+    // Antes, normalize() recortaba en silencio al día 3650 el inicio y la duración de las demás.
+    expect(fn () => app(ProjectTemplateService::class)->capture($project, 'Web', null, $admin))
+        ->toThrow(ValidationException::class, $message)
+        ->and(ProjectTemplate::query()->count())->toBe(0);
+})->with([
+    // En Chrome, escribir «26» en el año de un campo de fecha deja el 0026.
+    'una tarea del año 0026 en un proyecto de 2026' => [
+        ['start_date' => '2026-10-05'],
+        [
+            ['title' => 'Briefing', 'start_date' => '0026-10-01', 'due_date' => '2026-10-02'],
+            ['title' => 'Diseño', 'start_date' => '2026-10-03', 'due_date' => '2026-10-06'],
+            ['title' => 'Entrega', 'is_milestone' => true, 'due_date' => '2026-10-10'],
+        ],
+        'No se puede guardar como plantilla: sus fechas van del 01/10/0026 («Briefing») al 10/10/2026 («Entrega»), más de 3650 días. Revisa esas fechas y vuelve a intentarlo.',
+    ],
+    'una entrega del año 2126' => [
+        ['start_date' => '2026-10-05'],
+        [
+            ['title' => 'Diseño', 'start_date' => '2026-10-06', 'due_date' => '2126-10-06'],
+            ['title' => 'Desarrollo', 'start_date' => '2026-10-12', 'due_date' => '2026-10-30'],
+        ],
+        'No se puede guardar como plantilla: sus fechas van del 05/10/2026 (inicio del proyecto) al 06/10/2126 («Diseño»), más de 3650 días. Revisa esas fechas y vuelve a intentarlo.',
+    ],
+    'un proyecto que empieza en el año 0026' => [
+        ['start_date' => '0026-10-05'],
+        [['title' => 'Diseño', 'start_date' => '2026-10-12', 'due_date' => '2026-10-16']],
+        'No se puede guardar como plantilla: sus fechas van del 05/10/0026 (inicio del proyecto) al 16/10/2026 («Diseño»), más de 3650 días. Revisa esas fechas y vuelve a intentarlo.',
+    ],
+]);
+
+it('guardar como plantilla admite justo 3650 días de inicio y de duración', function () {
+    $admin = User::factory()->admin()->create();
+    $project = Project::factory()->create(['start_date' => '2026-01-01']);
+    $start = CarbonImmutable::parse('2026-01-01');
+    Task::factory()->create(['project_id' => $project->id, 'title' => 'Larga', 'start_date' => '2026-01-01', 'due_date' => $start->addDays(3649)->toDateString()]);
+    Task::factory()->create(['project_id' => $project->id, 'title' => 'Lejana', 'is_milestone' => true, 'due_date' => $start->addDays(3650)->toDateString()]);
+
+    $tasks = collect(app(ProjectTemplateService::class)->capture($project, 'Diez años', null, $admin)->structure['tasks'])->keyBy('title');
+
+    expect($tasks['Larga']['duration_days'])->toBe(3650)
+        ->and($tasks['Lejana']['start_offset_days'])->toBe(3650);
 });

@@ -19,7 +19,7 @@ use Illuminate\Validation\Validator;
 final class TemplateStructure
 {
     /** Límite de días del inicio relativo y de la duración (unos diez años). */
-    public const int MAX_DAYS = 3650;
+    public const int MAX_DAYS = ProjectTemplateService::MAX_DAYS;
 
     /** Dependencias como mucho (la plantilla más grande con varias por tarea). */
     public const int MAX_DEPENDENCIES = 5000;

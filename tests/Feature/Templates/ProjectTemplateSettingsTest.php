@@ -151,3 +151,16 @@ it('no guarda como plantilla un proyecto sin tareas y pide el nombre', function 
 
     expect(ProjectTemplate::query()->count())->toBe(1);
 });
+
+it('no guarda como plantilla un proyecto con una fecha mal escrita y lo explica junto al botón', function () {
+    // El año 0026 en lugar de 2026: antes, todas las demás tareas acababan en el día 3650.
+    Task::factory()->create(['project_id' => $this->project->id, 'title' => 'Briefing', 'start_date' => '0026-10-01', 'due_date' => '2026-10-02']);
+    Task::factory()->create(['project_id' => $this->project->id, 'title' => 'Diseño', 'start_date' => '2026-10-07', 'due_date' => '2026-10-09']);
+
+    $this->from("/proyectos/{$this->project->id}/ajustes")
+        ->post("/proyectos/{$this->project->id}/plantilla/guardar", ['name' => 'Web'])
+        ->assertRedirect("/proyectos/{$this->project->id}/ajustes")
+        ->assertSessionHasErrors(['capture' => 'No se puede guardar como plantilla: sus fechas van del 01/10/0026 («Briefing») al 09/10/2026 («Diseño»), más de 3650 días. Revisa esas fechas y vuelve a intentarlo.']);
+
+    expect(ProjectTemplate::query()->count())->toBe(1);
+});

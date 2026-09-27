@@ -22,11 +22,16 @@ use Illuminate\Validation\ValidationException;
  *   duration_days − 1; un hito solo lleva entrega). En proyectos de bolsas, todas van a la bolsa
  *   indicada (las subtareas, siempre a la de su padre).
  * - capture(): guarda la estructura de un proyecto existente como plantilla (sin horas, personas
- *   ni estados: solo títulos, tipos, estimaciones, fechas relativas y dependencias).
+ *   ni estados: solo títulos, tipos, estimaciones, fechas relativas y dependencias). Si alguna
+ *   tarea empezaría o duraría más de MAX_DAYS días (una fecha mal escrita), no guarda nada y dice
+ *   cuáles son las fechas extremas.
  */
 final class ProjectTemplateService
 {
     public const int MAX_TASKS = 500;
+
+    /** Límite de días del inicio relativo y de la duración de cada tarea (unos diez años). */
+    public const int MAX_DAYS = 3650;
 
     /** Dependencias por INSERT al aplicar una plantilla. */
     private const int DEPENDENCY_CHUNK = 150;
@@ -117,6 +122,9 @@ final class ProjectTemplateService
     }
 
     /**
+     * No guarda nada si el proyecto no tiene tareas, si tiene demasiadas o si alguna tarea
+     * empezaría o duraría más de MAX_DAYS días (una fecha mal escrita).
+     *
      * @throws ValidationException
      */
     public function capture(Project $project, string $name, ?string $description, User $actor): ProjectTemplate
@@ -126,9 +134,22 @@ final class ProjectTemplateService
 
         // Día 0: el inicio del proyecto o, si alguna tarea empieza antes, esa tarea (así ningún día
         // relativo queda negativo y las tareas anteriores al inicio conservan su orden y separación).
-        $earliest = $tasks->map(fn (Task $t): ?string => $t->start_date?->toDateString() ?? $t->due_date?->toDateString())->filter()->min();
-        $candidates = array_values(array_filter([$project->start_date?->toDateString(), $earliest], fn (?string $date): bool => $date !== null));
-        $base = CarbonImmutable::parse($candidates === [] ? now()->toDateString() : min($candidates));
+        // De la primera y la última fecha se guarda de dónde salen, por si hay que explicar un error.
+        $first = ['date' => $project->start_date?->toDateString(), 'task' => null];
+        $last = null;
+        foreach ($tasks as $task) {
+            $dates = array_values(array_filter([$task->start_date?->toDateString(), $task->due_date?->toDateString()]));
+            if ($dates === []) {
+                continue;
+            }
+            if ($first['date'] === null || min($dates) < $first['date']) {
+                $first = ['date' => min($dates), 'task' => $task->title];
+            }
+            if ($last === null || max($dates) > $last['date']) {
+                $last = ['date' => max($dates), 'task' => $task->title];
+            }
+        }
+        $base = CarbonImmutable::parse($first['date'] ?? now()->toDateString());
 
         $items = [];
         foreach ($tasks as $task) {
@@ -148,6 +169,13 @@ final class ProjectTemplateService
             ];
         }
 
+        // Una fecha mal escrita (el año 0026 en lugar de 2026) no puede estropear toda la plantilla:
+        // normalize() recortaría en silencio al día MAX_DAYS el inicio o la duración de las demás.
+        $tooFar = fn (array $item): bool => $item['start_offset_days'] > self::MAX_DAYS || $item['duration_days'] > self::MAX_DAYS;
+        if ($last !== null && array_filter($items, $tooFar) !== []) {
+            throw ValidationException::withMessages(['structure' => self::spanError($base, $first['task'], $last)]);
+        }
+
         $ids = $tasks->modelKeys();
         $links = [];
         foreach ($this->dependencies->projectDependencies($project->id) as [$from, $to]) {
@@ -162,6 +190,39 @@ final class ProjectTemplateService
             'structure' => self::normalize(['tasks' => $items, 'dependencies' => $links]),
             'created_by' => $actor->id,
         ]);
+    }
+
+    /**
+     * «No se puede guardar como plantilla: sus fechas van del 01/10/0026 («Briefing») al 10/10/2026
+     * («Entrega»), más de 3650 días…»: las dos fechas extremas y de dónde sale cada una (el inicio
+     * del proyecto o una tarea), que es donde está la fecha mal escrita.
+     *
+     * @param  string|null  $firstTask  tarea de la primera fecha, o null si es el inicio del proyecto
+     * @param  array{date: string, task: string}  $last  última fecha y su tarea
+     */
+    private static function spanError(CarbonImmutable $base, ?string $firstTask, array $last): string
+    {
+        $source = fn (?string $task): string => $task === null
+            ? self::text('templates.errors.capture_span_project')
+            : self::text('templates.errors.capture_span_task', ['title' => $task]);
+
+        return self::text('templates.errors.capture_span', [
+            'from' => $base->format('d/m/Y'),
+            'from_name' => $source($firstTask),
+            'to' => CarbonImmutable::parse($last['date'])->format('d/m/Y'),
+            'to_name' => $source($last['task']),
+            'max' => self::MAX_DAYS,
+        ]);
+    }
+
+    /**
+     * @param  array<string, string|int>  $replace
+     */
+    private static function text(string $key, array $replace = []): string
+    {
+        $line = __($key, $replace);
+
+        return is_string($line) ? $line : $key;
     }
 
     /**
@@ -201,8 +262,8 @@ final class ProjectTemplateService
                 'priority' => in_array($raw['priority'] ?? null, ['low', 'normal', 'high', 'urgent'], true) ? (string) $raw['priority'] : 'normal',
                 'estimated_minutes' => isset($raw['estimated_minutes']) && is_numeric($raw['estimated_minutes']) ? max((int) $raw['estimated_minutes'], 0) : null,
                 'is_milestone' => (bool) ($raw['is_milestone'] ?? false),
-                'start_offset_days' => min(max((int) ($raw['start_offset_days'] ?? 0), 0), 3650),
-                'duration_days' => min(max((int) ($raw['duration_days'] ?? 1), 1), 3650),
+                'start_offset_days' => min(max((int) ($raw['start_offset_days'] ?? 0), 0), self::MAX_DAYS),
+                'duration_days' => min(max((int) ($raw['duration_days'] ?? 1), 1), self::MAX_DAYS),
             ];
         }
 
