@@ -382,6 +382,7 @@ describe('panel de la tarea', () => {
             'tasks',
             'panel',
             'hiddenCompletedCount',
+            'calendar',
         ]);
     });
 

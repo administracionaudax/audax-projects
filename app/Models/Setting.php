@@ -40,6 +40,10 @@ class Setting extends Model
         'max_attachment_mb' => 50,
         // Jornada por defecto de los usuarios sin horario propio, lunes primero (D-036).
         'default_work_minutes' => [480, 480, 480, 480, 480, 0, 0],
+        // Resumen semanal de productividad por email (D-047): ocupación fuera de estos umbrales (%).
+        'weekly_digest_enabled' => true,
+        'occupancy_low_threshold' => 70,
+        'occupancy_high_threshold' => 110,
     ];
 
     protected static function booted(): void

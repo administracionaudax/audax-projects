@@ -16,15 +16,23 @@
  *   `:NAME` → todo en mayúsculas.
  */
 import base from '../../../lang/es.json';
+import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import clients from '../../../lang/ui/clients.json';
+import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
+import planning from '../../../lang/ui/planning.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
+import reportsR2 from '../../../lang/ui/reports-r2.json';
+import reportsR1 from '../../../lang/ui/reports-r1.json';
+import reportsR3 from '../../../lang/ui/reports-r3.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
+import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
+import workload from '../../../lang/ui/workload.json';
 
 const messages = {
     ...base,
@@ -37,6 +45,14 @@ const messages = {
     ...time,
     ...notifications,
     ...reports,
+    ...reportsR2,
+    ...reportsR1,
+    ...reportsR3,
+    ...absences,
+    ...workload,
+    ...gantt,
+    ...planning,
+    ...templates,
 };
 
 export type TranslationKey = keyof typeof messages;

@@ -1,8 +1,11 @@
 import { TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DatePicker } from '@/components/domain/date-picker';
 import { DurationInput } from '@/components/domain/duration-input';
+import { RescheduleDialog } from '@/components/planning/reschedule-dialog';
+import { useReschedule } from '@/components/planning/use-reschedule';
 import {
     AssigneePicker,
     BankSelect,
@@ -125,12 +128,41 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
         due: useId(),
         billable: useId(),
         milestone: useId(),
+        milestoneHelp: useId(),
     };
+    const milestoneBlocked =
+        !task.is_milestone && (task.logged_minutes ?? 0) > 0;
     const [pendingBank, setPendingBank] = useState<number | null | undefined>(
         undefined,
     );
 
     const save = (changes: TaskChanges) => updateTask(task.id, changes);
+
+    // Con sucesoras, cambiar la entrega pasa por reprogramar con propuesta (D-057): si alguna
+    // quedaría en conflicto, el diálogo pregunta antes de guardar. Sin sucesoras (o al quitar la
+    // fecha, que no crea conflictos), se guarda como cualquier otro campo.
+    const reschedule = useReschedule();
+    const hasSuccessors = (panel.dependencies?.successors.length ?? 0) > 0;
+    const changeDue = (date: string | null) => {
+        // Un cambio de fecha a la vez: mientras hay uno en curso, otro solo se avisa. El selector
+        // no se desactiva para que conserve el foco al cerrarse (WCAG 2.4.3).
+        if (reschedule.isBusy()) {
+            toast.info(t('planning.reschedule.busy'));
+
+            return;
+        }
+
+        if (hasSuccessors && date !== null && date !== task.due_date) {
+            void reschedule.request(
+                { id: task.id, title: task.title },
+                { start_date: task.start_date, due_date: date },
+            );
+
+            return;
+        }
+
+        save({ due_date: date });
+    };
 
     const changeBank = (bankId: number | null) => {
         if (bankId === task.hour_bank_id) {
@@ -221,19 +253,26 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={ids.start}>{t('task_panel.start_date')}</Label>
-                <DatePicker
-                    id={ids.start}
-                    value={task.start_date}
-                    onChange={(date) => save({ start_date: date })}
-                    disabled={disabled}
-                />
+                {task.is_milestone ? (
+                    // Un hito solo tiene entrega (D-062): el servidor le quita el inicio.
+                    <p id={ids.start} className="text-sm text-muted-foreground">
+                        {t('planning.milestone.only_due')}
+                    </p>
+                ) : (
+                    <DatePicker
+                        id={ids.start}
+                        value={task.start_date}
+                        onChange={(date) => save({ start_date: date })}
+                        disabled={disabled}
+                    />
+                )}
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={ids.due}>{t('task_panel.due_date')}</Label>
                 <DatePicker
                     id={ids.due}
                     value={task.due_date}
-                    onChange={(date) => save({ due_date: date })}
+                    onChange={changeDue}
                     disabled={disabled}
                 />
             </div>
@@ -259,12 +298,24 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                         onCheckedChange={(checked) =>
                             save({ is_milestone: checked })
                         }
-                        disabled={disabled}
+                        // Una tarea con horas no puede pasar a hito (TaskWriter).
+                        disabled={disabled || milestoneBlocked}
+                        aria-describedby={
+                            milestoneBlocked ? ids.milestoneHelp : undefined
+                        }
                     />
                     <Label htmlFor={ids.milestone} className="font-normal">
                         {t('task_panel.milestone')}
                     </Label>
                 </div>
+                {milestoneBlocked ? (
+                    <p
+                        id={ids.milestoneHelp}
+                        className="text-xs text-muted-foreground"
+                    >
+                        {t('planning.milestone.has_time')}
+                    </p>
+                ) : null}
             </div>
 
             <ConfirmDialog
@@ -285,6 +336,18 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                     }
 
                     setPendingBank(undefined);
+                }}
+            />
+            <RescheduleDialog
+                pending={reschedule.pending}
+                saving={reschedule.saving}
+                onConfirm={reschedule.confirm}
+                onCancel={reschedule.cancel}
+                // El diálogo no tiene disparador y el selector ya se cerró: al decidir (o cancelar),
+                // el foco vuelve a «Vencimiento» y no se pierde en la página (WCAG 2.4.3).
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    document.getElementById(ids.due)?.focus();
                 }}
             />
             {panel.has_time && !panel.parent && lookups.usesBanks ? (

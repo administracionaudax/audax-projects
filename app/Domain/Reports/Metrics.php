@@ -31,40 +31,103 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class Metrics
 {
+    /**
+     * Capacidades ya calculadas en esta instancia (el resumen y la serie de un mismo alcance piden
+     * la misma), por persona que mira y filtros. Metrics se resuelve por petición o por tarea: la
+     * memoria no sobrevive a otra escritura. Con un tope para no crecer sin límite.
+     *
+     * @var array<string, array<int, array<string, int>>>
+     */
+    private array $capacityMemo = [];
+
+    private const int CAPACITY_MEMO_SIZE = 8;
+
     public function __construct(
         private readonly RevenueCalculator $revenue,
         private readonly Capacity $capacity,
     ) {}
 
     /**
+     * Sin capacidad ($withCapacity = false: informes de cliente y de proyecto, que no la muestran;
+     * se ahorra el cálculo de la capacidad de todas las personas del alcance), capacity_minutes es
+     * 0 y la ocupación y la productividad facturable son null. El resto es igual.
+     * $everyAssignee: ver estimation().
+     *
      * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
      *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
      *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
      *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
      */
-    public function summary(ReportScope $scope): array
+    public function summary(ReportScope $scope, bool $withCapacity = true, bool $everyAssignee = false): array
+    {
+        return $this->summaryAgainst($scope, $withCapacity ? array_sum($this->capacityByDate($scope)) : null, $everyAssignee);
+    }
+
+    /**
+     * Resumen de los primeros $days días del periodo frente a la capacidad del periodo COMPLETO
+     * (añadido por R1). Es el periodo de comparación «al mismo punto»: si el periodo en curso va por
+     * su día 10, el anterior se mide con sus horas, facturables, ingreso, coste y tareas completadas
+     * de sus 10 primeros días, y la capacidad de todo el periodo, igual que el periodo en curso
+     * (cuyas horas llegan hasta hoy y cuya capacidad es la del periodo entero). Así la variación de
+     * cada métrica compara lo mismo. Las definiciones son las de summary() (SPEC §10). Con $days
+     * igual o mayor que los días del periodo es summary(); con $days < 1, sin horas.
+     *
+     * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
+     *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
+     */
+    public function summaryFirstDays(ReportScope $scope, int $days, bool $withCapacity = true, bool $everyAssignee = false): array
+    {
+        $filters = $scope->filters;
+
+        if ($days >= $filters->days()) {
+            return $this->summary($scope, $withCapacity, $everyAssignee);
+        }
+
+        // Con $days < 1 el tramo acaba el día antes de empezar: ninguna entrada ni tarea cae en él.
+        $partial = $scope->withFilters($filters->withDates($filters->from, $filters->from->addDays(max($days, 0) - 1)));
+        if (! $scope->canSeeFinancials()) {
+            $partial = $partial->withoutFinancials();
+        }
+
+        return $this->summaryAgainst($partial, $withCapacity ? array_sum($this->capacityByDate($scope)) : null, $everyAssignee);
+    }
+
+    /**
+     * Las cifras de summary() de las horas del alcance frente a una capacidad dada (null: sin
+     * capacidad, como summary() con $withCapacity = false).
+     *
+     * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
+     *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
+     */
+    private function summaryAgainst(ReportScope $scope, ?int $capacity, bool $everyAssignee = false): array
     {
         $totals = (clone $scope->entries())->toBase()->selectRaw(
             'COALESCE(SUM(time_entries.minutes), 0) as logged,
              COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
              COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
         )->first();
 
         $logged = (int) ($totals->logged ?? 0);
         $billable = (int) ($totals->billable ?? 0);
         $overage = (int) ($totals->overage ?? 0);
-        $capacity = array_sum($this->capacityByDate($scope));
+        $withCapacity = $capacity !== null;
+        $capacity ??= 0;
 
         $summary = [
             'capacity_minutes' => $capacity,
             'logged_minutes' => $logged,
             'billable_minutes' => $billable,
-            'in_bank_minutes' => $logged - $overage,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
             'overage_minutes' => $overage,
-            'occupancy' => self::ratio($logged, $capacity),
+            'occupancy' => $withCapacity ? self::ratio($logged, $capacity) : null,
             'billability' => self::ratio($billable, $logged),
-            'billable_productivity' => self::ratio($billable, $capacity),
-            'estimation' => $this->estimation($scope),
+            'billable_productivity' => $withCapacity ? self::ratio($billable, $capacity) : null,
+            'estimation' => $this->estimation($scope, $everyAssignee),
             'income' => null,
             'cost' => null,
             'margin' => null,
@@ -84,11 +147,111 @@ final class Metrics
     }
 
     /**
+     * Solo los totales de horas del alcance, con una sola consulta: imputadas, facturables, dentro
+     * de bolsa, exceso y facturabilidad. Para los informes que no muestran capacidad, estimación ni
+     * importes (el detallado), que así no los calculan: la capacidad de un año de toda la agencia es
+     * lo más caro de summary(). Añadido por R3.
+     *
+     * Las mismas definiciones que summary() y breakdown(): in_bank_minutes son solo los minutos de
+     * las entradas con bolsa sin su exceso (PivotReport::IN_BANK_SQL, D-078).
+     *
+     * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
+     */
+    public function hours(ReportScope $scope): array
+    {
+        $totals = (clone $scope->entries())->toBase()->selectRaw(
+            'COALESCE(SUM(time_entries.minutes), 0) as logged,
+             COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
+             COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
+        )->first();
+
+        $logged = (int) ($totals->logged ?? 0);
+        $billable = (int) ($totals->billable ?? 0);
+
+        return [
+            'logged_minutes' => $logged,
+            'billable_minutes' => $billable,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
+            'overage_minutes' => (int) ($totals->overage ?? 0),
+            'billability' => self::ratio($billable, $logged),
+        ];
+    }
+
+    /**
      * Capacidad por fecha (Y-m-d) del alcance, con una sola consulta de horarios.
      *
      * @return array<string, int>
      */
     public function capacityByDate(ReportScope $scope): array
+    {
+        $byDate = [];
+        foreach ($this->capacityByPerson($scope) as $days) {
+            foreach ($days as $date => $minutes) {
+                $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
+            }
+        }
+
+        return $byDate;
+    }
+
+    /**
+     * Capacidad de cada persona del alcance por fecha (id → Y-m-d → minutos), con las mismas reglas
+     * que capacityByDate (que es su suma): desde el alta o el primer horario y, si está
+     * desactivada, hasta su última entrada del periodo. Las personas sin capacidad en el periodo no
+     * salen. Añadido por R1 (miembros del departamento).
+     *
+     * @return array<int, array<string, int>>
+     */
+    public function capacityByPerson(ReportScope $scope): array
+    {
+        $key = $scope->viewer->id.':'.$scope->filters->cacheKey();
+
+        if (! array_key_exists($key, $this->capacityMemo)) {
+            if (count($this->capacityMemo) >= self::CAPACITY_MEMO_SIZE) {
+                array_shift($this->capacityMemo);
+            }
+
+            $this->capacityMemo[$key] = $this->computeCapacityByPerson($scope);
+        }
+
+        return $this->capacityMemo[$key];
+    }
+
+    /**
+     * Capacidad transcurrida de cada persona del alcance (id → minutos): la de los días del periodo
+     * anteriores a hoy en Madrid (hasta ayer, como los días sin imputar: hoy aún se está
+     * imputando). En un periodo cerrado es su capacidad; en uno que empieza hoy o más adelante, 0.
+     * Sale de capacityByPerson (sin más consultas). Añadido por R1 como dato informativo de un
+     * periodo en curso: la ocupación y la productividad facturable son siempre las de summary(),
+     * contra la capacidad del periodo completo (SPEC §10).
+     *
+     * @return array<int, int>
+     */
+    public function elapsedCapacityByPerson(ReportScope $scope, ?CarbonImmutable $today = null): array
+    {
+        $cut = $today !== null ? $today->toDateString() : LocalTime::todayString();
+        $elapsed = [];
+
+        foreach ($this->capacityByPerson($scope) as $userId => $days) {
+            $elapsed[$userId] = array_sum(array_filter($days, fn (string $date): bool => $date < $cut, ARRAY_FILTER_USE_KEY));
+        }
+
+        return $elapsed;
+    }
+
+    /**
+     * Capacidad transcurrida del alcance (la suma de elapsedCapacityByPerson). Añadido por R1.
+     */
+    public function elapsedCapacity(ReportScope $scope, ?CarbonImmutable $today = null): int
+    {
+        return array_sum($this->elapsedCapacityByPerson($scope, $today));
+    }
+
+    /**
+     * @return array<int, array<string, int>>
+     */
+    private function computeCapacityByPerson(ReportScope $scope): array
     {
         $f = $scope->filters;
         $people = $scope->people();
@@ -117,14 +280,12 @@ final class Metrics
             $ranges[] = ['user_id' => $person->id, 'from' => CarbonImmutable::parse($start), 'to' => CarbonImmutable::parse($end)];
         }
 
-        $byDate = [];
-        foreach ($this->capacity->forRanges($ranges) as $days) {
-            foreach ($days as $date => $minutes) {
-                $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
-            }
+        $byPerson = [];
+        foreach ($this->capacity->forRanges($ranges) as $index => $days) {
+            $byPerson[$ranges[$index]['user_id']] = $days;
         }
 
-        return $byDate;
+        return $byPerson;
     }
 
     /**
@@ -189,6 +350,7 @@ final class Metrics
         $rows = $query->toBase()
             ->selectRaw($expression.' as group_key, SUM(time_entries.minutes) as logged,
                 SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable,
+                '.PivotReport::IN_BANK_SQL.' as in_bank,
                 SUM(time_entries.overage_minutes) as overage')
             ->groupByRaw($expression)
             ->orderByDesc('logged')
@@ -209,7 +371,7 @@ final class Metrics
                 'color' => $label['color'],
                 'logged_minutes' => $logged,
                 'billable_minutes' => (int) $row->billable,
-                'in_bank_minutes' => $logged - (int) $row->overage,
+                'in_bank_minutes' => (int) $row->in_bank,
                 'overage_minutes' => (int) $row->overage,
                 'income' => $scope->canSeeFinancials() ? ($money[$key ?? '']['income'] ?? '0.00') : null,
                 'cost' => $scope->canSeeFinancials() ? ($money[$key ?? '']['cost'] ?? '0.00') : null,
@@ -221,9 +383,14 @@ final class Metrics
      * Precisión de estimación (SPEC §10): tareas hoja completadas en el periodo, con estimación, de
      * los proyectos y personas del alcance. Reales = todas sus horas (de cualquier fecha).
      *
+     * $everyAssignee (informes de un proyecto o de los proyectos que gestiona quien mira, que ve
+     * todas sus horas, D-021): cuentan las tareas de cualquier responsable, acotadas solo por los
+     * filtros de persona y departamento de la URL. Sin él (por defecto), las de las personas del
+     * alcance (people()), como hasta ahora.
+     *
      * @return array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null}
      */
-    public function estimation(ReportScope $scope): array
+    public function estimation(ReportScope $scope, bool $everyAssignee = false): array
     {
         $f = $scope->filters;
         $zone = LocalTime::timezone();
@@ -240,7 +407,9 @@ final class Metrics
             ->when($f->clientIds !== [], fn (Builder $q) => $q->whereIn('project_id', Project::query()->withTrashed()->select('id')->whereIn('client_id', $f->clientIds)))
             ->when($f->bankIds !== [], fn (Builder $q) => $q->whereIn('hour_bank_id', $f->bankIds))
             ->when($f->taskTypeIds !== [], fn (Builder $q) => $q->whereIn('task_type_id', $f->taskTypeIds))
-            ->when(! $scope->viewer->isAdmin() || $f->userIds !== [] || $f->departmentIds !== [],
+            ->when($everyAssignee && $f->userIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', $f->userIds))
+            ->when($everyAssignee && $f->departmentIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', User::query()->select('id')->whereIn('department_id', $f->departmentIds)))
+            ->when(! $everyAssignee && (! $scope->viewer->isAdmin() || $f->userIds !== [] || $f->departmentIds !== []),
                 fn (Builder $q) => $q->whereIn('assignee_user_id', $scope->people()->modelKeys()));
 
         $estimated = (int) (clone $tasks)->sum('estimated_minutes');

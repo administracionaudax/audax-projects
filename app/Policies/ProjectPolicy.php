@@ -69,6 +69,15 @@ class ProjectPolicy
     }
 
     /**
+     * Informe del proyecto (/informes/proyectos/{project}, D-044): los mismos que ven todas sus
+     * horas (viewAllTime). Un responsable ve en él las horas de su equipo (TimeEntry::visibleTo).
+     */
+    public function viewReport(User $user, Project $project): bool
+    {
+        return $this->viewAllTime($user, $project);
+    }
+
+    /**
      * Imputar horas propias en el proyecto: miembros, o cualquier interno si es interno (D-033).
      */
     public function logTime(User $user, Project $project): bool

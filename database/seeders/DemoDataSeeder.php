@@ -2,8 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Time\Capacity;
+use App\Enums\AbsenceStatus;
+use App\Enums\AbsenceType;
 use App\Enums\BillingType;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
@@ -13,8 +16,10 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatusCategory;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
+use App\Models\Absence;
 use App\Models\Client;
 use App\Models\Department;
+use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
@@ -150,7 +155,50 @@ class DemoDataSeeder extends Seeder
                 $this->lockInvoicedHours($clients['Hoteles Mirador']);
             }
             $this->comments($projects);
+            $this->holidaysAndAbsences();
         });
+    }
+
+    /**
+     * Fase 3 (SPEC §15): festivos nacionales del año pasado, este y el que viene, y ausencias de
+     * ejemplo en las próximas semanas (aprobadas, una pendiente de aprobar y una de medio día),
+     * para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día.
+     */
+    private function holidaysAndAbsences(): void
+    {
+        $national = new SpanishNationalHolidays;
+        foreach ([$this->today->year - 1, $this->today->year, $this->today->year + 1] as $year) {
+            foreach ($national->forYear($year) as $holiday) {
+                Holiday::query()->firstOrCreate(['date' => $holiday['date']], ['name' => $holiday['name'], 'scope' => 'company']);
+            }
+        }
+
+        $monday = $this->today->startOfWeek()->addWeek();
+        $absences = [
+            // Semana que viene: vacaciones de Elena (Diseño), ya aprobadas por Raúl.
+            ['elena', AbsenceType::Vacation, $monday->addDays(1), $monday->addDays(3), null, AbsenceStatus::Approved, 'raul'],
+            // Dentro de dos semanas: formación de Pablo (Desarrollo), aprobada por Marta.
+            ['pablo', AbsenceType::Training, $monday->addWeek(), $monday->addWeek(), null, AbsenceStatus::Approved, 'marta'],
+            // Medio día de Irene (Marketing), aprobado.
+            ['irene', AbsenceType::Leave, $monday->addDays(4), $monday->addDays(4), 240, AbsenceStatus::Approved, 'nuria'],
+            // Solicitud pendiente de Lucía (Diseño): Raúl la ve en «Ausencias del equipo».
+            ['lucia', AbsenceType::Vacation, $monday->addWeeks(3), $monday->addWeeks(3)->addDays(4), null, AbsenceStatus::Requested, null],
+        ];
+
+        foreach ($absences as [$who, $type, $from, $to, $partial, $status, $approver]) {
+            $reviewer = is_string($approver) ? $this->people[$approver] : null;
+
+            Absence::query()->create([
+                'user_id' => $this->people[$who]->id,
+                'type' => $type,
+                'start_date' => $from->toDateString(),
+                'end_date' => $to->toDateString(),
+                'partial_minutes' => $partial,
+                'status' => $status,
+                'approved_by' => $reviewer?->id,
+                'reviewed_at' => $reviewer === null ? null : $this->today->subDay(),
+            ]);
+        }
     }
 
     private function taskTypes(): void

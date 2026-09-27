@@ -13,8 +13,10 @@ import type {
     TimeEntry,
     UserSummary,
 } from './domain';
+import type { TaskCalendarData, TaskPanelDependencies } from './planning';
 
-export type TaskView = 'list' | 'kanban';
+/** Vistas de la pestaña Tareas (?vista=kanban, ?vista=calendario; la lista, por defecto). */
+export type TaskView = 'list' | 'kanban' | 'calendar';
 
 export type TaskGroupBy = 'status' | 'assignee' | 'bank' | 'type' | 'none';
 
@@ -161,6 +163,8 @@ export type TaskPanelData = {
     /** ¿La tarea o sus subtareas tienen horas? (aviso al cambiar de bolsa). */
     has_time: boolean;
     activity: TaskActivityItem[];
+    /** Predecesoras y sucesoras con su conflicto (Fase 4, D-062). */
+    dependencies?: TaskPanelDependencies;
     reaction_emojis: string[];
     delete_blocked: TaskDeleteBlocked | null;
     can: {
@@ -198,6 +202,8 @@ export type ProjectTasksPageProps = {
     maxAttachmentMb: number;
     panel: TaskPanelData | null;
     moveTargets?: TaskMoveTarget[];
+    /** Vista Calendario (D-061): null en la lista y el kanban. */
+    calendar?: TaskCalendarData | null;
 };
 
 export type MyTaskSectionKey =

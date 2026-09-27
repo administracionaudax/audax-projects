@@ -22,6 +22,8 @@ import { ProjectAlerts } from '@/components/projects-list/project-alerts';
 import { ProjectFields } from '@/components/projects-list/project-fields';
 import type { ProjectFormData } from '@/components/projects-list/project-fields';
 import { ProjectMembers } from '@/components/projects-list/project-members';
+import { RecurringRulesSection } from '@/components/recurring/recurring-rules-section';
+import { ProjectTemplateSection } from '@/components/templates/project-template-section';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -148,6 +150,23 @@ export default function ProjectSettings({
                             )}
                             editable={can.editAlertsOf}
                         />
+                    </PageSection>
+
+                    <PageSection
+                        title={t('templates.settings.title')}
+                        description={t('templates.settings.description')}
+                    >
+                        <ProjectTemplateSection
+                            projectId={project.id}
+                            projectName={project.name}
+                        />
+                    </PageSection>
+
+                    <PageSection
+                        title={t('recurring.section.title')}
+                        description={t('recurring.section.description')}
+                    >
+                        <RecurringRulesSection projectId={project.id} />
                     </PageSection>
 
                     {can.archive ? (

@@ -165,6 +165,22 @@ describe('resumen del proyecto', () => {
                 created_at: '2026-09-26T08:05:00Z',
             },
         ],
+        milestones: {
+            overdue: [],
+            overdue_total: 0,
+            upcoming: [
+                {
+                    id: 12,
+                    project_id: 1,
+                    title: 'Entrega al cliente',
+                    due_date: '2026-10-16',
+                    is_overdue: false,
+                    days: 20,
+                },
+            ],
+            undated_count: 0,
+            today: '2026-09-26',
+        },
     };
 
     it('un h1 (el proyecto) y secciones en h2; horas, presupuesto y actividad', () => {
@@ -187,7 +203,12 @@ describe('resumen del proyecto', () => {
                 .getAttribute('href'),
         ).toBe('/proyectos/1/tareas?tarea=9');
         expect(container.textContent).toContain('26/09/2026 10:05');
-        expect(container.textContent).toContain('Llega en la Fase 4');
+        // Próximos hitos (Fase 4, D-062).
+        expect(
+            screen
+                .getByRole('link', { name: 'Entrega al cliente' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/1/tareas?tarea=12');
         expect(screen.getByText('No hay bolsas abiertas')).toBeTruthy();
     });
 });

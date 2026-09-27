@@ -7,7 +7,6 @@ use App\Enums\ProjectStatus;
 use App\Models\Task;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
-use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -39,6 +38,9 @@ final class WorkloadPlanner
     {
         $today = ($today ?? LocalTime::today())->startOfDay();
         $plan = new WorkloadPlan;
+        // Las fechas de la vista, una vez (se comparan por cada día de cada tarea: rendimiento).
+        $fromDate = $from->toDateString();
+        $toDate = $to->toDateString();
 
         $tasks = $this->openTasks($filters)
             ->where(fn (Builder $q) => $q->whereIn('assignee_user_id', $userIds)->orWhereNull('assignee_user_id'))
@@ -48,10 +50,18 @@ final class WorkloadPlanner
         $limit = $today->addDays(self::MAX_DAYS_AHEAD);
 
         // Capacidad de cada persona desde hoy (o desde el inicio de la vista) hasta la entrega más lejana.
+        // La entrega más lejana de cada persona, en una sola pasada por las tareas (rendimiento).
+        $latestDue = [];
+        foreach ($assigned as $task) {
+            $due = $task->due_date?->toDateString();
+            if ($due !== null && $due > ($latestDue[$task->assignee_user_id] ?? '')) {
+                $latestDue[$task->assignee_user_id] = $due;
+            }
+        }
         $horizonStart = $from < $today ? $from : $today;
         $ranges = [];
         foreach ($userIds as $userId) {
-            $latest = $assigned->where('assignee_user_id', $userId)->max(fn (Task $task) => $task->due_date?->toDateString());
+            $latest = $latestDue[$userId] ?? null;
             $end = max($to->toDateString(), is_string($latest) ? $latest : $to->toDateString());
             $end = min($end, $limit->toDateString());
             $ranges[] = ['user_id' => $userId, 'from' => $horizonStart, 'to' => CarbonImmutable::parse($end)];
@@ -64,7 +74,7 @@ final class WorkloadPlanner
         foreach ($userIds as $userId) {
             $plan->capacity[$userId] = array_filter(
                 $capacity[$userId] ?? [],
-                fn (string $date): bool => $date >= $from->toDateString() && $date <= $to->toDateString(),
+                fn (string $date): bool => $date >= $fromDate && $date <= $toDate,
                 ARRAY_FILTER_USE_KEY,
             );
         }
@@ -100,7 +110,7 @@ final class WorkloadPlanner
             $days = $this->distribute($task, $remaining, $capacity[$task->assignee_user_id] ?? [], $today, $limit, $plan);
 
             foreach ($days as $date => $minutes) {
-                if ($date < $from->toDateString() || $date > $to->toDateString()) {
+                if ($date < $fromDate || $date > $toDate) {
                     continue;
                 }
                 $plan->load[$task->assignee_user_id][$date] = ($plan->load[$task->assignee_user_id][$date] ?? 0) + $minutes;
@@ -133,10 +143,14 @@ final class WorkloadPlanner
         }
         $end = $due > $limit ? $limit : $due;
 
+        // Los días de $start a $end (ambos incluidos, como CarbonPeriod) como fechas UTC: sin crear
+        // un Carbon por día (rendimiento). El último es la fecha de $end en la zona de $start.
         $working = [];
-        foreach (CarbonPeriod::create($start, $end) as $day) {
-            if (($capacity[$day->toDateString()] ?? 0) > 0) {
-                $working[] = $day->toDateString();
+        $last = (int) strtotime($end->setTimezone($start->getTimezone())->toDateString().' 00:00:00 UTC');
+        for ($time = (int) strtotime($start->toDateString().' 00:00:00 UTC'); $time <= $last; $time += 86400) {
+            $date = gmdate('Y-m-d', $time);
+            if (($capacity[$date] ?? 0) > 0) {
+                $working[] = $date;
             }
         }
 

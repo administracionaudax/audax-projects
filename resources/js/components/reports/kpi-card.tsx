@@ -91,16 +91,23 @@ export function KpiDeltaLine({ delta }: { delta: KpiDelta }) {
         return null;
     }
 
-    if (previous === 0 || current === previous) {
-        return current === previous ? (
+    if (previous === 0 && current !== previous) {
+        return null;
+    }
+
+    const change =
+        previous === 0 ? 0 : (current - previous) / Math.abs(previous);
+
+    // Un cambio que se mostraría como «0 %» se lee como «igual» (menos de medio punto).
+    if (Math.abs(change) < 0.005) {
+        return (
             <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Minus aria-hidden="true" className="size-3.5" />
                 {t('reports.kpi.delta_same')}
             </p>
-        ) : null;
+        );
     }
 
-    const change = (current - previous) / Math.abs(previous);
     const up = change > 0;
     const good = up === higherIsBetter;
     const Icon = up ? ArrowUp : ArrowDown;

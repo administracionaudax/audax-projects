@@ -61,7 +61,8 @@ const PERF_GROWTH_TOLERANCE = 2;
  * @var array<string, int>
  */
 const PERF_BUDGETS = [
-    'home' => 12,
+    // Inicio suma «Mis próximos hitos» (F4): una consulta más.
+    'home' => 13,
     'projects.index' => 13,
     'projects.create' => 9,
     'projects.show' => 23,

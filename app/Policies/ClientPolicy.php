@@ -3,7 +3,9 @@
 namespace App\Policies;
 
 use App\Models\Client;
+use App\Models\Project;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Clientes (D-021, D-022): los ven todos los internos; los crean y editan admins y responsables.
@@ -34,5 +36,32 @@ class ClientPolicy
     public function delete(User $user, Client $client): bool
     {
         return false;
+    }
+
+    /**
+     * Informe del cliente (/informes/clientes/{client}, D-044): admins y responsables; un gestor,
+     * solo si gestiona algún proyecto del cliente (el informe se limita a esos proyectos).
+     */
+    public function viewReport(User $user, Client $client): bool
+    {
+        if ($user->isAdmin() || $user->isDepartmentManager()) {
+            return true;
+        }
+
+        $managed = $user->managedProjectIds();
+
+        return $managed !== [] && Project::query()->withTrashed()
+            ->where('client_id', $client->id)
+            ->whereKey($managed)
+            ->exists();
+    }
+
+    /**
+     * Exportación de horas para facturar (/informes/facturacion, D-045): admins y quien tenga
+     * view-financials. Las tarifas e importes, además, solo con view-financials.
+     */
+    public function viewBilling(User $user): bool
+    {
+        return $user->isAdmin() || Gate::forUser($user)->allows('view-financials');
     }
 }

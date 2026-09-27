@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Tasks;
 
+use App\Domain\Planning\CalendarPeriod;
+use App\Domain\Planning\TaskCalendar;
 use App\Domain\Tasks\AttachmentStorage;
 use App\Domain\Tasks\TaskOptions;
 use App\Enums\TaskPriority;
@@ -18,6 +20,7 @@ use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Support\LocalTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -27,7 +30,9 @@ use Inertia\Response;
 
 /**
  * Pestaña Tareas del proyecto (SPEC §6): /proyectos/{project}/tareas.
- * - vista Lista (agrupable) o Kanban (?vista=kanban), con filtros en la URL (en español),
+ * - vista Lista (agrupable), Kanban (?vista=kanban) o Calendario (?vista=calendario&mes=2026-10 o
+ *   &semana=2026-10-05, D-061: prop `calendar`, App\Domain\Planning\TaskCalendar), con filtros en la
+ *   URL (en español),
  * - las completadas, ocultas salvo ?completadas=1,
  * - tareas raíz con sus subtareas (un nivel); sin N+1 y sin la descripción (no se selecciona),
  * - ?tarea={id} abre el panel lateral: la prop `panel` se pide con una recarga parcial,
@@ -60,11 +65,19 @@ class ProjectTasksController extends Controller
         'completed' => 'completadas',
         'group' => 'agrupar',
         'task' => 'tarea',
+        'month' => 'mes',
+        'week' => 'semana',
     ];
+
+    /**
+     * Valor de ?vista= → vista.
+     */
+    private const array VIEWS = ['kanban' => 'kanban', 'calendario' => 'calendar'];
 
     public function __construct(
         private readonly TaskOptions $options,
         private readonly TaskPanel $panel,
+        private readonly TaskCalendar $calendar,
     ) {}
 
     public function index(Request $request, Project $project): Response
@@ -78,6 +91,8 @@ class ProjectTasksController extends Controller
         $canManage = $user->canManageProject($project);
         $probe = (new Task(['project_id' => $project->id]))->setRelation('project', $project);
         $taskId = $this->intOrNull($request->query(self::QUERY['task']));
+        $view = self::VIEWS[$this->stringOrEmpty($request->query(self::QUERY['view']))] ?? 'list';
+        $calendar = $view === 'calendar';
 
         return Inertia::render('projects/tasks', [
             'project' => Plain::of(ProjectResource::make($project)),
@@ -86,12 +101,20 @@ class ProjectTasksController extends Controller
                 'create' => Gate::allows('create', [Task::class, $project]),
                 'update' => Gate::allows('update', $probe),
             ],
-            'view' => $request->query(self::QUERY['view']) === 'kanban' ? 'kanban' : 'list',
+            'view' => $view,
             'filters' => $filters,
-            'tasks' => fn (): array => Plain::of(TaskListItemResource::collection($this->tasks($project, $user, $filters))),
-            'hiddenCompletedCount' => fn (): int => $filters['completed']
+            // El calendario trae sus propias tareas (prop `calendar`): la lista no se calcula.
+            'tasks' => fn (): array => $calendar ? [] : Plain::of(TaskListItemResource::collection($this->tasks($project, $user, $filters))),
+            'hiddenCompletedCount' => fn (): int => $filters['completed'] || $calendar
                 ? 0
                 : Task::query()->where('project_id', $project->id)->roots()->whereNotNull('completed_at')->count(),
+            'calendar' => fn (): ?array => $calendar
+                ? $this->calendar->build($project, $user, $filters, CalendarPeriod::resolve(
+                    $request->query(self::QUERY['month']),
+                    $request->query(self::QUERY['week']),
+                    LocalTime::today(),
+                ))
+                : null,
             'statuses' => fn (): array => Plain::of(TaskStatusResource::collection($this->options->statuses())),
             'types' => fn (): array => Plain::of(TaskTypeOptionResource::collection($this->options->types($this->usedTypeIds($project)))),
             'banks' => fn (): array => Plain::of(TaskBankOptionResource::collection($this->options->banks($project, $user))),

@@ -27,10 +27,13 @@ import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
 import { index as departmentsIndex } from '@/routes/admin/departments';
+import { index as holidaysIndex } from '@/routes/admin/holidays';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
 import { index as usersIndex } from '@/routes/admin/users';
+import { index as recurringIndex } from '@/routes/recurring';
+import { index as templatesIndex } from '@/routes/templates';
 import type { Abilities } from '@/types';
 
 type AreaLink = {
@@ -118,6 +121,13 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.holidays.title',
         description: 'admin.areas.holidays.description',
         phase: 3,
+        links: [
+            {
+                label: 'holidays.admin_link',
+                href: holidaysIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'templates',
@@ -125,6 +135,18 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.templates.title',
         description: 'admin.areas.templates.description',
         phase: 4,
+        links: [
+            {
+                label: 'templates.admin.open_templates',
+                href: templatesIndex.url(),
+                ability: 'manageSettings',
+            },
+            {
+                label: 'templates.admin.open_recurring',
+                href: recurringIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'identity',

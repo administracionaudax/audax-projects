@@ -32,6 +32,20 @@ final class ReportScope
         return new self($this->viewer, $filters);
     }
 
+    /**
+     * El mismo alcance sin datos económicos aunque quien mira pueda verlos: Metrics no calcula
+     * ingreso, coste ni margen (p. ej. «Mis indicadores» de Inicio o los días sin imputar, que
+     * nunca los enseñan). No amplía nada: solo quita. withFilters() vuelve a mirar el permiso.
+     * Añadido por R1.
+     */
+    public function withoutFinancials(): self
+    {
+        $scope = new self($this->viewer, $this->filters);
+        $scope->financials = false;
+
+        return $scope;
+    }
+
     public function canSeeFinancials(): bool
     {
         return $this->financials ??= Gate::forUser($this->viewer)->allows('view-financials');
