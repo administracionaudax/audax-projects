@@ -248,10 +248,10 @@ export function PortalBankEntriesTable({
                             <td className="tabular px-3 py-2 whitespace-nowrap">
                                 {formatDate(entry.date)}
                             </td>
-                            <td className="px-3 py-2 break-words">
+                            <td className="min-w-48 px-3 py-2 break-words">
                                 {entry.task}
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-2 whitespace-nowrap">
                                 {entry.type ? (
                                     <span className="inline-flex items-center gap-2">
                                         <span
