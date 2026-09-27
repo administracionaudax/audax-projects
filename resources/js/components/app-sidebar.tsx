@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     BarChart3,
     Building2,
+    CalendarOff,
     CalendarRange,
     Clock,
     FolderKanban,
@@ -26,6 +27,8 @@ import {
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { home } from '@/routes';
+import { index as absencesIndex } from '@/routes/absences';
+import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
@@ -38,8 +41,9 @@ import { index as workloadIndex } from '@/routes/workload';
 import type { Abilities, NavItem } from '@/types';
 
 /**
- * Navegación principal (SPEC §3), en este orden. Bolsas y Administración dependen de
- * `auth.can` (gates view-hour-banks y rol admin); el servidor vuelve a comprobarlo en la ruta.
+ * Navegación principal (SPEC §3), en este orden, con «Ausencias» tras «Carga» (D-091). Bolsas,
+ * «Ausencias del equipo» y Administración dependen de `auth.can` (gate view-hour-banks, quien
+ * aprueba ausencias y rol admin); el servidor vuelve a comprobarlo en la ruta.
  */
 export function mainNavItems(can: Abilities): NavItem[] {
     const items: (NavItem | false)[] = [
@@ -57,6 +61,14 @@ export function mainNavItems(can: Abilities): NavItem[] {
             title: t('nav.workload'),
             href: workloadIndex(),
             icon: CalendarRange,
+        },
+        {
+            title: t('nav.absences'),
+            href: absencesIndex(),
+            icon: CalendarOff,
+            items: can.viewTeamAbsences
+                ? [{ title: t('absences.nav.team'), href: teamAbsencesIndex() }]
+                : undefined,
         },
         { title: t('nav.reports'), href: reportsIndex(), icon: BarChart3 },
         { title: t('nav.chat'), href: chatIndex(), icon: MessagesSquare },

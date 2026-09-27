@@ -14,7 +14,6 @@ use App\Models\Client;
 use App\Models\Department;
 use App\Models\Project;
 use App\Support\LocalTime;
-use Illuminate\Http\Request;
 
 /**
  * Piezas comunes de los dashboards de R1 (dirección, departamento y persona). Todas las cifras
@@ -186,16 +185,6 @@ trait BuildsDashboards
     protected function seriesBucket(ReportFilters $filters): Dimension
     {
         return $filters->days() <= self::WEEKLY_MAX_DAYS ? Dimension::Week : Dimension::Month;
-    }
-
-    /**
-     * ?formato=xlsx|csv pide la exportación (D-045); cualquier otro valor muestra la página.
-     */
-    protected function exportFormat(Request $request): ?string
-    {
-        $format = $request->query('formato');
-
-        return is_string($format) && in_array($format, TableExporter::FORMATS, true) ? $format : null;
     }
 
     /**

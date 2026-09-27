@@ -215,6 +215,7 @@ export default function ClientReport({
                                 caption={t('reports_r2.client.projects')}
                                 firstColumn={t('reports_r2.column.project')}
                                 rows={projects}
+                                total={summary}
                                 financials={financials}
                                 renderName={(row) =>
                                     row.key === null ? (

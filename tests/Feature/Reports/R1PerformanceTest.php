@@ -38,8 +38,9 @@ beforeEach(function () {
         'reports.person' => ["/informes/personas/{$elena->id}?periodo=trimestre", 66, 10],
         'reports.person.filtered' => ["/informes/personas/{$elena->id}?cliente[]=1", 56, 10],
         'reports.direction.export' => ['/informes/direccion?formato=xlsx&tabla=proyectos', 14, 6],
-        // Inicio suma «Mis ausencias» (F3) y «Mis próximos hitos» (F4).
-        'home' => ['/', 32, 14],
+        // Inicio suma «Mis ausencias» (F3) y «Mis próximos hitos» (F4), y 2 fijas más con las Fases 2 y 3
+        // juntas: la huella del alcance en la clave de la caché (SEC-03), no por fila.
+        'home' => ['/', 34, 16],
     ];
 
     // Cada valoración económica (RevenueCalculator::compute: resumen, cada reparto, la serie y la
@@ -52,13 +53,7 @@ beforeEach(function () {
     // dispare, y en paralelo (pest --parallel, con TEST_TOKEN) o con la máquina saturada (carga
     // media > 8) solo se informa, porque los procesos compiten por la CPU. La medida buena es la
     // del servidor en el despliegue (D-046).
-    $load = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
-    $this->maxMs = match (true) {
-        getenv('TEST_TOKEN') !== false => null,
-        getenv('CI') !== false => 3000,
-        $load !== false && $load[0] > 8 => null,
-        default => 1000,
-    };
+    $this->maxMs = perfTimeLimit(1000);
 
     $this->expected = fn (string $email, string $page): int => match (true) {
         $email === 'empleado@example.com' && in_array($page, ['reports.direction', 'reports.direction.year', 'reports.department', 'reports.direction.export'], true) => 403,

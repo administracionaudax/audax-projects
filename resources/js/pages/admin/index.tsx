@@ -25,6 +25,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
 import { index as departmentsIndex } from '@/routes/admin/departments';
 import { index as holidaysIndex } from '@/routes/admin/holidays';
@@ -39,7 +40,10 @@ import type { Abilities } from '@/types';
 type AreaLink = {
     label: TranslationKey;
     href: string;
-    ability: keyof Pick<Abilities, 'manageUsers' | 'manageSettings'>;
+    ability: keyof Pick<
+        Abilities,
+        'manageUsers' | 'manageSettings' | 'viewTeamAbsences'
+    >;
 };
 
 type AdminArea = {
@@ -126,6 +130,11 @@ const AREAS: AdminArea[] = [
                 label: 'holidays.admin_link',
                 href: holidaysIndex.url(),
                 ability: 'manageSettings',
+            },
+            {
+                label: 'holidays.admin_team_link',
+                href: teamAbsencesIndex.url(),
+                ability: 'viewTeamAbsences',
             },
         ],
     },

@@ -20,7 +20,8 @@ use Carbon\CarbonPeriod;
 | con muchas tareas al azar (semilla fija): vencidas, sin inicio, más allá del año, con horas
 | imputadas, festivos, ausencias completas y parciales y jornadas distintas. Hoy es miércoles a las
 | 23:30 en Madrid (ya jueves en UTC) y el límite del año cae en viernes: se nota si el último día
-| que se reparte no es el mismo.
+| que se reparte no es el mismo. Más allá del año, los días laborables se cuentan con la jornada
+| vigente en el tope (revisión global de la Fase 3).
 |--------------------------------------------------------------------------
 */
 
@@ -69,8 +70,15 @@ it('reparte exactamente como el cálculo directo de D-051', function () {
     $today = LocalTime::today();
     $limit = $today->addDays(WorkloadPlanner::MAX_DAYS_AHEAD);
     $capacity = [];
+    $weeks = [];
     foreach ($ids as $index => $id) {
         $capacity[$id] = app(Capacity::class)->forRange($this->users[$index], $from < $today ? $from : $today, $limit);
+        // Jornada vigente en el tope, sin festivos ni ausencias (la de su horario o la de por defecto).
+        $weeks[$id] = WorkSchedule::query()->where('user_id', $id)
+            ->where('valid_from', '<=', $limit->toDateString())
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $limit->toDateString()))
+            ->orderByDesc('valid_from')
+            ->first()?->weekMinutes() ?? Capacity::defaultWeek();
     }
 
     $load = [];
@@ -97,19 +105,28 @@ it('reparte exactamente como el cálculo directo de D-051', function () {
             $start = $start > $due ? $due : $start;
             $end = $due > $limit ? $limit : $due;
             $working = [];
+            $later = 0;
 
-            foreach (CarbonPeriod::create($start, $end) as $day) {
-                if (($capacity[$task->assignee_user_id][$day->toDateString()] ?? 0) > 0) {
-                    $working[] = $day->toDateString();
+            // Todos los días hasta la entrega: hasta el tope, con la capacidad real; después, con la
+            // jornada vigente en el tope (sin festivos ni ausencias), solo para contar.
+            foreach (CarbonPeriod::create($start, $due) as $day) {
+                if ($day <= $end) {
+                    if (($capacity[$task->assignee_user_id][$day->toDateString()] ?? 0) > 0) {
+                        $working[] = $day->toDateString();
+                    }
+                } elseif ($weeks[$task->assignee_user_id][$day->dayOfWeekIso - 1] > 0) {
+                    $later++;
                 }
             }
 
-            if ($working === []) {
+            $count = count($working) + $later;
+
+            if ($count === 0) {
                 $days = [$start->toDateString() => $remaining];
             } else {
                 $days = [];
                 foreach ($working as $index => $date) {
-                    $minutes = intdiv($remaining, count($working)) + ($index < $remaining % count($working) ? 1 : 0);
+                    $minutes = intdiv($remaining, $count) + ($index < $remaining % $count ? 1 : 0);
                     if ($minutes > 0) {
                         $days[$date] = $minutes;
                     }

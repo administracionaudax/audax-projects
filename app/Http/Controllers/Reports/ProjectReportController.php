@@ -69,8 +69,8 @@ class ProjectReportController extends Controller
             'milestones' => $this->milestones($project),
         ]);
 
-        $format = $request->query('formato');
-        if (is_string($format) && in_array($format, TableExporter::FORMATS, true)) {
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
             return $this->export($exporter, $project, $scope, $data, $request->query('tabla'), $format);
         }
 
@@ -232,16 +232,21 @@ class ProjectReportController extends Controller
                     $task['estimated_minutes'] === null ? null : TableExporter::hours($task['estimated_minutes']),
                     TableExporter::hours($task['actual_minutes']),
                     ...$deviation($task['estimated_minutes'], $task['actual_minutes']),
+                    // D-081: los minutos (enteros), que suman exacto su total.
+                    $task['estimated_minutes'],
+                    $task['actual_minutes'],
                 ];
             }
 
             $totals = $data['estimates']['totals'];
             if ($totals['other_minutes'] > 0) {
-                $rows[] = [self::text('reports.r2.project.other_tasks'), '', '', '', null, TableExporter::hours($totals['other_minutes']), null, null];
+                $rows[] = [self::text('reports.r2.project.other_tasks'), '', '', '', null, TableExporter::hours($totals['other_minutes']), null, null, null, $totals['other_minutes']];
             }
-            $rows[] = [self::text('reports.r2.total'), '', '', '', TableExporter::hours($totals['estimated_minutes']), TableExporter::hours($totals['actual_minutes']), null, null];
+            $rows[] = [self::text('reports.r2.total'), '', '', '', TableExporter::hours($totals['estimated_minutes']), TableExporter::hours($totals['actual_minutes']), null, null,
+                $totals['estimated_minutes'], $totals['actual_minutes']];
 
-            return $exporter->download($name, [$c('task'), $c('parent'), $c('type'), $c('status'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct')], $rows, $format);
+            return $exporter->download($name, [$c('task'), $c('parent'), $c('type'), $c('status'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct'),
+                $c('estimated_minutes'), $c('actual_minutes')], $rows, $format);
         }
 
         if ($table === 'estimado-por-tipo') {

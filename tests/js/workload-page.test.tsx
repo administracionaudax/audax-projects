@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkloadTrays as WorkloadTraysData } from '@/components/workload/types';
+import { WorkloadAlerts } from '@/components/workload/workload-alerts';
 import { WorkloadTrays } from '@/components/workload/workload-trays';
 import WorkloadIndex from '@/pages/workload';
 import {
@@ -190,6 +191,36 @@ describe('vista Carga', () => {
             'Sobrecarga, más del 120 % (1): Lucía Martín, 30:00 sin capacidad',
         );
     });
+
+    it.each([
+        // 1924 / 1920 = 100,2 %: se lee «100 %», así que no pasa de su capacidad.
+        [1924, 'Nadie supera su capacidad en este horizonte.'],
+        // 2308 / 1920 = 120,2 %: se lee «120 %», así que es «del 100 % al 120 %», no sobrecarga.
+        [
+            2308,
+            'Por encima de su capacidad, del 100 % al 120 % (1): Elena Empleada, 120 % (38:28 de 32:00)',
+        ],
+        // 2314 / 1920 = 120,5 %: se lee «121 %», sobrecarga.
+        [
+            2314,
+            'Sobrecarga, más del 120 % (1): Elena Empleada, 121 % (38:34 de 32:00)',
+        ],
+    ])(
+        'los avisos clasifican por el porcentaje que enseñan (%i min de 32:00)',
+        (planned, text) => {
+            const row = {
+                ...ELENA,
+                cells: ELENA.cells.map((cell) => ({ ...cell, planned: 0 })),
+                total: { planned, capacity: 1920 },
+            };
+
+            render(<WorkloadAlerts rows={[row]} />);
+
+            expect(
+                byTest('workload-alerts').textContent?.replace(/\s/g, ' '),
+            ).toBe(text);
+        },
+    );
 
     it('si nadie va sobrecargado, lo dice', () => {
         const props = pageProps();

@@ -422,6 +422,40 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
 - **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
 
+
+### D-080 · Nivel de ocupación de un periodo en curso **[concreta D-047 y D-079]**
+- **Qué se enseña:** la ocupación de cada miembro sigue siendo la del SPEC §10 (imputadas / capacidad del periodo completo, D-079).
+- **Nivel (baja, en rango, alta; umbrales 70 % y 110 % de D-047):** en un periodo en curso (le quedan días con jornada) se mide con el **ritmo**: imputadas / capacidad transcurrida hasta ayer (`pace`). Contra el periodo entero, a mitad de mes todo el mundo salía «baja». Si esa capacidad es 0 (el primer día o un periodo futuro), sin nivel: «Aún sin datos». En un periodo cerrado, el nivel es el de la ocupación.
+- **Dónde:** tabla de miembros del departamento (el ritmo va debajo de la ocupación) y su exportación («Ritmo (%)»).
+
+### D-081 · Minutos en las exportaciones con totales **[concreta D-045]**
+- Las horas en decimal (redondeadas a 2) no siempre suman su total: tres entradas de 20 min son 0,33 + 0,33 + 0,33 = 0,99 h frente a 1,00 h.
+- Las exportaciones con fila de totales (horas para facturar, resumen por proyecto del cliente, estimado frente a real del proyecto y tabla dinámica del detallado) llevan **al final** una columna de **minutos enteros** por cada columna de horas que se suma; en la tabla dinámica, una columna y una fila «Total (minutos)». Las horas decimales siguen para leer; los minutos suman exacto. Al final, para no mover las columnas de siempre.
+
+### D-082 · Tope del precio de una bolsa **[concreta D-043]**
+- La parte de lo que va dentro de una bolsa con precio vale `precio × minutos dentro / máx(total de la bolsa, lo que va dentro de la bolsa entera)`.
+- Normalmente es `precio × dentro / total`. Pero si lo de dentro supera el total (entradas bloqueadas que no cambian al reducir el total, D-019 y D-054), el precio se reparte entre todo lo de dentro: la bolsa nunca vale más que su precio, sume el periodo que se sume. «Lo que va dentro de la bolsa entera» es el de `HourBankLedger` (consumo − exceso).
+- El exceso de una bolsa con precio, como dice D-043: a la instantánea de tarifa de cada entrada si está aprobada o bloqueada y, si no, a la tarifa vigente (antes se valoraba siempre a la vigente).
+
+### D-083 · Un solo total de ingreso y coste, con los mismos céntimos en todas partes **[concreta D-043]**
+- **Total:** el de un conjunto de entradas es el de sus unidades (proyecto · bolsa · persona · facturable; el precio cerrado, por proyecto), redondeado **una sola vez**, se agrupe como se agrupe (`RevenueCalculator`, con las fórmulas en `App\Domain\Reports\Valuation`).
+- **Repartos y series** (por cliente, proyecto, persona, semana…): cada fila recibe su parte de ese total en céntimos por resto mayor (`Cents::largestRemainder`): las filas suman exactamente el resumen. Las tablas enseñan los totales del servidor, nunca sumados en el navegador.
+- **Exportaciones por entrada** (horas y horas para facturar): cada entrada suma su parte exacta del total de su unidad (`EntryValuation::next`) y los céntimos se reparten en orden (`RunningCents`): la columna suma el ingreso del informe y ninguna línea se aleja más de un céntimo de su importe. El total del fichero sale de las mismas filas que exporta (nunca del resumen en caché).
+
+### D-084 · Subtareas en los informes **[concreta el SPEC §6 y §10]**
+- **Precisión de estimación:** las unidades son las hojas con estimación (subtareas y tareas sin subtareas) y las tareas raíz cuyas subtareas no están estimadas (con su propia estimación y las horas de sus subtareas), completadas en el periodo. Una tarea con alguna subtarea estimada cuenta por sus subtareas estimadas (su estimación es su suma); sus horas propias y las de sus subtareas sin estimar no entran en la precisión. Es la regla de la tabla «Estimado frente a real» y de la base del precio cerrado.
+- **Detallado por tarea:** las horas de una subtarea suman en su tarea padre (se agrupa por la tarea raíz).
+
+### D-085 · Límite de las exportaciones de los informes
+- 30 exportaciones por minuto y usuario, comunes a todos los dashboards y al detallado (limitador `report-exports`). Solo cuentan las peticiones con `formato`: ver las páginas no gasta el cupo. La exportación de horas y el PDF de bolsa mantienen su límite propio.
+
+### D-086 · Caché de los informes **[concreta D-046]**
+- **Cuándo se invalida:** siempre **tras el commit** de la transacción (y nunca si se deshace), con un incremento atómico de la versión. Además de entradas, tareas, bolsas, proyectos, clientes, jornadas, ajustes y personas: estados y tipos de tarea, departamentos, semanas de horas, bloqueos, miembros y gestores de proyecto y responsables de departamento, y los servicios con actualizaciones masivas (bloquear y desbloquear horas, pasar un estado a «done», mover tareas y reordenar catálogos).
+- **Clave:** además de quien mira, su permiso económico y los filtros, su **alcance**: roles, departamentos que dirige y proyectos que gestiona. Quien deja de dirigir un departamento no ve nunca lo que vio cacheado, aunque nada haya invalidado la caché.
+
+### D-087 · Resumen semanal con el alcance de dirección **[concreta D-047]**
+- Las bolsas en riesgo y las tareas vencidas del resumen semanal son las del dashboard de dirección de quien lo recibe (`HourBanksAtRisk` y `OverdueTasks`): a un responsable, también las bolsas de los proyectos donde imputa su equipo y las tareas de las personas de su equipo que imputaron esa semana aunque ya estén de baja. El email cuenta lo mismo que el dashboard.
+
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 3)
 
 _Detalle y contexto en `docs/PLAN-FASE-3.md`._
@@ -452,7 +486,7 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
 - **Casos especiales:**
   - una tarea vencida lleva todo su restante a hoy y se marca,
   - sin ningún día con capacidad en el rango, todo va al primer día,
-  - como mucho se calcula un año hacia delante.
+  - la capacidad día a día se calcula, y se pinta, como mucho un año hacia delante. Una entrega posterior reparte igualmente entre **todos** sus días laborables: los que pasan del año se cuentan con la jornada semanal vigente al final de ese año, sin festivos ni ausencias, para no amontonar el restante en el primer año (revisión global).
 - **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
 - **Bandejas:**
   - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
@@ -474,8 +508,23 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
   - verde: del 70 % al 100 %,
   - ámbar: del 100 % al 120 %,
   - rojo: más del 120 %.
+  - El nivel se decide con el porcentaje redondeado que se enseña, para que la cifra y el color no se contradigan: 481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde (revisión global).
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
+  - La celda de alguien fuera de su alcance en la URL (`?celda=`) se ignora en una visita completa, como cualquier otro filtro que no vale; solo la recarga parcial que abre el panel responde 403 (revisión global).
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
+
+### D-088 · Ausencias de otra persona al imputar por ella **[concreta D-036 y D-049; RGPD]**
+- **Quién ve el tipo de una ausencia** (vacaciones, baja, permiso…; una baja es un dato de salud): la propia persona, un admin o quien la supervisa (`User::canSeeAbsencesOf`, que es `supervises` para los responsables).
+- **Aviso al imputar por otra persona en un día con ausencia aprobada** (SPEC §7):
+  - un admin o su responsable ven el tipo, con el nombre de la persona («Ese día Pedro Pérez tiene una ausencia aprobada (Baja)…»),
+  - cualquier otro que pueda imputar por ella (un gestor, en su proyecto) solo ve «Ese día Pedro Pérez no está disponible», sin tipo ni horas (o «no está disponible una parte de la jornada»).
+- **Por qué:** antes el aviso decía el tipo («Baja») a cualquiera que pudiera imputar por la persona, y probando fechas se podía reconstruir su calendario de bajas. Ahora solo sabe que ese día no está disponible, que es lo que necesita para imputar bien.
+- **Avisos de jornada:** al imputar por otra persona hablan de ella y la nombran («Ese día Pedro Pérez no tiene jornada y suma 1:00», «… más de un 25 % por encima de su jornada»), no de quien imputa.
+
+### D-091 · Navegación de ausencias y festivos **[cambia el SPEC §3]**
+- **Barra lateral:** «Ausencias» para todos los internos, tras «Carga». Quien aprueba ausencias (responsables y admins, `auth.can.viewTeamAbsences`) tiene dentro «Ausencias del equipo». Las pestañas «Mis ausencias» y «Ausencias del equipo» de la página siguen igual.
+- **Búsqueda global:** «Ausencias», «Ausencias del equipo» (quien las aprueba) y «Festivos» (`manage-settings`) son secciones propias; «ausencias» deja de ser una palabra clave de «Carga».
+- **Administración:** la tarjeta «Festivos y ausencias» lleva a los festivos y a las ausencias del equipo.
 
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 4)
 
