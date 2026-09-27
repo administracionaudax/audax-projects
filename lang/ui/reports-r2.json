@@ -117,7 +117,7 @@
     "reports_r2.estimates.by_type_caption": "Estimado frente a real por tipo de tarea",
     "reports_r2.estimates.not_estimated": "Sin estimar",
     "reports_r2.estimates.derived": "Suma de las subtareas",
-    "reports_r2.estimates.subtask_sr": "Subtarea:",
+    "reports_r2.estimates.subtask_label": "Subtarea: :title",
     "reports_r2.estimates.over_sr": "Por encima de lo estimado:",
     "reports_r2.estimates.within_sr": "Dentro de lo estimado:",
     "reports_r2.estimates.other_tasks": "Horas de tareas movidas a otro proyecto",

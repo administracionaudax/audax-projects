@@ -201,7 +201,7 @@ export function R2OverageValue({
             )}
         >
             <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
-            <span className="sr-only">{t('reports_r2.overage_sr')}</span>
+            <span className="sr-only">{t('reports_r2.overage_sr')} </span>
             {formatOverage(minutes)}
         </span>
     );

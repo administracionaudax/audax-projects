@@ -224,3 +224,18 @@ test('la exportación de un responsable no lleva datos económicos; también por
         ->and($banks[2][0])->toBe('Bolsa 2025')
         ->and($banks[2][2])->toBe('Renovada');
 });
+
+test('la ficha del cliente enlaza el informe solo a quien puede verlo (can.viewReport)', function () {
+    $s = $this->s;
+    $show = "/clientes/{$s->client->id}";
+
+    foreach ([[$s->admin, true], [$s->raul, true], [$s->gema, true], [$s->ana, false], [$s->marta, false]] as [$viewer, $expected]) {
+        $this->actingAs($viewer)->get($show)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('clients/show')->where('can.viewReport', $expected));
+    }
+
+    // Gema no gestiona ningún proyecto del otro cliente.
+    $this->actingAs($s->gema)->get("/clientes/{$s->otherClient->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false));
+});

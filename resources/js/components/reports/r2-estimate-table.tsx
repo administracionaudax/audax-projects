@@ -63,7 +63,7 @@ export function R2Deviation({
                     over
                         ? 'reports_r2.estimates.over_sr'
                         : 'reports_r2.estimates.within_sr',
-                )}
+                )}{' '}
             </span>
             {hours}
             {ratio}
@@ -222,16 +222,18 @@ function TaskRow({
                     <span className="min-w-0">
                         <Link
                             href={urls.task(projectId, task.id)}
+                            aria-label={
+                                sub
+                                    ? t('reports_r2.estimates.subtask_label', {
+                                          title: task.title,
+                                      })
+                                    : undefined
+                            }
                             className={cn(
                                 'rounded-[3px] break-words hover:underline',
                                 FOCUS_RING,
                             )}
                         >
-                            {sub ? (
-                                <span className="sr-only">
-                                    {t('reports_r2.estimates.subtask_sr')}
-                                </span>
-                            ) : null}
                             {task.title}
                         </Link>
                         {task.derived ? (
