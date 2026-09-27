@@ -4,7 +4,6 @@ import {
     Clock,
     Crown,
     ListChecks,
-    Milestone,
     ShieldCheck,
     Target,
     TriangleAlert,
@@ -16,6 +15,7 @@ import { ProjectStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
 import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { HourBankCard } from '@/components/hour-banks/hour-bank-card';
+import { ProjectMilestonesCard } from '@/components/planning/milestone-list';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ProjectActivity } from '@/components/projects-list/project-activity';
@@ -29,7 +29,7 @@ import type { ProjectShowProps } from '@/types';
 
 /**
  * Resumen del proyecto (SPEC §6): estado, fechas, horas estimadas frente a reales, presupuesto,
- * bolsas con su consumo y comprometidas, equipo, actividad reciente y próximos hitos (Fase 4).
+ * bolsas con su consumo y comprometidas, equipo, actividad reciente y próximos hitos (D-062).
  */
 export default function ProjectShow({
     project,
@@ -39,6 +39,7 @@ export default function ProjectShow({
     membersCount,
     hourBanks,
     activity,
+    milestones,
 }: ProjectShowProps) {
     setLayoutProps({
         breadcrumbs: [
@@ -243,13 +244,9 @@ export default function ProjectShow({
                         </PageSection>
 
                         <PageSection title={t('projects.show.milestones')}>
-                            <EmptyState
-                                icon={Milestone}
-                                title={t('projects.show.milestones_soon')}
-                                description={t(
-                                    'projects.show.milestones_description',
-                                )}
-                                phase={4}
+                            <ProjectMilestonesCard
+                                projectId={project.id}
+                                milestones={milestones}
                             />
                         </PageSection>
                     </div>

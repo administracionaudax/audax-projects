@@ -10,6 +10,7 @@ import type {
     TimesheetStatus,
     UserSummary,
 } from './domain';
+import type { HomeMilestone } from './planning';
 
 /** App\Http\Resources\Time\TimesheetPeriodResource. Una semana sin fila llega con id null. */
 export type TimesheetPeriodData = {
@@ -269,4 +270,6 @@ export type HomePageProps = {
     };
     week: { iso: string; period: TimesheetPeriodData };
     unlogged_days: UnloggedDay[];
+    /** Mis próximos hitos (D-062): vencidos y de los próximos 30 días, como mucho 8. */
+    milestones: HomeMilestone[];
 };

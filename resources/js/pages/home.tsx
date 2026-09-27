@@ -23,6 +23,7 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import type { Phase } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
+import { MyMilestones } from '@/components/planning/milestone-list';
 import { CapacityCell } from '@/components/time/capacity-cell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { stopTimer } from '@/components/time/timer-actions';
@@ -77,14 +78,6 @@ const LATER: LaterCard[] = [
         description: 'home.cards.indicators.description',
         empty: 'home.cards.indicators.empty',
         phase: 2,
-    },
-    {
-        id: 'milestones',
-        icon: Milestone,
-        title: 'home.cards.milestones.title',
-        description: 'home.cards.milestones.description',
-        empty: 'home.cards.milestones.empty',
-        phase: 4,
     },
     {
         id: 'mentions',
@@ -146,13 +139,15 @@ function PanelCard({
 
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
- * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar.
+ * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en
+ * la Fase 4, mis próximos hitos (D-062).
  */
 export default function Home({
     tasks,
     hours,
     week,
     unlogged_days: unloggedDays,
+    milestones,
 }: HomePageProps) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
@@ -372,6 +367,15 @@ export default function Home({
                                 ))}
                             </ul>
                         )}
+                    </PanelCard>
+
+                    <PanelCard
+                        id="milestones"
+                        icon={Milestone}
+                        title={t('planning.home.title')}
+                        description={t('planning.home.description')}
+                    >
+                        <MyMilestones milestones={milestones} />
                     </PanelCard>
 
                     {LATER.map((card) => (
