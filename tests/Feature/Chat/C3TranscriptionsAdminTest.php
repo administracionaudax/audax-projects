@@ -13,6 +13,7 @@ use App\Models\Conversation;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -220,6 +221,18 @@ it('si el motor vuelve a fallar al relanzar (cola síncrona), la página no se r
         ->and($failed->fresh()->last_error)->toBe('Sigue caído');
 });
 
+it('el límite de «Relanzar las fallidas» es suyo: no lo gastan otras acciones', function () {
+    foreach (range(1, 12) as $i) {
+        $this->actingAs($this->admin)->getJson('/buscar?q=ab')->assertOk();
+    }
+
+    foreach (range(1, 10) as $i) {
+        $this->actingAs($this->admin)->post('/admin/transcripciones/relanzar-fallidas')->assertRedirect();
+    }
+
+    $this->actingAs($this->admin)->post('/admin/transcripciones/relanzar-fallidas')->assertStatus(429);
+});
+
 it('nadie más que el admin relanza', function () {
     $failed = ($this->transcription)($this->chat, TranscriptionStatus::Failed);
 
@@ -235,7 +248,7 @@ it('todo audio publicado aparece con su transcripción hecha', function () {
     $samples = str_repeat("\0\0", 16000);
     $path = (string) tempnam(sys_get_temp_dir(), 'c3wav');
     file_put_contents($path, 'RIFF'.pack('V', 36 + strlen($samples)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, 16000, 32000, 2, 16).'data'.pack('V', strlen($samples)).$samples);
-    app(MessageWriter::class)->post($this->ana, $this->chat, null, audio: new Illuminate\Http\UploadedFile($path, 'nota.wav', null, null, true), audioDurationMs: 1000);
+    app(MessageWriter::class)->post($this->ana, $this->chat, null, audio: new UploadedFile($path, 'nota.wav', null, null, true), audioDurationMs: 1000);
 
     $this->actingAs($this->admin)
         ->get('/admin/transcripciones?estado=hechas')
