@@ -13,10 +13,10 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | Fase | Estado |
 |---|---|
 | 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0-cerrada`) |
-| 1. Núcleo | En curso, en **modo autónomo** (D-027): `docs/PLAN-FASE-1.md` |
-| 2. Informes | Pendiente |
-| 3. Carga | Pendiente |
-| 4. Gantt | Pendiente |
+| 1. Núcleo | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-1-cerrada`) |
+| 2. Informes | En curso: `docs/PLAN-FASE-2.md` |
+| 3. Carga | En curso: `docs/PLAN-FASE-3.md` |
+| 4. Gantt | En curso: `docs/PLAN-FASE-4.md` |
 | 5. Portal | Pendiente |
 | 6. Chat | Pendiente |
 | 7. Pulido | Pendiente |
