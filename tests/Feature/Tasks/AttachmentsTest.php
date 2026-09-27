@@ -358,7 +358,9 @@ it('limpia el nombre original (sin rutas ni caracteres de control)', function ()
 
 it('el job de miniaturas sube el memory_limit de la CLI hasta caber su presupuesto', function () {
     $previous = ini_get('memory_limit');
-    ini_set('memory_limit', '128M');
+    // Como un worker con el límite de la CLI: justo por encima de lo que ya usa el proceso (en el
+    // servidor, con PostgreSQL, la suite completa ya pasa de los 128M de la CLI).
+    ini_set('memory_limit', (intdiv(memory_get_usage(true), 1024 * 1024) + 16).'M');
 
     try {
         app(AttachmentStorage::class)->ensureThumbnailMemory();

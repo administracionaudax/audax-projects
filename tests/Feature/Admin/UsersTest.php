@@ -19,7 +19,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 */
 
 beforeEach(function () {
-    $this->admin = userWithRole('admin', ['name' => 'Ana Admin']);
+    $this->admin = userWithRole('admin', ['name' => 'Ana Admin', 'email' => 'ana.admin@audaxstudio.com']);
 });
 
 describe('listado', function () {
