@@ -14,7 +14,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -63,8 +63,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Quién puede entrar se decide ANTES de buscar los modelos de la URL (SubstituteBindings):
         // así un cliente o una cuenta desactivada no distingue un id que existe (redirección) de
         // uno que no (404). Lo comprueba tests/Feature/Portal/ClientIsolationTest.
+        // Van justo antes de los límites de peticiones (throttle), que en la lista de Laravel ya
+        // preceden a SubstituteBindings: así un cliente va a su portal sin gastar el cupo de rutas
+        // internas. Laravel guarda una sola posición por middleware.
         foreach ([EnsureUserIsActive::class, EnsureInternalUser::class, EnsureClientUser::class] as $gate) {
-            $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: $gate);
+            $middleware->prependToPriorityList(before: ThrottleRequests::class, prepend: $gate);
         }
     })
     ->withExceptions(function (Exceptions $exceptions): void {

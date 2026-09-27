@@ -68,7 +68,10 @@ beforeEach(function () {
     };
 
     $this->measure = function (User $user, string $url, array $headers): array {
-        // Calienta las cachés (ajustes, permisos y estados) como en producción y mide la segunda.
+        // Calienta las cachés (ajustes, permisos y estados) como en producción y mide la segunda. Al
+        // cambiar de persona, la sesión de la anterior haría que la primera petición fuera un 302
+        // (AuthenticateSession) y no calentara nada: se empieza con la sesión vacía.
+        $this->flushSession();
         $this->actingAs($user)->get($url, $headers);
 
         $queries = [];

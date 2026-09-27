@@ -124,8 +124,8 @@ describe('Inicio', () => {
         const absences = cards.indexOf('home-card-absences');
 
         expect(absences).toBeGreaterThan(-1);
-        // «Mi carga» e «Indicadores» ya funcionan (Fases 3 y 2); siguen detrás las de fases futuras.
-        for (const later of ['home-card-milestones', 'home-card-mentions']) {
+        // «Mi carga», «Indicadores» e «Hitos» ya funcionan (Fases 2 a 4); detrás, las de fases futuras.
+        for (const later of ['home-card-mentions']) {
             expect(cards.indexOf(later)).toBeGreaterThan(absences);
         }
         // Y las tarjetas que ya funcionan siguen delante.

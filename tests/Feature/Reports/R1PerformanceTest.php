@@ -38,7 +38,8 @@ beforeEach(function () {
         'reports.person' => ["/informes/personas/{$elena->id}?periodo=trimestre", 66, 10],
         'reports.person.filtered' => ["/informes/personas/{$elena->id}?cliente[]=1", 56, 10],
         'reports.direction.export' => ['/informes/direccion?formato=xlsx&tabla=proyectos', 14, 6],
-        'home' => ['/', 28, 12],
+        // Inicio suma «Mis ausencias» (F3) y «Mis próximos hitos» (F4).
+        'home' => ['/', 32, 14],
     ];
 
     // Cada valoración económica (RevenueCalculator::compute: resumen, cada reparto, la serie y la
