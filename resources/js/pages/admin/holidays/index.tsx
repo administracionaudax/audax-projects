@@ -318,7 +318,7 @@ export default function AdminHolidays({
                             {national.map((holiday) => (
                                 <li
                                     key={holiday.date}
-                                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                                    className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"
                                 >
                                     <span>
                                         <span className="tabular">

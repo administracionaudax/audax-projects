@@ -52,12 +52,12 @@ export function AbsenceItem({
 
     return (
         <li
-            className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3"
+            className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-start sm:justify-between"
             data-test="absence-item"
         >
             <div className="grid min-w-0 flex-1 gap-1 text-sm">
                 {person ? (
-                    <p className="flex items-center gap-2 font-medium">
+                    <p className="flex flex-wrap items-center gap-x-2 font-medium">
                         {person.department ? (
                             <span
                                 aria-hidden="true"
@@ -67,7 +67,9 @@ export function AbsenceItem({
                                 }}
                             />
                         ) : null}
-                        <span className="truncate">{person.name}</span>
+                        <span className="min-w-0 break-words">
+                            {person.name}
+                        </span>
                         {person.department ? (
                             <span className="font-normal text-muted-foreground">
                                 · {person.department.name}
@@ -133,7 +135,7 @@ export function AbsenceItem({
                 ) : null}
                 {extra}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                 <AbsenceStatusBadge status={absence.status} />
                 {children}
             </div>

@@ -197,7 +197,7 @@ export function TeamCalendarView({
                         <tr className="border-b">
                             <th
                                 scope="col"
-                                className="sticky left-0 z-10 min-w-36 bg-background px-3 py-2 text-left text-sm font-medium"
+                                className="sticky left-0 z-10 min-w-28 bg-background px-3 py-2 text-left text-sm font-medium sm:min-w-36"
                             >
                                 {t('absences.calendar.person')}
                             </th>
@@ -253,7 +253,7 @@ export function TeamCalendarView({
                             >
                                 <th
                                     scope="row"
-                                    className="sticky left-0 z-10 max-w-48 bg-background px-3 py-1.5 text-left text-sm font-normal"
+                                    className="sticky left-0 z-10 max-w-36 bg-background px-3 py-1.5 text-left text-sm font-normal sm:max-w-48"
                                 >
                                     <span className="flex items-center gap-2">
                                         {person.department ? (
