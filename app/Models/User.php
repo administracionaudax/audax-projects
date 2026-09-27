@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Auth\SessionTerminator;
 use App\Enums\Role;
+use App\Events\MembershipsChanged;
 use App\Notifications\ResetPasswordNotification;
 use Closure;
 use Database\Factories\UserFactory;
@@ -301,10 +302,13 @@ class User extends Authenticatable
 
     /**
      * Vacía la memoria de pertenencia y gestión de la petición en curso (tras cambiar miembros,
-     * gestores de proyecto o responsables de departamento).
+     * gestores de proyecto o responsables de departamento) y lo avisa (MembershipsChanged: la caché
+     * de los informes se invalida).
      */
     public static function forgetMemberships(): void
     {
+        MembershipsChanged::dispatch();
+
         $request = app()->bound('request') ? app('request') : null;
 
         if (! $request instanceof Request) {

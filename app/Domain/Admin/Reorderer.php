@@ -2,6 +2,7 @@
 
 namespace App\Domain\Admin;
 
+use App\Domain\Reports\ReportCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,9 @@ final class Reorderer
             foreach ($ids as $position => $id) {
                 $model->clone()->whereKey($id)->where('position', '!=', $position)->update(['position' => $position]);
             }
+
+            // El orden de estados y tipos sale en los informes: su caché, tras el commit (INT-03).
+            ReportCache::bumpAfterCommit();
 
             return true;
         });
