@@ -452,7 +452,7 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
 - **Casos especiales:**
   - una tarea vencida lleva todo su restante a hoy y se marca,
   - sin ningún día con capacidad en el rango, todo va al primer día,
-  - como mucho se calcula un año hacia delante.
+  - la capacidad día a día se calcula, y se pinta, como mucho un año hacia delante. Una entrega posterior reparte igualmente entre **todos** sus días laborables: los que pasan del año se cuentan con la jornada semanal vigente al final de ese año, sin festivos ni ausencias, para no amontonar el restante en el primer año (revisión global).
 - **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
 - **Bandejas:**
   - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,

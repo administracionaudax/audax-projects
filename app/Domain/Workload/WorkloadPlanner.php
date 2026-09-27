@@ -22,10 +22,18 @@ use Illuminate\Database\Eloquent\Builder;
  * - sin responsable: va a «Sin asignar», por departamento (el de la bolsa o, si no, el del tipo).
  * Los hitos y los proyectos archivados no cuentan. La capacidad sale de Capacity (festivos y
  * ausencias incluidos).
+ *
+ * Tope de un año (MAX_DAYS_AHEAD): la capacidad día a día se calcula como mucho un año hacia
+ * delante y solo se pinta hasta ahí. Una entrega posterior reparte igualmente entre TODOS sus días
+ * laborables: los que pasan del tope se cuentan con la jornada semanal vigente en el tope, sin
+ * festivos ni ausencias (D-051). Así el restante no se amontona en el primer año.
  */
 final class WorkloadPlanner
 {
-    /** Máximo de días hacia delante que se calculan (tareas con entrega muy lejana). */
+    /**
+     * Días hacia delante que se calculan con la capacidad real y se pintan. Las entregas posteriores
+     * cuentan sus días laborables con la jornada semanal vigente en el tope (D-051).
+     */
     public const int MAX_DAYS_AHEAD = 366;
 
     public function __construct(private readonly Capacity $capacity) {}
@@ -71,6 +79,12 @@ final class WorkloadPlanner
             $capacity[$ranges[$index]['user_id']] = $days;
         }
 
+        // Jornada semanal vigente en el tope de quien tiene entregas en el tope o más allá (una
+        // consulta, y solo si las hay): cuenta los días laborables que quedan hasta esas entregas.
+        $limitDate = $limit->toDateString();
+        $beyond = array_keys(array_filter($latestDue, fn (string $due): bool => $due >= $limitDate));
+        $weeks = $beyond === [] ? [] : $this->capacity->weeksOn($beyond, $limit);
+
         foreach ($userIds as $userId) {
             $plan->capacity[$userId] = array_filter(
                 $capacity[$userId] ?? [],
@@ -107,7 +121,7 @@ final class WorkloadPlanner
                 continue;
             }
 
-            $days = $this->distribute($task, $remaining, $capacity[$task->assignee_user_id] ?? [], $today, $limit, $plan);
+            $days = $this->distribute($task, $remaining, $capacity[$task->assignee_user_id] ?? [], $today, $limit, $plan, $weeks[$task->assignee_user_id] ?? null);
 
             foreach ($days as $date => $minutes) {
                 if ($date < $fromDate || $date > $toDate) {
@@ -123,9 +137,10 @@ final class WorkloadPlanner
 
     /**
      * @param  array<string, int>  $capacity
-     * @return array<string, int> fecha → minutos
+     * @param  list<int>|null  $week  Jornada vigente en el tope (lunes primero), si la entrega lo pasa.
+     * @return array<string, int> fecha → minutos (nunca más allá del tope)
      */
-    private function distribute(Task $task, int $remaining, array $capacity, CarbonImmutable $today, CarbonImmutable $limit, WorkloadPlan $plan): array
+    private function distribute(Task $task, int $remaining, array $capacity, CarbonImmutable $today, CarbonImmutable $limit, WorkloadPlan $plan, ?array $week = null): array
     {
         $due = CarbonImmutable::parse((string) $task->due_date?->toDateString());
 
@@ -146,20 +161,25 @@ final class WorkloadPlanner
         // Los días de $start a $end (ambos incluidos, como CarbonPeriod) como fechas UTC: sin crear
         // un Carbon por día (rendimiento). El último es la fecha de $end en la zona de $start.
         $working = [];
+        $first = (int) strtotime($start->toDateString().' 00:00:00 UTC');
         $last = (int) strtotime($end->setTimezone($start->getTimezone())->toDateString().' 00:00:00 UTC');
-        for ($time = (int) strtotime($start->toDateString().' 00:00:00 UTC'); $time <= $last; $time += 86400) {
+        for ($time = $first; $time <= $last; $time += 86400) {
             $date = gmdate('Y-m-d', $time);
             if (($capacity[$date] ?? 0) > 0) {
                 $working[] = $date;
             }
         }
 
-        if ($working === []) {
+        // Más allá del tope: los días laborables que quedan hasta la entrega, con la jornada vigente.
+        $later = $week === null ? 0 : self::workingDays(max($first, $last + 86400), (int) strtotime($due->toDateString().' 00:00:00 UTC'), $week);
+        $count = count($working) + $later;
+
+        if ($count === 0) {
             return [$start->toDateString() => $remaining];
         }
 
-        $share = intdiv($remaining, count($working));
-        $extra = $remaining % count($working);
+        $share = intdiv($remaining, $count);
+        $extra = $remaining % $count;
         $result = [];
         foreach ($working as $index => $date) {
             $minutes = $share + ($index < $extra ? 1 : 0);
@@ -169,6 +189,31 @@ final class WorkloadPlanner
         }
 
         return $result;
+    }
+
+    /**
+     * Días con jornada > 0 entre dos fechas (instantes UTC a medianoche, ambos incluidos) según una
+     * jornada semanal (lunes primero): semanas completas y el resto, sin recorrer día a día.
+     *
+     * @param  list<int>  $week
+     */
+    private static function workingDays(int $from, int $to, array $week): int
+    {
+        if ($from > $to) {
+            return 0;
+        }
+
+        $days = intdiv($to - $from, 86400) + 1;
+        $count = intdiv($days, 7) * count(array_filter($week, fn (int $minutes): bool => $minutes > 0));
+        $weekday = (int) gmdate('N', $from) - 1;
+
+        for ($offset = 0; $offset < $days % 7; $offset++) {
+            if (($week[($weekday + $offset) % 7] ?? 0) > 0) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     private function remaining(Task $task): int

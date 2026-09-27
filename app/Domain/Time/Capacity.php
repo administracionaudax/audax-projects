@@ -165,6 +165,35 @@ final class Capacity
     }
 
     /**
+     * Jornada semanal (minutos, lunes primero) vigente en $date de cada persona, sin festivos ni
+     * ausencias: la de su WorkSchedule de ese día o, si no tiene, la de por defecto. Una consulta.
+     * La usa el reparto de la carga para contar los días laborables más allá del año que calcula
+     * día a día (WorkloadPlanner, D-051).
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, list<int>>
+     */
+    public function weeksOn(array $userIds, CarbonInterface $date): array
+    {
+        $day = $date->toDateString();
+        $schedules = WorkSchedule::query()
+            ->whereIn('user_id', $userIds)
+            ->where('valid_from', '<=', $day)
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $day))
+            ->orderByDesc('valid_from')
+            ->get()
+            ->groupBy('user_id');
+        $default = self::defaultWeek();
+
+        $weeks = [];
+        foreach ($userIds as $userId) {
+            $weeks[$userId] = $schedules->get($userId)?->first()?->weekMinutes() ?? $default;
+        }
+
+        return $weeks;
+    }
+
+    /**
      * @return array<string, string> fecha → nombre del festivo
      */
     private static function holidays(string $from, string $to): array
