@@ -142,7 +142,9 @@ test('quitar el logo vuelve al logotipo de Audax y borra el fichero', function (
         ->assertRedirect(route('admin.identity.edit'))
         ->assertInertiaFlash('toast.message', __('portal.identity.logo_removed'));
 
-    expect(app(CompanyIdentity::class)->logo())->toBeNull();
+    // El ajuste desaparece también de la caché (no solo el fichero).
+    expect(app(CompanyIdentity::class)->logo())->toBeNull()
+        ->and(Setting::get(CompanyIdentity::LOGO_SETTING))->toBeNull();
     Storage::disk(CompanyIdentity::DISK)->assertMissing($logo['path']);
 
     $this->actingAs(userWithRole('department_manager'))->delete('/admin/identidad/logo')->assertForbidden();

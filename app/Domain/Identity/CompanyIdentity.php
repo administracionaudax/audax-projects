@@ -181,7 +181,8 @@ final class CompanyIdentity
     {
         $previous = $this->logo();
 
-        Setting::query()->where('key', self::LOGO_SETTING)->delete();
+        // Borrado del modelo (no de la consulta): así salta Setting::deleted y se vacía la caché.
+        Setting::query()->where('key', self::LOGO_SETTING)->first()?->delete();
 
         if ($previous !== null) {
             Storage::disk(self::DISK)->delete($previous['path']);
