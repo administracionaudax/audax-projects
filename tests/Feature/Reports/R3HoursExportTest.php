@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 use Tests\Feature\Reports\R3Scenario;
 
@@ -84,6 +85,27 @@ it('exporta cada entrada con horas, dentro, exceso e importes como a mano (admin
     expect(round(array_sum(array_column($rows, 'Ingreso estimado (€)')), 2))->toBe(2111.66)
         ->and(round(array_sum(array_column($rows, 'Coste (€)')), 2))->toBe(600.0);
 });
+
+it('la columna «Dentro de bolsa» suma lo mismo que la medida «dentro» del detallado y su KPI', function (array $query, int $minutes) {
+    $s = $this->s;
+    $query = array_map(fn (string $key): array => [$s->{$key}->id], $query);
+    $rows = ($this->table)(($this->export)($s->admin, $query));
+
+    // Las entradas sin bolsa dejan la columna vacía (''): no suman.
+    $exported = (int) round(array_sum(array_map(fn (array $row): float => (float) $row['Dentro de bolsa (horas)'], $rows)) * 60);
+
+    expect($exported)->toBe($minutes);
+
+    $this->actingAs($s->admin)
+        ->get('/informes/detalle?'.http_build_query(R3Scenario::week(['filas' => 'persona', 'columnas' => 'proyecto', 'medida' => 'dentro', ...$query])))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.total', $minutes)
+            ->where('summary.in_bank_minutes', $minutes));
+})->with([
+    // Solo la bolsa: 500 + 200 − 100 de exceso = 600 min (8,33 + 1,67 h).
+    'Diseño' => [['departamento' => 'design'], 600],
+    'un proyecto sin bolsa' => [['proyecto' => 'tm'], 0],
+]);
 
 it('RevenueCalculator::perEntry valora cada entrada con los criterios de compute()', function () {
     $s = $this->s;

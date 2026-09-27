@@ -4,10 +4,19 @@ namespace App\Domain\Reports;
 
 /**
  * Informe de horas detallado (SPEC §10.6): tabla dinámica por dos dimensiones cualesquiera con
- * subtotales. Medidas de horas (minutos): imputadas, facturables, dentro de bolsa y exceso.
+ * subtotales. Medidas de horas (minutos): imputadas, facturables, dentro de bolsa (IN_BANK_SQL) y
+ * exceso.
  */
 final class PivotReport
 {
+    /**
+     * Minutos dentro de bolsa: los de las entradas con bolsa, sin su exceso. Una entrada sin bolsa no
+     * tiene exceso, pero tampoco va dentro de ninguna bolsa: no cuenta. Es la definición de la
+     * medida in_bank y de Metrics::hours(), y la misma que la columna «Dentro de bolsa» de la
+     * exportación de horas. Corregido por R3: antes contaba imputadas − exceso de todas las entradas.
+     */
+    public const string IN_BANK_SQL = 'SUM(CASE WHEN time_entries.hour_bank_id IS NOT NULL THEN time_entries.minutes - time_entries.overage_minutes ELSE 0 END)';
+
     public const int MAX_ROWS = 200;
 
     public const int MAX_COLUMNS = 60;
@@ -39,7 +48,7 @@ final class PivotReport
 
         $value = match ($measure) {
             'billable' => 'SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END)',
-            'in_bank' => 'SUM(time_entries.minutes - time_entries.overage_minutes)',
+            'in_bank' => self::IN_BANK_SQL,
             'overage' => 'SUM(time_entries.overage_minutes)',
             default => 'SUM(time_entries.minutes)',
         };

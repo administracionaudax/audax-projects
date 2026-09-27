@@ -68,7 +68,8 @@ it('cruza persona × proyecto con subtotales por fila y columna, como a mano (ad
             ->where('summary', [
                 'logged_minutes' => 1420,
                 'billable_minutes' => 1360,
-                'in_bank_minutes' => 1320,
+                // Dentro de bolsa: solo la bolsa, 700 − 100 de exceso (las horas sin bolsa no cuentan).
+                'in_bank_minutes' => 600,
                 'overage_minutes' => 100,
                 'billability' => 0.9577,
             ])
@@ -98,7 +99,8 @@ it('calcula cada medida: facturables, dentro de bolsa y exceso', function (strin
 })->with([
     // El proyecto interno (60 min no facturables) no sale como columna.
     'facturables (el interno no cuenta)' => ['facturables', 1360, 700, 660, 3],
-    'dentro de bolsa' => ['dentro', 1320, 660, 660, 4],
+    // Solo la bolsa: 700 − 100 de exceso = 600 de Luis. Ana no imputa en ninguna bolsa y no sale.
+    'dentro de bolsa (solo la bolsa, solo Luis)' => ['dentro', 600, 600, null, 1],
     'exceso (solo la bolsa, solo Luis)' => ['exceso', 100, 100, null, 1],
 ]);
 
@@ -147,6 +149,8 @@ it('muestra el estado vacío, no una tabla de ceros, si la medida no tiene horas
     expect($rows)->toBe([['Persona / Semana (horas)', 'Total'], ['Total', 0]]);
 })->with([
     'exceso en un proyecto sin bolsa' => ['exceso', 'tm'],
+    'dentro de bolsa en un proyecto sin bolsa' => ['dentro', 'tm'],
+    'dentro de bolsa en el proyecto interno' => ['dentro', 'internal'],
     'facturables en el proyecto interno' => ['facturables', 'internal'],
 ]);
 

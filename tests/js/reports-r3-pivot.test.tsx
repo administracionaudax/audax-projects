@@ -342,7 +342,8 @@ const pageProps = (
     summary: {
         logged_minutes: 1420,
         billable_minutes: 1360,
-        in_bank_minutes: 1320,
+        // Dentro de bolsa: solo las entradas con bolsa (700 − 100 de exceso).
+        in_bank_minutes: 600,
         overage_minutes: 100,
         billability: 0.9577,
     },
@@ -382,7 +383,7 @@ describe('página del informe detallado', () => {
         expect(within(summary).getByText('23:40')).toBeTruthy();
         expect(within(summary).getByText('22:40')).toBeTruthy();
         expect(
-            within(summary).getByText('Dentro de bolsa: 22:00'),
+            within(summary).getByText('Dentro de bolsa: 10:00'),
         ).toBeTruthy();
         expect(within(summary).getByText('95,8 %')).toBeTruthy();
         expect(screen.getByRole('combobox', { name: /Personas/ })).toBeTruthy();
@@ -523,7 +524,7 @@ describe('página del informe detallado', () => {
                         comparison: {
                             logged_minutes: 1000,
                             billable_minutes: 1360,
-                            in_bank_minutes: 800,
+                            in_bank_minutes: 500,
                             overage_minutes: 200,
                             billability: 0.9577,
                         },
