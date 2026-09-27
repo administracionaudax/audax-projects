@@ -100,22 +100,46 @@ it('una fecha fuera del horizonte no abre nada', function () {
     expect(($this->cell)('ana', 'elena', '2026-11-30'))->toBeNull();
 });
 
-it('nadie abre la celda de una persona fuera de su alcance (D-052)', function () {
+it('en una visita completa, la celda de una persona fuera de su alcance se ignora: la página se abre sin panel (D-052)', function (string $who, string $person, string $date) {
+    // Como el resto de valores de la URL que no valen (WorkloadFilters): un enlace compartido
+    // con la celda de otra persona abre la vista, no un error.
+    expect(($this->cell)($who, $person, $date))->toBeNull();
+})->with([
+    'una empleada, la de una compañera' => ['elena', 'lucia', '2026-10-15'],
+    'un responsable, la de otro departamento' => ['raul', 'pablo', '2026-10-13'],
+    'un gestor, la de alguien de otro departamento' => ['sergio', 'lucia', '2026-10-15'],
+    'un admin, la de una persona desactivada' => ['ana', 'olga', '2026-10-15'],
+]);
+
+it('la recarga parcial del panel (only=cell) de una persona fuera de su alcance responde 403 (D-052)', function (string $who, string $person, string $date) {
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $this->actingAs($this->people[$who])
+        ->get("/carga?celda={$this->people[$person]->id}:{$date}", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) $version,
+            'X-Inertia-Partial-Component' => 'workload/index',
+            'X-Inertia-Partial-Data' => 'cell',
+        ])
+        ->assertForbidden();
+})->with([
+    'una empleada, la de una compañera' => ['elena', 'lucia', '2026-10-15'],
+    'un responsable, la de otro departamento' => ['raul', 'pablo', '2026-10-13'],
+    'un admin, la de una persona desactivada' => ['ana', 'olga', '2026-10-15'],
+]);
+
+it('una recarga parcial de otras props no se rompe por la celda de la URL', function () {
+    $version = app(HandleInertiaRequests::class)->version(request());
+
     $this->actingAs($this->people['elena'])
-        ->get("/carga?celda={$this->people['lucia']->id}:2026-10-15")
-        ->assertForbidden();
-
-    $this->actingAs($this->people['raul'])
-        ->get("/carga?celda={$this->people['pablo']->id}:2026-10-13")
-        ->assertForbidden();
-
-    $this->actingAs($this->people['sergio'])
-        ->get("/carga?celda={$this->people['lucia']->id}:2026-10-15")
-        ->assertForbidden();
-
-    $this->actingAs($this->people['ana'])
-        ->get("/carga?celda={$this->people['olga']->id}:2026-10-15")
-        ->assertForbidden();
+        ->get("/carga?celda={$this->people['lucia']->id}:2026-10-15", [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) $version,
+            'X-Inertia-Partial-Component' => 'workload/index',
+            'X-Inertia-Partial-Data' => 'matrix,trays',
+        ])
+        ->assertOk()
+        ->assertJsonMissingPath('props.cell');
 });
 
 it('se abre con una recarga parcial que solo trae el panel', function () {
