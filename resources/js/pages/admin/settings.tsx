@@ -39,6 +39,9 @@ type SettingsForm = {
     time_entry_description_required: boolean;
     max_attachment_mb: string;
     default_work_minutes: (number | null)[];
+    weekly_digest_enabled: boolean;
+    occupancy_low_threshold: string;
+    occupancy_high_threshold: string;
 };
 
 function Section({
@@ -100,7 +103,50 @@ function Toggle({
     );
 }
 
-/** Ajustes generales (SPEC §7, §8 y §14): empresa, seguridad, temporizador, bolsas, horas y adjuntos. */
+/** Porcentaje entero (umbrales de ocupación del resumen semanal, D-047). */
+function PercentField({
+    id,
+    label,
+    help,
+    value,
+    error,
+    onChange,
+}: {
+    id: string;
+    label: string;
+    help: string;
+    value: string;
+    error?: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <Field id={id} label={label} help={help} error={error}>
+            <div className="flex items-center gap-2">
+                <Input
+                    id={id}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={300}
+                    step={1}
+                    className="tabular w-24"
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={describedBy(id, { help: true, error })}
+                />
+                <span
+                    aria-hidden="true"
+                    className="text-sm text-muted-foreground"
+                >
+                    %
+                </span>
+            </div>
+        </Field>
+    );
+}
+
+/** Ajustes generales (SPEC §7, §8 y §14): empresa, seguridad, temporizador, bolsas, horas, adjuntos y resumen semanal (D-047). */
 export default function AdminSettings({
     settings,
     roundings,
@@ -121,6 +167,9 @@ export default function AdminSettings({
             settings.time_entry_description_required,
         max_attachment_mb: String(settings.max_attachment_mb),
         default_work_minutes: settings.default_work_minutes,
+        weekly_digest_enabled: settings.weekly_digest_enabled,
+        occupancy_low_threshold: String(settings.occupancy_low_threshold),
+        occupancy_high_threshold: String(settings.occupancy_high_threshold),
     });
     const errors = form.errors as Record<string, string | undefined>;
     const thresholds = form.data.hour_bank_alert_thresholds;
@@ -132,6 +181,15 @@ export default function AdminSettings({
         serverUploadLimitMb !== null &&
         Number.isFinite(attachmentMb) &&
         attachmentMb > serverUploadLimitMb;
+    // Aviso en vivo si la ocupación baja no queda por debajo de la alta (el servidor también lo valida).
+    const occupancyLow = Number(form.data.occupancy_low_threshold);
+    const occupancyHigh = Number(form.data.occupancy_high_threshold);
+    const occupancyInverted =
+        form.data.occupancy_low_threshold !== '' &&
+        form.data.occupancy_high_threshold !== '' &&
+        Number.isFinite(occupancyLow) &&
+        Number.isFinite(occupancyHigh) &&
+        occupancyLow >= occupancyHigh;
 
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
@@ -148,6 +206,8 @@ export default function AdminSettings({
                 (value) => Number(value),
             ),
             max_attachment_mb: Number(data.max_attachment_mb),
+            occupancy_low_threshold: Number(data.occupancy_low_threshold),
+            occupancy_high_threshold: Number(data.occupancy_high_threshold),
         }));
         form.put(update.url(), { preserveScroll: true });
     };
@@ -559,6 +619,63 @@ export default function AdminSettings({
                                     'admin.settings.attachments.over_server_limit',
                                     { mb: serverUploadLimitMb },
                                 )}
+                            </p>
+                        ) : null}
+                    </Section>
+
+                    <Section
+                        title={t('reports_r3.settings.title')}
+                        description={t('reports_r3.settings.description')}
+                    >
+                        <Toggle
+                            id={`${id}-digest`}
+                            label={t('reports_r3.settings.enabled')}
+                            help={t('reports_r3.settings.enabled_help')}
+                            checked={form.data.weekly_digest_enabled}
+                            onChange={(checked) =>
+                                form.setData('weekly_digest_enabled', checked)
+                            }
+                            error={errors.weekly_digest_enabled}
+                        />
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <PercentField
+                                id={`${id}-occupancy-low`}
+                                label={t('reports_r3.settings.low')}
+                                help={t('reports_r3.settings.low_help')}
+                                value={form.data.occupancy_low_threshold}
+                                error={errors.occupancy_low_threshold}
+                                onChange={(value) =>
+                                    form.setData(
+                                        'occupancy_low_threshold',
+                                        value,
+                                    )
+                                }
+                            />
+                            <PercentField
+                                id={`${id}-occupancy-high`}
+                                label={t('reports_r3.settings.high')}
+                                help={t('reports_r3.settings.high_help')}
+                                value={form.data.occupancy_high_threshold}
+                                error={errors.occupancy_high_threshold}
+                                onChange={(value) =>
+                                    form.setData(
+                                        'occupancy_high_threshold',
+                                        value,
+                                    )
+                                }
+                            />
+                        </div>
+                        {occupancyInverted &&
+                        !errors.occupancy_low_threshold ? (
+                            <p
+                                role="status"
+                                className="flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground"
+                            >
+                                <TriangleAlert
+                                    aria-hidden="true"
+                                    className="mt-0.5 size-4 shrink-0 text-warning"
+                                />
+                                {t('reports_r3.settings.low_above_high')}
                             </p>
                         ) : null}
                     </Section>

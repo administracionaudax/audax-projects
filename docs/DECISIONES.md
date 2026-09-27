@@ -295,7 +295,7 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
 - **Pasar un proyecto con tareas a «bolsas de horas»:** se pide su primera bolsa en el mismo paso.
 - **Desarchivar:** el proyecto recupera el estado anterior, que se toma de la auditoría.
 - **Renovar una bolsa:**
-  - solo una bolsa agotada o «próxima a agotarse» (desde el primer umbral, SPEC §8.7). Lo comprueban la interfaz y el servidor, con lo que va dentro de la bolsa (D-044). Para acabar antes un contrato, se cierra la bolsa (§8.9) y se crea otra,
+  - solo una bolsa agotada o «próxima a agotarse» (desde el primer umbral, SPEC §8.7). Lo comprueban la interfaz y el servidor, con lo que va dentro de la bolsa (D-054). Para acabar antes un contrato, se cierra la bolsa (§8.9) y se crea otra,
   - las tareas abiertas se mueven con todas sus subtareas; las horas nunca.
 - **Borrar una bolsa:** solo un admin, sin horas, sin tareas y sin renovación. Borrar una renovación devuelve la anterior a su estado.
 - **Destinatarios de las alertas de bolsa:** gestores con la alerta activada, responsables del departamento de la bolsa y todos los admins, sin duplicados. Las preferencias de los admins llegan en la F7.
@@ -332,21 +332,23 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
 
 ## 26/09/2026: Decisiones tomadas en autonomía en la revisión global de la Fase 1
 
-### D-043 · Bolsas cerradas y renovadas: sus horas quedan fijas **[concreta el SPEC §7, §8.4, §8.7 y §8.9]**
+_Numeradas D-053 a D-055 porque la Fase 2 ya había reservado D-043 a D-048 y la Fase 3, D-049 a D-052._
+
+### D-053 · Bolsas cerradas y renovadas: sus horas quedan fijas **[concreta el SPEC §7, §8.4, §8.7 y §8.9]**
 - **Qué se puede hacer con una entrada de una bolsa cerrada o renovada:**
   - cualquiera que pueda editarla corrige su **descripción** (o si es facturable): no cambia el consumo,
   - cambiar sus **minutos, su fecha o su tarea**, o **borrarla**, solo lo hace un **administrador** (queda en la auditoría). A los demás se les explica que se lo pidan.
 - **Por qué:** el saldo registrado al cerrar (SPEC §8.9) y el histórico de la renovación (las horas nunca se mueven, SPEC §8.7) no deben cambiar sin control. Antes se bloqueaba incluso corregir la descripción, pero se podía borrar la entrada o pasarla a otra tarea.
 - **Saldo registrado:** si un admin corrige las horas de una bolsa cerrada, `closed_remaining_minutes` se recalcula con su consumo.
 
-### D-044 · Cifras de las bolsas **[concreta D-019 y D-035]**
+### D-054 · Cifras de las bolsas **[concreta D-019 y D-035]**
 - **Una sola fuente para el saldo:** saldo = total − lo que va dentro (consumo − exceso). La usan `HourBankLedger::available()`, `remaining_minutes`, la regla `block`, el paso a agotada (agotada cuando lo que va dentro llega al total), el filtro «próximas», la renovación y las barras. Sin exceso de bloqueadas es lo mismo que total − consumo; con una bloqueada en exceso y el total ampliado después, el saldo es el real.
 - **El admin edita una entrada bloqueada** (minutos, fecha o bolsa): su exceso se recalcula una vez, como si no estuviera bloqueada, y queda entre 0 y sus minutos. Las demás bloqueadas no cambian.
 - **Proyecto archivado:** no admite bolsas nuevas ni renovaciones (como no admite tareas), y sus bolsas no salen como abiertas en la vista global (sí en «todas», como histórico).
 - **Subtareas:** no se crean bajo una tarea que se ha quedado en una bolsa cerrada o renovada; antes hay que mover la tarea a una bolsa abierta.
 - **Barras:** ámbar desde el primer umbral configurado en todas las pantallas; el color, el saldo y el exceso salen de las cifras del servidor.
 
-### D-045 · Otros ajustes de la revisión global de la Fase 1
+### D-055 · Otros ajustes de la revisión global de la Fase 1
 - **Descripción obligatoria:** el temporizador la pide al pararlo (o al iniciar otro, si el que está en marcha no la tiene) y la hoja semanal abre el diálogo de la entrada; nunca se pierde lo medido.
 - **Enlaces de las notificaciones de tareas:** `/tareas/{id}`, que abre la tarea en el proyecto que tenga al pulsar.
 - **Baja de una persona:** quien recibe sus tareas pasa a seguirlas y recibe el aviso de asignación.
@@ -354,3 +356,123 @@ En los proyectos con `billing_type = internal`, cualquier interno activo puede i
 - **Aprobaciones:** la página carga los totales de cada semana; las entradas se piden al desplegar su detalle.
 - **Páginas de error:** 403, 404, 419, 429, 500 y 503 con una página propia en español y con el tema de la app en las visitas de página completa. Las acciones dentro de una página tratan sus errores sin salir de ella.
 
+## 26/09/2026: Decisiones tomadas en autonomía (Fase 2)
+
+_Detalle y contexto en `docs/PLAN-FASE-2.md`. Las que surjan al implementar se añaden al cerrar la fase._
+
+### D-043 · Ingreso estimado **[concreta el SPEC §10]**
+- **Qué cuenta:** solo las horas facturables (`is_billable`). Los proyectos internos dan 0.
+- **Tarifa de cada entrada:** la instantánea si está aprobada o bloqueada. Si no, la vigente según la prioridad bolsa > proyecto > cliente > persona (la misma de la aprobación, D-034).
+- **Bolsas con `price_amount`:** los minutos dentro de la bolsa valen `price_amount × minutos dentro / total de la bolsa`; el exceso se valora a la tarifa de la bolsa (o la siguiente en la prioridad). Una bolsa sin `price_amount` se valora entera a tarifa.
+- **Precio cerrado:** el importe se reparte según el avance.
+  - La base es el mayor de: el presupuesto de horas, la suma de las estimaciones de las tareas raíz y lo imputado hasta hoy.
+  - El ingreso de un periodo es `importe × minutos facturables del periodo / base`, y lo acumulado nunca supera el importe.
+- **Por horas sin bolsa:** minutos facturables × tarifa.
+- **Coste:** minutos × la instantánea de coste si existe; si no, el coste por hora actual de la persona.
+- **Rentabilidad:** ingreso − coste, y el margen en %. Solo con `view-financials`.
+
+### D-044 · Quién ve cada informe **[concreta D-021 para la F2]**
+| Informe | Admin | Responsable | Gestor de proyecto | Empleado |
+|---|---|---|---|---|
+| Dirección | ✅ todo | ✅ limitado a su departamento | ❌ | ❌ |
+| Departamento | ✅ | ✅ los suyos | ❌ | ❌ |
+| Cliente | ✅ | ✅ | ✅ solo sus proyectos | ❌ |
+| Proyecto | ✅ | ✅ | ✅ los suyos | ❌ |
+| Persona | ✅ | ✅ su equipo | ❌ | ✅ solo la suya |
+| Detallado | ✅ | ✅ con `TimeEntry::visibleTo` | ✅ con `visibleTo` | ✅ solo lo suyo |
+
+- **Datos económicos** (ingreso, coste, margen, tarifas): solo con `view-financials`.
+- **Agregados sin datos por persona** (horas por proyecto, bolsa o tipo): se ven en las fichas a las que ya se tiene acceso.
+
+### D-045 · Exportación
+- **XLSX y CSV:** con **OpenSpout 5.12** (MIT), en streaming y sin cola hasta 20.000 filas. La exportación respeta los filtros y los permisos del informe.
+- **PDF de consumo de bolsa:** con **FPDF 1.9** (MIT). Usa las fuentes estándar del PDF (Helvetica), porque incrustar DM Sans exigiría convertirla con herramientas externas; la marca va en el logotipo (dibujado en vectorial o como PNG) y en los colores. Incluye:
+  - logo y nombre de la empresa,
+  - cliente, proyecto y bolsa,
+  - barra de consumo, dentro y exceso por separado,
+  - consumo por mes y listado de entradas aprobadas con fecha, persona, tarea, horas y descripción.
+  Pensado para enviárselo al cliente: solo lleva las horas aprobadas o bloqueadas, como hará el portal de la F5.
+- **Exportación para facturar:** por cliente y periodo, con el detalle de cada entrada (dentro de bolsa y exceso por separado) y sus tarifas si hay `view-financials`.
+
+### D-046 · Rendimiento
+- **Cálculo:** agregados SQL sobre `time_entries` con sus índices (fecha y persona; proyecto y fecha; bolsa y fecha), sin cargar modelos, y la capacidad con `Capacity::forRanges`.
+- **Caché:** por combinación de filtros y persona que consulta, con una versión global que se incrementa al escribir entradas, tareas, bolsas o jornadas. Así se invalida al momento sin etiquetas.
+- **Presupuesto:**
+  - menos de 1 s en el servidor con los datos de 12 meses (medido en el despliegue),
+  - un test de presupuesto de consultas por dashboard, como `Phase1PagesPerformanceTest`.
+
+### D-047 · Resumen semanal de productividad
+- **Cuándo y a quién:** los lunes a las 08:00 de Madrid, por email (cola `mail`) a cada responsable, sobre su equipo y la semana anterior. Los admins lo reciben de toda la agencia.
+- **Contenido:**
+  - días sin imputar por persona,
+  - ocupación por encima o por debajo de los umbrales,
+  - bolsas en riesgo (≥ primer umbral),
+  - tareas vencidas.
+- **Nuevos ajustes:** `occupancy_low_threshold` (70 %), `occupancy_high_threshold` (110 %) y `weekly_digest_enabled` (sí).
+
+### D-048 · Capacidad en la F2
+En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la F3 añada festivos y ausencias a `Capacity`, todos los informes los tendrán en cuenta sin más cambios.
+
+### D-078 · «Dentro de bolsa» **[concreta D-019 y D-044 para los informes]**
+- **Qué cuenta:** en todas las cifras (resúmenes, desgloses, tabla dinámica, exportaciones, PDF y la pestaña Horas del proyecto), solo los minutos de las entradas **con bolsa**, menos su exceso (`PivotReport::IN_BANK_SQL`). Las horas de proyectos sin bolsa nunca cuentan como «dentro de bolsa».
+- **Qué se corrige:** el contrato de la F2 lo calculaba como imputadas − exceso, incluyendo horas sin bolsa; se alinearon `Metrics::summary()` y `breakdown()` y el total de la pestaña Horas de la F1.
+
+### D-079 · Ocupación y comparación de un periodo en curso **[concreta el SPEC §10]**
+- **Ocupación y productividad facturable:** siempre contra la capacidad del **periodo completo**, como define el SPEC. Los dashboards muestran además la capacidad transcurrida hasta hoy, para leer el ritmo a mitad de periodo.
+- **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
+- **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 3)
+
+_Detalle y contexto en `docs/PLAN-FASE-3.md`._
+
+### D-049 · Ausencias
+- **Solicitar:** cada persona solicita las suyas (tipo, fechas, día completo o parte del día con `partial_minutes`, y notas).
+- **Aprobar o rechazar:** un responsable de su departamento o un admin (como las horas, D-020). El rechazo lleva un comentario.
+  - Las de responsables y admins **se aprueban solas**.
+  - Un admin o un responsable puede registrar una ausencia **ya aprobada** para alguien de su ámbito (una baja, por ejemplo).
+- **Cancelar:**
+  - la persona cancela las suyas solicitadas, o las aprobadas que aún no han empezado,
+  - quien aprueba puede anular una aprobada; queda en la auditoría.
+- **Validaciones:** sin solaparse con otra ausencia solicitada o aprobada de la misma persona. `partial_minutes` solo en ausencias de un día. Máximo un año por ausencia.
+- **Notificaciones** (SPEC §13), en la app y por email por la cola `mail`:
+  - «solicitada», a quien puede aprobar,
+  - «aprobada» y «rechazada», a la persona.
+- **Al imputar un día con ausencia aprobada** sale un aviso sin bloqueo (SPEC §7): nuevo aviso en `TimeEntryRules`.
+
+### D-050 · Festivos
+- **Administración:** en `/admin/festivos` (`manage-settings`) se crean, editan y borran por año.
+- **Importación:**
+  - **festivos nacionales de España del año**, calculados en local sin servicios externos (SPEC §15: nada a terceros): 1 y 6 de enero, Viernes Santo, 1 de mayo, 15 de agosto, 12 de octubre, 1 de noviembre y 6, 8 y 25 de diciembre;
+  - los autonómicos y locales se añaden a mano o importando un fichero `.ics` o un CSV (`AAAA-MM-DD;Nombre`).
+- **Alcance:** afectan a todas las personas; `scope` queda en `company`.
+
+### D-051 · Reparto de la carga (lo que hace `WorkloadPlanner`, ya probado)
+- **Qué se reparte:** el restante (estimación − imputado), a partes iguales entre los días con capacidad > 0 desde max(hoy, inicio) hasta la entrega; los minutos que sobran van a los primeros días.
+- **Casos especiales:**
+  - una tarea vencida lleva todo su restante a hoy y se marca,
+  - sin ningún día con capacidad en el rango, todo va al primer día,
+  - como mucho se calcula un año hacia delante.
+- **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
+- **Bandejas:**
+  - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
+  - «Sin asignar»: tareas por departamento, el de la bolsa o, si no, el del tipo.
+
+### D-052 · Vista «Carga» y quién la ve (D-021)
+- **Quién ve qué:**
+  - admin: todo,
+  - responsable: su departamento (y él mismo), y puede reasignar carga,
+  - el resto: solo su propia fila.
+  - Los gestores ven y reasignan las tareas de sus proyectos desde el panel, pero no ven la carga de personas de otros departamentos.
+- **Matriz personas × días (o semanas en el horizonte de 3 meses):**
+  - horizontes: semana actual, **semana que viene (por defecto)**, próximas 4 semanas y próximos 3 meses,
+  - agrupada por departamento, con totales,
+  - filtros: departamento, persona, cliente y proyecto.
+- **Semáforo de cada celda** (horas planificadas / capacidad), el de `components/charts/thresholds.ts`, siempre con icono y texto:
+  - gris: sin capacidad, con su motivo (festivo o ausencia),
+  - azul: menos del 70 %,
+  - verde: del 70 % al 100 %,
+  - ámbar: del 100 % al 120 %,
+  - rojo: más del 120 %.
+- **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
+- **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.

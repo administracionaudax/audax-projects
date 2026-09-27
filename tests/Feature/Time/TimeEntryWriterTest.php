@@ -392,7 +392,7 @@ it('al pasar el proyecto a bolsas, sus entradas anteriores se siguen corrigiendo
         ->toBe(['task_id' => ['La tarea no tiene bolsa. Asígnale una antes de imputar.']]);
 });
 
-describe('entradas de una bolsa cerrada o renovada (D-043)', function () {
+describe('entradas de una bolsa cerrada o renovada (D-053)', function () {
     beforeEach(function () {
         $this->bank = HourBank::factory()->hours(2)->create();
         $this->task = memberTask($this->employee, bank: $this->bank);

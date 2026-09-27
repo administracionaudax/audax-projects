@@ -29,6 +29,7 @@ final class GenerateAttachmentThumbnail implements ShouldQueue
 
     public function handle(AttachmentStorage $storage): void
     {
+        $storage->ensureThumbnailMemory();
         $storage->generateThumbnail($this->attachment);
     }
 }

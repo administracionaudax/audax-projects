@@ -27,6 +27,7 @@ import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
 import { index as departmentsIndex } from '@/routes/admin/departments';
+import { index as holidaysIndex } from '@/routes/admin/holidays';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
@@ -118,6 +119,13 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.holidays.title',
         description: 'admin.areas.holidays.description',
         phase: 3,
+        links: [
+            {
+                label: 'holidays.admin_link',
+                href: holidaysIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'templates',

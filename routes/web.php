@@ -36,12 +36,11 @@ Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
     Route::redirect('dashboard', '/')->name('dashboard');
 
     // Fase 1: una ruta por área (routes/app/*.php).
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'schedule', 'gantt', 'planning', 'templates'] as $area) {
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 
     // Secciones de la barra lateral que se construyen en las fases 2 a 6.
-    Route::inertia('carga', 'placeholder', ['section' => 'workload'])->name('workload.index');
     Route::inertia('chat', 'placeholder', ['section' => 'chat'])->name('chat.index');
 
     Route::inertia('admin', 'admin/index')->middleware('role:admin')->name('admin.index');

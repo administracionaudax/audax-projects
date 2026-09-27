@@ -334,6 +334,21 @@ final class AttachmentStorage
         return $limit < 0 || memory_get_usage(true) + $needed < $limit;
     }
 
+    /**
+     * Los workers de Horizon heredan el memory_limit de la CLI (128M en el servidor), que no deja
+     * sitio para el presupuesto de una miniatura grande. Se sube solo lo necesario; el tope real lo
+     * pone el MemoryLimit del cgroup de audax-horizon.service.
+     */
+    public function ensureThumbnailMemory(): void
+    {
+        $limit = $this->memoryLimit();
+        $wanted = memory_get_usage(true) + self::MAX_THUMBNAIL_MEMORY + 32 * 1024 * 1024;
+
+        if ($limit >= 0 && $limit < $wanted) {
+            ini_set('memory_limit', (string) (int) ceil($wanted / 1024 / 1024).'M');
+        }
+    }
+
     private function memoryLimit(): int
     {
         $value = trim((string) ini_get('memory_limit'));

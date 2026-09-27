@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     AtSign,
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { MyAbsencesCard } from '@/components/absences/my-absences-card';
+import type { MyAbsencesSummary } from '@/components/absences/types';
 import {
     TaskStatusBadge,
     TimesheetStatusBadge,
@@ -23,6 +25,8 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import type { Phase } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
+import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
+import type { MyIndicators } from '@/components/reports/r1-types';
 import { CapacityCell } from '@/components/time/capacity-cell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { stopTimer } from '@/components/time/timer-actions';
@@ -32,6 +36,11 @@ import {
     useElapsedSeconds,
 } from '@/components/time/use-elapsed';
 import { weekdayLongLabel } from '@/components/time/week-days';
+import {
+    MyWorkload,
+    MyWorkloadSkeleton,
+} from '@/components/workload/my-workload-card';
+import type { MyWorkloadData } from '@/components/workload/types';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -63,22 +72,6 @@ type LaterCard = {
 /** Tarjetas que llegan en otras fases (SPEC §17). */
 const LATER: LaterCard[] = [
     {
-        id: 'workload',
-        icon: CalendarClock,
-        title: 'home.cards.workload.title',
-        description: 'home.cards.workload.description',
-        empty: 'home.cards.workload.empty',
-        phase: 3,
-    },
-    {
-        id: 'indicators',
-        icon: Gauge,
-        title: 'home.cards.indicators.title',
-        description: 'home.cards.indicators.description',
-        empty: 'home.cards.indicators.empty',
-        phase: 2,
-    },
-    {
         id: 'milestones',
         icon: Milestone,
         title: 'home.cards.milestones.title',
@@ -93,14 +86,6 @@ const LATER: LaterCard[] = [
         description: 'home.cards.mentions.description',
         empty: 'home.cards.mentions.empty',
         phase: 6,
-    },
-    {
-        id: 'absences',
-        icon: CalendarOff,
-        title: 'home.cards.absences.title',
-        description: 'home.cards.absences.description',
-        empty: 'home.cards.absences.empty',
-        phase: 3,
     },
 ];
 
@@ -146,14 +131,23 @@ function PanelCard({
 
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
- * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar.
+ * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
+ * Fase 2, «Mis indicadores» del mes; en la Fase 3, «Mi carga» (prop diferida `workload`: no
+ * retrasa la primera carga) y «Mis ausencias».
  */
 export default function Home({
     tasks,
     hours,
     week,
     unlogged_days: unloggedDays,
-}: HomePageProps) {
+    indicators,
+    absences,
+    workload,
+}: HomePageProps & {
+    indicators: MyIndicators;
+    absences: MyAbsencesSummary;
+    workload?: MyWorkloadData;
+}) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
@@ -323,6 +317,21 @@ export default function Home({
                     </PanelCard>
 
                     <PanelCard
+                        id="workload"
+                        icon={CalendarClock}
+                        title={t('home.cards.workload.title')}
+                        description={t('home.cards.workload.description')}
+                        wide
+                    >
+                        <Deferred
+                            data="workload"
+                            fallback={<MyWorkloadSkeleton />}
+                        >
+                            <MyWorkload workload={workload} />
+                        </Deferred>
+                    </PanelCard>
+
+                    <PanelCard
                         id="unlogged-days"
                         icon={CalendarX}
                         title={t('home_panel.unlogged.title')}
@@ -372,6 +381,29 @@ export default function Home({
                                 ))}
                             </ul>
                         )}
+                    </PanelCard>
+
+                    <PanelCard
+                        id="indicators"
+                        icon={Gauge}
+                        title={t('home.cards.indicators.title')}
+                        description={t('home.cards.indicators.description')}
+                        wide
+                    >
+                        <R1MyIndicators
+                            indicators={indicators}
+                            userId={user.id}
+                        />
+                    </PanelCard>
+
+                    {/* Fase 3 (área de ausencias): «Mis ausencias», antes de las tarjetas de fases futuras. */}
+                    <PanelCard
+                        id="absences"
+                        icon={CalendarOff}
+                        title={t('home.cards.absences.title')}
+                        description={t('home.cards.absences.description')}
+                    >
+                        <MyAbsencesCard absences={absences} />
                     </PanelCard>
 
                     {LATER.map((card) => (

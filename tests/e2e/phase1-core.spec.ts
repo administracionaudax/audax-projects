@@ -153,7 +153,18 @@ test('bolsa de principio a fin: crearla, tarea, temporizador imputado, consumo y
             .getByRole('combobox', { name: 'Bolsa de la nueva tarea' })
             .first()
             .click();
-        await page.getByRole('option', { name: bankName }).click();
+        // Con el teclado (búsqueda por texto del Select): con muchas bolsas, la opción puede
+        // quedar fuera de la pantalla y el Select no desplaza su lista con la rueda.
+        const option = page.getByRole('option', { name: bankName });
+        await expect(option).toBeAttached();
+        await page.keyboard.type(bankName);
+        await expect(option).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(
+            page
+                .getByRole('combobox', { name: 'Bolsa de la nueva tarea' })
+                .first(),
+        ).toContainText(bankName);
         const input = page.locator('[data-test="quick-add-input"]').first();
         await input.fill(taskTitle);
         await input.press('Enter');

@@ -202,7 +202,7 @@ export type TimeEntry = {
 
 /** App\Domain\Time\TimeEntryWarning (avisos no bloqueantes al imputar). */
 export type TimeEntryWarning = {
-    code: 'task_completed' | 'over_capacity' | 'overage';
+    code: 'task_completed' | 'over_capacity' | 'overage' | 'absence';
     message: string;
 };
 

@@ -25,6 +25,9 @@ beforeEach(function () {
         'time_entry_description_required' => true,
         'max_attachment_mb' => 20,
         'default_work_minutes' => [450, 450, 450, 450, 360, 0, 0],
+        'weekly_digest_enabled' => false,
+        'occupancy_low_threshold' => 60,
+        'occupancy_high_threshold' => 120,
     ];
 });
 
