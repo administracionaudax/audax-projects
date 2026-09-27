@@ -76,6 +76,7 @@ import {
     bucketTitle,
     currencyTicks,
     EVOLUTION_SERIES,
+    isFutureBucket,
     R1HoursTrendChart,
 } from '@/components/reports/r1-trend-chart';
 import type {
@@ -350,7 +351,7 @@ describe('gráficas de R1', () => {
         expect(percentTicks(0.4)).toEqual([0, 0.25, 0.5, 0.75, 1]);
         expect(percentTicks(1.3)).toEqual([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5]);
         expect(shortLabel('P1001 · Rediseño de la web corporativa')).toBe(
-            'P1001 · Rediseño de…',
+            'P1001 · Rediseño…',
         );
         expect(norm(formatBarValue('percent', 0.85))).toBe('85 %');
         expect(formatBarValue('minutes', 90)).toBe('1:30');
@@ -374,12 +375,13 @@ describe('gráficas de R1', () => {
         ]);
     });
 
-    it('la evolución tiene vista de tabla con la ocupación de cada periodo', async () => {
+    it('la evolución tiene vista de tabla con la ocupación de cada periodo y no inventa horas futuras', async () => {
         const user = userEvent.setup();
         render(
             <R1HoursTrendChart
                 title="Horas imputadas, facturables y capacidad"
                 bucket="semana"
+                today="2026-09-25"
                 points={[
                     {
                         bucket: '2026-09-14',
@@ -395,6 +397,13 @@ describe('gráficas de R1', () => {
                         capacity_minutes: 3600,
                         income: null,
                     },
+                    {
+                        bucket: '2026-09-28',
+                        logged_minutes: 0,
+                        billable_minutes: 0,
+                        capacity_minutes: 3600,
+                        income: null,
+                    },
                 ]}
             />,
         );
@@ -405,6 +414,10 @@ describe('gráficas de R1', () => {
         expect(norm(rows[2].textContent)).toBe(
             'Semana del 21/09/202623:4022:4060:0039,4 %',
         );
+        // La semana siguiente aún no ha empezado: sin horas ni ocupación, con su capacidad.
+        expect(norm(rows[3].textContent)).toBe('Semana del 28/09/2026——60:00—');
+        expect(isFutureBucket('2026-09-28', '2026-09-25')).toBe(true);
+        expect(isFutureBucket('2026-09-21', '2026-09-25')).toBe(false);
     });
 
     it('las barras de miembros van en % con su tabla accesible', async () => {

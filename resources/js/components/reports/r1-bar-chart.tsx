@@ -34,7 +34,8 @@ export type BarRow = {
 };
 
 const ROW_HEIGHT = 32;
-const LABEL_CHARS = 20;
+/** Caracteres que caben en el eje (128 px a 12 px); el nombre entero va en el tooltip y la tabla. */
+const LABEL_CHARS = 17;
 
 export function formatBarValue(format: BarFormat, value: number): string {
     return format === 'percent'

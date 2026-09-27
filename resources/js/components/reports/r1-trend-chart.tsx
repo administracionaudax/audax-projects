@@ -30,6 +30,7 @@ import {
     LOCALE,
 } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { todayInMadrid } from '@/lib/week';
 import type { SeriesPoint } from '@/types';
 
 export type TrendBucket = 'semana' | 'mes';
@@ -112,7 +113,19 @@ function formatEuroTick(value: number): string {
         : `${formatNumber(value, 0)} €`;
 }
 
-type Row = Record<string, number | string> & { id: string; label: string };
+/**
+ * ¿El periodo empieza después de hoy? Entonces aún no puede tener horas ni ingreso: la línea se
+ * corta ahí (null) en lugar de caer a cero, y la tabla dice «—». La capacidad sí se dibuja: es la
+ * jornada prevista.
+ */
+export function isFutureBucket(bucket: string, today: string): boolean {
+    return bucket > today;
+}
+
+type Row = Record<string, number | string | null> & {
+    id: string;
+    label: string;
+};
 
 function TrendLines({
     rows,
@@ -207,7 +220,8 @@ function TrendLines({
 
 /**
  * Evolución de las horas (SPEC §10.1): imputadas, capacidad (discontinua) y facturables por semana
- * o por mes, con la vista de tabla accesible (y la ocupación de cada periodo).
+ * o por mes, con la vista de tabla accesible (y la ocupación de cada periodo). Las horas se cortan
+ * en el periodo en curso; la capacidad sigue hasta el final.
  */
 export function R1HoursTrendChart({
     points,
@@ -215,20 +229,27 @@ export function R1HoursTrendChart({
     title,
     description,
     height = 280,
+    today = todayInMadrid(),
 }: {
     points: SeriesPoint[];
     bucket: TrendBucket;
     title: string;
     description?: string;
     height?: number;
+    /** Hoy en Madrid (AAAA-MM-DD): los periodos posteriores no llevan horas. */
+    today?: string;
 }) {
-    const rows: Row[] = points.map((point) => ({
-        id: point.bucket,
-        label: bucketLabel(bucket, point.bucket),
-        logged: point.logged_minutes,
-        capacity: point.capacity_minutes,
-        billable: point.billable_minutes,
-    }));
+    const rows: Row[] = points.map((point) => {
+        const future = isFutureBucket(point.bucket, today);
+
+        return {
+            id: point.bucket,
+            label: bucketLabel(bucket, point.bucket),
+            logged: future ? null : point.logged_minutes,
+            capacity: point.capacity_minutes,
+            billable: future ? null : point.billable_minutes,
+        };
+    });
     const max = Math.max(
         0,
         ...points.flatMap((p) => [
@@ -276,19 +297,25 @@ export function R1HoursTrendChart({
                         numeric: true,
                     },
                 ],
-                rows: points.map((p) => ({
-                    id: p.bucket,
-                    period: bucketTitle(bucket, p.bucket),
-                    logged: formatMinutes(p.logged_minutes),
-                    billable: formatMinutes(p.billable_minutes),
-                    capacity: formatMinutes(p.capacity_minutes),
-                    occupancy:
-                        p.capacity_minutes > 0
-                            ? formatPercent(
-                                  p.logged_minutes / p.capacity_minutes,
-                              )
-                            : '—',
-                })),
+                rows: points.map((p) => {
+                    const future = isFutureBucket(p.bucket, today);
+
+                    return {
+                        id: p.bucket,
+                        period: bucketTitle(bucket, p.bucket),
+                        logged: future ? '—' : formatMinutes(p.logged_minutes),
+                        billable: future
+                            ? '—'
+                            : formatMinutes(p.billable_minutes),
+                        capacity: formatMinutes(p.capacity_minutes),
+                        occupancy:
+                            !future && p.capacity_minutes > 0
+                                ? formatPercent(
+                                      p.logged_minutes / p.capacity_minutes,
+                                  )
+                                : '—',
+                    };
+                }),
             }}
         >
             <TrendLines
@@ -314,6 +341,7 @@ export function R1IncomeTrendChart({
     total,
     description,
     height = 220,
+    today = todayInMadrid(),
 }: {
     points: SeriesPoint[];
     bucket: TrendBucket;
@@ -322,12 +350,14 @@ export function R1IncomeTrendChart({
     total: string | null;
     description?: string;
     height?: number;
+    /** Hoy en Madrid (AAAA-MM-DD): los periodos posteriores no llevan ingreso. */
+    today?: string;
 }) {
     const values = points.map((p) => Number(p.income ?? 0));
     const rows: Row[] = points.map((point, index) => ({
         id: point.bucket,
         label: bucketLabel(bucket, point.bucket),
-        income: values[index],
+        income: isFutureBucket(point.bucket, today) ? null : values[index],
     }));
 
     return (
@@ -351,7 +381,9 @@ export function R1IncomeTrendChart({
                 rows: points.map((p) => ({
                     id: p.bucket,
                     period: bucketTitle(bucket, p.bucket),
-                    income: formatCurrency(p.income ?? '0'),
+                    income: isFutureBucket(p.bucket, today)
+                        ? '—'
+                        : formatCurrency(p.income ?? '0'),
                 })),
             }}
         >
