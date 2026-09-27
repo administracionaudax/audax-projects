@@ -14,7 +14,6 @@ return [
         'duration_too_long' => 'Un audio puede durar como máximo :max.',
         'duration_mismatch' => 'La duración del audio no coincide con el archivo. Vuelve a grabarlo.',
         'parent' => 'El mensaje al que respondes no es válido.',
-        'conversation_hidden' => 'No puedes buscar en esa conversación.',
     ],
     'attributes' => [
         'body' => 'mensaje',
@@ -25,6 +24,7 @@ return [
     ],
     'admin' => [
         'retried' => 'Transcripción relanzada.',
+        'failed_again' => 'Se ha relanzado, pero ha vuelto a fallar: :error',
         'retried_many' => '{0} No había transcripciones fallidas que relanzar.|{1} Se ha relanzado 1 transcripción fallida.|[2,*] Se han relanzado :count transcripciones fallidas.',
         'already_done' => 'Esa transcripción ya está hecha.',
         'busy' => 'Esa transcripción se está procesando ahora mismo. Espera a que termine o falle.',

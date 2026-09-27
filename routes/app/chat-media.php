@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\TranscriptionController;
 use App\Http\Controllers\Chat\Media\AudioController;
 use App\Http\Controllers\Chat\Media\ChatSearchController;
 use App\Http\Controllers\Chat\Media\MessageMediaController;
@@ -36,3 +37,14 @@ Route::get('chat/audios/{attachment}', AudioController::class)
 Route::get('chat/transcripciones', TranscriptionStatusController::class)
     ->middleware('throttle:120,1')
     ->name('chat.media.transcriptions');
+
+Route::prefix('admin/transcripciones')->name('admin.transcriptions.')->middleware('role:admin')->group(function () {
+    Route::get('/', [TranscriptionController::class, 'index'])->name('index');
+    Route::post('relanzar-fallidas', [TranscriptionController::class, 'retryFailed'])
+        ->middleware('throttle:10,1')
+        ->name('retry-failed');
+    Route::post('{transcription}/relanzar', [TranscriptionController::class, 'retry'])
+        ->whereNumber('transcription')
+        ->middleware('throttle:60,1')
+        ->name('retry');
+});
