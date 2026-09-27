@@ -11,6 +11,7 @@ import type {
     UserSummary,
 } from './domain';
 import type { HourBankCard } from './hour-banks';
+import type { TemplateOption } from './templates';
 
 /** App\Http\Resources\Projects\Paginated: una página de resultados. */
 export type ProjectsPaginated<T> = {
@@ -76,6 +77,11 @@ export type ProjectCreateProps = {
         status: ProjectStatus;
         billing_type: BillingType;
     };
+    /** «Desde plantilla» (Fase 4, D-058): plantillas activas. */
+    templates?: TemplateOption[];
+    /** Para la primera bolsa de un proyecto de bolsas creado desde plantilla. */
+    departments?: Option[];
+    overageDefault?: 'allow' | 'block';
 };
 
 /** App\Domain\Projects\ProjectSummary. */

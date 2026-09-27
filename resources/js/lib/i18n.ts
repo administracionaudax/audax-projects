@@ -24,6 +24,7 @@ import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
+import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
 
 const messages = {
@@ -37,6 +38,7 @@ const messages = {
     ...time,
     ...notifications,
     ...reports,
+    ...templates,
 };
 
 export type TranslationKey = keyof typeof messages;

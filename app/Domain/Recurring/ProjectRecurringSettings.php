@@ -40,7 +40,7 @@ final class ProjectRecurringSettings
         $recent = Task::query()
             ->where('project_id', $project->id)
             ->whereNotNull('recurring_task_rule_id')
-            ->with(['status:id,name,category', 'assignee:id,name'])
+            ->with(['status:id,name,color,category', 'assignee:id,name'])
             ->orderByDesc('occurrence_date')
             ->orderByDesc('id')
             ->limit(self::RECENT)
@@ -53,7 +53,7 @@ final class ProjectRecurringSettings
                 'title' => $task->title,
                 'occurrence_date' => $task->occurrence_date?->toDateString(),
                 'due_date' => $task->due_date?->toDateString(),
-                'status' => ['id' => $task->status->id, 'name' => $task->status->name, 'category' => $task->status->category->value],
+                'status' => ['id' => $task->status->id, 'name' => $task->status->name, 'color' => $task->status->color, 'category' => $task->status->category->value],
                 'assignee' => $task->assignee !== null ? ['id' => $task->assignee->id, 'name' => $task->assignee->name] : null,
             ])->values()->all(),
             'options' => $this->options($project),
