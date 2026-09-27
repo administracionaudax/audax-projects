@@ -39,9 +39,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends qemu-user curl 
 COPY --from=build /src/samples/jfk.wav /tmp/jfk.wav
 ARG TINY_URL=https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
 RUN curl -fsSL -o /tmp/tiny.bin "${TINY_URL}" \
- && qemu-x86_64 -cpu qemu64,-ssse3,-sse4.1,-sse4.2,-popcnt,-avx,-avx2 /usr/local/bin/whisper-cli \
-      -m /tmp/tiny.bin -f /tmp/jfk.wav -l en -t 2 -nt 2>/dev/null | tee /tmp/out.txt \
- && grep -qi "country" /tmp/out.txt \
+ && { qemu-x86_64 -cpu qemu64,-ssse3,-sse4.1,-sse4.2,-popcnt,-avx,-avx2 /usr/local/bin/whisper-cli \
+      -m /tmp/tiny.bin -f /tmp/jfk.wav -l en -t 2 -nt > /tmp/out.txt 2> /tmp/err.txt \
+      || { echo "whisper-cli falló ($?)"; tail -40 /tmp/err.txt; exit 1; }; } \
+ && cat /tmp/out.txt && { grep -qi "country" /tmp/out.txt || { tail -40 /tmp/err.txt; exit 1; }; } \
  && ffmpeg -hide_banner -loglevel error -f lavfi -i "sine=frequency=440:duration=2" -c:a libopus /tmp/tone.webm \
  && ffmpeg -hide_banner -loglevel error -i /tmp/tone.webm -ar 16000 -ac 1 -c:a pcm_s16le /tmp/tone.wav \
  && echo "OK: whisper.cpp sin AVX y ffmpeg con opus/webm"
