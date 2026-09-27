@@ -5,6 +5,10 @@
  *   - Precarga /offline.html (página estática, sin datos).
  *   - Cache-first SOLO para los recursos versionados de Vite (/build/assets/*) y las fuentes.
  *   - Navegaciones: siempre a la red; si no hay red, se muestra /offline.html.
+ *   - Avisos del navegador (Web Push, Fase 6, D-072): pinta los avisos que envía el servidor
+ *     (llegan cifrados; solo título, texto, enlace y etiqueta) y, al pulsarlos, abre la
+ *     conversación en una pestaña de la app. Si el navegador renueva la suscripción, la vuelve
+ *     a registrar en el servidor.
  *
  * Qué NO hace nunca:
  *   - Guardar HTML de la app, respuestas de Inertia (cabecera X-Inertia), JSON, /buscar, /health
@@ -14,7 +18,7 @@
  * Interruptor de emergencia: sustituir este fichero por uno que llame a self.registration.unregister().
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const PREFIX = 'audax-';
 const PRECACHE = `${PREFIX}precache-${VERSION}`;
 const ASSETS = `${PREFIX}assets-${VERSION}`;
@@ -162,5 +166,149 @@ async function trim(cache) {
 
     for (const key of keys.slice(0, Math.max(keys.length - MAX_ASSETS, 0))) {
         await cache.delete(key);
+    }
+}
+
+/* ------------------------------------------------------------------------------------------ *
+ * Avisos del navegador (Web Push, D-072)
+ * ------------------------------------------------------------------------------------------ */
+
+const PUSH_DEFAULT_URL = '/chat';
+const PUSH_SUBSCRIPTIONS_URL = '/avisos-navegador/suscripciones';
+
+/** Solo rutas relativas de la propia app (nunca otra web: redirección abierta). */
+function pushAppUrl(value) {
+    if (
+        typeof value !== 'string' ||
+        !value.startsWith('/') ||
+        value.startsWith('//') ||
+        value.includes('\\')
+    ) {
+        return PUSH_DEFAULT_URL;
+    }
+
+    return value;
+}
+
+function pushText(value, max) {
+    return typeof value === 'string' ? value.slice(0, max) : '';
+}
+
+function readPushData(event) {
+    if (!event.data) {
+        return {};
+    }
+
+    try {
+        const data = event.data.json();
+
+        return data && typeof data === 'object' ? data : {};
+    } catch {
+        return { body: event.data.text() };
+    }
+}
+
+self.addEventListener('push', (event) => {
+    const data = readPushData(event);
+    const tag = pushText(data.tag, 64);
+    const options = {
+        body: pushText(data.body, 240),
+        icon: '/icons/icon-192.png',
+        lang: 'es',
+        dir: 'ltr',
+        data: { url: pushAppUrl(data.url) },
+    };
+
+    // La etiqueta agrupa los avisos de una misma conversación: el nuevo sustituye al anterior.
+    if (tag) {
+        options.tag = tag;
+        options.renotify = true;
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(
+            pushText(data.title, 120) || 'Audax Proyectos',
+            options,
+        ),
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const data = event.notification.data || {};
+    const url = new URL(pushAppUrl(data.url), self.location.origin).href;
+
+    event.waitUntil(openFromNotification(url));
+});
+
+/** Reutiliza una pestaña de la app si hay alguna abierta; si no, abre una nueva. */
+async function openFromNotification(url) {
+    const windows = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+    });
+    const client = windows.find(
+        (candidate) => new URL(candidate.url).origin === self.location.origin,
+    );
+
+    if (client) {
+        try {
+            const focused = await client.focus();
+            const navigated = await (focused || client).navigate(url);
+
+            if (navigated) {
+                return;
+            }
+        } catch {
+            // Pestaña sin control del service worker: se abre otra.
+        }
+    }
+
+    await self.clients.openWindow(url);
+}
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+    event.waitUntil(renewPushSubscription(event));
+});
+
+/** El navegador ha cambiado la suscripción: se registra la nueva con la sesión de la app. */
+async function renewPushSubscription(event) {
+    const previous = event.oldSubscription || null;
+    let next = event.newSubscription || null;
+
+    if (!next && previous && previous.options) {
+        next = await self.registration.pushManager.subscribe(previous.options);
+    }
+
+    if (!next) {
+        return;
+    }
+
+    const json = next.toJSON();
+    const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+    };
+
+    await fetch(PUSH_SUBSCRIPTIONS_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: JSON.stringify({
+            endpoint: json.endpoint,
+            keys: json.keys,
+            content_encoding: 'aes128gcm',
+        }),
+    }).catch(() => undefined);
+
+    if (previous && previous.endpoint !== json.endpoint) {
+        await fetch(PUSH_SUBSCRIPTIONS_URL, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers,
+            body: JSON.stringify({ endpoint: previous.endpoint }),
+        }).catch(() => undefined);
     }
 }
