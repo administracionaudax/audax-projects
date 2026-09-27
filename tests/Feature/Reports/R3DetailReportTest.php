@@ -11,6 +11,7 @@ use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -225,6 +226,57 @@ it('nombra cada tarea con el código de su proyecto (muchas se llaman igual), en
         ->streamedContent());
 
     expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total']);
+});
+
+it('las horas de una subtarea suman en su tarea padre (SPEC §6), en la página y en la exportación (BIZ-04)', function () {
+    $s = $this->s;
+    // Subtarea de «Maquetación» (TM) con 45 min de Ana, y otra borrada con 15: siguen sumando en el padre.
+    $subtask = Task::factory()->create(['project_id' => $s->tm->id, 'parent_task_id' => $s->tmTask->id, 'title' => 'Versión móvil']);
+    $deleted = Task::factory()->create(['project_id' => $s->tm->id, 'parent_task_id' => $s->tmTask->id, 'title' => 'Borrador']);
+    TimeEntry::factory()->forTask($subtask)->on('2026-09-24')->minutes(45)->create(['user_id' => $s->ana->id]);
+    TimeEntry::factory()->forTask($deleted)->on('2026-09-24')->minutes(15)->create(['user_id' => $s->ana->id]);
+    $deleted->delete();
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows.1', ['key' => (string) $s->tmTask->id, 'name' => 'TM · Maquetación'])
+            // 420 de la tarea + 45 + 15 de sus subtareas; ninguna subtarea sale como fila.
+            ->where('pivot.row_totals.'.$s->tmTask->id, 480)
+            ->where('pivot.cells.'.$s->tmTask->id.'.'.$s->ana->id, 480)
+            ->missing('pivot.row_totals.'.$subtask->id)
+            ->missing('pivot.row_totals.'.$deleted->id)
+            ->where('pivot.total', 1480));
+
+    $rows = ($this->readXlsx)($this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id], 'formato' => 'xlsx']))
+        ->streamedContent());
+
+    expect(array_column($rows, 0))->toContain('TM · Maquetación')
+        ->and(array_column($rows, 0))->not->toContain('TM · Versión móvil');
+});
+
+it('la dimensión tarea agrupa por la tarea padre con la misma expresión en SQLite y en PostgreSQL', function () {
+    $expected = 'COALESCE(report_tasks.parent_task_id, time_entries.task_id)';
+
+    expect(Dimension::Task->expression())->toBe($expected);
+
+    if (DB::connection()->getDriverName() === 'pgsql') {
+        return; // En la CI y el servidor, los tests ya corren en PostgreSQL.
+    }
+
+    // En SQLite, con una conexión de PostgreSQL por defecto (sin conectar: el PDO se abre al
+    // consultar), la misma expresión.
+    $default = config('database.default');
+    config(['database.default' => 'pgsql']);
+
+    try {
+        expect(DB::connection()->getDriverName())->toBe('pgsql')
+            ->and(Dimension::Task->expression())->toBe($expected);
+    } finally {
+        config(['database.default' => $default]);
+        DB::purge('pgsql');
+    }
 });
 
 it('con semanas en las filas, van en orden de fecha (en la página y en la exportación)', function () {
