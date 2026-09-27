@@ -36,6 +36,7 @@ final class RecurringTaskGenerator
      */
     public function generate(CarbonImmutable $today): int
     {
+        $today = self::day($today);
         $created = 0;
 
         $rules = RecurringTaskRule::query()
@@ -78,6 +79,7 @@ final class RecurringTaskGenerator
      */
     public function generateFor(RecurringTaskRule $rule, CarbonImmutable $today, bool $startFromToday = true): ?Task
     {
+        $today = self::day($today);
         $rule->loadMissing('project');
 
         if (! $rule->is_active || $rule->project->status === ProjectStatus::Archived) {
@@ -97,6 +99,16 @@ final class RecurringTaskGenerator
         }
 
         return $task;
+    }
+
+    /**
+     * El día como fecha a medianoche en la zona de la app, como las fechas de las reglas
+     * (starts_on…): LocalTime::today() es la medianoche de Madrid, que en UTC aún es el día
+     * anterior, y compararla con las fechas de la regla dejaría fuera la de hoy.
+     */
+    public static function day(CarbonImmutable $date): CarbonImmutable
+    {
+        return CarbonImmutable::parse($date->toDateString());
     }
 
     /**

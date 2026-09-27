@@ -53,6 +53,7 @@ final class RecurrenceDescriber
             return null;
         }
 
+        $today = RecurringTaskGenerator::day($today);
         $from = $rule->last_generated_on !== null && $rule->last_generated_on->toDateString() >= $today->toDateString()
             ? $today->addDay()
             : $today;
