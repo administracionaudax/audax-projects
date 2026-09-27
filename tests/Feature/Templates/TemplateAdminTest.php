@@ -272,7 +272,57 @@ it('rechaza ficheros que no son una plantilla válida con un error comprensible'
         '{"tasks": [{"ref": "a", "title": "A"}], "dependencies": [{"from_ref": "a"}]}',
         'El fichero no tiene una plantilla válida: dependencia 1: El campo tarea que depende es obligatorio.',
     ],
+    // «__proto__» como clave de un objeto de JavaScript no se guarda y rompía el editor.
+    'una referencia «__proto__»' => [
+        '{"tasks": [{"ref": "__proto__", "title": "A"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: El campo referencia solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+    ],
+    'una subtarea de «__proto__»' => [
+        '{"tasks": [{"ref": "a", "title": "A"}, {"ref": "b", "parent_ref": "__proto__", "title": "B"}]}',
+        'El fichero no tiene una plantilla válida: tarea 2: El campo tarea de la que cuelga solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+    ],
+    'una dependencia de «__proto__»' => [
+        '{"tasks": [{"ref": "a", "title": "A"}], "dependencies": [{"from_ref": "__proto__", "to_ref": "a"}]}',
+        'El fichero no tiene una plantilla válida: dependencia 1: El campo tarea de la que depende solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+    ],
+    'una dependencia hacia «__proto__»' => [
+        '{"tasks": [{"ref": "a", "title": "A"}], "dependencies": [{"from_ref": "a", "to_ref": "__proto__"}]}',
+        'El fichero no tiene una plantilla válida: dependencia 1: El campo tarea que depende solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+    ],
+    'una referencia con espacios dentro' => [
+        '{"tasks": [{"ref": "fase 1", "title": "A"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: El campo referencia solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+    ],
 ]);
+
+it('al importar, las referencias admiten letras con acento, números, puntos, guiones y guiones bajos', function () {
+    $file = UploadedFile::fake()->createWithContent('referencias.json', (string) json_encode([
+        'tasks' => [
+            ['ref' => 'diseño', 'title' => 'Diseño'],
+            ['ref' => '1.1', 'parent_ref' => 'diseño', 'title' => 'Home'],
+            ['ref' => 'fase-2', 'title' => 'Desarrollo'],
+            ['ref' => 'constructor', 'title' => 'Pruebas'],
+            ['ref' => 'go_live', 'title' => 'Publicación', 'is_milestone' => true],
+        ],
+        'dependencies' => [['from_ref' => 'diseño', 'to_ref' => 'fase-2'], ['from_ref' => 'fase-2', 'to_ref' => 'constructor'], ['from_ref' => 'constructor', 'to_ref' => 'go_live']],
+    ]));
+
+    $this->post('/admin/plantillas/importar', ['file' => $file])->assertSessionHasNoErrors();
+
+    $structure = ProjectTemplate::query()->sole()->structure;
+    expect(array_column($structure['tasks'], 'ref'))->toBe(['diseño', '1.1', 'fase-2', 'constructor', 'go_live'])
+        ->and($structure['tasks'][1]['parent_ref'])->toBe('diseño')
+        ->and($structure['dependencies'])->toHaveCount(3);
+});
+
+it('el editor tampoco guarda referencias fuera del formato', function () {
+    $this->post('/admin/plantillas', ($this->payload)(['structure' => [
+        'tasks' => [['ref' => '__proto__', 'title' => 'A'], ['ref' => 'b', 'parent_ref' => '__proto__', 'title' => 'B']],
+        'dependencies' => [['from_ref' => '__proto__', 'to_ref' => 'b']],
+    ]]))->assertSessionHasErrors(['structure.tasks.0.ref', 'structure.tasks.1.parent_ref', 'structure.dependencies.0.from_ref']);
+
+    expect(ProjectTemplate::query()->count())->toBe(0);
+});
 
 it('al importar, las referencias con espacios alrededor son las mismas que sin ellos', function () {
     $file = UploadedFile::fake()->createWithContent('espacios.json', (string) json_encode([

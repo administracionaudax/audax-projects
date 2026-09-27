@@ -27,8 +27,9 @@ import { parentOptions, reachableFrom } from './template-editor-state';
  */
 export const EditorRowsContext = createContext<{
     rows: EditorRow[];
-    labels: Record<string, string>;
-}>({ rows: [], labels: {} });
+    /** Número de cada fila, por referencia (rowLabels). */
+    labels: ReadonlyMap<string, string>;
+}>({ rows: [], labels: new Map() });
 
 /** «2.1. Maquetación»: número y título de una fila, como se ve en el editor. */
 export function rowName(row: Pick<EditorRow, 'title'>, label: string): string {
@@ -152,7 +153,7 @@ function ParentOptions({
                     {parentOptions(rows, rowRef).map((option) => {
                         const optionName = rowName(
                             option,
-                            labels[option.ref] ?? '',
+                            labels.get(option.ref) ?? '',
                         );
 
                         return (
@@ -287,7 +288,7 @@ function DependencyOptions({
                                     cycle && 'text-muted-foreground',
                                 )}
                             >
-                                {rowName(other, labels[other.ref] ?? '')}
+                                {rowName(other, labels.get(other.ref) ?? '')}
                                 {cycle ? (
                                     <span className="block text-xs">
                                         {t('templates.editor.would_cycle')}

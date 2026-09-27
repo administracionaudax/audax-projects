@@ -53,6 +53,7 @@ return [
         'capture_span' => 'No se puede guardar como plantilla: sus fechas van del :from (:from_name) al :to (:to_name), más de :max días. Revisa esas fechas y vuelve a intentarlo.',
         'capture_span_project' => 'inicio del proyecto',
         'capture_span_task' => '«:title»',
+        'ref_format' => 'El campo :attribute solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
         'rule_assignee' => 'Elige a un miembro activo del proyecto.',
         'rule_bank_required' => 'En un proyecto de bolsas, elige la bolsa de las tareas.',
         'rule_bank_invalid' => 'Elige una bolsa abierta de este proyecto.',

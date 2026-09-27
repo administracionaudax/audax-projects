@@ -3,6 +3,8 @@
  * de primer nivel seguida de sus subtareas), con sus dependencias «depende de…» en la propia fila.
  * Las reglas son las de ProjectTemplateService::normalize(): referencias únicas, subtareas de un
  * solo nivel, dependencias entre tareas que existen y sin ciclos.
+ * Lo que va por referencia se guarda en Map o Set, nunca como claves de un objeto: una referencia
+ * «__proto__» (de un JSON importado) no se guarda en un objeto y devuelve Object.prototype.
  */
 import type { TemplateStructure, TemplateTask } from '@/types/templates';
 
@@ -23,11 +25,14 @@ export type RowField =
     | 'depends_on'
     | 'ref';
 
+/** Errores de una fila, por campo. */
+export type RowErrors = Partial<Record<RowField, string>>;
+
 export type EditorErrors = {
     /** Errores de toda la estructura (p. ej. «entre 1 y 500 tareas»). */
     general: string[];
-    /** Por referencia de fila y campo. */
-    rows: Record<string, Partial<Record<RowField, string>>>;
+    /** Por referencia de fila. */
+    rows: ReadonlyMap<string, RowErrors>;
 };
 
 export function isSubtask(row: Pick<TemplateTask, 'parent_ref'>): boolean {
@@ -208,20 +213,23 @@ export function parentOptions(rows: EditorRow[], ref: string): EditorRow[] {
     return rows.filter((row) => row.ref !== ref && !isSubtask(row));
 }
 
-/** Número de cada fila tal y como se ve: «1», «2», «2.1»… */
-export function rowLabels(rows: EditorRow[]): Record<string, string> {
-    const labels: Record<string, string> = {};
+/** Número de cada fila tal y como se ve («1», «2», «2.1»…), por referencia. */
+export function rowLabels(rows: EditorRow[]): Map<string, string> {
+    const labels = new Map<string, string>();
+    const childCount = new Map<string, number>();
     let root = 0;
-    const childCount: Record<string, number> = {};
 
     for (const row of rows) {
-        if (isSubtask(row) && labels[row.parent_ref as string]) {
-            const parent = row.parent_ref as string;
-            childCount[parent] = (childCount[parent] ?? 0) + 1;
-            labels[row.ref] = `${labels[parent]}.${childCount[parent]}`;
+        const parent = isSubtask(row) ? (row.parent_ref as string) : null;
+        const parentLabel = parent !== null ? labels.get(parent) : undefined;
+
+        if (parent !== null && parentLabel !== undefined) {
+            const count = (childCount.get(parent) ?? 0) + 1;
+            childCount.set(parent, count);
+            labels.set(row.ref, `${parentLabel}.${count}`);
         } else {
             root++;
-            labels[row.ref] = String(root);
+            labels.set(row.ref, String(root));
         }
     }
 
@@ -298,7 +306,7 @@ export function rowsMeta(rows: EditorRow[]): Map<string, RowMeta> {
         }
 
         meta.set(row.ref, {
-            label: labels[row.ref] ?? '',
+            label: labels.get(row.ref) ?? '',
             canMoveUp: index > 0,
             canMoveDown: index < count - 1,
             children: siblings.get(row.ref)?.length ?? 0,
@@ -570,7 +578,8 @@ export function mapErrors(
     errors: Record<string, string | undefined>,
     rows: EditorRow[],
 ): EditorErrors {
-    const result: EditorErrors = { general: [], rows: {} };
+    const general: string[] = [];
+    const byRow = new Map<string, RowErrors>();
 
     for (const [key, message] of Object.entries(errors)) {
         if (!message || !key.startsWith('structure')) {
@@ -581,14 +590,14 @@ export function mapErrors(
         const row = match ? rows[Number(match[1])] : undefined;
 
         if (match && row) {
-            result.rows[row.ref] = {
-                ...result.rows[row.ref],
+            byRow.set(row.ref, {
+                ...byRow.get(row.ref),
                 [match[2] as RowField]: message,
-            };
-        } else if (!result.general.includes(message)) {
-            result.general.push(message);
+            });
+        } else if (!general.includes(message)) {
+            general.push(message);
         }
     }
 
-    return result;
+    return { general, rows: byRow };
 }

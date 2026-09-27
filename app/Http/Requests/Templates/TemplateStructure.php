@@ -21,6 +21,14 @@ final class TemplateStructure
     /** Límite de días del inicio relativo y de la duración (unos diez años). */
     public const int MAX_DAYS = ProjectTemplateService::MAX_DAYS;
 
+    /**
+     * Formato de las referencias (ref, parent_ref, from_ref y to_ref): letras, números, puntos,
+     * guiones y guiones bajos, empezando por una letra o un número («a», «t12», «diseño», «1.1»).
+     * Fuera quedan, por ejemplo, «__proto__» (como clave de un objeto de JavaScript no se guarda)
+     * y los espacios. El editor, además, guarda por referencia en Map, no en objetos.
+     */
+    public const string REF_PATTERN = '/^[\pL\pN][\pL\pN_.-]*\z/u';
+
     /** Dependencias como mucho (la plantilla más grande con varias por tarea). */
     public const int MAX_DEPENDENCIES = 5000;
 
@@ -36,8 +44,8 @@ final class TemplateStructure
             'structure' => ['required', 'array'],
             'structure.tasks' => ['required', 'array', 'min:1', 'max:'.ProjectTemplateService::MAX_TASKS],
             'structure.tasks.*' => ['required', 'array'],
-            'structure.tasks.*.ref' => ['required', 'string', 'max:40', 'distinct'],
-            'structure.tasks.*.parent_ref' => ['nullable', 'string', 'max:40'],
+            'structure.tasks.*.ref' => ['required', 'string', 'max:40', 'distinct', 'regex:'.self::REF_PATTERN],
+            'structure.tasks.*.parent_ref' => ['nullable', 'string', 'max:40', 'regex:'.self::REF_PATTERN],
             'structure.tasks.*.title' => ['required', 'string', 'max:255'],
             'structure.tasks.*.task_type_id' => ['nullable', 'integer'],
             'structure.tasks.*.priority' => ['nullable', Rule::enum(TaskPriority::class)],
@@ -48,8 +56,8 @@ final class TemplateStructure
             'structure.tasks.*.duration_days' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_DAYS],
             'structure.dependencies' => ['nullable', 'array', 'max:'.self::MAX_DEPENDENCIES],
             'structure.dependencies.*' => ['required', 'array'],
-            'structure.dependencies.*.from_ref' => ['required', 'string', 'max:40'],
-            'structure.dependencies.*.to_ref' => ['required', 'string', 'max:40'],
+            'structure.dependencies.*.from_ref' => ['required', 'string', 'max:40', 'regex:'.self::REF_PATTERN],
+            'structure.dependencies.*.to_ref' => ['required', 'string', 'max:40', 'regex:'.self::REF_PATTERN],
         ];
     }
 
@@ -62,8 +70,14 @@ final class TemplateStructure
         $offset = self::text('templates.errors.offset_range', ['max' => self::MAX_DAYS]);
         $duration = self::text('templates.errors.duration_range', ['max' => self::MAX_DAYS]);
         $count = self::text('templates.errors.tasks_count', ['max' => ProjectTemplateService::MAX_TASKS]);
+        // Con :attribute: «El campo tarea de la que cuelga solo puede llevar letras…».
+        $refFormat = self::text('templates.errors.ref_format');
 
         return [
+            'structure.tasks.*.ref.regex' => $refFormat,
+            'structure.tasks.*.parent_ref.regex' => $refFormat,
+            'structure.dependencies.*.from_ref.regex' => $refFormat,
+            'structure.dependencies.*.to_ref.regex' => $refFormat,
             'structure.required' => $count,
             'structure.tasks.required' => $count,
             'structure.tasks.min' => $count,

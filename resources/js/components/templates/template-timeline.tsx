@@ -32,8 +32,8 @@ export const TemplateTimeline = memo(function TemplateTimeline({
     labels,
 }: {
     rows: EditorRow[];
-    /** Número de cada fila en el editor («1», «1.1»…), por referencia. */
-    labels: Record<string, string>;
+    /** Número de cada fila en el editor («1», «1.1»…), por referencia (rowLabels). */
+    labels: ReadonlyMap<string, string>;
 }) {
     const summaryId = useId();
     const days = Math.max(totalDays(rows), 1);
@@ -145,7 +145,7 @@ export const TemplateTimeline = memo(function TemplateTimeline({
                                                 'pl-5 text-muted-foreground',
                                         )}
                                     >
-                                        {labels[row.ref]}{' '}
+                                        {labels.get(row.ref)}{' '}
                                         {row.title.trim() ||
                                             t('templates.editor.untitled')}
                                     </div>

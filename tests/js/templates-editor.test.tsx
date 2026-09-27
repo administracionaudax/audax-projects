@@ -13,7 +13,9 @@ import {
     mapErrors,
     moveRow,
     removeRow,
+    rowLabels,
     rowsFromStructure,
+    rowsMeta,
     setParent,
     structureFromRows,
     toggleDependency,
@@ -152,6 +154,49 @@ const structure: TemplateStructure = {
     ],
 };
 
+/**
+ * Referencias que son nombres de JavaScript. Como claves de un objeto, «__proto__» no se guarda y
+ * devuelve Object.prototype: el número de la fila era un objeto y React no podía pintarlo.
+ */
+const jsNames: TemplateStructure = {
+    tasks: [
+        {
+            ref: '__proto__',
+            parent_ref: null,
+            title: 'Diseño',
+            task_type_id: null,
+            priority: 'normal',
+            estimated_minutes: null,
+            is_milestone: false,
+            start_offset_days: 0,
+            duration_days: 3,
+        },
+        {
+            ref: 'constructor',
+            parent_ref: '__proto__',
+            title: 'Home',
+            task_type_id: null,
+            priority: 'normal',
+            estimated_minutes: null,
+            is_milestone: false,
+            start_offset_days: 0,
+            duration_days: 2,
+        },
+        {
+            ref: 'toString',
+            parent_ref: null,
+            title: 'Publicación',
+            task_type_id: null,
+            priority: 'normal',
+            estimated_minutes: null,
+            is_milestone: true,
+            start_offset_days: 5,
+            duration_days: 1,
+        },
+    ],
+    dependencies: [{ from_ref: '__proto__', to_ref: 'toString' }],
+};
+
 const refs = (rows: EditorRow[]) => rows.map((row) => row.ref);
 
 const byTest = (name: string) =>
@@ -282,13 +327,47 @@ describe('estado del editor', () => {
             rows,
         );
 
-        expect(errors.rows.home?.title).toBe('Escribe el título de la tarea.');
-        expect(errors.rows.go?.depends_on).toBe(
+        expect(errors.rows.get('home')?.title).toBe(
+            'Escribe el título de la tarea.',
+        );
+        expect(errors.rows.get('go')?.depends_on).toBe(
             'Estas dependencias forman un ciclo.',
         );
         expect(errors.general).toEqual([
             'La plantilla necesita entre 1 y 500 tareas.',
         ]);
+    });
+
+    it('numera las filas y reparte los errores aunque una referencia sea «__proto__» o «constructor»', () => {
+        const rows = rowsFromStructure(jsNames);
+
+        expect([...rowLabels(rows)]).toEqual([
+            ['__proto__', '1'],
+            ['constructor', '1.1'],
+            ['toString', '2'],
+        ]);
+
+        const meta = rowsMeta(rows);
+        expect(meta.get('__proto__')).toMatchObject({
+            label: '1',
+            children: 1,
+            parent: null,
+        });
+        expect(meta.get('constructor')).toMatchObject({
+            label: '1.1',
+            parent: '__proto__',
+        });
+        expect(meta.get('toString')?.label).toBe('2');
+
+        const errors = mapErrors(
+            { 'structure.tasks.0.title': 'Escribe el título de la tarea.' },
+            rows,
+        );
+        expect(errors.rows.get('__proto__')?.title).toBe(
+            'Escribe el título de la tarea.',
+        );
+        expect(errors.rows.get('constructor')).toBeUndefined();
+        expect(errors.rows.get('toString')).toBeUndefined();
     });
 });
 
@@ -595,5 +674,37 @@ describe('página del editor', SLOW, () => {
                 region.getAttribute('aria-describedby') ?? '',
             )?.textContent,
         ).toBe('Tareas: 1 · Hitos: 0 · Duración (días): 1');
+    });
+
+    it('abre la tabla y la vista previa de una plantilla con referencias como «__proto__»', () => {
+        render(
+            <TemplateEdit
+                {...props({
+                    template: {
+                        id: 7,
+                        name: 'Web',
+                        description: null,
+                        is_active: true,
+                        structure: jsNames,
+                    },
+                })}
+            />,
+        );
+
+        const title = (label: string) =>
+            (screen.getByLabelText(label) as HTMLInputElement).value;
+        expect(title('Título de la tarea 1')).toBe('Diseño');
+        expect(title('Título de la tarea 1.1')).toBe('Home');
+        expect(title('Título de la tarea 2')).toBe('Publicación');
+        expect(
+            screen.getByRole('combobox', {
+                name: 'De qué tarea es subtarea «1.1. Home»: 1. Diseño',
+            }),
+        ).toBeTruthy();
+
+        const timeline = byTest('template-timeline')[0].textContent ?? '';
+        expect(timeline).toContain('1 Diseño');
+        expect(timeline).toContain('1.1 Home');
+        expect(timeline).toContain('2 Publicación');
     });
 });

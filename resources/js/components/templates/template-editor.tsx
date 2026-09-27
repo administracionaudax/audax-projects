@@ -19,7 +19,11 @@ import { cn } from '@/lib/utils';
 import type { TaskPriority } from '@/types';
 import type { TemplateTypeOption } from '@/types/templates';
 import { IntegerInput } from './integer-input';
-import type { EditorErrors, EditorRow } from './template-editor-state';
+import type {
+    EditorErrors,
+    EditorRow,
+    RowErrors,
+} from './template-editor-state';
 import {
     addRow,
     addSubtask,
@@ -59,7 +63,7 @@ type RowActions = {
 };
 
 /** Sin errores: el mismo objeto siempre, para no romper la memoización de las filas. */
-const NO_ERRORS: EditorErrors['rows'][string] = {};
+const NO_ERRORS: RowErrors = {};
 
 /**
  * Editor de la estructura de una plantilla (D-058): tabla editable con una fila por tarea
@@ -247,8 +251,9 @@ export function TemplateEditor({
                                                 parent
                                                     ? rowName(
                                                           parent,
-                                                          labels[parent.ref] ??
-                                                              '',
+                                                          labels.get(
+                                                              parent.ref,
+                                                          ) ?? '',
                                                       )
                                                     : null
                                             }
@@ -256,14 +261,14 @@ export function TemplateEditor({
                                                 info?.conflict
                                                     ? rowName(
                                                           info.conflict,
-                                                          labels[
-                                                              info.conflict.ref
-                                                          ] ?? '',
+                                                          labels.get(
+                                                              info.conflict.ref,
+                                                          ) ?? '',
                                                       )
                                                     : null
                                             }
                                             errors={
-                                                errors.rows[row.ref] ??
+                                                errors.rows.get(row.ref) ??
                                                 NO_ERRORS
                                             }
                                             types={types}
@@ -330,7 +335,7 @@ const EditorTableRow = memo(function EditorTableRow({
     parentName: string | null;
     /** Predecesora que acaba cuando esta ya ha empezado (D-057). */
     conflictName: string | null;
-    errors: EditorErrors['rows'][string];
+    errors: RowErrors;
     types: TemplateTypeOption[];
     priorities: TaskPriority[];
     maxDays: number;
