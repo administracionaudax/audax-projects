@@ -118,13 +118,15 @@ export type ChipMoveHandler = (
  * - se arrastra a otro día (ratón o pulsación larga en táctil),
  * - con el teclado, las flechas eligen el día nuevo (← → un día, ↑ ↓ una semana), Enter lo
  *   confirma y Escape lo cancela; sin nada elegido, Enter abre la tarea.
- * Mover pasa siempre por reprogramar con propuesta (D-057), conservando la duración.
+ * Mover pasa siempre por reprogramar con propuesta (D-057), conservando la duración. Mientras
+ * hay otro cambio de día en curso (`locked`), no se arrastra y las flechas solo lo avisan.
  */
 export function CalendarChip({
     task,
     today,
     dragId,
     canEdit,
+    locked = false,
     draggable = true,
     showDates = false,
     helpId,
@@ -137,6 +139,8 @@ export function CalendarChip({
     /** Id único para el arrastre (la misma tarea puede estar en la rejilla y en otra lista). */
     dragId: string;
     canEdit: boolean;
+    /** Hay otro cambio de día en curso: no se puede mover hasta que termine. */
+    locked?: boolean;
     draggable?: boolean;
     /** Enseña las fechas y el nombre del estado (vista semana y lista «Sin fecha»). */
     showDates?: boolean;
@@ -151,7 +155,7 @@ export function CalendarChip({
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: dragId,
         data: { task },
-        disabled: !canEdit || !draggable,
+        disabled: !canEdit || !draggable || locked,
         attributes: { roleDescription: t('planning.chip.role') },
     });
     const base = task.due_date ?? today;
@@ -185,7 +189,12 @@ export function CalendarChip({
 
         if (event.key in steps) {
             event.preventDefault();
-            choose(offset + steps[event.key]);
+
+            if (locked) {
+                onAnnounce(t('planning.keyboard.busy'));
+            } else {
+                choose(offset + steps[event.key]);
+            }
 
             return;
         }
@@ -230,7 +239,7 @@ export function CalendarChip({
                 overdue && 'border-l-2 border-l-danger',
                 offset !== 0 && 'ring-2 ring-ring',
                 isDragging && 'opacity-40',
-                canEdit && draggable && 'cursor-grab',
+                canEdit && draggable && !locked && 'cursor-grab',
                 FOCUS_RING,
             )}
             data-test="calendar-chip"

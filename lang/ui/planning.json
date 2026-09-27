@@ -30,6 +30,8 @@
     "planning.keyboard.back": "«:task» vuelve a su día.",
     "planning.keyboard.cancelled": "Se cancela el cambio de día de «:task».",
     "planning.keyboard.moving": "Moviendo «:task» al :date…",
+    "planning.keyboard.busy": "Espera a que termine el cambio de día que está en curso.",
+    "planning.keyboard.moved_outside": "«:task» se ha movido al :date, fuera del periodo que estás viendo.",
     "planning.drag.start": "Has cogido «:task».",
     "planning.drag.over": "«:task» sobre el :date.",
     "planning.drag.outside": "«:task» fuera del calendario.",

@@ -424,6 +424,9 @@ describe('arrastrar a otro día', () => {
             start_date: '2026-10-16',
             due_date: '2026-10-20',
         });
+        // Termina de guardarse (un cambio de día a la vez) antes de soltar el hito.
+        await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+        await act(async () => mocks.save.mock.calls[0][2].onFinish?.());
 
         await act(async () => {
             mocks.dragEnd?.({
@@ -589,6 +592,182 @@ describe('conflictos con las sucesoras (D-057)', () => {
         await waitFor(() =>
             expect(document.activeElement?.getAttribute('data-task-id')).toBe(
                 '10',
+            ),
+        );
+    });
+});
+
+describe('un cambio de día a la vez', () => {
+    const proposals: ShiftProposal[] = [
+        {
+            task_id: 40,
+            title: 'Maquetación',
+            start_date: '2026-10-12',
+            due_date: '2026-10-16',
+            new_start_date: '2026-10-21',
+            new_due_date: '2026-10-25',
+            shift_days: 9,
+            predecessor_id: 10,
+        },
+    ];
+
+    const drop = async (task: CalendarTask, day: string) => {
+        await act(async () => {
+            mocks.dragEnd?.({
+                active: { id: `grid:${task.id}`, data: { current: { task } } },
+                over: { id: `day:${day}` },
+            });
+        });
+    };
+
+    it('mientras hay uno en curso, otro arrastre o las flechas no hacen nada y el diálogo del primero sigue', async () => {
+        const user = userEvent.setup();
+        let answerFirst: (value: ShiftProposal[]) => void = () => {};
+        mocks.preview.mockImplementationOnce(
+            () =>
+                new Promise<ShiftProposal[]>((resolve) => {
+                    answerFirst = resolve;
+                }),
+        );
+        const calendar = data();
+        renderCalendar(calendar);
+        const live = () =>
+            document.querySelector('[data-test="calendar-live"]')?.textContent;
+
+        await drop(calendar.tasks[0], '2026-10-20');
+        // Llega otro soltado antes de la propuesta del primero: se ignora y se avisa.
+        await drop(calendar.tasks[1], '2026-10-22');
+
+        expect(mocks.preview).toHaveBeenCalledTimes(1);
+        expect(live()).toBe(
+            'Espera a que termine el cambio de día que está en curso.',
+        );
+        expect(
+            document.querySelector('[data-date="2026-10-14"]')?.textContent,
+        ).toContain('Entrega');
+        // Ni arrastre ni «Asignar fecha» ni flechas mientras tanto.
+        expect(chip('Entrega').className).not.toContain('cursor-grab');
+        expect(
+            screen
+                .getByRole('button', { name: 'Asignar fecha a «Sin fecha»' })
+                .hasAttribute('disabled'),
+        ).toBe(true);
+        chip('Revisión').focus();
+        await user.keyboard('{ArrowRight}');
+        expect(
+            document.querySelector('[data-test="calendar-chip-target"]'),
+        ).toBeNull();
+
+        // La propuesta del primero trae sucesoras: su diálogo se abre y un arrastre no lo toca.
+        mocks.preview.mockResolvedValue([]);
+        await act(async () => answerFirst(proposals));
+        const dialog = await screen.findByRole('dialog');
+        expect(dialog.textContent).toContain('Si mueves «Diseño»');
+        await drop(calendar.tasks[1], '2026-10-22');
+        expect(mocks.preview).toHaveBeenCalledTimes(1);
+        expect(mocks.save).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog')).toBe(dialog);
+
+        // Al decidir, ya se puede mover otra.
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Cancelar' }),
+        );
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        await drop(calendar.tasks[1], '2026-10-22');
+        expect(mocks.preview).toHaveBeenCalledTimes(2);
+        expect(mocks.preview).toHaveBeenLastCalledWith(11, {
+            start_date: null,
+            due_date: '2026-10-22',
+        });
+    });
+
+    it('mientras se guarda el primero, un segundo movimiento no cierra nada al terminar', async () => {
+        mocks.preview.mockResolvedValue([]);
+        const calendar = data();
+        renderCalendar(calendar);
+
+        await drop(calendar.tasks[0], '2026-10-20');
+        await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+        await drop(calendar.tasks[1], '2026-10-22');
+
+        expect(mocks.preview).toHaveBeenCalledTimes(1);
+
+        // Termina el primero: vuelve a admitir movimientos.
+        await act(async () => mocks.save.mock.calls[0][2].onFinish?.());
+        await drop(calendar.tasks[1], '2026-10-22');
+        expect(mocks.preview).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('el foco tras mover con el teclado', () => {
+    it('si el día nuevo queda fuera del mes, el foco va al calendario y se dice dónde ha ido', async () => {
+        const user = userEvent.setup();
+        mocks.preview.mockResolvedValue([]);
+        const onOpen = vi.fn();
+        const onNavigate = vi.fn();
+        const calendar = data();
+        const view = (current: TaskCalendarData) => (
+            <TaskLookupsProvider value={lookups()}>
+                <TaskCalendar
+                    calendar={current}
+                    onOpen={onOpen}
+                    onNavigate={onNavigate}
+                />
+            </TaskLookupsProvider>
+        );
+        const { rerender } = render(view(calendar));
+
+        chip('Diseño').focus();
+        // Del 09/10 al 06/11: cuatro semanas más tarde, fuera de la rejilla de octubre.
+        await user.keyboard(
+            '{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}',
+        );
+        await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+
+        const region = screen.getByRole('region', { name: 'octubre de 2026' });
+        expect(document.activeElement).toBe(region);
+
+        // Se guarda: la recarga ya no la trae (vence en noviembre) y termina el movimiento.
+        rerender(view({ ...calendar, tasks: calendar.tasks.slice(1) }));
+        await act(async () => mocks.save.mock.calls[0][2].onFinish?.());
+
+        expect(document.activeElement).toBe(region);
+        expect(
+            document.querySelector('[data-test="calendar-live"]')?.textContent,
+        ).toBe(
+            '«Diseño» se ha movido al 06/11/2026, fuera del periodo que estás viendo.',
+        );
+    });
+
+    it('si en el día nuevo queda tras «+N más», el foco va a ese botón', async () => {
+        const user = userEvent.setup();
+        mocks.preview.mockReturnValue(new Promise<ShiftProposal[]>(() => {}));
+        const full = Array.from({ length: 3 }, (_, index) =>
+            calendarTask(50 + index, `Llena ${index + 1}`, null, '2026-10-21'),
+        );
+        const many = Array.from({ length: 5 }, (_, index) =>
+            calendarTask(30 + index, `Tarea ${index + 1}`, null, '2026-10-20'),
+        );
+        renderCalendar(data({ tasks: [...full, ...many] }));
+
+        await user.click(
+            screen.getByRole('button', {
+                name: '+2 más: ver las tareas del 20/10/2026',
+            }),
+        );
+        const popover = await screen.findByRole('dialog');
+        within(popover)
+            .getByRole('button', { name: /^Tarea 5\./ })
+            .focus();
+        await user.keyboard('{ArrowRight}{Enter}');
+
+        expect(mocks.preview).toHaveBeenCalledWith(34, {
+            start_date: null,
+            due_date: '2026-10-21',
+        });
+        await waitFor(() =>
+            expect(document.activeElement?.getAttribute('aria-label')).toBe(
+                '+1 más: ver las tareas del 21/10/2026',
             ),
         );
     });

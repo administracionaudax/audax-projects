@@ -264,7 +264,7 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                     id={ids.due}
                     value={task.due_date}
                     onChange={changeDue}
-                    disabled={disabled || reschedule.moving !== null}
+                    disabled={disabled || reschedule.busy}
                 />
             </div>
             <EstimateField key={task.id} panel={panel} disabled={disabled} />

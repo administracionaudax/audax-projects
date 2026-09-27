@@ -66,9 +66,14 @@ export const MONTH_VISIBLE = 3;
 
 const DAY = 'day:';
 
+/** Tarea movida (con su día nuevo), para devolverle el foco y anunciar dónde ha ido. */
+type MovedTask = { id: number; title: string; due: string };
+
 type ChipContext = {
     today: string;
     canEdit: boolean;
+    /** Hay un cambio de día en curso: no se puede mover otra tarea hasta que termine. */
+    locked: boolean;
     helpId: string;
     onOpen: (taskId: number) => void;
     onMove: ChipMoveHandler;
@@ -167,6 +172,9 @@ function MoreTasks({
     context: ChipContext;
 }) {
     const [open, setOpen] = useState(false);
+    // Tras mover una tarea desde aquí, el foco lo lleva el calendario (a la tarea en su día
+    // nuevo): el popover no lo devuelve a «+N más».
+    const moved = useRef(false);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -186,7 +194,16 @@ function MoreTasks({
                     {t('planning.calendar.more', { count: hidden })}
                 </button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-2" align="start">
+            <PopoverContent
+                className="w-72 p-2"
+                align="start"
+                onCloseAutoFocus={(event) => {
+                    if (moved.current) {
+                        moved.current = false;
+                        event.preventDefault();
+                    }
+                }}
+            >
                 <p className="mb-2 px-1 text-sm font-medium capitalize">
                     {dayLabel(date, context.today)}
                 </p>
@@ -199,14 +216,16 @@ function MoreTasks({
                                 draggable={false}
                                 today={context.today}
                                 canEdit={context.canEdit}
+                                locked={context.locked}
                                 helpId={context.helpId}
                                 onOpen={(taskId) => {
                                     setOpen(false);
                                     context.onOpen(taskId);
                                 }}
-                                onMove={(moved, newDue, keepFocus) => {
+                                onMove={(task, newDue, keepFocus) => {
+                                    moved.current = true;
                                     setOpen(false);
-                                    context.onMove(moved, newDue, keepFocus);
+                                    context.onMove(task, newDue, keepFocus);
                                 }}
                                 onAnnounce={context.onAnnounce}
                             />
@@ -571,6 +590,7 @@ function UndatedList({
                                 <DatePicker
                                     value={null}
                                     clearable={false}
+                                    disabled={context.locked}
                                     placeholder={t('planning.undated.assign')}
                                     aria-label={t(
                                         'planning.undated.assign_label',
@@ -664,34 +684,67 @@ export function TaskCalendar({
     const undated = all.filter((task) => task.due_date === null);
     const byDay = tasksByDueDate(dated);
 
+    const regionRef = useRef<HTMLDivElement>(null);
     // Tarea que debe conservar el foco al moverla con el teclado: al cambiar de día su botón se
     // vuelve a crear en otra celda (y otra vez si se cancela), así que se le devuelve el foco
     // cuando no hay un diálogo abierto; se olvida al terminar el movimiento.
-    const keepFocusOn = useRef<number | null>(null);
+    const keepFocusOn = useRef<MovedTask | null>(null);
     // Última tarea movida: al cerrar el diálogo de conflictos, el foco vuelve a ella.
-    const lastMoved = useRef<number | null>(null);
+    const lastMoved = useRef<MovedTask | null>(null);
 
-    const focusChip = (taskId: number) => {
+    /**
+     * Lleva el foco a la tarea movida: a su botón; si su día está en la rejilla pero la tarea
+     * queda tras «+N más», a ese botón; y si su día queda fuera del periodo, a la región del
+     * calendario (nunca se pierde en la página, WCAG 2.4.3).
+     */
+    const focusTask = (moved: MovedTask): 'chip' | 'more' | 'outside' => {
         const chip = document.querySelector<HTMLElement>(
-            `[data-test="calendar-chip"][data-task-id="${taskId}"]`,
+            `[data-test="calendar-chip"][data-task-id="${moved.id}"]`,
         );
 
-        if (chip && document.activeElement !== chip) {
-            chip.focus();
+        if (chip) {
+            if (document.activeElement !== chip) {
+                chip.focus();
+            }
+
+            return 'chip';
         }
+
+        const due =
+            all.find((task) => task.id === moved.id)?.due_date ?? moved.due;
+        const more = regionRef.current?.querySelector<HTMLElement>(
+            `[data-date="${due}"] [data-test="calendar-more"]`,
+        );
+        const fallback = more ?? regionRef.current;
+
+        if (fallback && document.activeElement !== fallback) {
+            fallback.focus();
+        }
+
+        return more ? 'more' : 'outside';
     };
 
     useEffect(() => {
-        const taskId = keepFocusOn.current;
+        const moved = keepFocusOn.current;
 
-        if (taskId === null || reschedule.pending !== null) {
+        if (moved === null || reschedule.pending !== null) {
             return;
         }
 
-        focusChip(taskId);
+        const where = focusTask(moved);
 
         if (reschedule.moving === null) {
             keepFocusOn.current = null;
+
+            // Guardada en un día que no se ve: se dice dónde ha ido.
+            if (where === 'outside') {
+                setAnnouncement(
+                    t('planning.keyboard.moved_outside', {
+                        task: moved.title,
+                        date: formatDate(moved.due),
+                    }),
+                );
+            }
         }
     });
 
@@ -700,8 +753,16 @@ export function TaskCalendar({
             return;
         }
 
-        keepFocusOn.current = keepFocus ? task.id : null;
-        lastMoved.current = task.id;
+        // Un cambio de día a la vez: el segundo no puede cerrar ni sustituir el diálogo del primero.
+        if (reschedule.isBusy()) {
+            setAnnouncement(t('planning.keyboard.busy'));
+
+            return;
+        }
+
+        const moved = { id: task.id, title: task.title, due: newDue };
+        keepFocusOn.current = keepFocus ? moved : null;
+        lastMoved.current = moved;
         const dates = movedDates(task, newDue);
         setAnnouncement(
             t('planning.keyboard.moving', {
@@ -715,6 +776,7 @@ export function TaskCalendar({
     const context: ChipContext = {
         today: calendar.today,
         canEdit,
+        locked: reschedule.busy,
         helpId,
         onOpen,
         onMove: move,
@@ -907,6 +969,7 @@ export function TaskCalendar({
             >
                 <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
                     <div
+                        ref={regionRef}
                         className={cn(
                             'min-w-0 overflow-x-auto rounded-[3px] transition-opacity',
                             loading && 'opacity-60',
@@ -965,7 +1028,7 @@ export function TaskCalendar({
                     event.preventDefault();
 
                     if (lastMoved.current !== null) {
-                        focusChip(lastMoved.current);
+                        focusTask(lastMoved.current);
                     }
                 }}
             />
