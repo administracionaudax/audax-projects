@@ -27,6 +27,25 @@ import type { AdminSettingsProps } from '@/types';
 /** Máximo de umbrales de alerta de las bolsas. */
 const MAX_THRESHOLDS = 5;
 
+/** Duraciones máximas de los audios del chat que se ofrecen (segundos; Fase 6). */
+const AUDIO_DURATIONS = [30, 60, 120, 180, 300, 600];
+
+function audioDurationLabel(seconds: number): string {
+    if (seconds < 60) {
+        return t('chat_media.settings.seconds_option', { seconds });
+    }
+
+    if (seconds % 60 !== 0) {
+        return t('chat_media.settings.clock_option', {
+            clock: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`,
+        });
+    }
+
+    return seconds === 60
+        ? t('chat_media.settings.minute_option')
+        : t('chat_media.settings.minutes_option', { minutes: seconds / 60 });
+}
+
 type SettingsForm = {
     company_name: string;
     require_2fa: boolean;
@@ -39,6 +58,7 @@ type SettingsForm = {
     time_entry_description_required: boolean;
     max_attachment_mb: string;
     default_work_minutes: (number | null)[];
+    max_audio_seconds: string;
 };
 
 function Section({
@@ -121,7 +141,13 @@ export default function AdminSettings({
             settings.time_entry_description_required,
         max_attachment_mb: String(settings.max_attachment_mb),
         default_work_minutes: settings.default_work_minutes,
+        max_audio_seconds: String(settings.max_audio_seconds),
     });
+    const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)
+        ? AUDIO_DURATIONS
+        : [...AUDIO_DURATIONS, settings.max_audio_seconds].sort(
+              (a, b) => a - b,
+          );
     const errors = form.errors as Record<string, string | undefined>;
     const thresholds = form.data.hour_bank_alert_thresholds;
     const invalidWeek = form.data.default_work_minutes.some(
@@ -148,6 +174,7 @@ export default function AdminSettings({
                 (value) => Number(value),
             ),
             max_attachment_mb: Number(data.max_attachment_mb),
+            max_audio_seconds: Number(data.max_audio_seconds),
         }));
         form.put(update.url(), { preserveScroll: true });
     };
@@ -561,6 +588,47 @@ export default function AdminSettings({
                                 )}
                             </p>
                         ) : null}
+                    </Section>
+
+                    <Section
+                        title={t('chat_media.settings.title')}
+                        description={t('chat_media.settings.description')}
+                    >
+                        <Field
+                            id={`${id}-audio`}
+                            label={t('chat_media.settings.max_audio')}
+                            help={t('chat_media.settings.max_audio_help')}
+                            error={errors.max_audio_seconds}
+                            className="max-w-md"
+                        >
+                            <NativeSelect
+                                id={`${id}-audio`}
+                                className="w-48"
+                                value={form.data.max_audio_seconds}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'max_audio_seconds',
+                                        event.target.value,
+                                    )
+                                }
+                                aria-invalid={
+                                    errors.max_audio_seconds ? true : undefined
+                                }
+                                aria-describedby={describedBy(`${id}-audio`, {
+                                    help: true,
+                                    error: errors.max_audio_seconds,
+                                })}
+                            >
+                                {audioDurations.map((seconds) => (
+                                    <option
+                                        key={seconds}
+                                        value={String(seconds)}
+                                    >
+                                        {audioDurationLabel(seconds)}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </Field>
                     </Section>
 
                     {/* La confirmación llega como aviso (toast) desde el servidor. */}
