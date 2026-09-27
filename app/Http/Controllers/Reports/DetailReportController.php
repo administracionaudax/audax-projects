@@ -248,7 +248,9 @@ class DetailReportController extends Controller
 
     /**
      * La tabla tal cual: una fila por grupo con sus celdas y su subtotal, y la fila de totales por
-     * columna. Horas en decimal (1,5 = 1 h 30 min); las celdas sin horas, vacías.
+     * columna. Horas en decimal (1,5 = 1 h 30 min); las celdas sin horas, vacías. Los subtotales y
+     * los totales van además en minutos enteros (una columna y una fila «Total (minutos)», D-081):
+     * las horas redondeadas a 2 decimales no siempre suman su total, los minutos sí.
      *
      * @param  array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
      *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
@@ -260,6 +262,7 @@ class DetailReportController extends Controller
             self::text('reports.r3.detail.corner', ['rows' => $rows->label(), 'columns' => $columns->label()]),
             ...array_map(fn (array $column): string => self::headerLabel($columns, $column), $result['columns']),
             self::text('reports.r3.detail.total'),
+            self::text('reports.r3.detail.total_minutes'),
         ];
 
         $lines = [];
@@ -271,15 +274,23 @@ class DetailReportController extends Controller
                 $line[] = $minutes === null ? null : TableExporter::hours($minutes);
             }
             $line[] = TableExporter::hours($result['row_totals'][$rowKey] ?? 0);
+            $line[] = $result['row_totals'][$rowKey] ?? 0;
             $lines[] = $line;
         }
 
         $totals = [self::text('reports.r3.detail.total')];
+        $totalMinutes = [self::text('reports.r3.detail.total_minutes')];
         foreach ($result['columns'] as $column) {
             $totals[] = TableExporter::hours($result['column_totals'][$column['key'] ?? ''] ?? 0);
+            $totalMinutes[] = $result['column_totals'][$column['key'] ?? ''] ?? 0;
         }
         $totals[] = TableExporter::hours($result['total']);
+        $totals[] = $result['total'];
+        $totalMinutes[] = null;
+        $totalMinutes[] = $result['total'];
         $lines[] = $totals;
+        // D-081: los totales por columna también en minutos (enteros), que suman exacto el total.
+        $lines[] = $totalMinutes;
 
         if ($result['truncated']) {
             $lines[] = [self::truncationNotice($result, $columns)];

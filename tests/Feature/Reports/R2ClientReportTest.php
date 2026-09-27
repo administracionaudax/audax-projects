@@ -209,11 +209,13 @@ test('exporta el resumen por proyecto a XLSX con importes y totales (admin)', fu
 
     $rows = ($this->read)($response->streamedContent(), 'xlsx');
 
-    expect($rows[0])->toBe(['Proyecto', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
-        ->and($rows[1])->toBe(['NAN-WEB · Web corporativa', 13.17, 13.17, 10, 3.17, 1196.67, 330, 866.67])
+    expect($rows[0])->toBe(['Proyecto', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)',
+        'Minutos imputados', 'Minutos facturables', 'Minutos dentro de bolsa', 'Minutos en exceso'])
+        ->and($rows[1])->toBe(['NAN-WEB · Web corporativa', 13.17, 13.17, 10, 3.17, 1196.67, 330, 866.67, 790, 790, 600, 190])
         // NAN-CAMP no tiene bolsas: «dentro de bolsa» vacío.
-        ->and($rows[2])->toBe(['NAN-CAMP · Campaña otoño', 2.5, 2, '', 0, 116, 60, 56])
-        ->and($rows[3])->toBe(['Total', 15.67, 15.17, 10, 3.17, 1312.67, 390, 922.67])
+        ->and($rows[2])->toBe(['NAN-CAMP · Campaña otoño', 2.5, 2, '', 0, 116, 60, 56, 150, 120, '', 0])
+        // Los totales, los del resumen (INT-04); en minutos, la suma exacta de las filas (D-081).
+        ->and($rows[3])->toBe(['Total', 15.67, 15.17, 10, 3.17, 1312.67, 390, 922.67, 940, 910, 600, 190])
         ->and($rows)->toHaveCount(4);
 });
 
@@ -221,8 +223,9 @@ test('la exportación de un responsable no lleva datos económicos; también por
     $s = $this->s;
 
     $rows = ($this->read)($this->actingAs($s->raul)->get(($this->url)(['formato' => 'csv']))->assertOk()->streamedContent(), 'csv');
-    expect($rows[0])->toBe(['Proyecto', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso'])
-        ->and($rows[1])->toBe(['NAN-WEB · Web corporativa', '13,17', '13,17', '10,00', '3,17']);
+    expect($rows[0])->toBe(['Proyecto', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso',
+        'Minutos imputados', 'Minutos facturables', 'Minutos dentro de bolsa', 'Minutos en exceso'])
+        ->and($rows[1])->toBe(['NAN-WEB · Web corporativa', '13,17', '13,17', '10,00', '3,17', '790', '790', '600', '190']);
 
     $months = ($this->read)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'csv', 'tabla' => 'meses']))->streamedContent(), 'csv');
     expect($months)->toBe([

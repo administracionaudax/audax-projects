@@ -99,6 +99,8 @@ class BillingReportController extends Controller
         if ($financials) {
             array_push($headers, $c('rate'), $c('amount'), $c('basis'));
         }
+        // D-081: al final, los minutos (enteros) de las columnas de horas, que suman exacto su total.
+        array_push($headers, $c('minutes'), $c('in_bank_minutes'), $c('overage_minutes'));
 
         return $exporter->download(
             self::text('reports.r2.billing.export_name', ['client' => $client->name]),
@@ -112,6 +114,8 @@ class BillingReportController extends Controller
      * Una fila por entrada y una de totales al final. El total del importe sale de las mismas
      * entradas que se exportan (la suma de sus importes, que es su total canónico redondeado: con
      * los mismos datos, el de la página) y sus importes en céntimos suman exactamente ese total.
+     * Las horas van en decimal para leerlas y, al final, en minutos enteros, que suman exactamente
+     * los totales (D-081: las horas redondeadas a 2 decimales no siempre suman su total).
      *
      * @return Generator<int, array<int, string|int|float|bool|null>>
      */
@@ -145,14 +149,16 @@ class BillingReportController extends Controller
                 $labels['status.'.$entry['status']->value] ??= $entry['status']->label(),
             ];
 
-            if ($financials && $valuation !== null) {
+            if ($financials) {
                 $amount = bcadd($amount, $line ?? '0', 2);
                 array_push($row,
-                    TableExporter::money($valuation['rate']),
+                    TableExporter::money($valuation['rate'] ?? null),
                     TableExporter::money($line),
-                    $labels['basis.'.$valuation['basis']] ??= self::text('reports.r2.billing.basis.'.$valuation['basis']),
+                    $valuation === null ? null : ($labels['basis.'.$valuation['basis']] ??= self::text('reports.r2.billing.basis.'.$valuation['basis'])),
                 );
             }
+
+            array_push($row, $entry['minutes'], $inside ? $entry['minutes'] - $entry['overage_minutes'] : null, $inside ? $entry['overage_minutes'] : null);
 
             yield $row;
         }
@@ -161,6 +167,7 @@ class BillingReportController extends Controller
         if ($financials) {
             array_push($totals, null, TableExporter::money($amount), null);
         }
+        array_push($totals, $minutes, $inBank, $overage);
 
         yield $totals;
     }

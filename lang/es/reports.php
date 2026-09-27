@@ -36,6 +36,11 @@ return [
                 'remaining' => 'Saldo restante',
                 'period_in' => 'Dentro de la bolsa en el periodo',
                 'period_overage' => 'Exceso en el periodo',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'logged_minutes' => 'Minutos imputados',
+                'billable_minutes' => 'Minutos facturables',
+                'in_bank_minutes' => 'Minutos dentro de bolsa',
+                'overage_minutes' => 'Minutos en exceso',
             ],
         ],
 
@@ -59,6 +64,9 @@ return [
                 'overage' => 'Horas en exceso',
                 'income' => 'Ingreso estimado (€)',
                 'cost' => 'Coste (€)',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'estimated_minutes' => 'Minutos estimados',
+                'actual_minutes' => 'Minutos reales',
             ],
         ],
 
@@ -81,6 +89,10 @@ return [
                 'rate' => 'Tarifa (€/h)',
                 'amount' => 'Importe (€)',
                 'basis' => 'Valoración',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'minutes' => 'Minutos',
+                'in_bank_minutes' => 'Minutos dentro de bolsa',
+                'overage_minutes' => 'Minutos en exceso',
             ],
             'basis' => [
                 'not_billable' => 'No facturable',
@@ -198,6 +210,8 @@ return [
         'detail' => [
             'corner' => ':rows / :columns (horas)',
             'total' => 'Total',
+            // D-081: los totales también en minutos (enteros), para sumar exacto.
+            'total_minutes' => 'Total (minutos)',
             'week' => 'Sem. :date',
             'truncated' => 'Tabla recortada: se muestran :shown. Los totales incluyen todas las horas.',
             'truncated_rows' => 'las :count filas con más horas',

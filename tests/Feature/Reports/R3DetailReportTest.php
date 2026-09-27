@@ -147,7 +147,7 @@ it('muestra el estado vacío, no una tabla de ceros, si la medida no tiene horas
     // La exportación, igual: solo la cabecera y la fila de totales.
     $rows = ($this->readXlsx)($this->actingAs($s->admin)->get(($this->url)([...$query, 'formato' => 'xlsx']))->assertOk()->streamedContent());
 
-    expect($rows)->toBe([['Persona / Semana (horas)', 'Total'], ['Total', 0]]);
+    expect($rows)->toBe([['Persona / Semana (horas)', 'Total', 'Total (minutos)'], ['Total', 0, 0], ['Total (minutos)', '', 0]]);
 })->with([
     'exceso en un proyecto sin bolsa' => ['exceso', 'tm'],
     'dentro de bolsa en un proyecto sin bolsa' => ['dentro', 'tm'],
@@ -225,7 +225,7 @@ it('nombra cada tarea con el código de su proyecto (muchas se llaman igual), en
         ->get(($this->url)(['filas' => 'persona', 'columnas' => 'tarea', 'departamento' => [$s->design->id], 'formato' => 'xlsx']))
         ->streamedContent());
 
-    expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total']);
+    expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total', 'Total (minutos)']);
 });
 
 it('las horas de una subtarea suman en su tarea padre (SPEC §6), en la página y en la exportación (BIZ-04)', function () {
@@ -461,17 +461,21 @@ it('exporta la tabla tal cual a XLSX, con subtotales y la fila de totales', func
 
     $rows = ($this->readXlsx)($response->streamedContent());
 
-    expect($rows[0])->toBe(['Persona / Proyecto (horas)', 'BOL · Bolsa', 'TM · Por horas', 'FIX · Precio cerrado', 'INT · Interno', 'Total'])
+    expect($rows[0])->toBe(['Persona / Proyecto (horas)', 'BOL · Bolsa', 'TM · Por horas', 'FIX · Precio cerrado', 'INT · Interno', 'Total', 'Total (minutos)'])
         ->and($rows[1][0])->toBe('Luis')
         ->and($rows[1][1])->toBe(11.67)
         ->and($rows[1][4])->toBe(1)
         ->and($rows[1][5])->toBe(12.67)
+        ->and($rows[1][6])->toBe(760)
         ->and($rows[2][0])->toBe('Ana')
         ->and($rows[2][2])->toBe(7)
         ->and($rows[2][3])->toBe(4)
         ->and($rows[2][5])->toBe(11)
-        ->and($rows[3])->toBe(['Total', 11.67, 7, 4, 1, 23.67])
-        ->and($rows)->toHaveCount(4);
+        ->and($rows[2][6])->toBe(660)
+        // 11,67 + 7 + 4 + 1 = 23,67 en horas; en minutos, la suma exacta (D-081).
+        ->and($rows[3])->toBe(['Total', 11.67, 7, 4, 1, 23.67, 1420])
+        ->and($rows[4])->toBe(['Total (minutos)', 700, 420, 240, 60, '', 1420])
+        ->and($rows)->toHaveCount(5);
 });
 
 it('exporta a CSV con las semanas por su lunes y lo que ve cada uno', function () {

@@ -221,13 +221,16 @@ test('exporta el estimado frente a real y las horas por persona (con importes so
     $s = $this->s;
 
     $tasks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk()->streamedContent());
-    expect($tasks[0])->toBe(['Tarea', 'Tarea principal', 'Tipo', 'Estado', 'Horas estimadas', 'Horas reales', 'Desviación (horas)', 'Desviación (%)'])
-        ->and($tasks[1])->toBe(['Diseño de la home', '', 'Diseño UI', 'Por hacer', 3.33, 6.5, 3.17, 95])
-        ->and($tasks[2])->toBe(['Versión móvil', 'Diseño de la home', 'Diseño UI', 'Por hacer', 3.33, 5, 1.67, 50])
+    expect($tasks[0])->toBe(['Tarea', 'Tarea principal', 'Tipo', 'Estado', 'Horas estimadas', 'Horas reales', 'Desviación (horas)', 'Desviación (%)',
+        'Minutos estimados', 'Minutos reales'])
+        ->and($tasks[1])->toBe(['Diseño de la home', '', 'Diseño UI', 'Por hacer', 3.33, 6.5, 3.17, 95, 200, 390])
+        ->and($tasks[2])->toBe(['Versión móvil', 'Diseño de la home', 'Diseño UI', 'Por hacer', 3.33, 5, 1.67, 50, 200, 300])
         ->and($tasks[3][4])->toBe('')
-        ->and($tasks[4])->toBe(['Maquetación', '', 'Maquetación', 'Hecha', 4, 6.67, 2.67, 66.7])
+        ->and(array_slice($tasks[3], -2))->toBe(['', 0])
+        ->and($tasks[4])->toBe(['Maquetación', '', 'Maquetación', 'Hecha', 4, 6.67, 2.67, 66.7, 240, 400])
         ->and($tasks[5][0])->toBe('Diseño 2025')
-        ->and($tasks[6])->toBe(['Total', '', '', '', 7.33, 18.17, '', '']);
+        // En minutos, los totales exactos (D-081): 200 + 240 estimados; 390 + 400 + 300 reales.
+        ->and($tasks[6])->toBe(['Total', '', '', '', 7.33, 18.17, '', '', 440, 1090]);
 
     $people = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'personas']))->streamedContent());
     expect($people[0])->toBe(['Persona', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso', 'Ingreso estimado (€)', 'Coste (€)'])

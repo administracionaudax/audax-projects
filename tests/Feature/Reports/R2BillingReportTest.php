@@ -127,23 +127,24 @@ test('el detalle de cada entrada en XLSX: dentro y exceso por separado, tarifa, 
 
     expect($rows)->toHaveCount(7)
         ->and($rows[0])->toBe(['Fecha', 'Persona', 'Proyecto', 'Bolsa', 'Tarea', 'Descripción', 'Horas', 'Horas dentro de bolsa',
-            'Horas en exceso', 'Facturable', 'Estado', 'Tarifa (€/h)', 'Importe (€)', 'Valoración'])
+            'Horas en exceso', 'Facturable', 'Estado', 'Tarifa (€/h)', 'Importe (€)', 'Valoración',
+            'Minutos', 'Minutos dentro de bolsa', 'Minutos en exceso'])
         // E1: la bloqueada E2 no cambia, así que E1 queda con 200 dentro y 100 de exceso. Está
         // aprobada: su exceso va a su tarifa congelada (D-043, BIZ-01): 1000 × 200/600 + 100 × 55/60 = 425,00.
         ->and($rows[1])->toBe(['2026-09-22', 'Ana', 'NAN-WEB · Web corporativa', 'Bolsa Diseño ñ', 'Versión móvil', '¿Qué tal? ¡Sí! 12 €',
-            5, 3.33, 1.67, true, 'Aprobada', 55, 425, $bankPrice])
+            5, 3.33, 1.67, true, 'Aprobada', 55, 425, $bankPrice, 300, 200, 100])
         ->and($rows[2])->toBe(['2026-09-22', 'Marta', 'NAN-CAMP · Campaña otoño', 'Sin bolsa', 'Plan de medios', 'Plan',
-            2, '', '', true, 'Aprobada', 58, 116, 'Tarifa congelada al aprobar'])
+            2, '', '', true, 'Aprobada', 58, 116, 'Tarifa congelada al aprobar', 120, '', ''])
         // E2: 1000 × 400/600 = 666,67.
         ->and($rows[3])->toBe(['2026-09-23', 'Luis', 'NAN-WEB · Web corporativa', 'Bolsa Diseño ñ', 'Maquetación', 'Maquetación de cabecera',
-            6.67, 6.67, 0, true, 'Bloqueada', 70, 666.67, $bankPrice])
+            6.67, 6.67, 0, true, 'Bloqueada', 70, 666.67, $bankPrice, 400, 400, 0])
         // E3: todo exceso: 90 × 70/60 = 105,00.
         ->and($rows[4])->toBe(['2026-09-24', 'Ana', 'NAN-WEB · Web corporativa', 'Bolsa Diseño ñ', 'Diseño de la home', 'Borrador que no sale en el PDF',
-            1.5, 0, 1.5, true, 'Borrador', 70, 105, $bankPrice])
+            1.5, 0, 1.5, true, 'Borrador', 70, 105, $bankPrice, 90, 0, 90])
         ->and($rows[5])->toBe(['2026-09-25', 'Ana', 'NAN-CAMP · Campaña otoño', 'Sin bolsa', 'Plan de medios', 'Reunión interna',
-            0.5, '', '', false, 'Borrador', '', 0, 'No facturable'])
-        // La suma de los importes es el ingreso estimado del resumen.
-        ->and($rows[6])->toBe(['Total', '', '', '', '', '', 15.67, 10, 3.17, '', '', '', 1312.67, '']);
+            0.5, '', '', false, 'Borrador', '', 0, 'No facturable', 30, '', ''])
+        // La suma de los importes es el ingreso estimado del resumen; los minutos suman exacto (D-081).
+        ->and($rows[6])->toBe(['Total', '', '', '', '', '', 15.67, 10, 3.17, '', '', '', 1312.67, '', 940, 600, 190]);
 });
 
 test('el CSV sale para Excel en español; quien tiene view-financials sin ser admin solo exporta las horas que ve', function () {
@@ -160,7 +161,7 @@ test('el CSV sale para Excel en español; quien tiene view-financials sin ser ad
         ->and($rows[1][6])->toBe('5,00')
         ->and($rows[1][9])->toBe('Sí')
         ->and($rows[1][12])->toBe('425,00')
-        ->and(end($rows))->toBe(['Total', '', '', '', '', '', '13,67', '10,00', '3,17', '', '', '', '1196,67', '']);
+        ->and(end($rows))->toBe(['Total', '', '', '', '', '', '13,67', '10,00', '3,17', '', '', '', '1196,67', '', '820', '600', '190']);
 });
 
 test('un admin sin view-financials exporta las horas sin tarifas ni importes', function () {
@@ -179,9 +180,10 @@ test('un admin sin view-financials exporta las horas sin tarifas ni importes', f
             ->where('summary.totals.income', null));
 
     $rows = ($this->read)($this->actingAs($s->admin->fresh())->get(($this->url)(['formato' => 'xlsx']))->streamedContent(), 'xlsx');
-    expect($rows[0])->toHaveCount(11)
+    expect($rows[0])->toHaveCount(14)
         ->and($rows[0])->not->toContain('Importe (€)')
-        ->and($rows[1])->toHaveCount(11);
+        ->and(array_slice($rows[0], -3))->toBe(['Minutos', 'Minutos dentro de bolsa', 'Minutos en exceso'])
+        ->and($rows[1])->toHaveCount(14);
 });
 
 test('los textos que empiezan por = + - @ salen como texto, nunca como fórmula (XLSX y CSV)', function () {
@@ -289,6 +291,28 @@ test('la exportación calcula su total con las mismas entradas que exporta, aunq
     expect($lines)->toBe([425, 145, 666.67, 105, 0])
         ->and(end($rows)[12])->toBe(1341.67)
         ->and(round(array_sum($lines), 2))->toBe(1341.67);
+});
+
+test('las horas en decimal no siempre suman el total; los minutos, sí (INT-06, D-081)', function () {
+    $s = $this->s;
+    // Tres entradas de 20 min: 0,33 h cada una (0,99 h en total) frente a 1,00 h.
+    $client = Client::factory()->create(['name' => 'Minutos']);
+    $task = Task::factory()->create(['project_id' => Project::factory()->create(['client_id' => $client->id])->id]);
+    foreach (['2026-09-21', '2026-09-22', '2026-09-23'] as $date) {
+        TimeEntry::factory()->forTask($task)->on($date)->minutes(20)->create(['user_id' => $s->ana->id]);
+    }
+
+    $rows = ($this->read)($this->actingAs($s->admin)
+        ->get('/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id], 'formato' => 'xlsx']))->streamedContent(), 'xlsx');
+    $lines = array_slice($rows, 1, -1);
+    $total = end($rows);
+    $hours = array_search('Horas', $rows[0], true);
+    $minutes = array_search('Minutos', $rows[0], true);
+
+    expect(round(array_sum(array_column($lines, $hours)), 2))->toBe(0.99)
+        ->and($total[$hours])->toBe(1)
+        ->and(array_sum(array_column($lines, $minutes)))->toBe(60)
+        ->and($total[$minutes])->toBe(60);
 });
 
 test('si las entradas no caben en la exportación responde 422 en vez de recortarla; la página lo avisa', function () {

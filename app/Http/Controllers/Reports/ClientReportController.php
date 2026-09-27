@@ -287,6 +287,8 @@ class ClientReportController extends Controller
         if ($financials) {
             array_push($headers, $c('income'), $c('cost'), $c('margin'));
         }
+        // D-081: al final, los minutos (enteros) de las columnas de horas, que suman exacto su total.
+        array_push($headers, $c('logged_minutes'), $c('billable_minutes'), $c('in_bank_minutes'), $c('overage_minutes'));
 
         // «Dentro de bolsa» solo en los proyectos con horas en bolsas (en los demás, vacío).
         $rows = [];
@@ -298,6 +300,8 @@ class ClientReportController extends Controller
                 $cost = (string) $project['cost'];
                 array_push($row, TableExporter::money($income), TableExporter::money($cost), TableExporter::money(Money::round(Money::sub($income, $cost))));
             }
+            array_push($row, $project['logged_minutes'], $project['billable_minutes'],
+                $project['has_bank'] ? $project['in_bank_minutes'] : null, $project['overage_minutes']);
             $rows[] = $row;
         }
 
@@ -309,6 +313,7 @@ class ClientReportController extends Controller
         if ($financials) {
             array_push($total, TableExporter::money($summary['income']), TableExporter::money($summary['cost']), TableExporter::money($summary['margin']));
         }
+        array_push($total, $summary['logged_minutes'], $summary['billable_minutes'], $data['banked']['in_bank_minutes'], $summary['overage_minutes']);
         $rows[] = $total;
 
         return $exporter->download($name, $headers, $rows, $format);
