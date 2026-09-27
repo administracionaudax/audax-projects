@@ -31,6 +31,9 @@ use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 /*
 | R1 · Añadidos al contrato de la Fase 2 (app/Domain/Reports), con cifras calculadas a mano:
 |  - Metrics::capacityByPerson: la capacidad de cada persona (capacityByDate es su suma),
+|  - Metrics::elapsedCapacity(ByPerson): la capacidad transcurrida hasta ayer (dato informativo),
+|  - Metrics::summaryFirstDays: los primeros días de un periodo frente a su capacidad completa
+|    (la comparación «al mismo punto» de un periodo en curso),
 |  - TableExporter: nunca escribe fórmulas (inyección de fórmulas en XLSX y CSV),
 |  - ReportScope::withoutFinancials: el mismo alcance sin valorar ingreso ni coste,
 |  - HourBanksAtRisk: bolsas abiertas desde el primer umbral, con los filtros y el alcance D-044,
@@ -114,6 +117,129 @@ describe('Metrics::capacityByPerson', function () {
         $byPerson = app(Metrics::class)->capacityByPerson(new ReportScope($this->head, ($this->week)()));
 
         expect(array_keys($byPerson))->toEqualCanonicalizing([$this->ana->id, $this->luis->id, $this->bea->id, $this->head->id]);
+    });
+});
+
+describe('Metrics::elapsedCapacity y summaryFirstDays', function () {
+    beforeEach(function () {
+        // Ana: 8 h de lunes a viernes; Luis: 4 h. Ana imputa 480 min el lunes 21 y 240 el martes
+        // 22 (facturables); Luis, 120 min no facturables el martes 22. El miércoles 23 Ana imputa
+        // 360 min a una tarea estimada en 300 y la completa ese día.
+        $this->ana = User::factory()->employee()->create(['department_id' => $this->design->id]);
+        $this->luis = User::factory()->employee()->create(['department_id' => $this->design->id]);
+        WorkSchedule::factory()->for($this->ana)->create(['valid_from' => '2026-01-01']);
+        WorkSchedule::factory()->for($this->luis)->create(['valid_from' => '2026-01-01', 'mon_minutes' => 240, 'tue_minutes' => 240, 'wed_minutes' => 240, 'thu_minutes' => 240, 'fri_minutes' => 240]);
+        TimeEntry::factory()->on('2026-09-21')->minutes(480)->create(['user_id' => $this->ana->id]);
+        TimeEntry::factory()->on('2026-09-22')->minutes(240)->create(['user_id' => $this->ana->id]);
+        TimeEntry::factory()->on('2026-09-22')->minutes(120)->create(['user_id' => $this->luis->id, 'is_billable' => false]);
+        $done = Task::factory()->create(['estimated_minutes' => 300, 'assignee_user_id' => $this->ana->id]);
+        TimeEntry::factory()->forTask($done)->on('2026-09-23')->minutes(360)->create(['user_id' => $this->ana->id]);
+        $this->travelTo(CarbonImmutable::parse('2026-09-23 12:00', 'Europe/Madrid'));
+        $done->update(['status_id' => TaskStatus::query()->where('category', 'done')->value('id')]);
+        $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00', 'Europe/Madrid'));
+        $this->scope = fn (array $query = []): ReportScope => new ReportScope($this->admin, ($this->week)(['departamento' => [$this->design->id], ...$query]));
+    });
+
+    it('da la capacidad de los días del periodo hasta ayer (hoy aún se está imputando)', function () {
+        $metrics = app(Metrics::class);
+        $tuesday = CarbonImmutable::parse('2026-09-22');
+
+        // Con «hoy» el martes 22: solo el lunes → Ana 480, Luis 240.
+        expect($metrics->elapsedCapacityByPerson(($this->scope)(), $tuesday))->toEqual([$this->ana->id => 480, $this->luis->id => 240])
+            ->and($metrics->elapsedCapacity(($this->scope)(), $tuesday))->toBe(720)
+            // El primer día del periodo aún no ha transcurrido ninguno: 0 (nadie sale «baja»).
+            ->and($metrics->elapsedCapacity(($this->scope)(), CarbonImmutable::parse('2026-09-21')))->toBe(0)
+            // Hoy (viernes 25): de lunes a jueves, 4 × (480 + 240).
+            ->and($metrics->elapsedCapacity(($this->scope)()))->toBe(2880)
+            // Septiembre hasta el 24: 18 días laborables (del martes 1 al jueves 24) × 720.
+            ->and($metrics->elapsedCapacity(($this->scope)(['periodo' => 'mes', 'fecha' => '2026-09-01'])))->toBe(18 * 720)
+            // Un periodo cerrado cuenta entero y uno que no ha empezado, nada.
+            ->and($metrics->elapsedCapacity(($this->scope)(['fecha' => '2026-09-14'])))->toBe(3600)
+            ->and($metrics->elapsedCapacity(($this->scope)(['fecha' => '2026-09-28'])))->toBe(0);
+    });
+
+    it('sale de la capacidad ya calculada, sin más consultas', function () {
+        $metrics = app(Metrics::class);
+        $metrics->capacityByPerson(($this->scope)());
+
+        expect(($this->queries)(fn () => $metrics->elapsedCapacity(($this->scope)())))->toBe(0);
+    });
+
+    it('no cambia la ocupación del contrato: imputadas / capacidad del periodo completo', function () {
+        // Semana: capacidad 5 × 720 = 3600; imputadas 480 + 240 + 120 + 360 = 1200.
+        expect(app(Metrics::class)->summary(($this->scope)()))->toMatchArray([
+            'capacity_minutes' => 3600,
+            'logged_minutes' => 1200,
+            'billable_minutes' => 1080,
+            'occupancy' => 0.3333,
+            'billable_productivity' => 0.3,
+        ]);
+    });
+
+    it('resume los primeros días del periodo frente a la capacidad del periodo completo', function () {
+        $metrics = app(Metrics::class);
+
+        // Lunes y martes: 480 + 240 + 120 = 840 (720 facturables) frente a 3600: 23,33 % y 20 %;
+        // la tarea se completó el miércoles: aún sin precisión de estimación.
+        expect($metrics->summaryFirstDays(($this->scope)(), 2))->toMatchArray([
+            'capacity_minutes' => 3600,
+            'logged_minutes' => 840,
+            'billable_minutes' => 720,
+            'occupancy' => 0.2333,
+            'billability' => 0.8571,
+            'billable_productivity' => 0.2,
+            'estimation' => ['tasks' => 0, 'estimated_minutes' => 0, 'actual_minutes' => 0, 'accuracy' => null, 'deviation' => null],
+        ])
+            // De lunes a miércoles: 1200 (1080 facturables) → 33,33 % y 30 %; la tarea, 300 / 360.
+            ->and($metrics->summaryFirstDays(($this->scope)(), 3))->toMatchArray([
+                'capacity_minutes' => 3600,
+                'logged_minutes' => 1200,
+                'billable_minutes' => 1080,
+                'occupancy' => 0.3333,
+                'billability' => 0.9,
+                'billable_productivity' => 0.3,
+                'estimation' => ['tasks' => 1, 'estimated_minutes' => 300, 'actual_minutes' => 360, 'accuracy' => 0.8333, 'deviation' => 0.2],
+            ])
+            // Sin ningún día: sin horas, con la capacidad del periodo.
+            ->and($metrics->summaryFirstDays(($this->scope)(), 0))->toMatchArray([
+                'capacity_minutes' => 3600,
+                'logged_minutes' => 0,
+                'occupancy' => 0.0,
+                'billability' => null,
+                'income' => '0.00',
+            ]);
+    });
+
+    it('valora el ingreso y el coste de esos días como un informe de solo esos días', function () {
+        $metrics = app(Metrics::class);
+        $partial = $metrics->summaryFirstDays(($this->scope)(), 2);
+        $days = $metrics->summary(($this->scope)(['periodo' => 'rango', 'desde' => '2026-09-21', 'hasta' => '2026-09-22']));
+
+        expect($partial['income'])->not->toBeNull()
+            ->and([$partial['income'], $partial['cost'], $partial['margin'], $partial['margin_pct']])
+            ->toBe([$days['income'], $days['cost'], $days['margin'], $days['margin_pct']])
+            // Sin view-financials (o con withoutFinancials) tampoco los calcula.
+            ->and($metrics->summaryFirstDays(($this->scope)()->withoutFinancials(), 2)['income'])->toBeNull()
+            ->and($metrics->summaryFirstDays(new ReportScope($this->head, ($this->week)()), 2)['income'])->toBeNull();
+    });
+
+    it('con todos los días (o más) es summary(), y no recalcula la capacidad del tramo', function () {
+        $metrics = app(Metrics::class);
+        $summary = $metrics->summary(($this->scope)());
+
+        expect($metrics->summaryFirstDays(($this->scope)(), 7))->toBe($summary)
+            ->and($metrics->summaryFirstDays(($this->scope)(), 31))->toBe($summary);
+
+        // La capacidad es la del periodo (ya calculada): el tramo no vuelve a leer los horarios.
+        $sql = [];
+        DB::listen(function (QueryExecuted $query) use (&$sql): void {
+            $sql[] = $query->sql;
+        });
+        $metrics->summaryFirstDays(($this->scope)(), 2);
+        app('events')->forget(QueryExecuted::class);
+
+        expect($sql)->not->toBeEmpty()
+            ->and(array_filter($sql, fn (string $query): bool => str_contains($query, 'work_schedules')))->toBe([]);
     });
 });
 
