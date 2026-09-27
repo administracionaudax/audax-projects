@@ -49,6 +49,11 @@ export type GanttViewProps = {
     reload: string[];
     /** Solo lectura: sin arrastrar, sin menú de edición (portal de cliente, F5). */
     readOnly?: boolean;
+    /**
+     * Sin responsables (portal de cliente, F5): ni columna en la tabla, ni colores por responsable,
+     * ni su nombre en las barras. Los datos ya llegan sin ellos; esto quita los textos que quedarían.
+     */
+    hideAssignees?: boolean;
     /** Gantt multiproyecto: agrupa las tareas por proyecto (plegables). */
     projects?: ReadonlyArray<GanttProject>;
     projectHref?: (project: GanttProject) => string;
@@ -76,6 +81,7 @@ export function GanttView({
     onPreferencesChange,
     reload,
     readOnly = false,
+    hideAssignees = false,
     projects,
     projectHref,
     showUnscheduled = false,
@@ -102,7 +108,9 @@ export function GanttView({
         },
     });
     const [scale, setScale] = useState(preferences.scale);
-    const [color, setColor] = useState(preferences.color);
+    const [color, setColor] = useState<GanttPreferences['color']>(
+        hideAssignees ? 'status' : preferences.color,
+    );
     const [view, setView] = useState<GanttViewMode>('chart');
     const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(
         () => new Set(),
@@ -255,6 +263,7 @@ export function GanttView({
                 }
                 onViewChange={setView}
                 onToday={() => chart.current?.scrollToDate(today, 'smooth')}
+                showColorModes={!hideAssignees}
             />
 
             {hasRows ? (
@@ -285,6 +294,7 @@ export function GanttView({
                     tasks={effective}
                     dependencies={dependencies}
                     onOpen={open}
+                    hideAssignee={hideAssignees}
                 />
             ) : (
                 <GanttChart
@@ -296,6 +306,7 @@ export function GanttView({
                     today={today}
                     colors={colors}
                     readOnly={readOnly}
+                    hideAssignees={hideAssignees}
                     saving={editing.saving}
                     keyboardCommitDelay={keyboardCommitDelay}
                     onReschedule={

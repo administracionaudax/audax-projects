@@ -8,12 +8,15 @@ import { PortalBankHistoryList } from '@/components/portal/banks/portal-bank-his
 import { PortalBanksSummary } from '@/components/portal/banks/portal-banks-summary';
 import { PortalVisibilityNote } from '@/components/portal/banks/portal-visibility-note';
 import type { PortalHomeProps } from '@/components/portal/banks/types';
+import { usePortalShell } from '@/components/portal/projects/portal-nav';
+import { PortalProjectsCard } from '@/components/portal/projects/portal-projects-card';
 import { firstName, useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 
 /**
  * Inicio del portal de cliente (SPEC §11, D-064): el resumen (horas de este mes y bolsas cerca del
- * límite), las bolsas activas con su barra y sus cifras, y las bolsas anteriores. Solo con las horas
+ * límite), los proyectos abiertos al portal (si los hay), las bolsas activas con su barra y sus
+ * cifras, y las bolsas anteriores. Solo con las horas
  * que ve el cliente, con una nota que lo explica. Sin bolsas, un estado vacío grande con el
  * degradado de marca (SPEC §3.1).
  */
@@ -29,17 +32,21 @@ export default function PortalHome({
     const greeting = t('portal.greeting', { name: firstName(user) });
     const openId = useId();
     const historyId = useId();
+    const hasProjects = (usePortalShell()?.projects.length ?? 0) > 0;
 
     if (banks.length === 0 && history.length === 0) {
         return (
             <>
                 <Head title={t('portal.title')} />
-                <HeroEmptyState
-                    icon={Wallet}
-                    eyebrow={client.name}
-                    title={greeting}
-                    description={t('portal_banks.home.empty_description')}
-                />
+                <div className="grid gap-8">
+                    <HeroEmptyState
+                        icon={Wallet}
+                        eyebrow={client.name}
+                        title={greeting}
+                        description={t('portal_banks.home.empty_description')}
+                    />
+                    {hasProjects ? <PortalProjectsCard /> : null}
+                </div>
             </>
         );
     }
@@ -65,6 +72,8 @@ export default function PortalHome({
                 </header>
 
                 <PortalBanksSummary summary={summary} />
+
+                {hasProjects ? <PortalProjectsCard /> : null}
 
                 <section aria-labelledby={openId} className="grid gap-4">
                     <h2 id={openId} className="text-lg font-normal">

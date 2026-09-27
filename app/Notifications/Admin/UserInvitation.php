@@ -39,12 +39,15 @@ class UserInvitation extends Notification implements ShouldQueue
         $days = max(intdiv((int) config('auth.passwords.invitations.expire', 10080), 60 * 24), 1);
         $url = route('invitation.show', ['token' => $this->token, 'email' => $email]);
 
+        // Usuarios del portal (Fase 5, D-063): el mismo enlace, con el asunto y la presentación del portal.
+        $texts = $notifiable->isClient() ? 'portal.access.invitation' : 'admin.invitation';
+
         $message = (new MailMessage)
-            ->subject(__('admin.invitation.subject', ['company' => $this->companyName]))
+            ->subject(__("{$texts}.subject", ['company' => $this->companyName]))
             ->greeting(__('admin.invitation.greeting', ['name' => $notifiable->name]))
             ->line($this->invitedBy !== null
-                ? __('admin.invitation.intro_by', ['company' => $this->companyName, 'inviter' => $this->invitedBy])
-                : __('admin.invitation.intro', ['company' => $this->companyName]))
+                ? __("{$texts}.intro_by", ['company' => $this->companyName, 'inviter' => $this->invitedBy])
+                : __("{$texts}.intro", ['company' => $this->companyName]))
             ->line(__('admin.invitation.instructions'))
             ->action(__('admin.invitation.action'), $url)
             ->line(__('admin.invitation.expires', ['days' => $days]))
