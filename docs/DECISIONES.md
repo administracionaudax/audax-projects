@@ -565,3 +565,13 @@ _Detalle y contexto en `docs/PLAN-FASE-4.md`._
 - **Resumen del proyecto:** «Próximos hitos», los 5 siguientes sin completar, más los vencidos destacados con icono y texto.
 - **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
 - **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
+
+### D-089 · Fechas de las tareas recurrentes **[concreta D-059]**
+- **Desde y hasta:** entre el 01/01/2000 y el 31/12/2100, como el calendario de tareas (`CalendarPeriod`). El formulario lo valida con su mensaje y no se calcula ninguna tarea fuera de ese rango (`RecurringTaskRule::MIN_DATE` y `MAX_DATE`).
+- **Cálculo:** las fechas de una regla saltan directamente a la ventana pedida, sin recorrer la serie desde su inicio (una regla antigua conserva su ritmo). La vista previa del formulario y el servidor comparten los casos de prueba (`tests/fixtures/recurrence-cases.json`).
+
+### D-090 · Dependencias: enlaces de uno en uno y propuesta a prueba de ciclos **[concreta D-056 y D-057]**
+- **Enlazar:** los enlaces de un mismo proyecto se hacen de uno en uno (la fila del proyecto queda bloqueada mientras se busca el ciclo y se guarda el enlace): dos enlaces a la vez no pueden cerrar un ciclo.
+- **Proponer:** mover una tarea antes **o sin cambiar su entrega** no propone nada, aunque ya hubiera un conflicto: no lo causa ese cambio y el Gantt lo sigue marcando.
+  - La cascada solo sigue desde lo que se desplaza, y cada sucesora se revisa una vez, con sus fechas definitivas.
+  - Si la base tuviera un ciclo (datos antiguos o dañados), nunca se propone mover la tarea movida ni se vuelve a una tarea del propio camino.
