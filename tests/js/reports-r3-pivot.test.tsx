@@ -22,6 +22,7 @@ import { PivotControls } from '@/components/reports/r3-pivot-controls';
 import {
     PivotTable,
     pivotHeaderLabel,
+    pivotTruncation,
 } from '@/components/reports/r3-pivot-table';
 import ReportDetail from '@/pages/reports/detail';
 
@@ -155,15 +156,79 @@ describe('PivotTable', () => {
     it('avisa con icono y texto si la tabla está recortada', () => {
         render(
             <PivotTable
-                pivot={{ ...pivot, truncated: true }}
-                rowsDimension="tarea"
-                columnsDimension="mes"
+                pivot={{
+                    ...pivot,
+                    column_totals: totals(61, (n) => `tarea-${n}`),
+                    truncated: true,
+                }}
+                rowsDimension="persona"
+                columnsDimension="tarea"
                 caption="Tabla"
             />,
         );
 
-        expect(screen.getByRole('alert').textContent).toContain(
-            'La tabla está recortada: se ven las 200 filas y las 60 columnas',
+        const alert = screen.getByRole('alert');
+        expect(alert.querySelector('svg')).toBeTruthy();
+        expect(alert.textContent).toBe(
+            'La tabla está recortada: se ven las 60 columnas con más horas, pero los totales incluyen todas las horas. Acota el periodo o los filtros para verlo todo.',
+        );
+    });
+});
+
+/** Totales de `count` grupos (claves generadas), como los que llegan de PivotReport. */
+function totals(count: number, key: (n: number) => string) {
+    return Object.fromEntries(
+        Array.from({ length: count }, (_, n) => [key(n), 30]),
+    );
+}
+
+describe('pivotTruncation', () => {
+    it('no avisa si la tabla está completa', () => {
+        expect(pivotTruncation(pivot, 'semana')).toBeNull();
+    });
+
+    it('con semanas, meses o días en columnas dice que se ven las primeras del periodo', () => {
+        const cut = {
+            ...pivot,
+            column_totals: totals(61, (n) => `2025-01-${n}`),
+            truncated: true,
+        };
+
+        expect(pivotTruncation(cut, 'semana')).toContain(
+            'se ven las 60 primeras semanas del periodo, pero',
+        );
+        expect(pivotTruncation(cut, 'mes')).toContain(
+            'se ven los 60 primeros meses del periodo, pero',
+        );
+        expect(pivotTruncation(cut, 'dia')).toContain(
+            'se ven los 60 primeros días del periodo, pero',
+        );
+        expect(pivotTruncation(cut, 'proyecto')).toContain(
+            'se ven las 60 columnas con más horas, pero',
+        );
+    });
+
+    it('dice qué se recortó: las filas, las columnas o ambas', () => {
+        const rows = totals(201, (n) => String(n));
+
+        expect(
+            pivotTruncation(
+                { ...pivot, row_totals: rows, truncated: true },
+                'semana',
+            ),
+        ).toContain('se ven las 200 filas con más horas, pero');
+        expect(
+            pivotTruncation(
+                {
+                    ...pivot,
+                    row_totals: rows,
+                    column_totals: totals(61, (n) => `2025-01-${n}`),
+                    truncated: true,
+                },
+                'semana',
+            ),
+        ).toContain(
+            'se ven las 200 filas con más horas y las 60 primeras semanas del periodo, pero',
         );
     });
 });

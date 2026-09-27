@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -391,5 +392,30 @@ it('avisa si la tabla está recortada (más de 60 columnas), en la página y en 
 
     $csv = $this->actingAs($s->admin)->get(($this->url)([...$query, 'formato' => 'csv']))->streamedContent();
 
-    expect($csv)->toContain('Tabla recortada: se muestran las 200 filas y las 60 columnas con más horas');
+    expect($csv)->toContain('Tabla recortada: se muestran las 60 columnas con más horas. Los totales incluyen todas las horas.')
+        ->and($csv)->not->toContain('200 filas');
+});
+
+it('con semanas en columnas, el aviso de recorte dice que se ven las 60 primeras del periodo', function () {
+    $s = $this->s;
+    // Ana imputa un lunes de cada semana durante 64 semanas: más columnas que PivotReport::MAX_COLUMNS.
+    $monday = CarbonImmutable::parse('2025-06-30');
+    foreach (range(0, 63) as $week) {
+        TimeEntry::factory()->forTask($s->tmTask)->on($monday->addWeeks($week)->toDateString())->minutes(30)->create(['user_id' => $s->ana->id]);
+    }
+
+    $query = ['periodo' => 'rango', 'desde' => '2025-06-30', 'hasta' => '2026-09-27', 'filas' => 'persona', 'columnas' => 'semana', 'persona' => [$s->ana->id]];
+    $this->actingAs($s->admin)->get('/informes/detalle?'.http_build_query($query))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.truncated', true)
+            ->has('pivot.columns', 60)
+            // Las primeras en fecha: faltan las más recientes, que siguen en los totales.
+            ->where('pivot.columns.0.key', '2025-06-30')
+            ->where('pivot.columns.59.key', '2026-08-17')
+            ->has('pivot.column_totals', 65));
+
+    $csv = $this->actingAs($s->admin)->get('/informes/detalle?'.http_build_query([...$query, 'formato' => 'csv']))->streamedContent();
+
+    expect($csv)->toContain('Tabla recortada: se muestran las 60 primeras semanas del periodo. Los totales incluyen todas las horas.')
+        ->and($csv)->not->toContain('con más horas');
 });

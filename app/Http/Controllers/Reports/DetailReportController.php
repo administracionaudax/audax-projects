@@ -235,7 +235,7 @@ class DetailReportController extends Controller
         $lines[] = $totals;
 
         if ($result['truncated']) {
-            $lines[] = [self::text('reports.r3.detail.truncated', ['rows' => PivotReport::MAX_ROWS, 'columns' => PivotReport::MAX_COLUMNS])];
+            $lines[] = [self::truncationNotice($result, $columns)];
         }
 
         $basename = self::text('reports.r3.detail.filename', [
@@ -247,6 +247,37 @@ class DetailReportController extends Controller
         ]);
 
         return $exporter->download($basename, $headers, $lines, $format);
+    }
+
+    /**
+     * Aviso de tabla recortada que dice lo que se ve: las filas con más horas y, en columnas, las que
+     * tienen más horas o, si son semanas, meses o días, las primeras del periodo (PivotReport las
+     * ordena por fecha antes de recortar).
+     *
+     * @param  array{row_totals: array<string, int>, column_totals: array<string, int>}  $result
+     */
+    private static function truncationNotice(array $result, Dimension $columns): string
+    {
+        $parts = [];
+
+        if (count($result['row_totals']) > PivotReport::MAX_ROWS) {
+            $parts[] = self::text('reports.r3.detail.truncated_rows', ['count' => PivotReport::MAX_ROWS]);
+        }
+
+        if (count($result['column_totals']) > PivotReport::MAX_COLUMNS) {
+            $parts[] = self::text(match ($columns) {
+                Dimension::Week => 'reports.r3.detail.truncated_weeks',
+                Dimension::Month => 'reports.r3.detail.truncated_months',
+                Dimension::Day => 'reports.r3.detail.truncated_days',
+                default => 'reports.r3.detail.truncated_columns',
+            }, ['count' => PivotReport::MAX_COLUMNS]);
+        }
+
+        $shown = count($parts) === 2
+            ? self::text('reports.r3.detail.truncated_and', ['first' => $parts[0], 'second' => $parts[1]])
+            : implode('', $parts);
+
+        return self::text('reports.r3.detail.truncated', ['shown' => $shown]);
     }
 
     /**

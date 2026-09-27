@@ -69,6 +69,59 @@ export function pivotHeaderLabel(
     return { short: full, full };
 }
 
+/**
+ * Aviso de tabla recortada que dice lo que se ve (null si no se recortó): las filas con más horas
+ * y, en columnas, las que tienen más horas o, si son semanas, meses o días, las primeras del periodo
+ * (PivotReport las ordena por fecha antes de recortar). Los totales llegan completos.
+ */
+export function pivotTruncation(
+    pivot: PivotResult,
+    columnsDimension: ReportDimension,
+): string | null {
+    if (!pivot.truncated) {
+        return null;
+    }
+
+    let rowsCut = Object.keys(pivot.row_totals).length > PIVOT_MAX_ROWS;
+    let columnsCut =
+        Object.keys(pivot.column_totals).length > PIVOT_MAX_COLUMNS;
+
+    if (!rowsCut && !columnsCut) {
+        rowsCut = true;
+        columnsCut = true;
+    }
+
+    const parts: string[] = [];
+
+    if (rowsCut) {
+        parts.push(
+            t('reports_r3.table.truncated_rows', { count: PIVOT_MAX_ROWS }),
+        );
+    }
+
+    if (columnsCut) {
+        const key =
+            columnsDimension === 'semana'
+                ? 'reports_r3.table.truncated_weeks'
+                : columnsDimension === 'mes'
+                  ? 'reports_r3.table.truncated_months'
+                  : columnsDimension === 'dia'
+                    ? 'reports_r3.table.truncated_days'
+                    : 'reports_r3.table.truncated_columns';
+        parts.push(t(key, { count: PIVOT_MAX_COLUMNS }));
+    }
+
+    const shown =
+        parts.length === 2
+            ? t('reports_r3.table.truncated_and', {
+                  first: parts[0],
+                  second: parts[1],
+              })
+            : parts[0];
+
+    return t('reports_r3.table.truncated', { shown });
+}
+
 function cell(pivot: PivotResult, row: Header, column: Header): number | null {
     return pivot.cells[row.key ?? '']?.[column.key ?? ''] ?? null;
 }
@@ -182,21 +235,17 @@ export function PivotTable({
 
     const rowsLabel = t(`reports_r3.dimension.${rowsDimension}`);
     const columnsLabel = t(`reports_r3.dimension.${columnsDimension}`);
+    const truncation = pivotTruncation(pivot, columnsDimension);
 
     return (
         <div className="grid gap-3">
-            {pivot.truncated ? (
+            {truncation !== null ? (
                 <Alert>
                     <TriangleAlert
                         aria-hidden="true"
                         className="text-warning"
                     />
-                    <AlertDescription>
-                        {t('reports_r3.table.truncated', {
-                            rows: PIVOT_MAX_ROWS,
-                            columns: PIVOT_MAX_COLUMNS,
-                        })}
-                    </AlertDescription>
+                    <AlertDescription>{truncation}</AlertDescription>
                 </Alert>
             ) : null}
 
