@@ -10,6 +10,9 @@ import {
 } from '@/components/workload/workload-task-editor';
 import { PEOPLE, allByTest, panel, task } from './workload-fixtures';
 
+// La matriz y los paneles completos tardan en jsdom: margen para las máquinas cargadas (CI).
+vi.setConfig({ testTimeout: 20_000 });
+
 type Options = {
     onError?: (errors: Record<string, string>) => void;
     onStart?: () => void;

@@ -15,6 +15,9 @@ import {
     panel,
 } from './workload-fixtures';
 
+// La matriz y los paneles completos tardan en jsdom: margen para las máquinas cargadas (CI).
+vi.setConfig({ testTimeout: 20_000 });
+
 type Options = {
     only?: string[];
     preserveState?: boolean;

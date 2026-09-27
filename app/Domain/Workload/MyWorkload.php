@@ -56,7 +56,24 @@ final class MyWorkload
         return [
             'weeks' => $rows,
             'overdue' => count($plan->overdue),
-            'unplanned' => count(array_filter($plan->unplanned, fn (array $item): bool => $item['user_id'] === $user->id)),
+            'unplanned' => $this->unplanned($plan, $user),
         ];
+    }
+
+    /**
+     * Mis tareas sin estimación o sin entrega, sin las «cajón» de los proyectos internos (como la
+     * bandeja «Sin planificar»). Sin consulta si no hay ninguna.
+     */
+    private function unplanned(WorkloadPlan $plan, User $user): int
+    {
+        $mine = array_filter($plan->unplanned, fn (array $item): bool => $item['user_id'] === $user->id);
+
+        if ($mine === []) {
+            return 0;
+        }
+
+        $buckets = InternalBuckets::ids($user->id);
+
+        return count(array_filter($mine, fn (array $item): bool => ! isset($buckets[$item['task_id']])));
     }
 }

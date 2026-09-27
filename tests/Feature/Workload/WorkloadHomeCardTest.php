@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Absence;
+use App\Models\Project;
+use App\Models\Task;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Workload\Concerns\BuildsWorkloadScenario;
@@ -43,6 +45,17 @@ it('mi carga de esta semana y de la que viene frente a mi capacidad, con mis ven
             ])
             ->where('workload.overdue', 1)
             ->where('workload.unplanned', 1)));
+});
+
+it('las tareas «cajón» de los proyectos internos no cuentan como sin planificar', function () {
+    $internal = Project::factory()->internal()->create();
+    Task::factory()->create(['project_id' => $internal->id, 'assignee_user_id' => $this->people['elena']->id, 'estimated_minutes' => null, 'due_date' => null]);
+    Task::factory()->create(['project_id' => $internal->id, 'assignee_user_id' => $this->people['elena']->id, 'estimated_minutes' => 120, 'due_date' => null]);
+
+    $this->actingAs($this->people['elena'])
+        ->get('/')
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $reload) => $reload
+            ->where('workload.unplanned', 2)));
 });
 
 it('solo lo mío: la carga de mis compañeros no aparece', function () {

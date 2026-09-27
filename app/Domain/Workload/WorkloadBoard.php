@@ -59,6 +59,9 @@ final class WorkloadBoard
     /** @var list<int>|null */
     private ?array $memberProjectIds = null;
 
+    /** @var array<int, true>|null */
+    private ?array $internalBuckets = null;
+
     public function __construct(
         private readonly WorkloadPlanner $planner,
         private readonly Capacity $capacity,
@@ -395,6 +398,7 @@ final class WorkloadBoard
     /**
      * Bandejas (D-051): «Sin planificar» (tareas de las filas sin estimación o sin entrega) y «Sin
      * asignar» por departamento (el de la bolsa o, si no, el del tipo), solo para quien reparte.
+     * Sin las tareas «cajón» de los proyectos internos (InternalBuckets).
      *
      * @return array<string, mixed>
      */
@@ -402,7 +406,8 @@ final class WorkloadBoard
     {
         $plan = $this->plan();
         $rowIndex = array_fill_keys(array_map(fn (User $person): int => $person->id, $this->rows()->all()), true);
-        $unplanned = array_values(array_filter($plan->unplanned, fn (array $item): bool => isset($rowIndex[$item['user_id']])));
+        $buckets = $this->internalBuckets();
+        $unplanned = array_values(array_filter($plan->unplanned, fn (array $item): bool => isset($rowIndex[$item['user_id']]) && ! isset($buckets[$item['task_id']])));
 
         /** @var array<int, list<array{task_id: int, remaining_minutes: int}>> $unassigned 0 = sin departamento */
         $unassigned = [];
@@ -410,7 +415,9 @@ final class WorkloadBoard
             foreach ($plan->unassigned as $key => $items) {
                 $departmentId = $key === '' ? null : (int) $key;
 
-                if ($this->scope->seesUnassignedOf($departmentId) && $this->matchesDepartmentFilter($departmentId)) {
+                $items = array_values(array_filter($items, fn (array $item): bool => ! isset($buckets[$item['task_id']])));
+
+                if ($items !== [] && $this->scope->seesUnassignedOf($departmentId) && $this->matchesDepartmentFilter($departmentId)) {
                     $unassigned[$departmentId ?? 0] = $items;
                 }
             }
@@ -481,6 +488,14 @@ final class WorkloadBoard
             ],
             'extra_people' => $this->extraPeople($members),
         ];
+    }
+
+    /**
+     * @return array<int, true>
+     */
+    private function internalBuckets(): array
+    {
+        return $this->internalBuckets ??= InternalBuckets::ids();
     }
 
     /**

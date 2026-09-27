@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { cellKey, WorkloadMatrix } from '@/components/workload/workload-matrix';
 import { COLUMNS, pageProps } from './workload-fixtures';
 
+// La matriz y los paneles completos tardan en jsdom: margen para las máquinas cargadas (CI).
+vi.setConfig({ testTimeout: 20_000 });
+
 function renderMatrix(
     overrides: Partial<Parameters<typeof WorkloadMatrix>[0]> = {},
 ) {

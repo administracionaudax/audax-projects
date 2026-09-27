@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Absence;
+use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -272,6 +274,22 @@ describe('bandejas', function () {
             ->and($task['title'])->toBe('Banner de campaña')
             ->and($task['can_edit'])->toBeTrue()
             ->and($task['assignee_ids'])->toEqualCanonicalizing([$this->people['elena']->id, $this->people['lucia']->id, $this->people['raul']->id]);
+    });
+
+    it('las tareas «cajón» de los proyectos internos (sin estimación) no van a las bandejas; las internas con estimación, sí', function () {
+        $internal = Project::factory()->internal()->create(['code' => 'INTERNO']);
+        Task::factory()->create(['project_id' => $internal->id, 'assignee_user_id' => null, 'title' => 'Reuniones', 'estimated_minutes' => null, 'due_date' => null]);
+        Task::factory()->create(['project_id' => $internal->id, 'assignee_user_id' => $this->people['elena']->id, 'title' => 'Formación', 'estimated_minutes' => null, 'due_date' => null]);
+        Task::factory()->create(['project_id' => $internal->id, 'assignee_user_id' => null, 'title' => 'Preparar el taller', 'estimated_minutes' => 240, 'due_date' => '2026-10-20']);
+
+        $trays = ($this->page)('ana')['trays'];
+        $unassigned = collect($trays['unassigned']['groups'])->flatMap(fn (array $group) => array_column($group['tasks'], 'title'))->all();
+
+        expect($unassigned)->toContain('Preparar el taller')
+            ->not->toContain('Reuniones')
+            ->and($trays['unassigned']['total'])->toBe(4)
+            ->and(array_column($trays['unplanned']['tasks'], 'title'))->not->toContain('Formación')
+            ->and($trays['unplanned']['total'])->toBe(2);
     });
 
     it('con filtro de departamento, «Sin asignar» solo lleva ese departamento', function () {

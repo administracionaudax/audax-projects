@@ -450,6 +450,9 @@ function CellButton({
     );
     // Carga en un día sin capacidad (vencidas que caen hoy en festivo, sin días laborables…).
     const loadWithoutCapacity = cell.capacity <= 0 && cell.planned > 0;
+    const markers = [cell.reduced, loadWithoutCapacity, cell.overdue].filter(
+        Boolean,
+    ).length;
 
     return (
         <button
@@ -474,8 +477,10 @@ function CellButton({
                 planned={cell.planned}
                 capacity={cell.capacity}
                 reason={cell.reason ? reasonShort(cell.reason) : undefined}
+                // Hueco para las marcas de la esquina: el texto no se monta encima.
+                className={cn(markers === 1 && 'pr-5', markers > 1 && 'pr-9')}
             />
-            {cell.overdue || cell.reduced || loadWithoutCapacity ? (
+            {markers > 0 ? (
                 <span
                     aria-hidden="true"
                     className="absolute top-1 right-1 flex items-center gap-0.5"
