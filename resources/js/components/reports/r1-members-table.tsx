@@ -30,11 +30,15 @@ export function occupancyLevel(
         return 'none';
     }
 
-    if (occupancy * 100 < thresholds.low) {
+    // Los ratios llegan con 4 decimales: se pasan a % redondeando para que 1,1 × 100 (que en
+    // coma flotante es 110,00000000000001) cuente como el 110 %, dentro del umbral.
+    const percent = Math.round(occupancy * 10000) / 100;
+
+    if (percent < thresholds.low) {
         return 'low';
     }
 
-    return occupancy * 100 > thresholds.high ? 'high' : 'ok';
+    return percent > thresholds.high ? 'high' : 'ok';
 }
 
 const LEVELS: Record<

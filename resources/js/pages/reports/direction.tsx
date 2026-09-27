@@ -180,12 +180,6 @@ export default function DirectionReport({
 
                         <PageSection
                             title={t('reports_r1.direction.by_client')}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('clientes')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
                         >
                             {clients.rows.length === 0 ? (
                                 <EmptyState
