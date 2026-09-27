@@ -6,6 +6,7 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
+use App\Models\TaskDependency;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,9 @@ use Illuminate\Validation\ValidationException;
  * - con un temporizador en marcha en la tarea o en sus subtareas no se mueve: al pararlo, esas
  *   horas se imputarían al proyecto y a la bolsa de destino,
  * - los adjuntos de la tarea, de sus subtareas y de sus comentarios pasan a la pestaña Archivos
- *   del proyecto destino (project_id desnormalizado; el fichero no cambia de sitio).
+ *   del proyecto destino (project_id desnormalizado; el fichero no cambia de sitio),
+ * - las dependencias solo unen tareas del mismo proyecto (D-056): se quitan las que la tarea y
+ *   sus subtareas tenían con tareas que se quedan en el proyecto de origen.
  * La autorización (editar la tarea y crear en el destino) la hace el controlador.
  */
 final class TaskMover
@@ -71,6 +74,12 @@ final class TaskMover
                             ->whereIn('attachable_id', TaskComment::query()->withTrashed()->select('id')->whereIn('task_id', $taskIds)));
                 })
                 ->update(['project_id' => $target->id]);
+
+            TaskDependency::query()
+                ->where(fn (Builder $query) => $query
+                    ->where(fn (Builder $from) => $from->whereIn('predecessor_task_id', $taskIds)->whereNotIn('successor_task_id', $taskIds))
+                    ->orWhere(fn (Builder $to) => $to->whereIn('successor_task_id', $taskIds)->whereNotIn('predecessor_task_id', $taskIds)))
+                ->delete();
 
             return $task;
         });

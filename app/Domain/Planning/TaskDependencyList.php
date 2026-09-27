@@ -30,6 +30,8 @@ final class TaskDependencyList
                 ->orOn('dep.successor_task_id', '=', 'tasks.id'))
             ->where(fn ($link) => $link->where('dep.successor_task_id', $task->id)->orWhere('dep.predecessor_task_id', $task->id))
             ->where('tasks.id', '!=', $task->id)
+            // Solo hay dependencias dentro del proyecto (D-056; TaskMover quita las que dejaría
+            // entre proyectos al mover una tarea): el filtro evita enlazar a otro proyecto.
             ->where('tasks.project_id', $task->project_id)
             ->orderByRaw('CASE WHEN tasks.due_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('tasks.due_date')
