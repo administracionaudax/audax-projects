@@ -43,6 +43,40 @@ export const HEADER_HEIGHT = HEADER_TIER_HEIGHT * 2;
 /** Píxeles que hay que arrastrar antes de empezar a mover (para distinguirlo de un clic). */
 export const DRAG_THRESHOLD = 3;
 
+/**
+ * Ancho mínimo para agarrar una barra con el ratón o el dedo: las más estrechas (una tarea de un
+ * día en la escala mes mide 4 px) amplían su zona sensible hasta aquí, centrada en la barra.
+ */
+export const MIN_GRAB_WIDTH = 16;
+
+/** Por debajo de este ancho, la barra no tiene tiradores: se mueve entera (y se redimensiona con el teclado). */
+export const MIN_RESIZE_WIDTH = 16;
+
+/** Ancho máximo de cada tirador y lo que sobresale de la barra (en las barras anchas). */
+const HANDLE_MAX = 10;
+const HANDLE_OVERHANG = 4;
+
+export type ResizeHandle = {
+    /** Ancho de cada tirador. */
+    size: number;
+    /** Lo que sobresale por fuera de la barra. */
+    overhang: number;
+};
+
+/**
+ * Tiradores de los bordes de una barra: como mucho un cuarto de su ancho cada uno, para que
+ * siempre quede al menos la mitad central para moverla. Las barras muy estrechas no tienen.
+ */
+export function resizeHandle(width: number): ResizeHandle | null {
+    if (width < MIN_RESIZE_WIDTH) {
+        return null;
+    }
+
+    const size = Math.min(HANDLE_MAX, Math.floor(width / 4));
+
+    return { size, overhang: size >= HANDLE_MAX ? HANDLE_OVERHANG : 0 };
+}
+
 export type Timeline = {
     scale: GanttScale;
     /** Primer día visible (alineado a la unidad de la escala). */

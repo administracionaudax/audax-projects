@@ -425,6 +425,93 @@ describe('Gantt: ratón', () => {
         });
     });
 
+    it('en la escala mes, una tarea de dos días (8 px) no tiene tiradores y arrastrarla la mueve', () => {
+        const short = task({
+            id: 30,
+            title: 'Revisión',
+            start_date: '2026-10-06',
+            due_date: '2026-10-07',
+        });
+        const { onReschedule } = renderChart(
+            {
+                timeline: createTimeline(
+                    { start: '2026-09-01', end: '2026-12-31' },
+                    'month',
+                ),
+            },
+            [short],
+        );
+        const element = bar(/^Revisión/);
+
+        expect(element.style.width).toBe('8px');
+        expect(element.querySelector('[data-gantt-part="start"]')).toBeNull();
+        expect(element.querySelector('[data-gantt-part="end"]')).toBeNull();
+
+        // Su zona sensible llega a 16 px, centrada, y cuenta como la barra.
+        const grab = element.querySelector<HTMLElement>(
+            '[data-test="gantt-grab-area"]',
+        );
+        expect(grab?.style.left).toBe('-4px');
+        expect(grab?.style.right).toBe('-4px');
+
+        fireEvent.pointerDown(grab as Element, {
+            button: 0,
+            pointerId: 1,
+            clientX: 100,
+        });
+        fireEvent.pointerMove(grab as Element, { pointerId: 1, clientX: 108 });
+        fireEvent.pointerUp(grab as Element, { pointerId: 1, clientX: 108 });
+
+        expect(onReschedule).toHaveBeenLastCalledWith(short, {
+            start_date: '2026-10-08',
+            due_date: '2026-10-09',
+        });
+    });
+
+    it('en la escala semana, una tarea de un día deja la mitad central para moverla', () => {
+        const oneDay = task({
+            id: 31,
+            title: 'Llamada',
+            start_date: '2026-10-06',
+            due_date: '2026-10-06',
+        });
+        const { onReschedule } = renderChart(
+            {
+                timeline: createTimeline(
+                    { start: '2026-09-28', end: '2026-10-25' },
+                    'week',
+                ),
+            },
+            [oneDay],
+        );
+        const element = bar(/^Llamada/);
+        const start = element.querySelector<HTMLElement>(
+            '[data-gantt-part="start"]',
+        );
+        const end = element.querySelector<HTMLElement>(
+            '[data-gantt-part="end"]',
+        );
+
+        expect(element.style.width).toBe('16px');
+        expect(start?.style.width).toBe('4px');
+        expect(start?.style.left).toBe('0px');
+        expect(end?.style.width).toBe('4px');
+        expect(end?.style.right).toBe('0px');
+
+        fireEvent.pointerDown(element, {
+            button: 0,
+            pointerId: 1,
+            clientX: 100,
+        });
+        fireEvent.pointerMove(element, { pointerId: 1, clientX: 132 });
+        fireEvent.pointerUp(element, { pointerId: 1, clientX: 132 });
+
+        expect(onReschedule).toHaveBeenLastCalledWith(oneDay, {
+            start_date: '2026-10-08',
+            due_date: '2026-10-08',
+        });
+    });
+
     it('un clic sin arrastrar no cambia nada y el doble clic abre la tarea', () => {
         const { onReschedule, onOpen } = renderChart();
         const element = bar(/^Maquetación/);

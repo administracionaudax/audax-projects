@@ -4,6 +4,8 @@ import { barFill } from '@/components/gantt/colors';
 import {
     BAR_HEIGHT,
     MILESTONE_SIZE,
+    MIN_GRAB_WIDTH,
+    resizeHandle,
     ROW_HEIGHT,
     SUMMARY_HEIGHT,
 } from '@/components/gantt/geometry';
@@ -150,6 +152,7 @@ export const GanttTaskBar = memo(function GanttTaskBar({
     }
 
     const percent = progressPercent(task);
+    const handle = resizeHandle(width);
     const showTitle = width >= 44;
     const showPercent = percent !== null && width >= 150;
     const showAssignee = task.assignee !== null && width >= 84;
@@ -215,19 +218,39 @@ export const GanttTaskBar = memo(function GanttTaskBar({
                     }}
                 />
             ) : null}
-            {editable ? (
+            {width < MIN_GRAB_WIDTH ? (
+                // Zona sensible de las barras muy estrechas (sin data-gantt-part: cuenta como barra).
+                <span
+                    aria-hidden="true"
+                    data-test="gantt-grab-area"
+                    className="absolute inset-y-0"
+                    style={{
+                        left: -(MIN_GRAB_WIDTH - width) / 2,
+                        right: -(MIN_GRAB_WIDTH - width) / 2,
+                    }}
+                />
+            ) : null}
+            {editable && handle ? (
                 <>
                     <span
                         aria-hidden="true"
                         data-gantt-part="start"
-                        className="absolute inset-y-0 -left-1 w-2.5 cursor-ew-resize"
-                        style={{ touchAction: 'none' }}
+                        className="absolute inset-y-0 cursor-ew-resize"
+                        style={{
+                            left: -handle.overhang,
+                            width: handle.size,
+                            touchAction: 'none',
+                        }}
                     />
                     <span
                         aria-hidden="true"
                         data-gantt-part="end"
-                        className="absolute inset-y-0 -right-1 w-2.5 cursor-ew-resize"
-                        style={{ touchAction: 'none' }}
+                        className="absolute inset-y-0 cursor-ew-resize"
+                        style={{
+                            right: -handle.overhang,
+                            width: handle.size,
+                            touchAction: 'none',
+                        }}
                     />
                 </>
             ) : null}

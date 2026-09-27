@@ -28,8 +28,11 @@ import {
     dependencyPath,
     dragDelta,
     headerCells,
+    DAY_WIDTH,
     milestoneBox,
     MILESTONE_SIZE,
+    MIN_GRAB_WIDTH,
+    resizeHandle,
     spanBox,
     taskSpan,
     unionSpan,
@@ -329,6 +332,40 @@ describe('arrastrar y redimensionar', () => {
                 start_date: null,
                 due_date: '2026-10-15',
             });
+        }
+    });
+});
+
+describe('tiradores de los bordes de la barra', () => {
+    it('las barras muy estrechas no tienen tiradores: se mueven enteras', () => {
+        // Escala mes: de 1 a 3 días (4 a 12 px).
+        for (const days of [1, 2, 3]) {
+            expect(resizeHandle(days * DAY_WIDTH.month)).toBeNull();
+        }
+
+        expect(MIN_GRAB_WIDTH).toBeGreaterThanOrEqual(16);
+    });
+
+    it('cada tirador ocupa como mucho un cuarto: queda al menos la mitad central para mover', () => {
+        // Escala semana: una tarea de un día (16 px) deja 8 px para moverla, no 4.
+        expect(resizeHandle(DAY_WIDTH.week)).toEqual({ size: 4, overhang: 0 });
+        expect(resizeHandle(32)).toEqual({ size: 8, overhang: 0 });
+        // Las anchas, como siempre: 10 px, 4 de ellos por fuera de la barra.
+        expect(resizeHandle(40)).toEqual({ size: 10, overhang: 4 });
+        expect(resizeHandle(3 * DAY_WIDTH.day)).toEqual({
+            size: 10,
+            overhang: 4,
+        });
+
+        for (let width = 16; width <= 400; width++) {
+            const handle = resizeHandle(width);
+
+            expect(handle).not.toBeNull();
+
+            if (handle) {
+                const inside = handle.size - handle.overhang;
+                expect(width - 2 * inside).toBeGreaterThanOrEqual(width / 2);
+            }
         }
     });
 });
