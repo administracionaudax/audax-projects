@@ -23,6 +23,7 @@ import notifications from '../../../lang/ui/notifications.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
 import reportsR2 from '../../../lang/ui/reports-r2.json';
+import reportsR1 from '../../../lang/ui/reports-r1.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import time from '../../../lang/ui/time.json';
@@ -39,6 +40,7 @@ const messages = {
     ...notifications,
     ...reports,
     ...reportsR2,
+    ...reportsR1,
 };
 
 export type TranslationKey = keyof typeof messages;

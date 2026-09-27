@@ -73,7 +73,6 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
             ->where('section', $section));
 })->with([
     ['/carga', 'workload'],
-    ['/informes', 'reports'],
     ['/chat', 'chat'],
 ]);
 
