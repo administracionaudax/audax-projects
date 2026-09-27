@@ -27,6 +27,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --uid 10091 --home-dir /nonexistent --shell /usr/sbin/nologin whisper
 COPY --from=build /src/build/bin/whisper-cli /src/build/bin/whisper-server /usr/local/bin/
+# OpenBLAS elige sus rutinas por la CPU; en la del servidor (SSE3) se fijan las de Prescott.
+ENV OPENBLAS_CORETYPE=Prescott OPENBLAS_NUM_THREADS=2
 USER whisper
 EXPOSE 8080
 ENTRYPOINT ["whisper-server"]
