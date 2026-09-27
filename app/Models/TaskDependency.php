@@ -18,8 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read Task $predecessor
- * @property-read Task $successor
+ * @property-read Task|null $predecessor null si la tarea está en la papelera
+ * @property-read Task|null $successor null si la tarea está en la papelera
  */
 #[Fillable(['predecessor_task_id', 'successor_task_id', 'type', 'created_by'])]
 class TaskDependency extends Model

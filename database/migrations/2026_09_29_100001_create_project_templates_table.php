@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Plantillas de proyecto (SPEC §4.3 y §14): estructura de tareas, subtareas, hitos y
-     * dependencias con fechas relativas al inicio del proyecto (D-055).
+     * dependencias con fechas relativas al inicio del proyecto (D-058).
      */
     public function up(): void
     {

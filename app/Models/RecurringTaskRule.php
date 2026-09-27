@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Tarea recurrente (SPEC §4.3): semanal (cada `interval` semanas el `weekday` ISO, 1 = lunes) o
  * mensual (cada `interval` meses el día `month_day`; si el mes es más corto, su último día). Cada
- * instancia vence `due_offset_days` después de su fecha (D-056).
+ * instancia vence `due_offset_days` después de su fecha (D-059).
  *
  * @property int $id
  * @property int $project_id

@@ -13,7 +13,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 
 /*
-| Dependencias fin-inicio y conflictos al mover (SPEC §6.1, D-053, D-054; aceptación de la F4:
+| Dependencias fin-inicio y conflictos al mover (SPEC §6.1, D-056, D-057; aceptación de la F4:
 | no se pueden crear ciclos).
 */
 

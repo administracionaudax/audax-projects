@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Crea las instancias de las tareas recurrentes (SPEC §4.3, D-056). Lo ejecuta cada día el comando
+ * Crea las instancias de las tareas recurrentes (SPEC §4.3, D-059). Lo ejecuta cada día el comando
  * tasks:generate-recurring. Idempotente: la clave única (regla, fecha) impide duplicar, y
  * last_generated_on evita repasar lo ya hecho. Si hace mucho que no se ejecuta, recupera como mucho
  * MAX_CATCH_UP instancias por regla. Se salta las reglas de proyectos archivados; si una instancia

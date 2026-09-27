@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Plantillas de proyecto (SPEC §4.3 y §6, D-055):
+ * Plantillas de proyecto (SPEC §4.3 y §6, D-058):
  * - apply(): crea en un proyecto las tareas, subtareas, hitos y dependencias de la plantilla, con
  *   fechas relativas al inicio indicado (inicio = inicio + start_offset_days; entrega = inicio +
  *   duration_days − 1; un hito solo lleva entrega). En proyectos de bolsas, todas van a la bolsa

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Dependencias fin-inicio entre tareas del mismo proyecto (SPEC §4.3 y §6.1, D-053). Sin ciclos
+     * Dependencias fin-inicio entre tareas del mismo proyecto (SPEC §4.3 y §6.1, D-056). Sin ciclos
      * (lo impide App\Domain\Schedule\DependencyService).
      */
     public function up(): void

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Dependencias fin-inicio (SPEC §6.1, D-053): solo entre tareas del mismo proyecto, sin enlazar
+ * Dependencias fin-inicio (SPEC §6.1, D-056): solo entre tareas del mismo proyecto, sin enlazar
  * una tarea consigo misma y sin ciclos. Enlazar dos veces lo mismo no duplica.
  */
 final class DependencyService
@@ -91,9 +91,9 @@ final class DependencyService
     {
         $pairs = [];
         $rows = TaskDependency::query()
-            ->join('tasks as report_pred', 'report_pred.id', '=', 'task_dependencies.predecessor_task_id')
-            ->where('report_pred.project_id', $projectId)
-            ->whereNull('report_pred.deleted_at')
+            ->join('tasks as dep_pred', 'dep_pred.id', '=', 'task_dependencies.predecessor_task_id')
+            ->where('dep_pred.project_id', $projectId)
+            ->whereNull('dep_pred.deleted_at')
             ->get(['task_dependencies.predecessor_task_id', 'task_dependencies.successor_task_id']);
 
         foreach ($rows as $dependency) {

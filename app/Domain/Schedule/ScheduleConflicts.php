@@ -6,7 +6,7 @@ use App\Models\Task;
 use Carbon\CarbonImmutable;
 
 /**
- * Conflictos al mover una tarea con sucesoras (SPEC §6.1, D-054): una sucesora está en conflicto
+ * Conflictos al mover una tarea con sucesoras (SPEC §6.1, D-057): una sucesora está en conflicto
  * si empieza (o, sin inicio, vence) el mismo día o antes de que acabe su predecesora. La
  * propuesta desplaza cada sucesora en conflicto lo justo para empezar el día siguiente, conserva
  * su duración y sigue en cascada. NUNCA se aplica sola: la interfaz la enseña y pide confirmación.

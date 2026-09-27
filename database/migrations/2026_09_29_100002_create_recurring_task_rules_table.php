@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Tareas recurrentes (SPEC §4.3 y §14): plantilla de tarea más una regla semanal o mensual. Un
-     * job diario crea las instancias (D-056). tasks.recurring_task_rule_id + occurrence_date impiden
+     * job diario crea las instancias (D-059). tasks.recurring_task_rule_id + occurrence_date impiden
      * duplicarlas.
      */
     public function up(): void
