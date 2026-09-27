@@ -1,12 +1,13 @@
 import { Diamond, TriangleAlert } from 'lucide-react';
+import { memo, useId } from 'react';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { EditorRow } from './template-editor-state';
 import {
-    conflictsOf,
     endDay,
     isSubtask,
+    rowsMeta,
     totalDays,
 } from './template-editor-state';
 
@@ -21,9 +22,12 @@ const TICK_EVERY = 7;
  * de inicio a la entrega) y un rombo por hito, en el orden del editor y con las subtareas
  * sangradas. Colores de datos en orden fijo (D-012): tareas --chart-1, subtareas --chart-2 e hitos
  * --chart-3, siempre con leyenda y sin depender solo del color (el rombo y la sangría también lo
- * dicen). La tabla del editor es la alternativa accesible: aquí se resume con un texto.
+ * dicen). La tabla del editor es la alternativa accesible: aquí se resume con un texto, que es
+ * también la descripción de la zona desplazable.
+ * Con 500 tareas y años de duración: las marcas semanales de cada fila son un fondo (no un
+ * elemento por semana y fila) y los conflictos se cuentan en una pasada (rowsMeta).
  */
-export function TemplateTimeline({
+export const TemplateTimeline = memo(function TemplateTimeline({
     rows,
     labels,
 }: {
@@ -31,16 +35,19 @@ export function TemplateTimeline({
     /** Número de cada fila en el editor («1», «1.1»…), por referencia. */
     labels: Record<string, string>;
 }) {
+    const summaryId = useId();
     const days = Math.max(totalDays(rows), 1);
     const width = Math.max(days * DAY_WIDTH, 280);
     const ticks = Array.from(
         { length: Math.ceil(days / TICK_EVERY) },
         (_, index) => index * TICK_EVERY,
     );
+    // Una línea al empezar cada semana (días 1, 8, 15…), como las marcas de la cabecera.
+    const weekLines = `repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px ${(TICK_EVERY / days) * 100}%)`;
     const milestones = rows.filter((row) => row.is_milestone).length;
-    const conflicts = rows.filter(
-        (row) => conflictsOf(rows, row.ref).length > 0,
-    );
+    const conflicts = [...rowsMeta(rows).values()].filter(
+        (info) => info.conflict !== null,
+    ).length;
 
     return (
         <figure className="grid gap-3" data-test="template-timeline">
@@ -48,7 +55,7 @@ export function TemplateTimeline({
                 <span className="text-sm font-medium">
                     {t('templates.timeline.title')}
                 </span>
-                <span className="text-sm text-muted-foreground">
+                <span id={summaryId} className="text-sm text-muted-foreground">
                     {t('templates.timeline.summary', {
                         tasks: rows.length,
                         milestones,
@@ -92,6 +99,7 @@ export function TemplateTimeline({
                 <div
                     role="region"
                     aria-label={t('templates.timeline.scroll_label')}
+                    aria-describedby={summaryId}
                     tabIndex={0}
                     className={cn(
                         'overflow-x-auto rounded-md border bg-background',
@@ -141,16 +149,10 @@ export function TemplateTimeline({
                                         {row.title.trim() ||
                                             t('templates.editor.untitled')}
                                     </div>
-                                    <div className="relative h-7 border-b">
-                                        {ticks.map((day) => (
-                                            <span
-                                                key={day}
-                                                className="absolute top-0 h-full border-l border-dashed"
-                                                style={{
-                                                    left: `${(day / days) * 100}%`,
-                                                }}
-                                            />
-                                        ))}
+                                    <div
+                                        className="relative h-7 border-b"
+                                        style={{ backgroundImage: weekLines }}
+                                    >
                                         {row.is_milestone ? (
                                             <Diamond
                                                 className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 fill-chart-3 text-chart-3"
@@ -180,17 +182,17 @@ export function TemplateTimeline({
                 </div>
             )}
 
-            {conflicts.length > 0 ? (
+            {conflicts > 0 ? (
                 <p className="flex items-start gap-2 text-sm text-foreground">
                     <TriangleAlert
                         aria-hidden="true"
                         className="mt-0.5 size-4 shrink-0 text-warning"
                     />
                     {t('templates.timeline.conflicts', {
-                        count: conflicts.length,
+                        count: conflicts,
                     })}
                 </p>
             ) : null}
         </figure>
     );
-}
+});

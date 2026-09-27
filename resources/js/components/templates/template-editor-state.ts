@@ -208,6 +208,146 @@ export function parentOptions(rows: EditorRow[], ref: string): EditorRow[] {
     return rows.filter((row) => row.ref !== ref && !isSubtask(row));
 }
 
+/** Número de cada fila tal y como se ve: «1», «2», «2.1»… */
+export function rowLabels(rows: EditorRow[]): Record<string, string> {
+    const labels: Record<string, string> = {};
+    let root = 0;
+    const childCount: Record<string, number> = {};
+
+    for (const row of rows) {
+        if (isSubtask(row) && labels[row.parent_ref as string]) {
+            const parent = row.parent_ref as string;
+            childCount[parent] = (childCount[parent] ?? 0) + 1;
+            labels[row.ref] = `${labels[parent]}.${childCount[parent]}`;
+        } else {
+            root++;
+            labels[row.ref] = String(root);
+        }
+    }
+
+    return labels;
+}
+
+/** Lo que una fila necesita saber de las demás para pintarse. */
+export type RowMeta = {
+    /** Su número: «1», «2.1»… */
+    label: string;
+    /** ¿Se puede subir o bajar? (como moveRow: entre las de primer nivel o entre sus hermanas). */
+    canMoveUp: boolean;
+    canMoveDown: boolean;
+    /** Subtareas que tiene. */
+    children: number;
+    /** La tarea de la que es subtarea, si está en la plantilla. */
+    parent: string | null;
+    /** Primera predecesora que acaba el día en que empieza o después (D-057), o null. */
+    conflict: EditorRow | null;
+};
+
+/**
+ * Lo de todas las filas en una sola pasada, O(filas + dependencias): el editor lo calcula una vez
+ * por render en lugar de que cada fila recorra todas las demás (con 500 tareas, O(n³)).
+ * Da lo mismo que canMove(), childrenOf() y conflictsOf() fila a fila.
+ */
+export function rowsMeta(rows: EditorRow[]): Map<string, RowMeta> {
+    const labels = rowLabels(rows);
+    const byRef = new Map(rows.map((row) => [row.ref, row]));
+    const roots: string[] = [];
+    const siblings = new Map<string, string[]>();
+
+    for (const row of rows) {
+        if (isSubtask(row)) {
+            const parent = row.parent_ref as string;
+            const group = siblings.get(parent);
+
+            if (group) {
+                group.push(row.ref);
+            } else {
+                siblings.set(parent, [row.ref]);
+            }
+        } else {
+            roots.push(row.ref);
+        }
+    }
+
+    const position = new Map<string, { index: number; count: number }>();
+    roots.forEach((ref, index) =>
+        position.set(ref, { index, count: roots.length }),
+    );
+    for (const group of siblings.values()) {
+        group.forEach((ref, index) =>
+            position.set(ref, { index, count: group.length }),
+        );
+    }
+
+    const meta = new Map<string, RowMeta>();
+
+    for (const row of rows) {
+        const { index, count } = position.get(row.ref) ?? {
+            index: 0,
+            count: 1,
+        };
+        let conflict: EditorRow | null = null;
+
+        for (const from of row.depends_on) {
+            const predecessor = byRef.get(from);
+
+            if (predecessor && row.start_offset_days <= endDay(predecessor)) {
+                conflict = predecessor;
+                break;
+            }
+        }
+
+        meta.set(row.ref, {
+            label: labels[row.ref] ?? '',
+            canMoveUp: index > 0,
+            canMoveDown: index < count - 1,
+            children: siblings.get(row.ref)?.length ?? 0,
+            parent:
+                isSubtask(row) && byRef.has(row.parent_ref as string)
+                    ? (row.parent_ref as string)
+                    : null,
+            conflict,
+        });
+    }
+
+    return meta;
+}
+
+/**
+ * Tareas a las que se llega desde `ref` siguiendo las dependencias (sus sucesoras, directas o
+ * no). Que `ref` dependa de una de ellas crearía un ciclo: el selector «Depende de…» lo calcula
+ * una vez en lugar de buscar un ciclo por cada tarea.
+ */
+export function reachableFrom(rows: EditorRow[], ref: string): Set<string> {
+    const successors = new Map<string, string[]>();
+
+    for (const row of rows) {
+        for (const from of row.depends_on) {
+            const next = successors.get(from);
+
+            if (next) {
+                next.push(row.ref);
+            } else {
+                successors.set(from, [row.ref]);
+            }
+        }
+    }
+
+    const seen = new Set<string>([ref]);
+    const queue = [ref];
+
+    for (let i = 0; i < queue.length; i++) {
+        for (const next of successors.get(queue[i]) ?? []) {
+            if (!seen.has(next)) {
+                seen.add(next);
+                queue.push(next);
+            }
+        }
+    }
+
+    return seen;
+}
+
 /** Una tarea con subtareas no puede pasar a subtarea (solo hay un nivel). */
 export function canBeSubtask(rows: EditorRow[], ref: string): boolean {
     return childrenOf(rows, ref).length === 0;

@@ -1,13 +1,13 @@
 import { Head, Link, setLayoutProps, useForm } from '@inertiajs/react';
 import { Download, Save } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useDeferredValue, useId, useMemo, useState } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
 import { PageSection } from '@/components/projects-list/page-section';
 import { TemplateEditor } from '@/components/templates/template-editor';
-import { rowLabels } from '@/components/templates/template-editor';
 import type { EditorRow } from '@/components/templates/template-editor-state';
 import {
     mapErrors,
+    rowLabels,
     rowsFromStructure,
     structureFromRows,
 } from '@/components/templates/template-editor-state';
@@ -61,7 +61,14 @@ export default function TemplateEdit({
         is_active: template?.is_active ?? true,
     });
     const errors = form.errors as Record<string, string | undefined>;
-    const editorErrors = mapErrors(errors, submitted);
+    const editorErrors = useMemo(
+        () => mapErrors(errors, submitted),
+        [errors, submitted],
+    );
+    // El cronograma va un paso por detrás mientras se escribe: la tabla responde al momento y la
+    // vista previa se vuelve a pintar cuando hay tiempo (con 500 tareas, cada tecla cuenta).
+    const previewRows = useDeferredValue(rows);
+    const previewLabels = useMemo(() => rowLabels(previewRows), [previewRows]);
     const heading = saved
         ? t('templates.edit.heading', { name: template.name })
         : template !== null
@@ -215,8 +222,8 @@ export default function TemplateEdit({
 
                     <PageSection title={t('templates.edit.preview')}>
                         <TemplateTimeline
-                            rows={rows}
-                            labels={rowLabels(rows)}
+                            rows={previewRows}
+                            labels={previewLabels}
                         />
                     </PageSection>
 

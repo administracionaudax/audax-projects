@@ -1,24 +1,18 @@
 import {
     ArrowDown,
     ArrowUp,
-    Link2,
     ListPlus,
     Plus,
     Trash2,
     TriangleAlert,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { NativeSelect } from '@/components/admin/native-select';
 import { DurationInput } from '@/components/domain/duration-input';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -29,55 +23,52 @@ import type { EditorErrors, EditorRow } from './template-editor-state';
 import {
     addRow,
     addSubtask,
-    canBeSubtask,
-    canMove,
-    childrenOf,
-    conflictsOf,
     isSubtask,
     moveRow,
-    parentOptions,
     removeRow,
+    rowLabels,
+    rowsMeta,
     setParent,
     toggleDependency,
     updateRow,
-    wouldCreateCycle,
 } from './template-editor-state';
+import {
+    DependencyPicker,
+    EditorRowsContext,
+    ParentPicker,
+    rowName,
+} from './template-row-pickers';
 
 /** Estimación máxima de una tarea: 999 h (TemplateStructure::MAX_ESTIMATE_MINUTES). */
 export const MAX_ESTIMATE_MINUTES = 999 * 60;
 
-/** Número de cada fila tal y como se ve: «1», «2», «2.1»… */
-export function rowLabels(rows: EditorRow[]): Record<string, string> {
-    const labels: Record<string, string> = {};
-    let root = 0;
-    const childCount: Record<string, number> = {};
+/** Cambia las filas a partir de las actuales (el setState de la página). */
+export type EditorChange = (update: (rows: EditorRow[]) => EditorRow[]) => void;
 
-    for (const row of rows) {
-        if (isSubtask(row) && labels[row.parent_ref as string]) {
-            const parent = row.parent_ref as string;
-            childCount[parent] = (childCount[parent] ?? 0) + 1;
-            labels[row.ref] = `${labels[parent]}.${childCount[parent]}`;
-        } else {
-            root++;
-            labels[row.ref] = String(root);
-        }
-    }
+/**
+ * Acciones de una fila. No cambian entre renders (trabajan sobre las filas actuales con
+ * EditorChange), así que no obligan a volver a pintar las filas que no cambian.
+ */
+type RowActions = {
+    update: (ref: string, changes: Parameters<typeof updateRow>[2]) => void;
+    move: (ref: string, direction: 'up' | 'down') => void;
+    setParent: (ref: string, parentRef: string | null) => void;
+    toggleDependency: (ref: string, predecessor: string) => void;
+    addSubtask: (ref: string) => void;
+    remove: (ref: string) => void;
+};
 
-    return labels;
-}
-
-function rowName(row: EditorRow, labels: Record<string, string>): string {
-    return t('templates.editor.row_name', {
-        number: labels[row.ref] ?? '',
-        title: row.title.trim() || t('templates.editor.untitled'),
-    });
-}
+/** Sin errores: el mismo objeto siempre, para no romper la memoización de las filas. */
+const NO_ERRORS: EditorErrors['rows'][string] = {};
 
 /**
  * Editor de la estructura de una plantilla (D-058): tabla editable con una fila por tarea
  * (título, de qué tarea es subtarea, tipo, prioridad, estimación en h:mm, hito, día de inicio,
  * duración en días y de qué tareas depende), con subtareas de un solo nivel, sin ciclos y los
  * errores del servidor junto a cada campo. La tabla tiene su propio scroll horizontal.
+ * Hasta 500 tareas: lo que cada fila necesita de las demás se calcula una vez por render
+ * (rowsMeta), las filas están memoizadas con acciones estables (al escribir en una solo se vuelve
+ * a pintar esa) y las listas de «Subtarea de» y «Depende de…» solo se pintan al abrirlas.
  */
 export function TemplateEditor({
     rows,
@@ -89,7 +80,7 @@ export function TemplateEditor({
     maxDays,
 }: {
     rows: EditorRow[];
-    onChange: (rows: EditorRow[]) => void;
+    onChange: EditorChange;
     errors: EditorErrors;
     types: TemplateTypeOption[];
     priorities: TaskPriority[];
@@ -97,8 +88,32 @@ export function TemplateEditor({
     maxDays: number;
 }) {
     const id = useId();
-    const labels = rowLabels(rows);
+    const labels = useMemo(() => rowLabels(rows), [rows]);
+    const meta = useMemo(() => rowsMeta(rows), [rows]);
+    const byRef = useMemo(
+        () => new Map(rows.map((row) => [row.ref, row])),
+        [rows],
+    );
+    const context = useMemo(() => ({ rows, labels }), [rows, labels]);
     const full = rows.length >= maxTasks;
+    const actions = useMemo<RowActions>(
+        () => ({
+            update: (ref, changes) =>
+                onChange((current) => updateRow(current, ref, changes)),
+            move: (ref, direction) =>
+                onChange((current) => moveRow(current, ref, direction)),
+            setParent: (ref, parentRef) =>
+                onChange((current) => setParent(current, ref, parentRef)),
+            toggleDependency: (ref, predecessor) =>
+                onChange((current) =>
+                    toggleDependency(current, ref, predecessor),
+                ),
+            addSubtask: (ref) =>
+                onChange((current) => addSubtask(current, ref)),
+            remove: (ref) => onChange((current) => removeRow(current, ref)),
+        }),
+        [onChange],
+    );
 
     return (
         <div className="grid gap-3">
@@ -210,21 +225,56 @@ export function TemplateEditor({
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row) => (
-                                <EditorTableRow
-                                    key={row.ref}
-                                    id={`${id}-${row.ref}`}
-                                    row={row}
-                                    rows={rows}
-                                    labels={labels}
-                                    errors={errors.rows[row.ref] ?? {}}
-                                    types={types}
-                                    priorities={priorities}
-                                    maxDays={maxDays}
-                                    full={full}
-                                    onChange={onChange}
-                                />
-                            ))}
+                            <EditorRowsContext.Provider value={context}>
+                                {rows.map((row, index) => {
+                                    const info = meta.get(row.ref);
+                                    const parent = info?.parent
+                                        ? byRef.get(info.parent)
+                                        : undefined;
+
+                                    return (
+                                        <EditorTableRow
+                                            key={row.ref}
+                                            id={`${id}-${index}`}
+                                            row={row}
+                                            label={info?.label ?? ''}
+                                            canMoveUp={info?.canMoveUp ?? false}
+                                            canMoveDown={
+                                                info?.canMoveDown ?? false
+                                            }
+                                            subtasks={info?.children ?? 0}
+                                            parentName={
+                                                parent
+                                                    ? rowName(
+                                                          parent,
+                                                          labels[parent.ref] ??
+                                                              '',
+                                                      )
+                                                    : null
+                                            }
+                                            conflictName={
+                                                info?.conflict
+                                                    ? rowName(
+                                                          info.conflict,
+                                                          labels[
+                                                              info.conflict.ref
+                                                          ] ?? '',
+                                                      )
+                                                    : null
+                                            }
+                                            errors={
+                                                errors.rows[row.ref] ??
+                                                NO_ERRORS
+                                            }
+                                            types={types}
+                                            priorities={priorities}
+                                            maxDays={maxDays}
+                                            full={full}
+                                            actions={actions}
+                                        />
+                                    );
+                                })}
+                            </EditorRowsContext.Provider>
                         </tbody>
                     </table>
                 </div>
@@ -235,7 +285,7 @@ export function TemplateEditor({
                     type="button"
                     variant="outline"
                     disabled={full}
-                    onClick={() => onChange(addRow(rows))}
+                    onClick={() => onChange(addRow)}
                 >
                     <Plus aria-hidden="true" />
                     {t('templates.editor.add_task')}
@@ -253,35 +303,44 @@ export function TemplateEditor({
     );
 }
 
-function EditorTableRow({
+const EditorTableRow = memo(function EditorTableRow({
     id,
     row,
-    rows,
-    labels,
+    label,
+    canMoveUp,
+    canMoveDown,
+    subtasks,
+    parentName,
+    conflictName,
     errors,
     types,
     priorities,
     maxDays,
     full,
-    onChange,
+    actions,
 }: {
     id: string;
     row: EditorRow;
-    rows: EditorRow[];
-    labels: Record<string, string>;
+    label: string;
+    canMoveUp: boolean;
+    canMoveDown: boolean;
+    /** Subtareas que tiene (una tarea con subtareas no puede pasar a subtarea). */
+    subtasks: number;
+    /** «1. Diseño» si es subtarea. */
+    parentName: string | null;
+    /** Predecesora que acaba cuando esta ya ha empezado (D-057). */
+    conflictName: string | null;
     errors: EditorErrors['rows'][string];
     types: TemplateTypeOption[];
     priorities: TaskPriority[];
     maxDays: number;
     full: boolean;
-    onChange: (rows: EditorRow[]) => void;
+    actions: RowActions;
 }) {
-    const name = rowName(row, labels);
+    const name = rowName(row, label);
     const subtask = isSubtask(row);
-    const children = childrenOf(rows, row.ref).length;
-    const conflicts = conflictsOf(rows, row.ref);
     const update = (changes: Parameters<typeof updateRow>[2]) =>
-        onChange(updateRow(rows, row.ref, changes));
+        actions.update(row.ref, changes);
     const describedBy = (field: string, error?: string) =>
         error ? `${id}-${field}-error` : undefined;
 
@@ -298,16 +357,16 @@ function EditorTableRow({
                             subtask && 'pl-3',
                         )}
                     >
-                        {labels[row.ref]}
+                        {label}
                     </span>
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="size-7"
-                        disabled={!canMove(rows, row.ref, 'up')}
+                        disabled={!canMoveUp}
                         aria-label={t('templates.editor.move_up', { name })}
-                        onClick={() => onChange(moveRow(rows, row.ref, 'up'))}
+                        onClick={() => actions.move(row.ref, 'up')}
                     >
                         <ArrowUp aria-hidden="true" />
                     </Button>
@@ -316,9 +375,9 @@ function EditorTableRow({
                         variant="ghost"
                         size="icon"
                         className="size-7"
-                        disabled={!canMove(rows, row.ref, 'down')}
+                        disabled={!canMoveDown}
                         aria-label={t('templates.editor.move_down', { name })}
-                        onClick={() => onChange(moveRow(rows, row.ref, 'down'))}
+                        onClick={() => actions.move(row.ref, 'down')}
                     >
                         <ArrowDown aria-hidden="true" />
                     </Button>
@@ -331,7 +390,7 @@ function EditorTableRow({
                     required
                     placeholder={t('templates.editor.title_placeholder')}
                     aria-label={t('templates.editor.title_label', {
-                        number: labels[row.ref] ?? '',
+                        number: label,
                     })}
                     aria-invalid={errors.title ? true : undefined}
                     aria-describedby={describedBy('title', errors.title)}
@@ -344,39 +403,28 @@ function EditorTableRow({
                 />
             </td>
             <td className="px-2 py-2">
-                <NativeSelect
-                    value={row.parent_ref ?? ''}
-                    disabled={!subtask && !canBeSubtask(rows, row.ref)}
-                    aria-label={t('templates.editor.parent_label', { name })}
-                    aria-invalid={errors.parent_ref ? true : undefined}
-                    aria-describedby={
+                <ParentPicker
+                    rowRef={row.ref}
+                    name={name}
+                    value={subtask ? (row.parent_ref as string) : null}
+                    valueName={parentName}
+                    disabled={!subtask && subtasks > 0}
+                    invalid={errors.parent_ref ? true : undefined}
+                    describedBy={
                         describedBy('parent_ref', errors.parent_ref) ??
-                        (children > 0 ? `${id}-parent-help` : undefined)
+                        (subtasks > 0 ? `${id}-parent-help` : undefined)
                     }
-                    onChange={(event) =>
-                        onChange(
-                            setParent(
-                                rows,
-                                row.ref,
-                                event.target.value || null,
-                            ),
-                        )
+                    onSelect={(parentRef) =>
+                        actions.setParent(row.ref, parentRef)
                     }
-                >
-                    <option value="">{t('templates.editor.top_level')}</option>
-                    {parentOptions(rows, row.ref).map((option) => (
-                        <option key={option.ref} value={option.ref}>
-                            {rowName(option, labels)}
-                        </option>
-                    ))}
-                </NativeSelect>
-                {children > 0 ? (
+                />
+                {subtasks > 0 ? (
                     <p
                         id={`${id}-parent-help`}
                         className="mt-1 text-xs text-muted-foreground"
                     >
                         {t('templates.editor.has_subtasks', {
-                            count: children,
+                            count: subtasks,
                         })}
                     </p>
                 ) : null}
@@ -531,24 +579,23 @@ function EditorTableRow({
             </td>
             <td className="px-2 py-2">
                 <DependencyPicker
-                    row={row}
-                    rows={rows}
-                    labels={labels}
+                    rowRef={row.ref}
                     name={name}
+                    count={row.depends_on.length}
                     invalid={errors.depends_on !== undefined}
                     describedBy={describedBy('depends_on', errors.depends_on)}
                     onToggle={(predecessor) =>
-                        onChange(toggleDependency(rows, row.ref, predecessor))
+                        actions.toggleDependency(row.ref, predecessor)
                     }
                 />
-                {conflicts.length > 0 ? (
+                {conflictName !== null ? (
                     <p className="mt-1 flex items-start gap-1 text-xs text-foreground">
                         <TriangleAlert
                             aria-hidden="true"
                             className="mt-0.5 size-3.5 shrink-0 text-warning"
                         />
                         {t('templates.editor.conflict', {
-                            name: rowName(conflicts[0], labels),
+                            name: conflictName,
                         })}
                     </p>
                 ) : null}
@@ -570,7 +617,7 @@ function EditorTableRow({
                             aria-label={t('templates.editor.add_subtask', {
                                 name,
                             })}
-                            onClick={() => onChange(addSubtask(rows, row.ref))}
+                            onClick={() => actions.addSubtask(row.ref)}
                         >
                             <ListPlus aria-hidden="true" />
                         </Button>
@@ -581,14 +628,14 @@ function EditorTableRow({
                         size="icon"
                         className="size-8"
                         aria-label={
-                            children > 0
+                            subtasks > 0
                                 ? t('templates.editor.remove_with_subtasks', {
                                       name,
-                                      count: children,
+                                      count: subtasks,
                                   })
                                 : t('templates.editor.remove', { name })
                         }
-                        onClick={() => onChange(removeRow(rows, row.ref))}
+                        onClick={() => actions.remove(row.ref)}
                     >
                         <Trash2 aria-hidden="true" />
                     </Button>
@@ -596,107 +643,4 @@ function EditorTableRow({
             </td>
         </tr>
     );
-}
-
-/**
- * «Depende de…»: casillas con las demás tareas. Las que crearían un ciclo aparecen desactivadas y
- * lo dicen (nunca solo con color).
- */
-function DependencyPicker({
-    row,
-    rows,
-    labels,
-    name,
-    invalid,
-    describedBy,
-    onToggle,
-}: {
-    row: EditorRow;
-    rows: EditorRow[];
-    labels: Record<string, string>;
-    name: string;
-    invalid: boolean;
-    describedBy?: string;
-    onToggle: (predecessor: string) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const others = rows.filter((other) => other.ref !== row.ref);
-    const selected = row.depends_on.length;
-    const value =
-        selected === 0
-            ? t('templates.editor.no_dependencies')
-            : t('templates.editor.dependencies_count', { count: selected });
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start font-normal"
-                    aria-label={t('templates.editor.depends_on_label', {
-                        name,
-                        value,
-                    })}
-                    aria-invalid={invalid || undefined}
-                    aria-describedby={describedBy}
-                >
-                    <Link2 aria-hidden="true" />
-                    {value}
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-0">
-                <fieldset className="grid max-h-72 gap-1 overflow-y-auto p-3">
-                    <legend className="mb-2 text-sm font-medium">
-                        {t('templates.editor.depends_on_legend', { name })}
-                    </legend>
-                    {others.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            {t('templates.editor.no_other_tasks')}
-                        </p>
-                    ) : (
-                        others.map((other) => {
-                            const checked = row.depends_on.includes(other.ref);
-                            const cycle =
-                                !checked &&
-                                wouldCreateCycle(rows, other.ref, row.ref);
-                            const optionId = `dep-${row.ref}-${other.ref}`;
-
-                            return (
-                                <div
-                                    key={other.ref}
-                                    className="flex items-start gap-2 py-1"
-                                >
-                                    <Checkbox
-                                        id={optionId}
-                                        checked={checked}
-                                        disabled={cycle}
-                                        onCheckedChange={() =>
-                                            onToggle(other.ref)
-                                        }
-                                    />
-                                    <label
-                                        htmlFor={optionId}
-                                        className={cn(
-                                            'text-sm leading-tight',
-                                            cycle && 'text-muted-foreground',
-                                        )}
-                                    >
-                                        {rowName(other, labels)}
-                                        {cycle ? (
-                                            <span className="block text-xs">
-                                                {t(
-                                                    'templates.editor.would_cycle',
-                                                )}
-                                            </span>
-                                        ) : null}
-                                    </label>
-                                </div>
-                            );
-                        })
-                    )}
-                </fieldset>
-            </PopoverContent>
-        </Popover>
-    );
-}
+});

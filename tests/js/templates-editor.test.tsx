@@ -342,21 +342,34 @@ describe('tabla del editor', SLOW, () => {
         expect(screen.queryByDisplayValue('Diseño')).toBeNull();
     });
 
-    it('una tarea con subtareas no puede pasar a subtarea y solo se cuelga de tareas de primer nivel', () => {
+    it('una tarea con subtareas no puede pasar a subtarea y solo se cuelga de tareas de primer nivel', async () => {
+        const user = userEvent.setup();
         render(<Harness initial={rowsFromStructure(structure)} />);
 
-        const designParent = screen.getByLabelText(
-            'De qué tarea es subtarea «1. Diseño»',
-        ) as HTMLSelectElement;
+        const designParent = screen.getByRole('combobox', {
+            name: 'De qué tarea es subtarea «1. Diseño»: Primer nivel',
+        }) as HTMLButtonElement;
         expect(designParent.disabled).toBe(true);
         expect(
             screen.getByText('Tiene subtareas (1): se queda en primer nivel.'),
         ).toBeTruthy();
+        // La subtarea dice de quién cuelga.
+        expect(
+            screen.getByRole('combobox', {
+                name: 'De qué tarea es subtarea «1.1. Home»: 1. Diseño',
+            }).textContent,
+        ).toBe('1. Diseño');
 
-        const goParent = screen.getByLabelText(
-            'De qué tarea es subtarea «3. Publicación»',
-        ) as HTMLSelectElement;
-        const options = [...goParent.options].map((option) => option.text);
+        // La lista solo existe al abrirlo: nada de una lista por fila.
+        expect(screen.queryByRole('listbox')).toBeNull();
+        await user.click(
+            screen.getByRole('combobox', {
+                name: 'De qué tarea es subtarea «3. Publicación»: Primer nivel',
+            }),
+        );
+        const options = within(screen.getByRole('listbox'))
+            .getAllByRole('option')
+            .map((option) => option.textContent);
         expect(options).toEqual([
             '— Primer nivel —',
             '1. Diseño',
@@ -368,9 +381,15 @@ describe('tabla del editor', SLOW, () => {
         const user = userEvent.setup();
         render(<Harness initial={rowsFromStructure(structure)} />);
 
-        await user.selectOptions(
-            screen.getByLabelText('De qué tarea es subtarea «3. Publicación»'),
-            'dev',
+        await user.click(
+            screen.getByRole('combobox', {
+                name: 'De qué tarea es subtarea «3. Publicación»: Primer nivel',
+            }),
+        );
+        await user.click(
+            within(screen.getByRole('listbox')).getByRole('option', {
+                name: '2. Desarrollo',
+            }),
         );
 
         expect(screen.getByLabelText('Título de la tarea 2.1')).toBeTruthy();
@@ -564,5 +583,17 @@ describe('página del editor', SLOW, () => {
         expect(byTest('template-timeline')[0].textContent).toContain(
             'Tareas: 1 · Hitos: 0 · Duración (días): 1',
         );
+
+        // La zona desplazable del cronograma (con foco para moverla con el teclado) se describe
+        // con el resumen: su contenido gráfico está oculto al lector de pantalla.
+        const region = screen.getByRole('region', {
+            name: 'Cronograma de la plantilla (se desplaza en horizontal)',
+        });
+        expect(region.getAttribute('tabindex')).toBe('0');
+        expect(
+            document.getElementById(
+                region.getAttribute('aria-describedby') ?? '',
+            )?.textContent,
+        ).toBe('Tareas: 1 · Hitos: 0 · Duración (días): 1');
     });
 });
