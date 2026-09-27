@@ -46,3 +46,41 @@ Schedule::command('reports:weekly-digest')
     ->withoutOverlapping()
     ->onOneServer()
     ->when(fn (): bool => (bool) Setting::get('weekly_digest_enabled', true));
+
+/*
+| Fase 7 (D-073 a D-076). Los comandos los crean los agentes N y A: mientras no existan, cada tarea
+| se omite en lugar de fallar.
+*/
+$exists = fn (string $command): Closure => fn (): bool => array_key_exists($command, Artisan::all());
+
+// Resumen diario por email de lo no leído (D-073), para quien lo haya activado.
+Schedule::command('notifications:daily-digest')
+    ->dailyAt('08:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when($exists('notifications:daily-digest'));
+
+// Recordatorio de enviar la semana (SPEC §13, D-073): los viernes a las 13:00 de Madrid.
+Schedule::command('time:remind-week')
+    ->weeklyOn(5, '13:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when(fn (): bool => $exists('time:remind-week')() && (bool) Setting::get('week_reminder_enabled', true));
+
+// Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
+Schedule::command('app:prune-data')
+    ->dailyAt('03:10')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when($exists('app:prune-data'));
+
+// Disco y adjuntos por encima del umbral, y copias atrasadas o fallidas (D-076): aviso al admin.
+Schedule::command('app:check-storage')
+    ->dailyAt('09:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when($exists('app:check-storage'));

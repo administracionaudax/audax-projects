@@ -16,6 +16,8 @@ declare module '@inertiajs/core' {
             timer?: ActiveTimer | null;
             notifications?: { unread: number };
             config?: AppConfig;
+            /** Aviso de privacidad pendiente de leer (D-075). */
+            privacy?: { needs_acknowledgement: boolean };
             [key: string]: unknown;
         };
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Privacy\PrivacyNotice;
 use App\Http\Resources\FinancialResource;
 use App\Models\ActiveTimer;
 use App\Models\Client;
@@ -109,6 +110,10 @@ class HandleInertiaRequests extends Middleware
                 'timer_warning_hours' => (int) Setting::get('timer_warning_hours', 10),
                 'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
                 'description_required' => (bool) Setting::get('time_entry_description_required', false),
+            ],
+            // Aviso de privacidad pendiente de leer (D-075): sin consultas (ajustes en caché).
+            'privacy' => fn (): array => [
+                'needs_acknowledgement' => app(PrivacyNotice::class)->needsAcknowledgement($user),
             ],
         ];
     }

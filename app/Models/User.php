@@ -41,6 +41,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $theme_preference
  * @property string $locale
  * @property array<string, mixed>|null $notification_preferences
+ * @property int|null $privacy_acknowledged_version
+ * @property Carbon|null $privacy_acknowledged_at
  * @property string|null $avatar_path
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -116,6 +118,8 @@ class User extends Authenticatable
             'default_hourly_rate' => 'decimal:2',
             'is_active' => 'boolean',
             'notification_preferences' => 'array',
+            'privacy_acknowledged_version' => 'integer',
+            'privacy_acknowledged_at' => 'datetime',
         ];
     }
 

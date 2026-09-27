@@ -44,6 +44,24 @@ class Setting extends Model
         'weekly_digest_enabled' => true,
         'occupancy_low_threshold' => 70,
         'occupancy_high_threshold' => 110,
+        // Privacidad (D-075): texto informativo en markdown (null = el borrador de
+        // lang/es/privacy.php, pendiente de asesor) y su versión; al cambiar el texto sube la
+        // versión y se vuelve a pedir su lectura.
+        'privacy_notice' => null,
+        'privacy_notice_version' => 1,
+        // Retención (D-075, App\Domain\Privacy\RetentionPolicy), en meses; null = sin límite.
+        // Nunca se borran horas.
+        'retention_login_events_months' => 12,
+        'retention_read_notifications_months' => 6,
+        'retention_activity_log_months' => 60,
+        'retention_chat_messages_months' => null,
+        // Días que se puede descargar una exportación de datos personales (D-075).
+        'personal_data_export_days' => 7,
+        // Avisos al admin (D-076): disco por encima de este %, adjuntos por encima de estos GB (null = sin aviso).
+        'disk_warning_percent' => 85,
+        'attachments_warning_gb' => null,
+        // Recordatorio de los viernes para enviar la semana (D-073).
+        'week_reminder_enabled' => true,
     ];
 
     protected static function booted(): void
