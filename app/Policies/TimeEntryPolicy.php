@@ -53,4 +53,13 @@ class TimeEntryPolicy
     {
         return $this->update($user, $entry);
     }
+
+    /**
+     * Exportar entradas de horas /informes/horas/exportar (SPEC §10, D-045): cualquier interno, solo
+     * las que ve (ReportScope); tarifas, instantáneas e importes solo con view-financials. Añadido por R3.
+     */
+    public function exportHours(User $user): bool
+    {
+        return $user->isInternal();
+    }
 }
