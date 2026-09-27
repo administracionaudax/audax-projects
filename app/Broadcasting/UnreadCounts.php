@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Sin leer = mensajes posteriores a su last_read_message_id que no son suyos, ni borrados, ni
  * ocultados por moderación, en las conversaciones en las que participa hoy (left_at nulo). Las
- * silenciadas tienen su número, pero no suman al total de la navegación.
+ * silenciadas tienen su número, pero no suman al total de la navegación; se devuelven todas
+ * (tengan o no mensajes pendientes) para que el contador en vivo sepa cuáles no suman.
  */
 final class UnreadCounts
 {
@@ -21,7 +22,7 @@ final class UnreadCounts
     public function for(User $user): array
     {
         $rows = DB::table('conversation_participants as p')
-            ->join('messages as m', function (JoinClause $join) use ($user): void {
+            ->leftJoin('messages as m', function (JoinClause $join) use ($user): void {
                 $join->on('m.conversation_id', '=', 'p.conversation_id')
                     ->on('m.id', '>', DB::raw('COALESCE(p.last_read_message_id, 0)'))
                     ->whereNull('m.deleted_at')
@@ -41,12 +42,15 @@ final class UnreadCounts
         foreach ($rows as $row) {
             $id = (int) $row->conversation_id;
             $count = (int) $row->unread;
-            $conversations[$id] = $count;
 
             if ((bool) $row->muted) {
                 $muted[] = $id;
             } else {
                 $total += $count;
+            }
+
+            if ($count > 0) {
+                $conversations[$id] = $count;
             }
         }
 

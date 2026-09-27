@@ -83,6 +83,13 @@ it('sin nada pendiente devuelve un objeto vacío, no una lista', function () {
     expect($response->getContent())->toBe('{"total":0,"conversations":{},"muted":[]}');
 });
 
+it('devuelve todas las conversaciones silenciadas, tengan o no mensajes pendientes', function () {
+    ConversationParticipant::query()->where('user_id', $this->luis->id)->update(['muted' => true]);
+
+    $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')
+        ->assertExactJson(['total' => 0, 'conversations' => [], 'muted' => collect([$this->chat->id, $this->dm->id])->sort()->values()->all()]);
+});
+
 it('no cuenta las conversaciones de las que ya no participa', function () {
     $this->writer->post($this->ana, $this->chat, 'Uno');
     $this->project->members()->detach($this->luis->id);
