@@ -63,9 +63,7 @@ describe('«Mi carga» en Inicio', () => {
         const card = byTest('my-workload');
 
         expect(text(card.textContent)).toContain('Esta semana');
-        expect(text(card.textContent)).toContain(
-            'Del 06/10/2026 al 11/10/2026',
-        );
+        expect(text(card.textContent)).toContain('Del 06/10 al 11/10');
         expect(
             screen.getByText(
                 (_, element) =>
@@ -76,6 +74,39 @@ describe('«Mi carga» en Inicio', () => {
         ).toBeTruthy();
         expect(
             screen.getByText('Capacidad reducida: festivos: 1'),
+        ).toBeTruthy();
+    });
+
+    it('una semana de un solo día (hoy es domingo) lo dice así', () => {
+        render(
+            <MyWorkload
+                workload={{
+                    ...data,
+                    weeks: [
+                        {
+                            ...data.weeks[0],
+                            from: '2026-10-11',
+                            to: '2026-10-11',
+                            planned: 0,
+                            capacity: 0,
+                            reason: { type: 'off', label: null },
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        const card = byTest('my-workload');
+        expect(text(card.textContent)).toContain('Solo el 11/10');
+        // El motivo va en la celda y en el texto accesible, sin repetirse al lado.
+        expect(screen.getAllByText('No laborable')).toHaveLength(1);
+        expect(
+            screen.getByText(
+                (_, element) =>
+                    element?.className === 'sr-only' &&
+                    element.textContent ===
+                        'Sin capacidad, 0:00 planificadas. No laborable',
+            ),
         ).toBeTruthy();
     });
 

@@ -334,43 +334,49 @@ export function WorkloadMatrix({
                                 );
                             })}
 
-                            <tr data-test="workload-department-total">
-                                <th
-                                    scope="row"
-                                    className="sticky left-0 z-10 bg-card px-2 py-1 text-left text-xs font-medium text-muted-foreground"
-                                >
-                                    {t('workload_matrix.department_total', {
-                                        department: name,
-                                    })}
-                                </th>
-                                {group.totals.map((totals, col) => (
-                                    <td key={columns[col].key} className="p-0">
+                            {/* Con una sola persona, el total del departamento es su fila. */}
+                            {group.people.length > 1 ? (
+                                <tr data-test="workload-department-total">
+                                    <th
+                                        scope="row"
+                                        className="sticky left-0 z-10 bg-card px-2 py-1 text-left text-xs font-medium text-muted-foreground"
+                                    >
+                                        {t('workload_matrix.department_total', {
+                                            department: name,
+                                        })}
+                                    </th>
+                                    {group.totals.map((totals, col) => (
+                                        <td
+                                            key={columns[col].key}
+                                            className="p-0"
+                                        >
+                                            <TotalCell
+                                                totals={totals}
+                                                label={t(
+                                                    'workload_matrix.total_of',
+                                                    {
+                                                        name,
+                                                        period: periodLabel(
+                                                            columns[col],
+                                                            byWeek,
+                                                        ),
+                                                    },
+                                                )}
+                                            />
+                                        </td>
+                                    ))}
+                                    <td className="p-0">
                                         <TotalCell
-                                            totals={totals}
+                                            totals={group.total}
                                             label={t(
-                                                'workload_matrix.total_of',
-                                                {
-                                                    name,
-                                                    period: periodLabel(
-                                                        columns[col],
-                                                        byWeek,
-                                                    ),
-                                                },
+                                                'workload_matrix.person_total',
+                                                { name },
                                             )}
+                                            strong
                                         />
                                     </td>
-                                ))}
-                                <td className="p-0">
-                                    <TotalCell
-                                        totals={group.total}
-                                        label={t(
-                                            'workload_matrix.person_total',
-                                            { name },
-                                        )}
-                                        strong
-                                    />
-                                </td>
-                            </tr>
+                                </tr>
+                            ) : null}
                         </tbody>
                     );
                 })}

@@ -50,8 +50,8 @@ describe('WorkloadMatrix: estructura y totales', () => {
         const headers = within(grid).getAllByRole('rowheader');
 
         expect(headers.map((header) => header.textContent?.trim())).toEqual([
+            // Desarrollo solo tiene a Pablo: su total es su fila.
             'Pablo Ruiz',
-            'Total de Desarrollo',
             'Elena Empleada',
             'Lucía Martín',
             'Raúl Responsable Tú',

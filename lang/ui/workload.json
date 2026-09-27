@@ -161,6 +161,7 @@
     "workload_home.this_week": "Esta semana",
     "workload_home.next_week": "La semana que viene",
     "workload_home.range": "Del :from al :to",
+    "workload_home.only_day": "Solo el :date",
     "workload_home.overdue": "Tareas vencidas: :count (su restante cuenta hoy)",
     "workload_home.unplanned": "Tareas sin planificar: :count",
     "workload_home.open": "Ver la carga"

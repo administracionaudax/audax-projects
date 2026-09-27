@@ -326,6 +326,7 @@ export default function Home({
                         icon={CalendarClock}
                         title={t('home.cards.workload.title')}
                         description={t('home.cards.workload.description')}
+                        wide
                     >
                         <Deferred
                             data="workload"
