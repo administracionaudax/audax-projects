@@ -265,29 +265,33 @@ test('la ficha del cliente lista sus usuarios del portal con la invitación y el
     LoginEvent::query()->forceCreate(['user_id' => $this->portalUser->id, 'email' => $this->portalUser->email, 'succeeded' => true, 'created_at' => '2026-09-20 08:30:00']);
     User::factory()->portalOf($this->other)->create();
 
+    // Prop diferida: no pesa en la carga de la ficha; llega en la recarga que pide la página.
     $this->get("/clientes/{$this->client->id}")
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('clients/show')
-            ->where('portal.can', ['manageUsers' => true, 'updateSettings' => true])
-            ->where('portal.client_active', true)
-            ->has('portal.users', 3)
-            ->where('portal.users.0.name', 'Carmen Lur')
-            ->where('portal.users.0.invitation', 'pending')
-            ->where('portal.users.0.invitation_expires_at', '2026-10-04T10:00:00Z')
-            ->where('portal.users.0.last_login_at', null)
-            ->where('portal.users.1.name', 'Íñigo Lur')
-            ->where('portal.users.1.invitation', 'accepted')
-            ->where('portal.users.1.last_login_at', '2026-09-20T08:30:00Z')
-            ->where('portal.users.2.name', 'Zoe Lur')
-            ->where('portal.users.2.is_active', false)
-            ->where('portal.settings', ['person_display' => 'name', 'entry_visibility' => 'approved', 'notify_thresholds' => false])
-            ->missing('portal.users.0.password'));
+            ->missing('portal')
+            ->loadDeferredProps('portal', fn (Assert $reload) => $reload
+                ->where('portal.can', ['manageUsers' => true, 'updateSettings' => true])
+                ->where('portal.client_active', true)
+                ->has('portal.users', 3)
+                ->where('portal.users.0.name', 'Carmen Lur')
+                ->where('portal.users.0.invitation', 'pending')
+                ->where('portal.users.0.invitation_expires_at', '2026-10-04T10:00:00Z')
+                ->where('portal.users.0.last_login_at', null)
+                ->where('portal.users.1.name', 'Íñigo Lur')
+                ->where('portal.users.1.invitation', 'accepted')
+                ->where('portal.users.1.last_login_at', '2026-09-20T08:30:00Z')
+                ->where('portal.users.2.name', 'Zoe Lur')
+                ->where('portal.users.2.is_active', false)
+                ->where('portal.settings', ['person_display' => 'name', 'entry_visibility' => 'approved', 'notify_thresholds' => false])
+                ->missing('portal.users.0.password')));
 
     // Pasados los 7 días, la invitación sale caducada.
     $this->travel(8)->days();
     $this->get("/clientes/{$this->client->id}")
-        ->assertInertia(fn (Assert $page) => $page->where('portal.users.0.invitation', 'expired'));
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('portal', fn (Assert $reload) => $reload
+            ->where('portal.users.0.invitation', 'expired')));
 
     expect($revoked->fresh()->is_active)->toBeFalse();
 });
@@ -295,11 +299,12 @@ test('la ficha del cliente lista sus usuarios del portal con la invitación y el
 test('un gestor ve la sección sin poder cambiar los ajustes; un empleado no la recibe', function () {
     $this->actingAs($this->manager)
         ->get("/clientes/{$this->client->id}")
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('portal', fn (Assert $reload) => $reload
             ->where('portal.can', ['manageUsers' => true, 'updateSettings' => false])
-            ->has('portal.users', 1));
+            ->has('portal.users', 1)));
 
     $this->actingAs(userWithRole('employee'))
         ->get("/clientes/{$this->client->id}")
-        ->assertInertia(fn (Assert $page) => $page->where('portal', null));
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('portal', fn (Assert $reload) => $reload
+            ->where('portal', null)));
 });

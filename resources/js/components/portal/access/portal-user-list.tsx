@@ -12,6 +12,7 @@ import {
 import { useRef, useState } from 'react';
 import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { PORTAL_RELOAD } from '@/components/portal/access/reload';
 import type { PortalUserRow } from '@/components/portal/access/types';
 import { StatusBadge } from '@/components/styleguide/status-badges';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,7 @@ export function PortalUserList({
             {},
             {
                 preserveScroll: true,
+                only: PORTAL_RELOAD,
                 onError: toastVisitErrors,
                 onStart: () => setProcessing(true),
                 onFinish: () => {

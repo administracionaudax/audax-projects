@@ -15,9 +15,14 @@ import type {
 const page = vi.hoisted(() => ({
     url: '/clientes/5',
     props: {} as Record<string, unknown>,
+    rescuedProps: [] as string[],
 }));
 
-const inertia = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }));
+const inertia = vi.hoisted(() => ({
+    post: vi.fn(),
+    get: vi.fn(),
+    reload: vi.fn(),
+}));
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -25,7 +30,12 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@inertiajs/react')>()),
     Head: () => null,
     usePage: () => page,
-    router: { post: inertia.post, get: inertia.get, on: () => () => {} },
+    router: {
+        post: inertia.post,
+        get: inertia.get,
+        reload: inertia.reload,
+        on: () => () => {},
+    },
     Link: ({
         href,
         children,
@@ -119,6 +129,8 @@ function row(name: string): HTMLElement {
 
 beforeEach(() => {
     inertia.post.mockReset();
+    inertia.reload.mockReset();
+    page.rescuedProps = [];
 });
 
 afterEach(() => {
@@ -126,6 +138,34 @@ afterEach(() => {
 });
 
 describe('acceso al portal en la ficha de cliente', () => {
+    it('es una prop diferida: mientras llega, su estado de carga; si falla, el error con «Reintentar»', async () => {
+        // Sin la prop (undefined): el parámetro por defecto de renderSection no vale aquí.
+        const loading = (
+            <ClientPortalSection
+                clientId={5}
+                clientName="Bodegas Lur"
+                portal={undefined}
+            />
+        );
+        const { unmount } = render(loading);
+        expect(screen.getByRole('status').textContent).toContain(
+            'Cargando el acceso al portal…',
+        );
+        unmount();
+
+        page.rescuedProps = ['portal'];
+        render(loading);
+        const alert = screen.getByRole('alert');
+        expect(alert.textContent).toContain(
+            'No se ha podido cargar esta sección.',
+        );
+
+        await userEvent.click(
+            within(alert).getByRole('button', { name: 'Reintentar' }),
+        );
+        expect(inertia.reload).toHaveBeenCalledWith({ only: ['portal'] });
+    });
+
     it('quien no lo gestiona solo ve quién lo hace', () => {
         renderSection(null);
 
@@ -186,7 +226,7 @@ describe('acceso al portal en la ficha de cliente', () => {
         expect(inertia.post).toHaveBeenCalledWith(
             '/clientes/5/portal/usuarios/11/invitacion',
             {},
-            expect.objectContaining({ preserveScroll: true }),
+            expect.objectContaining({ preserveScroll: true, only: ['portal'] }),
         );
 
         await ui.click(
@@ -320,12 +360,15 @@ describe('acceso al portal en la ficha de cliente', () => {
         );
 
         expect(post).toHaveBeenCalledTimes(1);
-        const [url, data] = post.mock.calls[0] as unknown as [
+        const [url, data, options] = post.mock.calls[0] as unknown as [
             string,
+            Record<string, unknown>,
             Record<string, unknown>,
         ];
         expect(url).toBe('/clientes/5/portal/usuarios');
         expect(data).toEqual({ name: 'Ane Lur', email: 'ane@lur.example' });
+        // Solo se recarga la sección (prop diferida `portal`).
+        expect(options.only).toEqual(['portal']);
     });
 
     it('los ajustes se cambian en un diálogo con radios y un interruptor', async () => {

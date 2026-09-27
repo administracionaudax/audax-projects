@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/react';
 import { SlidersHorizontal } from 'lucide-react';
 import { useId, useState } from 'react';
 import InputError from '@/components/input-error';
+import { PORTAL_RELOAD } from '@/components/portal/access/reload';
 import { SwitchField } from '@/components/portal/access/switch-field';
 import type {
     ClientPortalAccess,
@@ -83,6 +84,7 @@ export function ClientPortalSettingsDialog({
                         event.preventDefault();
                         form.submit(update(clientId), {
                             preserveScroll: true,
+                            only: PORTAL_RELOAD,
                             onSuccess: () => setOpen(false),
                         });
                     }}

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     ChartGantt,
     Clock,
@@ -13,6 +13,10 @@ import { InvitePortalUserDialog } from '@/components/portal/access/invite-portal
 import { PortalUserList } from '@/components/portal/access/portal-user-list';
 import type { ClientPortalAccess } from '@/components/portal/access/types';
 import { StatusBadge } from '@/components/styleguide/status-badges';
+import {
+    SectionError,
+    SectionLoading,
+} from '@/components/templates/deferred-section';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
@@ -31,8 +35,9 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 /**
  * Sección «Acceso al portal» de la ficha de cliente (D-063, D-064): sus usuarios del portal con
  * invitar, reenviar, revocar y reactivar; los ajustes del portal del cliente (cómo se nombra a las
- * personas, qué horas ve y los avisos por email) y los proyectos abiertos al portal. Quien no lo
- * gestiona (portal null) solo ve quién lo hace.
+ * personas, qué horas ve y los avisos por email) y los proyectos abiertos al portal.
+ * `portal` es una prop diferida: sin llegar (undefined), el estado de carga; si falló, el error con
+ * «Reintentar»; null, para quien no lo gestiona, que solo ve quién lo hace.
  */
 export function ClientPortalSection({
     clientId,
@@ -43,7 +48,18 @@ export function ClientPortalSection({
     clientName: string;
     portal: ClientPortalAccess | null | undefined;
 }) {
-    if (!portal) {
+    const page = usePage();
+    const rescued = (page as { rescuedProps?: string[] }).rescuedProps ?? [];
+
+    if (rescued.includes('portal')) {
+        return <SectionError prop="portal" />;
+    }
+
+    if (portal === undefined) {
+        return <SectionLoading label={t('portal_access.section.loading')} />;
+    }
+
+    if (portal === null) {
         return (
             <p
                 className="text-sm text-muted-foreground"

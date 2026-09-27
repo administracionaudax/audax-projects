@@ -320,12 +320,8 @@ describe('ficha de cliente', () => {
         });
         expect(within(history).getByText('+1:00')).toBeTruthy();
         expect(within(history).getByText('Renovada')).toBeTruthy();
-        // Acceso al portal (Fase 5): sin la prop `portal`, solo quién lo gestiona.
-        expect(
-            screen.getByText(
-                'Lo gestionan la administración, los responsables y los gestores de sus proyectos.',
-            ),
-        ).toBeTruthy();
+        // Acceso al portal (Fase 5): prop diferida; mientras no llega, su estado de carga.
+        expect(screen.getByText('Cargando el acceso al portal…')).toBeTruthy();
     });
 
     it('sus listas de definición son válidas: cada grupo dt/dd en un único div (UX-01, axe definition-list y dlitem)', () => {

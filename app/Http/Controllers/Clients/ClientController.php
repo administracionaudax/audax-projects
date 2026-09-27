@@ -150,8 +150,9 @@ class ClientController extends Controller
                 'month_start' => $monthStart,
                 'year' => (int) LocalTime::today()->year,
             ],
-            // Acceso al portal (Fase 5, D-063 y D-064): null para quien no lo gestiona.
-            'portal' => fn (): ?array => app(ClientPortalAccess::class)->for($client, $request->user()),
+            // Acceso al portal (Fase 5, D-063 y D-064): diferida, no pesa en la carga; null para
+            // quien no lo gestiona. Sus acciones recargan solo esta prop.
+            'portal' => Inertia::defer(fn (): ?array => app(ClientPortalAccess::class)->for($client, $request->user()), 'portal', true),
             'can' => [
                 'update' => $request->user()?->can('update', $client) ?? false,
                 // Informe del cliente (Fase 2, R2; D-044): enlace «Ver informe».

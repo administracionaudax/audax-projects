@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/react';
 import { TriangleAlert, UserPlus } from 'lucide-react';
 import { useId, useState } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
+import { PORTAL_RELOAD } from '@/components/portal/access/reload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -69,6 +70,7 @@ export function InvitePortalUserDialog({
                         event.preventDefault();
                         form.submit(store(clientId), {
                             preserveScroll: true,
+                            only: PORTAL_RELOAD,
                             onSuccess: () => setOpen(false),
                         });
                     }}

@@ -4,6 +4,7 @@
     "portal_nav.projects": "Proyectos",
     "portal_nav.home_link": ":company · Portal de clientes: ir al inicio",
 
+    "portal_access.section.loading": "Cargando el acceso al portal…",
     "portal_access.section.managed_by": "Lo gestionan la administración, los responsables y los gestores de sus proyectos.",
     "portal_access.section.client_inactive": "El cliente está desactivado: sus usuarios no pueden entrar en el portal hasta que lo reactives.",
 

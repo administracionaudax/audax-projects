@@ -182,7 +182,7 @@ test('la ficha del cliente resume los proyectos abiertos al portal', function ()
 
     $this->actingAs($this->admin)
         ->get("/clientes/{$this->client->id}")
-        ->assertInertia(fn (Assert $page) => $page
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('portal', fn (Assert $reload) => $reload
             ->has('portal.projects', 2)
             ->where('portal.projects.0.id', $gantt->id)
             ->where('portal.projects.0.project_visible', false)
@@ -190,5 +190,5 @@ test('la ficha del cliente resume los proyectos abiertos al portal', function ()
             ->where('portal.projects.1.id', $this->project->id)
             ->where('portal.projects.1.show_task_hours', true)
             ->where('portal.options.person_display', ['name', 'initials', 'team'])
-            ->where('portal.options.entry_visibility', ['approved', 'submitted']));
+            ->where('portal.options.entry_visibility', ['approved', 'submitted'])));
 });
