@@ -224,16 +224,22 @@ async function asUser(
     return page;
 }
 
-test('mover una tarea con sucesora: aviso, confirmar y la sucesora se desplaza también en la lista de tareas', async ({
+test('mover una tarea con sucesora: aviso, confirmar y la sucesora se desplaza también en la lista de tareas y en la carga', async ({
     page,
+    browser,
+    baseURL,
 }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(150_000);
     const stamp = Date.now();
     const first = `Maquetar E2E ${stamp}`;
     const second = `Publicar E2E ${stamp}`;
 
     await login(page, USERS.manager);
     await openProjectGantt(page);
+    const projectId = Number(
+        /\/proyectos\/(\d+)\/gantt$/.exec(page.url())?.[1],
+    );
+    expect(projectId).toBeGreaterThan(0);
 
     await test.step('crear dos tareas con fechas desde el Gantt', async () => {
         await createTask(page, first, 10, 12);
@@ -339,6 +345,40 @@ test('mover una tarea con sucesora: aviso, confirmar y la sucesora se desplaza t
         await expect(predecessorRow).toContainText(
             `${shown(11)} – ${shown(13)}`,
         );
+    });
+
+    await test.step('la carga lo refleja: las dos tareas, con sus fechas nuevas', async () => {
+        // Las tareas del alta del Gantt no tienen responsable ni tipo ni bolsa: en Carga van a «Sin
+        // asignar» · «Sin departamento», que solo ve un admin (D-051, D-052). Filtrada por el proyecto.
+        const admin = await asUser(browser, baseURL ?? '', USERS.admin);
+
+        try {
+            await admin.goto(`/carga?proyecto=${projectId}`);
+            const noDepartment = admin
+                .locator('[data-test="workload-unassigned"]')
+                .getByRole('region', { name: 'Sin departamento', exact: true });
+            // Cada tarea de la bandeja, por el enlace a la tarea: «<título> (abrir la tarea)».
+            const trayTask = (title: string): Locator =>
+                noDepartment
+                    .locator('[data-test="workload-tray-task"]')
+                    .filter({
+                        has: admin.getByRole('link', {
+                            name: new RegExp(
+                                `^${escapeRegExp(title)}\\s+\\(abrir la tarea\\)$`,
+                            ),
+                        }),
+                    });
+
+            await expect(trayTask(second)).toHaveCount(1);
+            await expect(trayTask(second)).toContainText(
+                `${shown(14)} – ${shown(15)}`,
+            );
+            await expect(trayTask(first)).toContainText(
+                `${shown(11)} – ${shown(13)}`,
+            );
+        } finally {
+            await admin.context().close();
+        }
     });
 });
 
