@@ -8,6 +8,7 @@ use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
 use App\Models\Task;
+use App\Models\TaskDependency;
 use App\Models\TaskType;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -26,6 +27,9 @@ use Illuminate\Validation\ValidationException;
 final class ProjectTemplateService
 {
     public const int MAX_TASKS = 500;
+
+    /** Dependencias por INSERT al aplicar una plantilla. */
+    private const int DEPENDENCY_CHUNK = 150;
 
     public function __construct(
         private readonly TaskWriter $writer,
@@ -72,14 +76,44 @@ final class ProjectTemplateService
                 $created[] = $task;
             }
 
-            foreach ($structure['dependencies'] as $link) {
-                if (isset($byRef[$link['from_ref']], $byRef[$link['to_ref']])) {
-                    $this->dependencies->link($byRef[$link['from_ref']], $byRef[$link['to_ref']], $actor);
-                }
-            }
+            $this->insertDependencies($structure['dependencies'], $byRef, $actor);
 
             return $created;
         });
+    }
+
+    /**
+     * Dependencias de la plantilla entre las tareas recién creadas, insertadas por lotes. Sin pasar
+     * por DependencyService::link(), que por cada dependencia relee todas las del proyecto para
+     * buscar ciclos (O(D²): minutos con una plantilla grande): normalize() ya garantiza que las de
+     * la plantilla no se repiten ni forman ciclos, y solo unen tareas nuevas del mismo proyecto, así
+     * que tampoco pueden cerrar un ciclo con las que ya había (D-056).
+     *
+     * @param  list<array{from_ref: string, to_ref: string}>  $links
+     * @param  array<string, Task>  $byRef
+     */
+    private function insertDependencies(array $links, array $byRef, User $actor): void
+    {
+        $now = (new TaskDependency)->freshTimestampString();
+        $rows = [];
+
+        foreach ($links as $link) {
+            if (isset($byRef[$link['from_ref']], $byRef[$link['to_ref']])) {
+                $rows[] = [
+                    'predecessor_task_id' => $byRef[$link['from_ref']]->id,
+                    'successor_task_id' => $byRef[$link['to_ref']]->id,
+                    'type' => TaskDependency::FINISH_TO_START,
+                    'created_by' => $actor->id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+        }
+
+        // 6 valores por fila: 150 filas caben en el límite de parámetros de cualquier motor.
+        foreach (array_chunk($rows, self::DEPENDENCY_CHUNK) as $chunk) {
+            TaskDependency::query()->insert($chunk);
+        }
     }
 
     /**
