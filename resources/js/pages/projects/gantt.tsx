@@ -10,7 +10,6 @@ import type {
     ProjectGanttPageProps,
 } from '@/components/gantt/types';
 import { ProjectShell } from '@/components/projects/project-shell';
-import { defaultBankId } from '@/components/tasks/task-lookups';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
@@ -109,13 +108,15 @@ export default function ProjectGantt(props: ProjectGanttPageProps) {
                 <NewTaskDialog
                     open={creating}
                     onOpenChange={setCreating}
-                    projectId={project.id}
-                    usesBanks={usesBanks}
-                    banks={props.banks}
-                    defaultBankId={defaultBankId(
-                        props.banks,
-                        props.currentUser.department_id,
-                    )}
+                    projects={[
+                        {
+                            id: project.id,
+                            label: project.name,
+                            usesBanks,
+                            banks: props.banks,
+                        },
+                    ]}
+                    departmentId={props.currentUser.department_id}
                     reload={RELOAD}
                 />
             ) : null}

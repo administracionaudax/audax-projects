@@ -145,6 +145,65 @@ it('can.update de cada proyecto coincide con TaskPolicy para cada rol', function
     'empleado no miembro' => ['employee', false, false],
 ]);
 
+it('can.create de cada proyecto coincide con TaskPolicy::create para cada rol (y nunca en archivados)', function (string $role, bool $member, bool $manager) {
+    $user = userWithRole($role);
+    if ($member || $manager) {
+        $this->web->addMember($user, isManager: $manager);
+        $this->archived->addMember($user, isManager: $manager);
+    }
+
+    $page = $this->actingAs($user)->get('/gantt?estado=todos')->viewData('page')['props'];
+    $projects = collect($page['projects'])->keyBy('id');
+
+    foreach ([$this->web, $this->mobile, $this->paused, $this->archived] as $project) {
+        expect($projects[$project->id]['can']['create'])
+            ->toBe(Gate::forUser($user)->allows('create', [Task::class, $project->fresh()]), $project->name);
+    }
+
+    expect($projects[$this->archived->id]['can']['create'])->toBeFalse()
+        ->and($page['currentUser'])->toBe(['id' => $user->id, 'department_id' => $user->department_id]);
+})->with([
+    'admin' => ['admin', false, false],
+    'responsable' => ['department_manager', false, false],
+    'gestor' => ['employee', false, true],
+    'miembro' => ['employee', true, false],
+    'empleado no miembro' => ['employee', false, false],
+]);
+
+it('«Nueva tarea»: las bolsas abiertas de los proyectos de bolsas donde puede crear, primero las de su departamento y sin importes', function () {
+    $design = Department::factory()->create(['name' => 'Diseño']);
+    $dev = Department::factory()->create(['name' => 'Desarrollo']);
+    $member = userWithRole('employee', ['department_id' => $design->id]);
+
+    $banked = Project::factory()->hourBank()->create(['name' => 'Bolsas']);
+    $banked->addMember($member);
+    $older = HourBank::factory()->forDepartment($dev)->create(['project_id' => $banked->id, 'name' => 'Desarrollo', 'start_date' => '2026-01-01', 'hourly_rate' => 60]);
+    $mine = HourBank::factory()->forDepartment($design)->create(['project_id' => $banked->id, 'name' => 'Diseño', 'start_date' => '2026-06-01']);
+    HourBank::factory()->closed()->create(['project_id' => $banked->id, 'name' => 'Cerrada']);
+    HourBank::factory()->renewed()->create(['project_id' => $banked->id, 'name' => 'Renovada']);
+
+    // Sin permiso para crear (no es miembro ni lo gestiona): no se mandan sus bolsas.
+    $foreign = Project::factory()->hourBank()->create(['name' => 'Ajeno']);
+    HourBank::factory()->create(['project_id' => $foreign->id]);
+
+    $this->actingAs($member)->get('/gantt')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('banks', 1)
+            ->where('banks.0.project_id', $banked->id)
+            ->has('banks.0.banks', 2)
+            ->where('banks.0.banks.0.id', $mine->id)
+            ->where('banks.0.banks.0.department.name', 'Diseño')
+            ->where('banks.0.banks.0.is_open', true)
+            ->where('banks.0.banks.1.id', $older->id)
+            ->missing('banks.0.banks.1.hourly_rate')
+            ->missing('banks.0.banks.1.price_amount'));
+
+    // Un proyecto sin bolsas o un usuario que no puede crear: ninguna.
+    $this->actingAs(userWithRole('employee'))->get('/gantt')
+        ->assertInertia(fn (Assert $page) => $page->where('banks', []));
+});
+
 it('un cliente nunca puede editar desde el Gantt', function () {
     $client = userWithRole('client');
 

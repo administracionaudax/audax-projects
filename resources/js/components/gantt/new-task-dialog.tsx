@@ -2,6 +2,7 @@ import { CircleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { createTask } from '@/components/gantt/requests';
 import { DatePicker } from '@/components/domain/date-picker';
+import { defaultBankId } from '@/components/tasks/task-lookups';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -27,26 +28,34 @@ import type { TaskBankOption } from '@/types';
 
 type Errors = Partial<Record<string, string>>;
 
+/** Proyecto en el que se puede crear la tarea. */
+export type NewTaskProject = {
+    id: number;
+    /** Nombre en el selector de proyecto (Gantt multiproyecto): «código · nombre». */
+    label: string;
+    usesBanks: boolean;
+    /** Bolsas del proyecto (solo se ofrecen las abiertas). */
+    banks: ReadonlyArray<TaskBankOption>;
+};
+
 /**
  * «Nueva tarea» desde el Gantt (D-060): título, inicio y entrega (un hito, solo entrega) y, en los
  * proyectos de bolsas, la bolsa (primero las del departamento del usuario, SPEC §8.3). Usa la ruta
- * de alta de tareas (tasks.store, TaskWriter), la misma que el alta rápida de la lista.
+ * de alta de tareas (tasks.store, TaskWriter), la misma que el alta rápida de la lista. Con varios
+ * proyectos (Gantt multiproyecto), primero se elige el proyecto.
  */
 export function NewTaskDialog({
     open,
     onOpenChange,
-    projectId,
-    usesBanks,
-    banks,
-    defaultBankId,
+    projects,
+    departmentId,
     reload,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    projectId: number;
-    usesBanks: boolean;
-    banks: ReadonlyArray<TaskBankOption>;
-    defaultBankId: number | null;
+    projects: ReadonlyArray<NewTaskProject>;
+    /** Departamento de quien crea: su bolsa sale elegida por defecto. */
+    departmentId: number | null;
     reload: string[];
 }) {
     return (
@@ -57,10 +66,8 @@ export function NewTaskDialog({
             >
                 {open ? (
                     <NewTaskForm
-                        projectId={projectId}
-                        usesBanks={usesBanks}
-                        banks={banks}
-                        defaultBankId={defaultBankId}
+                        projects={projects}
+                        departmentId={departmentId}
                         reload={reload}
                         onDone={() => onOpenChange(false)}
                     />
@@ -70,32 +77,63 @@ export function NewTaskDialog({
     );
 }
 
+function initialBank(
+    project: NewTaskProject | undefined,
+    departmentId: number | null,
+): number | null {
+    return project?.usesBanks
+        ? defaultBankId([...project.banks], departmentId)
+        : null;
+}
+
 function NewTaskForm({
-    projectId,
-    usesBanks,
-    banks,
-    defaultBankId,
+    projects,
+    departmentId,
     reload,
     onDone,
 }: {
-    projectId: number;
-    usesBanks: boolean;
-    banks: ReadonlyArray<TaskBankOption>;
-    defaultBankId: number | null;
+    projects: ReadonlyArray<NewTaskProject>;
+    departmentId: number | null;
     reload: string[];
     onDone: () => void;
 }) {
     const id = useId();
+    const choosesProject = projects.length > 1;
+    const [projectId, setProjectId] = useState<number | null>(
+        projects.length === 1 ? projects[0].id : null,
+    );
+    const project = projects.find((item) => item.id === projectId);
+    const usesBanks = project?.usesBanks ?? false;
+    const banks = project?.banks ?? [];
     const [title, setTitle] = useState('');
     const [start, setStart] = useState<string | null>(null);
     const [due, setDue] = useState<string | null>(null);
     const [milestone, setMilestone] = useState(false);
-    const [bankId, setBankId] = useState<number | null>(defaultBankId);
+    const [bankId, setBankId] = useState<number | null>(() =>
+        initialBank(project, departmentId),
+    );
     const [errors, setErrors] = useState<Errors>({});
     const [processing, setProcessing] = useState(false);
 
+    const chooseProject = (value: string) => {
+        const next = projects.find((item) => item.id === Number(value));
+        setProjectId(next?.id ?? null);
+        setBankId(initialBank(next, departmentId));
+        setErrors((previous) => {
+            const rest = { ...previous };
+            delete rest.project_id;
+            delete rest.hour_bank_id;
+
+            return rest;
+        });
+    };
+
     const submit = () => {
         const next: Errors = {};
+
+        if (projectId === null) {
+            next.project_id = t('gantt.new_task.project_required');
+        }
 
         if (title.trim() === '') {
             next.title = t('gantt.new_task.title_required');
@@ -115,7 +153,7 @@ function NewTaskForm({
 
         setErrors(next);
 
-        if (Object.keys(next).length > 0) {
+        if (Object.keys(next).length > 0 || projectId === null) {
             return;
         }
 
@@ -161,9 +199,13 @@ function NewTaskForm({
     const openBanks = banks.filter((bank) => bank.is_open);
     const otherErrors = Object.entries(errors).filter(
         ([field]) =>
-            !['title', 'start_date', 'due_date', 'hour_bank_id'].includes(
-                field,
-            ),
+            ![
+                'project_id',
+                'title',
+                'start_date',
+                'due_date',
+                'hour_bank_id',
+            ].includes(field),
     );
 
     return (
@@ -180,6 +222,49 @@ function NewTaskForm({
                     {t('gantt.new_task.description')}
                 </DialogDescription>
             </DialogHeader>
+
+            {choosesProject ? (
+                <div className="grid gap-1.5">
+                    <Label htmlFor={`${id}-project`}>
+                        {t('gantt.new_task.project')}
+                    </Label>
+                    <Select
+                        value={
+                            projectId === null ? undefined : String(projectId)
+                        }
+                        onValueChange={chooseProject}
+                    >
+                        <SelectTrigger
+                            id={`${id}-project`}
+                            className="w-full"
+                            aria-invalid={errors.project_id ? true : undefined}
+                            aria-describedby={
+                                errors.project_id
+                                    ? `${id}-project_id-error`
+                                    : undefined
+                            }
+                            data-test="gantt-new-task-project"
+                        >
+                            <SelectValue
+                                placeholder={t(
+                                    'gantt.new_task.project_placeholder',
+                                )}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {projects.map((item) => (
+                                <SelectItem
+                                    key={item.id}
+                                    value={String(item.id)}
+                                >
+                                    {item.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errorText('project_id')}
+                </div>
+            ) : null}
 
             <div className="grid gap-1.5">
                 <Label htmlFor={`${id}-title`}>

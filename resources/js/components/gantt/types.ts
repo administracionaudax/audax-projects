@@ -77,7 +77,14 @@ export type GanttProject = {
     owner: { id: number; name: string };
     start_date: string | null;
     due_date: string | null;
-    can: { update: boolean };
+    /** TaskPolicy: mover y enlazar sus tareas (update) y crear tareas (create, sin archivar). */
+    can: { update: boolean; create: boolean };
+};
+
+/** Bolsas abiertas de un proyecto de bolsas para «Nueva tarea» (GanttPortfolio::openBanks). */
+export type GanttProjectBanks = {
+    project_id: number;
+    banks: TaskBankOption[];
 };
 
 export type GanttLimit = {
@@ -125,4 +132,7 @@ export type GanttIndexPageProps = {
     tasks: GanttTask[];
     dependencies: TaskDependencyItem[];
     range: GanttRange;
+    /** Solo los proyectos de bolsas en los que puede crear tareas. */
+    banks: GanttProjectBanks[];
+    currentUser: { id: number; department_id: number | null };
 };

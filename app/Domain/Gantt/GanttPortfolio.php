@@ -2,6 +2,7 @@
 
 namespace App\Domain\Gantt;
 
+use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -36,6 +37,57 @@ final class GanttPortfolio
     public function statuses(): array
     {
         return $this->data->statuses();
+    }
+
+    /**
+     * Bolsas abiertas para «Nueva tarea» (SPEC §8.3) de los proyectos de bolsas en los que puede
+     * crear tareas, con UNA consulta para todos: primero las del departamento del usuario y luego
+     * por fecha de inicio, como TaskOptions::banks.
+     *
+     * @param  list<array<string, mixed>>  $projects  las filas de build()['projects']
+     * @return list<array{project_id: int, banks: list<HourBank>}>
+     */
+    public function openBanks(User $user, array $projects): array
+    {
+        $ids = [];
+        foreach ($projects as $project) {
+            $can = $project['can'] ?? null;
+
+            if (($project['uses_hour_banks'] ?? false) === true && is_array($can) && ($can['create'] ?? false) === true && is_int($project['id'] ?? null)) {
+                $ids[] = $project['id'];
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $banks = HourBank::query()
+            ->open()
+            ->whereIn('project_id', $ids)
+            ->with('department:id,name,color')
+            ->orderBy('start_date')
+            ->orderBy('id')
+            ->get();
+
+        $grouped = [];
+        foreach ($banks->sortBy(fn (HourBank $bank): string => sprintf(
+            '%d-%s-%010d',
+            $bank->department_id !== null && $bank->department_id === $user->department_id ? 0 : 1,
+            $bank->start_date->toDateString(),
+            $bank->id,
+        )) as $bank) {
+            $grouped[$bank->project_id][] = $bank;
+        }
+
+        $result = [];
+        foreach ($ids as $id) {
+            if (isset($grouped[$id])) {
+                $result[] = ['project_id' => $id, 'banks' => $grouped[$id]];
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -109,7 +161,11 @@ final class GanttPortfolio
                 'owner' => ['id' => $project->owner->id, 'name' => $project->owner->name],
                 'start_date' => $project->start_date?->toDateString(),
                 'due_date' => $project->due_date?->toDateString(),
-                'can' => ['update' => $editable[$project->id] ?? false],
+                // TaskPolicy: editar = miembro o quien lo gestiona; crear, además, sin archivar.
+                'can' => [
+                    'update' => $editable[$project->id] ?? false,
+                    'create' => ($editable[$project->id] ?? false) && $project->acceptsTime(),
+                ],
             ];
         }
 

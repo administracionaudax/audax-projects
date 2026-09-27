@@ -28,6 +28,7 @@ import type {
     GanttTaskStatus,
 } from '@/components/gantt/types';
 import { UnscheduledList } from '@/components/gantt/unscheduled-list';
+import type { UnscheduledGroup } from '@/components/gantt/unscheduled-list';
 import { useGanttEditing } from '@/components/gantt/use-gantt-editing';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
@@ -51,7 +52,7 @@ export type GanttViewProps = {
     /** Gantt multiproyecto: agrupa las tareas por proyecto (plegables). */
     projects?: ReadonlyArray<GanttProject>;
     projectHref?: (project: GanttProject) => string;
-    /** Lista «Sin fechas» (Gantt de proyecto). */
+    /** Lista «Sin fechas» (en el Gantt multiproyecto, agrupada por proyecto). */
     showUnscheduled?: boolean;
     keyboardCommitDelay?: number;
     onOpenTask?: (task: GanttTask) => void;
@@ -111,7 +112,14 @@ export function GanttView({
         : null;
     const single = projects ? null : buildTaskRows(effective);
     const rows = portfolio?.rows ?? single?.rows ?? [];
-    const unscheduled = single?.unscheduled ?? [];
+    const unscheduled: UnscheduledGroup[] =
+        portfolio && projects
+            ? projects.map((project) => ({
+                  key: `p-${project.id}`,
+                  label: `${project.code} · ${project.name}`,
+                  tasks: portfolio.unscheduled.get(project.id) ?? [],
+              }))
+            : [{ key: 'tasks', label: null, tasks: single?.unscheduled ?? [] }];
     const rowTasks = rows.flatMap((row) =>
         row.kind === 'task' ? [row.task] : [],
     );
@@ -146,7 +154,8 @@ export function GanttView({
 
     /**
      * El foco sigue a la tarea: a su barra si la tiene; si no, a su fila de la tabla o a su entrada
-     * de la lista «Sin fechas». False si no está en ninguna parte (p. ej. en un proyecto plegado).
+     * de la lista «Sin fechas». Si su proyecto está plegado (Gantt multiproyecto), se despliega y
+     * se enfoca en cuanto se pinte. False si no está en ninguna parte.
      */
     const followTask = (taskId: number): boolean => {
         if (chart.current?.focusTask(taskId)) {
@@ -156,12 +165,35 @@ export function GanttView({
         const target = root.current?.querySelector<HTMLElement>(
             `[data-gantt-focus="${taskId}"]`,
         );
-        target?.focus();
 
-        return target !== null && target !== undefined;
+        if (target) {
+            target.focus();
+
+            return true;
+        }
+
+        const projectId = tasksById.get(taskId)?.project_id;
+
+        if (
+            view === 'chart' &&
+            projectId !== undefined &&
+            collapsed.has(projectId)
+        ) {
+            setCollapsed((previous) => {
+                const next = new Set(previous);
+                next.delete(projectId);
+
+                return next;
+            });
+            setFollowAfterPaint(taskId);
+
+            return true;
+        }
+
+        return false;
     };
 
-    // Tras quitar las fechas, la tarea ya se ha ido del diagrama en este mismo render.
+    // Tras quitar las fechas (o desplegar su proyecto), la tarea ya está donde va en este render.
     useLayoutEffect(() => {
         if (followAfterPaint !== null) {
             setFollowAfterPaint(null);
@@ -285,7 +317,7 @@ export function GanttView({
 
             {showUnscheduled ? (
                 <UnscheduledList
-                    tasks={unscheduled}
+                    groups={unscheduled}
                     parents={parents}
                     readOnly={readOnly}
                     onAssign={(task) => {

@@ -433,6 +433,72 @@ test('Gantt multiproyecto: se llega desde Proyectos, filtra en la URL y agrupa p
     ).toBeVisible();
 });
 
+test('Gantt multiproyecto: «Nueva tarea» en el proyecto elegido, «Sin fechas» por proyecto y el foco sigue a la tarea', async ({
+    page,
+}) => {
+    test.setTimeout(90_000);
+    const title = `Revisar E2E ${Date.now()}`;
+    const group = `${PROJECT_CODE} · ${PROJECT_NAME}`;
+
+    await login(page, USERS.manager);
+    await page.goto('/gantt');
+    await page.getByRole('combobox', { name: 'Cliente' }).click();
+    await page.getByRole('option', { name: CLIENT_NAME }).click();
+    await expect(page).toHaveURL(/\/gantt\?cliente=\d+$/);
+
+    await test.step('«Nueva tarea» sin fechas en el proyecto elegido', async () => {
+        await page.locator('[data-test="gantt-new-task"]').click();
+        const dialog = page.getByRole('dialog', { name: 'Nueva tarea' });
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('combobox', { name: 'Proyecto' }).click();
+        await page.getByRole('option', { name: group }).click();
+        await dialog.getByLabel('Título', { exact: true }).fill(title);
+        await dialog.getByRole('button', { name: 'Crear tarea' }).click();
+        await expect(dialog).toBeHidden();
+    });
+
+    const unscheduled = page.locator('[data-test="gantt-unscheduled"]');
+    const assign = unscheduled.getByRole('button', {
+        name: `Asignar fechas a «${title}»`,
+    });
+
+    await test.step('sale en «Sin fechas», dentro de su proyecto', async () => {
+        await expect(
+            unscheduled
+                .getByRole('list', {
+                    name: new RegExp(`^${escapeRegExp(group)} \\(\\d+\\)$`),
+                })
+                .getByText(title),
+        ).toBeVisible();
+    });
+
+    await test.step('«Asignar fechas»: pasa al diagrama y el foco va a su barra', async () => {
+        await assign.click();
+        const dialog = page.getByRole('dialog', { name: 'Asignar fechas' });
+        await expect(dialog).toBeVisible();
+        await pickDay(page, dialog, 'Inicio', 10);
+        await pickDay(page, dialog, 'Entrega', 12);
+        await dialog.getByRole('button', { name: 'Guardar fechas' }).click();
+        await expect(dialog).toBeHidden();
+
+        const created = bar(page, title);
+        await expect(created).toBeFocused();
+        await expect(created).toHaveAccessibleName(
+            new RegExp(
+                `Del ${escapeRegExp(shown(10))} al ${escapeRegExp(shown(12))}`,
+            ),
+        );
+        await expect(assign).toHaveCount(0);
+    });
+
+    await test.step('«Quitar fechas»: vuelve a «Sin fechas» y el foco la sigue', async () => {
+        await page.keyboard.press('Shift+F10');
+        await page.getByRole('menuitem', { name: 'Quitar fechas' }).click();
+        await expect(assign).toBeFocused();
+        await expect(bar(page, title)).toHaveCount(0);
+    });
+});
+
 for (const theme of ['light', 'dark'] as const) {
     test(`las páginas del Gantt no tienen violaciones de axe (tema ${theme === 'light' ? 'claro' : 'oscuro'})`, async ({
         browser,

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -33,6 +33,7 @@ type VisitOptions = {
     only?: string[];
     onSuccess?: () => void;
     onError?: (errors: Record<string, string>) => void;
+    onCancel?: () => void;
     onFinish?: () => void;
     preserveState?: boolean;
     replace?: boolean;
@@ -243,6 +244,37 @@ describe('pestaña Gantt del proyecto', () => {
         ).toContain('La fecha no es válida.');
     });
 
+    it('«Nueva tarea» interrumpida por otra visita avisa de que no se ha podido confirmar', async () => {
+        const user = userEvent.setup();
+        render(<ProjectGantt {...projectProps()} />);
+
+        await user.click(screen.getByRole('button', { name: 'Nueva tarea' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Nueva tarea',
+        });
+        await user.type(within(dialog).getByLabelText('Título'), 'Prototipo');
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Crear tarea' }),
+        );
+
+        const options = server.post.mock.calls[0][2];
+        act(() => {
+            options.onCancel?.();
+            options.onFinish?.();
+        });
+
+        expect(
+            (await within(dialog).findByRole('alert')).textContent,
+        ).toContain('No se ha podido confirmar si la tarea se ha creado.');
+        expect(
+            (
+                within(dialog).getByRole('button', {
+                    name: 'Crear tarea',
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false);
+    });
+
     it('quien no puede crear tareas no ve «Nueva tarea»', () => {
         render(
             <ProjectGantt
@@ -281,7 +313,7 @@ describe('Gantt multiproyecto', () => {
         owner: { id: 7, name: 'Ana' },
         start_date: null,
         due_date: null,
-        can: { update: true },
+        can: { update: true, create: true },
     });
 
     function indexProps(
@@ -335,9 +367,28 @@ describe('Gantt multiproyecto', () => {
             ],
             dependencies: [],
             range: { start: '2026-09-28', end: '2026-10-26' },
+            banks: [],
+            currentUser: { id: 7, department_id: 2 },
             ...overrides,
         };
     }
+
+    const bank = (id: number, name: string, departmentId: number | null) => ({
+        id,
+        name,
+        status: 'active' as const,
+        is_open: true,
+        department_id: departmentId,
+        department:
+            departmentId === null
+                ? null
+                : {
+                      id: departmentId,
+                      name: `Dpto ${departmentId}`,
+                      color: '#0171FF',
+                  },
+        consumed_pct: 10,
+    });
 
     it('agrupa por proyecto, con enlace a su Gantt y grupos plegables', async () => {
         const user = userEvent.setup();
@@ -363,6 +414,221 @@ describe('Gantt multiproyecto', () => {
         expect(
             document.querySelector('[data-gantt-part="bar"][data-task-id="1"]'),
         ).not.toBeNull();
+    });
+
+    it('las tareas sin fechas van aparte, agrupadas por proyecto y con «Asignar fechas»', async () => {
+        const user = userEvent.setup();
+        render(
+            <GanttIndex
+                {...indexProps({
+                    tasks: [
+                        ...indexProps().tasks,
+                        task({
+                            id: 4,
+                            project_id: 1,
+                            title: 'Documentación',
+                            can: { update: false },
+                        }),
+                    ],
+                })}
+            />,
+        );
+
+        const list = screen.getByRole('region', { name: 'Sin fechas (2)' });
+        expect(
+            within(list)
+                .getAllByRole('heading', { level: 3 })
+                .map((heading) => heading.textContent),
+        ).toEqual(['P-1 · App (1)', 'P-2 · Web (1)']);
+        expect(
+            within(
+                within(list).getByRole('list', { name: 'P-2 · Web (1)' }),
+            ).getByRole('button', {
+                name: 'Asignar fechas a «Sin fecha»',
+            }),
+        ).toBeTruthy();
+        // Sin permiso para editar esa tarea: sin «Asignar fechas».
+        expect(
+            within(list).queryByRole('button', {
+                name: 'Asignar fechas a «Documentación»',
+            }),
+        ).toBeNull();
+
+        await user.click(
+            within(list).getByRole('button', {
+                name: 'Asignar fechas a «Sin fecha»',
+            }),
+        );
+        expect(
+            await screen.findByRole('dialog', { name: 'Asignar fechas' }),
+        ).toBeTruthy();
+    });
+
+    it('al asignar fechas a una tarea de un proyecto plegado, se despliega y el foco va a su barra nueva', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                async () =>
+                    new Response(JSON.stringify({ proposals: [] }), {
+                        status: 200,
+                    }),
+            ),
+        );
+
+        try {
+            const user = userEvent.setup();
+            render(<GanttIndex {...indexProps()} />);
+
+            await user.click(
+                screen.getByRole('button', { name: 'Plegar «Web»' }),
+            );
+            await user.click(
+                screen.getByRole('button', {
+                    name: 'Asignar fechas a «Sin fecha»',
+                }),
+            );
+            const dialog = await screen.findByRole('dialog', {
+                name: 'Asignar fechas',
+            });
+
+            // Entrega: el día 15 del mes que abre el calendario.
+            await user.click(within(dialog).getByLabelText('Entrega'));
+            const day = within(await screen.findByRole('grid'))
+                .getAllByRole('button')
+                .find((button) => button.textContent === '15');
+            expect(day).toBeDefined();
+            await user.click(day as HTMLElement);
+            await user.click(
+                within(dialog).getByRole('button', { name: 'Guardar fechas' }),
+            );
+
+            const created = await screen.findByRole('button', {
+                name: /^Sin fecha\. Entrega el 15\//,
+            });
+            await waitFor(() => expect(document.activeElement).toBe(created));
+            expect(
+                screen
+                    .getByRole('button', { name: 'Plegar «Web»' })
+                    .getAttribute('aria-expanded'),
+            ).toBe('true');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('«Nueva tarea» pide el proyecto y, en los de bolsas, la bolsa (la de su departamento por defecto)', async () => {
+        const user = userEvent.setup();
+        render(
+            <GanttIndex
+                {...indexProps({
+                    projects: [
+                        group(1, 'App'),
+                        { ...group(2, 'Web'), uses_hour_banks: true },
+                        {
+                            ...group(3, 'Ajeno'),
+                            can: { update: false, create: false },
+                        },
+                    ],
+                    banks: [
+                        {
+                            project_id: 2,
+                            banks: [
+                                bank(21, 'Bolsa general', null),
+                                bank(22, 'Bolsa Diseño', 2),
+                            ],
+                        },
+                    ],
+                })}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Nueva tarea' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Nueva tarea',
+        });
+        await user.type(within(dialog).getByLabelText('Título'), 'Prototipo');
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Crear tarea' }),
+        );
+        expect(
+            within(dialog)
+                .getAllByRole('alert')
+                .map((alert) => alert.textContent),
+        ).toContain('Elige el proyecto de la tarea.');
+        expect(server.post).not.toHaveBeenCalled();
+
+        // Solo los proyectos en los que puede crear.
+        await user.click(
+            within(dialog).getByRole('combobox', { name: 'Proyecto' }),
+        );
+        expect(
+            screen.getAllByRole('option').map((option) => option.textContent),
+        ).toEqual(['P-1 · App', 'P-2 · Web']);
+        await user.click(screen.getByRole('option', { name: 'P-2 · Web' }));
+
+        expect(
+            within(dialog).getByRole('combobox', { name: 'Bolsa' }).textContent,
+        ).toContain('Bolsa Diseño');
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Crear tarea' }),
+        );
+
+        const [url, data, options] = server.post.mock.calls[0];
+        expect(url).toBe('/proyectos/2/tareas');
+        expect(data).toEqual({
+            title: 'Prototipo',
+            start_date: null,
+            due_date: null,
+            is_milestone: false,
+            hour_bank_id: 22,
+        });
+        expect(options.only).toEqual([
+            'limit',
+            'projects',
+            'tasks',
+            'dependencies',
+            'range',
+        ]);
+    });
+
+    it('en un proyecto sin bolsas no hay bolsa; sin proyectos donde crear, no hay «Nueva tarea»', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<GanttIndex {...indexProps()} />);
+
+        await user.click(screen.getByRole('button', { name: 'Nueva tarea' }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'Nueva tarea',
+        });
+        await user.click(
+            within(dialog).getByRole('combobox', { name: 'Proyecto' }),
+        );
+        await user.click(screen.getByRole('option', { name: 'P-1 · App' }));
+        expect(
+            within(dialog).queryByRole('combobox', { name: 'Bolsa' }),
+        ).toBeNull();
+        await user.type(within(dialog).getByLabelText('Título'), 'API v2');
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Crear tarea' }),
+        );
+        expect(server.post.mock.calls[0][0]).toBe('/proyectos/1/tareas');
+        expect(server.post.mock.calls[0][1]).not.toHaveProperty('hour_bank_id');
+        unmount();
+
+        render(
+            <GanttIndex
+                {...indexProps({
+                    projects: [
+                        {
+                            ...group(1, 'App'),
+                            can: { update: false, create: false },
+                        },
+                    ],
+                })}
+            />,
+        );
+        expect(
+            screen.queryByRole('button', { name: 'Nueva tarea' }),
+        ).toBeNull();
     });
 
     it('la tabla agrupa las tareas de cada proyecto en su grupo de filas', async () => {
@@ -478,6 +744,7 @@ describe('Gantt multiproyecto', () => {
                 only: [
                     'filters',
                     'preferences',
+                    'banks',
                     'limit',
                     'projects',
                     'tasks',
