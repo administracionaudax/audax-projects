@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell } from 'lucide-react';
+import { Bell, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
+import { edit as editNotificationSettings } from '@/routes/notification-settings';
 import {
     index as notificationsIndex,
     readAll,
@@ -181,18 +182,33 @@ export function NotificationBell() {
                         />
                     ))}
                 </div>
-                <div className="border-t p-1">
+                <div className="flex gap-1 border-t p-1">
                     <Button
                         asChild
                         variant="ghost"
                         size="sm"
-                        className="w-full"
+                        className="flex-1"
                     >
                         <Link
                             href={notificationsIndex()}
                             onClick={() => setOpen(false)}
                         >
                             {t('notifications.see_all')}
+                        </Link>
+                    </Button>
+                    <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1"
+                    >
+                        <Link
+                            href={editNotificationSettings()}
+                            onClick={() => setOpen(false)}
+                            aria-label={t('notification_settings.link_label')}
+                        >
+                            <SlidersHorizontal aria-hidden="true" />
+                            {t('notification_settings.link')}
                         </Link>
                     </Button>
                 </div>

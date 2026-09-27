@@ -217,3 +217,18 @@ test('los errores de validación se explican en español', function () {
         ->put($this->url, ['events' => ['task.due' => ['email' => 'sí']], 'daily_digest' => true])
         ->assertSessionHasErrors(['events' => 'Cada canal tiene que estar activado o desactivado.']);
 });
+
+test('la búsqueda global lleva a las preferencias de notificación', function (string $query) {
+    $results = $this->actingAs($this->employee)
+        ->getJson('/buscar?q='.urlencode($query))
+        ->assertOk()
+        ->json('results');
+
+    expect(collect($results)->firstWhere('id', 'notification-settings.edit'))->toBe([
+        'type' => 'page',
+        'id' => 'notification-settings.edit',
+        'title' => 'Preferencias de notificación',
+        'subtitle' => 'Ajustes',
+        'url' => '/ajustes/notificaciones',
+    ]);
+})->with(['preferencias', 'notificacion', 'resumen diario', 'EMAIL']);
