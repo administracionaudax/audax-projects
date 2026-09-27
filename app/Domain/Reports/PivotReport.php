@@ -17,11 +17,15 @@ final class PivotReport
     public function __construct(private readonly Metrics $metrics) {}
 
     /**
+     * @param  bool  $withoutEmpty  Sin las celdas cuya medida suma 0 (p. ej., el exceso de quien no
+     *                              tiene): las filas y columnas sin nada que mostrar no aparecen, y el
+     *                              recorte (MAX_ROWS, MAX_COLUMNS) se calcula solo con las que tienen
+     *                              horas. Los totales no cambian.
      * @return array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
      *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
      *     total: int, truncated: bool}
      */
-    public function run(ReportScope $scope, Dimension $rowDimension, Dimension $columnDimension, string $measure = 'logged'): array
+    public function run(ReportScope $scope, Dimension $rowDimension, Dimension $columnDimension, string $measure = 'logged', bool $withoutEmpty = false): array
     {
         if (! in_array($measure, self::MEASURES, true)) {
             $measure = 'logged';
@@ -43,6 +47,7 @@ final class PivotReport
         $rows = $query->toBase()
             ->selectRaw($rowExpression.' as row_key, '.$columnExpression.' as column_key, '.$value.' as value')
             ->groupByRaw($rowExpression.', '.$columnExpression)
+            ->when($withoutEmpty, fn ($grouped) => $grouped->havingRaw($value.' <> 0'))
             ->get();
 
         $cells = [];

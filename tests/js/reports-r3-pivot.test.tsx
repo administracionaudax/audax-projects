@@ -409,4 +409,39 @@ describe('página del informe detallado', () => {
         ).toBeNull();
         expect(screen.getByRole('combobox', { name: /Clientes/ })).toBeTruthy();
     });
+
+    it('con otra medida sin horas, el estado vacío la nombra y sugiere cambiarla', () => {
+        render(
+            <TooltipProvider>
+                <ReportDetail
+                    {...pageProps({
+                        layout: {
+                            filas: 'persona',
+                            columnas: 'semana',
+                            medida: 'exceso',
+                        },
+                        pivot: {
+                            ...pivot,
+                            rows: [],
+                            columns: [],
+                            cells: {},
+                            row_totals: {},
+                            column_totals: {},
+                            total: 0,
+                        },
+                    })}
+                />
+            </TooltipProvider>,
+        );
+
+        expect(
+            screen.getByText('No hay exceso de bolsa con estos filtros'),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Prueba con otro periodo, otra medida o quita algún filtro.',
+            ),
+        ).toBeTruthy();
+        expect(screen.queryByRole('table')).toBeNull();
+    });
 });

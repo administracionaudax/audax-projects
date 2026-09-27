@@ -170,7 +170,11 @@ export default function ReportDetail({
                     {pivot.rows.length === 0 ? (
                         <EmptyState
                             icon={SearchX}
-                            title={t('reports_r3.detail.empty_title')}
+                            title={t(
+                                layout.medida === 'imputadas'
+                                    ? 'reports_r3.detail.empty_title'
+                                    : `reports_r3.detail.empty_title_${layout.medida}`,
+                            )}
                             description={
                                 hasFilters || layout.medida !== 'imputadas'
                                     ? t('reports_r3.detail.empty_description')

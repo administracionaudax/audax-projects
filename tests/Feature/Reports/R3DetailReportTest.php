@@ -1,6 +1,10 @@
 <?php
 
+use App\Domain\Reports\Dimension;
+use App\Domain\Reports\PivotReport;
 use App\Domain\Reports\ReportCache;
+use App\Domain\Reports\ReportFilters;
+use App\Domain\Reports\ReportScope;
 use App\Models\Department;
 use App\Models\Task;
 use App\Models\TaskType;
@@ -77,7 +81,7 @@ it('cruza persona × proyecto con subtotales por fila y columna, como a mano (ad
             ->where('filters.next.medida', 'imputadas'));
 });
 
-it('calcula cada medida: facturables, dentro de bolsa y exceso', function (string $measure, int $total, int $luis, int $ana) {
+it('calcula cada medida: facturables, dentro de bolsa y exceso', function (string $measure, int $total, int $luis, ?int $ana, int $columns) {
     $s = $this->s;
 
     $this->actingAs($s->admin)
@@ -86,11 +90,63 @@ it('calcula cada medida: facturables, dentro de bolsa y exceso', function (strin
             ->where('layout.medida', $measure)
             ->where('pivot.total', $total)
             ->where('pivot.row_totals.'.$s->luis->id, $luis)
-            ->where('pivot.row_totals.'.$s->ana->id, $ana));
+            // Sin las filas ni las columnas a 0 (PivotReport withoutEmpty): quien no tiene exceso no sale.
+            ->when($ana === null, fn (Assert $page) => $page->missing('pivot.row_totals.'.$s->ana->id)->has('pivot.rows', 1))
+            ->when($ana !== null, fn (Assert $page) => $page->where('pivot.row_totals.'.$s->ana->id, $ana))
+            ->has('pivot.columns', $columns));
 })->with([
-    'facturables (el interno no cuenta)' => ['facturables', 1360, 700, 660],
-    'dentro de bolsa' => ['dentro', 1320, 660, 660],
-    'exceso' => ['exceso', 100, 100, 0],
+    // El proyecto interno (60 min no facturables) no sale como columna.
+    'facturables (el interno no cuenta)' => ['facturables', 1360, 700, 660, 3],
+    'dentro de bolsa' => ['dentro', 1320, 660, 660, 4],
+    'exceso (solo la bolsa, solo Luis)' => ['exceso', 100, 100, null, 1],
+]);
+
+it('PivotReport::run con withoutEmpty quita las celdas a 0 sin cambiar los totales', function () {
+    $s = $this->s;
+    $scope = new ReportScope($s->admin, ReportFilters::fromQuery(R3Scenario::week(['departamento' => [$s->design->id]])));
+    $pivot = app(PivotReport::class);
+
+    // Por defecto (sin cambios): todas las personas y proyectos, con 0 donde no hay exceso.
+    $all = $pivot->run($scope, Dimension::Person, Dimension::Project, 'overage');
+    // Sin vacíos: solo Luis en la bolsa (100 min de exceso el 24).
+    $nonEmpty = $pivot->run($scope, Dimension::Person, Dimension::Project, 'overage', withoutEmpty: true);
+
+    expect($all['row_totals'])->toBe([(string) $s->luis->id => 100, (string) $s->ana->id => 0])
+        ->and($all['columns'])->toHaveCount(4)
+        ->and($nonEmpty['rows'])->toBe([['key' => (string) $s->luis->id, 'name' => 'Luis']])
+        ->and($nonEmpty['columns'])->toBe([['key' => (string) $s->bank->project_id, 'name' => 'BOL · Bolsa']])
+        ->and($nonEmpty['cells'])->toBe([(string) $s->luis->id => [(string) $s->bank->project_id => 100]])
+        ->and($nonEmpty['row_totals'])->toBe([(string) $s->luis->id => 100])
+        ->and($nonEmpty['column_totals'])->toBe([(string) $s->bank->project_id => 100])
+        ->and($nonEmpty['total'])->toBe($all['total'])
+        ->and($nonEmpty['total'])->toBe(100)
+        // Con las horas imputadas no hay celdas a 0: el mismo resultado.
+        ->and($pivot->run($scope, Dimension::Person, Dimension::Project, 'logged', withoutEmpty: true))
+        ->toBe($pivot->run($scope, Dimension::Person, Dimension::Project));
+});
+
+it('muestra el estado vacío, no una tabla de ceros, si la medida no tiene horas', function (string $measure, string $project) {
+    $s = $this->s;
+    $query = ['filas' => 'persona', 'columnas' => 'semana', 'medida' => $measure, 'proyecto' => [$s->{$project}->id]];
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)($query))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows', [])
+            ->where('pivot.columns', [])
+            ->where('pivot.cells', [])
+            ->where('pivot.total', 0)
+            ->where('pivot.truncated', false)
+            // Las horas imputadas siguen en los KPIs.
+            ->where('summary.logged_minutes', $project === 'tm' ? 420 : 60));
+
+    // La exportación, igual: solo la cabecera y la fila de totales.
+    $rows = ($this->readXlsx)($this->actingAs($s->admin)->get(($this->url)([...$query, 'formato' => 'xlsx']))->assertOk()->streamedContent());
+
+    expect($rows)->toBe([['Persona / Semana (horas)', 'Total'], ['Total', 0]]);
+})->with([
+    'exceso en un proyecto sin bolsa' => ['exceso', 'tm'],
+    'facturables en el proyecto interno' => ['facturables', 'internal'],
 ]);
 
 it('agrupa por mes en columnas con los meses ordenados', function () {

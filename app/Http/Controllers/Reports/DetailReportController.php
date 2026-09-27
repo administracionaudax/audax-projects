@@ -68,7 +68,9 @@ class DetailReportController extends Controller
         $result = $cache->remember(
             $scope,
             "r3.detail.pivot.{$rows->value}.{$columns->value}.{$measure}",
-            fn (): array => self::chronological($pivot->run($scope, $rows, $columns, self::MEASURES[$measure]), $rows),
+            // Sin las celdas a 0: con facturables, dentro o exceso, solo los grupos que tienen esas horas
+            // (y, si no hay ninguno, el estado vacío en vez de una tabla de ceros).
+            fn (): array => self::chronological($pivot->run($scope, $rows, $columns, self::MEASURES[$measure], withoutEmpty: true), $rows),
         );
 
         if ($request->filled('formato')) {
