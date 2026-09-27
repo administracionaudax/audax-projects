@@ -43,9 +43,12 @@ type LinkCallbacks = {
 export function useGanttEditing({
     tasks,
     reload,
+    onRevert,
 }: {
     tasks: ReadonlyArray<GanttTask>;
     reload: string[];
+    /** La tarea vuelve a sus fechas del servidor (falló, o se interrumpió y no se aplicó). */
+    onRevert?: (taskId: number) => void;
 }) {
     const [overrides, setOverrides] = useState<ReadonlyMap<number, GanttDates>>(
         () => new Map(),
@@ -99,6 +102,7 @@ export function useGanttEditing({
 
     const fail = (taskId: number, message: string) => {
         release(taskId);
+        onRevert?.(taskId);
         toast.error(message);
     };
 
@@ -133,6 +137,7 @@ export function useGanttEditing({
             onRefreshed: () => {
                 if (attempts.current.get(task.id) === attempt) {
                     dropOverride(task.id);
+                    onRevert?.(task.id);
                 }
             },
             onFinish: () => {

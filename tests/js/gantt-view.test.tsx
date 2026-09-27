@@ -687,6 +687,36 @@ describe('dependencias y fechas desde el Gantt', () => {
         );
     });
 
+    it('si falla guardar «Quitar fechas», la tarea vuelve al diagrama y el foco con ella', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        renderView();
+
+        bar(/^Maquetación/).focus();
+        await user.keyboard('{Shift>}{F10}{/Shift}');
+        await user.click(
+            await screen.findByRole('menuitem', { name: 'Quitar fechas' }),
+        );
+        const assign = within(
+            screen.getByRole('region', { name: 'Sin fechas (2)' }),
+        ).getByRole('button', { name: 'Asignar fechas a «Maquetación»' });
+        await waitFor(() => expect(document.activeElement).toBe(assign));
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+
+        act(() => {
+            server.post.mock.calls[0][2].onHttpException?.({ status: 500 });
+            server.post.mock.calls[0][2].onFinish?.();
+        });
+
+        await waitFor(() =>
+            expect(document.activeElement).toBe(bar(/^Maquetación/)),
+        );
+        expect(bar(/^Maquetación/).getAttribute('aria-label')).toContain(
+            'Del 08/10/2026 al 09/10/2026',
+        );
+        expect(toasts.error).toHaveBeenCalled();
+    });
+
     it('si era la última barra y el diagrama desaparece, el foco también va a «Sin fechas»', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [] }));
         const user = userEvent.setup();

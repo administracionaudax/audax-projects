@@ -85,7 +85,22 @@ export function GanttView({
 }: GanttViewProps) {
     const root = useRef<HTMLDivElement>(null);
     const chart = useRef<GanttChartHandle>(null);
-    const editing = useGanttEditing({ tasks, reload });
+    const editing = useGanttEditing({
+        tasks,
+        reload,
+        // Si vuelve a sus fechas (p. ej. falla «Quitar fechas») y el foco estaba en ella, la sigue.
+        onRevert: (taskId) => {
+            const active = document.activeElement;
+
+            if (
+                active instanceof HTMLElement &&
+                (active.dataset.ganttFocus === String(taskId) ||
+                    active.dataset.taskId === String(taskId))
+            ) {
+                setFollowAfterPaint(taskId);
+            }
+        },
+    });
     const [scale, setScale] = useState(preferences.scale);
     const [color, setColor] = useState(preferences.color);
     const [view, setView] = useState<GanttViewMode>('chart');
