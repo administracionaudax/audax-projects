@@ -6,31 +6,44 @@ import { PeopleChecklist } from '@/components/projects-list/people-checklist';
 import { PersonSelect } from '@/components/projects-list/person-select';
 import { ProjectFields } from '@/components/projects-list/project-fields';
 import type { ProjectFormData } from '@/components/projects-list/project-fields';
+import {
+    emptyTemplateStart,
+    TemplateStartFields,
+    templateStartPayload,
+} from '@/components/templates/template-start-fields';
+import type { TemplateStartData } from '@/components/templates/template-start-fields';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
+import { todayInMadrid } from '@/lib/week';
 import { create, index, store } from '@/routes/projects';
 import type { ProjectCreateProps } from '@/types';
 
 type CreateForm = ProjectFormData & {
     owner_user_id: number | null;
     member_ids: number[];
+    /** «Desde plantilla» (D-058). */
+    template: TemplateStartData;
 };
 
 /**
  * Alta de proyecto (SPEC §6, D-022, D-032): datos básicos, planificación, economía (con
  * view-financials) y equipo. El gestor principal es por defecto quien lo crea y siempre queda
- * como miembro gestor.
+ * como miembro gestor. Se crea desde cero o desde una plantilla (D-058).
  */
 export default function ProjectCreate({
     clients,
     people,
     defaults,
+    templates = [],
+    departments = [],
+    overageDefault = 'allow',
 }: ProjectCreateProps) {
     const id = useId();
     const can = useAbilities();
     const [codeTouched, setCodeTouched] = useState(false);
+    const today = todayInMadrid();
 
     const form = useForm<CreateForm>({
         name: '',
@@ -47,6 +60,7 @@ export default function ProjectCreate({
         hourly_rate: '',
         owner_user_id: defaults.owner_user_id,
         member_ids: [],
+        template: emptyTemplateStart(today),
     });
 
     const set = <K extends keyof CreateForm>(key: K, value: CreateForm[K]) =>
@@ -69,6 +83,14 @@ export default function ProjectCreate({
                     className="grid max-w-4xl gap-8"
                     onSubmit={(event) => {
                         event.preventDefault();
+                        form.transform(({ template, ...data }) => ({
+                            ...data,
+                            ...templateStartPayload(
+                                template,
+                                data.billing_type,
+                                can.viewFinancials,
+                            ),
+                        }));
                         form.submit(store(), { preserveScroll: true });
                     }}
                 >
@@ -82,6 +104,19 @@ export default function ProjectCreate({
                         canViewFinancials={can.viewFinancials}
                         codeTouched={codeTouched}
                         onCodeTouched={() => setCodeTouched(true)}
+                    />
+
+                    <TemplateStartFields
+                        data={form.data.template}
+                        onChange={(template) => set('template', template)}
+                        errors={errors}
+                        templates={templates}
+                        billingType={form.data.billing_type}
+                        projectStart={form.data.start_date}
+                        today={today}
+                        departments={departments}
+                        overageDefault={overageDefault}
+                        canViewFinancials={can.viewFinancials}
                     />
 
                     <fieldset className="grid gap-5">

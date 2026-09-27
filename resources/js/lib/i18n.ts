@@ -30,6 +30,7 @@ import reportsR1 from '../../../lang/ui/reports-r1.json';
 import reportsR3 from '../../../lang/ui/reports-r3.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
+import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
 import workload from '../../../lang/ui/workload.json';
 
@@ -51,6 +52,7 @@ const messages = {
     ...workload,
     ...gantt,
     ...planning,
+    ...templates,
 };
 
 export type TranslationKey = keyof typeof messages;

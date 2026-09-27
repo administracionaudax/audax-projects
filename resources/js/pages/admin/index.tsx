@@ -32,6 +32,8 @@ import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
 import { index as usersIndex } from '@/routes/admin/users';
+import { index as recurringIndex } from '@/routes/recurring';
+import { index as templatesIndex } from '@/routes/templates';
 import type { Abilities } from '@/types';
 
 type AreaLink = {
@@ -133,6 +135,18 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.templates.title',
         description: 'admin.areas.templates.description',
         phase: 4,
+        links: [
+            {
+                label: 'templates.admin.open_templates',
+                href: templatesIndex.url(),
+                ability: 'manageSettings',
+            },
+            {
+                label: 'templates.admin.open_recurring',
+                href: recurringIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'identity',
