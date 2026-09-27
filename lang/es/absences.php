@@ -90,7 +90,7 @@ return [
     ],
 
     // Aviso al imputar en un día con ausencia aprobada (SPEC §7). Al imputar por otra persona, el
-    // tipo solo lo ven un admin o quien la supervisa; los demás, que no está disponible (D-082).
+    // tipo solo lo ven un admin o quien la supervisa; los demás, que no está disponible (D-088).
     'warnings' => [
         'time_entry' => 'Ese día hay una ausencia aprobada (:type). Revisa que la fecha sea correcta.',
         'time_entry_partial' => 'Ese día hay una ausencia aprobada de parte del día (:type, :minutes).',

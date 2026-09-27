@@ -478,7 +478,7 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
 
-### D-082 · Ausencias de otra persona al imputar por ella **[concreta D-036 y D-049; RGPD]**
+### D-088 · Ausencias de otra persona al imputar por ella **[concreta D-036 y D-049; RGPD]**
 - **Quién ve el tipo de una ausencia** (vacaciones, baja, permiso…; una baja es un dato de salud): la propia persona, un admin o quien la supervisa (`User::canSeeAbsencesOf`, que es `supervises` para los responsables).
 - **Aviso al imputar por otra persona en un día con ausencia aprobada** (SPEC §7):
   - un admin o su responsable ven el tipo, con el nombre de la persona («Ese día Pedro Pérez tiene una ausencia aprobada (Baja)…»),

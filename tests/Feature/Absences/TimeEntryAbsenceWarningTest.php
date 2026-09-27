@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Notification;
 | TimeEntryWarning::ABSENCE en TimeEntryRules. "Hoy" es el viernes 25/09/2026.
 | Al imputar por otra persona (D-036), el tipo de ausencia (una baja es un dato de salud) solo lo
 | ven la propia persona, un admin o quien la supervisa; a los demás, que ese día no está disponible
-| (D-082). Los avisos nombran a la persona por la que se imputa.
+| (D-088). Los avisos nombran a la persona por la que se imputa.
 */
 
 beforeEach(function () {
@@ -83,7 +83,7 @@ test('el aviso llega en el flash time_warnings de la imputación', function () {
         ->assertInertiaFlash('time_warnings.0.message', 'Ese día hay una ausencia aprobada de parte del día (Formación externa, 4:00).');
 });
 
-describe('al imputar por otra persona (D-082)', function () {
+describe('al imputar por otra persona (D-088)', function () {
     beforeEach(function () {
         $design = Department::factory()->create(['name' => 'Diseño']);
         $development = Department::factory()->create(['name' => 'Desarrollo']);

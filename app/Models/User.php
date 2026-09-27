@@ -354,7 +354,7 @@ class User extends Authenticatable
 
     /**
      * ¿Puede saber de qué tipo son las ausencias de $other (una baja es un dato de salud)? La propia
-     * persona, un admin o quien la supervisa (D-082). Los demás, como mucho, que ese día no está.
+     * persona, un admin o quien la supervisa (D-088). Los demás, como mucho, que ese día no está.
      */
     public function canSeeAbsencesOf(User $other): bool
     {

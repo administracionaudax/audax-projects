@@ -311,7 +311,7 @@ final class TimeEntryRules
 
     /**
      * El tipo de la ausencia (una baja es un dato de salud) solo lo ven la propia persona, un admin o
-     * quien la supervisa (D-082). A los demás que pueden imputar por ella (un gestor, en su
+     * quien la supervisa (D-088). A los demás que pueden imputar por ella (un gestor, en su
      * proyecto) solo se les dice que ese día no está disponible, sin tipo ni horas.
      *
      * @param  array{type: string, partial_minutes: int|null}  $absence
