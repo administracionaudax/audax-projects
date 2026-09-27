@@ -19,6 +19,7 @@ import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import clients from '../../../lang/ui/clients.json';
+import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
 import projects from '../../../lang/ui/projects.json';
@@ -47,6 +48,7 @@ const messages = {
     ...reportsR3,
     ...absences,
     ...workload,
+    ...gantt,
 };
 
 export type TranslationKey = keyof typeof messages;

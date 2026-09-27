@@ -7,6 +7,7 @@
 export type ProjectTab =
     | 'resumen'
     | 'tareas'
+    | 'gantt'
     | 'bolsas'
     | 'horas'
     | 'archivos'
@@ -28,6 +29,10 @@ export const urls = {
     projects: () => '/proyectos',
     project: (id: number, tab: ProjectTab = 'resumen') =>
         tab === 'resumen' ? `/proyectos/${id}` : `/proyectos/${id}/${tab}`,
+    /** Pestaña Gantt del proyecto (Fase 4). */
+    projectGantt: (id: number) => `/proyectos/${id}/gantt`,
+    /** Gantt multiproyecto (Fase 4). */
+    gantt: () => '/gantt',
     /** Abre el panel lateral de la tarea sobre la lista de tareas de su proyecto. */
     task: (projectId: number, taskId: number) =>
         `/proyectos/${projectId}/tareas?tarea=${taskId}`,
