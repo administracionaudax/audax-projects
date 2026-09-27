@@ -11,6 +11,7 @@ import type {
     UserSummary,
 } from './domain';
 import type { HourBankCard } from './hour-banks';
+import type { ProjectMilestones } from './planning';
 
 /** App\Http\Resources\Projects\Paginated: una página de resultados. */
 export type ProjectsPaginated<T> = {
@@ -106,6 +107,8 @@ export type ProjectShowProps = {
     /** Bolsas abiertas (solo en proyectos de bolsas). */
     hourBanks: HourBankCard[];
     activity: ProjectActivityItem[];
+    /** Próximos hitos (D-062): vencidos y los 5 siguientes. */
+    milestones: ProjectMilestones;
 };
 
 export type ProjectSettingsProps = {

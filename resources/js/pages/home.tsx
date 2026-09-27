@@ -27,6 +27,7 @@ import type { Phase } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
 import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
 import type { MyIndicators } from '@/components/reports/r1-types';
+import { MyMilestones } from '@/components/planning/milestone-list';
 import { CapacityCell } from '@/components/time/capacity-cell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { stopTimer } from '@/components/time/timer-actions';
@@ -71,14 +72,6 @@ type LaterCard = {
 
 /** Tarjetas que llegan en otras fases (SPEC §17). */
 const LATER: LaterCard[] = [
-    {
-        id: 'milestones',
-        icon: Milestone,
-        title: 'home.cards.milestones.title',
-        description: 'home.cards.milestones.description',
-        empty: 'home.cards.milestones.empty',
-        phase: 4,
-    },
     {
         id: 'mentions',
         icon: AtSign,
@@ -133,7 +126,7 @@ function PanelCard({
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
  * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
  * Fase 2, «Mis indicadores» del mes; en la Fase 3, «Mi carga» (prop diferida `workload`: no
- * retrasa la primera carga) y «Mis ausencias».
+ * retrasa la primera carga) y «Mis ausencias»; en la Fase 4, mis próximos hitos (D-062).
  */
 export default function Home({
     tasks,
@@ -143,6 +136,7 @@ export default function Home({
     indicators,
     absences,
     workload,
+    milestones,
 }: HomePageProps & {
     indicators: MyIndicators;
     absences: MyAbsencesSummary;
@@ -404,6 +398,15 @@ export default function Home({
                         description={t('home.cards.absences.description')}
                     >
                         <MyAbsencesCard absences={absences} />
+                    </PanelCard>
+
+                    <PanelCard
+                        id="milestones"
+                        icon={Milestone}
+                        title={t('planning.home.title')}
+                        description={t('planning.home.description')}
+                    >
+                        <MyMilestones milestones={milestones} />
                     </PanelCard>
 
                     {LATER.map((card) => (

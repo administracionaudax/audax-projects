@@ -146,6 +146,7 @@ describe('creación rápida', () => {
             'tasks',
             'panel',
             'hiddenCompletedCount',
+            'calendar',
         ]);
 
         await waitFor(() => expect((input as HTMLInputElement).value).toBe(''));

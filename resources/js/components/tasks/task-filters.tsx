@@ -1,4 +1,4 @@
-import { Kanban, List, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, Kanban, List, SlidersHorizontal, X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { NONE, PRIORITIES } from '@/components/tasks/task-fields';
 import { useTaskLookups } from '@/components/tasks/task-lookups';
@@ -68,7 +68,7 @@ function FilterSelect({
 }
 
 /**
- * Vista (lista o kanban), filtros (responsable, «mis tareas», bolsa, tipo, prioridad y estado),
+ * Vista (lista, kanban o calendario), filtros (responsable, «mis tareas», bolsa, tipo, prioridad y estado),
  * mostrar las completadas y agrupar la lista. Todo queda en la URL.
  */
 export function TaskToolbar({
@@ -119,7 +119,11 @@ export function TaskToolbar({
                         variant="outline"
                         value={view}
                         onValueChange={(next) => {
-                            if (next === 'list' || next === 'kanban') {
+                            if (
+                                next === 'list' ||
+                                next === 'kanban' ||
+                                next === 'calendar'
+                            ) {
                                 onChange(next, filters);
                             }
                         }}
@@ -140,6 +144,14 @@ export function TaskToolbar({
                         >
                             <Kanban aria-hidden="true" />
                             {t('task_filters.kanban')}
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                            value="calendar"
+                            className="gap-1.5 px-3"
+                            data-test="view-calendar"
+                        >
+                            <CalendarDays aria-hidden="true" />
+                            {t('planning.view.calendar')}
                         </ToggleGroupItem>
                     </ToggleGroup>
                 </div>

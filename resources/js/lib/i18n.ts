@@ -22,6 +22,7 @@ import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
+import planning from '../../../lang/ui/planning.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
 import reportsR2 from '../../../lang/ui/reports-r2.json';
@@ -49,6 +50,7 @@ const messages = {
     ...absences,
     ...workload,
     ...gantt,
+    ...planning,
 };
 
 export type TranslationKey = keyof typeof messages;
