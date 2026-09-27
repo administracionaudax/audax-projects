@@ -28,13 +28,14 @@ beforeEach(function () {
     // Página → [URL, presupuesto en frío, presupuesto en caliente]. Lo medido (máximo de los tres
     // roles; el admin es quien más consulta porque valora el ingreso) más un margen de 4 a 6. En
     // caliente solo quedan la sesión, los permisos y las props compartidas. Al integrar la Fase 2,
-    // la valoración suma una consulta por cálculo (base de precio cerrado con las tareas raíz, R2).
+    // la valoración suma una consulta por cálculo (base de precio cerrado con las tareas raíz, R2);
+    // con la Fase 3, la capacidad descuenta festivos y ausencias (dos consultas por cálculo).
     $this->pages = [
         'reports.index' => ['/informes', 14, 14],
         'reports.direction' => ['/informes/direccion', 75, 8],
-        'reports.direction.year' => ['/informes/direccion?periodo=anio&comparar=1', 84, 8],
+        'reports.direction.year' => ['/informes/direccion?periodo=anio&comparar=1', 92, 8],
         'reports.department' => ["/informes/departamentos/{$design->id}?comparar=1", 61, 8],
-        'reports.person' => ["/informes/personas/{$elena->id}?periodo=trimestre", 60, 10],
+        'reports.person' => ["/informes/personas/{$elena->id}?periodo=trimestre", 66, 10],
         'reports.person.filtered' => ["/informes/personas/{$elena->id}?cliente[]=1", 56, 10],
         'reports.direction.export' => ['/informes/direccion?formato=xlsx&tabla=proyectos', 14, 6],
         'home' => ['/', 28, 12],

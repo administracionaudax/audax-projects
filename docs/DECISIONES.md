@@ -422,3 +422,57 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
 - **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
 
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 3)
+
+_Detalle y contexto en `docs/PLAN-FASE-3.md`._
+
+### D-049 · Ausencias
+- **Solicitar:** cada persona solicita las suyas (tipo, fechas, día completo o parte del día con `partial_minutes`, y notas).
+- **Aprobar o rechazar:** un responsable de su departamento o un admin (como las horas, D-020). El rechazo lleva un comentario.
+  - Las de responsables y admins **se aprueban solas**.
+  - Un admin o un responsable puede registrar una ausencia **ya aprobada** para alguien de su ámbito (una baja, por ejemplo).
+- **Cancelar:**
+  - la persona cancela las suyas solicitadas, o las aprobadas que aún no han empezado,
+  - quien aprueba puede anular una aprobada; queda en la auditoría.
+- **Validaciones:** sin solaparse con otra ausencia solicitada o aprobada de la misma persona. `partial_minutes` solo en ausencias de un día. Máximo un año por ausencia.
+- **Notificaciones** (SPEC §13), en la app y por email por la cola `mail`:
+  - «solicitada», a quien puede aprobar,
+  - «aprobada» y «rechazada», a la persona.
+- **Al imputar un día con ausencia aprobada** sale un aviso sin bloqueo (SPEC §7): nuevo aviso en `TimeEntryRules`.
+
+### D-050 · Festivos
+- **Administración:** en `/admin/festivos` (`manage-settings`) se crean, editan y borran por año.
+- **Importación:**
+  - **festivos nacionales de España del año**, calculados en local sin servicios externos (SPEC §15: nada a terceros): 1 y 6 de enero, Viernes Santo, 1 de mayo, 15 de agosto, 12 de octubre, 1 de noviembre y 6, 8 y 25 de diciembre;
+  - los autonómicos y locales se añaden a mano o importando un fichero `.ics` o un CSV (`AAAA-MM-DD;Nombre`).
+- **Alcance:** afectan a todas las personas; `scope` queda en `company`.
+
+### D-051 · Reparto de la carga (lo que hace `WorkloadPlanner`, ya probado)
+- **Qué se reparte:** el restante (estimación − imputado), a partes iguales entre los días con capacidad > 0 desde max(hoy, inicio) hasta la entrega; los minutos que sobran van a los primeros días.
+- **Casos especiales:**
+  - una tarea vencida lleva todo su restante a hoy y se marca,
+  - sin ningún día con capacidad en el rango, todo va al primer día,
+  - como mucho se calcula un año hacia delante.
+- **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
+- **Bandejas:**
+  - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
+  - «Sin asignar»: tareas por departamento, el de la bolsa o, si no, el del tipo.
+
+### D-052 · Vista «Carga» y quién la ve (D-021)
+- **Quién ve qué:**
+  - admin: todo,
+  - responsable: su departamento (y él mismo), y puede reasignar carga,
+  - el resto: solo su propia fila.
+  - Los gestores ven y reasignan las tareas de sus proyectos desde el panel, pero no ven la carga de personas de otros departamentos.
+- **Matriz personas × días (o semanas en el horizonte de 3 meses):**
+  - horizontes: semana actual, **semana que viene (por defecto)**, próximas 4 semanas y próximos 3 meses,
+  - agrupada por departamento, con totales,
+  - filtros: departamento, persona, cliente y proyecto.
+- **Semáforo de cada celda** (horas planificadas / capacidad), el de `components/charts/thresholds.ts`, siempre con icono y texto:
+  - gris: sin capacidad, con su motivo (festivo o ausencia),
+  - azul: menos del 70 %,
+  - verde: del 70 % al 100 %,
+  - ámbar: del 100 % al 120 %,
+  - rojo: más del 120 %.
+- **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
+- **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
