@@ -163,3 +163,43 @@ test('un admin sin view-financials exporta las horas sin tarifas ni importes', f
         ->and($rows[0])->not->toContain('Importe (€)')
         ->and($rows[1])->toHaveCount(11);
 });
+
+test('los textos que empiezan por = + - @ salen como texto, nunca como fórmula (XLSX y CSV)', function () {
+    $s = $this->s;
+    $s->e1->forceFill(['description' => '=1+1'])->save();
+    $s->e2->forceFill(['description' => '-2+3'])->save();
+    $s->e4->forceFill(['description' => '@SUM(A1)'])->save();
+    $s->s1->forceFill(['title' => '=HYPERLINK("http://evil.example","Ver factura")'])->save();
+    $s->marta->forceFill(['name' => '+Marta'])->save();
+
+    $content = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk()->streamedContent();
+
+    // En la hoja no hay ninguna fórmula: cada texto es una cadena en línea.
+    $path = tempnam(sys_get_temp_dir(), 'r2').'.xlsx';
+    file_put_contents($path, $content);
+    $zip = new ZipArchive;
+    $zip->open($path);
+    $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+    $zip->close();
+    unlink($path);
+
+    expect($sheet)->not->toContain('<f>')
+        ->and($sheet)->toContain('t="inlineStr"><is><t>=1+1</t></is>')
+        ->and($sheet)->toContain('<t>=HYPERLINK(&quot;http://evil.example&quot;,&quot;Ver factura&quot;)</t>');
+
+    $rows = ($this->read)($content, 'xlsx');
+    expect($rows[1][4])->toBe('=HYPERLINK("http://evil.example","Ver factura")')
+        ->and($rows[1][5])->toBe('=1+1')
+        ->and($rows[2][1])->toBe('+Marta')
+        ->and($rows[2][5])->toBe('@SUM(A1)')
+        ->and($rows[3][5])->toBe('-2+3');
+
+    // En el CSV, un apóstrofo delante para que Excel no lo ejecute; los números negativos no cambian.
+    $csv = ($this->read)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'csv']))->streamedContent(), 'csv');
+    expect($csv[1][4])->toBe('\'=HYPERLINK("http://evil.example","Ver factura")')
+        ->and($csv[1][5])->toBe("'=1+1")
+        ->and($csv[2][1])->toBe("'+Marta")
+        ->and($csv[2][5])->toBe("'@SUM(A1)")
+        ->and($csv[3][5])->toBe("'-2+3")
+        ->and($csv[1][6])->toBe('5,00');
+});

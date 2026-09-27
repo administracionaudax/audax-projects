@@ -273,3 +273,23 @@ test('la precisión de estimación: el gestor cuenta las tareas de cualquiera; u
             ->where('summary.estimation.estimated_minutes', 60)
             ->where('summary.estimation.actual_minutes', 90));
 });
+
+test('los títulos de tarea que empiezan por = no se exportan como fórmula', function () {
+    $s = $this->s;
+    $s->t2->forceFill(['title' => '=cmd|\'/C calc\'!A0'])->save();
+
+    $content = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk()->streamedContent();
+    $path = tempnam(sys_get_temp_dir(), 'r2').'.xlsx';
+    file_put_contents($path, $content);
+    $zip = new ZipArchive;
+    $zip->open($path);
+    $sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+    $zip->close();
+    unlink($path);
+
+    expect($sheet)->not->toContain('<f>')
+        ->and(($this->xlsx)($content)[4][0])->toBe('=cmd|\'/C calc\'!A0');
+
+    $csv = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'csv']))->streamedContent();
+    expect($csv)->toContain('"\'=cmd|\'/C calc\'!A0"');
+});
