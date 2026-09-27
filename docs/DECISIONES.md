@@ -422,3 +422,36 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
 - **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
 
+
+### D-080 · Nivel de ocupación de un periodo en curso **[concreta D-047 y D-079]**
+- **Qué se enseña:** la ocupación de cada miembro sigue siendo la del SPEC §10 (imputadas / capacidad del periodo completo, D-079).
+- **Nivel (baja, en rango, alta; umbrales 70 % y 110 % de D-047):** en un periodo en curso (le quedan días con jornada) se mide con el **ritmo**: imputadas / capacidad transcurrida hasta ayer (`pace`). Contra el periodo entero, a mitad de mes todo el mundo salía «baja». Si esa capacidad es 0 (el primer día o un periodo futuro), sin nivel: «Aún sin datos». En un periodo cerrado, el nivel es el de la ocupación.
+- **Dónde:** tabla de miembros del departamento (el ritmo va debajo de la ocupación) y su exportación («Ritmo (%)»).
+
+### D-081 · Minutos en las exportaciones con totales **[concreta D-045]**
+- Las horas en decimal (redondeadas a 2) no siempre suman su total: tres entradas de 20 min son 0,33 + 0,33 + 0,33 = 0,99 h frente a 1,00 h.
+- Las exportaciones con fila de totales (horas para facturar, resumen por proyecto del cliente, estimado frente a real del proyecto y tabla dinámica del detallado) llevan **al final** una columna de **minutos enteros** por cada columna de horas que se suma; en la tabla dinámica, una columna y una fila «Total (minutos)». Las horas decimales siguen para leer; los minutos suman exacto. Al final, para no mover las columnas de siempre.
+
+### D-082 · Tope del precio de una bolsa **[concreta D-043]**
+- La parte de lo que va dentro de una bolsa con precio vale `precio × minutos dentro / máx(total de la bolsa, lo que va dentro de la bolsa entera)`.
+- Normalmente es `precio × dentro / total`. Pero si lo de dentro supera el total (entradas bloqueadas que no cambian al reducir el total, D-019 y D-054), el precio se reparte entre todo lo de dentro: la bolsa nunca vale más que su precio, sume el periodo que se sume. «Lo que va dentro de la bolsa entera» es el de `HourBankLedger` (consumo − exceso).
+- El exceso de una bolsa con precio, como dice D-043: a la instantánea de tarifa de cada entrada si está aprobada o bloqueada y, si no, a la tarifa vigente (antes se valoraba siempre a la vigente).
+
+### D-083 · Un solo total de ingreso y coste, con los mismos céntimos en todas partes **[concreta D-043]**
+- **Total:** el de un conjunto de entradas es el de sus unidades (proyecto · bolsa · persona · facturable; el precio cerrado, por proyecto), redondeado **una sola vez**, se agrupe como se agrupe (`RevenueCalculator`, con las fórmulas en `App\Domain\Reports\Valuation`).
+- **Repartos y series** (por cliente, proyecto, persona, semana…): cada fila recibe su parte de ese total en céntimos por resto mayor (`Cents::largestRemainder`): las filas suman exactamente el resumen. Las tablas enseñan los totales del servidor, nunca sumados en el navegador.
+- **Exportaciones por entrada** (horas y horas para facturar): cada entrada suma su parte exacta del total de su unidad (`EntryValuation::next`) y los céntimos se reparten en orden (`RunningCents`): la columna suma el ingreso del informe y ninguna línea se aleja más de un céntimo de su importe. El total del fichero sale de las mismas filas que exporta (nunca del resumen en caché).
+
+### D-084 · Subtareas en los informes **[concreta el SPEC §6 y §10]**
+- **Precisión de estimación:** las unidades son las hojas con estimación (subtareas y tareas sin subtareas) y las tareas raíz cuyas subtareas no están estimadas (con su propia estimación y las horas de sus subtareas), completadas en el periodo. Una tarea con alguna subtarea estimada cuenta por sus subtareas estimadas (su estimación es su suma); sus horas propias y las de sus subtareas sin estimar no entran en la precisión. Es la regla de la tabla «Estimado frente a real» y de la base del precio cerrado.
+- **Detallado por tarea:** las horas de una subtarea suman en su tarea padre (se agrupa por la tarea raíz).
+
+### D-085 · Límite de las exportaciones de los informes
+- 30 exportaciones por minuto y usuario, comunes a todos los dashboards y al detallado (limitador `report-exports`). Solo cuentan las peticiones con `formato`: ver las páginas no gasta el cupo. La exportación de horas y el PDF de bolsa mantienen su límite propio.
+
+### D-086 · Caché de los informes **[concreta D-046]**
+- **Cuándo se invalida:** siempre **tras el commit** de la transacción (y nunca si se deshace), con un incremento atómico de la versión. Además de entradas, tareas, bolsas, proyectos, clientes, jornadas, ajustes y personas: estados y tipos de tarea, departamentos, semanas de horas, bloqueos, miembros y gestores de proyecto y responsables de departamento, y los servicios con actualizaciones masivas (bloquear y desbloquear horas, pasar un estado a «done», mover tareas y reordenar catálogos).
+- **Clave:** además de quien mira, su permiso económico y los filtros, su **alcance**: roles, departamentos que dirige y proyectos que gestiona. Quien deja de dirigir un departamento no ve nunca lo que vio cacheado, aunque nada haya invalidado la caché.
+
+### D-087 · Resumen semanal con el alcance de dirección **[concreta D-047]**
+- Las bolsas en riesgo y las tareas vencidas del resumen semanal son las del dashboard de dirección de quien lo recibe (`HourBanksAtRisk` y `OverdueTasks`): a un responsable, también las bolsas de los proyectos donde imputa su equipo y las tareas de las personas de su equipo que imputaron esa semana aunque ya estén de baja. El email cuenta lo mismo que el dashboard.

@@ -116,21 +116,26 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Dominio:** `app/Domain/Reports`.
   - `ReportFilters` y `ReportPeriod`: la URL en español,
   - `ReportScope`: D-044; `entries()` y `people()`,
-  - `Metrics`: `summary`, `series`, `breakdown`, `estimation`, `capacityByDate` y `labels`,
-  - `RevenueCalculator`: D-043,
+  - `Metrics`: `summary`, `series`, `breakdown`, `estimation` (D-084), `capacityByDate`, `capacityTotal`, `capacityTotalsByPerson`, `capacityPlans` y `labels`,
+  - `RevenueCalculator`: D-043; `compute()` reparte los céntimos del total canónico y `exact()` da los grupos y ese total (D-083),
+  - `Valuation`: las fórmulas de D-043 y D-082 para una unidad; `EntryValuation`: cada entrada (`value`) y su parte del total en streaming (`next`, D-083),
+  - `Cents` y `RunningCents`: reparto de céntimos (resto mayor y en orden),
+  - `ComparisonPeriod`: comparar al mismo punto (D-079), también para los informes solo de horas (`hoursScope`),
   - `PivotReport`,
-  - `ReportCache`: D-046; `ReportsServiceProvider` invalida al guardar los modelos,
-  - `Dimension`: persona, departamento, cliente, proyecto, bolsa, tipo, tarea, día, semana y mes,
+  - `ReportCache`: D-046 y D-086; `bumpAfterCommit()` y la clave con el alcance de quien mira (`viewerScope`); `ReportsServiceProvider` invalida al guardar los modelos y con `MembershipsChanged`,
+  - `Dimension`: persona, departamento, cliente, proyecto, bolsa, tipo, tarea (la raíz: las subtareas suman en su padre), día, semana y mes,
+  - `Export\KeysetPages`: recorre entradas por bloques con paginación por clave (fecha e id),
   - `Money`: bcmath.
+- **Capacidad:** `App\Domain\Time\Capacity::plansForRanges()` da un `CapacityPlan` por persona (tramos de horario, sumas con aritmética). Los festivos y ausencias de la Fase 3 entran como `overrides` (día → minutos) de `Capacity::plan()`.
 - **Controladores:**
-  - `App\Http\Controllers\Reports\Concerns\BuildsReportScope`: `reportScope($request, $fixed)` y `filterProps($scope)`,
+  - `App\Http\Controllers\Reports\Concerns\BuildsReportScope`: `reportScope($request, $fixed)`, `filterProps($scope)` y `exportFormat($request)` (solo `xlsx` o `csv`),
   - `ReportOptionsController`: `GET /informes/opciones`.
 - **Rutas:** `routes/app/reports.php`. `/informes` es provisional hasta que R1 haga el índice.
 - **Frontend:**
   - tipos en `resources/js/types/reports.ts`,
-  - componentes en `resources/js/components/reports/`: `report-filter-bar.tsx` (con `show` para ocultar filtros), `kpi-card.tsx` (con variación) y `multi-select-filter.tsx`,
+  - componentes en `resources/js/components/reports/`: `report-filter-bar.tsx` (con `show` para ocultar filtros y `compare` para ocultar la comparación), `kpi-card.tsx` (con variación) y `multi-select-filter.tsx`,
   - textos comunes en `lang/ui/reports.json` (`reports.*`: periodos, filtros y definiciones de cada métrica).
-- **Exportación:** `App\Domain\Reports\Export\TableExporter` (XLSX/CSV en streaming, con `hours()` y `money()` para las celdas) y el componente `components/reports/export-menu.tsx`. Cualquier controlador de informe exporta si recibe `?formato=xlsx|csv`.
+- **Exportación:** `App\Domain\Reports\Export\TableExporter` (XLSX/CSV en streaming, con `hours()` y `money()` para las celdas) y el componente `components/reports/export-menu.tsx`. Cualquier controlador de informe exporta si recibe `?formato=xlsx|csv` (y `?tabla=` para cada tabla), con el límite `report-exports` (D-085). Con fila de totales, además los minutos (D-081).
 - **Librerías:** `openspout/openspout` 5.12 y `setasign/fpdf` 1.9 instaladas.
 - **Tests:**
   - `tests/Unit/Reports/ReportFiltersTest.php`,
