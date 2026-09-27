@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Reports\Dimension;
+use App\Domain\Reports\Metrics;
+use App\Domain\Reports\ReportCache;
+use App\Domain\Reports\ReportFilters;
+use App\Domain\Reports\ReportScope;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Enums\TimesheetStatus;
@@ -24,7 +29,8 @@ use Inertia\Response;
  * - sus tareas abiertas vencidas, de hoy y de esta semana (D-037),
  * - sus horas de hoy y de la semana frente a su capacidad,
  * - el estado de su semana (con el comentario si se la han devuelto),
- * - los días laborables sin imputar de las dos últimas semanas.
+ * - los días laborables sin imputar de las dos últimas semanas,
+ * - «Mis indicadores» del mes en curso (Fase 2): solo los suyos, también si es responsable o admin.
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  */
 class HomeController extends Controller
@@ -36,11 +42,16 @@ class HomeController extends Controller
 
     public const int TASKS_LIMIT = 50;
 
+    /**
+     * Clientes y proyectos del reparto de «Mis indicadores».
+     */
+    public const int INDICATORS_TOP = 5;
+
     public function __construct(
         private readonly Capacity $capacity,
     ) {}
 
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, Metrics $metrics, ReportCache $cache): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -60,7 +71,51 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            'indicators' => $this->indicators($user, $metrics, $cache),
         ]);
+    }
+
+    /**
+     * «Mis indicadores» (SPEC §5.1): ocupación, facturabilidad, precisión de estimación y reparto
+     * de mis horas por cliente y proyecto del mes en curso. El alcance fija a quien mira como única
+     * persona (ReportScope, D-044): un responsable o un admin tampoco ve aquí a su equipo. Sin
+     * datos económicos. Con la caché de los informes (D-046).
+     *
+     * @return array{from: string, to: string, capacity_minutes: int, logged_minutes: int, billable_minutes: int,
+     *     occupancy: float|null, billability: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     clients: list<array{key: string|null, name: string, logged_minutes: int}>,
+     *     projects: list<array{key: string|null, name: string, color: string|null, logged_minutes: int}>}
+     */
+    private function indicators(User $user, Metrics $metrics, ReportCache $cache): array
+    {
+        $scope = new ReportScope($user, ReportFilters::fromQuery([])->with(['userIds' => [$user->id]]));
+
+        return $cache->remember($scope, 'r1.home', function () use ($scope, $metrics): array {
+            $summary = $metrics->summary($scope);
+
+            return [
+                'from' => $scope->filters->from->toDateString(),
+                'to' => $scope->filters->to->toDateString(),
+                'capacity_minutes' => $summary['capacity_minutes'],
+                'logged_minutes' => $summary['logged_minutes'],
+                'billable_minutes' => $summary['billable_minutes'],
+                'occupancy' => $summary['occupancy'],
+                'billability' => $summary['billability'],
+                'estimation' => $summary['estimation'],
+                'clients' => array_map(fn (array $row): array => [
+                    'key' => $row['key'],
+                    'name' => $row['name'],
+                    'logged_minutes' => $row['logged_minutes'],
+                ], $metrics->breakdown($scope, Dimension::Client, self::INDICATORS_TOP)),
+                'projects' => array_map(fn (array $row): array => [
+                    'key' => $row['key'],
+                    'name' => $row['name'],
+                    'color' => $row['color'],
+                    'logged_minutes' => $row['logged_minutes'],
+                ], $metrics->breakdown($scope, Dimension::Project, self::INDICATORS_TOP)),
+            ];
+        });
     }
 
     /**
