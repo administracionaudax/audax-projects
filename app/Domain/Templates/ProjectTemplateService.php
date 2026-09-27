@@ -180,13 +180,123 @@ final class ProjectTemplateService
         }
 
         $dependencies = [];
+        $seen = [];
         foreach ((array) ($structure['dependencies'] ?? []) as $link) {
             if (! is_array($link) || ! isset($refs[(string) ($link['from_ref'] ?? '')], $refs[(string) ($link['to_ref'] ?? '')]) || ($link['from_ref'] ?? null) === ($link['to_ref'] ?? null)) {
                 $fail('hay dependencias con referencias que no existen');
             }
+
+            // Enlazar dos veces lo mismo no duplica (D-056).
+            $key = $link['from_ref']."\n".$link['to_ref'];
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
             $dependencies[] = ['from_ref' => (string) $link['from_ref'], 'to_ref' => (string) $link['to_ref']];
         }
 
+        if (self::findCycle($dependencies) !== null) {
+            $fail('las dependencias forman un ciclo');
+        }
+
         return ['tasks' => $tasks, 'dependencies' => $dependencies];
+    }
+
+    /**
+     * Primer ciclo de las dependencias de una plantilla (D-058: sin ciclos), como la lista de
+     * referencias que lo forman, o null si no hay ninguno. Búsqueda en profundidad en memoria.
+     *
+     * @param  list<array{from_ref: string, to_ref: string}>  $dependencies
+     * @return list<string>|null
+     */
+    public static function findCycle(array $dependencies): ?array
+    {
+        $edges = [];
+        foreach ($dependencies as $link) {
+            $edges[$link['from_ref']][] = $link['to_ref'];
+        }
+
+        // 0 = sin visitar, 1 = en el camino actual, 2 = terminada.
+        $state = [];
+
+        foreach (array_keys($edges) as $ref) {
+            if (($state[$ref] ?? 0) === 0) {
+                $path = [];
+                $cycle = self::visit((string) $ref, $edges, $state, $path);
+                if ($cycle !== null) {
+                    return $cycle;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, list<string>>  $edges
+     * @param  array<string, int>  $state
+     * @param  list<string>  $path
+     * @return list<string>|null
+     */
+    private static function visit(string $ref, array $edges, array &$state, array &$path): ?array
+    {
+        $state[$ref] = 1;
+        $path[] = $ref;
+
+        foreach ($edges[$ref] ?? [] as $next) {
+            if (($state[$next] ?? 0) === 1) {
+                $start = array_search($next, $path, true);
+
+                return array_slice($path, $start === false ? 0 : $start);
+            }
+
+            if (($state[$next] ?? 0) === 0) {
+                $cycle = self::visit($next, $edges, $state, $path);
+                if ($cycle !== null) {
+                    return $cycle;
+                }
+            }
+        }
+
+        array_pop($path);
+        $state[$ref] = 2;
+
+        return null;
+    }
+
+    /**
+     * Cifras de una estructura para los listados y los selectores: tareas, subtareas, hitos,
+     * dependencias y duración total en días (del día 0 a la entrega más tardía).
+     *
+     * @param  array<mixed>  $structure
+     * @return array{tasks: int, subtasks: int, milestones: int, dependencies: int, duration_days: int}
+     */
+    public static function stats(array $structure): array
+    {
+        $tasks = is_array($structure['tasks'] ?? null) ? $structure['tasks'] : [];
+        $subtasks = 0;
+        $milestones = 0;
+        $end = 0;
+
+        foreach ($tasks as $task) {
+            if (! is_array($task)) {
+                continue;
+            }
+            if (($task['parent_ref'] ?? null) !== null && $task['parent_ref'] !== '') {
+                $subtasks++;
+            }
+            if ((bool) ($task['is_milestone'] ?? false)) {
+                $milestones++;
+            }
+            $end = max($end, (int) ($task['start_offset_days'] ?? 0) + max((int) ($task['duration_days'] ?? 1), 1));
+        }
+
+        return [
+            'tasks' => count($tasks),
+            'subtasks' => $subtasks,
+            'milestones' => $milestones,
+            'dependencies' => is_array($structure['dependencies'] ?? null) ? count($structure['dependencies']) : 0,
+            'duration_days' => $end,
+        ];
     }
 }

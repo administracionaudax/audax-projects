@@ -7,8 +7,10 @@ use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Models\RecurringTaskRule;
 use App\Models\Task;
+use App\Models\TaskType;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -19,6 +21,9 @@ use Illuminate\Validation\ValidationException;
  * last_generated_on evita repasar lo ya hecho. Si hace mucho que no se ejecuta, recupera como mucho
  * MAX_CATCH_UP instancias por regla. Se salta las reglas de proyectos archivados; si una instancia
  * no se puede crear (p. ej. la bolsa está cerrada), lo anota en el log y sigue con las demás.
+ * Un responsable desactivado no impide crearla: la tarea queda sin responsable (y un tipo de tarea
+ * desactivado, sin tipo).
+ * generateFor() es la generación inmediata al crear, editar o reactivar una regla.
  */
 final class RecurringTaskGenerator
 {
@@ -49,29 +54,9 @@ final class RecurringTaskGenerator
                 if ($actor === null) {
                     break;
                 }
-                if (Task::query()->withTrashed()->where('recurring_task_rule_id', $rule->id)->where('occurrence_date', $date)->exists()) {
-                    continue;
-                }
 
-                try {
-                    DB::transaction(function () use ($rule, $date, $actor, &$created): void {
-                        $occurrence = CarbonImmutable::parse($date);
-                        $task = $this->writer->create($actor, $rule->project, [
-                            'title' => $rule->title,
-                            'description' => $rule->description,
-                            'task_type_id' => $rule->task_type_id,
-                            'assignee_user_id' => $rule->assignee_user_id,
-                            'estimated_minutes' => $rule->estimated_minutes,
-                            'priority' => $rule->priority,
-                            'hour_bank_id' => $rule->hour_bank_id,
-                            'start_date' => $occurrence->toDateString(),
-                            'due_date' => $occurrence->addDays($rule->due_offset_days)->toDateString(),
-                        ]);
-                        $task->forceFill(['recurring_task_rule_id' => $rule->id, 'occurrence_date' => $date])->save();
-                        $created++;
-                    });
-                } catch (ValidationException $exception) {
-                    Log::warning('Tarea recurrente no creada', ['rule' => $rule->id, 'date' => $date, 'errors' => $exception->errors()]);
+                if ($this->createInstance($rule, $date, $actor) !== null) {
+                    $created++;
                 }
             }
 
@@ -79,6 +64,102 @@ final class RecurringTaskGenerator
         }
 
         return $created;
+    }
+
+    /**
+     * Generación inmediata (D-059): al crear, editar o reactivar una regla activa, crea ya la
+     * instancia de hoy si hoy toca y aún no existe. Al crearla o reactivarla ($startFromToday) no
+     * recupera fechas anteriores: la regla queda marcada como generada hasta hoy y el comando diario
+     * sigue desde mañana (una regla que empieza en el pasado o que vuelve a activarse no llena el
+     * proyecto de tareas atrasadas). Al editar una regla que ya estaba activa, no cambia lo que el
+     * comando diario tenga pendiente.
+     *
+     * @return Task|null la tarea de hoy, si se ha creado ahora
+     */
+    public function generateFor(RecurringTaskRule $rule, CarbonImmutable $today, bool $startFromToday = true): ?Task
+    {
+        $rule->loadMissing('project');
+
+        if (! $rule->is_active || $rule->project->status === ProjectStatus::Archived) {
+            return null;
+        }
+
+        $date = $today->toDateString();
+        $task = null;
+
+        if ($rule->occurrencesBetween($today, $today) !== []) {
+            $actor = $this->actorFor($rule);
+            $task = $actor !== null ? $this->createInstance($rule, $date, $actor) : null;
+        }
+
+        if ($startFromToday && ($rule->last_generated_on === null || $rule->last_generated_on->toDateString() < $date)) {
+            $rule->forceFill(['last_generated_on' => $date])->saveQuietly();
+        }
+
+        return $task;
+    }
+
+    /**
+     * Crea la instancia de una fecha con TaskWriter, salvo que ya exista (también en la papelera).
+     */
+    private function createInstance(RecurringTaskRule $rule, string $date, User $actor): ?Task
+    {
+        if (Task::query()->withTrashed()->where('recurring_task_rule_id', $rule->id)->where('occurrence_date', $date)->exists()) {
+            return null;
+        }
+
+        try {
+            return DB::transaction(function () use ($rule, $date, $actor): Task {
+                $occurrence = CarbonImmutable::parse($date);
+                $task = $this->writer->create($actor, $rule->project, [
+                    'title' => $rule->title,
+                    'description' => $rule->description,
+                    'task_type_id' => $this->typeFor($rule),
+                    'assignee_user_id' => $this->assigneeFor($rule),
+                    'estimated_minutes' => $rule->estimated_minutes,
+                    'priority' => $rule->priority,
+                    'hour_bank_id' => $rule->hour_bank_id,
+                    'start_date' => $occurrence->toDateString(),
+                    'due_date' => $occurrence->addDays($rule->due_offset_days)->toDateString(),
+                ]);
+                $task->forceFill(['recurring_task_rule_id' => $rule->id, 'occurrence_date' => $date])->save();
+
+                return $task;
+            });
+        } catch (ValidationException $exception) {
+            Log::warning('Tarea recurrente no creada', ['rule' => $rule->id, 'date' => $date, 'errors' => $exception->errors()]);
+        } catch (UniqueConstraintViolationException) {
+            // La creó a la vez otra ejecución (el comando diario y la generación inmediata).
+        }
+
+        return null;
+    }
+
+    /**
+     * El responsable de la regla si sigue activo; si está de baja, la tarea va sin responsable
+     * (D-059) para que no se pierda la instancia.
+     */
+    private function assigneeFor(RecurringTaskRule $rule): ?int
+    {
+        if ($rule->assignee_user_id === null) {
+            return null;
+        }
+
+        return User::query()->whereKey($rule->assignee_user_id)->active()->internal()->exists()
+            ? $rule->assignee_user_id
+            : null;
+    }
+
+    /**
+     * El tipo de la regla si sigue activo; si el admin lo ha desactivado, la tarea va sin tipo.
+     */
+    private function typeFor(RecurringTaskRule $rule): ?int
+    {
+        if ($rule->task_type_id === null) {
+            return null;
+        }
+
+        return TaskType::query()->active()->whereKey($rule->task_type_id)->exists() ? $rule->task_type_id : null;
     }
 
     /**

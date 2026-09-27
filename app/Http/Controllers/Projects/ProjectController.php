@@ -9,6 +9,10 @@ use App\Domain\Projects\ProjectColors;
 use App\Domain\Projects\ProjectCreator;
 use App\Domain\Projects\ProjectFilters;
 use App\Domain\Projects\ProjectSummary;
+use App\Domain\Recurring\ProjectRecurringSettings;
+use App\Domain\Templates\ProjectFromTemplate;
+use App\Domain\Templates\ProjectTemplatingSettings;
+use App\Domain\Templates\TemplateItems;
 use App\Enums\BillingType;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
@@ -27,6 +31,7 @@ use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
+use App\Models\ProjectTemplate;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -103,7 +108,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request, TemplateItems $templates): Response
     {
         $this->authorize('create', Project::class);
 
@@ -119,18 +124,32 @@ class ProjectController extends Controller
                 'status' => ProjectStatus::Active->value,
                 'billing_type' => BillingType::HourBank->value,
             ],
+            // «Desde plantilla» (D-058): plantillas activas y, para la primera bolsa, departamentos.
+            'templates' => $user->can('viewAny', ProjectTemplate::class) ? $templates->options() : [],
+            'departments' => $this->departmentOptions(),
+            'overageDefault' => HourBankController::overageDefault(),
         ]);
     }
 
-    public function store(StoreProjectRequest $request, ProjectCreator $creator): RedirectResponse
+    public function store(StoreProjectRequest $request, ProjectCreator $creator, ProjectFromTemplate $fromTemplate): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        $attributes = collect($request->validated())->except('member_ids')->all();
-        $project = $creator->create($attributes, $request->memberIds(), $user);
+        $attributes = collect($request->validated())->except(['member_ids', ...StoreProjectRequest::templateFields()])->all();
+        $template = $request->template();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('projects.flash.created')]);
+        if ($template === null) {
+            $project = $creator->create($attributes, $request->memberIds(), $user);
+            $message = __('projects.flash.created');
+        } else {
+            // Desde plantilla (D-058): proyecto, primera bolsa y tareas, todo o nada.
+            $result = $fromTemplate->create($attributes, $request->memberIds(), $user, $template, $request->templateStart(), $request->templateBankData());
+            $project = $result['project'];
+            $message = trans_choice('templates.flash.project_created', $result['tasks'], ['count' => $result['tasks'], 'name' => $template->name]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('projects.show', $project);
     }
@@ -223,6 +242,9 @@ class ProjectController extends Controller
             'tasksWithoutBank' => $project->usesHourBanks() ? 0 : $project->tasks()->whereNull('hour_bank_id')->count(),
             'departments' => $this->departmentOptions(),
             'overageDefault' => HourBankController::overageDefault(),
+            // Secciones «Plantilla» y «Tareas recurrentes» (D-058, D-059): diferidas, no pesan en la carga.
+            'templating' => Inertia::defer(fn (): array => app(ProjectTemplatingSettings::class)->for($project), 'planning', true),
+            'recurring' => Inertia::defer(fn (): array => app(ProjectRecurringSettings::class)->for($project), 'planning', true),
             'can' => [
                 'manageMembers' => $user->can('manageMembers', $project),
                 'archive' => $user->can('archive', $project),
