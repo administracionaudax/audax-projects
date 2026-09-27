@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    /*
+    | Transcripción de audios del chat (SPEC §12, D-070): whisper.cpp en el propio servidor
+    | (contenedor audax-whisper, 127.0.0.1:18091). En local y en los tests, el motor falso.
+    */
+    'transcription' => [
+        'driver' => env('TRANSCRIPTION_DRIVER', 'whisper'),
+        'queue_connection' => env('TRANSCRIPTION_QUEUE_CONNECTION', 'redis-transcriptions'),
+        'language' => env('TRANSCRIPTION_LANGUAGE', 'es'),
+        'whisper' => [
+            'url' => env('WHISPER_URL', 'http://127.0.0.1:18091'),
+            'model' => env('WHISPER_MODEL', 'small'),
+            // Menor que el timeout del job (900 s).
+            'timeout' => (int) env('WHISPER_TIMEOUT', 870),
+        ],
+    ],
+
 ];

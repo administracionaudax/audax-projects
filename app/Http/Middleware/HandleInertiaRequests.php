@@ -110,6 +110,29 @@ class HandleInertiaRequests extends Middleware
                 'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
                 'description_required' => (bool) Setting::get('time_entry_description_required', false),
             ],
+            'realtime' => fn (): ?array => $this->realtime(),
+        ];
+    }
+
+    /**
+     * Conexión de Echo con Reverb para el navegador (Fase 6, config/realtime.php). null si el
+     * tiempo real está apagado: la interfaz sigue funcionando con consultas periódicas.
+     *
+     * @return array{key: string, host: string, port: int, scheme: 'http'|'https'}|null
+     */
+    private function realtime(): ?array
+    {
+        $key = config('realtime.key');
+
+        if (! config('realtime.enabled') || ! is_string($key) || $key === '') {
+            return null;
+        }
+
+        return [
+            'key' => $key,
+            'host' => (string) config('realtime.host'),
+            'port' => (int) config('realtime.port'),
+            'scheme' => config('realtime.scheme') === 'http' ? 'http' : 'https',
         ];
     }
 
