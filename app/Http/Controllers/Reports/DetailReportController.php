@@ -52,6 +52,11 @@ class DetailReportController extends Controller
 
     public const string DEFAULT_MEASURE = 'imputadas';
 
+    /**
+     * Filtros globales de la barra, en su orden (ReportFilterKey en resources/js/types/reports.ts).
+     */
+    public const array FILTERS = ['persona', 'departamento', 'cliente', 'proyecto', 'bolsa', 'tipo', 'facturable'];
+
     public function __invoke(Request $request, PivotReport $pivot, Metrics $metrics, ReportCache $cache, TableExporter $exporter): Response|StreamedResponse
     {
         Gate::authorize('viewDetailReport', TimeEntry::class);
@@ -84,6 +89,7 @@ class DetailReportController extends Controller
             'filters' => $filters,
             'layout' => $layout,
             'dimensions' => array_map(fn (Dimension $dimension): string => $dimension->value, $dimensions),
+            'filterKeys' => $this->filterKeys($scope),
             'measures' => array_keys(self::MEASURES),
             'pivot' => $result,
             'summary' => $this->summary($cache, $metrics, $scope),
@@ -104,6 +110,22 @@ class DetailReportController extends Controller
         $seesOthers = $viewer->isAdmin() || $viewer->managedDepartmentIds() !== [] || $viewer->managedProjectIds() !== [];
 
         return array_values(array_filter(self::DIMENSIONS, fn (Dimension $dimension): bool => $seesOthers || $dimension !== Dimension::Person));
+    }
+
+    /**
+     * Filtros de la barra (ReportFilterBar): persona y departamento solo para quien tiene equipo
+     * (admin o responsable de algún departamento), que son los que tienen opciones que elegir
+     * (ReportOptionsController). Un gestor ve las horas de sus proyectos y los filtra por proyecto;
+     * un empleado solo se ve a sí mismo.
+     *
+     * @return list<string>
+     */
+    private function filterKeys(ReportScope $scope): array
+    {
+        $viewer = $scope->viewer;
+        $team = $viewer->isAdmin() || $viewer->managedDepartmentIds() !== [];
+
+        return array_values(array_filter(self::FILTERS, fn (string $key): bool => $team || ! in_array($key, ['persona', 'departamento'], true)));
     }
 
     /**

@@ -20,17 +20,6 @@ import { formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { detail, index as reportsIndex } from '@/routes/reports';
 import { exportMethod as exportHours } from '@/routes/reports/hours';
-import type { ReportFilterKey } from '@/types';
-
-const ALL_FILTERS: ReportFilterKey[] = [
-    'persona',
-    'departamento',
-    'cliente',
-    'proyecto',
-    'bolsa',
-    'tipo',
-    'facturable',
-];
 
 /**
  * Informe de horas detallado (SPEC §10.6): tabla dinámica por dos dimensiones con subtotales,
@@ -42,6 +31,7 @@ export default function ReportDetail({
     layout,
     dimensions,
     measures,
+    filterKeys,
     pivot,
     summary,
     comparison,
@@ -88,7 +78,7 @@ export default function ReportDetail({
         rows: t(`reports_r3.dimension.${layout.filas}`),
         columns: t(`reports_r3.dimension.${layout.columnas}`),
     });
-    const hasFilters = ALL_FILTERS.some((key) =>
+    const hasFilters = filterKeys.some((key) =>
         key === 'facturable'
             ? filters.query.facturable !== undefined
             : (filters.query[key]?.length ?? 0) > 0,
@@ -128,15 +118,7 @@ export default function ReportDetail({
                 <ReportFilterBar
                     filters={filters}
                     url={path}
-                    show={
-                        seesOthers
-                            ? ALL_FILTERS
-                            : ALL_FILTERS.filter(
-                                  (key) =>
-                                      key !== 'persona' &&
-                                      key !== 'departamento',
-                              )
-                    }
+                    show={filterKeys}
                 />
 
                 <section aria-label={t('reports_r3.detail.summary')}>

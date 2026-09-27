@@ -164,7 +164,7 @@ it('con semanas en las filas, van en orden de fecha (en la página y en la expor
         ->and(strpos($months, 'Agosto 2026'))->toBeLessThan(strpos($months, 'Septiembre 2026'));
 });
 
-it('cada rol ve lo suyo (D-044)', function (string $who, int $total, bool $person) {
+it('cada rol ve lo suyo (D-044)', function (string $who, int $total, bool $person, bool $team) {
     $s = $this->s;
     $user = match ($who) {
         'admin' => $s->admin,
@@ -181,12 +181,16 @@ it('cada rol ve lo suyo (D-044)', function (string $who, int $total, bool $perso
             ->where('summary.logged_minutes', $total)
             // Sin la dimensión persona, las filas vuelven a proyecto.
             ->where('layout.filas', $person ? 'persona' : 'proyecto')
-            ->where('dimensions', fn ($dimensions) => collect($dimensions)->contains('persona') === $person));
+            ->where('dimensions', fn ($dimensions) => collect($dimensions)->contains('persona') === $person)
+            // Filtros de persona y departamento, solo con equipo (son los que tienen opciones).
+            ->where('filterKeys', $team
+                ? ['persona', 'departamento', 'cliente', 'proyecto', 'bolsa', 'tipo', 'facturable']
+                : ['cliente', 'proyecto', 'bolsa', 'tipo', 'facturable']));
 })->with([
-    'admin: toda la agencia' => ['admin', 1420, true],
-    'responsable: su equipo' => ['responsable', 1420, true],
-    'gestor: las horas de su proyecto' => ['gestor', 700, true],
-    'empleada: solo las suyas' => ['empleada', 660, false],
+    'admin: toda la agencia' => ['admin', 1420, true, true],
+    'responsable: su equipo' => ['responsable', 1420, true, true],
+    'gestor: las horas de su proyecto' => ['gestor', 700, true, false],
+    'empleada: solo las suyas' => ['empleada', 660, false, false],
 ]);
 
 it('la empleada no ve las horas de otra persona aunque la filtre', function () {

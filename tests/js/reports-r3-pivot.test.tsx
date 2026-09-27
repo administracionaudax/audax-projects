@@ -260,6 +260,15 @@ const pageProps = (
     layout: { filas: 'persona', columnas: 'semana', medida: 'imputadas' },
     dimensions: ['persona', 'proyecto', 'semana', 'mes'],
     measures: ['imputadas', 'facturables', 'dentro', 'exceso'],
+    filterKeys: [
+        'persona',
+        'departamento',
+        'cliente',
+        'proyecto',
+        'bolsa',
+        'tipo',
+        'facturable',
+    ],
     pivot,
     summary: {
         logged_minutes: 1420,
@@ -307,6 +316,7 @@ describe('página del informe detallado', () => {
             within(summary).getByText('Dentro de bolsa: 22:00'),
         ).toBeTruthy();
         expect(within(summary).getByText('95,8 %')).toBeTruthy();
+        expect(screen.getByRole('combobox', { name: /Personas/ })).toBeTruthy();
 
         await user.click(
             screen.getByRole('button', { name: 'Exportar la tabla' }),
@@ -363,6 +373,13 @@ describe('página del informe detallado', () => {
                 <ReportDetail
                     {...pageProps({
                         dimensions: ['proyecto', 'semana', 'mes'],
+                        filterKeys: [
+                            'cliente',
+                            'proyecto',
+                            'bolsa',
+                            'tipo',
+                            'facturable',
+                        ],
                         layout: {
                             filas: 'proyecto',
                             columnas: 'semana',
@@ -385,5 +402,11 @@ describe('página del informe detallado', () => {
         expect(screen.getByText('No hay horas con estos filtros')).toBeTruthy();
         expect(screen.getByText('Ves solo tus propias horas.')).toBeTruthy();
         expect(screen.queryByRole('table')).toBeNull();
+        // Sin equipo, la barra no ofrece filtrar por persona ni por departamento.
+        expect(screen.queryByRole('combobox', { name: /Personas/ })).toBeNull();
+        expect(
+            screen.queryByRole('combobox', { name: /Departamentos/ }),
+        ).toBeNull();
+        expect(screen.getByRole('combobox', { name: /Clientes/ })).toBeTruthy();
     });
 });

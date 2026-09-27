@@ -5,6 +5,7 @@
 import type {
     PivotResult,
     ReportDimension,
+    ReportFilterKey,
     ReportFiltersProps,
     ReportQuery,
 } from '@/types';
@@ -40,6 +41,8 @@ export type DetailPageProps = {
     /** Dimensiones que puede elegir quien mira («persona» solo si ve horas de otras personas). */
     dimensions: ReportDimension[];
     measures: DetailMeasure[];
+    /** Filtros de la barra que tienen sentido para quien mira (persona y departamento, solo con equipo). */
+    filterKeys: ReportFilterKey[];
     pivot: PivotResult;
     summary: DetailSummary;
     /** Resumen del periodo de comparación (con comparar=1). */
