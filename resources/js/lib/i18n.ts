@@ -21,6 +21,7 @@ import clients from '../../../lang/ui/clients.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
 import projects from '../../../lang/ui/projects.json';
+import realtime from '../../../lang/ui/realtime.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import time from '../../../lang/ui/time.json';
@@ -35,6 +36,7 @@ const messages = {
     ...tasks,
     ...time,
     ...notifications,
+    ...realtime,
 };
 
 export type TranslationKey = keyof typeof messages;
