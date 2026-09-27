@@ -7,6 +7,7 @@ import { NativeSelect } from '@/components/admin/native-select';
 import { DatePicker } from '@/components/domain/date-picker';
 import { DurationInput } from '@/components/domain/duration-input';
 import InputError from '@/components/input-error';
+import { IntegerInput } from '@/components/templates/integer-input';
 import { MAX_ESTIMATE_MINUTES } from '@/components/templates/template-editor';
 import { Button } from '@/components/ui/button';
 import {
@@ -139,12 +140,6 @@ export function rulePayload(data: RuleForm): RuleForm {
         month_day: data.frequency === 'monthly' ? data.month_day : null,
         description: data.description.trim(),
     };
-}
-
-function integer(value: string, min: number, max: number): number {
-    const parsed = Number.parseInt(value, 10);
-
-    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, min), max) : min;
 }
 
 /**
@@ -590,13 +585,12 @@ export function RecurringRuleDialog({
                                 }
                                 error={errors.interval}
                             >
-                                <Input
+                                <IntegerInput
                                     id={`${id}-interval`}
-                                    type="number"
-                                    inputMode="numeric"
+                                    value={form.data.interval}
                                     min={1}
                                     max={MAX_INTERVAL}
-                                    value={form.data.interval}
+                                    onChange={(value) => set('interval', value)}
                                     aria-invalid={
                                         errors.interval ? true : undefined
                                     }
@@ -604,16 +598,6 @@ export function RecurringRuleDialog({
                                         `${id}-interval`,
                                         { error: errors.interval },
                                     )}
-                                    onChange={(event) =>
-                                        set(
-                                            'interval',
-                                            integer(
-                                                event.target.value,
-                                                1,
-                                                MAX_INTERVAL,
-                                            ),
-                                        )
-                                    }
                                 />
                             </Field>
                             {form.data.frequency === 'weekly' ? (
@@ -656,13 +640,14 @@ export function RecurringRuleDialog({
                                     help={t('recurring.fields.month_day_help')}
                                     error={errors.month_day}
                                 >
-                                    <Input
+                                    <IntegerInput
                                         id={`${id}-month-day`}
-                                        type="number"
-                                        inputMode="numeric"
+                                        value={form.data.month_day ?? 1}
                                         min={1}
                                         max={31}
-                                        value={form.data.month_day ?? 1}
+                                        onChange={(value) =>
+                                            set('month_day', value)
+                                        }
                                         aria-invalid={
                                             errors.month_day ? true : undefined
                                         }
@@ -673,16 +658,6 @@ export function RecurringRuleDialog({
                                                 error: errors.month_day,
                                             },
                                         )}
-                                        onChange={(event) =>
-                                            set(
-                                                'month_day',
-                                                integer(
-                                                    event.target.value,
-                                                    1,
-                                                    31,
-                                                ),
-                                            )
-                                        }
                                     />
                                 </Field>
                             )}
@@ -692,13 +667,14 @@ export function RecurringRuleDialog({
                                 help={t('recurring.fields.due_offset_help')}
                                 error={errors.due_offset_days}
                             >
-                                <Input
+                                <IntegerInput
                                     id={`${id}-due`}
-                                    type="number"
-                                    inputMode="numeric"
+                                    value={form.data.due_offset_days}
                                     min={0}
                                     max={MAX_DUE_OFFSET}
-                                    value={form.data.due_offset_days}
+                                    onChange={(value) =>
+                                        set('due_offset_days', value)
+                                    }
                                     aria-invalid={
                                         errors.due_offset_days
                                             ? true
@@ -708,16 +684,6 @@ export function RecurringRuleDialog({
                                         help: true,
                                         error: errors.due_offset_days,
                                     })}
-                                    onChange={(event) =>
-                                        set(
-                                            'due_offset_days',
-                                            integer(
-                                                event.target.value,
-                                                0,
-                                                MAX_DUE_OFFSET,
-                                            ),
-                                        )
-                                    }
                                 />
                             </Field>
                         </div>

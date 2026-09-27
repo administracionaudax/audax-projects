@@ -24,6 +24,7 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { TaskPriority } from '@/types';
 import type { TemplateTypeOption } from '@/types/templates';
+import { IntegerInput } from './integer-input';
 import type { EditorErrors, EditorRow } from './template-editor-state';
 import {
     addRow,
@@ -70,12 +71,6 @@ function rowName(row: EditorRow, labels: Record<string, string>): string {
         number: labels[row.ref] ?? '',
         title: row.title.trim() || t('templates.editor.untitled'),
     });
-}
-
-function integer(value: string, min: number, max: number): number {
-    const parsed = Number.parseInt(value, 10);
-
-    return Number.isFinite(parsed) ? Math.min(Math.max(parsed, min), max) : min;
 }
 
 /**
@@ -489,9 +484,7 @@ function EditorTableRow({
                 />
             </td>
             <td className="px-2 py-2">
-                <Input
-                    type="number"
-                    inputMode="numeric"
+                <IntegerInput
                     min={1}
                     max={maxDays + 1}
                     value={row.start_offset_days + 1}
@@ -501,12 +494,7 @@ function EditorTableRow({
                         'start_offset_days',
                         errors.start_offset_days,
                     )}
-                    onChange={(event) =>
-                        update({
-                            start_offset_days:
-                                integer(event.target.value, 1, maxDays + 1) - 1,
-                        })
-                    }
+                    onChange={(day) => update({ start_offset_days: day - 1 })}
                 />
                 <InputError
                     id={`${id}-start_offset_days-error`}
@@ -520,9 +508,7 @@ function EditorTableRow({
                         {t('templates.editor.milestone_one_day')}
                     </p>
                 ) : (
-                    <Input
-                        type="number"
-                        inputMode="numeric"
+                    <IntegerInput
                         min={1}
                         max={maxDays}
                         value={row.duration_days}
@@ -534,15 +520,7 @@ function EditorTableRow({
                             'duration_days',
                             errors.duration_days,
                         )}
-                        onChange={(event) =>
-                            update({
-                                duration_days: integer(
-                                    event.target.value,
-                                    1,
-                                    maxDays,
-                                ),
-                            })
-                        }
+                        onChange={(days) => update({ duration_days: days })}
                     />
                 )}
                 <InputError
