@@ -40,6 +40,12 @@ return [
         'dependency_cycle' => 'Estas dependencias forman un ciclo: una tarea acabaría dependiendo de sí misma.',
         'tasks_count' => 'La plantilla necesita entre 1 y :max tareas.',
         'dependencies_count' => 'La plantilla admite como mucho :max dependencias.',
+        // Estructura que no vale al normalizarla (ProjectTemplateService::normalize): al capturar un
+        // proyecto, al aplicar una plantilla guardada y como red de seguridad tras la validación.
+        'structure_task' => 'Cada tarea de la plantilla necesita una referencia única y un título.',
+        'structure_parent' => 'Las subtareas deben colgar de una tarea de primer nivel de la plantilla.',
+        'structure_dependency' => 'Hay dependencias con referencias que no existen en la plantilla.',
+        'structure_cycle' => 'Las dependencias de la plantilla forman un ciclo.',
         'type_invalid' => 'Elige un tipo de tarea activo.',
         'estimate_range' => 'La estimación va de 0:01 a :max.',
         'offset_range' => 'El inicio va del día 0 al :max.',
