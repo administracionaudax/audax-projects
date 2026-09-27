@@ -29,8 +29,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * - reparto por cliente, proyecto y tipo de tarea y calendario de calor diario del periodo (con
  *   los filtros de la URL),
  * - días sin imputar: con capacidad y sin ninguna hora (de ningún cliente ni proyecto: aquí no
- *   cuentan los filtros), hasta ayer y nunca antes de que cuente su capacidad (su alta o su
- *   primer horario, Metrics::capacityByDate),
+ *   cuentan los filtros), hasta ayer y nunca antes de su alta (como en Inicio),
  * - ?formato=xlsx|csv exporta el detalle diario.
  *
  * @phpstan-type DayPoint array{bucket: string, logged_minutes: int, billable_minutes: int, capacity_minutes: int, income: string|null}
@@ -53,22 +52,21 @@ class PersonReportController extends Controller
         /** @var User $viewer */
         $viewer = $request->user();
         $scope = $this->reportScope($request, ['userIds' => [$user->id], 'departmentIds' => []]);
-        $financials = $scope->canSeeFinancials();
+        $days = $cache->remember($scope, 'r1.person.days', fn (): array => $metrics->series($scope, Dimension::Day));
 
-        $data = $cache->remember($scope, 'r1.person', fn (): array => [
-            'days' => $metrics->series($scope, Dimension::Day),
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
+            [$headers, $rows] = $this->daysTable($days, $scope->canSeeFinancials());
+
+            return $exporter->download(__('reports.r1.exports.person', ['person' => $user->name]), $headers, $rows, $format);
+        }
+
+        $data = $cache->remember($scope, 'r1.person.breakdowns', fn (): array => [
             'clients' => $this->withMargin($metrics->breakdown($scope, Dimension::Client)),
             'projects' => $this->withMargin($metrics->breakdown($scope, Dimension::Project)),
             'types' => $this->withMargin($metrics->breakdown($scope, Dimension::TaskType)),
         ]);
         ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
-
-        $format = $this->exportFormat($request);
-        if ($format !== null) {
-            [$headers, $rows] = $this->daysTable($data['days'], $financials);
-
-            return $exporter->download(__('reports.r1.exports.person', ['person' => $user->name]), $headers, $rows, $format);
-        }
 
         $user->loadMissing('department:id,name');
 
@@ -90,8 +88,8 @@ class PersonReportController extends Controller
             'clients' => $this->top($data['clients'], self::TOP),
             'projects' => $this->top($data['projects'], self::TOP),
             'types' => $this->top($data['types'], self::TOP),
-            'days' => array_map(fn (array $day): array => ['date' => $day['bucket'], 'minutes' => $day['logged_minutes']], $data['days']),
-            'unlogged' => $this->unloggedDays($this->allHours($scope, $user, $data['days'], $metrics, $cache)),
+            'days' => array_map(fn (array $day): array => ['date' => $day['bucket'], 'minutes' => $day['logged_minutes']], $days),
+            'unlogged' => $this->unloggedDays($user, $this->allHours($scope, $user, $days, $metrics, $cache)),
         ]);
     }
 
@@ -110,24 +108,28 @@ class PersonReportController extends Controller
             return $filtered;
         }
 
-        $plain = $scope->withFilters(new ReportFilters($f->period, $f->from, $f->to, userIds: [$user->id]));
+        $plain = $scope->withFilters(new ReportFilters($f->period, $f->from, $f->to, userIds: [$user->id]))->withoutFinancials();
 
         return $cache->remember($plain, 'r1.person.days', fn (): array => $metrics->series($plain, Dimension::Day));
     }
 
     /**
-     * Días con capacidad y sin ninguna hora, hasta ayer.
+     * Días con capacidad y sin ninguna hora, hasta ayer y nunca antes de su alta (como la tarjeta
+     * de Inicio): aunque su horario empiece antes y cuente en la capacidad, no se le reclaman días
+     * en los que aún no tenía cuenta.
      *
      * @param  list<DayPoint>  $series
      * @return list<array{date: string, capacity_minutes: int, week: string}>
      */
-    private function unloggedDays(array $series): array
+    private function unloggedDays(User $user, array $series): array
     {
         $yesterday = LocalTime::today()->subDay()->toDateString();
+        $joined = $user->created_at !== null ? LocalTime::dateOf($user->created_at) : null;
         $days = [];
 
         foreach ($series as $day) {
-            if ($day['bucket'] <= $yesterday && $day['capacity_minutes'] > 0 && $day['logged_minutes'] === 0) {
+            if ($day['bucket'] <= $yesterday && ($joined === null || $day['bucket'] >= $joined)
+                && $day['capacity_minutes'] > 0 && $day['logged_minutes'] === 0) {
                 $days[] = [
                     'date' => $day['bucket'],
                     'capacity_minutes' => $day['capacity_minutes'],

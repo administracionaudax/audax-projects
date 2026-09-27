@@ -49,28 +49,25 @@ class DepartmentReportController extends Controller
         Gate::authorize('viewReport', $department);
 
         $scope = $this->reportScope($request, ['departmentIds' => [$department->id]]);
-        $financials = $scope->canSeeFinancials();
-
-        $data = $cache->remember($scope, 'r1.department', fn (): array => [
-            'members' => $this->members($scope, $metrics),
-            'clients' => $this->withMargin($metrics->breakdown($scope, Dimension::Client)),
-        ]);
-        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
+        $members = $cache->remember($scope, 'r1.department.members', fn (): array => $this->members($scope, $metrics));
 
         $format = $this->exportFormat($request);
         if ($format !== null) {
-            [$headers, $rows] = $this->membersTable($data['members'], $financials);
+            [$headers, $rows] = $this->membersTable($members, $scope->canSeeFinancials());
 
             return $exporter->download(__('reports.r1.exports.department', ['department' => $department->name]), $headers, $rows, $format);
         }
+
+        $clients = $cache->remember($scope, 'r1.department.clients', fn (): array => $this->withMargin($metrics->breakdown($scope, Dimension::Client)));
+        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
 
         return Inertia::render('reports/department', [
             'department' => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color],
             'filters' => $this->filterPropsWithout($scope, ['departamento']),
             'summary' => $summary,
             'comparison' => $comparison,
-            'members' => $data['members'],
-            'clients' => $this->top($data['clients'], self::TOP),
+            'members' => $members,
+            'clients' => $this->top($clients, self::TOP),
             'occupancy_thresholds' => [
                 'low' => (int) Setting::get('occupancy_low_threshold', 70),
                 'high' => (int) Setting::get('occupancy_high_threshold', 110),

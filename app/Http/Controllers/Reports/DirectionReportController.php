@@ -51,23 +51,22 @@ class DirectionReportController extends Controller
         /** @var User $user */
         $user = $request->user();
         $scope = $this->directionScope($request, $user);
-        $financials = $scope->canSeeFinancials();
-
-        $tables = $cache->remember($scope, 'r1.direction.tables', fn (): array => [
-            'departamentos' => $this->withMargin($metrics->breakdown($scope, Dimension::Department)),
-            'clientes' => $this->withMargin($metrics->breakdown($scope, Dimension::Client)),
-            'proyectos' => $this->withMargin($metrics->breakdown($scope, Dimension::Project)),
-        ]);
-        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
+        $table = fn (string $name): array => $cache->remember($scope, 'r1.direction.'.$name,
+            fn (): array => $this->withMargin($metrics->breakdown($scope, self::TABLES[$name])));
 
         $format = $this->exportFormat($request);
         if ($format !== null) {
-            $table = is_string($request->query('tabla')) && isset(self::TABLES[$request->query('tabla')]) ? $request->query('tabla') : 'clientes';
-            [$headers, $rows] = $this->breakdownTable(self::TABLES[$table]->label(), $tables[$table], (int) $summary['logged_minutes'], $financials);
+            $name = $request->query('tabla');
+            $name = is_string($name) && isset(self::TABLES[$name]) ? $name : 'clientes';
+            $rows = $table($name);
+            // El reparto cubre todas las horas del alcance: su suma es el total del periodo.
+            [$headers, $lines] = $this->breakdownTable(self::TABLES[$name]->label(), $rows,
+                array_sum(array_column($rows, 'logged_minutes')), $scope->canSeeFinancials());
 
-            return $exporter->download(__('reports.r1.exports.direction', ['table' => __('reports.r1.tables.'.$table)]), $headers, $rows, $format);
+            return $exporter->download(__('reports.r1.exports.direction', ['table' => __('reports.r1.tables.'.$name)]), $headers, $lines, $format);
         }
 
+        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
         $bucket = $this->seriesBucket($scope->filters);
         $page = $cache->remember($scope, 'r1.direction.page.'.$bucket->value, fn (): array => [
             'series' => $metrics->series($scope, $bucket),
@@ -82,9 +81,9 @@ class DirectionReportController extends Controller
             'summary' => $summary,
             'comparison' => $comparison,
             'series' => ['bucket' => $bucket->value, 'points' => $page['series']],
-            'departments' => $tables['departamentos'],
-            'clients' => $this->top($tables['clientes'], self::TOP),
-            'projects' => $this->top($tables['proyectos'], self::TOP),
+            'departments' => $table('departamentos'),
+            'clients' => $this->top($table('clientes'), self::TOP),
+            'projects' => $this->top($table('proyectos'), self::TOP),
             'at_risk' => $page['at_risk'],
             'overdue' => $page['overdue'],
         ]);

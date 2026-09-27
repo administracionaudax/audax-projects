@@ -12,6 +12,15 @@ use App\Models\User;
  */
 class UserPolicy
 {
+    /**
+     * Índice de informes (/informes): cualquier usuario interno; como mínimo ve su propio informe
+     * y el detallado con sus horas (D-044).
+     */
+    public function viewReports(User $viewer): bool
+    {
+        return $viewer->isInternal();
+    }
+
     public function viewReport(User $viewer, User $person): bool
     {
         if (! $viewer->isInternal() || ! $person->isInternal()) {

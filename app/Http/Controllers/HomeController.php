@@ -79,7 +79,7 @@ class HomeController extends Controller
      * «Mis indicadores» (SPEC §5.1): ocupación, facturabilidad, precisión de estimación y reparto
      * de mis horas por cliente y proyecto del mes en curso. El alcance fija a quien mira como única
      * persona (ReportScope, D-044): un responsable o un admin tampoco ve aquí a su equipo. Sin
-     * datos económicos. Con la caché de los informes (D-046).
+     * datos económicos (ni se calculan). Con la caché de los informes (D-046).
      *
      * @return array{from: string, to: string, capacity_minutes: int, logged_minutes: int, billable_minutes: int,
      *     occupancy: float|null, billability: float|null,
@@ -89,7 +89,7 @@ class HomeController extends Controller
      */
     private function indicators(User $user, Metrics $metrics, ReportCache $cache): array
     {
-        $scope = new ReportScope($user, ReportFilters::fromQuery([])->with(['userIds' => [$user->id]]));
+        $scope = (new ReportScope($user, ReportFilters::fromQuery([])->with(['userIds' => [$user->id]])))->withoutFinancials();
 
         return $cache->remember($scope, 'r1.home', function () use ($scope, $metrics): array {
             $summary = $metrics->summary($scope);

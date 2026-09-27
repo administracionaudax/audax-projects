@@ -39,8 +39,9 @@ beforeEach(function () {
 
     $this->design = Department::factory()->create(['name' => 'Diseño']);
     $this->marketing = Department::factory()->create(['name' => 'Marketing']);
-    $this->ana = User::factory()->employee()->create(['name' => 'Ana', 'department_id' => $this->design->id, 'hourly_cost' => '20.00', 'default_hourly_rate' => '50.00']);
-    $this->luis = User::factory()->employee()->create(['name' => 'Luis', 'department_id' => $this->design->id, 'hourly_cost' => '30.00']);
+    // Ana y Luis están de alta desde enero (los días sin imputar nunca cuentan antes del alta).
+    $this->ana = User::factory()->employee()->create(['name' => 'Ana', 'department_id' => $this->design->id, 'hourly_cost' => '20.00', 'default_hourly_rate' => '50.00', 'created_at' => '2026-01-01 08:00']);
+    $this->luis = User::factory()->employee()->create(['name' => 'Luis', 'department_id' => $this->design->id, 'hourly_cost' => '30.00', 'created_at' => '2026-01-01 08:00']);
     $this->marta = User::factory()->employee()->create(['name' => 'Marta', 'department_id' => $this->marketing->id, 'hourly_cost' => '25.00']);
     WorkSchedule::factory()->for($this->ana)->create(['valid_from' => '2026-01-01']);
     WorkSchedule::factory()->for($this->luis)->create(['valid_from' => '2026-01-01', 'mon_minutes' => 240, 'tue_minutes' => 240, 'wed_minutes' => 240, 'thu_minutes' => 240, 'fri_minutes' => 240]);
@@ -364,6 +365,22 @@ describe('persona', function () {
             ->assertInertia(fn (Assert $page) => $page
                 ->where('summary.capacity_minutes', 480)
                 ->where('unlogged', []));
+    });
+
+    it('nunca cuenta días sin imputar antes del alta, aunque su horario empiece antes', function () {
+        // De alta el miércoles 23 con un horario desde enero: la capacidad cuenta toda la semana
+        // (5 × 480), pero solo se le reclaman el miércoles y el jueves (el viernes es hoy).
+        $new = User::factory()->employee()->create(['department_id' => $this->design->id, 'created_at' => '2026-09-23 10:00']);
+        WorkSchedule::factory()->for($new)->create(['valid_from' => '2026-01-01']);
+
+        $this->actingAs($new)
+            ->get("/informes/personas/{$new->id}".($this->week)())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.capacity_minutes', 2400)
+                ->where('unlogged', [
+                    ['date' => '2026-09-23', 'capacity_minutes' => 480, 'week' => '2026-W39'],
+                    ['date' => '2026-09-24', 'capacity_minutes' => 480, 'week' => '2026-W39'],
+                ]));
     });
 
     it('el admin ve el dinero de la persona y su responsable no', function () {

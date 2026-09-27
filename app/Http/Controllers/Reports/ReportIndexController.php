@@ -29,6 +29,8 @@ class ReportIndexController extends Controller
 {
     public function __invoke(Request $request): Response
     {
+        Gate::authorize('viewReports', User::class);
+
         /** @var User $user */
         $user = $request->user();
         $isAdmin = $user->isAdmin();
