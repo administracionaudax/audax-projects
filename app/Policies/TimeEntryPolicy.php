@@ -53,4 +53,22 @@ class TimeEntryPolicy
     {
         return $this->update($user, $entry);
     }
+
+    /**
+     * Informe de horas detallado /informes/detalle (SPEC §10.6, D-044): cualquier interno, cada uno
+     * con su alcance (ReportScope: TimeEntry::visibleTo). Los clientes, nunca. Añadido por R3.
+     */
+    public function viewDetailReport(User $user): bool
+    {
+        return $user->isInternal();
+    }
+
+    /**
+     * Exportar entradas de horas /informes/horas/exportar (SPEC §10, D-045): cualquier interno, solo
+     * las que ve (ReportScope); tarifas, instantáneas e importes solo con view-financials. Añadido por R3.
+     */
+    public function exportHours(User $user): bool
+    {
+        return $user->isInternal();
+    }
 }

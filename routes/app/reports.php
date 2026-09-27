@@ -8,6 +8,8 @@ use App\Http\Controllers\Reports\DepartmentReportController;
 use App\Http\Controllers\Reports\DirectionReportController;
 use App\Http\Controllers\Reports\PersonReportController;
 use App\Http\Controllers\Reports\ReportIndexController;
+use App\Http\Controllers\Reports\DetailReportController;
+use App\Http\Controllers\Reports\HoursExportController;
 use App\Http\Controllers\Reports\ReportOptionsController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,3 +54,16 @@ Route::get('proyectos/{project}/bolsas/{hourBank}/pdf', HourBankPdfController::c
     ->middleware('throttle:30,1')
     ->name('reports.hour-bank-pdf');
 // --- fin R2 ---
+// --- R3 ---
+// Informe detallado (tabla dinámica, SPEC §10.6) con su exportación (?formato=xlsx|csv), exportación
+// de horas con los filtros globales y la de la pestaña Horas del proyecto (D-021, D-045).
+Route::get('informes/detalle', DetailReportController::class)->name('reports.detail');
+
+Route::get('informes/horas/exportar', HoursExportController::class)
+    ->middleware('throttle:30,1')
+    ->name('reports.hours.export');
+
+Route::get('proyectos/{project}/horas/exportar', [HoursExportController::class, 'project'])
+    ->middleware('throttle:30,1')
+    ->name('projects.time.export');
+// --- fin R3 ---

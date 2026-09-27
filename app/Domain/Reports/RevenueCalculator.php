@@ -53,8 +53,30 @@ final class RevenueCalculator
     {
         $query = clone $entries;
         $groupBy?->join($query);
-        $keyExpression = $groupBy?->expression();
 
+        return $this->valuate($query, $groupBy?->expression());
+    }
+
+    /**
+     * Ingreso y coste de CADA entrada (clave: su id), con los mismos criterios (D-043). Lo usan las
+     * exportaciones con importes por entrada; la suma de las entradas coincide con compute() salvo
+     * el redondeo a céntimos de cada una. Añadido por R3 (exportación de horas).
+     *
+     * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
+     * @return array<string, array{income: string, cost: string, billable_minutes: int}>
+     */
+    public function perEntry(Builder $entries): array
+    {
+        return $this->valuate(clone $entries, 'time_entries.id');
+    }
+
+    /**
+     * @param  Builder<TimeEntry>  $query
+     * @param  literal-string|null  $keyExpression
+     * @return array<string, array{income: string, cost: string, billable_minutes: int}>
+     */
+    private function valuate(Builder $query, ?string $keyExpression): array
+    {
         $columns = 'time_entries.project_id, time_entries.hour_bank_id, time_entries.user_id, time_entries.is_billable';
         $query->selectRaw(($keyExpression ?? "'all'").' as group_key, '.$columns.',
             SUM(time_entries.minutes) as minutes,

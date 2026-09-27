@@ -146,6 +146,40 @@ final class Metrics
     }
 
     /**
+     * Solo los totales de horas del alcance, con una sola consulta: imputadas, facturables, dentro
+     * de bolsa, exceso y facturabilidad. Para los informes que no muestran capacidad, estimación ni
+     * importes (el detallado), que así no los calculan: la capacidad de un año de toda la agencia es
+     * lo más caro de summary(). Añadido por R3.
+     *
+     * Las mismas definiciones que summary() salvo in_bank_minutes, que aquí son solo los minutos de
+     * las entradas con bolsa sin su exceso (PivotReport::IN_BANK_SQL, como la medida «dentro» del
+     * detallado y la exportación de horas). El in_bank_minutes de summary() y breakdown() es
+     * imputadas − exceso: también cuenta las entradas sin bolsa.
+     *
+     * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
+     */
+    public function hours(ReportScope $scope): array
+    {
+        $totals = (clone $scope->entries())->toBase()->selectRaw(
+            'COALESCE(SUM(time_entries.minutes), 0) as logged,
+             COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
+             COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
+        )->first();
+
+        $logged = (int) ($totals->logged ?? 0);
+        $billable = (int) ($totals->billable ?? 0);
+
+        return [
+            'logged_minutes' => $logged,
+            'billable_minutes' => $billable,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
+            'overage_minutes' => (int) ($totals->overage ?? 0),
+            'billability' => self::ratio($billable, $logged),
+        ];
+    }
+
+    /**
      * Capacidad por fecha (Y-m-d) del alcance, con una sola consulta de horarios.
      *
      * @return array<string, int>

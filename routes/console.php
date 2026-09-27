@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Setting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -29,3 +30,12 @@ Schedule::command('app:notify-due-tasks')
     ->withoutOverlapping()
     ->onOneServer()
     ->when(fn (): bool => array_key_exists('app:notify-due-tasks', Artisan::all()));
+
+// Resumen semanal de productividad (D-047): los lunes a las 08:00 de Madrid, sobre la semana
+// anterior, si el ajuste weekly_digest_enabled está activado (el comando también lo comprueba).
+Schedule::command('reports:weekly-digest')
+    ->weeklyOn(1, '08:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->when(fn (): bool => (bool) Setting::get('weekly_digest_enabled', true));
