@@ -61,9 +61,10 @@ final class WorkloadPlanner
         // La entrega más lejana de cada persona, en una sola pasada por las tareas (rendimiento).
         $latestDue = [];
         foreach ($assigned as $task) {
+            $assignee = $task->assignee_user_id;
             $due = $task->due_date?->toDateString();
-            if ($due !== null && $due > ($latestDue[$task->assignee_user_id] ?? '')) {
-                $latestDue[$task->assignee_user_id] = $due;
+            if ($assignee !== null && $due !== null && $due > ($latestDue[$assignee] ?? '')) {
+                $latestDue[$assignee] = $due;
             }
         }
         $horizonStart = $from < $today ? $from : $today;
