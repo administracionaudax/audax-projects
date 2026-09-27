@@ -170,7 +170,9 @@ function PanelBody({
                     </div>
                     <p className="text-sm">{loadSummary(cell)}</p>
                 </div>
-                {cell.reason ? (
+                {/* El motivo corto ya va en la celda: aquí solo si dice más (el nombre del festivo). */}
+                {cell.reason &&
+                reasonLong(cell.reason) !== reasonShort(cell.reason) ? (
                     <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
                         <CalendarMinus
                             aria-hidden="true"

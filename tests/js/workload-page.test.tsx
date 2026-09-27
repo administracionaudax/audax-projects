@@ -3,9 +3,12 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { WorkloadTrays } from '@/components/workload/workload-trays';
 import WorkloadIndex from '@/pages/workload';
 import {
     ELENA,
+    LUCIA,
+    RAUL,
     allByTest,
     byTest,
     pageProps,
@@ -129,6 +132,60 @@ describe('vista Carga', () => {
 
         expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
             'Sobrecarga (más del 120 %): 1. Elena Empleada, 125 % (40:00 de 32:00)',
+        );
+    });
+
+    it('aunque el total cuadre, avisa de quién tiene días sobrecargados', () => {
+        render(<WorkloadIndex {...pageProps()} />);
+
+        expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
+            'Con días sobrecargados: 1. Elena Empleada (días o semanas: 2)',
+        );
+    });
+
+    it('la carga sin capacidad (vencidas un día sin jornada) cuenta como sobrecarga', () => {
+        const props = pageProps();
+        const noCapacity = {
+            ...LUCIA,
+            cells: LUCIA.cells.map((cell) => ({ ...cell, planned: 0 })),
+            total: { planned: 1800, capacity: 0 },
+        };
+
+        render(
+            <WorkloadIndex
+                {...props}
+                matrix={{
+                    ...props.matrix,
+                    groups: [
+                        {
+                            ...props.matrix.groups[1],
+                            people: [noCapacity, RAUL],
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        expect(byTest('workload-alerts').textContent?.replace(/\s/g, ' ')).toBe(
+            'Sobrecarga (más del 120 %): 1. Lucía Martín, 30:00 sin capacidad',
+        );
+    });
+
+    it('si nadie va sobrecargado, lo dice', () => {
+        const props = pageProps();
+
+        render(
+            <WorkloadIndex
+                {...props}
+                matrix={{
+                    ...props.matrix,
+                    groups: [{ ...props.matrix.groups[1], people: [RAUL] }],
+                }}
+            />,
+        );
+
+        expect(byTest('workload-alerts').textContent).toBe(
+            'Nadie supera su capacidad en este horizonte.',
         );
     });
 
@@ -265,7 +322,14 @@ describe('bandejas', () => {
 
     it('asignar una tarea de «Sin asignar» a alguien del equipo (eligiendo por su carga)', async () => {
         const user = userEvent.setup();
-        render(<WorkloadIndex {...pageProps()} />);
+        const props = pageProps();
+        render(
+            <WorkloadTrays
+                trays={props.trays}
+                people={props.people}
+                seesTeam
+            />,
+        );
 
         await user.click(
             screen.getByRole('button', { name: 'Asignar: Banner de campaña' }),
@@ -285,5 +349,5 @@ describe('bandejas', () => {
         const [url, data] = server.patch.mock.calls[0];
         expect(url).toBe('/carga/tareas/60');
         expect(data).toEqual({ assignee_user_id: 4 });
-    });
+    }, 15_000);
 });

@@ -15,6 +15,9 @@
     "workload_page.over": "Sobrecarga (más del 120 %): :count.",
     "workload_page.high": "Por encima de su capacidad (del 100 % al 120 %): :count.",
     "workload_page.person_ratio": ":name, :percent (:planned de :capacity)",
+    "workload_page.person_no_capacity": ":name, :planned sin capacidad",
+    "workload_page.peaks": "Con días sobrecargados: :count.",
+    "workload_page.peak_days": ":name (días o semanas: :count)",
     "workload_page.error_forbidden": "No tienes permiso para ver esto.",
     "workload_page.error_server": "No se ha podido cargar. Vuelve a intentarlo en un momento.",
     "workload_page.error_network": "Sin conexión. Revisa tu red y vuelve a intentarlo.",
@@ -41,6 +44,7 @@
     "workload_legend.over": "más del 120 %",
     "workload_legend.reduced": "Capacidad reducida (festivo o ausencia)",
     "workload_legend.overdue": "Lleva tareas vencidas",
+    "workload_legend.no_capacity_load": "Carga en un día sin capacidad",
 
     "workload_matrix.title": "Carga por persona",
     "workload_matrix.caption_days": "Horas planificadas frente a la capacidad por persona y día, del :from al :to",

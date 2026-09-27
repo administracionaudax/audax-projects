@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarMinus } from 'lucide-react';
+import { CalendarClock, CalendarMinus, OctagonAlert } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { LoadCell } from '@/components/charts/load-cell';
@@ -448,6 +448,8 @@ function CellButton({
         periodLabel(column, byWeek),
         cell,
     );
+    // Carga en un día sin capacidad (vencidas que caen hoy en festivo, sin días laborables…).
+    const loadWithoutCapacity = cell.capacity <= 0 && cell.planned > 0;
 
     return (
         <button
@@ -473,13 +475,16 @@ function CellButton({
                 capacity={cell.capacity}
                 reason={cell.reason ? reasonShort(cell.reason) : undefined}
             />
-            {cell.overdue || cell.reduced ? (
+            {cell.overdue || cell.reduced || loadWithoutCapacity ? (
                 <span
                     aria-hidden="true"
                     className="absolute top-1 right-1 flex items-center gap-0.5"
                 >
                     {cell.reduced ? (
                         <CalendarMinus className="size-3 text-muted-foreground" />
+                    ) : null}
+                    {loadWithoutCapacity ? (
+                        <OctagonAlert className="size-3 text-danger" />
                     ) : null}
                     {cell.overdue ? (
                         <CalendarClock className="size-3 text-danger" />

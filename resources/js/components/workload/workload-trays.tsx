@@ -262,6 +262,7 @@ function UnplannedItem({
             trays={trays}
             fields={['assignee', 'dates', 'estimate']}
             actionLabel={t('workload_trays.plan')}
+            hideMissing
             header={
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     {task.missing.map((missing) => (
@@ -306,6 +307,7 @@ function TrayItem({
     actionLabel,
     submitLabel,
     header,
+    hideMissing = false,
 }: {
     task: WorkloadTask;
     people: WorkloadPerson[];
@@ -314,6 +316,7 @@ function TrayItem({
     actionLabel: string;
     submitLabel?: string;
     header?: ReactNode;
+    hideMissing?: boolean;
 }) {
     const [open, setOpen] = useState(false);
 
@@ -347,7 +350,7 @@ function TrayItem({
                 />{' '}
                 <span className="sr-only">{t('workload_task.open')}</span>
             </Link>
-            <WorkloadTaskMeta task={task} />
+            <WorkloadTaskMeta task={task} hideMissing={hideMissing} />
 
             {task.can_edit ? (
                 <Collapsible open={open} onOpenChange={setOpen}>

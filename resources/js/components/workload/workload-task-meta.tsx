@@ -10,9 +10,12 @@ import { cn } from '@/lib/utils';
  */
 export function WorkloadTaskMeta({
     task,
+    hideMissing = false,
     className,
 }: {
     task: WorkloadTask;
+    /** Sin «Sin estimación» ni «Sin entrega» (la bandeja «Sin planificar» ya lo señala). */
+    hideMissing?: boolean;
     className?: string;
 }) {
     return (
@@ -45,41 +48,51 @@ export function WorkloadTaskMeta({
                 <dd>{task.hour_bank ?? t('workload_task.no_bank')}</dd>
             </div>
 
-            <div className="inline-flex items-center gap-1">
-                <dt className="inline-flex items-center gap-1">
-                    <Hourglass aria-hidden="true" className="size-3.5" />
-                    <span className="sr-only">
-                        {t('workload_task.remaining_label')}
-                    </span>
-                </dt>
-                <dd className="tabular">
-                    {task.estimated_minutes
-                        ? t('workload_task.remaining', {
-                              remaining: formatMinutes(task.remaining_minutes),
-                              estimate: formatMinutes(task.estimated_minutes),
-                          })
-                        : t('workload_task.no_estimate')}
-                </dd>
-            </div>
+            {hideMissing && !task.estimated_minutes ? null : (
+                <div className="inline-flex items-center gap-1">
+                    <dt className="inline-flex items-center gap-1">
+                        <Hourglass aria-hidden="true" className="size-3.5" />
+                        <span className="sr-only">
+                            {t('workload_task.remaining_label')}
+                        </span>
+                    </dt>
+                    <dd className="tabular">
+                        {task.estimated_minutes
+                            ? t('workload_task.remaining', {
+                                  remaining: formatMinutes(
+                                      task.remaining_minutes,
+                                  ),
+                                  estimate: formatMinutes(
+                                      task.estimated_minutes,
+                                  ),
+                              })
+                            : t('workload_task.no_estimate')}
+                    </dd>
+                </div>
+            )}
 
-            <div className="inline-flex items-center gap-1">
-                <dt className="inline-flex items-center gap-1">
-                    <CalendarDays aria-hidden="true" className="size-3.5" />
-                    <span className="sr-only">{t('workload_task.dates')}</span>
-                </dt>
-                <dd className="tabular">
-                    {task.start_date && task.due_date
-                        ? t('workload_task.date_range', {
-                              start: formatDate(task.start_date),
-                              due: formatDate(task.due_date),
-                          })
-                        : task.due_date
-                          ? t('workload_task.due_on', {
-                                date: formatDate(task.due_date),
-                            })
-                          : t('workload_task.no_due')}
-                </dd>
-            </div>
+            {hideMissing && !task.start_date && !task.due_date ? null : (
+                <div className="inline-flex items-center gap-1">
+                    <dt className="inline-flex items-center gap-1">
+                        <CalendarDays aria-hidden="true" className="size-3.5" />
+                        <span className="sr-only">
+                            {t('workload_task.dates')}
+                        </span>
+                    </dt>
+                    <dd className="tabular">
+                        {task.start_date && task.due_date
+                            ? t('workload_task.date_range', {
+                                  start: formatDate(task.start_date),
+                                  due: formatDate(task.due_date),
+                              })
+                            : task.due_date
+                              ? t('workload_task.due_on', {
+                                    date: formatDate(task.due_date),
+                                })
+                              : t('workload_task.no_due')}
+                    </dd>
+                </div>
+            )}
 
             {task.overdue ? (
                 <div className="inline-flex items-center gap-1 rounded-[3px] bg-danger-soft px-1.5 py-0.5 text-foreground">

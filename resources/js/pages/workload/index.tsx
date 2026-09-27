@@ -1,9 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import type { VisitOptions } from '@inertiajs/core';
-import { Info, OctagonAlert, TriangleAlert, Users, X } from 'lucide-react';
+import { Info, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { LOAD_LEVELS, loadLevel } from '@/components/charts/thresholds';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import type {
@@ -12,6 +11,7 @@ import type {
     WorkloadQuery,
     WorkloadRow,
 } from '@/components/workload/types';
+import { WorkloadAlerts } from '@/components/workload/workload-alerts';
 import { WorkloadCellPanel } from '@/components/workload/workload-cell-panel';
 import { WorkloadLegend } from '@/components/workload/workload-legend';
 import { cellKey, WorkloadMatrix } from '@/components/workload/workload-matrix';
@@ -19,7 +19,6 @@ import { WorkloadToolbar } from '@/components/workload/workload-toolbar';
 import { WorkloadTrays } from '@/components/workload/workload-trays';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { index } from '@/routes/workload';
 
@@ -226,76 +225,6 @@ export default function WorkloadIndex({
                 onClose={closeCell}
             />
         </>
-    );
-}
-
-/**
- * La pregunta principal (SPEC §9): quién está por encima de su capacidad en el horizonte. Con
- * icono y texto, nunca solo color.
- */
-function WorkloadAlerts({ rows }: { rows: WorkloadRow[] }) {
-    const BalancedIcon = LOAD_LEVELS.balanced.icon;
-    const over = rows.filter(
-        (row) => loadLevel(row.total.planned, row.total.capacity) === 'over',
-    );
-    const high = rows.filter(
-        (row) => loadLevel(row.total.planned, row.total.capacity) === 'high',
-    );
-
-    if (over.length === 0 && high.length === 0) {
-        return (
-            <p
-                className="flex items-center gap-1.5 text-sm"
-                data-test="workload-alerts"
-            >
-                <BalancedIcon
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-success"
-                />
-                {t('workload_page.nobody_over')}
-            </p>
-        );
-    }
-
-    const describe = (row: WorkloadRow) =>
-        t('workload_page.person_ratio', {
-            name: row.name,
-            percent: formatPercent(row.total.planned / row.total.capacity, 0),
-            planned: formatMinutes(row.total.planned),
-            capacity: formatMinutes(row.total.capacity),
-        });
-
-    return (
-        <ul className="grid gap-1 text-sm" data-test="workload-alerts">
-            {over.length > 0 ? (
-                <li className="flex items-start gap-1.5">
-                    <OctagonAlert
-                        aria-hidden="true"
-                        className="mt-0.5 size-4 shrink-0 text-danger"
-                    />
-                    <span>
-                        <span className="font-medium">
-                            {t('workload_page.over', { count: over.length })}
-                        </span>{' '}
-                        {over.map(describe).join(' · ')}
-                    </span>
-                </li>
-            ) : null}
-            {high.length > 0 ? (
-                <li className="flex items-start gap-1.5">
-                    <TriangleAlert
-                        aria-hidden="true"
-                        className="mt-0.5 size-4 shrink-0 text-warning"
-                    />
-                    <span>
-                        <span className="font-medium">
-                            {t('workload_page.high', { count: high.length })}
-                        </span>{' '}
-                        {high.map(describe).join(' · ')}
-                    </span>
-                </li>
-            ) : null}
-        </ul>
     );
 }
 

@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarMinus } from 'lucide-react';
+import { CalendarClock, CalendarMinus, OctagonAlert } from 'lucide-react';
 import { LOAD_LEVELS } from '@/components/charts/thresholds';
 import type { LoadLevel } from '@/components/charts/thresholds';
 import { t } from '@/lib/i18n';
@@ -53,6 +53,13 @@ export function WorkloadLegend({ className }: { className?: string }) {
                 <li className="inline-flex items-center gap-1.5">
                     <CalendarMinus aria-hidden="true" className="size-3.5" />
                     {t('workload_legend.reduced')}
+                </li>
+                <li className="inline-flex items-center gap-1.5">
+                    <OctagonAlert
+                        aria-hidden="true"
+                        className="size-3.5 text-danger"
+                    />
+                    {t('workload_legend.no_capacity_load')}
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                     <CalendarClock
