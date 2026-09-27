@@ -20,6 +20,7 @@ import admin from '../../../lang/ui/admin.json';
 import clients from '../../../lang/ui/clients.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
+import planning from '../../../lang/ui/planning.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
 import shared from '../../../lang/ui/shared.json';
@@ -37,6 +38,7 @@ const messages = {
     ...time,
     ...notifications,
     ...reports,
+    ...planning,
 };
 
 export type TranslationKey = keyof typeof messages;

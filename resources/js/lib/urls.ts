@@ -28,6 +28,11 @@ export const urls = {
     projects: () => '/proyectos',
     project: (id: number, tab: ProjectTab = 'resumen') =>
         tab === 'resumen' ? `/proyectos/${id}` : `/proyectos/${id}/${tab}`,
+    /** Vista Calendario de la pestaña Tareas (D-061); `month` en formato "2026-10". */
+    projectCalendar: (id: number, month?: string) =>
+        month
+            ? `/proyectos/${id}/tareas?vista=calendario&mes=${month}`
+            : `/proyectos/${id}/tareas?vista=calendario`,
     /** Abre el panel lateral de la tarea sobre la lista de tareas de su proyecto. */
     task: (projectId: number, taskId: number) =>
         `/proyectos/${projectId}/tareas?tarea=${taskId}`,
