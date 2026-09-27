@@ -91,8 +91,8 @@ final class UpcomingMilestones
      *
      * Los vencidos no pueden desplazar a los próximos (la tarjeta es de «próximos»): se piden por
      * separado y, si hay próximos que llenen la tarjeta, los vencidos ocupan como mucho 3 huecos
-     * (los más recientes). Si hay menos próximos, los vencidos llenan el resto. Dos consultas
-     * acotadas (LIMIT 8 cada una), con los datos del proyecto por join.
+     * (los más recientes). Si hay menos próximos, los vencidos llenan el resto. Una consulta: las
+     * dos listas acotadas (LIMIT 8 cada una) con UNION ALL, y los datos del proyecto por join.
      *
      * @return list<array<string, mixed>>
      */
@@ -101,29 +101,37 @@ final class UpcomingMilestones
         $day = CarbonImmutable::parse(($today ?? LocalTime::today())->toDateString());
         $todayString = $day->toDateString();
 
-        // Los vencidos más recientes primero (los muy antiguos no llenan la tarjeta).
-        $overdue = $this->homeQuery($user)
+        // Los vencidos más recientes (los muy antiguos no llenan la tarjeta) y los próximos. Cada
+        // parte lleva su orden y su límite (SQLite y PostgreSQL envuelven cada SELECT de la unión).
+        $rows = $this->homeQuery($user)
             ->where('tasks.due_date', '<', $todayString)
             ->orderByDesc('tasks.due_date')
             ->orderByDesc('tasks.id')
             ->limit(self::HOME_LIMIT)
-            ->get(self::HOME_COLUMNS);
+            ->unionAll($this->homeQuery($user)
+                ->where('tasks.due_date', '>=', $todayString)
+                ->where('tasks.due_date', '<=', $day->addDays(self::HOME_DAYS)->toDateString())
+                ->orderBy('tasks.due_date')
+                ->orderBy('tasks.id')
+                ->limit(self::HOME_LIMIT))
+            ->get();
 
-        $upcoming = $this->homeQuery($user)
-            ->where('tasks.due_date', '>=', $todayString)
-            ->where('tasks.due_date', '<=', $day->addDays(self::HOME_DAYS)->toDateString())
-            ->orderBy('tasks.due_date')
-            ->orderBy('tasks.id')
-            ->limit(self::HOME_LIMIT)
-            ->get(self::HOME_COLUMNS);
+        // La unión no garantiza el orden: cada lista se ordena aquí.
+        $due = fn (Task $milestone): string => (string) $milestone->due_date?->toDateString();
+        $overdue = $rows->filter(fn (Task $milestone): bool => $due($milestone) < $todayString)
+            ->sort(fn (Task $a, Task $b): int => [$due($b), $b->id] <=> [$due($a), $a->id])
+            ->values();
+        $upcoming = $rows->filter(fn (Task $milestone): bool => $due($milestone) >= $todayString)
+            ->sort(fn (Task $a, Task $b): int => [$due($a), $a->id] <=> [$due($b), $b->id])
+            ->values();
 
         $overdueShown = min($overdue->count(), max(self::HOME_OVERDUE, self::HOME_LIMIT - $upcoming->count()));
         $upcomingShown = min($upcoming->count(), self::HOME_LIMIT - $overdueShown);
 
         // Todo por entrega: los vencidos elegidos (del más atrasado al más reciente) y los próximos.
-        $rows = $overdue->take($overdueShown)->reverse()->concat($upcoming->take($upcomingShown));
+        $shown = $overdue->take($overdueShown)->reverse()->concat($upcoming->take($upcomingShown));
 
-        return array_values($rows->map(fn (Task $milestone): array => [
+        return array_values($shown->map(fn (Task $milestone): array => [
             ...$this->item($milestone, (string) $milestone->due_date?->toDateString(), $todayString),
             'project' => [
                 'id' => $milestone->project_id,
@@ -151,7 +159,8 @@ final class UpcomingMilestones
                 ->where('project_members.user_id', $user->id))
             ->where('tasks.is_milestone', true)
             ->whereNull('tasks.completed_at')
-            ->whereNotNull('tasks.due_date');
+            ->whereNotNull('tasks.due_date')
+            ->select(self::HOME_COLUMNS);
     }
 
     /**

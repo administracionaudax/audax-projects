@@ -269,7 +269,7 @@ describe('«Mis próximos hitos» de Inicio', function () {
         ]);
     });
 
-    it('son dos consultas acotadas, aunque tenga muchos proyectos e hitos', function () {
+    it('es una sola consulta (dos listas acotadas con UNION ALL), aunque tenga muchos proyectos e hitos', function () {
         foreach (range(1, 6) as $i) {
             $project = Project::factory()->create();
             $project->addMember($this->user);
@@ -285,6 +285,6 @@ describe('«Mis próximos hitos» de Inicio', function () {
         $items = $milestones->forUser($user);
         app('events')->forget(QueryExecuted::class);
 
-        expect($queries)->toBe(2)->and($items)->toHaveCount(6);
+        expect($queries)->toBe(1)->and($items)->toHaveCount(6);
     });
 });
