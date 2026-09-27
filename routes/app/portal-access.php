@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PortalAccess\ClientPortalSettingsController;
 use App\Http\Controllers\PortalAccess\PortalUserController;
+use App\Http\Controllers\PortalAccess\ProjectPortalSettingsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,3 +35,7 @@ Route::prefix('clientes/{client}/portal')->whereNumber('client')->name('clients.
 
     Route::put('ajustes', [ClientPortalSettingsController::class, 'update'])->name('settings.update');
 });
+
+Route::put('proyectos/{project}/portal', [ProjectPortalSettingsController::class, 'update'])
+    ->whereNumber('project')
+    ->name('projects.portal.update');

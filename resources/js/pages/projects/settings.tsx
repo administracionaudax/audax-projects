@@ -16,6 +16,8 @@ import {
 import type { HourBankFormData } from '@/components/hour-banks/hour-bank-fields';
 import InputError from '@/components/input-error';
 import { ProjectShell } from '@/components/projects/project-shell';
+import { ProjectPortalSection } from '@/components/portal/access/project-portal-section';
+import type { ProjectPortalSettings } from '@/components/portal/access/types';
 import { PageSection } from '@/components/projects-list/page-section';
 import { PersonSelect } from '@/components/projects-list/person-select';
 import { ProjectAlerts } from '@/components/projects-list/project-alerts';
@@ -56,7 +58,11 @@ export default function ProjectSettings({
     departments,
     overageDefault,
     can,
-}: ProjectSettingsProps) {
+    portal,
+}: ProjectSettingsProps & {
+    /** Portal del cliente (Fase 5, D-064). */
+    portal?: ProjectPortalSettings;
+}) {
     const abilities = useAbilities();
     const errors = usePage().props.errors as Record<string, string> | undefined;
     const archived = project.status === 'archived';
@@ -151,6 +157,18 @@ export default function ProjectSettings({
                             editable={can.editAlertsOf}
                         />
                     </PageSection>
+
+                    {portal ? (
+                        <PageSection
+                            title={t('portal_access.project.title')}
+                            description={t('portal_access.project.description')}
+                        >
+                            <ProjectPortalSection
+                                projectId={project.id}
+                                portal={portal}
+                            />
+                        </PageSection>
+                    ) : null}
 
                     <PageSection
                         title={t('templates.settings.title')}
