@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DatePicker } from '@/components/domain/date-picker';
 import { DurationInput } from '@/components/domain/duration-input';
@@ -143,6 +144,14 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
     const reschedule = useReschedule();
     const hasSuccessors = (panel.dependencies?.successors.length ?? 0) > 0;
     const changeDue = (date: string | null) => {
+        // Un cambio de fecha a la vez: mientras hay uno en curso, otro solo se avisa. El selector
+        // no se desactiva para que conserve el foco al cerrarse (WCAG 2.4.3).
+        if (reschedule.isBusy()) {
+            toast.info(t('planning.reschedule.busy'));
+
+            return;
+        }
+
         if (hasSuccessors && date !== null && date !== task.due_date) {
             void reschedule.request(
                 { id: task.id, title: task.title },
@@ -264,7 +273,7 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                     id={ids.due}
                     value={task.due_date}
                     onChange={changeDue}
-                    disabled={disabled || reschedule.busy}
+                    disabled={disabled}
                 />
             </div>
             <EstimateField key={task.id} panel={panel} disabled={disabled} />
@@ -334,6 +343,12 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                 saving={reschedule.saving}
                 onConfirm={reschedule.confirm}
                 onCancel={reschedule.cancel}
+                // El diálogo no tiene disparador y el selector ya se cerró: al decidir (o cancelar),
+                // el foco vuelve a «Vencimiento» y no se pierde en la página (WCAG 2.4.3).
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    document.getElementById(ids.due)?.focus();
+                }}
             />
             {panel.has_time && !panel.parent && lookups.usesBanks ? (
                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground sm:col-span-2">

@@ -54,6 +54,7 @@
     "planning.reschedule.shift": "Mover también las sucesoras",
     "planning.reschedule.only_this": "Solo esta tarea",
     "planning.reschedule.forbidden": "No tienes permiso para cambiar las fechas de esta tarea.",
+    "planning.reschedule.busy": "Espera a que termine el cambio de fecha que está en curso.",
     "planning.dependencies.title": "Dependencias",
     "planning.dependencies.predecessors": "Depende de",
     "planning.dependencies.successors": "Bloquea a",
