@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
  * - bolsa con price_amount: dentro = precio × minutos dentro / total de la bolsa; el exceso, a la
  *   tarifa bolsa > proyecto > cliente > persona,
  * - precio cerrado: importe × minutos facturables / base, con base = máx(presupuesto, suma de las
- *   estimaciones de las tareas hoja, minutos facturables imputados hasta hoy): nunca supera el importe,
+ *   estimaciones de las tareas raíz, minutos facturables imputados hasta hoy): nunca supera el importe,
  * - resto: la instantánea de tarifa si la entrada está aprobada o bloqueada; si no, la tarifa vigente.
  * Coste: la instantánea de coste si existe; si no, el coste por hora actual de la persona.
  */
@@ -162,8 +162,9 @@ final class RevenueCalculator
     }
 
     /**
-     * Base de avance de cada proyecto de precio cerrado (D-043). Pública para valorar entradas
-     * sueltas con la misma base (EntryValuation, R2).
+     * Base de avance de cada proyecto de precio cerrado (D-043): el mayor del presupuesto, la suma
+     * de la estimación efectiva de las tareas raíz y los minutos facturables imputados. Pública para
+     * valorar entradas sueltas con la misma base (EntryValuation, R2).
      *
      * @param  \Illuminate\Database\Eloquent\Collection<int, Project>  $projects
      * @return array<int, int>
@@ -179,17 +180,35 @@ final class RevenueCalculator
         $logged = TimeEntry::query()->whereIn('project_id', $ids)->where('is_billable', true)
             ->groupBy('project_id')->selectRaw('project_id, SUM(minutes) as minutes')->toBase()->pluck('minutes', 'project_id');
 
-        // Tareas hoja (sin subtareas): así no se cuentan dos veces las estimaciones (SPEC §6).
-        $estimates = Task::query()->whereIn('project_id', $ids)->where('is_milestone', false)
+        // Estimación efectiva de las tareas raíz (SPEC §6, la regla de ProjectSummary y de
+        // Task::effectiveEstimatedMinutes): la suma de sus subtareas estimadas si alguna lo está; si
+        // no, la suya. Así no se cuenta dos veces y no se pierde la de un padre con subtareas sin estimar.
+        $fromSubtasks = Task::query()->whereIn('tasks.project_id', $ids)->where('tasks.is_milestone', false)
+            ->whereNotNull('tasks.estimated_minutes')
+            ->whereExists(fn ($root) => $root->selectRaw('1')->from('tasks as roots')
+                ->whereColumn('roots.id', 'tasks.parent_task_id')
+                ->whereColumn('roots.project_id', 'tasks.project_id')
+                ->whereNull('roots.parent_task_id')
+                ->whereNull('roots.deleted_at')
+                ->where('roots.is_milestone', false))
+            ->groupBy('tasks.project_id')->selectRaw('tasks.project_id as project_id, SUM(tasks.estimated_minutes) as minutes')
+            ->toBase()->pluck('minutes', 'project_id');
+
+        $fromRoots = Task::query()->whereIn('tasks.project_id', $ids)->whereNull('tasks.parent_task_id')->where('tasks.is_milestone', false)
+            ->whereNotNull('tasks.estimated_minutes')
             ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
-                ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
-            ->groupBy('project_id')->selectRaw('project_id, SUM(estimated_minutes) as minutes')->toBase()->pluck('minutes', 'project_id');
+                ->whereColumn('children.parent_task_id', 'tasks.id')
+                ->whereNull('children.deleted_at')
+                ->whereNotNull('children.estimated_minutes')
+                ->where('children.is_milestone', false))
+            ->groupBy('tasks.project_id')->selectRaw('tasks.project_id as project_id, SUM(tasks.estimated_minutes) as minutes')
+            ->toBase()->pluck('minutes', 'project_id');
 
         $bases = [];
         foreach ($projects as $project) {
             $bases[$project->id] = max(
                 (int) ($project->budget_minutes ?? 0),
-                (int) ($estimates[$project->id] ?? 0),
+                (int) ($fromSubtasks[$project->id] ?? 0) + (int) ($fromRoots[$project->id] ?? 0),
                 (int) ($logged[$project->id] ?? 0),
             );
         }
