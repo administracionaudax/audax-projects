@@ -92,6 +92,15 @@ type PointerState = {
 
 type MenuState = { taskId: number; origin: 'bar' | 'button' };
 
+/**
+ * Virtualización vertical (el Gantt multiproyecto llega a 1.500 tareas): solo se pintan las filas
+ * que se ven más un margen, en bloques de CHUNK filas para no repintar en cada píxel de scroll.
+ * La fila activa (tabindex itinerante) se pinta siempre.
+ */
+const OVERSCAN_ROWS = 12;
+const CHUNK_ROWS = 8;
+const DEFAULT_VISIBLE_ROWS = 30;
+
 export type GanttChartProps = {
     /** Nombre accesible del diagrama. */
     label: string;
@@ -187,6 +196,9 @@ export function GanttChart({
     } | null>(null);
     const [menu, setMenu] = useState<MenuState | null>(null);
     const [announcement, setAnnouncement] = useState('');
+    const [scrollRow, setScrollRow] = useState(0);
+    const [visibleRows, setVisibleRows] = useState(DEFAULT_VISIBLE_ROWS);
+    const pendingFocus = useRef<number | null>(null);
 
     // Fechas que se pintan: las del arrastre o del teclado mientras duran; si no, las de la tarea.
     const displayDates = (task: GanttTask): GanttDates => {
@@ -250,6 +262,13 @@ export function GanttChart({
     const current =
         activeId !== null && layouts.has(activeId) ? activeId : order[0];
 
+    const firstRow = Math.max(scrollRow - OVERSCAN_ROWS, 0);
+    const lastRow = scrollRow + visibleRows + CHUNK_ROWS + OVERSCAN_ROWS;
+    const currentRow =
+        current !== undefined ? layouts.get(current)?.row : undefined;
+    const rendered = (index: number) =>
+        (index >= firstRow && index < lastRow) || index === currentRow;
+
     const canEdit = (task: GanttTask) =>
         !readOnly && task.can.update && !(saving?.has(task.id) ?? false);
 
@@ -285,15 +304,20 @@ export function GanttChart({
             conflictsBySuccessor.set(successor.task.id, list);
         }
 
-        arrows.push({
-            dependency,
-            from: endPoint(predecessor),
-            to: startPoint(successor),
-            conflict,
-            predecessorTitle: predecessor.task.title,
-            successorTitle: successor.task.title,
-            removable,
-        });
+        const low = Math.min(predecessor.row, successor.row);
+        const high = Math.max(predecessor.row, successor.row);
+
+        if (high >= firstRow && low < lastRow) {
+            arrows.push({
+                dependency,
+                from: endPoint(predecessor),
+                to: startPoint(successor),
+                conflict,
+                predecessorTitle: predecessor.task.title,
+                successorTitle: successor.task.title,
+                removable,
+            });
+        }
 
         if (removable) {
             const item = {
@@ -387,7 +411,14 @@ export function GanttChart({
 
         setActiveId(taskId);
         ensureVisible(layout);
-        barElement(taskId)?.focus({ preventScroll: true });
+        const element = barElement(taskId);
+
+        if (element) {
+            element.focus({ preventScroll: true });
+        } else {
+            // Fila aún sin pintar (virtualizada): se enfoca tras el siguiente render.
+            pendingFocus.current = taskId;
+        }
     };
 
     useImperativeHandle(handleRef, () => ({ scrollToDate, focusTask }));
@@ -399,6 +430,21 @@ export function GanttChart({
 
         if (!element) {
             return;
+        }
+
+        if (pendingFocus.current !== null) {
+            const bar = barElement(pendingFocus.current);
+
+            if (bar) {
+                pendingFocus.current = null;
+                bar.focus({ preventScroll: true });
+            }
+        }
+
+        const rowsInView = Math.ceil(element.clientHeight / ROW_HEIGHT);
+
+        if (rowsInView > 0 && rowsInView !== visibleRows) {
+            setVisibleRows(rowsInView);
         }
 
         if (!initialized.current) {
@@ -829,8 +875,16 @@ export function GanttChart({
     const onScroll = () => {
         const element = scrollRef.current;
 
-        if (element) {
-            anchor.current = dateAtScroll(timeline, element.scrollLeft);
+        if (!element) {
+            return;
+        }
+
+        anchor.current = dateAtScroll(timeline, element.scrollLeft);
+        const first = Math.floor(element.scrollTop / ROW_HEIGHT);
+        const chunk = first - (first % CHUNK_ROWS);
+
+        if (chunk !== scrollRow) {
+            setScrollRow(chunk);
         }
     };
 
@@ -887,11 +941,13 @@ export function GanttChart({
                     <div
                         ref={sidebarRef}
                         className="sticky left-0 z-10 border-r bg-card"
+                        style={{ height }}
                     >
-                        {rows.map((row) =>
-                            row.kind === 'project' ? (
+                        {rows.map((row, index) =>
+                            !rendered(index) ? null : row.kind === 'project' ? (
                                 <ProjectSidebarRow
                                     key={row.key}
+                                    top={index * ROW_HEIGHT}
                                     project={row.project}
                                     collapsed={row.collapsed}
                                     scheduledCount={row.scheduledCount}
@@ -902,8 +958,9 @@ export function GanttChart({
                             ) : (
                                 <div
                                     key={row.key}
-                                    className="flex items-center gap-1 border-b pr-1 text-sm"
+                                    className="absolute inset-x-0 flex items-center gap-1 border-b pr-1 text-sm"
                                     style={{
+                                        top: index * ROW_HEIGHT,
                                         height: ROW_HEIGHT,
                                         paddingLeft: row.depth === 1 ? 28 : 10,
                                     }}
@@ -1031,7 +1088,7 @@ export function GanttChart({
                             />
                         ))}
                         {rows.map((row, index) =>
-                            row.kind === 'project' ? (
+                            row.kind === 'project' && rendered(index) ? (
                                 <div
                                     key={row.key}
                                     aria-hidden="true"
@@ -1053,7 +1110,9 @@ export function GanttChart({
                         ) : null}
 
                         {rows.map((row, index) =>
-                            row.kind === 'project' && row.span ? (
+                            row.kind === 'project' &&
+                            row.span &&
+                            rendered(index) ? (
                                 <GanttProjectBar
                                     key={row.key}
                                     project={row.project}
@@ -1076,16 +1135,26 @@ export function GanttChart({
                         />
 
                         {[...layouts.values()].map((layout) => {
+                            if (
+                                !rendered(layout.row) &&
+                                drag?.taskId !== layout.task.id
+                            ) {
+                                return null;
+                            }
+
                             const editable = canMove(layout.task);
+                            const color = colors.colorOf(layout.task);
 
                             return (
                                 <GanttTaskBar
                                     key={layout.task.id}
                                     task={layout.task}
                                     variant={layout.variant}
-                                    box={layout.box}
+                                    x={layout.box.x}
+                                    width={layout.box.width}
                                     top={layout.top}
-                                    color={colors.colorOf(layout.task)}
+                                    color={color.color}
+                                    dashed={color.dashed}
                                     active={layout.task.id === current}
                                     editable={editable}
                                     linkable={canLink(layout.task)}
@@ -1147,6 +1216,7 @@ function startPoint(layout: Layout): Point {
 }
 
 function ProjectSidebarRow({
+    top,
     project,
     collapsed,
     scheduledCount,
@@ -1154,6 +1224,7 @@ function ProjectSidebarRow({
     href,
     onToggle,
 }: {
+    top: number;
     project: GanttProject;
     collapsed: boolean;
     scheduledCount: number;
@@ -1172,8 +1243,8 @@ function ProjectSidebarRow({
 
     return (
         <div
-            className="flex items-center gap-1 border-b bg-muted/60 pr-1 pl-1 text-sm"
-            style={{ height: ROW_HEIGHT }}
+            className="absolute inset-x-0 flex items-center gap-1 border-b bg-muted/60 pr-1 pl-1 text-sm"
+            style={{ top, height: ROW_HEIGHT }}
             data-test="gantt-project-row"
         >
             <button

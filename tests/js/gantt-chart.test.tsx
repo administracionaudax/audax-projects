@@ -357,6 +357,34 @@ describe('Gantt: teclado', () => {
     });
 });
 
+describe('Gantt: muchas tareas', () => {
+    it('solo pinta las filas cercanas a la vista, siempre la activa, y el teclado llega a todas', async () => {
+        const user = userEvent.setup();
+        const many = Array.from({ length: 120 }, (_, index) =>
+            task({
+                id: 100 + index,
+                title: `Tarea ${index + 1}`,
+                start_date: '2026-10-05',
+                due_date: '2026-10-06',
+            }),
+        );
+        renderChart({}, many);
+
+        const painted = () =>
+            document.querySelectorAll('[data-gantt-part="bar"]').length;
+        expect(painted()).toBeLessThan(80);
+        expect(
+            document.querySelectorAll('[data-test="gantt-row"]').length,
+        ).toBe(painted());
+
+        bar(/^Tarea 1\./).focus();
+        await user.keyboard('{End}');
+
+        expect(document.activeElement).toBe(bar(/^Tarea 120\./));
+        expect(bar(/^Tarea 120\./).tabIndex).toBe(0);
+    });
+});
+
 describe('Gantt: ratón', () => {
     it('arrastrar la barra la mueve por días y arrastrar su borde cambia la entrega', () => {
         const { onReschedule } = renderChart();

@@ -1,6 +1,6 @@
 import { CircleCheck } from 'lucide-react';
+import { memo } from 'react';
 import { barFill } from '@/components/gantt/colors';
-import type { BarColor } from '@/components/gantt/colors';
 import {
     BAR_HEIGHT,
     MILESTONE_SIZE,
@@ -30,12 +30,14 @@ export function progressPercent(task: GanttTask): number | null {
  * rombo (hito) o resumen de sus subtareas. Es un botón enfocable con tabindex itinerante: el
  * teclado y el ratón los gestiona GanttChart por delegación (data-task-id y data-gantt-part).
  */
-export function GanttTaskBar({
+export const GanttTaskBar = memo(function GanttTaskBar({
     task,
     variant,
-    box,
+    x,
+    width,
     top,
     color,
+    dashed,
     active,
     editable,
     linkable,
@@ -46,9 +48,12 @@ export function GanttTaskBar({
 }: {
     task: GanttTask;
     variant: BarVariant;
-    box: Box;
+    x: number;
+    width: number;
     top: number;
-    color: BarColor;
+    /** Color de la marca (token o color del estado) y borde discontinuo (sin responsable). */
+    color: string;
+    dashed: boolean;
     active: boolean;
     /** Se puede mover y redimensionar (no en solo lectura ni en los resúmenes). */
     editable: boolean;
@@ -83,7 +88,7 @@ export function GanttTaskBar({
                     dragging && 'z-10',
                 )}
                 style={{
-                    left: box.x,
+                    left: x,
                     top: top + (ROW_HEIGHT - MILESTONE_SIZE) / 2,
                     width: MILESTONE_SIZE,
                     height: MILESTONE_SIZE,
@@ -94,8 +99,8 @@ export function GanttTaskBar({
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0.5 rotate-45 rounded-[2px] border border-foreground"
                     style={{
-                        backgroundColor: color.color,
-                        borderStyle: color.dashed ? 'dashed' : 'solid',
+                        backgroundColor: color,
+                        borderStyle: dashed ? 'dashed' : 'solid',
                     }}
                 />
                 <span
@@ -108,7 +113,7 @@ export function GanttTaskBar({
                     {task.title}
                     {saving ? <Spinner className="size-3" /> : null}
                 </span>
-                {linkable ? <Connector color={color.color} /> : null}
+                {linkable ? <Connector color={color} /> : null}
             </div>
         );
     }
@@ -123,9 +128,9 @@ export function GanttTaskBar({
                     FOCUS_RING,
                 )}
                 style={{
-                    left: box.x,
+                    left: x,
                     top: top + (ROW_HEIGHT - SUMMARY_HEIGHT) / 2 - 2,
-                    width: box.width,
+                    width: width,
                     height: SUMMARY_HEIGHT,
                 }}
             >
@@ -145,9 +150,9 @@ export function GanttTaskBar({
     }
 
     const percent = progressPercent(task);
-    const showTitle = box.width >= 44;
-    const showPercent = percent !== null && box.width >= 150;
-    const showAssignee = task.assignee !== null && box.width >= 84;
+    const showTitle = width >= 44;
+    const showPercent = percent !== null && width >= 150;
+    const showAssignee = task.assignee !== null && width >= 84;
 
     return (
         <div
@@ -160,17 +165,17 @@ export function GanttTaskBar({
                 dragging && 'z-10',
             )}
             style={{
-                left: box.x,
+                left: x,
                 top: top + (ROW_HEIGHT - BAR_HEIGHT) / 2,
-                width: box.width,
+                width: width,
                 height: BAR_HEIGHT,
-                backgroundColor: barFill(color.color),
-                borderColor: color.color,
-                borderStyle: color.dashed ? 'dashed' : 'solid',
+                backgroundColor: barFill(color),
+                borderColor: color,
+                borderStyle: dashed ? 'dashed' : 'solid',
                 touchAction: 'pan-x pan-y',
             }}
         >
-            {task.is_completed && box.width >= 28 ? (
+            {task.is_completed && width >= 28 ? (
                 <CircleCheck
                     aria-hidden="true"
                     className="pointer-events-none size-3 shrink-0 text-success"
@@ -206,7 +211,7 @@ export function GanttTaskBar({
                     className="pointer-events-none absolute bottom-0 left-0 h-[3px] rounded-b-[2px]"
                     style={{
                         width: `${Math.min(percent, 100)}%`,
-                        backgroundColor: color.color,
+                        backgroundColor: color,
                     }}
                 />
             ) : null}
@@ -226,10 +231,10 @@ export function GanttTaskBar({
                     />
                 </>
             ) : null}
-            {linkable ? <Connector color={color.color} /> : null}
+            {linkable ? <Connector color={color} /> : null}
         </div>
     );
-}
+});
 
 /** Conector del final de la barra: arrastrándolo hasta otra barra se crea una dependencia. */
 function Connector({ color }: { color: string }) {
