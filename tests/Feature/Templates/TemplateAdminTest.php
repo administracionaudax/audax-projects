@@ -160,6 +160,38 @@ it('como mucho 500 tareas', function () {
         ->assertSessionHasErrors('structure.tasks');
 });
 
+it('con demasiadas tareas o dependencias solo se comprueba el tamaño, antes de validar cada tarea', function () {
+    $tasks = fn (int $count): array => array_map(fn (int $i): array => ['ref' => "t{$i}", 'title' => "Tarea {$i}"], range(1, $count));
+    $links = array_fill(0, 5001, ['from_ref' => 't1', 'to_ref' => 't2']);
+
+    expect(TemplateStructure::sizeError(['tasks' => $tasks(500), 'dependencies' => array_fill(0, 5000, ['from_ref' => 't1', 'to_ref' => 't2'])]))->toBeNull()
+        ->and(TemplateStructure::sizeError(['tasks' => $tasks(501)]))->toBe('La plantilla necesita entre 1 y 500 tareas.')
+        ->and(TemplateStructure::sizeError(['tasks' => $tasks(2), 'dependencies' => $links]))->toBe('La plantilla admite como mucho 5000 dependencias.')
+        // Sin las reglas de cada tarea (structure.tasks.*.…), que se expanden por cada elemento.
+        ->and(array_keys(TemplateStructure::rulesFor(['tasks' => $tasks(501)])))->toBe(['structure', 'structure.tasks', 'structure.dependencies'])
+        ->and(TemplateStructure::rulesFor(['tasks' => $tasks(3)]))->toEqual(TemplateStructure::rules());
+
+    $started = microtime(true);
+
+    // En el editor, 4.000 tareas tardaban casi 4 s en rechazarse.
+    $this->post('/admin/plantillas', ($this->payload)(['structure' => ['tasks' => $tasks(4000), 'dependencies' => []]]))
+        ->assertSessionHasErrors(['structure.tasks' => 'La plantilla necesita entre 1 y 500 tareas.']);
+    $this->post('/admin/plantillas', ($this->payload)(['structure' => ['tasks' => $tasks(2), 'dependencies' => $links]]))
+        ->assertSessionHasErrors(['structure.dependencies' => 'La plantilla admite como mucho 5000 dependencias.']);
+
+    // Al importar, lo mismo con el error en el fichero.
+    $import = fn (array $structure) => $this->post('/admin/plantillas/importar', [
+        'file' => UploadedFile::fake()->createWithContent('grande.json', (string) json_encode(['name' => 'Grande', 'structure' => $structure])),
+    ]);
+    $import(['tasks' => $tasks(4000)])
+        ->assertSessionHasErrors(['file' => 'El fichero no tiene una plantilla válida: La plantilla necesita entre 1 y 500 tareas.']);
+    $import(['tasks' => $tasks(2), 'dependencies' => $links])
+        ->assertSessionHasErrors(['file' => 'El fichero no tiene una plantilla válida: La plantilla admite como mucho 5000 dependencias.']);
+
+    expect(microtime(true) - $started)->toBeLessThan(3.0)
+        ->and(ProjectTemplate::query()->count())->toBe(0);
+});
+
 it('edita, desactiva, envía a la papelera y recupera', function () {
     $template = ProjectTemplate::query()->create(['name' => 'Web', 'structure' => $this->structure]);
 

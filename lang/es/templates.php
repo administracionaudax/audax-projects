@@ -39,6 +39,7 @@ return [
         'dependency_self' => 'Una tarea no puede depender de sí misma.',
         'dependency_cycle' => 'Estas dependencias forman un ciclo: una tarea acabaría dependiendo de sí misma.',
         'tasks_count' => 'La plantilla necesita entre 1 y :max tareas.',
+        'dependencies_count' => 'La plantilla admite como mucho :max dependencias.',
         'type_invalid' => 'Elige un tipo de tarea activo.',
         'estimate_range' => 'La estimación va de 0:01 a :max.',
         'offset_range' => 'El inicio va del día 0 al :max.',

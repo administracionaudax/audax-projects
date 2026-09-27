@@ -67,6 +67,13 @@ final class TemplateTransfer
         }
 
         $structure = isset($data['structure']) && is_array($data['structure']) ? $data['structure'] : $data;
+
+        // Primero el tamaño: una estructura enorme se rechaza sin recorrerla ni validar su contenido.
+        $tooBig = TemplateStructure::sizeError($structure);
+        if ($tooBig !== null) {
+            throw $this->invalid($tooBig);
+        }
+
         $structure = TemplateStructure::trimRefs($this->resolveTypes($structure));
 
         $validator = Validator::make(['structure' => $structure], TemplateStructure::rules(), TemplateStructure::messages(), TemplateStructure::attributes());
