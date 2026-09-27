@@ -138,7 +138,11 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(self::stringInput($request, Fortify::username()).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            // 5 por minuto (SPEC §15). Solo el servidor local de los E2E lo sube (LOGIN_RATE_LIMIT),
+            // porque sus pruebas inician sesión muchas veces seguidas con las mismas cuentas.
+            $perMinute = app()->environment('local') ? max((int) config('auth.login_rate_limit', 5), 5) : 5;
+
+            return Limit::perMinute($perMinute)->by($throttleKey);
         });
 
         // POST /forgot-password: por IP y por correo (exista o no), para que no sirva para sondear
