@@ -83,4 +83,15 @@ return [
             'value' => 'Cada canal tiene que estar activado o desactivado.',
         ],
     ],
+
+    // Resumen diario por email (notifications:daily-digest, App\Notifications\DailyDigestNotification).
+    'digest' => [
+        'subject' => '{1} Resumen diario: 1 aviso sin leer|[2,*] Resumen diario: :count avisos sin leer',
+        'intro' => '{1} Este es el aviso de las últimas :hours horas que aún no has leído:|[2,*] Estos son los :count avisos de las últimas :hours horas que aún no has leído:',
+        'group' => ':group (:count)',
+        'more' => '{1} y 1 más|[2,*] y :count más',
+        'action' => 'Ver mis notificaciones',
+        'settings_hint' => 'Recibes este resumen porque lo tienes activado: mientras lo esté, estos avisos no te llegan en emails sueltos.',
+        'settings_link' => 'Cambiar mis preferencias de notificación',
+    ],
 ];
