@@ -365,6 +365,38 @@ describe('Gantt multiproyecto', () => {
         ).not.toBeNull();
     });
 
+    it('la tabla agrupa las tareas de cada proyecto en su grupo de filas', async () => {
+        const user = userEvent.setup();
+        render(<GanttIndex {...indexProps()} />);
+
+        await user.click(screen.getByRole('radio', { name: 'Tabla' }));
+
+        const table = screen.getByRole('table', {
+            name: 'Diagrama de Gantt de los proyectos filtrados',
+        });
+        const groups = [...table.querySelectorAll('tbody')];
+        expect(groups).toHaveLength(2);
+
+        const headers = groups.map((group) =>
+            group.querySelector('th[scope="rowgroup"]'),
+        );
+        expect(headers.map((header) => header?.textContent)).toEqual([
+            'P-1 · App',
+            'P-2 · Web',
+        ]);
+        expect(headers[1]?.getAttribute('colspan')).toBe('6');
+        expect(
+            within(groups[0])
+                .getAllByRole('button')
+                .map((b) => b.textContent),
+        ).toEqual(['API']);
+        expect(
+            within(groups[1])
+                .getAllByRole('button')
+                .map((b) => b.textContent),
+        ).toEqual(['Home']);
+    });
+
     it('con demasiados proyectos avisa y pide filtrar', () => {
         render(
             <GanttIndex
