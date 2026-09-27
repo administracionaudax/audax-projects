@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Project $project
+ * @property-read User|null $creator
  */
 #[Fillable(['project_id', 'hour_bank_id', 'title', 'description', 'task_type_id', 'assignee_user_id', 'estimated_minutes', 'priority',
     'frequency', 'interval', 'weekday', 'month_day', 'due_offset_days', 'starts_on', 'ends_on', 'last_generated_on', 'is_active', 'created_by'])]
@@ -81,6 +82,16 @@ class RecurringTaskRule extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Quien creó la regla: «crea» sus tareas mientras siga activo (RecurringTaskGenerator).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**
