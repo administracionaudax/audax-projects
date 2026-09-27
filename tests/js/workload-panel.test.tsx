@@ -69,7 +69,8 @@ describe('panel de una celda', () => {
         const dialog = renderPanel();
         const [first, second] = allByTest('workload-cell-task', dialog);
 
-        expect(within(dialog).getByText('martes 13/10/2026')).toBeTruthy();
+        // Solo la primera letra en mayúscula (no «Semana Del … Al …»).
+        expect(within(dialog).getByText('Martes 13/10/2026')).toBeTruthy();
         expect(
             within(dialog).getByText('Tareas que forman esta carga (2)'),
         ).toBeTruthy();
@@ -138,8 +139,20 @@ describe('panel de una celda', () => {
         const days = within(dialog).getByRole('table', {
             name: 'Carga y capacidad de cada día de la semana',
         });
+        const rows = within(days).getAllByRole('row');
+        // Cada día: su nombre, el festivo y el texto completo del semáforo para lectores de pantalla.
+        expect(within(rows[1]).getByRole('rowheader').textContent).toContain(
+            'Lunes 12/10/2026',
+        );
         expect(
-            within(days).getByText(/Festivo: Fiesta Nacional de España/),
+            within(rows[1]).getByText(
+                'Festivo: Fiesta Nacional de España. Sin capacidad, 0:00 planificadas',
+            ),
+        ).toBeTruthy();
+        expect(
+            within(rows[2]).getByText(
+                '10:00 planificadas de 8:00 de capacidad (125 %): Sobrecarga',
+            ),
         ).toBeTruthy();
         expect(
             within(dialog).getAllByText(/este día|esta semana/)[0].textContent,

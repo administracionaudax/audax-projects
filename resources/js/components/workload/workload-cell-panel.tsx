@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/empty-state';
 import type {
     WorkloadCellPanelData,
     WorkloadCellTask,
+    WorkloadDay,
     WorkloadPerson,
 } from '@/components/workload/types';
 import {
@@ -21,6 +22,7 @@ import {
     reasonLong,
     reasonShort,
     reducedLong,
+    upperFirst,
 } from '@/components/workload/workload-labels';
 import {
     editorKey,
@@ -90,7 +92,7 @@ export function WorkloadCellPanel({
                                 {cell.person.name}
                             </SheetTitle>
                             <SheetDescription>
-                                <span className="capitalize">{period}</span>
+                                <span>{upperFirst(period)}</span>
                                 {cell.person.department ? (
                                     <> · {cell.person.department}</>
                                 ) : null}
@@ -222,25 +224,7 @@ function PanelBody({
                         </thead>
                         <tbody className="divide-y">
                             {cell.days.map((day) => (
-                                <tr key={day.date}>
-                                    <th
-                                        scope="row"
-                                        className="py-1.5 pr-2 text-left font-normal capitalize"
-                                    >
-                                        {periodLabel(
-                                            { from: day.date, to: day.date },
-                                            false,
-                                        )}
-                                    </th>
-                                    <td className="py-1.5 text-right text-muted-foreground">
-                                        {day.reason
-                                            ? `${reasonLong(day.reason)} · `
-                                            : ''}
-                                        <span className="tabular text-foreground">
-                                            {loadSummary(day)}
-                                        </span>
-                                    </td>
-                                </tr>
+                                <DayRow key={day.date} day={day} />
                             ))}
                         </tbody>
                     </table>
@@ -287,6 +271,50 @@ function PanelBody({
                 )}
             </section>
         </div>
+    );
+}
+
+/**
+ * Un día de una celda semanal: el día, el nombre del festivo si lo hay y el semáforo compacto
+ * (el texto completo, para lectores de pantalla).
+ */
+function DayRow({ day }: { day: WorkloadDay }) {
+    const long = day.reason ? reasonLong(day.reason) : null;
+    const extra = day.reason && long !== reasonShort(day.reason) ? long : null;
+
+    return (
+        <tr>
+            <th
+                scope="row"
+                className="py-1.5 pr-2 text-left align-middle font-normal"
+            >
+                {upperFirst(
+                    periodLabel({ from: day.date, to: day.date }, false),
+                )}
+                {extra ? (
+                    <span
+                        aria-hidden="true"
+                        className="block text-xs text-muted-foreground"
+                    >
+                        {extra}
+                    </span>
+                ) : null}
+            </th>
+            <td className="py-1.5 align-middle">
+                <span className="sr-only">
+                    {[long, loadSummary(day)].filter(Boolean).join('. ')}
+                </span>
+                <div aria-hidden="true" className="ml-auto w-32">
+                    <LoadCell
+                        planned={day.planned}
+                        capacity={day.capacity}
+                        reason={
+                            day.reason ? reasonShort(day.reason) : undefined
+                        }
+                    />
+                </div>
+            </td>
+        </tr>
     );
 }
 

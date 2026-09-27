@@ -27,6 +27,11 @@ export const HORIZON_KEYS: WorkloadHorizonKey[] = [
     '3-meses',
 ];
 
+/** Primera letra en mayúscula (y el resto igual): «semana del 12/10 al 18/10» → «Semana del…». */
+export function upperFirst(text: string): string {
+    return text.charAt(0).toLocaleUpperCase('es-ES') + text.slice(1);
+}
+
 export function horizonLabel(key: WorkloadHorizonKey): string {
     return t(`workload_horizon.${key}` as TranslationKey);
 }
