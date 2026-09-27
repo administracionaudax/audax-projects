@@ -172,7 +172,18 @@ export default function DepartmentReport({
                         )}
                     </PageSection>
 
-                    <PageSection title={t('reports_r1.department.by_client')}>
+                    <PageSection
+                        title={t('reports_r1.department.by_client')}
+                        action={
+                            <ExportMenu
+                                href={reportUrls.department(department.id, {
+                                    ...filters.query,
+                                    tabla: 'clientes',
+                                })}
+                                label={t('reports_r1.export')}
+                            />
+                        }
+                    >
                         {clients.rows.length === 0 ? (
                             <EmptyState
                                 icon={SearchX}

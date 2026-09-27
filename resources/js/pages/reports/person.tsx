@@ -34,13 +34,19 @@ function Breakdown({
     title,
     categoryLabel,
     top,
+    exportHref,
 }: {
     title: string;
     categoryLabel: string;
     top: R1TopRows;
+    /** Exportación del reparto completo (?tabla=…). */
+    exportHref: string;
 }) {
     return (
-        <div className="min-w-0 rounded-md border bg-card p-4">
+        <div className="grid min-w-0 content-start gap-3 rounded-md border bg-card p-4">
+            <div className="flex justify-end">
+                <ExportMenu href={exportHref} label={t('reports_r1.export')} />
+            </div>
             {top.rows.length === 0 ? (
                 <div className="grid gap-3">
                     <p className="text-base font-medium">{title}</p>
@@ -84,6 +90,9 @@ export default function PersonReport({
     const state = useReportVisit();
     const period = periodQuery(filters.query);
     const url = personRoute.url(person.id);
+    // Cualquier tabla se exporta (SPEC §10): los repartos completos y los días sin imputar.
+    const tableHref = (tabla: string) =>
+        reportUrls.person(person.id, { ...filters.query, tabla });
     const title = isSelf
         ? t('reports_r1.person.mine')
         : t('reports_r1.person.title', { name: person.name });
@@ -212,6 +221,12 @@ export default function PersonReport({
                             description={t(
                                 'reports_r1.person.unlogged_description',
                             )}
+                            action={
+                                <ExportMenu
+                                    href={tableHref('dias-sin-imputar')}
+                                    label={t('reports_r1.export')}
+                                />
+                            }
                         >
                             <R1UnloggedDays
                                 days={unlogged}
@@ -230,16 +245,19 @@ export default function PersonReport({
                                 title={t('reports_r1.person.by_client')}
                                 categoryLabel={t('reports_r1.columns.client')}
                                 top={clients}
+                                exportHref={tableHref('clientes')}
                             />
                             <Breakdown
                                 title={t('reports_r1.person.by_project')}
                                 categoryLabel={t('reports_r1.columns.project')}
                                 top={projects}
+                                exportHref={tableHref('proyectos')}
                             />
                             <Breakdown
                                 title={t('reports_r1.person.by_type')}
                                 categoryLabel={t('reports_r1.columns.type')}
                                 top={types}
+                                exportHref={tableHref('tipos')}
                             />
                         </div>
                     </PageSection>

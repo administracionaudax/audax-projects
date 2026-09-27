@@ -32,7 +32,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   los filtros de la URL),
  * - días sin imputar: con capacidad y sin ninguna hora (de ningún cliente ni proyecto: aquí no
  *   cuentan los filtros), hasta ayer y nunca antes de su alta (como en Inicio),
- * - ?formato=xlsx|csv exporta el detalle diario.
+ * - ?formato=xlsx|csv exporta el detalle diario y, con tabla=clientes|proyectos|tipos, cada reparto
+ *   completo o, con tabla=dias-sin-imputar, los días sin imputar (SPEC §10: cualquier tabla).
  *
  * @phpstan-type DayPoint array{bucket: string, logged_minutes: int, billable_minutes: int, capacity_minutes: int, income: string|null}
  */
@@ -41,6 +42,9 @@ class PersonReportController extends Controller
     use BuildsDashboards, BuildsReportScope;
 
     public const int TOP = 8;
+
+    /** Repartos que se exportan con ?tabla= (el resto de valores, el detalle diario). */
+    public const array BREAKDOWNS = ['clientes' => Dimension::Client, 'proyectos' => Dimension::Project, 'tipos' => Dimension::TaskType];
 
     public function __invoke(
         Request $request,
@@ -56,18 +60,32 @@ class PersonReportController extends Controller
         $scope = $this->reportScope($request, ['userIds' => [$user->id], 'departmentIds' => []]);
         $days = $cache->remember($scope, 'r1.person.days', fn (): array => $metrics->series($scope, Dimension::Day));
 
+        $data = fn (): array => $cache->remember($scope, 'r1.person.breakdowns', fn (): array => [
+            'clientes' => $this->withMargin($metrics->breakdown($scope, Dimension::Client)),
+            'proyectos' => $this->withMargin($metrics->breakdown($scope, Dimension::Project)),
+            'tipos' => $this->withMargin($metrics->breakdown($scope, Dimension::TaskType)),
+        ]);
+
         $format = $this->exportFormat($request);
         if ($format !== null) {
-            [$headers, $rows] = $this->daysTable($days, $scope->canSeeFinancials());
+            $table = $request->query('tabla');
+            $name = __('reports.r1.exports.person', ['person' => $user->name]);
 
-            return $exporter->download(__('reports.r1.exports.person', ['person' => $user->name]), $headers, $rows, $format);
+            if (is_string($table) && isset(self::BREAKDOWNS[$table])) {
+                $rows = $data()[$table];
+                [$headers, $lines] = $this->breakdownTable(self::BREAKDOWNS[$table]->label(), $rows, array_sum(array_column($rows, 'logged_minutes')), $scope->canSeeFinancials());
+                $name = __('reports.r1.exports.person_table', ['person' => $user->name, 'table' => __('reports.r1.tables.'.$table)]);
+            } elseif ($table === 'dias-sin-imputar') {
+                [$headers, $lines] = $this->unloggedTable($this->unloggedDays($user, $this->allHours($scope, $user, $days, $metrics, $cache)));
+                $name = __('reports.r1.exports.person_table', ['person' => $user->name, 'table' => __('reports.r1.tables.dias-sin-imputar')]);
+            } else {
+                [$headers, $lines] = $this->daysTable($days, $scope->canSeeFinancials());
+            }
+
+            return $exporter->download($name, $headers, $lines, $format);
         }
 
-        $data = $cache->remember($scope, 'r1.person.breakdowns', fn (): array => [
-            'clients' => $this->withMargin($metrics->breakdown($scope, Dimension::Client)),
-            'projects' => $this->withMargin($metrics->breakdown($scope, Dimension::Project)),
-            'types' => $this->withMargin($metrics->breakdown($scope, Dimension::TaskType)),
-        ]);
+        $data = $data();
         $summaries = $this->summaries($scope, $metrics, $cache);
 
         $user->loadMissing('department:id,name');
@@ -88,9 +106,9 @@ class PersonReportController extends Controller
             'summary' => $summaries['summary'],
             'comparison' => $summaries['comparison'],
             'comparison_partial' => $summaries['comparison_partial'],
-            'clients' => $this->top($data['clients'], self::TOP),
-            'projects' => $this->top($data['projects'], self::TOP),
-            'types' => $this->top($data['types'], self::TOP),
+            'clients' => $this->top($data['clientes'], self::TOP),
+            'projects' => $this->top($data['proyectos'], self::TOP),
+            'types' => $this->top($data['tipos'], self::TOP),
             'days' => array_map(fn (array $day): array => ['date' => $day['bucket'], 'minutes' => $day['logged_minutes']], $days),
             'unlogged' => $this->unloggedDays($user, $this->allHours($scope, $user, $days, $metrics, $cache)),
         ]);
@@ -142,6 +160,25 @@ class PersonReportController extends Controller
         }
 
         return $days;
+    }
+
+    /**
+     * Días sin imputar para exportar: fecha, día de la semana y jornada.
+     *
+     * @param  list<array{date: string, capacity_minutes: int, week: string}>  $days
+     * @return array{0: list<string>, 1: list<list<string|int|float|null>>}
+     */
+    private function unloggedTable(array $days): array
+    {
+        $headers = [__('reports.r1.columns.date'), __('reports.r1.columns.weekday'), __('reports.r1.columns.day_capacity')];
+
+        $rows = array_map(function (array $day): array {
+            $date = CarbonImmutable::parse($day['date']);
+
+            return [$date->format('d/m/Y'), __('reports.r1.weekdays.'.$date->dayOfWeekIso), TableExporter::hours($day['capacity_minutes'])];
+        }, $days);
+
+        return [$headers, $rows];
     }
 
     /**

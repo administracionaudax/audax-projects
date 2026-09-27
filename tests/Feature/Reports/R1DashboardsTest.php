@@ -752,6 +752,66 @@ describe('exportaciones', function () {
             ->and($rows[4])->toBe(['Interno (sin cliente)', '1,00', '0,00', '4,20', '0,00']);
     });
 
+    it('exporta enteras las bolsas en riesgo y las tareas vencidas de dirección (BIZ-05)', function () {
+        $task = fn (array $attributes) => Task::factory()->create(['project_id' => $this->tm->id, ...$attributes]);
+        $task(['title' => 'De Ana', 'assignee_user_id' => $this->ana->id, 'due_date' => '2026-09-20']);
+        $task(['title' => 'Sin asignar', 'assignee_user_id' => null, 'due_date' => '2026-09-01']);
+        $task(['title' => 'Hito vencido', 'assignee_user_id' => $this->luis->id, 'due_date' => '2026-09-24', 'is_milestone' => true, 'estimated_minutes' => null]);
+
+        $banks = ($this->csv)($this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'bolsas-en-riesgo']))
+            ->assertOk()->streamedContent());
+
+        // La bolsa del escenario: 600 contratadas, 700 consumidas (600 dentro y 100 de exceso), agotada.
+        expect($banks[0])->toBe(['Bolsa', 'Proyecto', 'Cliente', 'Estado', 'Horas contratadas', 'Horas dentro de la bolsa', 'Horas en exceso', 'Horas comprometidas', 'Consumo dentro de la bolsa (%)'])
+            ->and($banks[1])->toBe([$this->bank->name, ($this->projectName)($this->bank->project), $this->bank->project->client->name, 'Agotada', '10,00', '10,00', '1,67', '0,00', '100,00'])
+            ->and($banks)->toHaveCount(2);
+
+        $overdue = ($this->csv)($this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'tareas-vencidas']))
+            ->assertOk()->streamedContent());
+
+        expect($overdue[0])->toBe(['Tarea', 'Proyecto', 'Responsable', 'Fecha límite', 'Días de retraso', 'Hito'])
+            ->and($overdue[1])->toBe(['Sin asignar', ($this->projectName)($this->tm), 'Sin asignar', '2026-09-01', '24', 'No'])
+            ->and($overdue[2])->toBe(['De Ana', ($this->projectName)($this->tm), 'Ana', '2026-09-20', '5', 'No'])
+            ->and($overdue[3])->toBe(['Hito vencido', ($this->projectName)($this->tm), 'Luis', '2026-09-24', '1', 'Sí'])
+            ->and($overdue)->toHaveCount(4);
+
+        // Un responsable, solo lo de su alcance (D-044): las de su equipo.
+        $head = ($this->csv)($this->actingAs($this->head)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'tareas-vencidas']))
+            ->streamedContent());
+        expect(array_column(array_slice($head, 1), 0))->toBe(['De Ana', 'Hito vencido']);
+    });
+
+    it('exporta el reparto por cliente del departamento (BIZ-05)', function () {
+        $rows = ($this->csv)($this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv', 'tabla' => 'clientes']))
+            ->assertOk()->streamedContent());
+
+        expect($rows[0])->toBe(['Cliente', 'Horas imputadas', 'Horas facturables', '% del total', 'Facturabilidad (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and(array_column(array_slice($rows, 1), 0))->toContain('Cliente por horas', 'Interno (sin cliente)')
+            ->and(collect($rows)->firstWhere(0, 'Cliente por horas'))->toBe(['Cliente por horas', '7,00', '7,00', '29,60', '100,00', '395,00', '140,00', '255,00']);
+    });
+
+    it('exporta los repartos de la persona y sus días sin imputar (BIZ-05)', function () {
+        $url = fn (string $table): string => "/informes/personas/{$this->ana->id}".($this->week)(['formato' => 'csv', 'tabla' => $table]);
+
+        $clients = ($this->csv)($this->actingAs($this->ana)->get($url('clientes'))->assertOk()->streamedContent());
+        expect($clients[0])->toBe(['Cliente', 'Horas imputadas', 'Horas facturables', '% del total', 'Facturabilidad (%)'])
+            ->and(collect($clients)->firstWhere(0, 'Cliente por horas'))->toBe(['Cliente por horas', '7,00', '7,00', '63,60', '100,00']);
+
+        $projects = ($this->csv)($this->actingAs($this->ana)->get($url('proyectos'))->streamedContent());
+        expect($projects[0][0])->toBe('Proyecto')->and($projects)->toHaveCount(3);
+
+        $types = ($this->csv)($this->actingAs($this->ana)->get($url('tipos'))->streamedContent());
+        expect($types[0][0])->toBe('Tipo de tarea')->and($types[1][0])->toBe('Sin tipo');
+
+        // Ana imputa el 22, el 23 y el 24: el lunes 21 queda sin imputar (hasta ayer, jueves 24).
+        $unlogged = ($this->csv)($this->actingAs($this->ana)->get($url('dias-sin-imputar'))->assertOk()->streamedContent());
+        expect($unlogged)->toBe([['Fecha', 'Día', 'Jornada (h)'], ['21/09/2026', 'lunes', '8,00']]);
+    });
+
     it('exporta la tabla de miembros del departamento', function () {
         $admin = ($this->csv)($this->actingAs($this->admin)
             ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))

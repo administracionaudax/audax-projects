@@ -32,7 +32,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   imputadas / capacidad transcurrida hasta ayer (pace; D-080). Sin capacidad transcurrida, sin
  *   ritmo ni nivel («aún sin datos»),
  * - reparto por cliente y «Carga futura» (Fase 3),
- * - ?formato=xlsx|csv exporta la tabla de miembros (con ingreso, coste y margen si hay permiso).
+ * - ?formato=xlsx|csv exporta la tabla de miembros (con ingreso, coste y margen si hay permiso) y,
+ *   con tabla=clientes, el reparto por cliente completo (SPEC §10: cualquier tabla).
  *
  * @phpstan-type Member array{id: int, name: string, is_active: bool, capacity_minutes: int, capacity_to_date_minutes: int, logged_minutes: int,
  *     billable_minutes: int, occupancy: float|null, pace: float|null, billability: float|null, billable_productivity: float|null,
@@ -54,16 +55,25 @@ class DepartmentReportController extends Controller
         Gate::authorize('viewReport', $department);
 
         $scope = $this->reportScope($request, ['departmentIds' => [$department->id]]);
-        $members = $cache->remember($scope, self::daily('r1.department.members'), fn (): array => $this->members($scope, $metrics));
+        $clients = fn (): array => $cache->remember($scope, 'r1.department.clients', fn (): array => $this->withMargin($metrics->breakdown($scope, Dimension::Client)));
 
         $format = $this->exportFormat($request);
+        if ($format !== null && $request->query('tabla') === 'clientes') {
+            $rows = $clients();
+            [$headers, $lines] = $this->breakdownTable(Dimension::Client->label(), $rows, array_sum(array_column($rows, 'logged_minutes')), $scope->canSeeFinancials());
+
+            return $exporter->download(__('reports.r1.exports.department_table', ['department' => $department->name, 'table' => __('reports.r1.tables.clientes')]), $headers, $lines, $format);
+        }
+
+        $members = $cache->remember($scope, self::daily('r1.department.members'), fn (): array => $this->members($scope, $metrics));
+
         if ($format !== null) {
             [$headers, $rows] = $this->membersTable($members, $scope->canSeeFinancials());
 
             return $exporter->download(__('reports.r1.exports.department', ['department' => $department->name]), $headers, $rows, $format);
         }
 
-        $clients = $cache->remember($scope, 'r1.department.clients', fn (): array => $this->withMargin($metrics->breakdown($scope, Dimension::Client)));
+        $clients = $clients();
         $summaries = $this->summaries($scope, $metrics, $cache);
         $clients = $this->top($clients, self::TOP);
 
