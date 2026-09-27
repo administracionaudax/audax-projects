@@ -3,6 +3,7 @@
 use App\Domain\Reports\ReportCache;
 use App\Models\Department;
 use App\Models\Task;
+use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -104,6 +105,39 @@ it('agrupa por mes en columnas con los meses ordenados', function () {
             ->where('pivot.column_totals.2026-09-01', 1420)
             ->where('pivot.row_totals.'.$s->fixed->id, 300)
             ->where('pivot.total', 1480));
+});
+
+it('agrupa por bolsa × tipo de tarea y por cliente, con «Sin bolsa», «Sin tipo» e «Interno»', function () {
+    $s = $this->s;
+    $type = TaskType::factory()->create(['name' => 'Diseño web']);
+    $s->tmTask->update(['task_type_id' => $type->id]);
+
+    // Bolsa anual: 700 min, sin tipo. Sin bolsa: 420 de «Diseño web» (TM) + 240 (FIX) + 60 (INT) sin tipo.
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'bolsa', 'columnas' => 'tipo', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows', [
+                ['key' => null, 'name' => 'Sin bolsa'],
+                ['key' => (string) $s->bank->id, 'name' => 'BOL · Bolsa anual'],
+            ])
+            ->where('pivot.columns', [
+                ['key' => null, 'name' => 'Sin tipo'],
+                ['key' => (string) $type->id, 'name' => 'Diseño web'],
+            ])
+            ->where('pivot.cells', [
+                (string) $s->bank->id => ['' => 700],
+                '' => ['' => 300, (string) $type->id => 420],
+            ])
+            ->where('pivot.row_totals', ['' => 720, (string) $s->bank->id => 700])
+            ->where('pivot.column_totals', ['' => 1000, (string) $type->id => 420])
+            ->where('pivot.total', 1420));
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'cliente', 'columnas' => 'mes', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows.0.name', $s->bank->project->client->name)
+            ->where('pivot.row_totals', fn ($totals) => $totals[''] === 60 && $totals[$s->tm->client_id] === 420)
+            ->where('pivot.rows.3', ['key' => null, 'name' => 'Interno (sin cliente)']));
 });
 
 it('con semanas en las filas, van en orden de fecha (en la página y en la exportación)', function () {

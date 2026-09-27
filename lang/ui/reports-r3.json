@@ -4,7 +4,6 @@
     "reports_r3.detail.description": "Cruza las horas por dos dimensiones, con subtotales por fila y por columna.",
     "reports_r3.detail.scope_mine": "Ves solo tus propias horas.",
     "reports_r3.detail.summary": "Resumen del periodo",
-    "reports_r3.detail.billability_detail": "Facturabilidad: :percent",
     "reports_r3.detail.in_bank_detail": "Dentro de bolsa: :hours",
     "reports_r3.detail.loading": "Actualizando el informe…",
     "reports_r3.detail.network_error": "No se ha podido actualizar el informe. Revisa la conexión y vuelve a intentarlo.",
