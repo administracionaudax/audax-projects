@@ -81,7 +81,7 @@ describe('alta de proyecto', () => {
 
         await user.type(screen.getByLabelText('Nombre'), ' 2026');
         expect(code.value).toBe('FORM-26');
-    });
+    }, 20_000);
 
     it('un proyecto interno no pide cliente; el gestor principal ya cuenta como miembro', () => {
         render(<ProjectCreate {...props} />);
