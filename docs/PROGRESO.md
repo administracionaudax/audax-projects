@@ -58,14 +58,23 @@ _Última actualización: 27/09/2026 02:20_
 - **Tests:** 1363 de Pest en local; 1359 en PostgreSQL 18 en el servidor (todos en verde); 539 de Vitest; 232 E2E con Playwright y axe.
 - **Subida de 50 MB** comprobada contra el servidor: no hace falta tocar nginx, ModSecurity ni PHP.
 
+### Fase 2: informes (rama `fase-2`, desplegada el 27/09)
+- **Dashboards:** dirección, departamento, persona, cliente y proyecto, más facturación y el informe detallado. Todos tienen filtros en la URL, comparación «al mismo punto» y exportación a Excel y CSV.
+- **PDF y resumen:** PDF de consumo de bolsa y resumen semanal por email (D-043 a D-048, D-078 y D-079).
+- **Revisión global:** 21 hallazgos confirmados y corregidos con sus tests (D-080 a D-087). Entre ellos, los mismos céntimos en todas partes, la caché invalidada tras el commit y con el alcance de quien mira, y la capacidad por tramos.
+- **Tests:** 1717 de Pest en local y **1717 en PostgreSQL 18 en el servidor**, incluidos los de rendimiento de los dashboards (< 1 s); 637 de Vitest; **290 E2E** con Playwright y axe; CI en verde.
+- ✅ **FASE 2 CERRADA el 27/09/2026** (etiqueta `fase-2-cerrada`).
+
 ## En curso (modo autónomo, D-027)
-- **Fase 2 (informes):** contrato hecho (`docs/PLAN-FASE-2.md`, D-043 a D-048); agentes R1, R2 y R3 implementando.
-- **Fase 3 (carga):** contrato hecho (`docs/PLAN-FASE-3.md`, D-049 a D-052); agentes W1 y W2 implementando.
-- **Fase 4 (Gantt):** contrato hecho (`docs/PLAN-FASE-4.md`, D-056 a D-062); agentes G1, G2 y G3 implementando.
+- **Fase 3 (carga):** integrada, revisada y corregida (D-088 y D-091), con la Fase 2 ya fusionada. Falta la carga futura en el informe de departamento, E2E, despliegue y cierre.
+- **Fase 4 (Gantt):** integrada; corrigiendo los hallazgos de la revisión global.
+- **Fase 5 (portal):** integrada; en revisión global.
+- **Fase 6 (chat):** tres agentes implementando. El contenedor de transcripción ya está en el servidor.
+- **Fase 7 (pulido):** contrato hecho (D-073 a D-077); dos agentes implementando.
 
 ## Siguiente
-1. Integrar las Fases 2, 3 y 4 en orden, con revisión global, E2E y despliegue de cada una.
-2. Fase 5 (portal), Fase 6 (chat, Reverb y transcripción) y Fase 7 (pulido).
+1. Cerrar las Fases 3, 4 y 5 en orden, cada una con su revisión global, E2E y despliegue.
+2. Fase 6 (Reverb, transcriptor y directiva de nginx en el servidor) y Fase 7.
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).
