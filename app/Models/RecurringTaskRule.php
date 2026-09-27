@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,6 +49,15 @@ class RecurringTaskRule extends Model
     public const string WEEKLY = 'weekly';
 
     public const string MONTHLY = 'monthly';
+
+    /**
+     * Fechas admitidas (desde, hasta y las de las instancias): de 2000 a 2100, como el calendario
+     * de tareas (App\Domain\Planning\CalendarPeriod). Lo valida RecurringRuleRequest y
+     * occurrencesBetween() no da fechas fuera de ese rango.
+     */
+    public const string MIN_DATE = '2000-01-01';
+
+    public const string MAX_DATE = '2100-12-31';
 
     /**
      * @var array<string, mixed>
@@ -103,40 +114,101 @@ class RecurringTaskRule extends Model
     }
 
     /**
-     * Fechas de las instancias entre $from y $to (ambas incluidas), respetando starts_on y ends_on.
+     * Fechas de las instancias entre $from y $to (ambas incluidas), respetando starts_on, ends_on y
+     * el rango admitido (MIN_DATE a MAX_DATE). Semanal: cada `interval` semanas desde la semana de
+     * starts_on; mensual: cada `interval` meses desde su mes. El cursor salta directamente a la
+     * primera fecha de la serie dentro de la ventana, sin recorrerla desde starts_on: una regla que
+     * empezó hace siglos cuesta lo mismo que una de hoy. Gemelo de occurrencesBetween() en
+     * resources/js/components/recurring/recurrence.ts (casos compartidos en
+     * tests/fixtures/recurrence-cases.json).
      *
      * @return list<string>
      */
     public function occurrencesBetween(CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $start = $this->starts_on;
-        $end = $this->ends_on !== null && $this->ends_on < $to ? $this->ends_on : $to;
-        $interval = max($this->interval, 1);
-        $dates = [];
+        $low = max($from->toDateString(), $this->starts_on->toDateString(), self::MIN_DATE);
+        $high = min($to->toDateString(), $this->ends_on?->toDateString() ?? self::MAX_DATE, self::MAX_DATE);
 
-        if ($this->frequency === self::WEEKLY) {
-            $weekday = min(max($this->weekday ?? $start->dayOfWeekIso, 1), 7);
-            $cursor = $start->startOfWeek()->addDays($weekday - 1);
-            if ($cursor < $start) {
-                $cursor = $cursor->addWeeks($interval);
-            }
-            for (; $cursor <= $end; $cursor = $cursor->addWeeks($interval)) {
-                if ($cursor >= $from) {
-                    $dates[] = $cursor->toDateString();
-                }
-            }
-
-            return $dates;
+        if ($low > $high) {
+            return [];
         }
 
-        $monthDay = min(max($this->month_day ?? $start->day, 1), 31);
-        for ($month = $start->startOfMonth(); $month <= $end; $month = $month->addMonthsNoOverflow($interval)) {
-            $candidate = $month->setDay(min($monthDay, $month->daysInMonth));
-            if ($candidate >= $start && $candidate >= $from && $candidate <= $end) {
-                $dates[] = $candidate->toDateString();
+        $interval = max($this->interval, 1);
+
+        return $this->frequency === self::WEEKLY
+            ? $this->weeklyBetween($low, $high, $interval)
+            : $this->monthlyBetween($low, $high, $interval);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function weeklyBetween(string $low, string $high, int $interval): array
+    {
+        $start = self::dayNumber($this->starts_on->toDateString());
+        $startWeekday = $this->starts_on->dayOfWeekIso;
+        $weekday = min(max($this->weekday ?? $startWeekday, 1), 7);
+        $step = 7 * $interval;
+
+        // La primera de la serie: ese día de la semana de starts_on o, si ya pasó, N semanas después.
+        $day = $start - $startWeekday + $weekday;
+        if ($day < $start) {
+            $day += $step;
+        }
+
+        // Salta a la primera de la serie que no es anterior a la ventana.
+        $first = self::dayNumber($low);
+        if ($day < $first) {
+            $day += intdiv($first - $day + $step - 1, $step) * $step;
+        }
+
+        $dates = [];
+        for ($last = self::dayNumber($high); $day <= $last; $day += $step) {
+            $dates[] = gmdate('Y-m-d', $day * 86400);
+        }
+
+        return $dates;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function monthlyBetween(string $low, string $high, int $interval): array
+    {
+        $monthDay = min(max($this->month_day ?? $this->starts_on->day, 1), 31);
+
+        // Meses de la serie (año × 12 + mes − 1): el de starts_on y cada N meses, desde el primero
+        // que no es anterior al mes de la ventana.
+        $month = $this->starts_on->year * 12 + $this->starts_on->month - 1;
+        $first = self::monthIndex($low);
+        if ($month < $first) {
+            $month += intdiv($first - $month + $interval - 1, $interval) * $interval;
+        }
+
+        $dates = [];
+        for ($last = self::monthIndex($high); $month <= $last; $month += $interval) {
+            $year = intdiv($month, 12);
+            $number = $month % 12 + 1;
+            $days = (int) CarbonImmutable::create($year, $number, 1)->format('t');
+            $candidate = sprintf('%04d-%02d-%02d', $year, $number, min($monthDay, $days));
+
+            if ($candidate >= $low && $candidate <= $high) {
+                $dates[] = $candidate;
             }
         }
 
         return $dates;
+    }
+
+    /** Días desde el 1 de enero de 1970 (negativos antes), para cualquier año. */
+    private static function dayNumber(string $date): int
+    {
+        return intdiv((new DateTimeImmutable($date.' 00:00:00', new DateTimeZone('UTC')))->getTimestamp(), 86400);
+    }
+
+    /** «2026-10-05» → 2026 × 12 + 9. */
+    private static function monthIndex(string $date): int
+    {
+        return (int) substr($date, 0, 4) * 12 + (int) substr($date, 5, 2) - 1;
     }
 }

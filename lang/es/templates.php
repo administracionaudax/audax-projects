@@ -64,6 +64,7 @@ return [
         'rule_interval' => 'La repetición va de 1 a 12.',
         'rule_due_offset' => 'El vencimiento va de 0 a :max días.',
         'rule_ends_before' => 'La fecha final no puede ser anterior a la de inicio.',
+        'rule_date_range' => 'Elige una fecha entre el :min y el :max.',
     ],
 
     'attributes' => [
