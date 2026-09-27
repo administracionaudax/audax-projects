@@ -3,6 +3,8 @@
 use App\Domain\Notifications\NotificationPreferences;
 use App\Models\Client;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -63,6 +65,19 @@ test('una persona desactivada no entra', function () {
     $inactive = User::factory()->employee()->inactive()->create();
 
     $this->actingAs($inactive)->get($this->url)->assertRedirect(route('login'));
+});
+
+test('la página hace pocas consultas: las preferencias salen del catálogo y del usuario', function () {
+    $this->actingAs($this->employee)->get($this->url)->assertOk();
+    $count = 0;
+    DB::listen(function (QueryExecuted $query) use (&$count): void {
+        $count++;
+    });
+
+    $this->actingAs($this->employee)->get($this->url)->assertOk();
+
+    // Gestor de algún proyecto (una vez) y las props compartidas (temporizador, campana…).
+    expect($count)->toBeLessThanOrEqual(6);
 });
 
 test('la página lleva cada evento con su texto, sus canales y si es obligatorio', function () {
