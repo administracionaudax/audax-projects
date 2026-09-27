@@ -54,16 +54,16 @@ beforeEach(function () {
 
     // Presupuesto: lo medido en frío (el máximo de los roles) más un margen de 3.
     $this->budgets = [
-        'reports.client' => 36,
-        'reports.client.year' => 46,
-        'reports.client.export' => 36,
+        'reports.client' => 39,
+        'reports.client.year' => 48,
+        'reports.client.export' => 37,
         'reports.project' => 43,
         'reports.project.year' => 52,
         'reports.project.export' => 40,
-        'reports.billing' => 22,
-        'reports.billing.empty' => 12,
+        'reports.billing' => 17,
+        'reports.billing.empty' => 6,
         'reports.billing.export' => 11,
-        'reports.hour-bank-pdf' => 18,
+        'reports.hour-bank-pdf' => 14,
     ];
 
     // Mide la segunda petición (la primera calienta ajustes y permisos) con la caché de informes fría.

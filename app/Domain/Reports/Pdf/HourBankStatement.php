@@ -14,7 +14,6 @@ use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Setting;
-use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -92,19 +91,23 @@ final class HourBankStatement
                 ])
                 ->all());
 
-            $entries = array_values($approved()
-                ->with(['user:id,name', 'task' => fn ($query) => $query->select(['id', 'title'])])
+            // Filas sin hidratar, con la persona y la tarea por LEFT JOIN (una consulta).
+            $detail = $approved();
+            Dimension::ensureJoin($detail, 'users');
+            Dimension::ensureJoin($detail, 'tasks');
+            $entries = array_values($detail->toBase()
+                ->select(['time_entries.date', 'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description',
+                    'report_users.name as person', 'report_tasks.title as task'])
                 ->orderBy('time_entries.date')
                 ->orderBy('time_entries.id')
-                ->get(['time_entries.id', 'time_entries.user_id', 'time_entries.task_id', 'time_entries.date',
-                    'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description'])
-                ->map(fn (TimeEntry $entry): array => [
-                    'date' => $entry->date->toDateString(),
-                    'person' => $entry->user->name,
-                    'task' => $entry->task->title,
-                    'in_bank' => $entry->minutes - $entry->overage_minutes,
-                    'overage' => $entry->overage_minutes,
-                    'description' => (string) $entry->description,
+                ->get()
+                ->map(fn (object $row): array => [
+                    'date' => substr((string) $row->date, 0, 10),
+                    'person' => (string) $row->person,
+                    'task' => (string) $row->task,
+                    'in_bank' => (int) $row->minutes - (int) $row->overage_minutes,
+                    'overage' => (int) $row->overage_minutes,
+                    'description' => (string) $row->description,
                 ])
                 ->all());
 
