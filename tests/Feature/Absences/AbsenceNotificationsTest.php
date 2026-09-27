@@ -9,6 +9,7 @@ use App\Notifications\Absences\AbsenceApprovedNotification;
 use App\Notifications\Absences\AbsenceCancelledNotification;
 use App\Notifications\Absences\AbsenceRejectedNotification;
 use App\Notifications\Absences\AbsenceRequestedNotification;
+use App\Notifications\Absences\AbsenceUpdatedNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
@@ -45,6 +46,7 @@ test('cada aviso va a la campana y al email, por cola (el email, por la cola mai
     'rechazada' => [fn () => new AbsenceRejectedNotification($this->absence, $this->manager, 'No'), 'absence.rejected', 'calendar-x', '/ausencias'],
     'anulada' => [fn () => new AbsenceCancelledNotification($this->absence, $this->manager, byOwner: false), 'absence.cancelled', 'calendar-off', '/ausencias'],
     'cancelada por la persona' => [fn () => new AbsenceCancelledNotification($this->absence, $this->employee, byOwner: true), 'absence.cancelled', 'calendar-off', '/ausencias/equipo'],
+    'modificada' => [fn () => new AbsenceUpdatedNotification($this->absence, $this->manager, 'Vacaciones del 05/10/2026 al 16/10/2026'), 'absence.updated', 'calendar-clock', '/ausencias'],
 ]);
 
 test('el email de una solicitud saluda, explica y enlaza a «Ausencias del equipo»', function () {
@@ -67,6 +69,17 @@ test('el email de un rechazo lleva el comentario y enlaza a «Mis ausencias»', 
     expect($mail->subject)->toBe('Ausencia no aprobada: Vacaciones del 05/10/2026 al 09/10/2026')
         ->and($mail->introLines)->toContain('Raúl: «Es la entrega de ACME»')
         ->and($mail->actionText)->toBe('Ver mis ausencias')
+        ->and($mail->actionUrl)->toBe(url('/ausencias'));
+});
+
+test('el email de una ausencia modificada dice cómo era antes', function () {
+    $mail = (new AbsenceUpdatedNotification($this->absence, $this->manager, 'Vacaciones del 05/10/2026 al 16/10/2026'))->toMail($this->employee);
+
+    expect($mail->subject)->toBe('Raúl ha modificado tu ausencia: Vacaciones del 05/10/2026 al 09/10/2026')
+        ->and($mail->introLines)->toBe([
+            'Raúl ha modificado tu ausencia: Vacaciones del 05/10/2026 al 09/10/2026',
+            'Antes: Vacaciones del 05/10/2026 al 16/10/2026.',
+        ])
         ->and($mail->actionUrl)->toBe(url('/ausencias'));
 });
 

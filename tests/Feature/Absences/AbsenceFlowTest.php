@@ -415,11 +415,12 @@ test('los cambios de ausencias aprobadas invalidan la caché de los informes; lo
             $this->service->cancel($this->employee, $withdrawn);
         }))->toBeFalse();
 
-    // Aprobar, autoaprobar, registrar y anular una aprobada, sí.
+    // Aprobar, autoaprobar, registrar, modificar y anular una aprobada, sí.
     expect($bumped(fn () => $this->service->approve($this->manager, $refs['pending'])))->toBeTrue()
         ->and($bumped(fn () => $this->service->request($this->manager, $data('2026-10-19', '2026-10-20'))))->toBeTrue()
         ->and($bumped(function () use (&$refs, $data) {
             $refs['registered'] = $this->service->register($this->admin, $this->employee, $data('2026-11-16', '2026-11-17'));
         }))->toBeTrue()
+        ->and($bumped(fn () => $this->service->update($this->manager, $refs['registered'], $data('2026-11-16', '2026-11-16'))))->toBeTrue()
         ->and($bumped(fn () => $this->service->cancel($this->manager, $refs['registered'])))->toBeTrue();
 });

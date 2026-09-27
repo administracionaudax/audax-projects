@@ -40,6 +40,7 @@ final class AbsencePresenter
             'can' => [
                 'cancel' => $gate->allows('cancel', $absence),
                 'review' => $absence->status === AbsenceStatus::Requested && $gate->allows('review', $absence),
+                'update' => $absence->status === AbsenceStatus::Approved && $gate->allows('update', $absence),
             ],
         ];
 

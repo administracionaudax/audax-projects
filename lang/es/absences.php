@@ -18,6 +18,7 @@ return [
         'overlap_other' => 'Se solapa con otra ausencia de :name: :type :period (:status).',
         'not_requested' => 'Esta ausencia ya no está pendiente: está :status.',
         'not_cancellable' => 'Esta ausencia ya no se puede cancelar.',
+        'not_editable' => 'Esta ausencia ya no se puede modificar: está :status.',
         'reject_comment_required' => 'Explica por qué no se aprueba: el comentario es obligatorio.',
         'cannot_register' => 'No puedes registrar ausencias de esta persona.',
     ],
@@ -30,6 +31,8 @@ return [
         'rejected' => 'Ausencia de :name rechazada. Se lo hemos comunicado.',
         'cancelled' => 'Ausencia cancelada.',
         'annulled' => 'Ausencia de :name anulada.',
+        'updated' => 'Ausencia de :name modificada: :type :period. Se lo hemos comunicado.',
+        'unchanged' => 'La ausencia de :name no tenía cambios.',
     ],
 
     // Fechas de una ausencia en frases («del 05/10/2026 al 09/10/2026», «el 05/10/2026»).
@@ -72,6 +75,10 @@ return [
         'withdrawn' => [
             'title' => ':name ha cancelado su ausencia: :type :period',
             'body' => 'Esos días vuelven a contar como jornada normal.',
+        ],
+        'updated' => [
+            'title' => ':actor ha modificado tu ausencia: :type :period',
+            'body' => 'Antes: :before.',
         ],
     ],
 

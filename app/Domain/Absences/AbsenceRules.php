@@ -10,7 +10,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Reglas de una ausencia (D-049), comunes a solicitarla y a registrarla ya aprobada:
+ * Reglas de una ausencia (D-049), comunes a solicitarla, a registrarla ya aprobada y a modificarla:
  * - la persona es interna y está activa,
  * - fin ≥ inicio y, como mucho, un año (de un día al mismo día del año siguiente, sin incluirlo),
  * - fechas entre dos años atrás y dos años adelante (lo que calculan la carga y los informes),
@@ -26,9 +26,11 @@ final class AbsenceRules
     public const int MAX_PARTIAL_MINUTES = 24 * 60 - 1;
 
     /**
+     * @param  int|null  $ignoreId  La ausencia que se modifica: no cuenta como solape consigo misma.
+     *
      * @throws ValidationException
      */
-    public function check(User $actor, User $target, AbsenceData $data): void
+    public function check(User $actor, User $target, AbsenceData $data, ?int $ignoreId = null): void
     {
         $errors = [];
 
@@ -66,7 +68,7 @@ final class AbsenceRules
             }
         }
 
-        if ($errors === [] && ($overlap = $this->overlapping($target, $data)) !== null) {
+        if ($errors === [] && ($overlap = $this->overlapping($target, $data, $ignoreId)) !== null) {
             $replace = [
                 'type' => $overlap->type->label(),
                 'period' => AbsenceText::period($overlap->start_date->toDateString(), $overlap->end_date->toDateString(), $overlap->partial_minutes),

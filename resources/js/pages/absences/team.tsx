@@ -1,5 +1,11 @@
 import { Head, router } from '@inertiajs/react';
-import { CalendarCheck, TriangleAlert, UserPlus, Users } from 'lucide-react';
+import {
+    CalendarCheck,
+    Pencil,
+    TriangleAlert,
+    UserPlus,
+    Users,
+} from 'lucide-react';
 import { useId } from 'react';
 import {
     ApproveAbsenceButton,
@@ -71,7 +77,8 @@ function Overlaps({ absence }: { absence: PendingAbsence }) {
  * «Ausencias del equipo» (/ausencias/equipo, D-049, D-021): para responsables (su departamento) y
  * admins. Solicitudes pendientes con las ausencias que coinciden en su departamento (aprobar o
  * rechazar con comentario), el calendario mensual con ausencias y festivos, las próximas
- * aprobadas (que se pueden anular) y registrar una ausencia ya aprobada.
+ * aprobadas (que se pueden modificar, p. ej. acortar una baja, o anular) y registrar una ausencia
+ * ya aprobada.
  */
 export default function TeamAbsences({
     pending,
@@ -258,6 +265,35 @@ export default function TeamAbsences({
                                     person={absence.user}
                                     today={today}
                                 >
+                                    {absence.can.update ? (
+                                        <AbsenceDialog
+                                            mode="edit"
+                                            types={types}
+                                            limits={limits}
+                                            absence={absence}
+                                            personName={absence.user.name}
+                                            trigger={
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    aria-label={t(
+                                                        'absences.team.edit_label',
+                                                        {
+                                                            name: absence.user
+                                                                .name,
+                                                            period: absencePeriodLabel(
+                                                                absence,
+                                                            ),
+                                                        },
+                                                    )}
+                                                >
+                                                    <Pencil aria-hidden="true" />
+                                                    {t('absences.team.edit')}
+                                                </Button>
+                                            }
+                                        />
+                                    ) : null}
                                     {absence.can.cancel ? (
                                         <CancelAbsenceButton
                                             absence={absence}

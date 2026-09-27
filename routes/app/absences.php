@@ -28,6 +28,7 @@ Route::middleware('can:viewTeam,'.Absence::class)->group(function () {
     Route::post('ausencias/equipo', [TeamAbsenceController::class, 'store'])->name('absences.team.store');
     Route::post('ausencias/{absence}/aprobar', [TeamAbsenceController::class, 'approve'])->whereNumber('absence')->name('absences.approve');
     Route::post('ausencias/{absence}/rechazar', [TeamAbsenceController::class, 'reject'])->whereNumber('absence')->name('absences.reject');
+    Route::put('ausencias/{absence}', [TeamAbsenceController::class, 'update'])->whereNumber('absence')->name('absences.update');
 });
 
 // Festivos (gate manage-settings).

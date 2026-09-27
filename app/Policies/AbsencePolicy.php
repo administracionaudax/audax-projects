@@ -14,7 +14,9 @@ use App\Support\LocalTime;
  *   responsables y admins se aprueban solas al solicitarlas),
  * - un admin o un responsable registra una ausencia ya aprobada de alguien de su ámbito,
  * - la persona cancela las suyas solicitadas o las aprobadas que aún no han empezado; quien puede
- *   aprobarlas anula una aprobada (queda en la auditoría).
+ *   aprobarlas anula una aprobada (queda en la auditoría),
+ * - quien puede aprobarlas modifica una aprobada de otra persona (acortar una baja que termina
+ *   antes, por ejemplo), nunca la suya: como al revisar.
  * Los clientes nunca llegan aquí (middleware internal) y un desactivado no puede nada (Gate::before).
  */
 class AbsencePolicy
@@ -57,6 +59,17 @@ class AbsencePolicy
     public function review(User $user, Absence $absence): bool
     {
         return $user->id !== $absence->user_id && $this->approves($user, $absence);
+    }
+
+    /**
+     * Modificar una ausencia aprobada (tipo, fechas, parte del día y notas): quien puede aprobarla,
+     * nunca la propia persona.
+     */
+    public function update(User $user, Absence $absence): bool
+    {
+        return $absence->status === AbsenceStatus::Approved
+            && $user->id !== $absence->user_id
+            && $this->approves($user, $absence);
     }
 
     public function cancel(User $user, Absence $absence): bool

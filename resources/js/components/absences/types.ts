@@ -35,7 +35,8 @@ export type AbsenceRow = {
     reviewed_at: string | null;
     reviewer: { id: number; name: string } | null;
     auto_approved: boolean;
-    can: { cancel: boolean; review: boolean };
+    /** update: modificar una aprobada de otra persona (quien la aprueba). */
+    can: { cancel: boolean; review: boolean; update: boolean };
     /** Solo en «Ausencias del equipo». */
     user?: AbsencePerson;
 };

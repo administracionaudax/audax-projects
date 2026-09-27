@@ -2,7 +2,11 @@ import { useForm } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { absenceTypeLabel } from '@/components/absences/absence-meta';
-import type { AbsenceLimits, AbsenceType } from '@/components/absences/types';
+import type {
+    AbsenceLimits,
+    AbsenceRow,
+    AbsenceType,
+} from '@/components/absences/types';
 import { describedBy, Field } from '@/components/admin/field';
 import { NativeSelect } from '@/components/admin/native-select';
 import { DatePicker } from '@/components/domain/date-picker';
@@ -24,7 +28,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { t } from '@/lib/i18n';
-import { store as storeAbsence } from '@/routes/absences';
+import {
+    store as storeAbsence,
+    update as updateAbsence,
+} from '@/routes/absences';
 import { store as registerAbsence } from '@/routes/absences/team';
 
 /** Minutos máximos de una ausencia de parte del día (AbsenceRules::MAX_PARTIAL_MINUTES). */
@@ -42,21 +49,45 @@ type AbsenceForm = {
     notes: string;
 };
 
+/** La ausencia que se modifica (modo «edit»). */
+type EditedAbsence = Pick<
+    AbsenceRow,
+    'id' | 'type' | 'start_date' | 'end_date' | 'partial_minutes' | 'notes'
+>;
+
 type Props = {
-    /** «request»: la persona pide una suya. «register»: un responsable o admin registra una aprobada. */
-    mode: 'request' | 'register';
+    /**
+     * «request»: la persona pide una suya. «register»: un responsable o admin registra una aprobada.
+     * «edit»: quien la aprueba modifica una aprobada de otra persona (`absence` y `personName`).
+     */
+    mode: 'request' | 'register' | 'edit';
     types: AbsenceType[];
     limits: AbsenceLimits;
     /** Solicitudes de un responsable o admin: se aprueban solas (D-049). */
     selfApproves?: boolean;
     /** Personas de su ámbito (solo «register»). */
     people?: { id: number; name: string }[];
+    /** Solo «edit». */
+    absence?: EditedAbsence;
+    personName?: string;
     trigger?: ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
 };
 
-function initial(types: AbsenceType[]): AbsenceForm {
+function initial(types: AbsenceType[], absence?: EditedAbsence): AbsenceForm {
+    if (absence) {
+        return {
+            user_id: '',
+            type: absence.type,
+            length: absence.partial_minutes === null ? 'full' : 'partial',
+            start_date: absence.start_date,
+            end_date: absence.end_date,
+            partial_minutes: absence.partial_minutes,
+            notes: absence.notes ?? '',
+        };
+    }
+
     return {
         user_id: '',
         type: types[0] ?? 'vacation',
@@ -70,8 +101,9 @@ function initial(types: AbsenceType[]): AbsenceForm {
 
 /**
  * Formulario de una ausencia (D-049): tipo, días completos (desde y hasta) o parte de UN día (con
- * sus horas), y notas. Las reglas (solapes, un año como mucho, parcial de un día) las valida el
- * servidor y sus errores salen junto a cada campo.
+ * sus horas), y notas. Sirve para solicitarla, registrarla ya aprobada o modificar una aprobada.
+ * Las reglas (solapes, un año como mucho, parcial de un día) las valida el servidor y sus errores
+ * salen junto a cada campo.
  */
 export function AbsenceDialog({
     mode,
@@ -79,6 +111,8 @@ export function AbsenceDialog({
     limits,
     selfApproves = false,
     people = [],
+    absence,
+    personName = '',
     trigger,
     open: controlledOpen,
     onOpenChange,
@@ -86,15 +120,17 @@ export function AbsenceDialog({
     const id = useId();
     const [internalOpen, setInternalOpen] = useState(false);
     const open = controlledOpen ?? internalOpen;
-    const form = useForm<AbsenceForm>(initial(types));
+    const form = useForm<AbsenceForm>(initial(types, absence));
     const errors = form.errors as Record<string, string | undefined>;
     const partial = form.data.length === 'partial';
     const register = mode === 'register';
+    const edit = mode === 'edit' && absence !== undefined;
 
-    // Se vacía al abrir desde su botón y al cerrar: así también sale limpio cuando lo abre la
-    // página (open controlado, p. ej. con ?solicitar=1).
+    // Se vacía (o, al modificar, vuelve a los datos de la ausencia) al abrir desde su botón y al
+    // cerrar: así también sale limpio cuando lo abre la página (open controlado, p. ej. con
+    // ?solicitar=1).
     const setOpen = (next: boolean) => {
-        form.setData(initial(types));
+        form.setData(initial(types, absence));
         form.clearErrors();
         setInternalOpen(next);
         onOpenChange?.(next);
@@ -146,26 +182,34 @@ export function AbsenceDialog({
             onSuccess: () => setOpen(false),
         };
 
-        if (register) {
+        if (edit) {
+            form.put(updateAbsence.url(absence.id), options);
+        } else if (register) {
             form.post(registerAbsence.url(), options);
         } else {
             form.post(storeAbsence.url(), options);
         }
     };
 
-    const title = register
-        ? t('absences.form.register_title')
-        : t('absences.form.request_title');
-    const description = register
-        ? t('absences.form.register_description')
-        : selfApproves
-          ? t('absences.form.request_description_self')
-          : t('absences.form.request_description');
-    const submitLabel = register
-        ? t('absences.form.submit_register')
-        : selfApproves
-          ? t('absences.form.submit_self')
-          : t('absences.form.submit_request');
+    const title = edit
+        ? t('absences.form.edit_title', { name: personName })
+        : register
+          ? t('absences.form.register_title')
+          : t('absences.form.request_title');
+    const description = edit
+        ? t('absences.form.edit_description', { name: personName })
+        : register
+          ? t('absences.form.register_description')
+          : selfApproves
+            ? t('absences.form.request_description_self')
+            : t('absences.form.request_description');
+    const submitLabel = edit
+        ? t('absences.form.submit_edit')
+        : register
+          ? t('absences.form.submit_register')
+          : selfApproves
+            ? t('absences.form.submit_self')
+            : t('absences.form.submit_request');
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -386,6 +430,15 @@ export function AbsenceDialog({
                             })}
                         />
                     </Field>
+
+                    {/* Errores de la ausencia en sí (p. ej., ya no se puede modificar) y, al
+                        modificarla, los de la persona, que no tiene campo propio. */}
+                    <InputError
+                        message={
+                            errors.absence ??
+                            (edit ? errors.user_id : undefined)
+                        }
+                    />
 
                     <DialogFooter className="gap-2">
                         <DialogClose asChild>

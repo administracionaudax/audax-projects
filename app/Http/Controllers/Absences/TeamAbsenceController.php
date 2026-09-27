@@ -12,6 +12,7 @@ use App\Domain\Absences\SpanishNationalHolidays;
 use App\Enums\AbsenceStatus;
 use App\Http\Requests\Absences\RegisterAbsenceRequest;
 use App\Http\Requests\Absences\RejectAbsenceRequest;
+use App\Http\Requests\Absences\UpdateAbsenceRequest;
 use App\Models\Absence;
 use App\Models\Department;
 use App\Models\Holiday;
@@ -32,7 +33,8 @@ use Inertia\Response;
  * - Pendientes de aprobar, con las ausencias del mismo departamento que coinciden en fechas;
  *   aprobar y rechazar con comentario.
  * - Calendario mensual (?mes=2026-10) con las ausencias aprobadas y solicitadas y los festivos.
- * - Próximas ausencias aprobadas, que quien aprueba puede anular.
+ * - Próximas ausencias aprobadas, que quien aprueba puede modificar (acortar una baja, por ejemplo)
+ *   o anular.
  * - Registrar una ausencia ya aprobada de alguien de su ámbito.
  * Filtro por departamento (?departamento=3) entre los que puede ver.
  */
@@ -224,6 +226,28 @@ class TeamAbsenceController extends AbsencesController
         $absence = $this->absences->reject($reviewer, $absence, $request->string('comment')->toString());
 
         $this->toast(AbsenceText::get('absences.flash.rejected', ['name' => $absence->user->name]));
+
+        return back();
+    }
+
+    /**
+     * PUT /ausencias/{absence}: quien puede aprobarla modifica una ausencia aprobada de otra persona.
+     */
+    public function update(UpdateAbsenceRequest $request, Absence $absence): RedirectResponse
+    {
+        $this->authorize('update', $absence);
+
+        /** @var User $actor */
+        $actor = $request->user();
+        $absence = $this->absences->update($actor, $absence, $request->absenceData());
+
+        $changed = $absence->wasChanged();
+
+        $this->toast(AbsenceText::get($changed ? 'absences.flash.updated' : 'absences.flash.unchanged', [
+            'name' => $absence->user->name,
+            'type' => $absence->type->label(),
+            'period' => AbsenceText::period($absence->start_date->toDateString(), $absence->end_date->toDateString(), $absence->partial_minutes),
+        ]), $changed ? 'success' : 'info');
 
         return back();
     }

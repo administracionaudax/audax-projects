@@ -57,6 +57,8 @@
     "absences.form.request_description_self": "Como responsable, se aprueba sola al guardarla y resta de tu capacidad al momento.",
     "absences.form.register_title": "Registrar una ausencia aprobada",
     "absences.form.register_description": "Para una baja o una ausencia ya acordada: queda aprobada al momento y avisamos a la persona.",
+    "absences.form.edit_title": "Modificar la ausencia de :name",
+    "absences.form.edit_description": "Cambia el tipo, las fechas o las horas (por ejemplo, si una baja termina antes). Sigue aprobada y avisamos a :name de lo que cambia.",
     "absences.form.person": "Persona",
     "absences.form.person_placeholder": "Elige una persona",
     "absences.form.type": "Tipo",
@@ -76,6 +78,7 @@
     "absences.form.submit_request": "Enviar la solicitud",
     "absences.form.submit_self": "Guardar la ausencia",
     "absences.form.submit_register": "Registrar la ausencia",
+    "absences.form.submit_edit": "Guardar los cambios",
     "absences.form.pick_date": "Elige una fecha",
 
     "absences.team.title": "Ausencias del equipo",
@@ -102,6 +105,8 @@
     "absences.team.reject_confirm": "Rechazar la ausencia",
     "absences.team.upcoming": "Próximas ausencias aprobadas (:count)",
     "absences.team.upcoming_empty": "No hay ausencias aprobadas próximas.",
+    "absences.team.edit": "Modificar",
+    "absences.team.edit_label": "Modificar la ausencia de :name :period",
     "absences.team.no_people": "No hay personas en tu ámbito",
     "absences.team.no_people_description": "Cuando haya personas activas en los departamentos que diriges, verás aquí sus ausencias.",
 

@@ -62,7 +62,7 @@ test('«Mis ausencias» muestra solo las de quien mira, con días laborables, re
             ->where('absences.1.id', $pending->id)
             ->where('absences.1.working_days', 4)
             ->where('absences.1.notes', 'Viaje')
-            ->where('absences.1.can', ['cancel' => true, 'review' => false])
+            ->where('absences.1.can', ['cancel' => true, 'review' => false, 'update' => false])
             ->where('absences.2.status', 'rejected')
             ->where('absences.2.review_comment', 'No')
             ->where('absences.2.can.cancel', false)
@@ -99,13 +99,13 @@ test('«Ausencias del equipo»: un responsable ve las de su departamento con las
             ->where('pending.0.user.name', 'Elena')
             ->where('pending.0.user.department.name', 'Diseño')
             ->where('pending.0.working_days', 5)
-            ->where('pending.0.can', ['cancel' => false, 'review' => true])
+            ->where('pending.0.can', ['cancel' => false, 'review' => true, 'update' => false])
             ->has('pending.0.overlaps', 1)
             ->where('pending.0.overlaps.0.user_name', 'Bruno')
             ->where('pending.0.overlaps.0.type', 'training')
             ->has('upcoming', 1)
             ->where('upcoming.0.user.name', 'Raúl')
-            ->where('upcoming.0.can.cancel', true)
+            ->where('upcoming.0.can', ['cancel' => true, 'review' => false, 'update' => false])
             ->where('calendar.month', '2026-10')
             ->where('calendar.current', '2026-09')
             ->where('calendar.previous', '2026-09')
@@ -202,10 +202,12 @@ test('matriz de permisos de las rutas de ausencias', function (string $role, arr
         'invitado' => null,
     };
 
-    // Una solicitud de Elena (Diseño) para aprobar, otra para rechazar y una aprobada para anular.
+    // Una solicitud de Elena (Diseño) para aprobar, otra para rechazar, una aprobada para anular y
+    // otra para modificar.
     $toApprove = $this->service->request($this->employee, new AbsenceData(AbsenceType::Vacation, '2026-10-05', '2026-10-06'));
     $toReject = $this->service->request($this->employee, new AbsenceData(AbsenceType::Vacation, '2026-10-13', '2026-10-14'));
     $toAnnul = Absence::factory()->for($this->employee)->approved()->between('2026-11-02', '2026-11-03')->create();
+    $toEdit = Absence::factory()->for($this->employee)->approved()->between('2026-11-16', '2026-11-20')->create(['type' => AbsenceType::Sick]);
 
     $requests = [
         'index' => fn () => $this->get('/ausencias'),
@@ -216,6 +218,7 @@ test('matriz de permisos de las rutas de ausencias', function (string $role, arr
         'approve' => fn () => $this->post("/ausencias/{$toApprove->id}/aprobar"),
         'reject' => fn () => $this->post("/ausencias/{$toReject->id}/rechazar", ['comment' => 'No puede ser']),
         'annul' => fn () => $this->post("/ausencias/{$toAnnul->id}/cancelar"),
+        'update' => fn () => $this->put("/ausencias/{$toEdit->id}", ['type' => 'sick', 'start_date' => '2026-11-16', 'end_date' => '2026-11-18']),
     ];
 
     $statuses = [];
@@ -234,12 +237,12 @@ test('matriz de permisos de las rutas de ausencias', function (string $role, arr
 
     expect($statuses)->toBe($expected);
 })->with([
-    'admin' => ['admin', ['index' => 200, 'store' => 302, 'team' => 200, 'pending' => 200, 'register' => 302, 'approve' => 302, 'reject' => 302, 'annul' => 302]],
-    'responsable' => ['responsable', ['index' => 200, 'store' => 302, 'team' => 200, 'pending' => 200, 'register' => 302, 'approve' => 302, 'reject' => 302, 'annul' => 302]],
-    'gestor' => ['gestor', ['index' => 200, 'store' => 302, 'team' => 403, 'pending' => 403, 'register' => 403, 'approve' => 403, 'reject' => 403, 'annul' => 403]],
-    'empleado' => ['empleado', ['index' => 200, 'store' => 302, 'team' => 403, 'pending' => 403, 'register' => 403, 'approve' => 403, 'reject' => 403, 'annul' => 403]],
-    'cliente' => ['cliente', ['index' => 'portal', 'store' => 'portal', 'team' => 'portal', 'pending' => 'portal', 'register' => 'portal', 'approve' => 'portal', 'reject' => 'portal', 'annul' => 'portal']],
-    'invitado' => ['invitado', ['index' => 'login', 'store' => 'login', 'team' => 'login', 'pending' => 'login', 'register' => 'login', 'approve' => 'login', 'reject' => 'login', 'annul' => 'login']],
+    'admin' => ['admin', ['index' => 200, 'store' => 302, 'team' => 200, 'pending' => 200, 'register' => 302, 'approve' => 302, 'reject' => 302, 'annul' => 302, 'update' => 302]],
+    'responsable' => ['responsable', ['index' => 200, 'store' => 302, 'team' => 200, 'pending' => 200, 'register' => 302, 'approve' => 302, 'reject' => 302, 'annul' => 302, 'update' => 302]],
+    'gestor' => ['gestor', ['index' => 200, 'store' => 302, 'team' => 403, 'pending' => 403, 'register' => 403, 'approve' => 403, 'reject' => 403, 'annul' => 403, 'update' => 403]],
+    'empleado' => ['empleado', ['index' => 200, 'store' => 302, 'team' => 403, 'pending' => 403, 'register' => 403, 'approve' => 403, 'reject' => 403, 'annul' => 403, 'update' => 403]],
+    'cliente' => ['cliente', ['index' => 'portal', 'store' => 'portal', 'team' => 'portal', 'pending' => 'portal', 'register' => 'portal', 'approve' => 'portal', 'reject' => 'portal', 'annul' => 'portal', 'update' => 'portal']],
+    'invitado' => ['invitado', ['index' => 'login', 'store' => 'login', 'team' => 'login', 'pending' => 'login', 'register' => 'login', 'approve' => 'login', 'reject' => 'login', 'annul' => 'login', 'update' => 'login']],
 ]);
 
 test('la matriz deja cada ausencia como corresponde a quien actuó', function () {

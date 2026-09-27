@@ -11,14 +11,15 @@ use App\Notifications\Absences\AbsenceApprovedNotification;
 use App\Notifications\Absences\AbsenceCancelledNotification;
 use App\Notifications\Absences\AbsenceRejectedNotification;
 use App\Notifications\Absences\AbsenceRequestedNotification;
+use App\Notifications\Absences\AbsenceUpdatedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Flujo de las ausencias (SPEC §4.1 y §13, D-049): solicitar, aprobar, rechazar, cancelar o anular
- * y registrar una ya aprobada.
+ * Flujo de las ausencias (SPEC §4.1 y §13, D-049): solicitar, aprobar, rechazar, cancelar o anular,
+ * registrar una ya aprobada y modificar una aprobada.
  *
  * - Cada paso lo autoriza AbsencePolicy y va en una transacción: al crear, con la persona
  *   bloqueada (dos solicitudes a la vez no se solapan); al revisar o cancelar, con la ausencia
@@ -29,7 +30,7 @@ use Illuminate\Validation\ValidationException;
  *   de los informes (ReportCache::bump(), D-046) tras confirmar la transacción.
  * - Las ausencias de responsables y admins se aprueban solas al solicitarlas (sin aviso a nadie,
  *   como las semanas de horas, D-041). `approved_by` guarda quién la revisó: quien la aprueba, la
- *   rechaza o la registra; null en la aprobación automática.
+ *   rechaza, la registra o la modifica; null en la aprobación automática.
  */
 final class AbsenceService
 {
@@ -59,7 +60,7 @@ final class AbsenceService
         $autoApproved = $this->selfApproves($actor);
 
         $absence = DB::transaction(function () use ($actor, $data, $autoApproved): Absence {
-            $this->lockPerson($actor);
+            $this->lockPerson($actor->id);
             $this->rules->check($actor, $actor, $data);
 
             return Absence::query()->create([
@@ -95,7 +96,7 @@ final class AbsenceService
         }
 
         $absence = DB::transaction(function () use ($actor, $target, $data): Absence {
-            $this->lockPerson($target);
+            $this->lockPerson($target->id);
             $this->rules->check($actor, $target, $data);
 
             return Absence::query()->create([
@@ -178,6 +179,64 @@ final class AbsenceService
     }
 
     /**
+     * Quien puede aprobarla modifica una ausencia aprobada de otra persona: tipo, fechas, parte del
+     * día y notas (acortar una baja que termina antes, por ejemplo). Con las mismas reglas que al
+     * crearla, sin contar la propia ausencia como solape. Si cambia algo, queda como revisada por
+     * quien la modifica y se avisa a la persona con lo que había antes; si no cambia nada, no se
+     * guarda ni se avisa (wasChanged() lo dice).
+     *
+     * @throws ValidationException
+     */
+    public function update(User $actor, Absence $absence, AbsenceData $data): Absence
+    {
+        Gate::forUser($actor)->authorize('update', $absence);
+
+        /** @var array{0: Absence, 1: string|null} $result */
+        $result = DB::transaction(function () use ($actor, $absence, $data): array {
+            $this->lockPerson($absence->user_id);
+            $current = $this->relock($absence);
+
+            if (Gate::forUser($actor)->denies('update', $current)) {
+                throw ValidationException::withMessages(['absence' => AbsenceText::get('absences.errors.not_editable', [
+                    'status' => AbsenceText::status($current->status),
+                ])]);
+            }
+
+            $this->rules->check($actor, $current->user, $data, ignoreId: $current->id);
+
+            $before = $current->type->label().' '.AbsenceText::period(
+                $current->start_date->toDateString(),
+                $current->end_date->toDateString(),
+                $current->partial_minutes,
+            );
+
+            $current->fill($data->attributes());
+
+            if (! $current->isDirty()) {
+                return [$current, null];
+            }
+
+            $current->fill(['approved_by' => $actor->id, 'reviewed_at' => now()])->save();
+
+            return [$current, $before];
+        });
+
+        [$absence, $before] = $result;
+
+        if ($before === null) {
+            return $absence;
+        }
+
+        ReportCache::bump();
+
+        if ($absence->user->id !== $actor->id && $absence->user->is_active) {
+            $absence->user->notify(new AbsenceUpdatedNotification($absence, $actor, $before));
+        }
+
+        return $absence;
+    }
+
+    /**
      * La persona cancela una suya (solicitada, o aprobada que aún no ha empezado) o quien puede
      * aprobarla anula una aprobada. Si era aprobada, se avisa a la otra parte.
      *
@@ -227,9 +286,9 @@ final class AbsenceService
     /**
      * Bloquea a la persona mientras se comprueban los solapes y se crea su ausencia.
      */
-    private function lockPerson(User $person): void
+    private function lockPerson(int $userId): void
     {
-        User::query()->whereKey($person->id)->lockForUpdate()->first(['id']);
+        User::query()->whereKey($userId)->lockForUpdate()->first(['id']);
     }
 
     private function relock(Absence $absence): Absence

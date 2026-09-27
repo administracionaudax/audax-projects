@@ -81,7 +81,7 @@ function row(overrides: Partial<AbsenceRow> = {}): AbsenceRow {
         reviewed_at: null,
         reviewer: null,
         auto_approved: false,
-        can: { cancel: true, review: false },
+        can: { cancel: true, review: false, update: false },
         ...overrides,
     };
 }
@@ -110,7 +110,7 @@ function myProps(
                 working_days: 2,
                 reviewer: { id: 3, name: 'Raúl' },
                 review_comment: 'Es la entrega de ACME',
-                can: { cancel: false, review: false },
+                can: { cancel: false, review: false, update: false },
             }),
         ],
         types: TYPES,
@@ -123,6 +123,7 @@ function myProps(
 }
 
 const post = vi.spyOn(coreRouter, 'post').mockImplementation(() => {});
+const put = vi.spyOn(coreRouter, 'put').mockImplementation(() => {});
 
 beforeEach(() => {
     page.url = '/ausencias';
@@ -131,6 +132,7 @@ beforeEach(() => {
     inertia.post.mockReset();
     inertia.replace.mockReset();
     post.mockClear();
+    put.mockClear();
 });
 
 /** Elige el día 15 del mes que muestra el calendario abierto con el botón `label`. */
@@ -464,11 +466,91 @@ describe('calendario del equipo', () => {
     });
 });
 
+describe('modificar una ausencia aprobada', { timeout: 20_000 }, () => {
+    it('una parte del día sale marcada con sus horas y se guarda igual si no se toca', async () => {
+        const user = userEvent.setup();
+        render(
+            <AbsenceDialog
+                mode="edit"
+                types={TYPES}
+                limits={LIMITS}
+                absence={row({
+                    id: 12,
+                    type: 'leave',
+                    status: 'approved',
+                    start_date: '2026-11-02',
+                    end_date: '2026-11-02',
+                    partial_minutes: 150,
+                })}
+                personName="Elena"
+                open
+                onOpenChange={() => {}}
+            />,
+        );
+
+        expect(
+            (screen.getByLabelText('Parte de un día') as HTMLButtonElement)
+                .dataset.state,
+        ).toBe('checked');
+        expect(
+            (screen.getByLabelText('Horas que faltas') as HTMLInputElement)
+                .value,
+        ).toBe('2:30');
+
+        await user.click(
+            screen.getByRole('button', { name: 'Guardar los cambios' }),
+        );
+
+        const [url, data] = put.mock.calls[0] as unknown as [
+            string,
+            Record<string, unknown>,
+        ];
+        expect(url).toBe('/ausencias/12');
+        expect(data).toEqual({
+            type: 'leave',
+            start_date: '2026-11-02',
+            end_date: '2026-11-02',
+            partial_minutes: 150,
+            notes: null,
+        });
+    });
+
+    it('muestra el error de una ausencia que ya no se puede modificar', async () => {
+        const user = userEvent.setup();
+        put.mockImplementationOnce((_url, _data, options) => {
+            options?.onError?.({
+                absence:
+                    'Esta ausencia ya no se puede modificar: está cancelada.',
+            });
+        });
+        render(
+            <AbsenceDialog
+                mode="edit"
+                types={TYPES}
+                limits={LIMITS}
+                absence={row({ id: 12, status: 'approved' })}
+                personName="Elena"
+                open
+                onOpenChange={() => {}}
+            />,
+        );
+        expect(screen.queryByRole('alert')).toBeNull();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Guardar los cambios' }),
+        );
+
+        expect((await screen.findByRole('alert')).textContent).toBe(
+            'Esta ausencia ya no se puede modificar: está cancelada.',
+        );
+    });
+});
+
 function teamProps(
     overrides: Partial<TeamAbsencesPageProps> = {},
 ): TeamAbsencesPageProps {
     const pending: PendingAbsence = {
-        ...row({ id: 5, can: { cancel: false, review: true } }),
+        ...row({ id: 5, can: { cancel: false, review: true, update: false } }),
         user: {
             id: 7,
             name: 'Elena',
@@ -497,7 +579,7 @@ function teamProps(
                     start_date: '2026-11-02',
                     end_date: '2026-11-03',
                     reviewer: { id: 3, name: 'Raúl' },
-                    can: { cancel: true, review: false },
+                    can: { cancel: true, review: false, update: false },
                 }),
                 user: { id: 9, name: 'Bruno', department: null },
             },
@@ -510,7 +592,7 @@ function teamProps(
                     start_date: '2026-12-01',
                     end_date: '2026-12-01',
                     auto_approved: true,
-                    can: { cancel: true, review: false },
+                    can: { cancel: true, review: false, update: false },
                 }),
                 user: { id: 3, name: 'Raúl', department: null },
             },
@@ -609,6 +691,73 @@ describe(
             expect(
                 within(upcoming).getByText('Aprobada al registrarla'),
             ).toBeTruthy();
+        });
+
+        it('quien aprueba modifica una aprobada de otra persona: el formulario sale con sus datos y se envía con PUT', async () => {
+            const user = userEvent.setup();
+            const props = teamProps();
+            props.upcoming[0] = {
+                ...props.upcoming[0],
+                type: 'sick',
+                notes: 'Gripe',
+                can: { cancel: true, review: false, update: true },
+            };
+            render(<TeamAbsences {...props} />);
+
+            const upcoming = screen.getByRole('region', {
+                name: 'Próximas ausencias aprobadas (2)',
+            });
+            // Las propias (aprobadas solas) no se modifican desde aquí.
+            expect(
+                within(upcoming).getAllByRole('button', { name: /^Modificar/ }),
+            ).toHaveLength(1);
+
+            await user.click(
+                within(upcoming).getByRole('button', {
+                    name: 'Modificar la ausencia de Bruno 02/11/2026 – 03/11/2026',
+                }),
+            );
+            const dialog = screen.getByRole('dialog', {
+                name: 'Modificar la ausencia de Bruno',
+            });
+            expect(
+                within(dialog).getByText(
+                    /Sigue aprobada y avisamos a Bruno de lo que cambia\./,
+                ),
+            ).toBeTruthy();
+            expect(
+                (within(dialog).getByLabelText('Tipo') as HTMLSelectElement)
+                    .value,
+            ).toBe('sick');
+            expect(
+                (within(dialog).getByLabelText(/Notas/) as HTMLTextAreaElement)
+                    .value,
+            ).toBe('Gripe');
+
+            await user.selectOptions(
+                within(dialog).getByLabelText('Tipo'),
+                'leave',
+            );
+            await user.click(
+                within(dialog).getByRole('button', {
+                    name: 'Guardar los cambios',
+                }),
+            );
+
+            expect(put).toHaveBeenCalledTimes(1);
+            const [url, data] = put.mock.calls[0] as unknown as [
+                string,
+                Record<string, unknown>,
+            ];
+            expect(url).toBe('/ausencias/6');
+            expect(data).toEqual({
+                type: 'leave',
+                start_date: '2026-11-02',
+                end_date: '2026-11-03',
+                partial_minutes: null,
+                notes: 'Gripe',
+            });
+            expect(post).not.toHaveBeenCalled();
         });
 
         it('sin pendientes lo explica y sin personas no pinta el calendario', () => {
