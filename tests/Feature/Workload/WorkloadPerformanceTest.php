@@ -17,8 +17,9 @@ use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
-| Rendimiento de la vista Carga con los datos de ejemplo (DemoDataSeeder: 10 personas, 15
-| proyectos, ~9.000 entradas de horas) para admin, un responsable (Raúl) y una empleada (Elena):
+| Rendimiento de la vista Carga y de «Mi carga» (Inicio) con los datos de ejemplo (DemoDataSeeder:
+| 10 personas, 15 proyectos, ~9.000 entradas de horas) para admin, un responsable (Raúl) y una
+| empleada (Elena):
 |--------------------------------------------------------------------------
 |   1. el reparto se calcula en una sola pasada: un número fijo de consultas por página, sin la
 |      misma SQL repetida por fila, y que NO crece al añadir personas, tareas, horas, festivos y
@@ -48,9 +49,16 @@ beforeEach(function () {
             'X-Inertia-Partial-Component' => 'workload/index',
             'X-Inertia-Partial-Data' => 'cell',
         ]],
+        // «Mi carga» de Inicio: la prop diferida `workload`, que se pide después de pintar la página.
+        'inicio.mi-carga' => ['/', [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request()),
+            'X-Inertia-Partial-Component' => 'home',
+            'X-Inertia-Partial-Data' => 'workload',
+        ]],
     ];
 
-    /** @return array{status: int, total: int, repeats: int, repeated: string, ms: float, shapes: array<string, int>} */
+    /** @return array{status: int, total: int, repeats: int, repeated: string, ms: float, shapes: array<string, int>, props: list<string>|null} */
     $this->measure = function (User $user, string $url, array $headers): array {
         // La primera petición calienta las cachés (ajustes, permisos, estados), como en producción.
         $this->actingAs($user)->get($url, $headers);
@@ -76,6 +84,8 @@ beforeEach(function () {
             'repeated' => Str::limit((string) array_key_first($counts), 200),
             'ms' => $ms,
             'shapes' => array_count_values(array_map(fn (string $sql): string => (string) preg_replace('/in \\([\\d?, ]+\\)/', 'in (…)', $sql), $queries)),
+            // Las recargas parciales: qué props trae la respuesta (que la medida sea la de verdad).
+            'props' => $response->headers->has('X-Inertia') ? array_keys((array) $response->json('props')) : null,
         ];
     };
 
@@ -136,11 +146,15 @@ dataset('workload roles', [
     'empleada' => 'empleado@example.com',
 ]);
 
-test('cada página de la vista Carga cabe en su presupuesto de consultas, sin consultas repetidas por fila', function (string $email) {
-    $results = ($this->measureAll)(User::query()->where('email', $email)->sole());
+// Un solo test por rol (los datos de ejemplo se siembran una vez por test): presupuesto de
+// consultas con los datos de ejemplo, tiempo del horizonte de 4 semanas con más datos y que las
+// consultas no crezcan al añadir todavía más.
+test('la vista Carga y «Mi carga» caben en su presupuesto, responden en menos de 1 s y no crecen con los datos', function (string $email) {
+    $user = User::query()->where('email', $email)->sole();
     $problems = [];
 
-    foreach ($results as $label => $result) {
+    // 1. Presupuesto con los datos de ejemplo, sin la misma SQL repetida por fila.
+    foreach (($this->measureAll)($user) as $label => $result) {
         if ($result['status'] !== 200) {
             $problems[] = "{$label}: estado {$result['status']}";
         }
@@ -149,24 +163,28 @@ test('cada página de la vista Carga cabe en su presupuesto de consultas, sin co
             $problems[] = "{$label}: {$result['total']} consultas (presupuesto ".WORKLOAD_PERF_BUDGET.')';
         }
 
+        if ($result['props'] !== null && array_intersect(['cell', 'workload'], $result['props']) === []) {
+            $problems[] = "{$label}: la recarga parcial no trae la prop pedida";
+        }
+
         if ($result['repeats'] > WORKLOAD_PERF_MAX_REPEATS) {
             $problems[] = "{$label}: la misma consulta {$result['repeats']} veces: {$result['repeated']}";
         }
     }
 
-    expect($problems)->toBe([]);
-})->with('workload roles');
-
-test('el número de consultas no crece con los datos (el reparto va en una sola pasada)', function (string $email) {
-    $user = User::query()->where('email', $email)->sole();
-
+    // 2. Con más personas, tareas, horas, festivos y ausencias, el horizonte de 4 semanas responde
+    //    en menos de 1 s en local (SPEC §15).
     ($this->grow)(1);
     $before = ($this->measureAll)($user);
 
+    if ($before['carga.4-semanas']['ms'] >= 1000) {
+        $problems[] = sprintf('carga.4-semanas: %.0f ms (máximo 1000 ms)', $before['carga.4-semanas']['ms']);
+    }
+
+    // 3. Con todavía más, el número de consultas no crece (el reparto va en una sola pasada).
     ($this->grow)(2);
     $after = ($this->measureAll)($user);
 
-    $grew = [];
     foreach ($before as $label => $result) {
         $now = $after[$label];
 
@@ -178,19 +196,9 @@ test('el número de consultas no crece con los datos (el reparto va en una sola 
                 }
             }
 
-            $grew[] = "{$label}: {$result['total']} → {$now['total']} consultas; crecen: ".implode(' | ', $more);
+            $problems[] = "{$label}: {$result['total']} → {$now['total']} consultas; crecen: ".implode(' | ', $more);
         }
     }
 
-    expect($grew)->toBe([]);
-})->with('workload roles');
-
-test('el horizonte de 4 semanas responde en menos de 1 s en local (SPEC §15)', function (string $email) {
-    $user = User::query()->where('email', $email)->sole();
-    ($this->grow)(1);
-
-    $result = ($this->measure)($user, '/carga?horizonte=4-semanas', []);
-
-    expect($result['status'])->toBe(200)
-        ->and($result['ms'])->toBeLessThan(1000);
+    expect($problems)->toBe([]);
 })->with('workload roles');
