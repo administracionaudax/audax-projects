@@ -156,8 +156,10 @@ const row = (
     name: string,
     minutes: number,
     money: boolean,
+    linkable = key !== null,
 ) => ({
     key,
+    linkable,
     name,
     color: null,
     logged_minutes: minutes,
@@ -305,6 +307,44 @@ describe('dashboard de dirección', () => {
         ).toBe(
             '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=proyectos&formato=csv',
         );
+    });
+
+    it('no enlaza los departamentos, clientes ni proyectos borrados, pero enseña sus horas', () => {
+        render(
+            withTooltips(
+                <DirectionReport
+                    {...direction({
+                        departments: [
+                            row('2', 'Diseño', 1000, true),
+                            row('8', 'Antiguo', 420, true, false),
+                        ],
+                        clients: {
+                            rows: [
+                                row('3', 'Acme', 1000, true),
+                                row('9', 'Borrado SL', 420, true, false),
+                            ],
+                            others: null,
+                        },
+                        projects: {
+                            rows: [
+                                row('10', 'P0001 · Viejo', 1420, true, false),
+                            ],
+                            others: null,
+                        },
+                    })}
+                />,
+            ),
+        );
+
+        expect(screen.getByRole('link', { name: 'Diseño' })).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'Antiguo' })).toBeNull();
+        expect(screen.getByRole('link', { name: 'Acme' })).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'Borrado SL' })).toBeNull();
+        expect(screen.getAllByText('Borrado SL').length).toBeGreaterThan(0);
+        expect(
+            screen.queryByRole('link', { name: 'P0001 · Viejo' }),
+        ).toBeNull();
+        expect(screen.getAllByText('P0001 · Viejo').length).toBeGreaterThan(0);
     });
 
     it('con el periodo en curso, avisa de que compara con los mismos días del anterior', () => {
@@ -509,12 +549,16 @@ describe('dashboard de departamento', () => {
         );
     });
 
-    it('con el periodo en curso explica que la ocupación cuenta todo el periodo', () => {
+    it('con el periodo en curso explica que la ocupación cuenta todo el periodo y no enlaza clientes borrados', () => {
         render(
             withTooltips(
                 <DepartmentReport
                     {...props}
                     summary={{ ...noMoney, capacity_to_date_minutes: 2880 }}
+                    clients={{
+                        rows: [row('9', 'Borrado SL', 760, false, false)],
+                        others: null,
+                    }}
                 />,
             ),
         );
@@ -524,6 +568,7 @@ describe('dashboard de departamento', () => {
                 /El periodo sigue en curso: la ocupación cuenta la capacidad de todo el periodo/,
             ),
         ).toBeTruthy();
+        expect(screen.queryByRole('link', { name: 'Borrado SL' })).toBeNull();
     });
 
     it('sin miembros lo dice', () => {

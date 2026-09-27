@@ -19,8 +19,15 @@ import type {
  */
 export type R1Summary = MetricsSummary & { capacity_to_date_minutes: number };
 
-/** Metrics::breakdown() con el margen (ingreso − coste) de cada fila. */
-export type R1BreakdownRow = BreakdownRow & { margin: string | null };
+/**
+ * Metrics::breakdown() con el margen (ingreso − coste) de cada fila. `linkable` (solo en los
+ * repartos que enlazan a un dashboard) es false si el departamento, cliente o proyecto está
+ * borrado: sus horas cuentan, pero su dashboard ya no existe.
+ */
+export type R1BreakdownRow = BreakdownRow & {
+    margin: string | null;
+    linkable?: boolean;
+};
 
 /** El resto de filas sumadas («Otros»). */
 export type R1OthersRow = {

@@ -87,9 +87,10 @@ class DirectionReportController extends Controller
             'comparison' => $summaries['comparison'],
             'comparison_partial' => $summaries['comparison_partial'],
             'series' => ['bucket' => $bucket->value, 'points' => $page['series']],
-            'departments' => $table('departamentos'),
-            'clients' => $clients,
-            'projects' => $projects,
+            // Los borrados siguen en el reparto con sus horas, pero sin enlace (linkable).
+            'departments' => $this->withLinks($table('departamentos'), Dimension::Department),
+            'clients' => ['rows' => $this->withLinks($clients['rows'], Dimension::Client), 'others' => $clients['others']],
+            'projects' => ['rows' => $this->withLinks($projects['rows'], Dimension::Project), 'others' => $projects['others']],
             'at_risk' => $page['at_risk'],
             'overdue' => $page['overdue'],
         ]);

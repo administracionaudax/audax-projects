@@ -9,6 +9,9 @@ use App\Domain\Reports\Money;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Models\Client;
+use App\Models\Department;
+use App\Models\Project;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -21,6 +24,9 @@ use Illuminate\Http\Request;
  *     billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null}
  * @phpstan-type MarginRow array{key: string|null, name: string, color: string|null, logged_minutes: int,
  *     billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, margin: string|null}
+ * @phpstan-type LinkedRow array{key: string|null, name: string, color: string|null, logged_minutes: int,
+ *     billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, margin: string|null,
+ *     linkable: bool}
  * @phpstan-type OthersRow array{count: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
  *     overage_minutes: int, income: string|null, cost: string|null, margin: string|null}
  */
@@ -101,6 +107,29 @@ trait BuildsDashboards
         }
 
         return $props;
+    }
+
+    /**
+     * Marca las filas de un reparto cuyo registro sigue vigente (linkable): Metrics::labels nombra
+     * también los borrados para no perder sus horas, pero el dashboard de un departamento, cliente
+     * o proyecto borrado respondería 404. Una consulta por reparto, fuera de la caché (un borrado
+     * no la invalida).
+     *
+     * @param  list<MarginRow>  $rows
+     * @return list<LinkedRow>
+     */
+    protected function withLinks(array $rows, Dimension $dimension): array
+    {
+        $model = match ($dimension) {
+            Dimension::Department => Department::class,
+            Dimension::Client => Client::class,
+            Dimension::Project => Project::class,
+            default => null,
+        };
+        $keys = array_map('intval', array_values(array_filter(array_column($rows, 'key'), fn (?string $key): bool => $key !== null)));
+        $live = $model === null || $keys === [] ? [] : array_flip(array_map('strval', $model::query()->whereKey($keys)->pluck('id')->all()));
+
+        return array_map(fn (array $row): array => $row + ['linkable' => $row['key'] !== null && isset($live[$row['key']])], $rows);
     }
 
     /**

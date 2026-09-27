@@ -17,6 +17,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Common\Entity\Cell;
@@ -159,6 +160,38 @@ describe('dirección', function () {
                 ->where('projects.rows.2.name', ($this->projectName)($this->fixed))
                 ->where('projects.rows.2.income', '600.00')
                 ->where('projects.rows.3.margin', '-30.00'));
+    });
+
+    it('no enlaza los departamentos, clientes ni proyectos borrados, pero cuenta sus horas', function () {
+        // Metrics::labels nombra también los borrados; su dashboard respondería 404.
+        $this->marketing->delete();
+        $this->tmClient->delete();
+        $this->fixed->delete();
+        $linkable = fn (Collection $rows, ?string $key): mixed => $rows->firstWhere('key', $key)['linkable'] ?? 'sin fila';
+
+        $this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.logged_minutes', 1510)
+                ->where('departments', fn (Collection $rows) => $linkable($rows, (string) $this->design->id) === true
+                    && $linkable($rows, (string) $this->marketing->id) === false
+                    && $rows->firstWhere('key', (string) $this->marketing->id)['logged_minutes'] === 90)
+                ->where('clients.rows', fn (Collection $rows) => $linkable($rows, (string) $this->tmClient->id) === false
+                    && $rows->firstWhere('key', (string) $this->tmClient->id)['name'] === 'Cliente por horas'
+                    && $linkable($rows, (string) $this->bank->project->client_id) === true
+                    && $linkable($rows, null) === false)
+                ->where('projects.rows', fn (Collection $rows) => $linkable($rows, (string) $this->fixed->id) === false
+                    && $rows->firstWhere('key', (string) $this->fixed->id)['logged_minutes'] === 240
+                    && $linkable($rows, (string) $this->bank->project_id) === true
+                    && $linkable($rows, (string) $this->tm->id) === true));
+
+        $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('clients.rows', fn (Collection $rows) => $linkable($rows, (string) $this->tmClient->id) === false
+                    && $linkable($rows, (string) $this->bank->project->client_id) === true));
     });
 
     it('sin filtros, el admin ve toda la agencia (también Marketing)', function () {

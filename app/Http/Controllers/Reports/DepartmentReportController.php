@@ -71,7 +71,8 @@ class DepartmentReportController extends Controller
             'comparison' => $summaries['comparison'],
             'comparison_partial' => $summaries['comparison_partial'],
             'members' => $members,
-            'clients' => $clients,
+            // Los clientes borrados siguen en el reparto con sus horas, pero sin enlace (linkable).
+            'clients' => ['rows' => $this->withLinks($clients['rows'], Dimension::Client), 'others' => $clients['others']],
             'occupancy_thresholds' => [
                 'low' => (int) Setting::get('occupancy_low_threshold', 70),
                 'high' => (int) Setting::get('occupancy_high_threshold', 110),

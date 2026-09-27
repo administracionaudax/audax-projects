@@ -224,7 +224,7 @@ export default function DirectionReport({
                                 financials={financials}
                                 emptyLabel={t('reports_r1.no_hours')}
                                 href={(row) =>
-                                    row.key === null
+                                    row.key === null || !row.linkable
                                         ? null
                                         : reportUrls.client(
                                               Number(row.key),
@@ -251,7 +251,7 @@ export default function DirectionReport({
                                 financials={financials}
                                 emptyLabel={t('reports_r1.no_hours')}
                                 href={(row) =>
-                                    row.key === null
+                                    row.key === null || !row.linkable
                                         ? null
                                         : reportUrls.project(
                                               Number(row.key),
@@ -292,7 +292,10 @@ function DepartmentLinks({
     departments: DirectionReportProps['departments'];
     query: ReturnType<typeof periodQuery>;
 }) {
-    const linked = departments.filter((row) => row.key !== null);
+    // Los departamentos borrados siguen en el reparto con sus horas, pero su dashboard ya no existe.
+    const linked = departments.filter(
+        (row) => row.key !== null && row.linkable === true,
+    );
 
     if (linked.length === 0) {
         return null;

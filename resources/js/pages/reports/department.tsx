@@ -203,7 +203,7 @@ export default function DepartmentReport({
                                     financials={financials}
                                     emptyLabel={t('reports_r1.no_hours')}
                                     href={(row) =>
-                                        row.key === null
+                                        row.key === null || !row.linkable
                                             ? null
                                             : reportUrls.client(
                                                   Number(row.key),
