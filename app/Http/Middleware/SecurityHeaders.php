@@ -54,7 +54,7 @@ class SecurityHeaders
             'style-src' => ["'self'", "'unsafe-inline'", ...$devOrigins],
             'img-src' => ["'self'", 'data:', 'blob:', ...$devOrigins],
             'font-src' => ["'self'", 'data:', ...$devOrigins],
-            'connect-src' => ["'self'", ...$devOrigins, ...$devSockets],
+            'connect-src' => ["'self'", ...$this->realtimeSockets(), ...$devOrigins, ...$devSockets],
             'frame-ancestors' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
@@ -78,6 +78,29 @@ class SecurityHeaders
         $horizonPath = trim((string) config('horizon.path', 'horizon'), '/');
 
         return $horizonPath !== '' && ($request->is($horizonPath) || $request->is($horizonPath.'/*'));
+    }
+
+    /**
+     * WebSocket de Reverb (Fase 6, config/realtime.php). En el servidor va por el mismo origen
+     * (nginx pasa /app/ a Reverb) y 'self' ya lo cubre en los navegadores actuales; se declara
+     * igualmente para Safari antiguo y para local y la CI, donde Reverb escucha en otro puerto.
+     *
+     * @return list<string>
+     */
+    private function realtimeSockets(): array
+    {
+        $host = config('realtime.host');
+
+        if (! config('realtime.enabled') || ! is_string($host) || $host === '') {
+            return [];
+        }
+
+        $secure = config('realtime.scheme') !== 'http';
+        $port = (int) config('realtime.port');
+        $host = str_contains($host, ':') && ! str_starts_with($host, '[') ? "[{$host}]" : $host;
+        $defaultPort = $secure ? 443 : 80;
+
+        return [($secure ? 'wss' : 'ws').'://'.$host.($port > 0 && $port !== $defaultPort ? ":{$port}" : '')];
     }
 
     /**
