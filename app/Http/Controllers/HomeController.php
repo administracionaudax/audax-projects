@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Absences\MyAbsencesSummary;
+use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Metrics;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
-use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Domain\Workload\MyWorkload;
