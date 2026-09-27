@@ -16,7 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * Mensaje del chat (SPEC §12). El cuerpo es markdown ligero (se sanea al pintar); los de sistema
  * no tienen autor y llevan system_key + system_payload. Borrar es lógico («eliminado»); ocultar es
- * moderación del admin (auditado). task_id enlaza la tarea creada desde el mensaje.
+ * moderación del admin (auditado). task_id enlaza la tarea creada desde el mensaje. link_preview es la
+ * previsualización del primer enlace (D-069), sin imagen remota.
  *
  * @property int $id
  * @property int $conversation_id
@@ -32,6 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $hidden_by
  * @property CarbonImmutable|null $pinned_at
  * @property int|null $pinned_by
+ * @property array{url: string, title: string, description: string|null, domain: string}|null $link_preview
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
@@ -60,6 +62,7 @@ class Message extends Model
             'edited_at' => 'immutable_datetime',
             'hidden_at' => 'immutable_datetime',
             'pinned_at' => 'immutable_datetime',
+            'link_preview' => 'array',
         ];
     }
 

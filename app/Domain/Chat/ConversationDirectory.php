@@ -7,7 +7,10 @@ use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -132,6 +135,76 @@ final class ConversationDirectory
 
             return $conversation;
         });
+    }
+
+    /**
+     * Silencia o reactiva una conversación para quien participa en ella (SPEC §12). Una silenciada
+     * no suma en el total de no leídos de la navegación ni avisa por Web Push (D-072).
+     *
+     * @throws AuthorizationException si no participa (p. ej. el admin que modera un chat ajeno)
+     */
+    public function mute(User $user, Conversation $conversation, bool $muted): ConversationParticipant
+    {
+        $participant = ConversationParticipant::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('user_id', $user->id)
+            ->whereNull('left_at')
+            ->first();
+
+        if ($participant === null) {
+            throw new AuthorizationException(__('conversations.errors.not_participant'));
+        }
+
+        if ($participant->muted !== $muted) {
+            $participant->forceFill(['muted' => $muted])->save();
+        }
+
+        return $participant;
+    }
+
+    /**
+     * Mensajes sin leer por conversación, en una sola consulta agregada: de otras personas o de
+     * sistema, posteriores a lo leído y ni borrados ni ocultados, en las que participa.
+     *
+     * @param  list<int>|null  $conversationIds  null = todas
+     * @return array<int, int> id de la conversación => sin leer (solo las que tienen alguno)
+     */
+    public function unreadCounts(User $user, ?array $conversationIds = null): array
+    {
+        if ($conversationIds === []) {
+            return [];
+        }
+
+        return $this->unread($user)
+            ->when($conversationIds !== null, fn (QueryBuilder $query) => $query->whereIn('messages.conversation_id', $conversationIds))
+            ->groupBy('messages.conversation_id')
+            ->select('messages.conversation_id')
+            ->selectRaw('count(*) as unread')
+            ->get()
+            ->mapWithKeys(fn (object $row): array => [(int) $row->conversation_id => (int) $row->unread])
+            ->all();
+    }
+
+    /**
+     * Total sin leer de la navegación: el de las conversaciones no silenciadas (una consulta).
+     */
+    public function unreadTotal(User $user): int
+    {
+        return $this->unread($user)->where('p.muted', false)->count();
+    }
+
+    private function unread(User $user): QueryBuilder
+    {
+        return DB::table('messages')
+            ->join('conversation_participants as p', function (JoinClause $join) use ($user): void {
+                $join->on('p.conversation_id', '=', 'messages.conversation_id')
+                    ->where('p.user_id', '=', $user->id)
+                    ->whereNull('p.left_at');
+            })
+            ->whereRaw('messages.id > coalesce(p.last_read_message_id, 0)')
+            ->where(fn (QueryBuilder $query) => $query->whereNull('messages.user_id')->orWhere('messages.user_id', '!=', $user->id))
+            ->whereNull('messages.deleted_at')
+            ->whereNull('messages.hidden_at');
     }
 
     /**

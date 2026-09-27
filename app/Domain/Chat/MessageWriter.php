@@ -14,6 +14,7 @@ use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\MessageMention;
 use App\Models\MessageReaction;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -185,9 +186,56 @@ final class MessageWriter
             MessageReaction::query()->create(['message_id' => $message->id, 'user_id' => $user->id, 'emoji' => $emoji]);
         }
 
+        // El mensaje cambia (updated_at): sin tiempo real, la consulta periódica lo recoge.
+        $message->touch();
+
         MessageUpdated::dispatch($message);
 
         return $existing === null;
+    }
+
+    /**
+     * Enlaza la tarea creada desde un mensaje de un chat de proyecto (SPEC §12: el mensaje queda
+     * enlazado a la tarea). Quien la crea tiene que poder ver la conversación y crear tareas en ese
+     * proyecto; un mensaje borrado u ocultado, o que ya tiene tarea, no se enlaza.
+     */
+    public function linkTask(User $user, Message $message, Task $task): void
+    {
+        $conversation = $message->conversation;
+        Gate::forUser($user)->authorize('view', $conversation);
+
+        if ($conversation->type !== ConversationType::Project
+            || $conversation->project_id === null
+            || $task->project_id !== $conversation->project_id
+            || $message->trashed()
+            || $message->hidden_at !== null
+            || $message->type === MessageType::System
+            || ($message->task_id !== null && $message->task_id !== $task->id)) {
+            throw ValidationException::withMessages(['message' => __('conversations.errors.task_link')]);
+        }
+
+        Gate::forUser($user)->authorize('create', [Task::class, $conversation->project]);
+
+        $message->forceFill(['task_id' => $task->id])->save();
+
+        MessageUpdated::dispatch($message);
+    }
+
+    /**
+     * Guarda (o quita) la previsualización del primer enlace (D-069). La escribe el job de
+     * App\Domain\Chat\Links, sin usuario: solo cambia si es distinta de la que había.
+     *
+     * @param  array{url: string, title: string, description: string|null, domain: string}|null  $preview
+     */
+    public function setLinkPreview(Message $message, ?array $preview): void
+    {
+        if ($message->link_preview === $preview) {
+            return;
+        }
+
+        $message->forceFill(['link_preview' => $preview])->save();
+
+        MessageUpdated::dispatch($message);
     }
 
     /**
