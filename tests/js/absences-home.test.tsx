@@ -114,6 +114,7 @@ describe('Inicio', () => {
                     unlogged_days={[]}
                     indicators={INDICATORS}
                     absences={ABSENCES}
+                    milestones={[]}
                 />
             </TooltipProvider>,
         );
