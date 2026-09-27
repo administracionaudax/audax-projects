@@ -369,6 +369,16 @@ export default function Home({
                         )}
                     </PanelCard>
 
+                    {/* Fase 3 (área de ausencias): «Mis ausencias», antes de las tarjetas de fases futuras. */}
+                    <PanelCard
+                        id="absences"
+                        icon={CalendarOff}
+                        title={t('home.cards.absences.title')}
+                        description={t('home.cards.absences.description')}
+                    >
+                        <MyAbsencesCard absences={absences} />
+                    </PanelCard>
+
                     {LATER.map((card) => (
                         <PanelCard
                             key={card.id}
@@ -384,16 +394,6 @@ export default function Home({
                             />
                         </PanelCard>
                     ))}
-
-                    {/* Fase 3 (área de ausencias): «Mis ausencias». */}
-                    <PanelCard
-                        id="absences"
-                        icon={CalendarOff}
-                        title={t('home.cards.absences.title')}
-                        description={t('home.cards.absences.description')}
-                    >
-                        <MyAbsencesCard absences={absences} />
-                    </PanelCard>
                 </section>
             </div>
 
