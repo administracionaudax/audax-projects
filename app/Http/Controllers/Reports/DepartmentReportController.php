@@ -95,7 +95,7 @@ class DepartmentReportController extends Controller
 
     /**
      * Cifras de cada persona del alcance: capacidad del periodo y transcurrida hasta ayer
-     * (Metrics::capacityByPerson y elapsedCapacityByPerson) e imputadas y facturables
+     * (Metrics::capacityTotalsByPerson y elapsedCapacityByPerson) e imputadas y facturables
      * (Metrics::breakdown por persona), de más a menos horas. La ocupación y la productividad
      * facturable, contra la capacidad del periodo (SPEC §10, como Metrics::summary). El ritmo
      * (pace, D-080), solo si al periodo aún le quedan días con jornada: imputadas / capacidad
@@ -105,7 +105,7 @@ class DepartmentReportController extends Controller
      */
     private function members(ReportScope $scope, Metrics $metrics): array
     {
-        $capacity = $metrics->capacityByPerson($scope);
+        $capacity = $metrics->capacityTotalsByPerson($scope);
         $elapsed = $metrics->elapsedCapacityByPerson($scope);
         $hours = collect($metrics->breakdown($scope, Dimension::Person))->keyBy('key');
         $members = [];
@@ -113,7 +113,7 @@ class DepartmentReportController extends Controller
         foreach ($scope->people() as $person) {
             /** @var User $person */
             $row = $hours->get((string) $person->id);
-            $capacityMinutes = array_sum($capacity[$person->id] ?? []);
+            $capacityMinutes = $capacity[$person->id] ?? 0;
             $toDate = $elapsed[$person->id] ?? 0;
             $logged = (int) ($row['logged_minutes'] ?? 0);
             $billable = (int) ($row['billable_minutes'] ?? 0);
