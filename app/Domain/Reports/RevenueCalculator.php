@@ -63,7 +63,7 @@ final class RevenueCalculator
      * el redondeo a céntimos de cada una. Añadido por R3 (exportación de horas).
      *
      * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
-     * @return array<string, array{income: string, cost: string, billable_minutes: int}>
+     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
      */
     public function perEntry(Builder $entries): array
     {
@@ -73,7 +73,7 @@ final class RevenueCalculator
     /**
      * @param  Builder<TimeEntry>  $query
      * @param  literal-string|null  $keyExpression
-     * @return array<string, array{income: string, cost: string, billable_minutes: int}>
+     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
      */
     private function valuate(Builder $query, ?string $keyExpression): array
     {

@@ -1,15 +1,15 @@
 <?php
 
 use App\Http\Controllers\Reports\ClientReportController;
+use App\Http\Controllers\Reports\DepartmentReportController;
+use App\Http\Controllers\Reports\DetailReportController;
+use App\Http\Controllers\Reports\DirectionReportController;
 use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Http\Controllers\Reports\Exports\HourBankPdfController;
-use App\Http\Controllers\Reports\ProjectReportController;
-use App\Http\Controllers\Reports\DepartmentReportController;
-use App\Http\Controllers\Reports\DirectionReportController;
-use App\Http\Controllers\Reports\PersonReportController;
-use App\Http\Controllers\Reports\ReportIndexController;
-use App\Http\Controllers\Reports\DetailReportController;
 use App\Http\Controllers\Reports\HoursExportController;
+use App\Http\Controllers\Reports\PersonReportController;
+use App\Http\Controllers\Reports\ProjectReportController;
+use App\Http\Controllers\Reports\ReportIndexController;
 use App\Http\Controllers\Reports\ReportOptionsController;
 use Illuminate\Support\Facades\Route;
 
