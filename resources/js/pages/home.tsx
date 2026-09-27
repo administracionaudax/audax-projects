@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     AtSign,
@@ -36,6 +36,11 @@ import {
     useElapsedSeconds,
 } from '@/components/time/use-elapsed';
 import { weekdayLongLabel } from '@/components/time/week-days';
+import {
+    MyWorkload,
+    MyWorkloadSkeleton,
+} from '@/components/workload/my-workload-card';
+import type { MyWorkloadData } from '@/components/workload/types';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -66,14 +71,6 @@ type LaterCard = {
 
 /** Tarjetas que llegan en otras fases (SPEC §17). */
 const LATER: LaterCard[] = [
-    {
-        id: 'workload',
-        icon: CalendarClock,
-        title: 'home.cards.workload.title',
-        description: 'home.cards.workload.description',
-        empty: 'home.cards.workload.empty',
-        phase: 3,
-    },
     {
         id: 'milestones',
         icon: Milestone,
@@ -135,7 +132,8 @@ function PanelCard({
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
  * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
- * Fase 2, «Mis indicadores» del mes.
+ * Fase 2, «Mis indicadores» del mes; en la Fase 3, «Mi carga» (prop diferida `workload`: no
+ * retrasa la primera carga) y «Mis ausencias».
  */
 export default function Home({
     tasks,
@@ -144,7 +142,12 @@ export default function Home({
     unlogged_days: unloggedDays,
     indicators,
     absences,
-}: HomePageProps & { indicators: MyIndicators; absences: MyAbsencesSummary }) {
+    workload,
+}: HomePageProps & {
+    indicators: MyIndicators;
+    absences: MyAbsencesSummary;
+    workload?: MyWorkloadData;
+}) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
@@ -311,6 +314,21 @@ export default function Home({
                         >
                             {t('home_panel.hours.open_sheet')}
                         </Link>
+                    </PanelCard>
+
+                    <PanelCard
+                        id="workload"
+                        icon={CalendarClock}
+                        title={t('home.cards.workload.title')}
+                        description={t('home.cards.workload.description')}
+                        wide
+                    >
+                        <Deferred
+                            data="workload"
+                            fallback={<MyWorkloadSkeleton />}
+                        >
+                            <MyWorkload workload={workload} />
+                        </Deferred>
                     </PanelCard>
 
                     <PanelCard

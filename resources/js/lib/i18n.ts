@@ -29,6 +29,7 @@ import reportsR3 from '../../../lang/ui/reports-r3.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import time from '../../../lang/ui/time.json';
+import workload from '../../../lang/ui/workload.json';
 
 const messages = {
     ...base,
@@ -45,6 +46,7 @@ const messages = {
     ...reportsR1,
     ...reportsR3,
     ...absences,
+    ...workload,
 };
 
 export type TranslationKey = keyof typeof messages;

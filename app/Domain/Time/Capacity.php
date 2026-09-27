@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 /**
@@ -124,6 +123,48 @@ final class Capacity
     }
 
     /**
+     * Como details(), para varias personas y rangos a la vez, con UNA consulta de horarios, una de
+     * festivos y una de ausencias en total: la vista Carga explica los días grises de todas sus
+     * filas sin consultas por persona. Añadido por la vista Carga (Fase 3, W2).
+     *
+     * @param  list<array{user_id: int, from: CarbonInterface, to: CarbonInterface}>  $ranges
+     * @return list<array<string, array{base: int, minutes: int, holiday: string|null, absence: array{type: string, partial_minutes: int|null}|null}>> En el mismo orden que $ranges.
+     */
+    public function detailsForRanges(array $ranges): array
+    {
+        if ($ranges === []) {
+            return [];
+        }
+
+        $days = array_map(fn (array $range): array => [
+            'user_id' => $range['user_id'],
+            'from' => CarbonImmutable::parse($range['from']->toDateString()),
+            'to' => CarbonImmutable::parse($range['to']->toDateString()),
+        ], $ranges);
+
+        $userIds = array_values(array_unique(array_column($days, 'user_id')));
+        $from = min(array_map(fn (array $range): string => $range['from']->toDateString(), $days));
+        $to = max(array_map(fn (array $range): string => $range['to']->toDateString(), $days));
+
+        $schedules = WorkSchedule::query()
+            ->whereIn('user_id', $userIds)
+            ->where('valid_from', '<=', $to)
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $from))
+            ->orderByDesc('valid_from')
+            ->get()
+            ->groupBy('user_id');
+
+        $default = self::defaultWeek();
+        $holidays = self::holidays($from, $to);
+        $absences = self::absences($userIds, $from, $to);
+
+        return array_map(
+            fn (array $range): array => self::detailedDays($schedules->get($range['user_id']) ?? new Collection, $default, $holidays, $absences[$range['user_id']] ?? [], $range['from'], $range['to']),
+            $days,
+        );
+    }
+
+    /**
      * @return array<string, string> fecha → nombre del festivo
      */
     private static function holidays(string $from, string $to): array
@@ -155,6 +196,11 @@ final class Capacity
      * Detalle por fecha con los horarios de UNA persona (ordenados del más reciente al más antiguo),
      * los festivos y sus ausencias aprobadas.
      *
+     * Rendimiento (vista Carga, Fase 3): las fechas de los horarios y las ausencias se leen UNA vez
+     * (cada acceso a un atributo con cast de fecha crea un Carbon) y los días se recorren como
+     * fechas UTC (sin horario de verano), no con CarbonPeriod. El resultado es el mismo que
+     * comparar día a día con coversDate(), minutesFor() y covers().
+     *
      * @param  Collection<int, WorkSchedule>  $schedules
      * @param  list<int>  $default
      * @param  array<string, string>  $holidays
@@ -163,12 +209,39 @@ final class Capacity
      */
     private static function detailedDays(Collection $schedules, array $default, array $holidays, array $absences, CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $capacity = [];
+        $periods = [];
+        foreach ($schedules as $schedule) {
+            $periods[] = [
+                'from' => $schedule->valid_from->toDateString(),
+                'to' => $schedule->valid_to?->toDateString(),
+                // Lunes primero, lo mismo que minutesFor() día a día.
+                'week' => $schedule->weekMinutes(),
+            ];
+        }
 
-        foreach (CarbonPeriod::create($from, $to) as $day) {
-            $date = $day->toDateString();
-            $schedule = $schedules->first(fn (WorkSchedule $candidate): bool => $candidate->coversDate($day));
-            $base = $schedule?->minutesFor($day) ?? $default[$day->dayOfWeekIso - 1];
+        $leaves = array_map(fn (Absence $absence): array => [
+            'from' => $absence->start_date->toDateString(),
+            'to' => $absence->end_date->toDateString(),
+            'type' => $absence->type->value,
+            'partial_minutes' => $absence->partial_minutes,
+        ], $absences);
+
+        $capacity = [];
+        $last = (int) strtotime($to->toDateString().' 00:00:00 UTC');
+
+        for ($time = (int) strtotime($from->toDateString().' 00:00:00 UTC'); $time <= $last; $time += 86400) {
+            $date = gmdate('Y-m-d', $time);
+            $dayOfWeek = (int) gmdate('N', $time);
+            $base = $default[$dayOfWeek - 1];
+
+            foreach ($periods as $period) {
+                if ($period['from'] <= $date && ($period['to'] === null || $period['to'] >= $date)) {
+                    $base = $period['week'][$dayOfWeek - 1];
+
+                    break;
+                }
+            }
+
             $minutes = $base;
             $holiday = $holidays[$date] ?? null;
             $absence = null;
@@ -177,13 +250,13 @@ final class Capacity
                 $minutes = 0;
             }
 
-            foreach ($absences as $candidate) {
-                if (! $candidate->covers($date)) {
+            foreach ($leaves as $leave) {
+                if ($leave['from'] > $date || $leave['to'] < $date) {
                     continue;
                 }
 
-                $absence ??= ['type' => $candidate->type->value, 'partial_minutes' => $candidate->partial_minutes];
-                $minutes = $candidate->partial_minutes === null ? 0 : max($minutes - $candidate->partial_minutes, 0);
+                $absence ??= ['type' => $leave['type'], 'partial_minutes' => $leave['partial_minutes']];
+                $minutes = $leave['partial_minutes'] === null ? 0 : max($minutes - $leave['partial_minutes'], 0);
             }
 
             $capacity[$date] = ['base' => $base, 'minutes' => $minutes, 'holiday' => $holiday, 'absence' => $absence];
