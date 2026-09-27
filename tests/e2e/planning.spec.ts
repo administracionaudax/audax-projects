@@ -1,6 +1,10 @@
+import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { login, USERS } from './support';
+import type { Theme } from './support';
+import { login, presetTheme, saveUserTheme, USERS } from './support';
+
+const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /**
  * Planificación de la Fase 4 (agente G2): calendario de tareas (D-061) y dependencias desde el
@@ -214,4 +218,62 @@ test('añadir una dependencia desde el panel y rechazar un ciclo', async ({
                 .locator('[data-test="dependency-item"]'),
         ).toHaveCount(0);
     });
+});
+
+test('calendario, panel con dependencias y resumen: WCAG 2.1 AA en claro y oscuro y sin scroll horizontal a 375 px', async ({
+    page,
+    context,
+    baseURL,
+}) => {
+    test.setTimeout(120_000);
+
+    await login(page, USERS.manager);
+    const projectId = await openProject(page);
+    // Una tarea cualquiera del proyecto: se abre su panel desde la lista y se lee ?tarea=.
+    await page.goto(`/proyectos/${projectId}/tareas`);
+    await page.locator('[data-test="task-title"]').first().click();
+    await expect(page).toHaveURL(/[?&]tarea=\d+/);
+    const firstTask = /[?&]tarea=(\d+)/.exec(page.url())?.[1];
+
+    const pages = [
+        `/proyectos/${projectId}/tareas?vista=calendario`,
+        `/proyectos/${projectId}/tareas?vista=calendario&semana=${ymd(new Date())}`,
+        `/proyectos/${projectId}/tareas?vista=calendario&tarea=${firstTask}`,
+        `/proyectos/${projectId}`,
+        '/',
+    ];
+
+    for (const theme of ['light', 'dark'] as Theme[]) {
+        await saveUserTheme(page, theme);
+        await presetTheme(context, page, theme, baseURL ?? '');
+
+        for (const url of pages) {
+            await test.step(`${theme}: ${url}`, async () => {
+                await page.goto(url);
+                if (url.includes('tarea=')) {
+                    await expect(
+                        page.locator('[data-test="task-dependencies"]'),
+                    ).toBeVisible();
+                }
+
+                const results = await new AxeBuilder({ page })
+                    .withTags(WCAG_AA)
+                    .analyze();
+                expect(results.violations.map((item) => item.id)).toEqual([]);
+            });
+        }
+    }
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    for (const url of pages) {
+        await test.step(`375 px: ${url}`, async () => {
+            await page.goto(url);
+            const overflow = await page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth -
+                    document.documentElement.clientWidth,
+            );
+            expect(overflow).toBeLessThanOrEqual(0);
+        });
+    }
 });
