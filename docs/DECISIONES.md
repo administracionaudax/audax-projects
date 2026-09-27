@@ -575,6 +575,7 @@ _Concretan D-063, D-064 y D-067 (`docs/PLAN-FASE-5.md`). Sin número: se numeran
 - **Ajustes del portal del cliente** (personas, horas visibles y avisos por email): `ClientPolicy::update` (admin y responsables). Afectan a todas las bolsas y proyectos del cliente, así que no los cambia el gestor de uno solo, que los ve en solo lectura.
 - **Portal de cada proyecto** (vista, horas por tarea y Gantt): quien gestiona el proyecto (`ProjectPolicy::update`), desde sus ajustes. El SPEC §11 decía «el admin».
 - Quien no gestiona el portal no recibe la lista de usuarios: la ficha le dice quién lo gestiona.
+- En la ficha, la sección es una **prop diferida** (`portal`, como las secciones de la F4 en los ajustes del proyecto): no pesa en la carga ni en el presupuesto de consultas de la F1, y sus acciones recargan solo esa prop.
 
 ### P2-b · Invitaciones y estado de los usuarios del portal **[concreta D-063]**
 - **Alta:** rol `client` y `client_id`, sin departamento ni jornada (no es plantilla). La invitación reutiliza `UserInviter::send` (broker `invitations`, 7 días, cola `mail`) con el asunto y la presentación del portal.
