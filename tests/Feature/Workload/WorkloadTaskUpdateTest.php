@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Project;
+use App\Models\ProjectMember;
 use App\Models\Task;
 use App\Notifications\Tasks\TaskAssignedNotification;
 use Illuminate\Support\Facades\Notification;
@@ -71,6 +72,30 @@ describe('reasignar desde la celda de una persona sobrecargada', function () {
             ->assertInertiaFlash('toast.message', 'Tarea «Maquetar la home» actualizada. La carga se ha recalculado.');
 
         Notification::assertSentTo($this->people['lucia'], TaskAssignedNotification::class);
+    });
+
+    it('el alta como miembro y la reasignación van juntas: si falla el alta, la tarea no cambia ni sale el aviso', function () {
+        Notification::fake();
+        ProjectMember::creating(fn () => throw new RuntimeException('Fallo simulado al dar de alta al miembro'));
+
+        ($this->patch)('raul', 'elena_app', ['assignee_user_id' => $this->people['lucia']->id])->assertServerError();
+
+        expect($this->tasks['elena_app']->fresh()->assignee_user_id)->toBe($this->people['elena']->id)
+            ->and($this->projects['app']->hasMember($this->people['lucia']))->toBeFalse();
+        Notification::assertNothingSent();
+    });
+
+    it('y si falla el cambio de la tarea, tampoco queda el alta como miembro', function () {
+        Notification::fake();
+
+        // «Pantalla de reservas» empieza el 13/10: una entrega anterior la rechaza TaskWriter.
+        ($this->patch)('raul', 'elena_app', ['assignee_user_id' => $this->people['lucia']->id, 'due_date' => '2026-10-10'])
+            ->assertSessionHasErrors('due_date');
+
+        expect($this->tasks['elena_app']->fresh()->assignee_user_id)->toBe($this->people['elena']->id)
+            ->and($this->projects['app']->hasMember($this->people['lucia']))->toBeFalse()
+            ->and(Activity::query()->where('subject_id', $this->projects['app']->id)->where('event', 'member_added')->exists())->toBeFalse();
+        Notification::assertNothingSent();
     });
 
     it('añade al nuevo responsable como miembro (sin gestión) y lo deja en la auditoría del proyecto', function () {

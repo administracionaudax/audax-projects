@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Workload;
 
 use App\Domain\Projects\ProjectMembership;
+use App\Domain\Tasks\TaskNotifier;
 use App\Domain\Tasks\TaskWriter;
 use App\Domain\Workload\WorkloadScope;
 use App\Http\Controllers\Controller;
@@ -25,6 +26,7 @@ use Inertia\Inertia;
  *   gestores (entre los miembros de su proyecto),
  * - el cambio lo hace TaskWriter (validaciones, auditoría y avisos). Si el nuevo responsable no es
  *   miembro del proyecto, pasa a serlo para poder imputar (como en la baja de una persona, D-038),
+ *   en la misma transacción: o se guardan las dos cosas o ninguna (y sin avisos),
  * - vuelve a /carga con los mismos filtros y la celda abierta: la matriz se recalcula.
  */
 class WorkloadTaskController extends Controller
@@ -32,6 +34,7 @@ class WorkloadTaskController extends Controller
     public function __construct(
         private readonly TaskWriter $writer,
         private readonly ProjectMembership $membership,
+        private readonly TaskNotifier $notifier,
     ) {}
 
     public function update(UpdateWorkloadTaskRequest $request, Task $task): RedirectResponse
@@ -48,14 +51,24 @@ class WorkloadTaskController extends Controller
         $data = $request->validated();
         $assignee = $this->newAssignee($scope, $task, $data);
 
-        $this->writer->update($user, $task, $data);
+        // Todo o nada: el alta como miembro y el cambio de la tarea van en una transacción, y los
+        // avisos (asignación) solo salen si las dos cosas se guardan.
+        $joined = $this->notifier->capture(fn (): bool => DB::transaction(function () use ($user, $task, $data, $assignee): bool {
+            // Dentro de la transacción: si otra petición acaba de darlo de alta, no se repite.
+            $joins = $assignee !== null && ! $task->project->isInternal() && ! $task->project->hasMember($assignee);
 
-        $message = __('workload.flash.updated', ['task' => $task->title]);
+            if ($joins) {
+                $this->membership->add($task->project, $assignee, false, $user);
+            }
 
-        if ($assignee !== null && ! $task->project->isInternal() && ! $task->project->hasMember($assignee)) {
-            $this->membership->add($task->project, $assignee, false, $user);
-            $message = __('workload.flash.added_member', ['task' => $task->title, 'name' => $assignee->name, 'project' => $task->project->code]);
-        }
+            $this->writer->update($user, $task, $data);
+
+            return $joins;
+        }));
+
+        $message = $joined && $assignee !== null
+            ? __('workload.flash.added_member', ['task' => $task->title, 'name' => $assignee->name, 'project' => $task->project->code])
+            : __('workload.flash.updated', ['task' => $task->title]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
