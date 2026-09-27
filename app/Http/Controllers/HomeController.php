@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Absences\MyAbsencesSummary;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Enums\TimesheetStatus;
@@ -60,6 +61,8 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            // Fase 3: tarjeta «Mis ausencias» (próximas aprobadas y solicitudes pendientes).
+            'absences' => app(MyAbsencesSummary::class)->for($user),
         ]);
     }
 
