@@ -23,6 +23,8 @@ import {
 import { EmptyState } from '@/components/empty-state';
 import type { Phase } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
+import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
+import type { MyIndicators } from '@/components/reports/r1-types';
 import { CapacityCell } from '@/components/time/capacity-cell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { stopTimer } from '@/components/time/timer-actions';
@@ -69,14 +71,6 @@ const LATER: LaterCard[] = [
         description: 'home.cards.workload.description',
         empty: 'home.cards.workload.empty',
         phase: 3,
-    },
-    {
-        id: 'indicators',
-        icon: Gauge,
-        title: 'home.cards.indicators.title',
-        description: 'home.cards.indicators.description',
-        empty: 'home.cards.indicators.empty',
-        phase: 2,
     },
     {
         id: 'milestones',
@@ -146,14 +140,16 @@ function PanelCard({
 
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
- * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar.
+ * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
+ * Fase 2, «Mis indicadores» del mes.
  */
 export default function Home({
     tasks,
     hours,
     week,
     unlogged_days: unloggedDays,
-}: HomePageProps) {
+    indicators,
+}: HomePageProps & { indicators: MyIndicators }) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
@@ -372,6 +368,19 @@ export default function Home({
                                 ))}
                             </ul>
                         )}
+                    </PanelCard>
+
+                    <PanelCard
+                        id="indicators"
+                        icon={Gauge}
+                        title={t('home.cards.indicators.title')}
+                        description={t('home.cards.indicators.description')}
+                        wide
+                    >
+                        <R1MyIndicators
+                            indicators={indicators}
+                            userId={user.id}
+                        />
                     </PanelCard>
 
                     {LATER.map((card) => (

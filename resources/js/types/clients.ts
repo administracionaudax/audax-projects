@@ -43,5 +43,9 @@ export type ClientShowProps = {
         month_start: string;
         year: number;
     };
-    can: { update: boolean };
+    /**
+     * viewReport: informe del cliente (Fase 2, D-044); viewBilling: sus horas para facturar
+     * (Fase 2, D-045).
+     */
+    can: { update: boolean; viewReport?: boolean; viewBilling?: boolean };
 };

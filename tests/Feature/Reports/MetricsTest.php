@@ -86,7 +86,8 @@ it('calcula todas las métricas del SPEC §10 como a mano (admin, departamento D
         ->and($s['logged_minutes'])->toBe(1420)
         ->and($s['billable_minutes'])->toBe(1360)
         ->and($s['overage_minutes'])->toBe(100)
-        ->and($s['in_bank_minutes'])->toBe(1320)
+        // Dentro de bolsa (D-078): solo las entradas con bolsa sin su exceso: 700 − 100.
+        ->and($s['in_bank_minutes'])->toBe(600)
         ->and($s['occupancy'])->toBe(0.3944)
         ->and($s['billability'])->toBe(0.9577)
         ->and($s['billable_productivity'])->toBe(0.3778)

@@ -1,17 +1,11 @@
 import { Head, Link, router, setLayoutProps } from '@inertiajs/react';
-import {
-    Clock,
-    Download,
-    Info,
-    Pencil,
-    Plus,
-    TriangleAlert,
-} from 'lucide-react';
+import { Clock, Info, Pencil, Plus, TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { DatePicker } from '@/components/domain/date-picker';
 import { TimeEntryStatusBadge } from '@/components/domain/badges';
-import { EmptyState, PhaseBadge } from '@/components/empty-state';
+import { EmptyState } from '@/components/empty-state';
 import { ProjectShell } from '@/components/projects/project-shell';
+import { ExportMenu } from '@/components/reports/export-menu';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -29,6 +23,7 @@ import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { time as projectTime } from '@/routes/projects';
+import { exportMethod as exportProjectTime } from '@/routes/projects/time';
 import type {
     ProjectTimeEntry,
     ProjectTimeFilters,
@@ -37,6 +32,18 @@ import type {
 } from '@/types';
 
 const ALL = 'all';
+
+/** Filtros con valor, para la URL de la pestaña y la de su exportación. */
+function activeFilters(
+    filters: ProjectTimeFilters,
+): Record<string, string | number> {
+    return Object.fromEntries(
+        Object.entries(filters).filter(
+            (entry): entry is [string, string | number] =>
+                entry[1] !== null && entry[1] !== '',
+        ),
+    );
+}
 const STATUSES: TimeEntryStatus[] = [
     'draft',
     'submitted',
@@ -46,7 +53,8 @@ const STATUSES: TimeEntryStatus[] = [
 
 /**
  * Pestaña Horas del proyecto (SPEC §6, D-021): entradas con filtros, totales (dentro de bolsa,
- * exceso y facturable) y paginación. Un empleado ve solo las suyas. La exportación, en la Fase 2.
+ * exceso y facturable) y paginación. Un empleado ve solo las suyas. Se exportan a XLSX o CSV con
+ * los mismos filtros (y el mismo alcance) en /proyectos/{id}/horas/exportar (Fase 2, R3).
  */
 export default function ProjectTime({
     project,
@@ -71,15 +79,10 @@ export default function ProjectTime({
     const [creating, setCreating] = useState(false);
 
     const apply = (changes: Partial<ProjectTimeFilters>) => {
-        const next = { ...filters, ...changes };
-        const query = Object.fromEntries(
-            Object.entries(next).filter(
-                ([, value]) => value !== null && value !== '',
-            ),
-        );
-
         router.get(
-            projectTime.url(project.id, { query }),
+            projectTime.url(project.id, {
+                query: activeFilters({ ...filters, ...changes }),
+            }),
             {},
             {
                 preserveScroll: true,
@@ -108,20 +111,12 @@ export default function ProjectTime({
                             <Plus aria-hidden="true" />
                             {t('hours.header.log_time')}
                         </Button>
-                        <span className="inline-flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                disabled
-                                aria-describedby={field('export-phase')}
-                            >
-                                <Download aria-hidden="true" />
-                                {t('hours.project.export')}
-                            </Button>
-                            <span id={field('export-phase')}>
-                                <PhaseBadge phase={2} />
-                            </span>
-                        </span>
+                        <ExportMenu
+                            href={exportProjectTime.url(project.id, {
+                                query: activeFilters(filters),
+                            })}
+                            label={t('hours.project.export')}
+                        />
                     </>
                 }
             >
