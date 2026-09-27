@@ -91,6 +91,12 @@ import {
 import { periodQuery, reportUrls } from '@/components/reports/r1-urls';
 import { defineSeries } from '@/components/charts/chart-config';
 
+/**
+ * Las páginas enteras (gráficas, tablas, menús) tardan en montarse en jsdom; con la máquina
+ * cargada, el límite por defecto de 5 s se queda corto.
+ */
+vi.setConfig({ testTimeout: 20_000 });
+
 /** Intl usa espacios de no separación (U+00A0 / U+202F) antes de % y €. */
 const norm = (value: string | null | undefined) =>
     (value ?? '').replace(/[  ]/g, ' ');

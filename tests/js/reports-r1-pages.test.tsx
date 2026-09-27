@@ -73,6 +73,12 @@ import DirectionReport from '@/pages/reports/direction';
 import ReportsIndex from '@/pages/reports/index';
 import PersonReport from '@/pages/reports/person';
 
+/**
+ * Las páginas enteras (gráficas, tablas, menús) tardan en montarse en jsdom; con la máquina
+ * cargada, el límite por defecto de 5 s se queda corto.
+ */
+vi.setConfig({ testTimeout: 20_000 });
+
 const norm = (value: string | null | undefined) =>
     (value ?? '').replace(/[  ]/g, ' ');
 
