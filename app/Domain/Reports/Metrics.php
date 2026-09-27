@@ -380,8 +380,13 @@ final class Metrics
     }
 
     /**
-     * Precisión de estimación (SPEC §10): tareas hoja completadas en el periodo, con estimación, de
-     * los proyectos y personas del alcance. Reales = todas sus horas (de cualquier fecha).
+     * Precisión de estimación (SPEC §10) de las tareas completadas en el periodo, con la regla de
+     * subtareas del SPEC §6 (la de EstimateComparison y RevenueCalculator::fixedPriceBases, BIZ-03),
+     * de los proyectos y personas del alcance. Unidades, sin contar nada dos veces:
+     * - las hojas con estimación (subtareas y tareas sin subtareas),
+     * - las tareas raíz con subtareas de las que ninguna está estimada, con su propia estimación.
+     *   Una raíz con alguna subtarea estimada se estima con ellas: cuentan sus subtareas.
+     * Reales = las horas de la tarea y las de sus subtareas (de cualquier fecha).
      *
      * $everyAssignee (informes de un proyecto o de los proyectos que gestiona quien mira, que ve
      * todas sus horas, D-021): cuentan las tareas de cualquier responsable, acotadas solo por los
@@ -401,8 +406,15 @@ final class Metrics
             ->whereBetween('completed_at', [$start, $end])
             ->where('is_milestone', false)
             ->where('estimated_minutes', '>', 0)
-            ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
-                ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
+            ->where(fn (Builder $unit) => $unit
+                // Hojas: sin subtareas.
+                ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                    ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
+                // Raíces cuyas subtareas no están estimadas: su estimación es la suya (SPEC §6).
+                ->orWhere(fn (Builder $root) => $root->whereNull('tasks.parent_task_id')
+                    ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                        ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at')
+                        ->where('children.is_milestone', false)->whereNotNull('children.estimated_minutes'))))
             ->when($f->projectIds !== [], fn (Builder $q) => $q->whereIn('project_id', $f->projectIds))
             ->when($f->clientIds !== [], fn (Builder $q) => $q->whereIn('project_id', Project::query()->withTrashed()->select('id')->whereIn('client_id', $f->clientIds)))
             ->when($f->bankIds !== [], fn (Builder $q) => $q->whereIn('hour_bank_id', $f->bankIds))
@@ -414,7 +426,11 @@ final class Metrics
 
         $estimated = (int) (clone $tasks)->sum('estimated_minutes');
         $count = (clone $tasks)->count();
-        $actual = (int) TimeEntry::query()->whereIn('task_id', (clone $tasks)->select('tasks.id'))->sum('minutes');
+        // Las horas de una subtarea suman en su tarea padre (SPEC §6), también si está borrada.
+        $actual = (int) TimeEntry::query()->where(fn ($units) => $units
+            ->whereIn('task_id', (clone $tasks)->select('tasks.id'))
+            ->orWhereIn('task_id', Task::query()->withTrashed()->select('id')->whereIn('parent_task_id', (clone $tasks)->select('tasks.id'))))
+            ->sum('minutes');
 
         return [
             'tasks' => $count,

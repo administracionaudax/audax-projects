@@ -149,6 +149,41 @@ it('todos los repartos suman exactamente el ingreso y el coste del resumen: los 
         ->and($summary['income'])->toBe('2111.67');
 });
 
+it('precisión de estimación: cuenta las tareas con subtareas sin estimar, con las horas de sus subtareas (BIZ-03, SPEC §6)', function () {
+    $done = TaskStatus::query()->where('category', 'done')->value('id');
+    $this->travelTo(CarbonImmutable::parse('2026-09-24 12:00', 'Europe/Madrid'));
+
+    // «Campaña»: estimada en 300 min, con dos subtareas SIN estimar. Ana imputa 30 en la tarea y
+    // 60 + 90 en las subtareas: la unidad es la tarea, con 180 min reales.
+    $root = Task::factory()->create(['project_id' => $this->tm->id, 'estimated_minutes' => 300, 'assignee_user_id' => $this->ana->id]);
+    $subtasks = Task::factory()->count(2)->subtaskOf($root)->create(['estimated_minutes' => null, 'assignee_user_id' => $this->ana->id]);
+    TimeEntry::factory()->forTask($root)->on('2026-09-22')->minutes(30)->create(['user_id' => $this->ana->id]);
+    TimeEntry::factory()->forTask($subtasks[0])->on('2026-09-22')->minutes(60)->create(['user_id' => $this->ana->id]);
+    TimeEntry::factory()->forTask($subtasks[1])->on('2026-09-23')->minutes(90)->create(['user_id' => $this->ana->id]);
+    $root->update(['status_id' => $done]);
+
+    // «Diseño»: estimada en 999 (no cuenta: tiene subtareas estimadas), con una subtarea estimada en
+    // 100 (completada, 120 reales) y otra sin estimar: la unidad es la subtarea estimada (SPEC §6).
+    $derived = Task::factory()->create(['project_id' => $this->tm->id, 'estimated_minutes' => 999, 'assignee_user_id' => $this->ana->id]);
+    $estimated = Task::factory()->subtaskOf($derived)->create(['estimated_minutes' => 100, 'assignee_user_id' => $this->ana->id]);
+    Task::factory()->subtaskOf($derived)->create(['estimated_minutes' => null, 'assignee_user_id' => $this->ana->id]);
+    TimeEntry::factory()->forTask($estimated)->on('2026-09-23')->minutes(120)->create(['user_id' => $this->ana->id]);
+    $estimated->update(['status_id' => $done]);
+    $derived->update(['status_id' => $done]);
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00', 'Europe/Madrid'));
+
+    $scope = new ReportScope($this->admin, ($this->week)(['departamento' => [$this->design->id]]));
+
+    // Maquetación (300 / 420) + Campaña (300 / 180) + la subtarea de Diseño (100 / 120).
+    expect($this->metrics->estimation($scope))->toBe([
+        'tasks' => 3,
+        'estimated_minutes' => 700,
+        'actual_minutes' => 720,
+        'accuracy' => 0.9722,
+        'deviation' => 0.0286,
+    ]);
+});
+
 it('agrupa por semana y mes con los lunes y los días 1', function () {
     $scope = new ReportScope($this->admin, ReportFilters::fromQuery(['periodo' => 'trimestre', 'fecha' => '2026-09-01', 'departamento' => [$this->design->id]]));
 
