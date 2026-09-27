@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Domain\HourBanks\HourBankLedger;
 use App\Http\Resources\FinancialResource;
+use App\Models\Absence;
 use App\Models\ActiveTimer;
 use App\Models\Client;
 use App\Models\Project;
@@ -89,6 +90,8 @@ class HandleInertiaRequests extends Middleware
                 'lockTime' => $user ? Gate::forUser($user)->allows('lock-time') : false,
                 'manageUsers' => $user ? Gate::forUser($user)->allows('manage-users') : false,
                 'manageSettings' => $user ? Gate::forUser($user)->allows('manage-settings') : false,
+                // «Ausencias del equipo» (aprobar y registrar): responsables y admins (D-049).
+                'viewTeamAbsences' => $user ? Gate::forUser($user)->allows('viewTeam', Absence::class) : false,
             ],
         ];
     }

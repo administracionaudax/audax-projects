@@ -72,6 +72,7 @@ const ALL: Abilities = {
     lockTime: true,
     manageUsers: true,
     manageSettings: true,
+    viewTeamAbsences: true,
 };
 
 function withAbilities(can: Partial<Abilities>) {
@@ -110,6 +111,12 @@ describe('panel de administración', () => {
                 .getByRole('link', { name: 'Gestionar los festivos' })
                 .getAttribute('href'),
         ).toBe('/admin/festivos');
+        // … y la tarjeta «Festivos y ausencias» lleva también a las del equipo.
+        expect(
+            screen
+                .getByRole('link', { name: 'Ver las ausencias del equipo' })
+                .getAttribute('href'),
+        ).toBe('/ausencias/equipo');
         expect(screen.queryByText('Llega en la Fase 3')).toBeNull();
         expect(screen.getByText('Llega en la Fase 7')).toBeTruthy();
     });

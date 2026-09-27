@@ -10,6 +10,7 @@
     "absences.status.rejected": "Rechazada",
     "absences.status.cancelled": "Cancelada",
 
+    "nav.absences": "Ausencias",
     "absences.nav.label": "Secciones de ausencias",
     "absences.nav.mine": "Mis ausencias",
     "absences.nav.team": "Ausencias del equipo",
@@ -142,6 +143,7 @@
     "holidays.heading": "[[Festivos]]",
     "holidays.description": "Un festivo deja a 0 la capacidad de todo el equipo ese día: se nota en la carga y en los informes.",
     "holidays.admin_link": "Gestionar los festivos",
+    "holidays.admin_team_link": "Ver las ausencias del equipo",
     "holidays.new": "Añadir festivo",
     "holidays.new_title": "Añadir un festivo",
     "holidays.edit_title": "Editar «:name»",
