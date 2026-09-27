@@ -565,3 +565,42 @@ _Detalle y contexto en `docs/PLAN-FASE-4.md`._
 - **Resumen del proyecto:** «Próximos hitos», los 5 siguientes sin completar, más los vencidos destacados con icono y texto.
 - **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
 - **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 7)
+
+_Detalle y contexto en `docs/PLAN-FASE-7.md`._
+
+### D-073 · Preferencias de notificación **[concreta el SPEC §13]**
+- **Catálogo único:** `NotificationCatalog` tiene un evento por cada `kind()` de `AppNotification`, con su grupo, sus canales posibles (en la app, email y Web Push), los que llegan por defecto, a quién se ofrece y si es obligatorio.
+- **Una sola decisión de canal:** `AppNotification::via()` pregunta a `NotificationPreferences`. En `users.notification_preferences` solo se guarda lo que cambia cada persona.
+- **Por defecto:** los canales de siempre, más el email para horas devueltas y vencimientos y Web Push para menciones y directos. Los avisos de sistema del admin son obligatorios.
+- **Resumen diario opcional** a las 08:00: sustituye a los emails sueltos, que quedan en la campana.
+- **Recordatorio de los viernes** a las 13:00 para enviar la semana.
+
+### D-074 · Auditoría visible **[concreta el SPEC §14 y §15]**
+- `/admin/auditoria`, solo para el admin, sobre `activity_log`.
+- Filtros por entidad, persona, acción y fechas; detalle con el antes y el después; exportación a CSV.
+
+### D-075 · RGPD **[concreta el SPEC §15; texto pendiente de asesor]**
+- **Texto informativo:** configurable y con versión. El borrador está marcado «pendiente de asesor». Cada persona interna lo lee y lo acepta, y la lectura queda registrada.
+- **Retención configurable:** registros de acceso 12 meses, notificaciones leídas 6, auditoría 60 (mínimo 12) y chat sin límite. Nunca se borran horas.
+- **Exportación de los datos personales:** ZIP en cola, con URL firmada durante 7 días.
+
+### D-076 · Copias y almacenamiento **[concreta el SPEC §15 y D-029]**
+- **Copia externa:** `restic`, lista para activarse con el destino del propietario.
+- **Prueba de restauración:** una vez al mes.
+- **Avisos al admin:** disco, adjuntos, copia no hecha y restauración fallida.
+- **ClamAV:** fuera, sin aprobación.
+
+### D-077 · Observabilidad y cierre
+- **Logs:** en JSON.
+- **Documentación:** `DEPLOY.md` final.
+- **Revisión final:** accesibilidad AA y rendimiento de todas las páginas.
+
+### Numeración
+Las correcciones de las revisiones globales usan D-078 a D-091:
+- Fase 2: D-078 a D-087,
+- Fase 3: D-088 y D-091,
+- Fase 4: D-089 y D-090.
+
+La siguiente libre es **D-092**.
