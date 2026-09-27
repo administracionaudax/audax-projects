@@ -15,8 +15,10 @@ use App\Notifications\Reports\WeeklyDigestNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Reports\R3Scenario;
 
 /*
@@ -210,7 +212,8 @@ it('va por email (cola mail) y a la campana, con el texto en español y la empre
             'kind' => 'reports.weekly_digest',
             'title' => 'Resumen semanal del 21/09 al 27/09',
             'body' => '2 personas con días sin imputar · 3 personas fuera de los umbrales de ocupación · 1 bolsa en riesgo · 1 tarea vencida',
-            'url' => '/informes/detalle?periodo=semana&fecha=2026-09-21&filas=persona&columnas=proyecto',
+            // Filtrado por su equipo (Diseño), como el email.
+            'url' => '/informes/detalle?periodo=semana&fecha=2026-09-21&filas=persona&columnas=proyecto&departamento%5B0%5D='.$s->design->id,
             'icon' => 'gauge',
         ]);
 
@@ -231,8 +234,43 @@ it('va por email (cola mail) y a la campana, con el texto en español y la empre
         ->and($html)->toContain('Tareas vencidas (1)')
         ->and($html)->toContain('«Revisar textos» (TM), de Ana, vencía el 20/09/2026')
         ->and($html)->toContain('Ver el informe de la semana')
-        ->and($html)->toContain('/informes/detalle?periodo=semana&amp;fecha=2026-09-21&amp;filas=persona&amp;columnas=proyecto')
+        ->and($html)->toContain('/informes/detalle?periodo=semana&amp;fecha=2026-09-21&amp;filas=persona&amp;columnas=proyecto&amp;departamento%5B0%5D='.$s->design->id)
         ->and($html)->toContain('Audax Studio SL');
+});
+
+it('el enlace lleva al detallado con lo mismo que cuenta el email: el equipo del responsable o toda la agencia', function () {
+    $s = $this->s;
+    // Raúl también gestiona «Por horas», donde imputa Olga, de Marketing (fuera de su equipo): su
+    // alcance en el detallado incluye esas horas, pero el resumen solo habla de Diseño.
+    $olga = User::factory()->employee()->create(['name' => 'Olga', 'department_id' => $this->marketing->id]);
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-22')->minutes(90)->create(['user_id' => $olga->id]);
+    $s->tm->addMember($s->head, isManager: true);
+    $s->head->refresh();
+
+    $digest = ($this->digest)($s->head);
+    $url = (string) (new WeeklyDigestNotification($digest))->url($s->head);
+    parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+    expect($digest['department_ids'])->toBe([$s->design->id])
+        ->and($query)->toBe(['periodo' => 'semana', 'fecha' => '2026-09-21', 'filas' => 'persona', 'columnas' => 'proyecto', 'departamento' => [(string) $s->design->id]]);
+
+    // Las personas del detallado enlazado y sus horas son las del email (Marta, Ana y Luis, con sus
+    // imputadas; Pedro, dentro de los umbrales), sin Olga.
+    $logged = array_column([...$digest['high'], ...$digest['low']], 'logged_minutes', 'user_id');
+    $this->actingAs($s->head)->get($url)->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('pivot.row_totals', fn ($totals): bool => collect($totals)->keys()->map(fn ($id): int => (int) $id)->sort()->values()->all()
+            === collect([$this->marta->id, $this->pedro->id, $s->ana->id, $s->luis->id])->sort()->values()->all()
+            && collect($logged)->every(fn (int $minutes, int $id): bool => $totals[(string) $id] === $minutes))
+        ->where('pivot.total', 2700 + 1320 + 660 + 760));
+
+    // Sin el filtro, su alcance incluiría a Olga: por eso el enlace lo lleva.
+    $this->actingAs($s->head)->get('/informes/detalle?'.http_build_query(Arr::except($query, 'departamento')))
+        ->assertInertia(fn (Assert $page) => $page->where('pivot.row_totals.'.$olga->id, 90));
+
+    // Un admin: toda la agencia, sin filtro de departamento.
+    $admin = ($this->digest)($s->admin);
+    expect($admin['department_ids'])->toBe([])
+        ->and((new WeeklyDigestNotification($admin))->url($s->admin))->toBe('/informes/detalle?periodo=semana&fecha=2026-09-21&filas=persona&columnas=proyecto');
 });
 
 it('en el email, los nombres nunca se interpretan como HTML ni Markdown', function () {

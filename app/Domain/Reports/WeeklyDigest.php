@@ -58,7 +58,10 @@ final class WeeklyDigest
     }
 
     /**
-     * @return array{scope: 'agency'|'team', from: string, to: string,
+     * department_ids: los departamentos que dirige un responsable (su equipo, para que el enlace al
+     * detallado muestre lo mismo que el email); vacío para un admin (toda la agencia).
+     *
+     * @return array{scope: 'agency'|'team', department_ids: list<int>, from: string, to: string,
      *     unlogged: list<array{user_id: int, name: string, days: list<string>}>,
      *     high: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     low: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
@@ -139,6 +142,7 @@ final class WeeklyDigest
 
         return [
             'scope' => $agency ? 'agency' : 'team',
+            'department_ids' => $departmentIds,
             'from' => $week->from->toDateString(),
             'to' => $week->to->toDateString(),
             'unlogged' => $unlogged,

@@ -14,12 +14,13 @@ use Illuminate\Support\HtmlString;
  * Resumen semanal de productividad (SPEC §10, D-047) que envía reports:weekly-digest los lunes: en
  * la app (campana) y por email (cola `mail`, AppNotification::viaQueues), con el contenido que arma
  * App\Domain\Reports\WeeklyDigest. Guarda una foto de las cifras: el texto no cambia aunque las
- * horas se sigan editando. Lleva al informe detallado de esa semana, por persona y proyecto.
+ * horas se sigan editando. Lleva al informe detallado de esa semana, por persona y proyecto (y, para
+ * un responsable, de su equipo).
  */
 class WeeklyDigestNotification extends AppNotification
 {
     /**
-     * @param  array{scope: 'agency'|'team', from: string, to: string,
+     * @param  array{scope: 'agency'|'team', department_ids: list<int>, from: string, to: string,
      *     unlogged: list<array{user_id: int, name: string, days: list<string>}>,
      *     high: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     low: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
@@ -70,14 +71,25 @@ class WeeklyDigestNotification extends AppNotification
         return $parts === [] ? null : implode(' · ', $parts);
     }
 
+    /**
+     * El informe detallado de esa semana, por persona y proyecto. Para un responsable, filtrado por
+     * los departamentos que dirige: su alcance también incluye las horas de los proyectos que
+     * gestiona, de personas de fuera de su equipo, que el email no cuenta.
+     */
     public function url(object $notifiable): ?string
     {
-        return route('reports.detail', [
+        $query = [
             'periodo' => 'semana',
             'fecha' => $this->digest['from'],
             'filas' => 'persona',
             'columnas' => 'proyecto',
-        ], absolute: false);
+        ];
+
+        if ($this->digest['scope'] === 'team' && $this->digest['department_ids'] !== []) {
+            $query['departamento'] = $this->digest['department_ids'];
+        }
+
+        return route('reports.detail', $query, absolute: false);
     }
 
     public function icon(): ?string
