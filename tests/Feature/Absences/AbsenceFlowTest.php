@@ -70,7 +70,7 @@ test('una empleada solicita vacaciones: queda solicitada y se avisa a los respon
     expect(app(Capacity::class)->onDate($this->employee, CarbonImmutable::parse('2026-10-05')))->toBe(480);
 });
 
-test('sin responsables en su departamento, o sin departamento, avisa a los admins', function (Closure $person) {
+test('sin responsables activos en su departamento, o sin departamento, avisa a los admins', function (Closure $person) {
     $owner = $person->call($this);
     $otherAdmin = User::factory()->admin()->create();
     User::factory()->admin()->inactive()->create();
@@ -82,6 +82,14 @@ test('sin responsables en su departamento, o sin departamento, avisa a los admin
 })->with([
     'sin departamento' => [fn () => User::factory()->employee()->create()],
     'departamento sin responsables' => [fn () => User::factory()->employee()->inDepartment(Department::factory()->create())->create()],
+    // AbsenceApprovers: un responsable desactivado no cuenta, así que el aviso va a los admins.
+    'solo responsables desactivados' => [function () {
+        $department = Department::factory()->create();
+        $gone = User::factory()->departmentManager()->inDepartment($department)->inactive()->create();
+        $department->managers()->attach($gone);
+
+        return User::factory()->employee()->inDepartment($department)->create();
+    }],
 ]);
 
 test('las ausencias de responsables y admins se aprueban solas y sin avisos', function (string $who) {
