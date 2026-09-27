@@ -138,6 +138,9 @@ function NewTaskForm({
                             ? fieldErrors
                             : { form: message },
                     ),
+                // Otra visita la ha interrumpido: no se sabe si se ha creado (se verá en el Gantt).
+                onCancel: () =>
+                    setErrors({ form: t('gantt.new_task.interrupted') }),
                 onFinish: () => setProcessing(false),
             },
         );

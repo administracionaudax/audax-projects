@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,6 +16,7 @@ type VisitOptions = {
     onSuccess?: () => void;
     onError?: (errors: Record<string, string>) => void;
     onHttpException?: (response: { status: number }) => boolean | void;
+    onCancel?: () => void;
     onFinish?: () => void;
 };
 
@@ -330,6 +331,126 @@ describe('mover una tarea con sucesoras (D-057)', () => {
         expect(toasts.error).toHaveBeenCalledWith(
             'Ha fallado el servidor y no se ha guardado el cambio. Vuelve a intentarlo en unos minutos.',
         );
+    });
+});
+
+describe('guardado interrumpido por otra visita de Inertia', () => {
+    /** Lo que hace Inertia al cancelar una visita síncrona: onCancel y después onFinish. */
+    const interrupt = (options: VisitOptions) =>
+        act(() => {
+            options.onCancel?.();
+            options.onFinish?.();
+        });
+
+    it('la tarea deja de estar «guardando», se puede volver a mover y se ve donde se dejó hasta que llegan las tareas', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        const view = renderView();
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBe('true');
+
+        interrupt(server.post.mock.calls[0][2]);
+
+        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBeNull();
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+        expect(toasts.error).not.toHaveBeenCalled();
+
+        // Se puede volver a mover (no se queda bloqueada).
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(2));
+        expect(server.post.mock.calls[1][1]).toEqual({
+            start_date: '2026-10-07',
+            due_date: '2026-10-09',
+            shift_successors: false,
+        });
+        interrupt(server.post.mock.calls[1][2]);
+
+        // La visita que lo interrumpió trae las tareas del servidor: mandan sus fechas.
+        view.rerender(
+            <GanttView
+                label="Diagrama de Gantt de «Web»"
+                tasks={[
+                    {
+                        ...design,
+                        start_date: '2026-10-06',
+                        due_date: '2026-10-08',
+                    },
+                    layout,
+                    copy,
+                ]}
+                dependencies={[link]}
+                statuses={statuses}
+                range={{ start: '2026-10-01', end: '2026-10-20' }}
+                today="2026-10-06"
+                preferences={{ scale: 'day', color: 'status' }}
+                reload={RELOAD}
+                showUnscheduled
+                keyboardCommitDelay={0}
+            />,
+        );
+
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBeNull();
+    });
+
+    it('las fechas de las tareas que se siguen guardando no se pisan con las del servidor', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        const view = renderView();
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+
+        // Llegan tareas (otra recarga) mientras Diseño sigue guardándose.
+        view.rerender(
+            <GanttView
+                label="Diagrama de Gantt de «Web»"
+                tasks={[{ ...design }, layout, copy]}
+                dependencies={[link]}
+                statuses={statuses}
+                range={{ start: '2026-10-01', end: '2026-10-20' }}
+                today="2026-10-06"
+                preferences={{ scale: 'day', color: 'status' }}
+                reload={RELOAD}
+                showUnscheduled
+                keyboardCommitDelay={0}
+            />,
+        );
+
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBe('true');
+    });
+
+    it('en el diálogo de conflicto, si se interrumpe, se cierra y la tarea queda libre', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [proposal] }));
+        const user = userEvent.setup();
+        renderView();
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await user.click(
+            await screen.findByRole('button', {
+                name: 'Mover también las sucesoras',
+            }),
+        );
+        expect(server.post).toHaveBeenCalledTimes(1);
+
+        interrupt(server.post.mock.calls[0][2]);
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBeNull();
+        expect(toasts.error).not.toHaveBeenCalled();
     });
 });
 

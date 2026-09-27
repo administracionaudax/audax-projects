@@ -33,7 +33,10 @@ type LinkCallbacks = {
  *    se pide la propuesta al servidor, que no cambia nada;
  * 2. si hay sucesoras en conflicto, `conflict` abre el diálogo con «Mover también las sucesoras»,
  *    «Solo esta tarea» o «Cancelar» (vuelve a su sitio); si no, se guarda directamente;
- * 3. guardar recarga solo las props del Gantt (`reload`); si falla, la barra vuelve y se avisa.
+ * 3. guardar recarga solo las props del Gantt (`reload`); si falla, la barra vuelve y se avisa;
+ * 4. si otra visita de Inertia interrumpe el guardado (otro guardado, los filtros, la escala…), la
+ *    tarea deja de estar «guardando» al momento y conserva las fechas nuevas solo hasta que lleguen
+ *    las tareas del servidor (la petición ya había salido: no se sabe si se aplicó).
  * Nunca se desplazan sucesoras sin confirmarlo (SPEC §6.1).
  */
 export function useGanttEditing({
@@ -49,6 +52,19 @@ export function useGanttEditing({
     const [saving, setSaving] = useState<ReadonlySet<number>>(() => new Set());
     const [conflict, setConflict] = useState<RescheduleConflict | null>(null);
     const [resolving, setResolving] = useState<ConflictChoice | null>(null);
+    const [basis, setBasis] = useState(tasks);
+
+    // Llegan tareas nuevas del servidor: las fechas optimistas de las tareas que ya no se están
+    // guardando (un guardado interrumpido) dejan paso a las reales.
+    if (basis !== tasks) {
+        setBasis(tasks);
+
+        if ([...overrides.keys()].some((id) => !saving.has(id))) {
+            setOverrides(
+                new Map([...overrides].filter(([id]) => saving.has(id))),
+            );
+        }
+    }
 
     const effectiveTasks =
         overrides.size === 0
@@ -59,14 +75,12 @@ export function useGanttEditing({
                   return dates ? { ...task, ...dates } : task;
               });
 
-    const release = (taskId: number) => {
-        setOverrides((previous) => {
-            const next = new Map(previous);
-            next.delete(taskId);
-
-            return next;
-        });
+    const stopSaving = (taskId: number) => {
         setSaving((previous) => {
+            if (!previous.has(taskId)) {
+                return previous;
+            }
+
             const next = new Set(previous);
             next.delete(taskId);
 
@@ -74,15 +88,59 @@ export function useGanttEditing({
         });
     };
 
+    const release = (taskId: number) => {
+        setOverrides((previous) => {
+            if (!previous.has(taskId)) {
+                return previous;
+            }
+
+            const next = new Map(previous);
+            next.delete(taskId);
+
+            return next;
+        });
+        stopSaving(taskId);
+    };
+
     const fail = (taskId: number, message: string) => {
         release(taskId);
         toast.error(message);
     };
 
-    const save = (task: GanttTask, dates: GanttDates, shift: boolean) => {
+    /**
+     * Guarda las fechas. Pase lo que pase (bien, mal o interrumpido por otra visita), la tarea deja
+     * de estar «guardando»: nunca se queda bloqueada con el indicador de carga.
+     */
+    const save = (
+        task: GanttTask,
+        dates: GanttDates,
+        shift: boolean,
+        onFinish?: () => void,
+    ) => {
+        let settled = false;
+
         saveReschedule(task.id, dates, shift, reload, {
-            onSuccess: () => release(task.id),
-            onFailure: (message) => fail(task.id, message),
+            onSuccess: () => {
+                settled = true;
+                release(task.id);
+            },
+            onFailure: (message) => {
+                settled = true;
+                fail(task.id, message);
+            },
+            onCancel: () => {
+                // Las fechas nuevas se ven hasta que la visita que lo ha interrumpido traiga las
+                // tareas del servidor (ver `basis`).
+                settled = true;
+                stopSaving(task.id);
+            },
+            onFinish: () => {
+                if (!settled) {
+                    release(task.id);
+                }
+
+                onFinish?.();
+            },
         });
     };
 
@@ -133,16 +191,9 @@ export function useGanttEditing({
         }
 
         setResolving(choice);
-        saveReschedule(task.id, dates, choice === 'shift', reload, {
-            onSuccess: () => {
-                setConflict(null);
-                release(task.id);
-            },
-            onFailure: (message) => {
-                setConflict(null);
-                fail(task.id, message);
-            },
-            onFinish: () => setResolving(null),
+        save(task, dates, choice === 'shift', () => {
+            setConflict(null);
+            setResolving(null);
         });
     };
 

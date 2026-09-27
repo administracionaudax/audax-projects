@@ -111,6 +111,7 @@
     "gantt.new_task.title_required": "Escribe el título de la tarea.",
     "gantt.new_task.milestone_due_required": "Un hito necesita fecha de entrega.",
     "gantt.new_task.bank_required": "Elige la bolsa de la tarea.",
+    "gantt.new_task.interrupted": "No se ha podido confirmar si la tarea se ha creado. Comprueba el Gantt antes de volver a intentarlo.",
     "gantt.new_task.submit": "Crear tarea",
     "gantt.new_task.cancel": "Cancelar",
     "gantt.unscheduled.title": "Sin fechas (:count)",

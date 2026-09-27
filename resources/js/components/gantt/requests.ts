@@ -23,12 +23,21 @@ import type { ShiftProposal } from '@/types/schedule';
 
 export class GanttRequestError extends Error {}
 
-type Callbacks = {
+export type GanttVisitCallbacks = {
     onSuccess?: () => void;
     /** Cualquier fallo, con un mensaje comprensible (el del servidor si es de validación). */
     onFailure?: (message: string, errors?: Record<string, string>) => void;
+    /**
+     * Otra visita síncrona de Inertia la ha interrumpido (otro guardado, los filtros, la escala, el
+     * temporizador…). La petición ya había salido, así que no se sabe si el servidor la aplicó: la
+     * visita que la interrumpe trae los datos nuevos. Después se llama a onFinish.
+     */
+    onCancel?: () => void;
+    /** Siempre al terminar: bien, mal o interrumpida. */
     onFinish?: () => void;
 };
+
+type Callbacks = GanttVisitCallbacks;
 
 /** Valor de la cookie XSRF-TOKEN (Laravel la acepta en la cabecera X-XSRF-TOKEN). */
 export function xsrfToken(): string | null {
@@ -143,6 +152,7 @@ function visitOptions(reload: string[], callbacks: Callbacks): VisitOptions {
 
             return false;
         },
+        onCancel: () => callbacks.onCancel?.(),
         onFinish: () => callbacks.onFinish?.(),
     };
 }
