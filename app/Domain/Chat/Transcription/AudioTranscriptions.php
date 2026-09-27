@@ -26,11 +26,15 @@ final class AudioTranscriptions
 {
     public const int MAX_ATTEMPTS = 9;
 
-    public function forAudio(Message $message, Attachment $audio): AudioTranscription
+    /**
+     * @param  int|null  $declaredDurationMs  la que envía el navegador; el job la cambia por la que
+     *                                        mide el transcriptor
+     */
+    public function forAudio(Message $message, Attachment $audio, ?int $declaredDurationMs = null): AudioTranscription
     {
         $transcription = AudioTranscription::query()->firstOrCreate(
             ['message_id' => $message->id],
-            ['attachment_id' => $audio->id, 'status' => TranscriptionStatus::Pending],
+            ['attachment_id' => $audio->id, 'status' => TranscriptionStatus::Pending, 'audio_duration_ms' => $declaredDurationMs],
         );
 
         $this->dispatch($transcription);

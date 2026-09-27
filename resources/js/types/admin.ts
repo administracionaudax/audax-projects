@@ -173,6 +173,8 @@ export type AdminSettings = {
     max_attachment_mb: number;
     /** Lunes primero, en minutos. */
     default_work_minutes: number[];
+    /** Duración máxima de los audios del chat en segundos (Fase 6; entre 30 y 600). */
+    max_audio_seconds: number;
 };
 
 export type AdminSettingsProps = {

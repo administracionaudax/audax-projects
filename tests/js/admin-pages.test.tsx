@@ -412,6 +412,7 @@ const settingsProps: AdminSettingsProps = {
         time_entry_description_required: false,
         max_attachment_mb: 50,
         default_work_minutes: [480, 480, 480, 480, 480, 0, 0],
+        max_audio_seconds: 300,
     },
     roundings: [1, 5, 10, 15, 30],
     serverUploadLimitMb: 20,

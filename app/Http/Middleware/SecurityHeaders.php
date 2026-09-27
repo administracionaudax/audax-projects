@@ -31,7 +31,8 @@ class SecurityHeaders
         $headers->set('X-Frame-Options', 'DENY');
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        // El micrófono, solo para la propia app: grabar audios en el chat (Fase 6).
+        $headers->set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
 
         if ($request->isSecure()) {
             $headers->set('Strict-Transport-Security', 'max-age=31536000');
