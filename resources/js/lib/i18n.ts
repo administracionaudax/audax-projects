@@ -22,6 +22,7 @@ import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
+import reportsR1 from '../../../lang/ui/reports-r1.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import time from '../../../lang/ui/time.json';
@@ -37,6 +38,7 @@ const messages = {
     ...time,
     ...notifications,
     ...reports,
+    ...reportsR1,
 };
 
 export type TranslationKey = keyof typeof messages;
