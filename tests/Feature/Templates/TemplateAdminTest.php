@@ -252,7 +252,41 @@ it('rechaza ficheros que no son una plantilla válida con un error comprensible'
         '{"tasks": [{"ref": "a", "title": "A"}, {"ref": "b", "title": "B"}], "dependencies": [{"from_ref": "a", "to_ref": "b"}, {"from_ref": "b", "to_ref": "a"}]}',
         'El fichero no tiene una plantilla válida: tarea 1: Estas dependencias forman un ciclo: una tarea acabaría dependiendo de sí misma.',
     ],
+    'referencias que solo se distinguen por espacios' => [
+        '{"tasks": [{"ref": "a ", "title": "X"}, {"ref": "a", "title": "Y"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: Cada tarea necesita una referencia única.',
+    ],
+    'un hito que no es sí o no' => [
+        '{"tasks": [{"ref": "a", "title": "A", "is_milestone": "yes"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: El campo hito debe ser verdadero o falso.',
+    ],
+    'un inicio que no es un número' => [
+        '{"tasks": [{"ref": "a", "title": "A", "start_offset_days": "lunes"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: El campo día de inicio debe ser un número entero.',
+    ],
+    'una referencia demasiado larga' => [
+        '{"tasks": [{"ref": "'.str_repeat('a', 41).'", "title": "A"}]}',
+        'El fichero no tiene una plantilla válida: tarea 1: El campo referencia no puede tener más de 40 caracteres.',
+    ],
+    'una dependencia sin sucesora' => [
+        '{"tasks": [{"ref": "a", "title": "A"}], "dependencies": [{"from_ref": "a"}]}',
+        'El fichero no tiene una plantilla válida: dependencia 1: El campo tarea que depende es obligatorio.',
+    ],
 ]);
+
+it('al importar, las referencias con espacios alrededor son las mismas que sin ellos', function () {
+    $file = UploadedFile::fake()->createWithContent('espacios.json', (string) json_encode([
+        'tasks' => [['ref' => ' a', 'title' => 'A'], ['ref' => 'b', 'parent_ref' => 'a ', 'title' => 'B'], ['ref' => 'c ', 'title' => 'C']],
+        'dependencies' => [['from_ref' => 'a ', 'to_ref' => ' c']],
+    ]));
+
+    $this->post('/admin/plantillas/importar', ['file' => $file])->assertSessionHasNoErrors();
+
+    $structure = ProjectTemplate::query()->sole()->structure;
+    expect(array_column($structure['tasks'], 'ref'))->toBe(['a', 'b', 'c'])
+        ->and($structure['tasks'][1]['parent_ref'])->toBe('a')
+        ->and($structure['dependencies'])->toBe([['from_ref' => 'a', 'to_ref' => 'c']]);
+});
 
 it('solo admite ficheros JSON', function () {
     $this->post('/admin/plantillas/importar', ['file' => UploadedFile::fake()->create('plantilla.pdf', 10, 'application/pdf')])

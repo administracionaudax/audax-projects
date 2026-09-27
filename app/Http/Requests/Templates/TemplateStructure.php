@@ -85,12 +85,60 @@ final class TemplateStructure
      */
     public static function attributes(): array
     {
+        // Todos los campos: en el editor salen de controles, pero en un JSON importado los escribe
+        // cualquiera y el error se enseña tal cual («El campo hito debe ser verdadero o falso.»).
         return [
+            'structure' => self::text('templates.attributes.structure'),
+            'structure.tasks' => self::text('templates.attributes.tasks'),
+            'structure.tasks.*' => self::text('templates.attributes.task'),
+            'structure.tasks.*.ref' => self::text('templates.attributes.ref'),
+            'structure.tasks.*.parent_ref' => self::text('templates.attributes.parent_ref'),
             'structure.tasks.*.title' => self::text('templates.attributes.title'),
             'structure.tasks.*.task_type_id' => self::text('templates.attributes.task_type_id'),
             'structure.tasks.*.priority' => self::text('templates.attributes.priority'),
             'structure.tasks.*.estimated_minutes' => self::text('templates.attributes.estimated_minutes'),
+            'structure.tasks.*.is_milestone' => self::text('templates.attributes.is_milestone'),
+            'structure.tasks.*.start_offset_days' => self::text('templates.attributes.start_offset_days'),
+            'structure.tasks.*.duration_days' => self::text('templates.attributes.duration_days'),
+            'structure.dependencies' => self::text('templates.attributes.dependencies'),
+            'structure.dependencies.*' => self::text('templates.attributes.dependency'),
+            'structure.dependencies.*.from_ref' => self::text('templates.attributes.from_ref'),
+            'structure.dependencies.*.to_ref' => self::text('templates.attributes.to_ref'),
         ];
+    }
+
+    /**
+     * Referencias sin espacios alrededor (ref, parent_ref, from_ref y to_ref), como las deja
+     * normalize(): así la validación («distinct», la tarea de la que cuelga, las dependencias) y la
+     * estructura que se guarda ven las mismas. En el editor ya llegan recortadas (TrimStrings); en
+     * un JSON importado, no.
+     *
+     * @param  array<mixed>  $structure
+     * @return array<mixed>
+     */
+    public static function trimRefs(array $structure): array
+    {
+        foreach (['tasks' => ['ref', 'parent_ref'], 'dependencies' => ['from_ref', 'to_ref']] as $list => $fields) {
+            if (! isset($structure[$list]) || ! is_array($structure[$list])) {
+                continue;
+            }
+
+            foreach ($structure[$list] as $i => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                foreach ($fields as $field) {
+                    if (isset($item[$field]) && is_string($item[$field])) {
+                        $item[$field] = trim($item[$field]);
+                    }
+                }
+
+                $structure[$list][$i] = $item;
+            }
+        }
+
+        return $structure;
     }
 
     /**

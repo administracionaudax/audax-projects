@@ -67,7 +67,7 @@ final class TemplateTransfer
         }
 
         $structure = isset($data['structure']) && is_array($data['structure']) ? $data['structure'] : $data;
-        $structure = $this->resolveTypes($structure);
+        $structure = TemplateStructure::trimRefs($this->resolveTypes($structure));
 
         $validator = Validator::make(['structure' => $structure], TemplateStructure::rules(), TemplateStructure::messages(), TemplateStructure::attributes());
         $validator->after(fn ($after) => TemplateStructure::check($after, $structure));
@@ -75,12 +75,23 @@ final class TemplateTransfer
         if ($validator->fails()) {
             $key = (string) array_key_first($validator->errors()->messages());
             $message = (string) $validator->errors()->first();
-            // «Tarea 3: Escribe el título de la tarea.»: el número de fila ayuda a encontrarla.
-            if (preg_match('/^structure\.tasks\.(\d+)\./', $key, $match) === 1) {
-                $message = $this->text('templates.import.row', ['row' => (int) $match[1] + 1, 'message' => $message]);
+            // «tarea 3: Escribe el título de la tarea.»: el número de fila ayuda a encontrarla.
+            if (preg_match('/^structure\.(tasks|dependencies)\.(\d+)\./', $key, $match) === 1) {
+                $message = $this->text($match[1] === 'tasks' ? 'templates.import.row' : 'templates.import.dependency_row', [
+                    'row' => (int) $match[2] + 1,
+                    'message' => $message,
+                ]);
             }
 
-            throw ValidationException::withMessages(['file' => $this->text('templates.errors.import_invalid', ['reason' => $message])]);
+            throw $this->invalid($message);
+        }
+
+        // Red de seguridad: lo que normalize() rechace tras la validación también va a `file`, que
+        // es lo que enseña el diálogo de importar.
+        try {
+            $clean = TemplateStructure::clean($structure);
+        } catch (ValidationException $exception) {
+            throw $this->invalid(ProjectFromTemplate::firstMessage($exception));
         }
 
         $name = isset($data['name']) && is_string($data['name']) && trim($data['name']) !== '' ? trim($data['name']) : $fallbackName;
@@ -89,8 +100,13 @@ final class TemplateTransfer
         return [
             'name' => mb_substr($name, 0, 255),
             'description' => $description !== null ? mb_substr($description, 0, 2000) : null,
-            'structure' => TemplateStructure::clean($structure),
+            'structure' => $clean,
         ];
+    }
+
+    private function invalid(string $reason): ValidationException
+    {
+        return ValidationException::withMessages(['file' => $this->text('templates.errors.import_invalid', ['reason' => $reason])]);
     }
 
     /**
