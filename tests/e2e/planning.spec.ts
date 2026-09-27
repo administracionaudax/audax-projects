@@ -152,6 +152,8 @@ test('mover una tarea en el calendario (teclado y arrastre) y verla en la lista 
         await expect(
             calendar.locator(`[data-date="${month}-12"]`).getByText(title),
         ).toBeVisible();
+        // Un cambio de día a la vez: la tarea queda bloqueada hasta que se guarda el anterior.
+        await page.waitForLoadState('networkidle');
     });
 
     await test.step('arrastrando al día 15', async () => {

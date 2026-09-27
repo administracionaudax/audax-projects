@@ -450,8 +450,12 @@ test('Gantt multiproyecto: «Nueva tarea» en el proyecto elegido, «Sin fechas�
         await page.locator('[data-test="gantt-new-task"]').click();
         const dialog = page.getByRole('dialog', { name: 'Nueva tarea' });
         await expect(dialog).toBeVisible();
-        await dialog.getByRole('combobox', { name: 'Proyecto' }).click();
-        await page.getByRole('option', { name: group }).click();
+        // Con un solo proyecto a la vista (el cliente filtrado tiene uno), el diálogo lo elige solo.
+        const picker = dialog.getByRole('combobox', { name: 'Proyecto' });
+        if ((await picker.count()) > 0) {
+            await picker.click();
+            await page.getByRole('option', { name: group }).click();
+        }
         await dialog.getByLabel('Título', { exact: true }).fill(title);
         await dialog.getByRole('button', { name: 'Crear tarea' }).click();
         await expect(dialog).toBeHidden();

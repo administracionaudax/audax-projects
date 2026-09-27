@@ -3,12 +3,15 @@ import {
     DragOverlay,
     MouseSensor,
     TouchSensor,
+    pointerWithin,
+    rectIntersection,
     useDroppable,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
 import type {
     Announcements,
+    CollisionDetection,
     DragEndEvent,
     DragStartEvent,
 } from '@dnd-kit/core';
@@ -60,6 +63,17 @@ import type {
     CalendarTask,
     TaskCalendarData,
 } from '@/types/planning';
+
+/**
+ * El día de destino es el que queda bajo el puntero (las tarjetas son anchas y pueden salirse de
+ * su día: con el rectángulo arrastrado caerían en el de al lado). Sin puntero (teclado de dnd-kit),
+ * el de más intersección.
+ */
+const dropUnderPointer: CollisionDetection = (args) => {
+    const underPointer = pointerWithin(args);
+
+    return underPointer.length > 0 ? underPointer : rectIntersection(args);
+};
 
 /** Tareas que caben en un día del mes; el resto, en «+N más». */
 export const MONTH_VISIBLE = 3;
@@ -957,6 +971,7 @@ export function TaskCalendar({
 
             <DndContext
                 sensors={sensors}
+                collisionDetection={dropUnderPointer}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDragCancel={() => setDragging(null)}

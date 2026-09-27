@@ -245,6 +245,24 @@ const PAGES: readonly PageDef[] = [
         roles: STAFF,
         path: () => '/carga?horizonte=4-semanas',
     },
+    // Fase 4: Gantt, calendario, plantillas y tareas recurrentes.
+    { id: 'gantt', roles: ALL, path: () => '/gantt' },
+    {
+        id: 'proyecto-gantt',
+        roles: ALL,
+        path: (i) => `/proyectos/${i.project}/gantt`,
+    },
+    {
+        id: 'proyecto-calendario',
+        roles: ALL,
+        path: (i) => `/proyectos/${i.project}/tareas?vista=calendario`,
+    },
+    { id: 'admin-plantillas', roles: ADMIN, path: () => '/admin/plantillas' },
+    {
+        id: 'admin-tareas-recurrentes',
+        roles: ADMIN,
+        path: () => '/admin/tareas-recurrentes',
+    },
     {
         id: 'admin-invitar-dialogo',
         roles: ADMIN,

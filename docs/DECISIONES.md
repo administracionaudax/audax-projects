@@ -476,3 +476,92 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
   - rojo: más del 120 %.
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 4)
+
+_Detalle y contexto en `docs/PLAN-FASE-4.md`._
+
+### D-056 · Dependencias **[concreta el SPEC §4.3 y §6.1]**
+- **Tipo:** solo fin-inicio (`finish_to_start`), y solo entre tareas **del mismo proyecto**. Los hitos participan como cualquier tarea.
+- **Reglas:**
+  - una tarea no puede depender de sí misma,
+  - no se pueden crear ciclos, ni directos ni indirectos (búsqueda en anchura sobre las dependencias del proyecto),
+  - enlazar dos veces lo mismo no duplica.
+- **Quién:** quien puede editar **las dos** tareas (`TaskPolicy::update`).
+- **Tareas borradas:** una tarea en la papelera no cuenta en las dependencias. Al borrarla del todo, sus dependencias se borran en cascada.
+- **Contrato:** `App\Domain\Schedule\DependencyService` y las rutas `schedule.dependencies.*`.
+
+### D-057 · Conflictos al mover **[concreta el SPEC §6.1]**
+- **Cuándo hay conflicto:** una sucesora está en conflicto si empieza (o, si no tiene inicio, vence) el mismo día o antes de que acabe su predecesora.
+- **Propuesta:** llevar cada sucesora en conflicto al día siguiente del fin de su predecesora.
+  - Conserva su duración en **días naturales**, que es sencillo y predecible.
+  - Sigue **en cascada** por las sucesoras de las sucesoras.
+  - Mover una tarea **antes** no propone nada: las sucesoras nunca se adelantan solas.
+- **Nunca se aplica sola:** `POST /tareas/{task}/reprogramar/propuesta` devuelve la propuesta sin cambiar nada. `POST /tareas/{task}/reprogramar` guarda las fechas nuevas y solo desplaza las sucesoras si se confirma (`shift_successors`).
+  - La propuesta se **recalcula en el servidor** al confirmar: nunca se aceptan fechas del cliente para las sucesoras.
+  - Cada sucesora exige `TaskPolicy::update`. O se aplica todo o nada.
+- **Las dependencias son una ayuda:** se puede guardar una fecha en conflicto sin desplazar nada. El Gantt marca el conflicto (enlace en rojo, con icono y texto).
+
+### D-058 · Plantillas de proyecto **[concreta el SPEC §4.3, §6 y §14]**
+- **Estructura** (JSON en `project_templates.structure`):
+  - tareas con `ref`, `parent_ref` (un nivel), título, tipo, prioridad, estimación, hito, `start_offset_days` y `duration_days`,
+  - dependencias `from_ref → to_ref`.
+  - Todo se valida con `ProjectTemplateService::normalize`: referencias únicas, subtareas de un solo nivel, dependencias existentes, sin ciclos y un máximo de 500 tareas.
+- **Aplicar:**
+  - al **crear un proyecto** («desde plantilla», SPEC §6) lo puede hacer quien crea proyectos: admin y responsables (D-022),
+  - también en un proyecto existente, desde **Ajustes**, quien lo gestiona: se añaden las tareas y no se toca nada de lo que ya hay.
+  - Las fechas se calculan desde el inicio que se elija (por defecto, el del proyecto). Si el proyecto es de bolsas, todas las tareas van a la bolsa que se elija.
+- **Guardar como plantilla:** desde Ajustes del proyecto, quien lo gestiona. Solo se guardan títulos, tipos, estimaciones, fechas relativas y dependencias; nunca personas, horas ni estados.
+- **Gestión** en `/admin/plantillas`: el admin crea, edita la estructura, desactiva y borra (papelera). Los responsables las ven y las aplican.
+
+### D-059 · Tareas recurrentes **[concreta el SPEC §4.3 y §14]**
+- **Regla:**
+  - **semanal:** cada N semanas, en un día (lunes = 1),
+  - **mensual:** un día del mes; si el mes no lo tiene, el último día (31 → 28/29 en febrero, 30 en abril),
+  - desde `starts_on` y, opcionalmente, hasta `ends_on`,
+  - con la plantilla de la tarea: título, descripción, tipo, responsable, bolsa, estimación, prioridad y vencimiento `due_offset_days` días después de la fecha de cada instancia.
+- **Generación:**
+  - el comando `tasks:generate-recurring`, diario a las 06:00 de Madrid (`withoutOverlapping`),
+  - cada instancia se crea con `TaskWriter`; no se duplica gracias a la clave única (regla, fecha),
+  - recupera como máximo 31 días atrasados,
+  - se salta los proyectos archivados, las bolsas cerradas o renovadas y a los responsables desactivados (la tarea queda sin responsable).
+  - Al crear o reactivar una regla, se genera ya la instancia de hoy si toca.
+- **Quién:** las reglas de un proyecto las gestiona quien gestiona el proyecto, desde su pestaña **Ajustes**. El admin tiene la vista global en `/admin/tareas-recurrentes`.
+
+### D-060 · Gantt: componente propio **[concreta el SPEC §2 y §6.1]**
+- **Por qué propio:** se evaluaron SVAR React Gantt (MIT, pero parte de sus funciones son de pago) y frappe-gantt (MIT, sin React ni accesibilidad de teclado). Se hace un **componente propio** (React y SVG/HTML con pointer events, sin librerías nuevas) porque:
+  - pedimos control total del teclado y de la accesibilidad AA,
+  - usa los tokens del tema claro y oscuro,
+  - está en español,
+  - sin reprogramación automática.
+  - Sirve también para el Gantt de solo lectura del portal (F5), con `readOnly`.
+- **Funciones:**
+  - **Marcas:** barras para las tareas y rombos para los hitos. Subtareas sangradas bajo su padre, con la barra del padre como resumen.
+  - **Escalas:** día, semana y mes, con una marca de **hoy**.
+  - **Arrastrar para mover y redimensionar** (con el ratón y con el teclado: flechas mueven un día; Mayús + flechas cambian la entrega). Al soltar, se pide la propuesta (D-057) y, si hay conflicto, un diálogo ofrece «Mover también las sucesoras», «Solo esta tarea» o «Cancelar».
+  - **Crear dependencias** arrastrando desde el conector del final de una barra hasta otra. Alternativa con teclado: «Añadir dependencia» en el menú de la barra. Las flechas de las dependencias van en rojo, con icono, si hay conflicto.
+  - **Colores:**
+    - por **estado:** color de su categoría,
+    - o por **responsable:** `--chart-1..6` en orden fijo de aparición; el resto en gris «Otros». Siempre con leyenda, y el nombre en la barra o el tooltip.
+  - **Tareas sin fechas:** en una lista aparte, con «Asignar fechas».
+  - **Crear una tarea** desde el Gantt con sus fechas (el alta rápida de la F1 con fechas).
+  - **Tabla accesible alternativa:** título, responsable, inicio, entrega, dependencias.
+- **Multiproyecto:** en `/gantt`, con filtros por cliente, departamento, responsable y estado del proyecto. Proyectos agrupados y plegables, con un máximo de 60 proyectos o 1.500 tareas por vista; si hay más, se avisa y se pide filtrar.
+- **Quién:** lo ve cualquier interno (D-021). Mueve y enlaza quien puede editar las tareas; al resto, en solo lectura.
+
+### D-061 · Calendario de tareas **[concreta el SPEC §6 y D-037]**
+- **Dónde:** tercera vista de la pestaña **Tareas**, junto a Lista y Kanban.
+- **Qué muestra:**
+  - un mes, con la semana empezando en lunes,
+  - cada tarea el día de su **entrega**; las tareas con inicio también como franja del inicio a la entrega,
+  - los hitos con su rombo.
+- **Cambiar fechas:** arrastrando o con el teclado, pasando por reprogramar (D-057). Pulsar una tarea abre su panel.
+- **Tareas sin fecha:** en una lista lateral.
+
+### D-062 · Hitos **[concreta el SPEC §5.1 y §6]**
+- **En el panel de la tarea:**
+  - una casilla «Hito»: sin horas y con la entrega como única fecha, como hasta ahora,
+  - la sección **Dependencias**, con las predecesoras y sucesoras, para añadir y quitar (D-056).
+- **Resumen del proyecto:** «Próximos hitos», los 5 siguientes sin completar, más los vencidos destacados con icono y texto.
+- **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
+- **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
