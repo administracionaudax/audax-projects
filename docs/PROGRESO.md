@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 26/09/2026 16:45_
+_Última actualización: 27/09/2026 02:20_
 
 ## Hecho
 
@@ -51,19 +51,21 @@ _Última actualización: 26/09/2026 16:45_
 - ✅ **CI de GitHub Actions en verde** (run #7: php, js, security y e2e). Ha requerido dos correcciones: la guarda de Redis bloqueaba `composer install` sin `.env`, y laravel-vite-plugin bloqueaba Vitest con `CI=true`.
 - ✅ **FASE 0 CERRADA el 26/09/2026.** `fase-0` fusionada en `main` (etiqueta `fase-0-cerrada`). Servidor desplegado con el mismo código: 301 tests en PostgreSQL y 35/35 webs iguales.
 
-## En curso
-- **Fase 1 en modo autónomo (D-027).** Plan en `docs/PLAN-FASE-1.md`, rama `fase-1`.
-  - ✅ **Entrega 1.1, contrato de dominio:**
-    - esquema completo (18 migraciones), modelos y políticas,
-    - motor de bolsas `HourBankLedger` (D-019), `TimeEntryWriter` y `TimeEntryRules` (§7), temporizador y capacidad,
-    - Resources y tipos TS, props compartidas y componentes base,
-    - 90 tests nuevos de reglas de negocio.
-  - ⏳ **Entregas 1.2 a 1.6, en paralelo:** administración y clientes, proyectos y bolsas, tareas, y horas.
-  - ⏳ **Entrega 1.7, cierre:** notificaciones, búsqueda, seeders, E2E, revisión, despliegue y copias.
-    - ✅ **Revisión global de la Fase 1 (26/09):** 26 hallazgos confirmados (integración, seguridad, reglas de bolsas, rendimiento y UX), todos corregidos con sus tests (D-043 a D-045). Nueva migración `invitation_tokens` (se aplica con `desplegar-dev.sh`).
+### Fase 1: núcleo (rama `fase-1`, desplegada el 27/09)
+- **Entregas 1.1 a 1.7 integradas:** clientes, proyectos, bolsas (D-019), tareas, horas, temporizador, aprobación, notificaciones, búsqueda, invitaciones, seeders de 12 meses y copia nocturna (D-029).
+- **Revisión global:** 26 hallazgos confirmados y corregidos con sus tests (D-053 a D-055).
+- **Aislamiento del cliente** comprobado en **todas** las rutas (`tests/Feature/Portal/ClientIsolationTest`). Quién puede entrar se decide antes de buscar los modelos de la URL.
+- **Tests:** 1363 de Pest en local; 1359 en PostgreSQL 18 en el servidor (todos en verde); 539 de Vitest; 232 E2E con Playwright y axe.
+- **Subida de 50 MB** comprobada contra el servidor: no hace falta tocar nginx, ModSecurity ni PHP.
+
+## En curso (modo autónomo, D-027)
+- **Fase 2 (informes):** contrato hecho (`docs/PLAN-FASE-2.md`, D-043 a D-048); agentes R1, R2 y R3 implementando.
+- **Fase 3 (carga):** contrato hecho (`docs/PLAN-FASE-3.md`, D-049 a D-052); agentes W1 y W2 implementando.
+- **Fase 4 (Gantt):** contrato hecho (`docs/PLAN-FASE-4.md`, D-056 a D-062); agentes G1, G2 y G3 implementando.
 
 ## Siguiente
-1. Integrar las entregas 1.2 a 1.6, revisión adversarial y despliegue. Después, Fase 2 sin esperar (D-027).
+1. Integrar las Fases 2, 3 y 4 en orden, con revisión global, E2E y despliegue de cada una.
+2. Fase 5 (portal), Fase 6 (chat, Reverb y transcripción) y Fase 7 (pulido).
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).
