@@ -146,6 +146,22 @@ it('la cascada sigue por todos los caminos: una sucesora que llega por dos ramas
     ]);
 });
 
+it('mover una tarea antes no propone nada, aunque ya hubiera un conflicto (D-057)', function () {
+    // B ya empieza antes de que acabe A.
+    $a = ($this->make)('A', '2026-10-05', '2026-10-10');
+    $b = ($this->make)('B', '2026-10-08', '2026-10-09');
+    $this->links->link($a, $b);
+    $conflicts = app(ScheduleConflicts::class);
+
+    expect($conflicts->proposeShift($a, CarbonImmutable::parse('2026-10-04'), CarbonImmutable::parse('2026-10-09')))->toBe([])
+        // Con la misma entrega (solo cambia el inicio), tampoco.
+        ->and($conflicts->proposeShift($a, CarbonImmutable::parse('2026-10-07'), CarbonImmutable::parse('2026-10-10')))->toBe([])
+        // Más tarde, sí: B pasa detrás de la entrega nueva.
+        ->and($conflicts->proposeShift($a, CarbonImmutable::parse('2026-10-05'), CarbonImmutable::parse('2026-10-11')))->toHaveCount(1)
+        ->and($conflicts->proposeShift($a, CarbonImmutable::parse('2026-10-05'), CarbonImmutable::parse('2026-10-11'))[0])
+        ->toMatchArray(['task_id' => $b->id, 'new_start_date' => '2026-10-12', 'new_due_date' => '2026-10-13']);
+});
+
 it('un conflicto que ya había más abajo no lo propone un cambio que no llega hasta él', function () {
     $a = ($this->make)('A', '2026-10-01', '2026-10-05');
     $b = ($this->make)('B', '2026-10-10', '2026-10-12');

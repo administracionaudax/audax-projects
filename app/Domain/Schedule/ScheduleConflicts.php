@@ -10,6 +10,8 @@ use Carbon\CarbonImmutable;
  * si empieza (o, sin inicio, vence) el mismo día o antes de que acabe su predecesora. La
  * propuesta desplaza cada sucesora en conflicto lo justo para empezar el día siguiente, conserva
  * su duración y sigue en cascada. NUNCA se aplica sola: la interfaz la enseña y pide confirmación.
+ * Mover una tarea antes (o sin cambiar su entrega) no propone nada: las sucesoras nunca se
+ * adelantan solas, y un conflicto que ya estaba no lo causa ese cambio.
  * A prueba de ciclos (que D-056 no permite crear, pero la base podría tener): la tarea movida
  * nunca se desplaza y la cascada no vuelve a una tarea de su propio camino.
  */
@@ -24,6 +26,12 @@ final class ScheduleConflicts
     public function proposeShift(Task $task, ?CarbonImmutable $newStart, ?CarbonImmutable $newDue): array
     {
         if ($newDue === null) {
+            return [];
+        }
+
+        // Antes o con la misma entrega: nada que proponer (D-057).
+        $oldDue = $task->due_date?->toDateString();
+        if ($oldDue !== null && $newDue->toDateString() <= $oldDue) {
             return [];
         }
 
