@@ -21,6 +21,7 @@ import admin from '../../../lang/ui/admin.json';
 import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
+import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
 import planning from '../../../lang/ui/planning.json';
 import projects from '../../../lang/ui/projects.json';
@@ -44,6 +45,7 @@ const messages = {
     ...tasks,
     ...time,
     ...notifications,
+    ...notificationSettings,
     ...reports,
     ...reportsR2,
     ...reportsR1,

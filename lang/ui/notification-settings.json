@@ -1,0 +1,21 @@
+{
+    "settings.nav.notifications": "Notificaciones",
+    "notification_settings.heading": "Preferencias de notificación",
+    "notification_settings.description": "Elige qué avisos recibes y por dónde: en la app (la campana), por email o como avisos del navegador.",
+    "notification_settings.digest.label": "Resumen diario por email",
+    "notification_settings.digest.help": "Recibirás un solo email a las 08:00 con lo que no hayas leído; mientras esté activo, no recibirás emails sueltos.",
+    "notification_settings.digest.active": "Los avisos con el email activado se quedan en la campana y llegan juntos en el resumen. Los obligatorios siguen llegando al momento.",
+    "notification_settings.channels.app": "En la app",
+    "notification_settings.channels.email": "Email",
+    "notification_settings.channels.push": "Avisos del navegador",
+    "notification_settings.switch": ":event: :channel",
+    "notification_settings.not_offered": ":channel: no disponible",
+    "notification_settings.mandatory": "Obligatorio",
+    "notification_settings.push_unavailable": "Los avisos del navegador aún no están disponibles. Se podrán activar cuando el chat esté disponible.",
+    "notification_settings.empty": "No hay avisos que puedas configurar.",
+    "notification_settings.saving": "Guardando…",
+    "notification_settings.unsaved": "Tienes cambios sin guardar.",
+    "notification_settings.error_title": "No se han podido guardar las preferencias",
+    "notification_settings.link": "Preferencias",
+    "notification_settings.link_label": "Preferencias de notificación"
+}

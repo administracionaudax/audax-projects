@@ -2,7 +2,9 @@
 
 /*
 | Notificaciones (SPEC §13, D-073): el email genérico de AppNotification y los nombres de los
-| grupos, eventos y canales de /ajustes/notificaciones (NotificationPreferences::forUser).
+| grupos, eventos y canales de /ajustes/notificaciones (NotificationPreferences::forUser); el
+| guardado de esa página (settings), el resumen diario por email (digest) y el recordatorio de
+| enviar la semana (reminder).
 | Las claves de los eventos siguen su kind(): «task.assigned» → events.task.assigned.
 */
 
@@ -66,6 +68,19 @@ return [
             'transcriptions_failing' => ['label' => 'Transcripciones que fallan', 'description' => 'Audios del chat que no se consiguen transcribir.'],
             'disk_space' => ['label' => 'Espacio en disco', 'description' => 'Cuando el disco o los adjuntos pasan del umbral.'],
             'backup_failed' => ['label' => 'Copias de seguridad', 'description' => 'Cuando falla una copia o su prueba de restauración.'],
+        ],
+    ],
+
+    // /ajustes/notificaciones (App\Http\Controllers\Settings\NotificationSettingsController).
+    'settings' => [
+        'saved' => 'Preferencias de notificación guardadas.',
+        'attributes' => [
+            'events' => 'avisos',
+            'daily_digest' => 'resumen diario',
+        ],
+        'errors' => [
+            'channels' => 'Los canales solo pueden ser «En la app», «Email» y «Avisos del navegador».',
+            'value' => 'Cada canal tiene que estar activado o desactivado.',
         ],
     ],
 ];

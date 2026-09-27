@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Settings\NotificationSettingsController;
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
 | Preferencias de notificación (Agente N, Fase 7, D-073): /ajustes/notificaciones con la matriz
@@ -8,3 +11,8 @@
 | notification-settings.*. Solo internos: se carga dentro del grupo auth, active, internal y 2fa.
 |--------------------------------------------------------------------------
 */
+
+Route::get('ajustes/notificaciones', [NotificationSettingsController::class, 'edit'])->name('notification-settings.edit');
+Route::put('ajustes/notificaciones', [NotificationSettingsController::class, 'update'])
+    ->middleware('throttle:30,1')
+    ->name('notification-settings.update');
