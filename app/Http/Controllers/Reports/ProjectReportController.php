@@ -9,6 +9,7 @@ use App\Domain\Reports\Metrics;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Enums\BillingType;
 use App\Enums\TaskStatusCategory;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
@@ -209,6 +210,8 @@ class ProjectReportController extends Controller
     {
         $table = is_string($table) && in_array($table, self::TABLES, true) ? $table : 'tareas';
         $financials = $scope->canSeeFinancials();
+        // «Dentro de bolsa» solo en proyectos de bolsas, como la página: en los demás sería lo imputado.
+        $banks = $project->billing_type === BillingType::HourBank;
         $name = self::text('reports.r2.project.export_name', ['project' => $project->code]).' '.$table;
         $c = fn (string $key): string => self::text('reports.r2.project.columns.'.$key);
         $deviation = fn (?int $estimated, int $actual): array => $estimated === null
@@ -255,7 +258,7 @@ class ProjectReportController extends Controller
         }
 
         if ($table === 'semanas') {
-            $headers = [$c('week'), $c('logged'), $c('billable'), $c('in_bank'), $c('overage')];
+            $headers = [$c('week'), $c('logged'), $c('billable'), ...($banks ? [$c('in_bank')] : []), $c('overage')];
             if ($financials) {
                 $headers[] = $c('income');
             }
@@ -263,7 +266,7 @@ class ProjectReportController extends Controller
                 $week['week'],
                 TableExporter::hours($week['logged_minutes']),
                 TableExporter::hours($week['billable_minutes']),
-                TableExporter::hours($week['in_bank_minutes']),
+                ...($banks ? [TableExporter::hours($week['in_bank_minutes'])] : []),
                 TableExporter::hours($week['overage_minutes']),
                 ...($financials ? [TableExporter::money($week['income'] ?? '0.00')] : []),
             ], $data['weekly']);
@@ -273,7 +276,7 @@ class ProjectReportController extends Controller
 
         // personas o tipos (horas del periodo).
         $source = $table === 'personas' ? $data['by_person'] : $data['by_type'];
-        $headers = [$c($table === 'personas' ? 'person' : 'type'), $c('logged'), $c('billable'), $c('in_bank'), $c('overage')];
+        $headers = [$c($table === 'personas' ? 'person' : 'type'), $c('logged'), $c('billable'), ...($banks ? [$c('in_bank')] : []), $c('overage')];
         if ($financials) {
             array_push($headers, $c('income'), $c('cost'));
         }
@@ -281,7 +284,7 @@ class ProjectReportController extends Controller
             $row['name'],
             TableExporter::hours($row['logged_minutes']),
             TableExporter::hours($row['billable_minutes']),
-            TableExporter::hours($row['in_bank_minutes']),
+            ...($banks ? [TableExporter::hours($row['in_bank_minutes'])] : []),
             TableExporter::hours($row['overage_minutes']),
             ...($financials ? [TableExporter::money($row['income']), TableExporter::money($row['cost'])] : []),
         ], $source);

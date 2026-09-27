@@ -293,3 +293,22 @@ test('los títulos de tarea que empiezan por = no se exportan como fórmula', fu
     $csv = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'csv']))->streamedContent();
     expect($csv)->toContain('"\'=cmd|\'/C calc\'!A0"');
 });
+
+test('la exportación de un proyecto sin bolsas no lleva «Horas dentro de bolsa», como la página', function () {
+    $s = $this->s;
+    $url = fn (array $extra): string => "/informes/proyectos/{$s->campaign->id}?".R2Scenario::week($extra);
+
+    // NAN-CAMP (por horas): Marta 120 facturables y Ana 30 no facturables.
+    $people = ($this->xlsx)($this->actingAs($s->admin)->get($url(['formato' => 'xlsx', 'tabla' => 'personas']))->assertOk()->streamedContent());
+    expect($people[0])->toBe(['Persona', 'Horas imputadas', 'Horas facturables', 'Horas en exceso', 'Ingreso estimado (€)', 'Coste (€)'])
+        ->and($people[1])->toBe(['Marta', 2, 2, 0, 116, 50]);
+
+    foreach (['tipos', 'semanas'] as $table) {
+        $rows = ($this->xlsx)($this->actingAs($s->admin)->get($url(['formato' => 'xlsx', 'tabla' => $table]))->streamedContent());
+        expect($rows[0])->not->toContain('Horas dentro de bolsa');
+    }
+
+    // En uno de bolsas, sí.
+    $weeks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'semanas']))->streamedContent());
+    expect($weeks[0])->toContain('Horas dentro de bolsa');
+});
