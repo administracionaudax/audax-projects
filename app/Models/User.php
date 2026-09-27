@@ -353,6 +353,15 @@ class User extends Authenticatable
     }
 
     /**
+     * ¿Puede saber de qué tipo son las ausencias de $other (una baja es un dato de salud)? La propia
+     * persona, un admin o quien la supervisa (D-082). Los demás, como mucho, que ese día no está.
+     */
+    public function canSeeAbsencesOf(User $other): bool
+    {
+        return $this->id === $other->id || $this->isAdmin() || $this->supervises($other);
+    }
+
+    /**
      * El enlace de restablecimiento se envía por cola (SPEC §13).
      */
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
