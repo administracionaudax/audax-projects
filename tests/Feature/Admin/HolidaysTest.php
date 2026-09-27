@@ -2,6 +2,7 @@
 
 use App\Domain\Absences\HolidayImporter;
 use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Reports\ReportCache;
 use App\Domain\Time\Capacity;
 use App\Models\Department;
 use App\Models\Holiday;
@@ -295,6 +296,29 @@ test('confirma la importación sin duplicar fechas y lo deja en la auditoría', 
     $activity = Activity::query()->where('event', 'holidays_imported')->sole();
     expect($activity->causer_id)->toBe($this->admin->id)
         ->and($activity->properties['dates'])->toBe(['2026-03-19', '2026-09-21']);
+});
+
+test('crear, editar, borrar, importar y añadir los nacionales invalida la caché de los informes (D-046)', function () {
+    // La capacidad de los informes depende de los festivos; insertOrIgnore no dispara eventos.
+    $bumped = function (Closure $action): bool {
+        $before = ReportCache::version();
+        $action();
+
+        return ReportCache::version() > $before;
+    };
+    $this->actingAs($this->admin);
+
+    expect($bumped(fn () => $this->post('/admin/festivos', ['date' => '2026-09-08', 'name' => 'Día de Asturias'])->assertSessionHasNoErrors()))->toBeTrue();
+    $holiday = Holiday::query()->sole();
+
+    expect($bumped(fn () => $this->put("/admin/festivos/{$holiday->id}", ['date' => '2026-09-09', 'name' => 'Fiesta local'])->assertSessionHasNoErrors()))->toBeTrue()
+        ->and($bumped(fn () => $this->delete("/admin/festivos/{$holiday->id}")->assertSessionHasNoErrors()))->toBeTrue()
+        ->and($bumped(fn () => $this->post('/admin/festivos/importar', ['rows' => [['date' => '2026-09-21', 'name' => 'San Mateo']]])->assertSessionHasNoErrors()))->toBeTrue()
+        ->and($bumped(fn () => $this->post('/admin/festivos/nacionales', ['year' => 2027])->assertSessionHasNoErrors()))->toBeTrue();
+
+    // Sin festivos nuevos no hay nada que invalidar.
+    expect($bumped(fn () => $this->post('/admin/festivos/importar', ['rows' => [['date' => '2026-09-21', 'name' => 'San Mateo']]])->assertSessionHasNoErrors()))->toBeFalse()
+        ->and($bumped(fn () => $this->post('/admin/festivos/nacionales', ['year' => 2027])->assertSessionHasNoErrors()))->toBeFalse();
 });
 
 test('la confirmación vuelve a validar cada fila', function () {

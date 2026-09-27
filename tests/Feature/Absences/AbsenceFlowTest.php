@@ -2,6 +2,7 @@
 
 use App\Domain\Absences\AbsenceData;
 use App\Domain\Absences\AbsenceService;
+use App\Domain\Reports\ReportCache;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
@@ -389,4 +390,36 @@ test('la capacidad de los informes descuenta las ausencias aprobadas y los festi
         '2026-10-17' => 0,
         '2026-10-18' => 0,
     ])->and(array_sum($week))->toBe(960);
+});
+
+test('los cambios de ausencias aprobadas invalidan la caché de los informes; los demás, no', function () {
+    $bumped = function (Closure $action): bool {
+        $before = ReportCache::version();
+        $action();
+
+        return ReportCache::version() > $before;
+    };
+    $data = fn (string $from, string $to) => new AbsenceData(AbsenceType::Vacation, $from, $to);
+    $refs = [];
+
+    // Solicitar (sin aprobar), rechazar o retirar una pendiente no cambia la capacidad.
+    expect($bumped(function () use (&$refs, $data) {
+        $refs['pending'] = $this->service->request($this->employee, $data('2026-10-19', '2026-10-20'));
+    }))->toBeFalse()
+        ->and($bumped(function () use (&$refs, $data) {
+            $refs['rejected'] = $this->service->request($this->employee, $data('2026-10-26', '2026-10-27'));
+            $this->service->reject($this->manager, $refs['rejected'], 'No');
+        }))->toBeFalse()
+        ->and($bumped(function () use (&$refs, $data) {
+            $withdrawn = $this->service->request($this->employee, $data('2026-11-09', '2026-11-10'));
+            $this->service->cancel($this->employee, $withdrawn);
+        }))->toBeFalse();
+
+    // Aprobar, autoaprobar, registrar y anular una aprobada, sí.
+    expect($bumped(fn () => $this->service->approve($this->manager, $refs['pending'])))->toBeTrue()
+        ->and($bumped(fn () => $this->service->request($this->manager, $data('2026-10-19', '2026-10-20'))))->toBeTrue()
+        ->and($bumped(function () use (&$refs, $data) {
+            $refs['registered'] = $this->service->register($this->admin, $this->employee, $data('2026-11-16', '2026-11-17'));
+        }))->toBeTrue()
+        ->and($bumped(fn () => $this->service->cancel($this->manager, $refs['registered'])))->toBeTrue();
 });

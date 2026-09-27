@@ -2,6 +2,7 @@
 
 namespace App\Domain\Absences;
 
+use App\Domain\Reports\ReportCache;
 use App\Models\Holiday;
 use App\Models\User;
 use App\Support\LocalTime;
@@ -24,8 +25,9 @@ use Illuminate\Validation\ValidationException;
  * - preview() lee el fichero y devuelve cada festivo con su estado, sin guardar nada: se añade,
  *   ya existe un festivo ese día (se deja como está), se repite en el fichero o tiene un error
  *   (con su número de línea).
- * - store() añade los de las fechas que aún no tienen festivo (nunca duplica: la fecha es única)
- *   y lo deja en la auditoría. Lo usan la importación y «Añadir los festivos nacionales».
+ * - store() añade los de las fechas que aún no tienen festivo (nunca duplica: la fecha es única),
+ *   lo deja en la auditoría e invalida la caché de los informes (ReportCache: la capacidad depende
+ *   de los festivos). Lo usan la importación y «Añadir los festivos nacionales».
  */
 final class HolidayImporter
 {
@@ -147,7 +149,7 @@ final class HolidayImporter
             $unique[$row['date']] ??= $row['name'];
         }
 
-        return DB::transaction(function () use ($actor, $unique, $event, $properties): array {
+        $result = DB::transaction(function () use ($actor, $unique, $event, $properties): array {
             $existing = $this->existingNames(array_keys($unique));
             $new = array_diff_key($unique, $existing);
             ksort($new);
@@ -181,6 +183,13 @@ final class HolidayImporter
 
             return ['created' => $created, 'skipped' => count($unique) - $created, 'dates' => $dates];
         });
+
+        // insertOrIgnore no dispara eventos del modelo: se invalida aquí, tras confirmar.
+        if ($result['created'] > 0) {
+            ReportCache::bump();
+        }
+
+        return $result;
     }
 
     /**

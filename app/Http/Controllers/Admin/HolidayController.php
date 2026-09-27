@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Absences\AbsenceText;
 use App\Domain\Absences\HolidayImporter;
 use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Reports\ReportCache;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HolidayFileRequest;
 use App\Http\Requests\Admin\HolidayRequest;
@@ -28,7 +29,8 @@ use Inertia\Response;
  * - «Añadir los festivos nacionales de España de AAAA», calculados en local, sin duplicar.
  * - Importar un .ics o un CSV: vista previa con el estado y los errores de cada línea (flash
  *   `holiday_import`) y confirmación con los que se añaden.
- * Todo queda en la auditoría (log `holidays`).
+ * Todo queda en la auditoría (log `holidays`) e invalida la caché de los informes (ReportCache, D-046):
+ * la capacidad depende de los festivos.
  */
 class HolidayController extends Controller
 {
@@ -90,6 +92,7 @@ class HolidayController extends Controller
             return $holiday;
         });
 
+        ReportCache::bump();
         $this->toast(AbsenceText::get('absences.holidays.created', $this->describe($holiday)));
 
         return back();
@@ -113,6 +116,7 @@ class HolidayController extends Controller
             ]);
         });
 
+        ReportCache::bump();
         $this->toast(AbsenceText::get('absences.holidays.updated', $this->describe($holiday)));
 
         return back();
@@ -130,6 +134,7 @@ class HolidayController extends Controller
             $holiday->delete();
         });
 
+        ReportCache::bump();
         $this->toast(AbsenceText::get('absences.holidays.deleted', $this->describe($holiday)));
 
         return back();

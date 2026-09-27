@@ -2,6 +2,7 @@
 
 namespace App\Domain\Absences;
 
+use App\Domain\Reports\ReportCache;
 use App\Enums\AbsenceStatus;
 use App\Enums\Role;
 use App\Models\Absence;
@@ -24,6 +25,8 @@ use Illuminate\Validation\ValidationException;
  *   bloqueada y su estado comprobado de nuevo.
  * - Los cambios quedan en la auditoría de Absence (LogsDomainActivity: quién, antes y después).
  * - Los avisos (en la app y por email, por cola) salen después de confirmar la transacción.
+ * - Las ausencias aprobadas restan capacidad (Capacity): cada cambio que las toca invalida la caché
+ *   de los informes (ReportCache::bump(), D-046) tras confirmar la transacción.
  * - Las ausencias de responsables y admins se aprueban solas al solicitarlas (sin aviso a nadie,
  *   como las semanas de horas, D-041). `approved_by` guarda quién la revisó: quien la aprueba, la
  *   rechaza o la registra; null en la aprobación automática.
@@ -70,7 +73,9 @@ final class AbsenceService
 
         $absence->setRelation('user', $actor);
 
-        if (! $autoApproved) {
+        if ($autoApproved) {
+            ReportCache::bump();
+        } else {
             Notification::send($this->approvers->for($actor), new AbsenceRequestedNotification($absence, $actor));
         }
 
@@ -103,6 +108,7 @@ final class AbsenceService
         });
 
         $absence->setRelation('user', $target);
+        ReportCache::bump();
 
         if ($target->id !== $actor->id) {
             $target->notify(new AbsenceApprovedNotification($absence, $actor, registered: true));
@@ -132,6 +138,7 @@ final class AbsenceService
             return $current;
         });
 
+        ReportCache::bump();
         $absence->user->notify(new AbsenceApprovedNotification($absence, $reviewer));
 
         return $absence;
@@ -196,6 +203,8 @@ final class AbsenceService
         });
 
         if ($previous === AbsenceStatus::Approved) {
+            ReportCache::bump();
+
             $byOwner = $actor->id === $absence->user_id;
             $recipient = $byOwner ? $this->approverOf($absence) : $absence->user;
 
