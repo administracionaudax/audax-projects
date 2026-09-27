@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DetailPageProps } from '@/components/reports/r3-types';
@@ -7,14 +7,18 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import type { PivotResult } from '@/types';
 
 const get = vi.fn();
-const on = vi.fn(() => () => {});
+const on = vi.fn(
+    (_event: string, _handler: (event: unknown) => void) => () => {},
+);
+const reload = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: {
         get: (...args: unknown[]) => get(...args),
-        on: (...args: unknown[]) => on(...args),
-        reload: vi.fn(),
+        on: (event: string, handler: (event: unknown) => void) =>
+            on(event, handler),
+        reload: (...args: unknown[]) => reload(...args),
     },
 }));
 
@@ -508,5 +512,84 @@ describe('página del informe detallado', () => {
             ),
         ).toBeTruthy();
         expect(screen.queryByRole('table')).toBeNull();
+    });
+
+    it('con comparar=1, cada KPI dice cuánto varía frente al periodo anterior', () => {
+        render(
+            <TooltipProvider>
+                <ReportDetail
+                    {...pageProps({
+                        // Imputadas 1420 frente a 1000 (+42 %); exceso 100 frente a 200 (−50 %, mejor).
+                        comparison: {
+                            logged_minutes: 1000,
+                            billable_minutes: 1360,
+                            in_bank_minutes: 800,
+                            overage_minutes: 200,
+                            billability: 0.9577,
+                        },
+                    })}
+                />
+            </TooltipProvider>,
+        );
+
+        const summary = screen.getByRole('region', {
+            name: 'Resumen del periodo',
+        });
+        expect(
+            within(summary).getByText('42 % más que en el periodo anterior'),
+        ).toBeTruthy();
+        expect(
+            within(summary).getByText('50 % menos que en el periodo anterior'),
+        ).toBeTruthy();
+        expect(
+            within(summary).getAllByText('Igual que en el periodo anterior'),
+        ).toHaveLength(2);
+    });
+
+    it('mientras carga lo anuncia y bloquea la tabla; si falla la red, ofrece reintentar', async () => {
+        const handlers: Record<string, (event: unknown) => void> = {};
+        on.mockImplementation((event, handler) => {
+            handlers[event] = handler;
+
+            return () => {};
+        });
+        const user = userEvent.setup();
+        render(
+            <TooltipProvider>
+                <ReportDetail {...pageProps()} />
+            </TooltipProvider>,
+        );
+        const visit = (path: string) => ({
+            detail: { visit: { url: new URL(`https://app.test${path}`) } },
+        });
+
+        // Una visita a otra página no cambia nada.
+        act(() => handlers.start(visit('/proyectos')));
+        expect(screen.queryByRole('status')).toBeNull();
+
+        act(() => handlers.start(visit('/informes/detalle')));
+        expect(screen.getByRole('status').textContent).toContain(
+            'Actualizando el informe…',
+        );
+        expect(
+            screen
+                .getByRole('button', { name: 'Intercambiar filas y columnas' })
+                .hasAttribute('disabled'),
+        ).toBe(true);
+
+        act(() => handlers.networkError({}));
+        act(() => handlers.finish(visit('/informes/detalle')));
+        expect(screen.queryByText('Actualizando el informe…')).toBeNull();
+        expect(
+            screen.getByText(/No se ha podido actualizar el informe/),
+        ).toBeTruthy();
+
+        await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+        expect(reload).toHaveBeenCalledTimes(1);
+        expect(
+            screen.queryByText(/No se ha podido actualizar el informe/),
+        ).toBeNull();
+
+        on.mockImplementation(() => () => {});
     });
 });

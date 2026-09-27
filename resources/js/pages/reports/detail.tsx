@@ -162,7 +162,8 @@ export default function ReportDetail({
                             role="status"
                             className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"
                         >
-                            <Spinner />
+                            {/* El texto ya lo anuncia: sin un segundo «status» anidado. */}
+                            <Spinner role="presentation" aria-hidden="true" />
                             {t('reports_r3.detail.loading')}
                         </p>
                     ) : null}
