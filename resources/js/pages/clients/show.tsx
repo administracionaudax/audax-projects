@@ -22,7 +22,9 @@ import {
     HourBankStatusBadge,
     ProjectStatusBadge,
 } from '@/components/domain/badges';
-import { EmptyState, PhaseBadge } from '@/components/empty-state';
+import { EmptyState } from '@/components/empty-state';
+import { ClientPortalSection } from '@/components/portal/access/client-portal-section';
+import type { ClientPortalAccess } from '@/components/portal/access/types';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -113,7 +115,11 @@ export default function ClientShow({
     hourBankHistory,
     hours,
     can,
-}: ClientShowProps) {
+    portal,
+}: ClientShowProps & {
+    /** Acceso al portal (Fase 5, D-063): null para quien no lo gestiona. */
+    portal?: ClientPortalAccess | null;
+}) {
     const page = usePage();
     const showFinancials = page.props.auth?.can?.viewFinancials === true;
     const thresholds = page.props.config?.hour_bank_thresholds;
@@ -394,7 +400,11 @@ export default function ClientShow({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <PhaseBadge phase={5} />
+                            <ClientPortalSection
+                                clientId={client.id}
+                                clientName={client.name}
+                                portal={portal}
+                            />
                         </CardContent>
                     </Card>
                 </div>

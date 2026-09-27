@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Clients;
 
 use App\Domain\Admin\TextSearch;
 use App\Domain\HourBanks\HourBankCommitment;
+use App\Domain\Portal\Access\ClientPortalAccess;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
@@ -149,6 +150,8 @@ class ClientController extends Controller
                 'month_start' => $monthStart,
                 'year' => (int) LocalTime::today()->year,
             ],
+            // Acceso al portal (Fase 5, D-063 y D-064): null para quien no lo gestiona.
+            'portal' => fn (): ?array => app(ClientPortalAccess::class)->for($client, $request->user()),
             'can' => [
                 'update' => $request->user()?->can('update', $client) ?? false,
                 // Informe del cliente (Fase 2, R2; D-044): enlace «Ver informe».
