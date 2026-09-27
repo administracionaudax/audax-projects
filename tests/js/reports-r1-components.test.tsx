@@ -63,6 +63,7 @@ import {
 import { kpiView, R1KpiGrid } from '@/components/reports/r1-kpi-grid';
 import { normalize, R1LinkList } from '@/components/reports/r1-link-list';
 import {
+    memberOccupancyLevel,
     occupancyLevel,
     R1MembersTable,
 } from '@/components/reports/r1-members-table';
@@ -535,6 +536,7 @@ const member = (overrides: Partial<R1Member>): R1Member => ({
     logged_minutes: 760,
     billable_minutes: 700,
     occupancy: 0.6333,
+    pace: null,
     billability: 0.9211,
     billable_productivity: 0.5833,
     income: null,
@@ -560,11 +562,52 @@ describe('miembros del departamento', () => {
         expect(occupancyLevel(0, thresholds, false)).toBe('low');
     });
 
-    it('en un periodo en curso enseña la capacidad hasta ayer y «Aún sin días» si no ha pasado ninguno', () => {
+    it('en un periodo en curso, el nivel sale del ritmo (hasta ayer), no de la ocupación del periodo entero (D-080)', () => {
+        // Periodo cerrado: la ocupación.
+        expect(memberOccupancyLevel(member({}), thresholds)).toBe('low');
+        // En curso: el ritmo. A mitad de mes, 36 % del mes entero pero 114 % de lo transcurrido.
+        expect(
+            memberOccupancyLevel(
+                member({
+                    capacity_minutes: 10560,
+                    capacity_to_date_minutes: 3360,
+                    occupancy: 0.3636,
+                    pace: 1.1429,
+                }),
+                thresholds,
+            ),
+        ).toBe('high');
+        expect(
+            memberOccupancyLevel(
+                member({ capacity_to_date_minutes: 960, pace: 0.7917 }),
+                thresholds,
+            ),
+        ).toBe('ok');
+        // Sin ningún día transcurrido con jornada, sin nivel.
+        expect(
+            memberOccupancyLevel(
+                member({ capacity_to_date_minutes: 0, occupancy: 0 }),
+                thresholds,
+            ),
+        ).toBe('upcoming');
+        // Sin jornada en el periodo.
+        expect(
+            memberOccupancyLevel(
+                member({
+                    capacity_minutes: 0,
+                    capacity_to_date_minutes: 0,
+                    occupancy: null,
+                }),
+                thresholds,
+            ),
+        ).toBe('none');
+    });
+
+    it('en un periodo en curso enseña la capacidad hasta ayer, el ritmo y «Aún sin datos» si no ha pasado ningún día', () => {
         render(
             <R1MembersTable
                 members={[
-                    member({ capacity_to_date_minutes: 960 }),
+                    member({ capacity_to_date_minutes: 960, pace: 0.7917 }),
                     member({
                         id: 2,
                         name: 'Ana',
@@ -585,9 +628,11 @@ describe('miembros del departamento', () => {
 
         const rows = within(screen.getByRole('table')).getAllByRole('row');
         expect(norm(rows[1].textContent)).toContain('20:00Hasta ayer: 16:00');
-        // La ocupación es la del SPEC (760 / 1200): el dato de «hasta ayer» no la cambia.
-        expect(norm(rows[1].textContent)).toContain('63,3 %Baja');
-        expect(norm(rows[2].textContent)).toContain('Aún sin días');
+        // La ocupación es la del SPEC (760 / 1200); el nivel, el del ritmo (760 / 960 = 79,2 %).
+        expect(norm(rows[1].textContent)).toContain(
+            '63,3 %En rangoRitmo: 79,2 %',
+        );
+        expect(norm(rows[2].textContent)).toContain('Aún sin datos');
         expect(norm(rows[2].textContent)).not.toContain('Baja');
     });
 

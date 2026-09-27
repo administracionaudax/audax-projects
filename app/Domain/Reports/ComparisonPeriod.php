@@ -42,21 +42,58 @@ final class ComparisonPeriod
             return ['summary' => null, 'range' => null, 'partial' => false];
         }
 
-        $previous = $scope->withFilters($scope->filters->comparison());
-        $days = self::elapsedDays($scope->filters);
-        $partial = $days !== null && $days < $previous->filters->days();
+        ['previous' => $previous, 'days' => $days, 'to' => $to] = self::previous($scope);
 
-        $summary = $partial
+        $summary = $days !== null
             ? $cache->remember($previous, $key.'.first.'.$days, fn (): array => $metrics->summaryFirstDays($previous, $days, $withCapacity, $everyAssignee))
             : $cache->remember($previous, $key.'.previous', fn (): array => $metrics->summary($previous, $withCapacity, $everyAssignee));
-
-        $to = $partial ? $previous->filters->from->addDays($days - 1) : $previous->filters->to;
 
         return [
             'summary' => $summary,
             'range' => ['from' => $previous->filters->from->toDateString(), 'to' => $to->toDateString()],
-            'partial' => $partial,
+            'partial' => $days !== null,
         ];
+    }
+
+    /**
+     * Alcance del tramo comparado, para los informes que solo miden horas (el detallado, con
+     * Metrics::hours): el periodo anterior entero o, en un periodo en curso, sus mismos días
+     * transcurridos. Sin capacidad de por medio, el tramo es un alcance más con esas fechas (con
+     * capacidad, summary() lo mide contra la del periodo anterior completo). Null sin comparar=1.
+     *
+     * @return array{scope: ReportScope, range: array{from: string, to: string}, partial: bool}|null
+     */
+    public static function hoursScope(ReportScope $scope): ?array
+    {
+        if (! $scope->filters->compare) {
+            return null;
+        }
+
+        ['previous' => $previous, 'days' => $days, 'to' => $to] = self::previous($scope);
+
+        return [
+            'scope' => $days === null ? $previous : $previous->withFilters($previous->filters->withDates($previous->filters->from, $to)),
+            'range' => ['from' => $previous->filters->from->toDateString(), 'to' => $to->toDateString()],
+            'partial' => $days !== null,
+        ];
+    }
+
+    /**
+     * El periodo anterior con los mismos filtros, los días del tramo si es parcial (null: entero) y
+     * el último día comparado.
+     *
+     * @return array{previous: ReportScope, days: int|null, to: CarbonImmutable}
+     */
+    private static function previous(ReportScope $scope): array
+    {
+        $previous = $scope->withFilters($scope->filters->comparison());
+        $days = self::elapsedDays($scope->filters);
+
+        if ($days === null || $days >= $previous->filters->days()) {
+            return ['previous' => $previous, 'days' => null, 'to' => $previous->filters->to];
+        }
+
+        return ['previous' => $previous, 'days' => $days, 'to' => $previous->filters->from->addDays($days - 1)];
     }
 
     /**

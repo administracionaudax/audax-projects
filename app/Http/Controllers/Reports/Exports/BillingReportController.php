@@ -40,36 +40,33 @@ class BillingReportController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $urlFilters = ReportFilters::fromQuery($request->query());
+        // Facturación no compara con el periodo anterior (INT-05): sin comparar=1 en la barra ni en sus enlaces.
+        $urlFilters = ReportFilters::fromQuery($request->query())->withoutComparison();
         $client = $urlFilters->clientIds === [] ? null : Client::query()->find($urlFilters->clientIds[0], ['id', 'name', 'is_active']);
 
-        $format = $request->query('formato');
-        $exporting = is_string($format) && in_array($format, TableExporter::FORMATS, true);
+        $format = $this->exportFormat($request);
 
         if ($client === null) {
-            abort_if($exporting, 422, self::text('reports.r2.billing.client_required'));
+            abort_if($format !== null, 422, self::text('reports.r2.billing.client_required'));
 
             return $this->page($user, $urlFilters, null, null, $exporter->maxRows() - 1);
         }
 
         $scope = $this->reportScope($request, ['clientIds' => [$client->id]]);
 
-        $summary = fn (): array => $cache->remember($scope, 'r2.billing.'.$client->id, fn (): array => $billing->summary($scope));
-
-        if ($exporting) {
+        if ($format !== null) {
             $entries = (clone $scope->entries())->count();
             abort_if($entries + 1 > $exporter->maxRows(), 422, self::text('reports.r2.billing.too_many_rows', [
                 'entries' => number_format($entries, 0, ',', '.'),
                 'max' => number_format($exporter->maxRows() - 1, 0, ',', '.'),
             ]));
 
-            // El total del detalle es el del resumen (el mismo que enseña la página).
-            $total = $scope->canSeeFinancials() ? $summary()['totals']['income'] : null;
-
-            return $this->export($exporter, $billing, $scope, $client, $format, $total);
+            return $this->export($exporter, $billing, $scope, $client, $format);
         }
 
-        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $summary(), $exporter->maxRows() - 1);
+        $summary = $cache->remember($scope, 'r2.billing.'.$client->id, fn (): array => $billing->summary($scope));
+
+        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $summary, $exporter->maxRows() - 1);
     }
 
     /**
@@ -92,7 +89,7 @@ class BillingReportController extends Controller
         ]);
     }
 
-    private function export(TableExporter $exporter, BillingReport $billing, ReportScope $scope, Client $client, string $format, ?string $total): StreamedResponse
+    private function export(TableExporter $exporter, BillingReport $billing, ReportScope $scope, Client $client, string $format): StreamedResponse
     {
         $financials = $scope->canSeeFinancials();
         $c = fn (string $key): string => self::text('reports.r2.billing.columns.'.$key);
@@ -102,22 +99,27 @@ class BillingReportController extends Controller
         if ($financials) {
             array_push($headers, $c('rate'), $c('amount'), $c('basis'));
         }
+        // D-081: al final, los minutos (enteros) de las columnas de horas, que suman exacto su total.
+        array_push($headers, $c('minutes'), $c('in_bank_minutes'), $c('overage_minutes'));
 
         return $exporter->download(
             self::text('reports.r2.billing.export_name', ['client' => $client->name]),
             $headers,
-            $this->rows($billing, $scope, $financials, $total),
+            $this->rows($billing, $scope, $financials),
             $format,
         );
     }
 
     /**
-     * Una fila por entrada y una de totales al final. El total del importe es el ingreso del
-     * resumen ($total) y los importes de las entradas, en céntimos, suman exactamente ese total.
+     * Una fila por entrada y una de totales al final. El total del importe sale de las mismas
+     * entradas que se exportan (la suma de sus importes, que es su total canónico redondeado: con
+     * los mismos datos, el de la página) y sus importes en céntimos suman exactamente ese total.
+     * Las horas van en decimal para leerlas y, al final, en minutos enteros, que suman exactamente
+     * los totales (D-081: las horas redondeadas a 2 decimales no siempre suman su total).
      *
      * @return Generator<int, array<int, string|int|float|bool|null>>
      */
-    private function rows(BillingReport $billing, ReportScope $scope, bool $financials, ?string $total): Generator
+    private function rows(BillingReport $billing, ReportScope $scope, bool $financials): Generator
     {
         $minutes = 0;
         $inBank = 0;
@@ -127,7 +129,7 @@ class BillingReportController extends Controller
         /** @var array<string, string> $labels textos de estado y de valoración, traducidos una vez */
         $labels = [];
 
-        foreach ($billing->entries($scope, $total) as ['entry' => $entry, 'valuation' => $valuation, 'amount' => $line]) {
+        foreach ($billing->entries($scope) as ['entry' => $entry, 'valuation' => $valuation, 'amount' => $line]) {
             $inside = $entry['bank'] !== null;
             $minutes += $entry['minutes'];
             $inBank += $inside ? $entry['minutes'] - $entry['overage_minutes'] : 0;
@@ -147,14 +149,16 @@ class BillingReportController extends Controller
                 $labels['status.'.$entry['status']->value] ??= $entry['status']->label(),
             ];
 
-            if ($financials && $valuation !== null) {
+            if ($financials) {
                 $amount = bcadd($amount, $line ?? '0', 2);
                 array_push($row,
-                    TableExporter::money($valuation['rate']),
+                    TableExporter::money($valuation['rate'] ?? null),
                     TableExporter::money($line),
-                    $labels['basis.'.$valuation['basis']] ??= self::text('reports.r2.billing.basis.'.$valuation['basis']),
+                    $valuation === null ? null : ($labels['basis.'.$valuation['basis']] ??= self::text('reports.r2.billing.basis.'.$valuation['basis'])),
                 );
             }
+
+            array_push($row, $entry['minutes'], $inside ? $entry['minutes'] - $entry['overage_minutes'] : null, $inside ? $entry['overage_minutes'] : null);
 
             yield $row;
         }
@@ -163,6 +167,7 @@ class BillingReportController extends Controller
         if ($financials) {
             array_push($totals, null, TableExporter::money($amount), null);
         }
+        array_push($totals, $minutes, $inBank, $overage);
 
         yield $totals;
     }

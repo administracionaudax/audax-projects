@@ -233,6 +233,7 @@ export default function ProjectReport({
                                     )}
                                     firstColumn={t('reports_r2.column.person')}
                                     rows={byPerson}
+                                    total={summary}
                                     financials={financials}
                                     showBank={hasBanks}
                                 />
@@ -268,6 +269,7 @@ export default function ProjectReport({
                                     )}
                                     firstColumn={t('reports_r2.column.type')}
                                     rows={byType}
+                                    total={summary}
                                     financials={financials}
                                     showBank={hasBanks}
                                 />

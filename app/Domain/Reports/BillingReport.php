@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reports;
 
+use App\Domain\Reports\Export\KeysetPages;
 use App\Enums\BillingType;
 use App\Enums\TimeEntryStatus;
 use App\Models\Client;
@@ -17,13 +18,18 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  *   facturables, no facturables y pendientes de aprobar (borrador o enviadas) y, con
  *   view-financials, la tarifa de referencia y el ingreso estimado (RevenueCalculator, D-043),
  * - el detalle de cada entrada, valorada una a una con EntryValuation (mismo criterio).
- * Céntimos: el ingreso total se redondea una sola vez (la suma exacta de los grupos) y se reparte
- * entre las filas del resumen por resto mayor y entre las entradas del detalle en orden (Cents): la
- * página y la exportación dan el mismo total y sus filas siempre suman ese total.
+ * Céntimos: el ingreso total es el canónico de RevenueCalculator (el mismo del informe del cliente
+ * para el mismo alcance), redondeado una sola vez, y se reparte entre las filas del resumen por
+ * resto mayor. El detalle suma, entrada a entrada, la parte exacta de cada una del total
+ * (EntryValuation::next) y reparte los céntimos en orden (RunningCents): su total sale de las
+ * mismas filas que exporta y, con los mismos datos, es el de la página (PERF-02).
  * Todo sale de ReportScope::entries(): respeta quién ve qué horas (D-044).
  */
 final class BillingReport
 {
+    /** Entradas por bloque del detalle (paginación por clave, KeysetPages). */
+    public const int CHUNK = 1000;
+
     public const string PRICING_BANK_PRICE = 'bank_price';
 
     public const string PRICING_HOURLY = 'hourly';
@@ -82,13 +88,18 @@ final class BillingReport
         $bankIncome = [];
         /** @var array<int, string> $projectIncome ingreso exacto de las horas sin bolsa, por proyecto */
         $projectIncome = [];
+        /** @var numeric-string $canonical el total del alcance (el de RevenueCalculator: no depende de cómo se agrupe) */
+        $canonical = '0';
         if ($financials) {
-            foreach ($this->revenue->computeExact((clone $scope->entries())->whereNotNull('time_entries.hour_bank_id'), Dimension::HourBank) as $key => $money) {
+            $banked = $this->revenue->exact((clone $scope->entries())->whereNotNull('time_entries.hour_bank_id'), Dimension::HourBank);
+            $unbanked = $this->revenue->exact((clone $scope->entries())->whereNull('time_entries.hour_bank_id'), Dimension::Project);
+            foreach ($banked['groups'] as $key => $money) {
                 $bankIncome[(int) $key] = $money['income'];
             }
-            foreach ($this->revenue->computeExact((clone $scope->entries())->whereNull('time_entries.hour_bank_id'), Dimension::Project) as $key => $money) {
+            foreach ($unbanked['groups'] as $key => $money) {
                 $projectIncome[(int) $key] = $money['income'];
             }
+            $canonical = Money::add($banked['total']['income'], $unbanked['total']['income']);
         }
 
         $rows = [];
@@ -145,12 +156,11 @@ final class BillingReport
 
         usort($rows, fn (array $a, array $b): int => $a['_sort'] <=> $b['_sort']);
 
-        // Un solo redondeo del total y sus céntimos repartidos entre las filas (resto mayor).
+        // Un solo redondeo del total canónico y sus céntimos repartidos entre las filas (resto mayor).
         $shares = [];
         if ($financials) {
-            $exact = array_map(fn (array $row): string => (string) $row['income'], $rows);
-            $totals['income'] = Money::round(Money::add('0', ...$exact));
-            $shares = Cents::largestRemainder($exact);
+            $totals['income'] = Money::round($canonical);
+            $shares = Cents::largestRemainder(array_map(fn (array $row): string => (string) $row['income'], $rows), $totals['income']);
         }
 
         return [
@@ -166,42 +176,29 @@ final class BillingReport
 
     /**
      * Entradas del alcance para el detalle (fecha e id ascendentes), con los nombres de la persona,
-     * el proyecto, la bolsa y la tarea en la misma consulta (filas sin hidratar, por lotes de 1.000:
-     * miles de entradas en poco tiempo y memoria), su valoración con view-financials y su importe en
-     * céntimos (amount): los importes suman $total (el ingreso del resumen) si se indica; si no, el
-     * redondeo de su suma exacta.
+     * el proyecto, la bolsa y la tarea en la misma consulta (filas sin hidratar, por bloques de
+     * CHUNK con paginación por clave: miles de entradas en poco tiempo y memoria, y una escritura
+     * entre bloques no duplica ni pierde filas), su valoración con view-financials (la parte exacta
+     * de cada una del total, EntryValuation::next) y su importe en céntimos (amount): los importes
+     * suman el total canónico redondeado de las mismas entradas (el de la página con los mismos datos).
      *
      * @return Generator<int, array{entry: array{id: int, date: string, person: string, project_code: string, project_name: string,
      *     bank: string|null, task: string, description: string, minutes: int, overage_minutes: int, is_billable: bool,
-     *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: string, basis: string}|null, amount: numeric-string|null}>
+     *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: numeric-string, cost: numeric-string, basis: string}|null,
+     *     amount: numeric-string|null}>
      */
-    public function entries(ReportScope $scope, ?string $total = null): Generator
-    {
-        $lines = Cents::running(
-            $this->valuedEntries($scope),
-            fn (array $line): ?string => $line['valuation']['income'] ?? null,
-            $total,
-        );
-
-        foreach ($lines as [$line, $amount]) {
-            yield [...$line, 'amount' => $amount];
-        }
-    }
-
-    /**
-     * @return Generator<int, array{entry: array{id: int, date: string, person: string, project_code: string, project_name: string,
-     *     bank: string|null, task: string, description: string, minutes: int, overage_minutes: int, is_billable: bool,
-     *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: numeric-string, basis: string}|null}>
-     */
-    private function valuedEntries(ReportScope $scope): Generator
+    public function entries(ReportScope $scope): Generator
     {
         $valuation = $scope->canSeeFinancials() ? EntryValuation::for($scope->entries()) : null;
+        $amounts = new RunningCents;
 
-        foreach ($this->detailQuery($scope)->lazy(1000) as $row) {
+        foreach (KeysetPages::byDateAndId($this->detailQuery($scope), self::CHUNK) as $row) {
             $billable = (bool) $row->is_billable;
             $minutes = (int) $row->minutes;
             $overage = (int) $row->overage_minutes;
             $bankId = $row->hour_bank_id === null ? null : (int) $row->hour_bank_id;
+            $valued = $valuation?->next((int) $row->project_id, $bankId, (int) $row->user_id, $billable, $minutes, $overage,
+                $row->hourly_rate_snapshot, $row->hourly_cost_snapshot);
 
             yield [
                 'entry' => [
@@ -218,14 +215,16 @@ final class BillingReport
                     'is_billable' => $billable,
                     'status' => TimeEntryStatus::from((string) $row->status),
                 ],
-                'valuation' => $valuation?->valueOf((int) $row->project_id, $bankId, (int) $row->user_id, $billable, $minutes, $overage, $row->hourly_rate_snapshot),
+                'valuation' => $valued,
+                'amount' => $valued === null ? null : $amounts->next($valued['income']),
             ];
         }
     }
 
     /**
      * Detalle sin hidratar: las columnas de la entrada y los nombres por LEFT JOIN (los mismos alias
-     * que Dimension::ensureJoin; las tareas y bolsas borradas conservan su nombre).
+     * que Dimension::ensureJoin; las tareas y bolsas borradas conservan su nombre). El orden y los
+     * bloques, KeysetPages.
      */
     private function detailQuery(ReportScope $scope): QueryBuilder
     {
@@ -237,11 +236,9 @@ final class BillingReport
         return $query->toBase()
             ->select(['time_entries.id', 'time_entries.user_id', 'time_entries.project_id', 'time_entries.hour_bank_id',
                 'time_entries.date', 'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.description',
-                'time_entries.is_billable', 'time_entries.status', 'time_entries.hourly_rate_snapshot',
+                'time_entries.is_billable', 'time_entries.status', 'time_entries.hourly_rate_snapshot', 'time_entries.hourly_cost_snapshot',
                 'report_users.name as person_name', 'report_projects.code as project_code', 'report_projects.name as project_name',
-                'report_hour_banks.name as bank_name', 'report_tasks.title as task_title'])
-            ->orderBy('time_entries.date')
-            ->orderBy('time_entries.id');
+                'report_hour_banks.name as bank_name', 'report_tasks.title as task_title']);
     }
 
     /**

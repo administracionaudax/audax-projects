@@ -17,6 +17,7 @@ use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Reports\R3Scenario;
@@ -108,6 +109,60 @@ it('a un admin le resume toda la agencia', function () {
         ->and(array_column($digest['banks'], 'name'))->toBe(['BOL · Bolsa anual', 'SEO · Bolsa SEO'])
         ->and($digest['overdue_count'])->toBe(2)
         ->and(array_column($digest['overdue'], 'title'))->toBe(['Enviar factura', 'Revisar textos']);
+});
+
+it('cuenta las bolsas en riesgo y las tareas vencidas con el alcance del dashboard de dirección (INT-02)', function () {
+    $s = $this->s;
+    // Una bolsa de Marketing en la que ha imputado Ana (Diseño): el dashboard de dirección de Raúl
+    // la enseña (bolsas de sus departamentos y de los proyectos donde imputa su equipo, D-044).
+    $shared = HourBank::factory()->forDepartment($this->marketing)->create(['total_minutes' => 100, 'name' => 'Bolsa compartida']);
+    $shared->project->update(['code' => 'COM']);
+    TimeEntry::factory()->forTask(Task::factory()->inBank($shared)->create())->on('2026-09-15')->minutes(90)->create(['user_id' => $s->ana->id]);
+    // Una tarea vencida de Rosa, de Diseño y ya de baja, que imputó la semana pasada: el dashboard la cuenta.
+    $rosa = User::factory()->employee()->inactive()->create(['name' => 'Rosa', 'department_id' => $s->design->id]);
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-21')->minutes(60)->create(['user_id' => $rosa->id]);
+    Task::factory()->assignedTo($rosa)->create(['project_id' => $s->tm->id, 'title' => 'Pendiente de Rosa', 'due_date' => '2026-09-18']);
+
+    $digest = ($this->digest)($s->head);
+
+    $this->actingAs($s->head)
+        ->get('/informes/direccion?periodo=semana&fecha=2026-09-21')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('at_risk.banks', fn ($banks) => collect($banks)->pluck('id')->all() === array_column($digest['banks'], 'id'))
+            ->where('overdue.count', $digest['overdue_count']));
+
+    expect(array_column($digest['banks'], 'name'))->toBe(['BOL · Bolsa anual', 'COM · Bolsa compartida'])
+        ->and($digest['banks_count'])->toBe(2)
+        ->and(array_column($digest['overdue'], 'title'))->toBe(['Pendiente de Rosa', 'Revisar textos']);
+});
+
+it('calcula la capacidad de todo el equipo de una vez: las consultas no crecen con las personas (PERF-07)', function () {
+    $s = $this->s;
+    $counting = false;
+    $count = 0;
+    DB::listen(function () use (&$counting, &$count): void {
+        if ($counting) {
+            $count++;
+        }
+    });
+    $queries = function () use ($s, &$counting, &$count): int {
+        $count = 0;
+        $counting = true;
+        ($this->digest)($s->head);
+        $counting = false;
+
+        return $count;
+    };
+
+    // La primera vez carga los roles de Raúl (como en producción, una vez por destinatario).
+    $queries();
+    $before = $queries();
+    foreach (range(1, 10) as $n) {
+        $person = User::factory()->employee()->create(['name' => "Persona {$n}", 'department_id' => $s->design->id]);
+        WorkSchedule::factory()->for($person)->create(['valid_from' => '2026-01-01']);
+    }
+
+    expect($queries())->toBe($before);
 });
 
 it('respeta los umbrales de ocupación configurados', function () {

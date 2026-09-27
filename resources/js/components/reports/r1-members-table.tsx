@@ -20,11 +20,9 @@ import { cn } from '@/lib/utils';
 export type OccupancyLevel = 'none' | 'upcoming' | 'low' | 'ok' | 'high';
 
 /**
- * Nivel de ocupación frente a los umbrales configurados (D-047: 70 % y 110 % por defecto): por
- * debajo del bajo, «baja»; por encima del alto, «alta»; sin capacidad, «sin jornada», o «aún sin
- * días» si tiene jornada en el periodo pero todavía no ha pasado ninguno de esos días (hasta ayer):
- * el primer día del periodo, o en uno futuro, nadie sale «baja». La ocupación es la del SPEC §10
- * (contra la capacidad del periodo).
+ * Nivel de una ocupación (o un ritmo) frente a los umbrales configurados (D-047: 70 % y 110 % por
+ * defecto): por debajo del bajo, «baja»; por encima del alto, «alta»; sin capacidad, «sin
+ * jornada», o «aún sin datos» (upcoming) si todavía no se puede medir.
  */
 export function occupancyLevel(
     occupancy: number | null,
@@ -48,6 +46,30 @@ export function occupancyLevel(
     }
 
     return percent > thresholds.high ? 'high' : 'ok';
+}
+
+/**
+ * Nivel de un miembro (D-080). Periodo cerrado: su ocupación (SPEC §10). Periodo en curso (aún le
+ * quedan días con jornada): su ritmo, lo imputado frente a la capacidad transcurrida hasta ayer;
+ * contra el periodo entero, a mitad de mes todo el mundo saldría «baja». Si aún no ha pasado
+ * ningún día con jornada (el primer día, o un periodo futuro), sin nivel: «aún sin datos».
+ */
+export function memberOccupancyLevel(
+    member: Pick<
+        R1Member,
+        'occupancy' | 'pace' | 'capacity_minutes' | 'capacity_to_date_minutes'
+    >,
+    thresholds: R1OccupancyThresholds,
+): OccupancyLevel {
+    if (member.capacity_to_date_minutes >= member.capacity_minutes) {
+        return occupancyLevel(member.occupancy, thresholds);
+    }
+
+    if (member.capacity_to_date_minutes === 0 || member.pace === null) {
+        return 'upcoming';
+    }
+
+    return occupancyLevel(member.pace, thresholds);
 }
 
 const LEVELS: Record<
@@ -81,28 +103,39 @@ const LEVELS: Record<
     },
 };
 
-/** Ocupación con su estado: icono y texto, nunca solo color. */
+/**
+ * Ocupación (la del SPEC, contra el periodo entero) con el estado de su nivel: icono y texto,
+ * nunca solo color. En un periodo en curso, debajo, el ritmo que da ese nivel (D-080).
+ */
 export function OccupancyStatus({
     occupancy,
-    thresholds,
-    upcoming = false,
+    level,
+    pace = null,
 }: {
     occupancy: number | null;
-    thresholds: R1OccupancyThresholds;
-    upcoming?: boolean;
+    level: OccupancyLevel;
+    pace?: number | null;
 }) {
-    const level = LEVELS[occupancyLevel(occupancy, thresholds, upcoming)];
-    const Icon = level.icon;
+    const { icon: Icon, tone, label } = LEVELS[level];
 
     return (
-        <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
-            <Icon aria-hidden="true" className={cn('size-3.5', level.tone)} />
-            <span className="tabular">
-                {occupancy === null ? '—' : formatPercent(occupancy)}
+        <span className="inline-flex flex-col items-end">
+            <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                <Icon aria-hidden="true" className={cn('size-3.5', tone)} />
+                <span className="tabular">
+                    {occupancy === null ? '—' : formatPercent(occupancy)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {t(label)}
+                </span>
             </span>
-            <span className="text-xs text-muted-foreground">
-                {t(level.label)}
-            </span>
+            {pace === null ? null : (
+                <span className="tabular text-xs text-muted-foreground">
+                    {t('reports_r1.occupancy.pace', {
+                        pace: formatPercent(pace),
+                    })}
+                </span>
+            )}
         </span>
     );
 }
@@ -244,10 +277,15 @@ export function R1MembersTable({
                             <td className="px-3 py-1.5 text-right">
                                 <OccupancyStatus
                                     occupancy={member.occupancy}
-                                    thresholds={thresholds}
-                                    upcoming={
-                                        member.capacity_minutes > 0 &&
-                                        member.capacity_to_date_minutes === 0
+                                    level={memberOccupancyLevel(
+                                        member,
+                                        thresholds,
+                                    )}
+                                    pace={
+                                        member.capacity_to_date_minutes <
+                                        member.capacity_minutes
+                                            ? member.pace
+                                            : null
                                     }
                                 />
                             </td>

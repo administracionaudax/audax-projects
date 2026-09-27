@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Domain\Reports\ComparisonPeriod;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
@@ -27,7 +28,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * URL: los filtros globales (ReportFilters) más filas=, columnas= (Dimension) y medida=
  * imputadas|facturables|dentro|exceso. Los valores que no se entienden se ignoran. Con
- * ?formato=xlsx|csv exporta la tabla tal cual, con los subtotales.
+ * ?formato=xlsx|csv exporta la tabla tal cual, con los subtotales (otro valor muestra la página).
+ * Con comparar=1, los KPIs de horas del periodo anterior; en un periodo en curso, de sus mismos
+ * días transcurridos (ComparisonPeriod, D-079).
  */
 class DetailReportController extends Controller
 {
@@ -78,8 +81,9 @@ class DetailReportController extends Controller
             ),
         );
 
-        if ($request->filled('formato')) {
-            return $this->export($exporter, $scope, $result, $rows, $columns, $measure, (string) $request->query('formato'));
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
+            return $this->export($exporter, $scope, $result, $rows, $columns, $measure, $format);
         }
 
         $layout = ['filas' => $rows->value, 'columnas' => $columns->value, 'medida' => $measure];
@@ -90,17 +94,18 @@ class DetailReportController extends Controller
             $filters[$key] = [...$filters[$key], ...$layout];
         }
 
-        $comparison = $scope->filters->compare ? $scope->withFilters($scope->filters->comparison()) : null;
+        // Comparar: en un periodo en curso, con los mismos días del anterior (D-079), como el resto de dashboards.
+        $comparison = ComparisonPeriod::hoursScope($scope);
 
         return Inertia::render('reports/detail', [
-            'filters' => $filters,
+            'filters' => ComparisonPeriod::withRange($filters, $comparison['range'] ?? null),
             'layout' => $layout,
             'dimensions' => array_map(fn (Dimension $dimension): string => $dimension->value, $dimensions),
             'filterKeys' => $this->filterKeys($scope),
             'measures' => array_keys(self::MEASURES),
             'pivot' => $result,
             'summary' => $this->summary($cache, $metrics, $scope),
-            'comparison' => $comparison !== null ? $this->summary($cache, $metrics, $comparison) : null,
+            'comparison' => $comparison !== null ? $this->summary($cache, $metrics, $comparison['scope']) : null,
         ]);
     }
 
@@ -243,7 +248,9 @@ class DetailReportController extends Controller
 
     /**
      * La tabla tal cual: una fila por grupo con sus celdas y su subtotal, y la fila de totales por
-     * columna. Horas en decimal (1,5 = 1 h 30 min); las celdas sin horas, vacías.
+     * columna. Horas en decimal (1,5 = 1 h 30 min); las celdas sin horas, vacías. Los subtotales y
+     * los totales van además en minutos enteros (una columna y una fila «Total (minutos)», D-081):
+     * las horas redondeadas a 2 decimales no siempre suman su total, los minutos sí.
      *
      * @param  array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
      *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
@@ -255,6 +262,7 @@ class DetailReportController extends Controller
             self::text('reports.r3.detail.corner', ['rows' => $rows->label(), 'columns' => $columns->label()]),
             ...array_map(fn (array $column): string => self::headerLabel($columns, $column), $result['columns']),
             self::text('reports.r3.detail.total'),
+            self::text('reports.r3.detail.total_minutes'),
         ];
 
         $lines = [];
@@ -266,15 +274,23 @@ class DetailReportController extends Controller
                 $line[] = $minutes === null ? null : TableExporter::hours($minutes);
             }
             $line[] = TableExporter::hours($result['row_totals'][$rowKey] ?? 0);
+            $line[] = $result['row_totals'][$rowKey] ?? 0;
             $lines[] = $line;
         }
 
         $totals = [self::text('reports.r3.detail.total')];
+        $totalMinutes = [self::text('reports.r3.detail.total_minutes')];
         foreach ($result['columns'] as $column) {
             $totals[] = TableExporter::hours($result['column_totals'][$column['key'] ?? ''] ?? 0);
+            $totalMinutes[] = $result['column_totals'][$column['key'] ?? ''] ?? 0;
         }
         $totals[] = TableExporter::hours($result['total']);
+        $totals[] = $result['total'];
+        $totalMinutes[] = null;
+        $totalMinutes[] = $result['total'];
         $lines[] = $totals;
+        // D-081: los totales por columna también en minutos (enteros), que suman exacto el total.
+        $lines[] = $totalMinutes;
 
         if ($result['truncated']) {
             $lines[] = [self::truncationNotice($result, $columns)];

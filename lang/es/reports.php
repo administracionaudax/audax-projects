@@ -36,6 +36,11 @@ return [
                 'remaining' => 'Saldo restante',
                 'period_in' => 'Dentro de la bolsa en el periodo',
                 'period_overage' => 'Exceso en el periodo',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'logged_minutes' => 'Minutos imputados',
+                'billable_minutes' => 'Minutos facturables',
+                'in_bank_minutes' => 'Minutos dentro de bolsa',
+                'overage_minutes' => 'Minutos en exceso',
             ],
         ],
 
@@ -59,6 +64,9 @@ return [
                 'overage' => 'Horas en exceso',
                 'income' => 'Ingreso estimado (€)',
                 'cost' => 'Coste (€)',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'estimated_minutes' => 'Minutos estimados',
+                'actual_minutes' => 'Minutos reales',
             ],
         ],
 
@@ -81,6 +89,10 @@ return [
                 'rate' => 'Tarifa (€/h)',
                 'amount' => 'Importe (€)',
                 'basis' => 'Valoración',
+                // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
+                'minutes' => 'Minutos',
+                'in_bank_minutes' => 'Minutos dentro de bolsa',
+                'overage_minutes' => 'Minutos en exceso',
             ],
             'basis' => [
                 'not_billable' => 'No facturable',
@@ -152,12 +164,18 @@ return [
         'exports' => [
             'direction' => 'Informe de dirección - :table',
             'department' => 'Informe del departamento :department',
+            'department_table' => 'Informe del departamento :department - :table',
             'person' => 'Informe de :person - detalle diario',
+            'person_table' => 'Informe de :person - :table',
         ],
         'tables' => [
             'clientes' => 'clientes',
             'proyectos' => 'proyectos',
             'departamentos' => 'departamentos',
+            'tipos' => 'tipos de tarea',
+            'bolsas-en-riesgo' => 'bolsas en riesgo',
+            'tareas-vencidas' => 'tareas vencidas',
+            'dias-sin-imputar' => 'días sin imputar',
         ],
         'weekdays' => [
             1 => 'lunes',
@@ -178,11 +196,31 @@ return [
             'billable' => 'Horas facturables',
             'share' => '% del total',
             'occupancy' => 'Ocupación (%)',
+            // D-080: imputadas / capacidad transcurrida hasta ayer, en un periodo en curso.
+            'pace' => 'Ritmo (%)',
             'billability' => 'Facturabilidad (%)',
             'billable_productivity' => 'Productividad facturable (%)',
             'income' => 'Ingreso estimado (€)',
             'cost' => 'Coste (€)',
             'margin' => 'Rentabilidad (€)',
+            // Bolsas en riesgo y tareas vencidas (BIZ-05).
+            'bank' => 'Bolsa',
+            'project' => 'Proyecto',
+            'client' => 'Cliente',
+            'status' => 'Estado',
+            'contracted' => 'Horas contratadas',
+            'in_bank' => 'Horas dentro de la bolsa',
+            'overage' => 'Horas en exceso',
+            'committed' => 'Horas comprometidas',
+            'consumed_pct' => 'Consumo dentro de la bolsa (%)',
+            'task' => 'Tarea',
+            'assignee' => 'Responsable',
+            'due_date' => 'Fecha límite',
+            'days_overdue' => 'Días de retraso',
+            'milestone' => 'Hito',
+            'unassigned' => 'Sin asignar',
+            'type' => 'Tipo de tarea',
+            'day_capacity' => 'Jornada (h)',
         ],
     ],
 
@@ -198,6 +236,8 @@ return [
         'detail' => [
             'corner' => ':rows / :columns (horas)',
             'total' => 'Total',
+            // D-081: los totales también en minutos (enteros), para sumar exacto.
+            'total_minutes' => 'Total (minutos)',
             'week' => 'Sem. :date',
             'truncated' => 'Tabla recortada: se muestran :shown. Los totales incluyen todas las horas.',
             'truncated_rows' => 'las :count filas con más horas',

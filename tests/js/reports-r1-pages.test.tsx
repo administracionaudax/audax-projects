@@ -307,9 +307,9 @@ describe('dashboard de dirección', () => {
         ).toBeTruthy();
         expect(screen.getByText('No hay tareas vencidas.')).toBeTruthy();
 
-        // Departamentos, top de clientes y top de proyectos.
+        // Departamentos, top de clientes y de proyectos, bolsas en riesgo y tareas vencidas (BIZ-05).
         const exports = screen.getAllByRole('button', { name: 'Exportar' });
-        expect(exports).toHaveLength(3);
+        expect(exports).toHaveLength(5);
         await user.click(exports[2]);
         expect(
             screen
@@ -317,6 +317,24 @@ describe('dashboard de dirección', () => {
                 .getAttribute('href'),
         ).toBe(
             '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=proyectos&formato=csv',
+        );
+        await user.keyboard('{Escape}');
+        await user.click(exports[3]);
+        expect(
+            screen
+                .getByRole('menuitem', { name: 'CSV (.csv)' })
+                .getAttribute('href'),
+        ).toBe(
+            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=bolsas-en-riesgo&formato=csv',
+        );
+        await user.keyboard('{Escape}');
+        await user.click(exports[4]);
+        expect(
+            screen
+                .getByRole('menuitem', { name: 'Excel (.xlsx)' })
+                .getAttribute('href'),
+        ).toBe(
+            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=tareas-vencidas&formato=xlsx',
         );
     });
 
@@ -512,6 +530,7 @@ describe('dashboard de departamento', () => {
                 logged_minutes: 760,
                 billable_minutes: 700,
                 occupancy: 0.6333,
+                pace: null,
                 billability: 0.9211,
                 billable_productivity: 0.5833,
                 income: null,
@@ -550,13 +569,25 @@ describe('dashboard de departamento', () => {
         expect(screen.getByText('Carga futura')).toBeTruthy();
         expect(screen.getByText('Llega en la Fase 3')).toBeTruthy();
 
-        await user.click(screen.getByRole('button', { name: 'Exportar' }));
+        // Los miembros y el reparto por cliente (BIZ-05).
+        const exports = screen.getAllByRole('button', { name: 'Exportar' });
+        expect(exports).toHaveLength(2);
+        await user.click(exports[0]);
         expect(
             screen
                 .getByRole('menuitem', { name: 'Excel (.xlsx)' })
                 .getAttribute('href'),
         ).toBe(
             '/informes/departamentos/2?periodo=semana&fecha=2026-09-21&formato=xlsx',
+        );
+        await user.keyboard('{Escape}');
+        await user.click(exports[1]);
+        expect(
+            screen
+                .getByRole('menuitem', { name: 'CSV (.csv)' })
+                .getAttribute('href'),
+        ).toBe(
+            '/informes/departamentos/2?periodo=semana&fecha=2026-09-21&tabla=clientes&formato=csv',
         );
     });
 
@@ -645,6 +676,38 @@ describe('dashboard de una persona', () => {
         expect(
             screen.queryByRole('heading', { name: 'Coste', level: 3 }),
         ).toBeNull();
+    });
+
+    it('exporta el detalle diario, los días sin imputar y cada reparto (BIZ-05)', async () => {
+        const user = userEvent.setup();
+        render(withTooltips(<PersonReport {...props} />));
+
+        expect(
+            screen.getByRole('button', { name: 'Exportar detalle diario' }),
+        ).toBeTruthy();
+
+        // Días sin imputar, por cliente, por proyecto y por tipo.
+        const exports = screen.getAllByRole('button', { name: 'Exportar' });
+        expect(exports).toHaveLength(4);
+
+        const hrefs: string[] = [];
+        for (const button of exports) {
+            await user.click(button);
+            hrefs.push(
+                screen
+                    .getByRole('menuitem', { name: 'CSV (.csv)' })
+                    .getAttribute('href') ?? '',
+            );
+            await user.keyboard('{Escape}');
+        }
+
+        const base = '/informes/personas/6?periodo=semana&fecha=2026-09-21';
+        expect(hrefs).toEqual([
+            `${base}&tabla=dias-sin-imputar&formato=csv`,
+            `${base}&tabla=clientes&formato=csv`,
+            `${base}&tabla=proyectos&formato=csv`,
+            `${base}&tabla=tipos&formato=csv`,
+        ]);
     });
 
     it('en el propio informe se llama «Mi informe» y la hoja semanal es la suya', () => {

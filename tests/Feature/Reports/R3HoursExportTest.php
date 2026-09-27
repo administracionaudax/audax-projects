@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Reports\EntryValuation;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
 use App\Domain\Reports\RevenueCalculator;
@@ -74,16 +75,21 @@ it('exporta cada entrada con horas, dentro, exceso e importes como a mano (admin
         ])
         // Borrador: tarifa vigente del cliente (60 €/h): 120 × 60 / 60 = 120,00 €.
         ->and($byKey['2026-09-23 Ana 2'])->toMatchArray(['Estado' => 'Borrador', 'Tarifa (€/h)' => 60, 'Ingreso estimado (€)' => 120, 'Coste (€)' => 40])
-        // 100 min dentro y 100 de exceso: 1000 × 100 / 600 + 100 × 70 / 60 = 283,33 €.
-        ->and($byKey['2026-09-24 Luis 3.33'])->toMatchArray(['Dentro de bolsa (horas)' => 1.67, 'Exceso (horas)' => 1.67, 'Ingreso estimado (€)' => 283.33, 'Coste (€)' => 100])
+        // 100 min dentro y 100 de exceso: 1000 × 100 / 600 + 100 × 70 / 60 = 283,333… €. Los céntimos
+        // se reparten en orden (RunningCents): el acumulado llega aquí a 1511,666… → 1511,67, así que
+        // esta línea lleva 283,34 y la columna suma el ingreso del informe (INT-04).
+        ->and($byKey['2026-09-24 Luis 3.33'])->toMatchArray(['Dentro de bolsa (horas)' => 1.67, 'Exceso (horas)' => 1.67, 'Ingreso estimado (€)' => 283.34, 'Coste (€)' => 100])
         // Precio cerrado: 3000 × 240 / 1200 = 600,00 €, sin tarifa por hora.
         ->and($byKey['2026-09-24 Ana 4'])->toMatchArray(['Tarifa (€/h)' => '', 'Ingreso estimado (€)' => 600, 'Coste (€)' => 80])
         // Interno y no facturable: sin ingreso.
         ->and($byKey['2026-09-25 Luis 1'])->toMatchArray(['Cliente' => '', 'Facturable' => false, 'Tarifa (€/h)' => '', 'Ingreso estimado (€)' => 0, 'Coste (€)' => 30]);
 
-    // La suma por entrada coincide con RevenueCalculator salvo el redondeo de cada una (1116,67 vs 1116,66).
-    expect(round(array_sum(array_column($rows, 'Ingreso estimado (€)')), 2))->toBe(2111.66)
+    // La suma de las entradas es el ingreso y el coste del informe, con los mismos céntimos (INT-04).
+    expect(round(array_sum(array_column($rows, 'Ingreso estimado (€)')), 2))->toBe(2111.67)
         ->and(round(array_sum(array_column($rows, 'Coste (€)')), 2))->toBe(600.0);
+
+    $scope = new ReportScope($s->admin, ReportFilters::fromQuery(R3Scenario::week(['departamento' => [$s->design->id]])));
+    expect(app(RevenueCalculator::class)->compute($scope->entries())['all'])->toMatchArray(['income' => '2111.67', 'cost' => '600.00']);
 });
 
 it('la columna «Dentro de bolsa» suma lo mismo que la medida «dentro» del detallado y su KPI', function (array $query, int $minutes) {
@@ -107,14 +113,21 @@ it('la columna «Dentro de bolsa» suma lo mismo que la medida «dentro» del de
     'un proyecto sin bolsa' => [['proyecto' => 'tm'], 0],
 ]);
 
-it('RevenueCalculator::perEntry valora cada entrada con los criterios de compute()', function () {
+it('EntryValuation::next da la parte de cada entrada del total: suman exactamente el de RevenueCalculator', function () {
     $s = $this->s;
     $scope = new ReportScope($s->admin, ReportFilters::fromQuery(R3Scenario::week(['proyecto' => [$s->bank->project_id]])));
-    $perEntry = app(RevenueCalculator::class)->perEntry($scope->entries());
+    $valuation = EntryValuation::for($scope->entries());
+    $parts = [];
+    foreach ((clone $scope->entries())->orderBy('date')->orderBy('id')->get() as $entry) {
+        $parts[] = $valuation->next($entry->project_id, $entry->hour_bank_id, $entry->user_id, $entry->is_billable, $entry->minutes,
+            $entry->overage_minutes, $entry->getRawOriginal('hourly_rate_snapshot'), $entry->getRawOriginal('hourly_cost_snapshot'));
+    }
     $total = app(RevenueCalculator::class)->compute($scope->entries())['all'];
 
-    expect(collect($perEntry)->pluck('income')->all())->toEqualCanonicalizing(['833.33', '283.33'])
-        ->and(collect($perEntry)->pluck('cost')->all())->toEqualCanonicalizing(['250.00', '100.00'])
+    // 1000 × 500/600 = 833,333333; después, 1000 × 600/600 + 100 × 70/60 = 1116,666666 en total.
+    expect(array_column($parts, 'income'))->toBe(['833.333333', '283.333333'])
+        ->and(array_column($parts, 'cost'))->toBe(['250.000000', '100.000000'])
+        ->and($valuation->totals())->toBe(['income' => '1116.666666', 'cost' => '350.000000'])
         ->and($total['income'])->toBe('1116.67')
         ->and($total['cost'])->toBe('350.00');
 });
@@ -223,8 +236,9 @@ it('no repite consultas por entrada: las mismas con 30 que con 90 entradas más'
     $before = $count();
     $grow(60);
 
-    // 15: las entradas, sus relaciones y la valoración (8 consultas con la base de precio cerrado).
-    expect($count())->toBe($before)->and($before)->toBeLessThanOrEqual(15);
+    // Las entradas (una consulta por bloque, con los nombres por LEFT JOIN) y la valoración, una
+    // sola vez (las claves y hasta 7 consultas con la base de precio cerrado).
+    expect($count())->toBe($before)->and($before)->toBeLessThanOrEqual(12);
 });
 
 // --- Pestaña Horas del proyecto (D-021) ---

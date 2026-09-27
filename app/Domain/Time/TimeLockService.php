@@ -3,6 +3,7 @@
 namespace App\Domain\Time;
 
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Reports\ReportCache;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
@@ -128,6 +129,9 @@ final class TimeLockService
                 'minutes' => (int) $entries->sum('minutes'),
             ]);
 
+            // Actualización masiva sin eventos por entrada: la caché de informes, tras el commit (INT-03).
+            ReportCache::bumpAfterCommit();
+
             return $lock;
         });
     }
@@ -172,6 +176,9 @@ final class TimeLockService
             }
 
             $this->log($current, $admin, 'unlocked', ['entries' => $entries->count(), ...$restored]);
+
+            // Actualización masiva sin eventos por entrada: la caché de informes, tras el commit (INT-03).
+            ReportCache::bumpAfterCommit();
 
             return $entries->count();
         });

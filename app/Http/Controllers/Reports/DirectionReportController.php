@@ -10,6 +10,7 @@ use App\Domain\Reports\OverdueTasks;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Enums\HourBankStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
 use App\Http\Controllers\Reports\R1\BuildsDashboards;
@@ -29,7 +30,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   anterior: BuildsDashboards::summaries), evolución semanal o mensual, reparto por departamento y
  *   por cliente, top 10 de clientes y proyectos, bolsas en riesgo y tareas vencidas,
  * - ingreso, coste y margen solo con view-financials (también en la exportación),
- * - ?formato=xlsx|csv&tabla=clientes|proyectos|departamentos exporta el reparto completo.
+ * - ?formato=xlsx|csv&tabla=clientes|proyectos|departamentos exporta el reparto completo y
+ *   tabla=bolsas-en-riesgo|tareas-vencidas, las listas enteras (SPEC §10: cualquier tabla).
  */
 class DirectionReportController extends Controller
 {
@@ -38,6 +40,9 @@ class DirectionReportController extends Controller
     public const int TOP = 10;
 
     public const array TABLES = ['clientes' => Dimension::Client, 'proyectos' => Dimension::Project, 'departamentos' => Dimension::Department];
+
+    /** Listas que también se exportan enteras (en la página, las primeras). */
+    public const array LISTS = ['bolsas-en-riesgo', 'tareas-vencidas'];
 
     public function __invoke(
         Request $request,
@@ -58,6 +63,14 @@ class DirectionReportController extends Controller
         $format = $this->exportFormat($request);
         if ($format !== null) {
             $name = $request->query('tabla');
+            if (is_string($name) && in_array($name, self::LISTS, true)) {
+                [$headers, $lines] = $name === 'bolsas-en-riesgo'
+                    ? $this->atRiskTable($cache->remember($scope, self::daily('r1.direction.export.at_risk'), fn (): array => $atRisk->forScope($scope, TableExporter::MAX_ROWS)))
+                    : $this->overdueTable($cache->remember($scope, self::daily('r1.direction.export.overdue'), fn (): array => $overdue->forScope($scope, TableExporter::MAX_ROWS)));
+
+                return $exporter->download(__('reports.r1.exports.direction', ['table' => __('reports.r1.tables.'.$name)]), $headers, $lines, $format);
+            }
+
             $name = is_string($name) && isset(self::TABLES[$name]) ? $name : 'clientes';
             $rows = $table($name);
             // El reparto cubre todas las horas del alcance: su suma es el total del periodo.
@@ -94,6 +107,59 @@ class DirectionReportController extends Controller
             'at_risk' => $page['at_risk'],
             'overdue' => $page['overdue'],
         ]);
+    }
+
+    /**
+     * Bolsas en riesgo, todas (HourBanksAtRisk::forScope): bolsa, proyecto, cliente, estado, horas
+     * contratadas, dentro, exceso y comprometidas, y el consumo dentro de la bolsa.
+     *
+     * @param  array{banks: list<array{name: string, status: string, project: array{code: string, name: string}, client: string|null,
+     *     total_minutes: int, consumed_minutes: int, overage_minutes: int, committed_minutes: int, ratio: float}>}  $atRisk
+     * @return array{0: list<string>, 1: list<list<string|int|float|null>>}
+     */
+    private function atRiskTable(array $atRisk): array
+    {
+        $headers = array_map(fn (string $column): string => __('reports.r1.columns.'.$column),
+            ['bank', 'project', 'client', 'status', 'contracted', 'in_bank', 'overage', 'committed', 'consumed_pct']);
+
+        $lines = array_map(fn (array $bank): array => [
+            $bank['name'],
+            $bank['project']['code'].' · '.$bank['project']['name'],
+            $bank['client'],
+            HourBankStatus::from($bank['status'])->label(),
+            TableExporter::hours($bank['total_minutes']),
+            TableExporter::hours($bank['consumed_minutes'] - $bank['overage_minutes']),
+            TableExporter::hours($bank['overage_minutes']),
+            TableExporter::hours($bank['committed_minutes']),
+            self::percent($bank['ratio']),
+        ], $atRisk['banks']);
+
+        return [$headers, $lines];
+    }
+
+    /**
+     * Tareas vencidas, todas (OverdueTasks::forScope): tarea, proyecto, responsable, fecha límite,
+     * días de retraso y si es un hito.
+     *
+     * @param  array{tasks: list<array{title: string, project: array{code: string, name: string}, assignee: string|null,
+     *     due_date: string, days_overdue: int, is_milestone: bool}>}  $overdue
+     * @return array{0: list<string>, 1: list<list<string|int|float|bool|null>>}
+     */
+    private function overdueTable(array $overdue): array
+    {
+        $headers = array_map(fn (string $column): string => __('reports.r1.columns.'.$column),
+            ['task', 'project', 'assignee', 'due_date', 'days_overdue', 'milestone']);
+
+        $lines = array_map(fn (array $task): array => [
+            $task['title'],
+            $task['project']['code'].' · '.$task['project']['name'],
+            $task['assignee'] ?? __('reports.r1.columns.unassigned'),
+            $task['due_date'],
+            $task['days_overdue'],
+            $task['is_milestone'],
+        ], $overdue['tasks']);
+
+        return [$headers, $lines];
     }
 
     /**

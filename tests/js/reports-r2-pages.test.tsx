@@ -120,7 +120,7 @@ const summary = (financials: boolean): MetricsSummary => ({
     capacity_minutes: 0,
     logged_minutes: 940,
     billable_minutes: 910,
-    in_bank_minutes: 750,
+    in_bank_minutes: 600,
     overage_minutes: 190,
     occupancy: null,
     billability: 0.9681,
@@ -132,10 +132,10 @@ const summary = (financials: boolean): MetricsSummary => ({
         accuracy: 0.6,
         deviation: 0.6667,
     },
-    income: financials ? '1337.67' : null,
+    income: financials ? '1312.67' : null,
     cost: financials ? '390.00' : null,
-    margin: financials ? '947.67' : null,
-    margin_pct: financials ? 0.7084 : null,
+    margin: financials ? '922.67' : null,
+    margin_pct: financials ? 0.7029 : null,
 });
 
 const renderPage = (page: ReactNode) =>
@@ -181,7 +181,7 @@ const clientProps = (financials: boolean): R2ClientReportProps => ({
             billable_minutes: 790,
             in_bank_minutes: 600,
             overage_minutes: 190,
-            income: financials ? '1221.67' : null,
+            income: financials ? '1196.67' : null,
             cost: financials ? '330.00' : null,
             has_bank: true,
         },
@@ -236,11 +236,11 @@ describe('informe de cliente', () => {
             name: 'Indicadores del periodo',
         });
         expect(within(kpis).getByText('Ingreso estimado')).toBeTruthy();
-        expect(norm(within(kpis).getByText(/1\.337,67/).textContent)).toBe(
-            '1.337,67 €',
+        expect(norm(within(kpis).getByText(/1\.312,67/).textContent)).toBe(
+            '1.312,67 €',
         );
-        expect(within(kpis).getByText('Margen: 70,8 %')).toBeTruthy();
-        // Dentro de las bolsas: solo las horas de bolsas (no las 12:30 de summary.in_bank_minutes).
+        expect(within(kpis).getByText('Margen: 70,3 %')).toBeTruthy();
+        // Dentro de las bolsas: solo las horas de bolsas (D-078).
         expect(
             within(kpis).getByText('10:00 dentro de las bolsas'),
         ).toBeTruthy();
@@ -478,7 +478,7 @@ describe('informe de proyecto', () => {
         expect(within(kpis).getByText('Rentabilidad')).toBeTruthy();
         // Proyecto de bolsas: el exceso con lo que va dentro de ellas.
         expect(
-            within(kpis).getByText('12:30 dentro de las bolsas'),
+            within(kpis).getByText('10:00 dentro de las bolsas'),
         ).toBeTruthy();
 
         // Filtros sin cliente ni proyecto.

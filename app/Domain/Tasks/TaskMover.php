@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tasks;
 
+use App\Domain\Reports\ReportCache;
 use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
@@ -71,6 +72,9 @@ final class TaskMover
                             ->whereIn('attachable_id', TaskComment::query()->withTrashed()->select('id')->whereIn('task_id', $taskIds)));
                 })
                 ->update(['project_id' => $target->id]);
+
+            // La tarea y sus subtareas cambian de proyecto: la caché de informes, tras el commit (INT-03).
+            ReportCache::bumpAfterCommit();
 
             return $task;
         });
