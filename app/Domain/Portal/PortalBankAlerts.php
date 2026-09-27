@@ -18,7 +18,8 @@ use Throwable;
  * - solo si el cliente está activo y lo tiene activado (clients.portal_notify_thresholds),
  * - solo de bolsas abiertas (activas o agotadas): nunca de una cerrada o renovada,
  * - con lo que el cliente VE (PortalBankFigures): nunca le avisa por horas que aún no puede ver,
- * - cada umbral una sola vez por bolsa (hour_bank_alerts, clave client:90 / client:100),
+ * - cada umbral una sola vez por bolsa (hour_bank_alerts, clave client:90 / client:100) y, si un
+ *   cambio cruza los dos, un solo email con el más alto,
  * - por email (cola mail) a los usuarios del portal activos de ese cliente.
  * Se comprueba al guardar o borrar una entrada de la bolsa y al aprobarla (PortalServiceProvider),
  * cuando la escritura interna ya está confirmada: un aviso NUNCA la rompe (un fallo se registra
@@ -107,11 +108,13 @@ final class PortalBankAlerts
 
         // El alcance sale del cliente, no de un destinatario: nunca lanza el 403 del portal.
         $figures = PortalBankFigures::one(PortalScope::forClient($client), $bank);
-        $percent = (int) floor($figures['percent'] * 100);
+        $consumed = $figures['within_minutes'] + $figures['overage_minutes'];
+        $reached = null;
 
         foreach (self::THRESHOLDS as $threshold) {
-            if ($percent < $threshold) {
-                continue;
+            // En enteros, sin redondeos de coma flotante justo en el umbral.
+            if ($consumed * 100 < $threshold * $figures['total_minutes']) {
+                break;
             }
 
             $alert = HourBankAlert::query()->createOrFirst(
@@ -120,8 +123,14 @@ final class PortalBankAlerts
             );
 
             if ($alert->wasRecentlyCreated) {
-                Notification::send($recipients, new ClientHourBankThreshold($bank, $threshold, $figures));
+                $reached = $threshold;
             }
+        }
+
+        // Un cambio que cruza el 90 % y el 100 % a la vez manda un solo email, el del umbral más alto
+        // (como los avisos internos); los dos umbrales quedan registrados y no se repiten.
+        if ($reached !== null) {
+            Notification::send($recipients, new ClientHourBankThreshold($bank, $reached, $figures));
         }
     }
 }

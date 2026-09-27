@@ -169,3 +169,18 @@ it('no avisa de una bolsa cerrada o renovada aunque se aprueben sus horas (D-053
     'renovada' => [HourBankStatus::Renewed],
     'cerrada' => [HourBankStatus::Closed],
 ]);
+
+it('si un cambio cruza el 90 % y el 100 % a la vez, un solo email: el del 100 %', function () {
+    $period = ($this->submitWeek)(600);
+
+    ($this->approve)($period)->assertRedirect('/horas/aprobaciones');
+
+    Notification::assertSentToTimes($this->portalUser, ClientHourBankThreshold::class, 1);
+    Notification::assertSentTo($this->portalUser, ClientHourBankThreshold::class, fn (ClientHourBankThreshold $n) => $n->threshold === 100 && $n->figures['remaining_minutes'] === 0);
+    expect(HourBankAlert::query()->where('hour_bank_id', $this->bank->id)->where('key', 'like', 'client:%')->orderBy('key')->pluck('key')->all())
+        ->toBe(['client:100', 'client:90']);
+
+    // Los dos umbrales quedan registrados: más horas no vuelven a avisar.
+    TimeEntry::factory()->forTask($this->task)->on('2026-09-22')->minutes(30)->status(TimeEntryStatus::Approved)->create(['user_id' => $this->employee->id]);
+    Notification::assertSentToTimes($this->portalUser, ClientHourBankThreshold::class, 1);
+});
