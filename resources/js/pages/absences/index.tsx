@@ -1,6 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { CalendarOff, CalendarPlus, Info } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CancelAbsenceButton } from '@/components/absences/absence-actions';
 import { AbsenceDialog } from '@/components/absences/absence-dialog';
 import { AbsenceItem } from '@/components/absences/absence-item';
@@ -14,7 +14,11 @@ import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { index as absencesIndex } from '@/routes/absences';
 
-/** ?solicitar=1 (enlace de la tarjeta de Inicio) abre el formulario al entrar. */
+/**
+ * ?solicitar=1 (enlace de la tarjeta de Inicio) abre el formulario al entrar. Después se quita de
+ * la URL: si no, al recargar, al volver desde el historial o tras enviar (back() vuelve a la URL de
+ * la página) el formulario se abriría otra vez sin pedirlo.
+ */
 function wantsRequest(url: string | undefined): boolean {
     const query = (url ?? '').split('?')[1] ?? '';
 
@@ -79,6 +83,16 @@ export default function MyAbsences({
 }: MyAbsencesPageProps) {
     const page = usePage();
     const [requesting, setRequesting] = useState(() => wantsRequest(page.url));
+
+    useEffect(() => {
+        if (wantsRequest(page.url)) {
+            router.replace({
+                url: absencesIndex.url(),
+                preserveState: true,
+                preserveScroll: true,
+            });
+        }
+    }, [page.url]);
 
     const byStart = (a: AbsenceRow, b: AbsenceRow) =>
         a.start_date.localeCompare(b.start_date) || a.id - b.id;

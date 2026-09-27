@@ -26,13 +26,19 @@ const page = vi.hoisted(() => ({
 const inertia = vi.hoisted(() => ({
     get: vi.fn(),
     post: vi.fn(),
+    replace: vi.fn(),
 }));
 
 vi.mock('@inertiajs/react', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@inertiajs/react')>()),
     Head: () => null,
     usePage: () => page,
-    router: { get: inertia.get, post: inertia.post, on: () => () => {} },
+    router: {
+        get: inertia.get,
+        post: inertia.post,
+        replace: inertia.replace,
+        on: () => () => {},
+    },
     Link: ({
         href,
         children,
@@ -123,6 +129,7 @@ beforeEach(() => {
     page.props = { auth: { user: { id: 3, name: 'Raúl' }, can: {} } };
     inertia.get.mockReset();
     inertia.post.mockReset();
+    inertia.replace.mockReset();
     post.mockClear();
 });
 
@@ -219,13 +226,27 @@ describe('mis ausencias (/ausencias)', { timeout: 20_000 }, () => {
         ).toBeTruthy();
     });
 
-    it('con ?solicitar=1 abre el formulario al entrar', () => {
+    it('con ?solicitar=1 abre el formulario al entrar y quita el parámetro de la URL', () => {
         page.url = '/ausencias?solicitar=1';
         render(<MyAbsences {...myProps()} />);
 
         expect(
             screen.getByRole('dialog', { name: 'Solicitar una ausencia' }),
         ).toBeTruthy();
+        // Al recargar, al volver desde el historial o tras enviar no se vuelve a abrir solo.
+        expect(inertia.replace).toHaveBeenCalledTimes(1);
+        expect(inertia.replace).toHaveBeenCalledWith({
+            url: '/ausencias',
+            preserveState: true,
+            preserveScroll: true,
+        });
+    });
+
+    it('sin ?solicitar=1 ni abre el formulario ni toca la URL', () => {
+        render(<MyAbsences {...myProps()} />);
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(inertia.replace).not.toHaveBeenCalled();
     });
 });
 
