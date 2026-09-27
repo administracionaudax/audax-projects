@@ -8,6 +8,7 @@ import {
     Pencil,
     Power,
     PowerOff,
+    Receipt,
     Wallet,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -42,7 +43,7 @@ import {
     reactivate,
     show,
 } from '@/routes/clients';
-import { client as clientReport } from '@/routes/reports';
+import { billing, client as clientReport } from '@/routes/reports';
 import type { ClientShowProps } from '@/types';
 
 const MONTHS = new Intl.DateTimeFormat('es-ES', {
@@ -166,7 +167,7 @@ export default function ClientShow({
                             ) : null}
                         </div>
                     </div>
-                    {can.update || can.viewReport ? (
+                    {can.update || can.viewReport || can.viewBilling ? (
                         <div className="flex flex-wrap gap-2">
                             {/* Informe del cliente (Fase 2, R2): admins, responsables y sus gestores. */}
                             {can.viewReport ? (
@@ -174,6 +175,19 @@ export default function ClientShow({
                                     <Link href={clientReport.url(client.id)}>
                                         <ChartColumn aria-hidden="true" />
                                         {t('reports_r2.link.client_report')}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {/* Horas para facturar (Fase 2, R2): admins y quien tenga view-financials. */}
+                            {can.viewBilling ? (
+                                <Button variant="outline" asChild>
+                                    <Link
+                                        href={billing.url({
+                                            query: { cliente: [client.id] },
+                                        })}
+                                    >
+                                        <Receipt aria-hidden="true" />
+                                        {t('reports_r2.link.billing')}
                                     </Link>
                                 </Button>
                             ) : null}

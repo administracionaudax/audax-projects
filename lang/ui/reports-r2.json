@@ -11,6 +11,7 @@
     "reports_r2.empty.description": "Cambia el periodo o quita algún filtro para ver más horas.",
     "reports_r2.link.client_report": "Ver informe",
     "reports_r2.link.project_report": "Ver informe del proyecto",
+    "reports_r2.link.billing": "Horas para facturar",
     "reports_r2.pdf.label": "Descargar PDF",
     "reports_r2.pdf.name": "Descargar el PDF de consumo de :name",
     "reports_r2.pdf.client": "Para el cliente",

@@ -153,6 +153,8 @@ class ClientController extends Controller
                 'update' => $request->user()?->can('update', $client) ?? false,
                 // Informe del cliente (Fase 2, R2; D-044): enlace «Ver informe».
                 'viewReport' => $request->user()?->can('viewReport', $client) ?? false,
+                // Horas para facturar de este cliente (Fase 2, R2; D-045): admins y view-financials.
+                'viewBilling' => $request->user()?->can('viewBilling', Client::class) ?? false,
             ],
         ]);
     }

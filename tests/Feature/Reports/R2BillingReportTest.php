@@ -297,3 +297,15 @@ test('el enlace al informe del cliente solo va a quien puede verlo', function ()
     $this->actingAs($s->admin)->get('/informes/facturacion')
         ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false)->where('client', null));
 });
+
+test('la ficha del cliente enlaza sus horas para facturar a quien puede exportarlas (can.viewBilling)', function () {
+    $s = $this->s;
+    $show = "/clientes/{$s->client->id}";
+    $s->luis->givePermissionTo(Permission::ViewFinancials->value);
+
+    foreach ([[$s->admin, true], [$s->luis->fresh(), true], [$s->raul, false], [$s->gema, false], [$s->ana, false]] as [$viewer, $expected]) {
+        $this->actingAs($viewer)->get($show)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('clients/show')->where('can.viewBilling', $expected));
+    }
+});
