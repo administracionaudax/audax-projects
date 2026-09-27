@@ -565,3 +565,42 @@ _Detalle y contexto en `docs/PLAN-FASE-4.md`._
 - **Resumen del proyecto:** «Próximos hitos», los 5 siguientes sin completar, más los vencidos destacados con icono y texto.
 - **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
 - **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
+
+## 27/09/2026: Decisiones tomadas en autonomía durante la implementación de la Fase 5 (P2 · acceso, proyectos e identidad)
+
+_Concretan D-063, D-064 y D-067 (`docs/PLAN-FASE-5.md`). Sin número: se numeran al integrar la fase._
+
+### P2-a · Quién gestiona el portal **[concreta D-063 y D-064]**
+- **Usuarios del portal** (invitar, reenviar, revocar y reactivar): `ClientPolicy::managePortal`, es decir, admin, responsables (rol) y gestores de algún proyecto sin borrar del cliente.
+- **Ajustes del portal del cliente** (personas, horas visibles y avisos por email): `ClientPolicy::update` (admin y responsables). Afectan a todas las bolsas y proyectos del cliente, así que no los cambia el gestor de uno solo, que los ve en solo lectura.
+- **Portal de cada proyecto** (vista, horas por tarea y Gantt): quien gestiona el proyecto (`ProjectPolicy::update`), desde sus ajustes. El SPEC §11 decía «el admin».
+- Quien no gestiona el portal no recibe la lista de usuarios: la ficha le dice quién lo gestiona.
+
+### P2-b · Invitaciones y estado de los usuarios del portal **[concreta D-063]**
+- **Alta:** rol `client` y `client_id`, sin departamento ni jornada (no es plantilla). La invitación reutiliza `UserInviter::send` (broker `invitations`, 7 días, cola `mail`) con el asunto y la presentación del portal.
+- **Correo único**, sin distinguir mayúsculas. Si es de una persona del equipo, se explica; si es de otro cliente, el mensaje genérico (no se revela de quién es).
+- **Estado en la ficha:**
+  - aceptada, si fijó su contraseña con la invitación (correo verificado) o ha entrado alguna vez,
+  - pendiente, mientras el enlace esté vigente (con su fecha de caducidad),
+  - caducada, en otro caso.
+  - Último acceso = último inicio de sesión correcto.
+- **Reenviar:** solo a personas activas de un cliente activo; la interfaz lo ofrece a quien todavía no ha entrado (el resto tiene «¿Has olvidado la contraseña?»).
+- **Revocar:** desactiva (User::booted cierra todas sus sesiones y su «Recordarme» con `SessionTerminator`) y anula la invitación pendiente, para que un enlace viejo no sirva si se reactiva. **Reactivar** no reenvía la invitación.
+- Con el cliente desactivado no se invita, no se reenvía ni se reactiva; revocar, sí.
+- **Auditoría:** `activity_log` del cliente (`clients`): `portal_user_invited`, `portal_invitation_resent`, `portal_user_revoked` y `portal_user_reactivated`, con la persona.
+
+### P2-c · Proyectos en el portal **[concreta D-064]**
+- **Abrir:** las horas por tarea solo cuentan con la vista abierta (al cerrarla, se apagan). El Gantt se abre aparte y no exige la vista. Un proyecto sin cliente no se abre.
+- **Qué se ve de cada tarea:** título, estado, inicio y entrega, si es hito y sus subtareas. Nunca descripciones (pueden llevar notas internas), comentarios, adjuntos, responsables, estimaciones, prioridad ni importes.
+- **Horas por tarea:** solo las visibles para el cliente (`PortalScope::entries`). La de una tarea con subtareas suma las suyas; el total no cuenta dos veces.
+- **Páginas:** `/portal/proyectos` (los abiertos, con su avance), `/portal/proyectos/{proyecto}` y `…/gantt`. Un proyecto archivado que siga abierto se ve (histórico); uno en la papelera, no.
+- **Gantt:** el componente de la Fase 4 con `readOnly` y la nueva prop aditiva `hideAssignees` (sin columna de responsable, sin colores por responsable ni su nombre en las barras). Los datos ya llegan sin responsables, estimaciones ni horas y con `can.update = false`. Colores siempre por estado. Una tarea se abre en un diálogo de solo lectura.
+- **Navegación:** la cabecera del portal lleva «Inicio» y, si hay algún proyecto abierto, «Proyectos». Salen de la prop compartida `portal` (identidad y proyectos abiertos), que solo reciben los usuarios del portal. Para el Inicio queda la tarjeta `PortalProjectsCard`.
+
+### P2-d · Identidad de la empresa **[concreta D-067]**
+- **Logo:** se comprueba el tipo real con fileinfo y se vuelve a codificar con GD en un PNG con transparencia que cabe en 960 × 240 px (sin ampliar). No queda nada del fichero original. El original admite hasta 3.000 px por lado. Se procesa en la petición: es un fichero de 1 MB como mucho y solo lo sube el admin.
+- **Dónde se guarda y cómo se sirve:** se guarda en el disco privado y se sirve en `/marca/logo/{versión}`, una ruta pública y fuera del grupo web (sin sesión ni cookies), porque la cargan los emails. La versión actual se guarda en caché un año. `ClientIsolationTest` admite esa ruta.
+- **Emails:** se sobrescribe solo `resources/views/vendor/mail/html/header.blade.php`: el logo (como mucho 240 × 56 px) si lo hay; si no, el texto de siempre.
+- **PDF:** `AudaxPdf::logo` dibuja el PNG en una caja de 45 × 8 mm; sin logo, el vectorial.
+- **Cabecera del portal:** el logo va sobre una placa blanca, porque la cabecera va sobre el degradado.
+- `company_name` es el mismo ajuste que ya se editaba en `/admin/ajustes`: queda en los dos sitios hasta que se decida quitarlo de allí.
