@@ -16,6 +16,7 @@
  *   `:NAME` → todo en mayúsculas.
  */
 import base from '../../../lang/es.json';
+import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import clients from '../../../lang/ui/clients.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
@@ -37,6 +38,7 @@ const messages = {
     ...time,
     ...notifications,
     ...reports,
+    ...absences,
 };
 
 export type TranslationKey = keyof typeof messages;
