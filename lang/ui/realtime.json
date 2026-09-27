@@ -2,7 +2,6 @@
     "realtime.presence.online": "En línea",
     "realtime.presence.away": "Ausente",
     "realtime.presence.offline": "Desconectado",
-    "realtime.presence.user": ":name, :status",
     "realtime.typing.one": ":name está escribiendo…",
     "realtime.typing.two": ":first y :second están escribiendo…",
     "realtime.typing.many": "Varias personas están escribiendo…",
