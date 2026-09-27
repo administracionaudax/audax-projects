@@ -70,6 +70,34 @@ test('el email de un rechazo lleva el comentario y enlaza a «Mis ausencias»', 
         ->and($mail->actionUrl)->toBe(url('/ausencias'));
 });
 
+test('lo que escribe la gente no cuela enlaces ni formato en el email; en la campana va tal cual', function () {
+    $notes = "Firma aquí: [Portal](https://phishing.example)\n\n# *Urgente* ![x](https://phishing.example/p.png)";
+    $this->absence->update(['notes' => $notes]);
+    $requested = new AbsenceRequestedNotification($this->absence->fresh(), $this->employee);
+
+    $mail = $requested->toMail($this->manager);
+    $html = (string) $mail->render();
+
+    expect($mail->introLines[1])->toBe('«Firma aquí: \\[Portal\\](https://phishing.example) # \\*Urgente\\* !\\[x\\](https://phishing.example/p.png)»')
+        ->and($html)->not->toContain('href="https://phishing.example"')
+        ->and($html)->not->toContain('<img src="https://phishing.example')
+        ->and($html)->not->toContain('<em>Urgente</em>')
+        ->and($html)->toContain('[Portal](https://phishing.example)')
+        ->and($requested->toArray($this->manager)['body'])->toBe("«{$notes}»");
+
+    $rejected = new AbsenceRejectedNotification($this->absence, $this->manager, '[Pulsa aquí](https://phishing.example) y _ya_');
+    $html = (string) $rejected->toMail($this->employee)->render();
+
+    expect($html)->not->toContain('href="https://phishing.example"')
+        ->and($html)->not->toContain('<em>ya</em>')
+        ->and($html)->toContain('[Pulsa aquí](https://phishing.example) y _ya_');
+
+    // También los nombres (del saludo y de las frases).
+    $this->employee->update(['name' => '[Elena](https://phishing.example)']);
+    $html = (string) (new AbsenceRequestedNotification($this->absence->fresh(), $this->employee->fresh()))->toMail($this->manager)->render();
+    expect($html)->not->toContain('href="https://phishing.example"');
+});
+
 test('el aviso guarda una foto: no cambia si la ausencia cambia o se borra', function () {
     $notification = new AbsenceApprovedNotification($this->absence, $this->manager);
     $this->absence->update(['start_date' => '2026-12-01', 'end_date' => '2026-12-02']);

@@ -45,6 +45,21 @@ final class AbsenceText
     }
 
     /**
+     * Una línea de un email en Markdown con textos que escribe la gente (notas, comentarios,
+     * nombres): se escapan los corchetes (sin ellos no hay enlaces ni imágenes: «[Firma aquí](https://…)»
+     * llega como texto), el énfasis y el código; al principio, un título o una lista. Los saltos de
+     * línea pasan a espacios: nada de bloques nuevos. El HTML ya lo escapa la plantilla de Laravel.
+     * Solo para el email: la campana pinta texto plano.
+     */
+    public static function markdown(string $text): string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+        $text = (string) preg_replace('/[\\\\`*_\[\]]/', '\\\\$0', $text);
+
+        return (string) preg_replace(['/^(\d+)([.)])/', '/^([-+#])/'], ['$1\\\\$2', '\\\\$1'], $text);
+    }
+
+    /**
      * @param  array<string, string|int>  $replace
      */
     public static function get(string $key, array $replace = []): string

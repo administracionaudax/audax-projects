@@ -67,17 +67,21 @@ abstract class AbsenceNotification extends AppNotification
         return false;
     }
 
+    /**
+     * El email: el asunto en texto plano y el resto en Markdown, con los textos de la gente (nombres,
+     * notas y comentarios) escapados (AbsenceText::markdown): nada de enlaces ni formato colados.
+     */
     public function toMail(object $notifiable): MailMessage
     {
         $name = $notifiable instanceof User ? $notifiable->name : '';
         $mail = (new MailMessage)
             ->subject($this->title($notifiable))
-            ->greeting(AbsenceText::get('absences.mail.greeting', ['name' => $name]))
-            ->line($this->title($notifiable));
+            ->greeting(AbsenceText::markdown(AbsenceText::get('absences.mail.greeting', ['name' => $name])))
+            ->line(AbsenceText::markdown($this->title($notifiable)));
 
         $body = $this->body($notifiable);
         if ($body !== null && $body !== '') {
-            $mail->line($body);
+            $mail->line(AbsenceText::markdown($body));
         }
 
         return $mail
@@ -86,7 +90,7 @@ abstract class AbsenceNotification extends AppNotification
                 url((string) $this->url($notifiable)),
             )
             ->salutation(AbsenceText::get('absences.mail.salutation', [
-                'company' => (string) Setting::get('company_name', config('app.name')),
+                'company' => AbsenceText::markdown((string) Setting::get('company_name', config('app.name'))),
             ]));
     }
 
