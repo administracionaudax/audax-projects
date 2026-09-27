@@ -132,6 +132,7 @@
     "gantt.errors.generic": "No se han podido guardar los cambios. Vuelve a intentarlo.",
     "gantt.errors.server": "Ha fallado el servidor y no se ha guardado el cambio. Vuelve a intentarlo en unos minutos.",
     "gantt.errors.network": "No hay conexión: el cambio no se ha guardado.",
+    "gantt.errors.refresh": "No se han podido volver a cargar las tareas y puede que alguna fecha no esté al día. Recarga la página.",
     "gantt.errors.forbidden": "No puedes cambiar esta tarea.",
     "gantt.errors.self": "Una tarea no puede depender de sí misma.",
     "gantt.errors.other_project": "Solo se pueden enlazar tareas del mismo proyecto.",

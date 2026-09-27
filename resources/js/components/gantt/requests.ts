@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import type { ActiveVisit, VisitOptions } from '@inertiajs/core';
+import { toast } from 'sonner';
 import type { GanttDates } from '@/components/gantt/types';
 import { t } from '@/lib/i18n';
 import { store as storeTask } from '@/routes/tasks';
@@ -43,12 +44,32 @@ export type GanttVisitCallbacks = {
 
 type Callbacks = GanttVisitCallbacks;
 
-type RefreshWaiter = { props: ReadonlyArray<string>; done: () => void };
+type RefreshWaiter = {
+    props: ReadonlyArray<string>;
+    done: () => void;
+    /** Ruta de la página en la que se interrumpió el cambio (la del Gantt). */
+    path: string;
+};
 
+/** Cambios interrumpidos que esperan a que vuelvan a llegar las props del Gantt. */
 let waiters: RefreshWaiter[] = [];
-let stopWaiting: VoidFunction | null = null;
+/** Quita las escuchas de router.on: solo se escucha mientras hay algo pendiente. */
+let stopListening: VoidFunction | null = null;
+/**
+ * Visitas que han traído página: Inertia emite `success` (o `error`, con errores de validación)
+ * después de poner sus props. Inertia también da por terminada (`completed`) una visita que falla
+ * por un error HTTP, de red o una respuesta que no es de Inertia, pero esa no trae ninguna prop.
+ */
+const answered = new Set<string>();
 
-/** Si una visita ya terminada ha vuelto a traer la prop (las completas traen todas). */
+/** Un solo aviso aunque falle más de una recarga. */
+const REFRESH_TOAST = 'gantt-refresh';
+
+function currentPath(): string {
+    return typeof window === 'undefined' ? '' : window.location.pathname;
+}
+
+/** Si una visita que ha traído página ha vuelto a traer la prop (las completas traen todas). */
 function reloaded(visit: ActiveVisit, prop: string): boolean {
     return (
         (visit.only.length === 0 || visit.only.includes(prop)) &&
@@ -59,58 +80,127 @@ function reloaded(visit: ActiveVisit, prop: string): boolean {
 /**
  * Inertia cancela la visita síncrona en curso cuando empieza otra. Si era un cambio del Gantt, no
  * se sabe si llegó al servidor, así que hay que volver a pedir sus props: cuando termina la
- * siguiente visita síncrona (normalmente la que la interrumpió), si esa no las ha traído (p. ej.
- * cambiar la escala solo recarga `preferences`), se lanza una recarga parcial. `done` se llama en
- * cuanto están al día. Una sola escucha y una sola recarga aunque se interrumpan varias visitas.
+ * siguiente visita síncrona (normalmente la que la interrumpió), si no las ha traído (p. ej.
+ * cambiar la escala solo recarga `preferences`) o ha fallado, se lanza una recarga parcial. `done`
+ * se llama solo cuando han llegado de verdad. Una sola escucha y una sola recarga aunque se
+ * interrumpan varias visitas.
  */
 export function refreshAfterInterruption(
     reload: ReadonlyArray<string>,
     done: () => void = () => {},
 ): void {
-    waiters.push({ props: reload, done });
+    waiters.push({ props: reload, done, path: currentPath() });
 
-    stopWaiting ??= router.on('finish', (event) => {
-        const visit = event.detail.visit;
+    if (stopListening) {
+        return;
+    }
 
-        // La propia visita cancelada, las que se cancelen después y las asíncronas no cuentan.
-        if (!visit.completed || visit.async || visit.prefetch) {
-            return;
+    const record = (visitId?: string) => {
+        if (visitId !== undefined) {
+            answered.add(visitId);
         }
+    };
+    const stops = [
+        router.on('success', (event) => record(event.detail.visitId)),
+        router.on('error', (event) => record(event.detail.visitId)),
+        router.on('finish', (event) => settle(event.detail.visit)),
+    ];
 
-        const current = waiters;
-        waiters = [];
-        stopWaiting?.();
-        stopWaiting = null;
+    stopListening = () => stops.forEach((stop) => stop());
+}
 
-        const pending = current.filter((waiter) =>
-            waiter.props.some((prop) => !reloaded(visit, prop)),
+/** Atiende los cambios pendientes cuando termina una visita síncrona. */
+function settle(visit: ActiveVisit): void {
+    // La propia visita cancelada, las que se cancelen después, las asíncronas y las precargas no
+    // cuentan.
+    if (!visit.completed || visit.async || visit.prefetch) {
+        return;
+    }
+
+    const arrived = answered.has(visit.id);
+    const path = currentPath();
+    // Los de otra página se olvidan: ese Gantt ya no está (p. ej. se salió con un enlace precargado,
+    // que no emite «finish») y no tiene sentido pedir sus props aquí.
+    const current = waiters.filter((waiter) => waiter.path === path);
+
+    waiters = [];
+    answered.clear();
+    stopListening?.();
+    stopListening = null;
+
+    // Si ha fallado, no ha llegado ninguna prop: hay que pedirlas todas.
+    const pending = arrived
+        ? current.filter((waiter) =>
+              waiter.props.some((prop) => !reloaded(visit, prop)),
+          )
+        : current;
+
+    current
+        .filter((waiter) => !pending.includes(waiter))
+        .forEach((waiter) => waiter.done());
+
+    if (pending.length > 0) {
+        reloadProps(pending);
+    }
+}
+
+/**
+ * Recarga parcial de las props del Gantt. Como el resto de acciones dentro de la página, trata sus
+ * propios errores sin salir de ella (App\Http\Responses\ErrorPage): si falla, avisa y las fechas
+ * optimistas se quedan hasta que otra visita traiga las props (se vuelve a esperar, sin repetirla
+ * en bucle), en lugar de volver a unas fechas que quizá ya no son las guardadas. Si otra visita la
+ * interrumpe, también se vuelve a esperar.
+ */
+function reloadProps(pending: ReadonlyArray<RefreshWaiter>): void {
+    let outcome: 'waiting' | 'loaded' | 'failed' | 'interrupted' = 'waiting';
+    const waitAgain = () =>
+        pending.forEach((waiter) =>
+            refreshAfterInterruption(waiter.props, waiter.done),
         );
-        current
-            .filter((waiter) => !pending.includes(waiter))
-            .forEach((waiter) => waiter.done());
+    const fail = () => {
+        outcome = 'failed';
 
-        if (pending.length === 0) {
-            return;
-        }
+        return false;
+    };
 
-        let interrupted = false;
-        router.visit(window.location.href, {
-            only: [...new Set(pending.flatMap((waiter) => waiter.props))],
-            preserveScroll: true,
-            preserveState: true,
-            replace: true,
-            onCancel: () => {
-                interrupted = true;
-                pending.forEach((waiter) =>
-                    refreshAfterInterruption(waiter.props, waiter.done),
-                );
-            },
-            onFinish: () => {
-                if (!interrupted) {
-                    pending.forEach((waiter) => waiter.done());
-                }
-            },
-        });
+    router.visit(window.location.href, {
+        only: [...new Set(pending.flatMap((waiter) => waiter.props))],
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+        onSuccess: () => {
+            outcome = 'loaded';
+        },
+        onError: () => {
+            outcome = 'loaded';
+        },
+        onHttpException: fail,
+        onNetworkError: fail,
+        onCancel: () => {
+            outcome = 'interrupted';
+            waitAgain();
+        },
+        onFinish: () => {
+            // Interrumpida: onCancel ya ha vuelto a esperar.
+            if (outcome === 'interrupted') {
+                return;
+            }
+
+            if (outcome === 'loaded') {
+                pending.forEach((waiter) => waiter.done());
+
+                return;
+            }
+
+            // Ha fallado (se avisa) o ha acabado sin página ni error, porque Inertia se va a otra
+            // ubicación y recarga la página entera (p. ej. con assets nuevos). Se espera a la
+            // siguiente visita.
+            if (outcome === 'failed') {
+                toast.error(t('gantt.errors.refresh'), { id: REFRESH_TOAST });
+            }
+
+            waitAgain();
+        },
     });
 }
 

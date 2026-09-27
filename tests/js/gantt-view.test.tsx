@@ -16,11 +16,13 @@ type VisitOptions = {
     onSuccess?: () => void;
     onError?: (errors: Record<string, string>) => void;
     onHttpException?: (response: { status: number }) => boolean | void;
+    onNetworkError?: (error: Error) => boolean | void;
     onCancel?: () => void;
     onFinish?: () => void;
 };
 
 type FinishedVisit = {
+    id: string;
     completed: boolean;
     async: boolean;
     prefetch: boolean;
@@ -28,35 +30,53 @@ type FinishedVisit = {
     except: string[];
 };
 
-type FinishListener = (event: { detail: { visit: FinishedVisit } }) => void;
+type RouterListener = (event: { detail: Record<string, unknown> }) => void;
 
 const server = vi.hoisted(() => ({
     post: vi.fn<(url: string, data: unknown, options: VisitOptions) => void>(),
     delete: vi.fn<(url: string, options: VisitOptions) => void>(),
     visit: vi.fn<(url: string, options?: VisitOptions) => void>(),
     get: vi.fn(),
-    /** Escuchas de router.on('finish'). */
-    finish: new Set<FinishListener>(),
+    /** Escuchas de router.on por evento (finish, success, error). */
+    listeners: new Map<string, Set<RouterListener>>(),
 }));
 
-/** Lo que emite Inertia al terminar una visita (por defecto, síncrona, completa y terminada). */
-function finishVisit(visit: Partial<FinishedVisit> = {}) {
+function emit(type: string, detail: Record<string, unknown>) {
+    // Copia: las escuchas se quitan al atender la visita.
+    for (const listener of Array.from(server.listeners.get(type) ?? [])) {
+        listener({ detail });
+    }
+}
+
+let visits = 0;
+
+/**
+ * Lo que emite Inertia al terminar una visita: por defecto, síncrona, completa y con página
+ * (`success` con su id y después `finish`). Con `failed`, como Inertia 3 tras un error HTTP, de red
+ * o una respuesta que no es de Inertia: la da por terminada (completed) sin `success` ni props.
+ */
+function finishVisit({
+    failed = false,
+    ...visit
+}: Partial<FinishedVisit> & { failed?: boolean } = {}) {
+    const id = `visita-${++visits}`;
+
     act(() => {
-        // Copia: cada escucha se quita a sí misma al atenderla.
-        for (const listener of Array.from(server.finish)) {
-            listener({
-                detail: {
-                    visit: {
-                        completed: true,
-                        async: false,
-                        prefetch: false,
-                        only: [],
-                        except: [],
-                        ...visit,
-                    },
-                },
-            });
+        if (!failed && visit.completed !== false) {
+            emit('success', { page: {}, visitId: id });
         }
+
+        emit('finish', {
+            visit: {
+                id,
+                completed: true,
+                async: false,
+                prefetch: false,
+                only: [],
+                except: [],
+                ...visit,
+            },
+        });
     });
 }
 
@@ -75,14 +95,12 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
         visit: (url: string, options?: VisitOptions) =>
             server.visit(url, options),
         get: (...args: unknown[]) => server.get(...args),
-        on: (type: string, listener: FinishListener) => {
-            if (type !== 'finish') {
-                return () => {};
-            }
+        on: (type: string, listener: RouterListener) => {
+            const listeners = server.listeners.get(type) ?? new Set();
+            server.listeners.set(type, listeners);
+            listeners.add(listener);
 
-            server.finish.add(listener);
-
-            return () => server.finish.delete(listener);
+            return () => listeners.delete(listener);
         },
     },
     Link: ({
@@ -456,10 +474,14 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
         expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
             'Del 07/10/2026 al 09/10/2026',
         );
-        act(() => options?.onFinish?.());
+        act(() => {
+            options?.onSuccess?.();
+            options?.onFinish?.();
+        });
         expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
             'Del 06/10/2026 al 08/10/2026',
         );
+        expect(toasts.error).not.toHaveBeenCalled();
     });
 
     it('si la visita que lo interrumpió ya trae las props del Gantt, no se piden otra vez', async () => {
@@ -505,6 +527,182 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
         finishVisit({ only: ['filters'] });
         expect(server.visit).toHaveBeenCalledTimes(2);
         expect(server.visit.mock.calls[1][1]).toMatchObject({ only: RELOAD });
+    });
+
+    it.each([
+        {
+            failure: 'un error HTTP',
+            fail: (options: VisitOptions) =>
+                options.onHttpException?.({ status: 500 }),
+            message:
+                'Ha fallado el servidor y no se ha guardado el cambio. Vuelve a intentarlo en unos minutos.',
+        },
+        {
+            failure: 'un error de red',
+            fail: (options: VisitOptions) =>
+                options.onNetworkError?.(new Error('Sin red')),
+            message: 'No hay conexión: el cambio no se ha guardado.',
+        },
+    ])(
+        'si la visita que lo interrumpió falla por $failure, no cuenta como recarga: se piden las props y la tarea no vuelve a las fechas antiguas',
+        async ({ fail, message }) => {
+            vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+            const user = userEvent.setup();
+            const { rerender } = render(view([design, layout, copy]));
+
+            // Se guarda Diseño y, antes de que acabe, Maquetación: Inertia interrumpe el primero.
+            bar(/^Diseño/).focus();
+            await user.keyboard('{ArrowRight}');
+            await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+            bar(/^Maquetación/).focus();
+            await user.keyboard('{ArrowRight}');
+            await waitFor(() => expect(server.post).toHaveBeenCalledTimes(2));
+            interrupt(server.post.mock.calls[0][2]);
+
+            // El de Maquetación falla. Inertia 3 lo da por terminado (completed, con las mismas
+            // `only` que traerían las tareas), pero sin página: no ha llegado ninguna prop.
+            const second = server.post.mock.calls[1][2];
+            expect(second.only).toEqual(RELOAD);
+            act(() => {
+                fail(second);
+            });
+            finishVisit({ only: RELOAD, failed: true });
+            act(() => second.onFinish?.());
+
+            expect(toasts.error).toHaveBeenCalledWith(message);
+            expect(bar(/^Maquetación/).getAttribute('aria-label')).toContain(
+                'Del 08/10/2026 al 09/10/2026',
+            );
+            // Diseño no salta a las fechas de sus props (quizá ya no son las guardadas): se piden.
+            expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+                'Del 06/10/2026 al 08/10/2026',
+            );
+            expect(server.visit).toHaveBeenCalledTimes(1);
+            const [url, options] = server.visit.mock.calls[0];
+            expect(url).toBe(window.location.href);
+            expect(options).toMatchObject({
+                only: RELOAD,
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+
+            // Cuando llegan de verdad, mandan las del servidor (aquí no había aplicado el cambio).
+            rerender(view([design, layout, copy]));
+            expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+                'Del 06/10/2026 al 08/10/2026',
+            );
+            act(() => {
+                options?.onSuccess?.();
+                options?.onFinish?.();
+            });
+            expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+                'Del 05/10/2026 al 07/10/2026',
+            );
+        },
+    );
+
+    it('si falla la recarga, avisa sin salir de la página, la tarea se queda donde se dejó y se vuelve a pedir con la siguiente visita', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        const { rerender } = render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(1);
+
+        // Falla con un error HTTP: la trata ella (sin el modal de Inertia) y no llama a done.
+        const first = server.visit.mock.calls[0][1] as VisitOptions;
+        expect(first.onHttpException?.({ status: 500 })).toBe(false);
+        finishVisit({ only: RELOAD, failed: true });
+        act(() => first.onFinish?.());
+
+        const warning = [
+            'No se han podido volver a cargar las tareas y puede que alguna fecha no esté al día. Recarga la página.',
+            { id: 'gantt-refresh' },
+        ];
+        expect(toasts.error).toHaveBeenCalledWith(...warning);
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+        // No se repite en bucle: espera a la siguiente visita.
+        expect(server.visit).toHaveBeenCalledTimes(1);
+
+        // La siguiente (otra vez la escala) las vuelve a pedir; ahora falla la red.
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(2);
+        const second = server.visit.mock.calls[1][1] as VisitOptions;
+        expect(second).toMatchObject({ only: RELOAD });
+        expect(second.onNetworkError?.(new Error('Sin red'))).toBe(false);
+        act(() => second.onFinish?.());
+        expect(toasts.error).toHaveBeenCalledTimes(2);
+        expect(toasts.error).toHaveBeenLastCalledWith(...warning);
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+
+        // Hasta que llegan: mandan las del servidor (aquí no había aplicado el cambio).
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(3);
+        const third = server.visit.mock.calls[2][1] as VisitOptions;
+        rerender(view([design, layout, copy]));
+        act(() => {
+            third.onSuccess?.();
+            third.onFinish?.();
+        });
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 05/10/2026 al 07/10/2026',
+        );
+        expect(toasts.error).toHaveBeenCalledTimes(2);
+    });
+
+    it('si la recarga acaba sin página ni error (Inertia se va a otra ubicación y recarga todo), no avisa y se vuelve a esperar', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+        finishVisit({ only: ['preferences'] });
+
+        act(() => (server.visit.mock.calls[0][1] as VisitOptions).onFinish?.());
+
+        expect(toasts.error).not.toHaveBeenCalled();
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 06/10/2026 al 08/10/2026',
+        );
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(2);
+    });
+
+    it('si ya no se está en la página del Gantt (p. ej. tras un enlace precargado, que no emite «finish»), no se piden sus props', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+
+        const gantt = window.location.href;
+        window.history.pushState({}, '', '/proyectos');
+
+        try {
+            // En otra página, ni una visita que falla ni una parcial piden las props del Gantt.
+            finishVisit({ failed: true });
+            finishVisit({ only: ['projects'] });
+        } finally {
+            window.history.replaceState({}, '', gantt);
+        }
+
+        expect(server.visit).not.toHaveBeenCalled();
+        expect(toasts.error).not.toHaveBeenCalled();
     });
 
     it('las fechas de las tareas que se siguen guardando no se pisan con las del servidor', async () => {
