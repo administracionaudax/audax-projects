@@ -4,6 +4,8 @@ namespace App\Domain\Reports\Export;
 
 use App\Support\LocalTime;
 use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\CSV\Options as CsvOptions;
@@ -17,6 +19,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * - XLSX: los números van como números (horas en decimal: 1,5 = 1 h 30 min) y la cabecera en negrita.
  * - CSV para Excel en español: separador «;», BOM UTF-8 y decimales con coma.
+ * - Los textos (también las cabeceras) nunca son fórmulas, aunque empiecen por «=» (descripciones,
+ *   títulos y nombres los escriben los usuarios): en XLSX van siempre como texto y en CSV los que
+ *   empiezan por = + - @, tabulador o retorno de carro llevan delante un apóstrofo (inyección de
+ *   fórmulas, OWASP «CSV Injection»).
  * Los controladores deciden qué filas y columnas exportar respetando los permisos (D-044) y
  * `view-financials`: este servicio solo escribe.
  */
@@ -25,6 +31,9 @@ final class TableExporter
     public const array FORMATS = ['xlsx', 'csv'];
 
     public const int MAX_ROWS = 20000;
+
+    /** Primeros caracteres con los que Excel, LibreOffice o Sheets interpretan una fórmula. */
+    private const string FORMULA_TRIGGERS = "=+-@\t\r";
 
     public static function format(?string $requested): string
     {
@@ -76,14 +85,15 @@ final class TableExporter
         $csv = self::format($format) === 'csv';
         $writer = $csv ? new CsvWriter(new CsvOptions(FIELD_DELIMITER: ';', SHOULD_ADD_BOM: true)) : new XlsxWriter;
         $writer->openToFile($path);
-        $writer->addRow(Row::fromValuesWithStyle($headers, (new Style)->withFontBold(true)));
+        $bold = (new Style)->withFontBold(true);
+        $writer->addRow(new Row(array_map(fn (string $header): Cell => self::cell($header, $csv, $bold), $headers)));
 
         $count = 0;
         foreach ($rows as $row) {
             if (++$count > self::MAX_ROWS) {
                 break;
             }
-            $writer->addRow(Row::fromValues(array_map(fn ($value) => $csv ? self::csvValue($value) : $value, array_values($row))));
+            $writer->addRow(new Row(array_map(fn (string|int|float|bool|null $value): Cell => self::cell($value, $csv), array_values($row))));
         }
 
         $writer->close();
@@ -91,12 +101,31 @@ final class TableExporter
         return min($count, self::MAX_ROWS);
     }
 
-    private static function csvValue(string|int|float|bool|null $value): string|int|null
+    /**
+     * Texto de una celda que ninguna hoja de cálculo evalúa como fórmula al abrir un CSV: si empieza
+     * por = + - @, tabulador o retorno de carro, con un apóstrofo delante.
+     */
+    public static function neutralize(string $text): string
     {
-        return match (true) {
-            is_float($value) => number_format($value, 2, ',', ''),
-            is_bool($value) => $value ? 'Sí' : 'No',
-            default => $value,
-        };
+        return $text !== '' && str_contains(self::FORMULA_TRIGGERS, $text[0]) ? "'".$text : $text;
+    }
+
+    /**
+     * Celda de OpenSpout: los textos, siempre como texto (Cell::fromValue haría fórmula de lo que
+     * empieza por «=»). En CSV, los textos neutralizados, los decimales con coma y los booleanos en
+     * palabras (los números negativos, que no son texto, no se tocan).
+     */
+    private static function cell(string|int|float|bool|null $value, bool $csv, ?Style $style = null): Cell
+    {
+        if ($csv) {
+            $value = match (true) {
+                is_string($value) => self::neutralize($value),
+                is_float($value) => number_format($value, 2, ',', ''),
+                is_bool($value) => $value ? 'Sí' : 'No',
+                default => $value,
+            };
+        }
+
+        return is_string($value) && $value !== '' ? new StringCell($value, $style) : Cell::fromValue($value, $style);
     }
 }
