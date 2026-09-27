@@ -1,0 +1,50 @@
+# Imagen del transcriptor (Fase 6, docs/RUNBOOK-DESPLIEGUE.md A2): whisper.cpp para CPU x86-64
+# básica (sin AVX), en dos variantes (sin BLAS y con OpenBLAS), probada con QEMU y guardada como
+# artefacto (docker save) para cargarla en el servidor con docker load.
+name: whisper-image
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - deploy/whisper/**
+      - .github/workflows/whisper-image.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      WHISPER_VERSION: v1.9.4
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prueba sin AVX (QEMU qemu64), variante sin BLAS
+        run: docker build --target test --build-arg WHISPER_VERSION=$WHISPER_VERSION --build-arg BLAS=OFF -t whisper-test:plain deploy/whisper
+
+      - name: Prueba sin AVX (QEMU qemu64), variante OpenBLAS
+        run: docker build --target test --build-arg WHISPER_VERSION=$WHISPER_VERSION --build-arg BLAS=ON -t whisper-test:blas deploy/whisper
+
+      - name: Imágenes finales
+        run: |
+          docker build --target runtime --build-arg WHISPER_VERSION=$WHISPER_VERSION --build-arg BLAS=OFF -t audax-whisper:$WHISPER_VERSION-sse2 deploy/whisper
+          docker build --target runtime --build-arg WHISPER_VERSION=$WHISPER_VERSION --build-arg BLAS=ON -t audax-whisper:$WHISPER_VERSION-sse2-openblas deploy/whisper
+          docker run --rm --entrypoint whisper-server audax-whisper:$WHISPER_VERSION-sse2 --help | head -5
+          docker images audax-whisper
+
+      - name: Exportar
+        run: |
+          docker save audax-whisper:$WHISPER_VERSION-sse2 audax-whisper:$WHISPER_VERSION-sse2-openblas | zstd -T0 -12 -o audax-whisper.tar.zst
+          sha256sum audax-whisper.tar.zst | tee audax-whisper.tar.zst.sha256
+          ls -la audax-whisper.tar.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audax-whisper-${{ env.WHISPER_VERSION }}
+          path: |
+            audax-whisper.tar.zst
+            audax-whisper.tar.zst.sha256
+          retention-days: 30
