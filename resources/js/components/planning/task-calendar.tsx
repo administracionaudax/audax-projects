@@ -793,7 +793,13 @@ export function TaskCalendar({
             shiftPeriod(calendar.mode, calendar.period, delta),
         );
     const periodLabel = periodTitle(calendar);
-    const empty = calendar.tasks.length === 0;
+    // Sin entregas en el periodo (las franjas que solo lo cruzan no se ven en el mes).
+    const empty = !dated.some(
+        (task) =>
+            task.due_date !== null &&
+            task.due_date >= calendar.from &&
+            task.due_date <= calendar.to,
+    );
 
     return (
         <div className="flex min-w-0 flex-col gap-4" data-test="task-calendar">

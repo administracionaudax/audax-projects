@@ -303,6 +303,19 @@ describe('rejilla del mes', () => {
             screen.getByText('No hay tareas con entrega en octubre de 2026.'),
         ).toBeTruthy();
     });
+
+    it('una tarea que solo cruza el mes (vence después) no cuenta como entrega del mes', () => {
+        renderCalendar(
+            data({
+                tasks: [calendarTask(40, 'Larga', '2026-09-20', '2026-11-20')],
+            }),
+        );
+
+        expect(
+            screen.getByText('No hay tareas con entrega en octubre de 2026.'),
+        ).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /^Larga\./ })).toBeNull();
+    });
 });
 
 describe('mover con el teclado', () => {
