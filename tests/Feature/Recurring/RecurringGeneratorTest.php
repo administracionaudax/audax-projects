@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Projects\ProjectArchiver;
 use App\Domain\Recurring\RecurringTaskGenerator;
 use App\Models\Project;
 use App\Models\RecurringTaskRule;
@@ -75,4 +76,57 @@ it('si quien creó la regla está de baja, la crea el primer admin activo', func
     $this->generator->generate(CarbonImmutable::parse('2026-10-05'));
 
     expect(Task::query()->sole()->created_by)->toBe($this->admin->id);
+});
+
+it('recupera como mucho los 31 días anteriores, no 31 instancias', function () {
+    // Semanal (lunes) y mensual (día 5) que llevan meses sin generarse.
+    $this->rule->forceFill(['starts_on' => '2026-01-05', 'last_generated_on' => '2026-01-05'])->save();
+    $monthly = RecurringTaskRule::query()->create([
+        'project_id' => $this->project->id, 'title' => 'Cierre', 'frequency' => 'monthly', 'month_day' => 5,
+        'starts_on' => '2025-01-01', 'last_generated_on' => '2025-01-05', 'created_by' => $this->admin->id,
+    ]);
+
+    expect($this->generator->generate(CarbonImmutable::parse('2026-10-05')))->toBe(7);
+
+    $dates = fn (RecurringTaskRule $rule): array => Task::query()->where('recurring_task_rule_id', $rule->id)
+        ->orderBy('occurrence_date')->pluck('occurrence_date')->map->toDateString()->all();
+
+    // Del 4 de septiembre (31 días antes) al 5 de octubre.
+    expect($dates($this->rule))->toBe(['2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05'])
+        ->and($dates($monthly))->toBe(['2026-09-05', '2026-10-05']);
+});
+
+it('un proyecto archivado y recuperado no crea de golpe las tareas atrasadas', function () {
+    $this->rule->forceFill(['starts_on' => '2026-01-05', 'last_generated_on' => '2026-01-05'])->save();
+    $archiver = app(ProjectArchiver::class);
+    $archiver->archive($this->project);
+
+    // Mientras está archivado, el comando diario no crea nada y da esos días por pasados.
+    $this->travelTo(CarbonImmutable::parse('2026-03-02 04:00:00', 'UTC'));
+    $this->artisan('tasks:generate-recurring')->assertSuccessful();
+    $this->travelTo(CarbonImmutable::parse('2026-06-01 04:00:00', 'UTC'));
+    $this->artisan('tasks:generate-recurring')->assertSuccessful();
+
+    expect(Task::query()->count())->toBe(0)
+        ->and($this->rule->fresh()->last_generated_on->toDateString())->toBe('2026-06-01');
+
+    // Se recupera el miércoles y el lunes siguiente solo se crea la tarea de ese lunes.
+    $this->travelTo(CarbonImmutable::parse('2026-06-03 10:00:00', 'UTC'));
+    $archiver->unarchive($this->project->fresh());
+    $this->travelTo(CarbonImmutable::parse('2026-06-08 04:00:00', 'UTC'));
+    $this->artisan('tasks:generate-recurring')->assertSuccessful();
+
+    expect(Task::query()->pluck('occurrence_date')->map->toDateString()->all())->toBe(['2026-06-08']);
+});
+
+it('si el comando no llegó a pasar mientras estaba archivado, recupera como mucho 31 días', function () {
+    $this->rule->forceFill(['starts_on' => '2026-01-05', 'last_generated_on' => '2026-01-05'])->save();
+    $archiver = app(ProjectArchiver::class);
+    $archiver->archive($this->project);
+    $archiver->unarchive($this->project->fresh());
+
+    $this->generator->generate(CarbonImmutable::parse('2026-10-05'));
+
+    expect(Task::query()->count())->toBe(5)
+        ->and(Task::query()->min('occurrence_date'))->toStartWith('2026-09-07');
 });

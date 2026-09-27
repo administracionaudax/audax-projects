@@ -18,15 +18,21 @@ use Illuminate\Validation\ValidationException;
 /**
  * Crea las instancias de las tareas recurrentes (SPEC §4.3, D-059). Lo ejecuta cada día el comando
  * tasks:generate-recurring. Idempotente: la clave única (regla, fecha) impide duplicar, y
- * last_generated_on evita repasar lo ya hecho. Si hace mucho que no se ejecuta, recupera como mucho
- * MAX_CATCH_UP instancias por regla. Se salta las reglas de proyectos archivados; si una instancia
- * no se puede crear (p. ej. la bolsa está cerrada), lo anota en el log y sigue con las demás.
+ * last_generated_on evita repasar lo ya hecho. Si hace días que no se ejecuta, recupera como mucho
+ * los MAX_CATCH_UP_DAYS días anteriores (y, como red, MAX_CATCH_UP instancias por regla). Se salta
+ * las reglas de proyectos archivados y da esos días por pasados (al recuperar el proyecto no se
+ * crean de golpe las tareas atrasadas); si una instancia no se puede crear (p. ej. la bolsa está
+ * cerrada), lo anota en el log y sigue con las demás.
  * Un responsable desactivado no impide crearla: la tarea queda sin responsable (y un tipo de tarea
  * desactivado, sin tipo).
  * generateFor() es la generación inmediata al crear, editar o reactivar una regla.
  */
 final class RecurringTaskGenerator
 {
+    /** Días atrasados que se recuperan como mucho (D-059). */
+    public const int MAX_CATCH_UP_DAYS = 31;
+
+    /** Instancias por regla y ejecución como mucho: red de seguridad (31 días caben de sobra). */
     public const int MAX_CATCH_UP = 31;
 
     public function __construct(private readonly TaskWriter $writer) {}
@@ -39,6 +45,16 @@ final class RecurringTaskGenerator
         $today = self::day($today);
         $created = 0;
 
+        // Reglas de proyectos archivados: no crean nada y los días que pasan archivados quedan como
+        // generados (como al reactivar una regla, generateFor()). Así, al recuperar el proyecto no
+        // se crean de golpe las tareas de las semanas o meses que estuvo archivado.
+        RecurringTaskRule::query()
+            ->where('is_active', true)
+            ->where('starts_on', '<=', $today->toDateString())
+            ->where(fn ($q) => $q->whereNull('last_generated_on')->orWhere('last_generated_on', '<', $today->toDateString()))
+            ->whereHas('project', fn ($q) => $q->where('status', ProjectStatus::Archived->value))
+            ->update(['last_generated_on' => $today->toDateString()]);
+
         $rules = RecurringTaskRule::query()
             ->where('is_active', true)
             ->where('starts_on', '<=', $today->toDateString())
@@ -48,7 +64,10 @@ final class RecurringTaskGenerator
 
         foreach ($rules as $rule) {
             $from = $rule->last_generated_on !== null ? $rule->last_generated_on->addDay() : $rule->starts_on;
-            $dates = array_slice($rule->occurrencesBetween(CarbonImmutable::parse($from->toDateString()), $today), -self::MAX_CATCH_UP);
+            // Como mucho, los últimos MAX_CATCH_UP_DAYS días (D-059), no las últimas 31 instancias:
+            // una regla semanal o mensual no recupera meses de tareas atrasadas.
+            $from = CarbonImmutable::parse($from->toDateString())->max($today->subDays(self::MAX_CATCH_UP_DAYS));
+            $dates = array_slice($rule->occurrencesBetween($from, $today), -self::MAX_CATCH_UP);
             $actor = $this->actorFor($rule);
 
             foreach ($dates as $date) {
