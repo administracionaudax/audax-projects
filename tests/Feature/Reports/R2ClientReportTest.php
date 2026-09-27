@@ -83,6 +83,11 @@ test('cifras del cliente en la semana, calculadas a mano (admin)', function () {
             ->where('projects.1.billable_minutes', 120)
             ->where('projects.1.income', '116.00')
             ->where('projects.1.cost', '60.00')
+            // «Dentro de bolsa» solo cuenta las horas de bolsas (Metrics da 750: también las sin bolsa).
+            ->where('banked', ['has_bank' => true, 'in_bank_minutes' => 600])
+            ->where('projects.0.has_bank', true)
+            ->where('projects.1.has_bank', false)
+            ->where('projects.1.in_bank_minutes', 0)
             ->where('scope.projects_only', false)
             ->where('scope.team_only', false));
 });
@@ -141,6 +146,7 @@ test('un responsable ve las horas de su equipo en todo el cliente, sin datos eco
     $this->actingAs($s->raul)->get(($this->url)())
         ->assertInertia(fn (Assert $page) => $page
             ->where('summary.logged_minutes', 820)
+            ->where('banked.in_bank_minutes', 600)
             ->where('summary.income', null)
             ->where('summary.cost', null)
             ->where('summary.margin', null)
@@ -169,6 +175,7 @@ test('un gestor solo ve los proyectos del cliente que gestiona, aunque pida otro
     $this->actingAs($s->gema)->get(($this->url)(['proyecto' => [$s->campaign->id]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('summary.logged_minutes', 0)
+            ->where('banked', ['has_bank' => false, 'in_bank_minutes' => 0])
             ->has('projects', 0)
             ->has('banks', 0)
             ->where('filters.query.proyecto', [$s->campaign->id]));
@@ -202,8 +209,9 @@ test('exporta el resumen por proyecto a XLSX con importes y totales (admin)', fu
 
     expect($rows[0])->toBe(['Proyecto', 'Horas imputadas', 'Horas facturables', 'Horas dentro de bolsa', 'Horas en exceso', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
         ->and($rows[1])->toBe(['NAN-WEB · Web corporativa', 13.17, 13.17, 10, 3.17, 1221.67, 330, 891.67])
-        ->and($rows[2])->toBe(['NAN-CAMP · Campaña otoño', 2.5, 2, 2.5, 0, 116, 60, 56])
-        ->and($rows[3])->toBe(['Total', 15.67, 15.17, 12.5, 3.17, 1337.67, 390, 947.67])
+        // NAN-CAMP no tiene bolsas: «dentro de bolsa» vacío.
+        ->and($rows[2])->toBe(['NAN-CAMP · Campaña otoño', 2.5, 2, '', 0, 116, 60, 56])
+        ->and($rows[3])->toBe(['Total', 15.67, 15.17, 10, 3.17, 1337.67, 390, 947.67])
         ->and($rows)->toHaveCount(4);
 });
 

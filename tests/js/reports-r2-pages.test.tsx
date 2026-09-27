@@ -171,6 +171,7 @@ const clientProps = (financials: boolean): R2ClientReportProps => ({
     scope: { projects_only: false, team_only: !financials },
     summary: summary(financials),
     comparison: null,
+    banked: { has_bank: true, in_bank_minutes: 600 },
     projects: [
         {
             key: '10',
@@ -182,6 +183,19 @@ const clientProps = (financials: boolean): R2ClientReportProps => ({
             overage_minutes: 190,
             income: financials ? '1221.67' : null,
             cost: financials ? '330.00' : null,
+            has_bank: true,
+        },
+        {
+            key: '11',
+            name: 'NAN-CAMP · Campaña otoño',
+            color: null,
+            logged_minutes: 150,
+            billable_minutes: 120,
+            in_bank_minutes: 0,
+            overage_minutes: 0,
+            income: financials ? '116.00' : null,
+            cost: financials ? '60.00' : null,
+            has_bank: false,
         },
     ],
     timeline: {
@@ -226,6 +240,10 @@ describe('informe de cliente', () => {
             '1.337,67 €',
         );
         expect(within(kpis).getByText('Margen: 70,8 %')).toBeTruthy();
+        // Dentro de las bolsas: solo las horas de bolsas (no las 12:30 de summary.in_bank_minutes).
+        expect(
+            within(kpis).getByText('10:00 dentro de las bolsas'),
+        ).toBeTruthy();
         // El exceso, en rojo (la tarjeta tiñe su valor).
         expect(
             within(kpis).getByText('+3:10').closest('[data-slot="card"]')
@@ -257,6 +275,24 @@ describe('informe de cliente', () => {
             expect.stringContaining('/informes/proyectos/10?'),
         );
         expect(screen.getByText('Sin renovaciones')).toBeTruthy();
+
+        // Resumen por proyecto: «Dentro de bolsa» no aplica al proyecto sin bolsas; el total, solo bolsas.
+        const projectsTable = screen.getByRole('table', {
+            name: 'Resumen por proyecto',
+        });
+        const camp = within(projectsTable)
+            .getByRole('rowheader', { name: 'NAN-CAMP · Campaña otoño' })
+            .closest('tr');
+        expect(camp?.textContent).toContain('—');
+        expect(within(camp as HTMLElement).getByText('Sin bolsa')).toBeTruthy();
+        const totalRow = within(projectsTable)
+            .getByRole('rowheader', { name: 'Total' })
+            .closest('tr');
+        expect(
+            Array.from(totalRow?.querySelectorAll('td') ?? []).map(
+                (cell) => cell.textContent,
+            ),
+        ).toEqual(expect.arrayContaining(['15:40', '15:10', '10:00']));
 
         // Exportaciones: la tabla y los mismos filtros de la URL.
         const user = userEvent.setup();
@@ -440,6 +476,10 @@ describe('informe de proyecto', () => {
             ),
         ).toBe('100 % más que en el periodo anterior');
         expect(within(kpis).getByText('Rentabilidad')).toBeTruthy();
+        // Proyecto de bolsas: el exceso con lo que va dentro de ellas.
+        expect(
+            within(kpis).getByText('12:30 dentro de las bolsas'),
+        ).toBeTruthy();
 
         // Filtros sin cliente ni proyecto.
         expect(
@@ -451,6 +491,31 @@ describe('informe de proyecto', () => {
             'href',
             expect.stringContaining('/informes/clientes/4?'),
         );
+    });
+
+    it('un proyecto por horas no habla de bolsas: ni en el exceso ni en las tablas', () => {
+        const props = projectProps(false);
+        renderPage(
+            <ProjectReport
+                {...props}
+                project={{
+                    ...props.project,
+                    billing_type: 'time_and_materials',
+                }}
+            />,
+        );
+
+        const kpis = screen.getByRole('region', {
+            name: 'Indicadores del periodo',
+        });
+        expect(within(kpis).queryByText(/dentro de las bolsas/)).toBeNull();
+        expect(
+            within(
+                screen.getByRole('table', {
+                    name: 'Horas por persona (tabla)',
+                }),
+            ).queryByRole('columnheader', { name: 'Dentro de bolsa' }),
+        ).toBeNull();
     });
 
     it('estados vacíos de tareas, tipos e hitos; horas por persona con la tabla', () => {

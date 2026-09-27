@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reports;
 
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\HourBanks\HourBankHistory;
+use App\Domain\Reports\BankUsage;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
@@ -53,6 +54,7 @@ class ClientReportController extends Controller
         ReportCache $cache,
         HourBankHistory $history,
         HourBankCommitment $commitment,
+        BankUsage $bankUsage,
         TableExporter $exporter,
     ): Response|StreamedResponse {
         $this->authorize('viewReport', $client);
@@ -82,7 +84,7 @@ class ClientReportController extends Controller
 
         $data = $cache->remember($scope, 'r2.client.'.$client->id, fn (): array => [
             'summary' => $metrics->summary($scope, withCapacity: false, everyAssignee: $everyAssignee),
-            'projects' => $metrics->breakdown($scope, Dimension::Project),
+            ...$this->projects($metrics->breakdown($scope, Dimension::Project), $bankUsage->byProject($scope)),
             'timeline' => $this->timeline($pivot->run($scope, Dimension::Project, $bucket), $scope->filters, $bucket),
             ...$this->banks($scope, $projectIds, $metrics, $history, $commitment),
         ]);
@@ -107,11 +109,39 @@ class ClientReportController extends Controller
             ],
             'summary' => $data['summary'],
             'comparison' => $comparison,
+            'banked' => $data['banked'],
             'projects' => $data['projects'],
             'timeline' => $data['timeline'],
             'banks' => $data['banks'],
             'history' => $data['history'],
         ]);
+    }
+
+    /**
+     * Resumen por proyecto con lo que va dentro de una bolsa de verdad (BankUsage): en los
+     * proyectos sin horas en bolsas, «dentro de bolsa» no aplica (has_bank = false, 0 minutos).
+     * banked: el total dentro de las bolsas (el in_bank_minutes de Metrics también cuenta las horas
+     * sin bolsa) y si hay horas en alguna bolsa.
+     *
+     * @param  list<array{key: string|null, name: string, color: string|null, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null}>  $rows
+     * @param  array<int, array{in_bank_minutes: int, overage_minutes: int}>  $usage
+     * @return array{projects: list<array{key: string|null, name: string, color: string|null, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, has_bank: bool}>, banked: array{has_bank: bool, in_bank_minutes: int}}
+     */
+    private function projects(array $rows, array $usage): array
+    {
+        $projects = array_map(function (array $row) use ($usage): array {
+            $bank = $row['key'] === null ? null : ($usage[(int) $row['key']] ?? null);
+
+            return [...$row, 'in_bank_minutes' => $bank['in_bank_minutes'] ?? 0, 'has_bank' => $bank !== null];
+        }, $rows);
+
+        return [
+            'projects' => $projects,
+            'banked' => [
+                'has_bank' => $usage !== [],
+                'in_bank_minutes' => array_sum(array_column($usage, 'in_bank_minutes')),
+            ],
+        ];
     }
 
     /**
@@ -208,7 +238,7 @@ class ClientReportController extends Controller
     }
 
     /**
-     * @param  array{projects: list<array<string, mixed>>, timeline: array{bucket: string, buckets: list<string>, series: list<array{key: string, name: string, total: int}>, cells: array<string, array<string, int>>}, all_banks: list<array<string, mixed>>}  $data
+     * @param  array{projects: list<array{name: string, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, has_bank: bool}>, timeline: array{bucket: string, buckets: list<string>, series: list<array{key: string, name: string, total: int}>, cells: array<string, array<string, int>>}, all_banks: list<array<string, mixed>>}  $data
      */
     private function export(TableExporter $exporter, Client $client, ReportScope $scope, array $data, mixed $table, string $format): StreamedResponse
     {
@@ -258,11 +288,12 @@ class ClientReportController extends Controller
             array_push($headers, $c('income'), $c('cost'), $c('margin'));
         }
 
+        // «Dentro de bolsa» solo en los proyectos con horas en bolsas (en los demás, vacío).
         $totals = ['logged' => 0, 'billable' => 0, 'in_bank' => 0, 'overage' => 0, 'income' => '0', 'cost' => '0'];
         $rows = [];
         foreach ($data['projects'] as $project) {
             $row = [$project['name'], TableExporter::hours($project['logged_minutes']), TableExporter::hours($project['billable_minutes']),
-                TableExporter::hours($project['in_bank_minutes']), TableExporter::hours($project['overage_minutes'])];
+                $project['has_bank'] ? TableExporter::hours($project['in_bank_minutes']) : null, TableExporter::hours($project['overage_minutes'])];
             foreach (['logged', 'billable', 'in_bank', 'overage'] as $key) {
                 $totals[$key] += $project[$key.'_minutes'];
             }

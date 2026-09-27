@@ -51,6 +51,7 @@ export default function ClientReport({
     scope,
     summary,
     comparison,
+    banked,
     projects,
     timeline,
     banks,
@@ -137,6 +138,9 @@ export default function ClientReport({
                         summary={summary}
                         comparison={comparison}
                         financials={financials}
+                        inBankMinutes={
+                            banked.has_bank ? banked.in_bank_minutes : null
+                        }
                     />
 
                     <PageSection

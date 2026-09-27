@@ -16,11 +16,17 @@ export function R2SummaryKpis({
     summary,
     comparison,
     financials,
+    inBankMinutes,
     estimation = false,
 }: {
     summary: MetricsSummary;
     comparison: MetricsSummary | null;
     financials: boolean;
+    /**
+     * Horas dentro de las bolsas (detalle de la tarjeta de exceso), o null si no hay horas en
+     * bolsas. No es summary.in_bank_minutes, que también cuenta las horas sin bolsa.
+     */
+    inBankMinutes: number | null;
     /** Tarjeta de precisión de estimación (informe de proyecto). */
     estimation?: boolean;
 }) {
@@ -79,9 +85,13 @@ export function R2SummaryKpis({
                 label={t('reports.metric.overage.label')}
                 definition={t('reports.metric.overage.definition')}
                 value={formatOverage(summary.overage_minutes)}
-                detail={t('reports_r2.kpi.in_bank', {
-                    hours: formatMinutes(summary.in_bank_minutes),
-                })}
+                detail={
+                    inBankMinutes === null
+                        ? undefined
+                        : t('reports_r2.kpi.in_bank', {
+                              hours: formatMinutes(inBankMinutes),
+                          })
+                }
                 delta={delta(
                     summary.overage_minutes,
                     comparison?.overage_minutes ?? null,

@@ -43,6 +43,12 @@ export type R2Timeline = {
     cells: Record<string, Record<string, number>>;
 };
 
+/**
+ * Fila del resumen por proyecto del cliente: in_bank_minutes es lo que va dentro de una bolsa de
+ * verdad (BankUsage); en los proyectos sin horas en bolsas, has_bank es false y no aplica.
+ */
+export type R2ClientProjectRow = BreakdownRow & { has_bank: boolean };
+
 export type R2ClientReportProps = {
     client: { id: number; name: string; is_active: boolean };
     filters: ReportFiltersProps;
@@ -54,7 +60,12 @@ export type R2ClientReportProps = {
     };
     summary: MetricsSummary;
     comparison: MetricsSummary | null;
-    projects: BreakdownRow[];
+    /**
+     * Dentro de las bolsas en el periodo (summary.in_bank_minutes también cuenta las horas sin
+     * bolsa) y si hay horas en alguna bolsa.
+     */
+    banked: { has_bank: boolean; in_bank_minutes: number };
+    projects: R2ClientProjectRow[];
     timeline: R2Timeline;
     banks: R2ClientBank[];
     history: R2ClientBank[][];

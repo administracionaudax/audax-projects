@@ -152,6 +152,9 @@ export default function ProjectReport({
                         summary={summary}
                         comparison={comparison}
                         financials={financials}
+                        inBankMinutes={
+                            hasBanks ? summary.in_bank_minutes : null
+                        }
                         estimation
                     />
 

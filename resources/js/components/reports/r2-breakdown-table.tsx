@@ -14,7 +14,7 @@ import type { BreakdownRow } from '@/types';
 
 /**
  * Tabla de un desglose de horas (por proyecto, persona o tipo): imputadas, facturables, dentro de
- * bolsa y exceso por separado (el exceso en rojo con icono, SPEC §8.6) y, con view-financials,
+ * bolsa («—» en las filas sin horas en bolsas) y exceso por separado (el exceso en rojo con icono, SPEC §8.6) y, con view-financials,
  * ingreso, coste, rentabilidad y margen. Fila de totales al pie. Scroll horizontal propio en el
  * móvil (la página no se desplaza de lado).
  */
@@ -28,7 +28,8 @@ export function R2BreakdownTable({
 }: {
     caption: string;
     firstColumn: string;
-    rows: ReadonlyArray<BreakdownRow>;
+    /** has_bank = false: la fila no tiene horas en bolsas («Dentro de bolsa» no aplica). */
+    rows: ReadonlyArray<BreakdownRow & { has_bank?: boolean }>;
     financials: boolean;
     /** Columna «Dentro de bolsa» (solo tiene sentido si hay bolsas). */
     showBank?: boolean;
@@ -131,7 +132,16 @@ export function R2BreakdownTable({
                             </td>
                             {showBank ? (
                                 <td className="px-3 py-2 text-right">
-                                    {formatMinutes(row.in_bank_minutes)}
+                                    {row.has_bank === false ? (
+                                        <>
+                                            <span aria-hidden="true">—</span>
+                                            <span className="sr-only">
+                                                {t('reports_r2.no_bank')}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        formatMinutes(row.in_bank_minutes)
+                                    )}
                                 </td>
                             ) : null}
                             <td className="px-3 py-2 text-right">

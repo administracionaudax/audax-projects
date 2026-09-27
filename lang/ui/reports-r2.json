@@ -1,6 +1,7 @@
 {
     "reports_r2.total": "Total",
     "reports_r2.no_type": "Sin tipo",
+    "reports_r2.no_bank": "Sin bolsa",
     "reports_r2.overage_sr": "Exceso:",
     "reports_r2.week_of": "Semana del :date",
     "reports_r2.loading": "Actualizando el informe…",
@@ -18,7 +19,7 @@
     "reports_r2.pdf.internal_description": "Añade el precio, la tarifa y el ingreso estimado. No lo envíes al cliente.",
     "reports_r2.kpi.label": "Indicadores del periodo",
     "reports_r2.kpi.billability": "Facturabilidad: :pct",
-    "reports_r2.kpi.in_bank": ":hours dentro de las bolsas o sin bolsa",
+    "reports_r2.kpi.in_bank": ":hours dentro de las bolsas",
     "reports_r2.kpi.margin_pct": "Margen: :pct",
     "reports_r2.kpi.estimation_none": "Sin tareas estimadas completadas en el periodo",
     "reports_r2.kpi.estimation_detail": "Desviación: :deviation en :tasks tareas completadas",
