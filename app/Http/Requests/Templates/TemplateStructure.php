@@ -43,8 +43,9 @@ final class TemplateStructure
             'structure.tasks.*.priority' => ['nullable', Rule::enum(TaskPriority::class)],
             'structure.tasks.*.estimated_minutes' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_ESTIMATE_MINUTES],
             'structure.tasks.*.is_milestone' => ['nullable', 'boolean'],
-            'structure.tasks.*.start_offset_days' => ['required', 'integer', 'min:0', 'max:'.self::MAX_DAYS],
-            'structure.tasks.*.duration_days' => ['required', 'integer', 'min:1', 'max:'.self::MAX_DAYS],
+            // Sin inicio, el día 0; sin duración, un día (como ProjectTemplateService::normalize).
+            'structure.tasks.*.start_offset_days' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_DAYS],
+            'structure.tasks.*.duration_days' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_DAYS],
             'structure.dependencies' => ['nullable', 'array', 'max:'.self::MAX_DEPENDENCIES],
             'structure.dependencies.*' => ['required', 'array'],
             'structure.dependencies.*.from_ref' => ['required', 'string', 'max:40'],
@@ -72,10 +73,8 @@ final class TemplateStructure
             'structure.tasks.*.title.required' => self::text('templates.errors.task_title'),
             'structure.tasks.*.estimated_minutes.min' => $estimate,
             'structure.tasks.*.estimated_minutes.max' => $estimate,
-            'structure.tasks.*.start_offset_days.required' => $offset,
             'structure.tasks.*.start_offset_days.min' => $offset,
             'structure.tasks.*.start_offset_days.max' => $offset,
-            'structure.tasks.*.duration_days.required' => $duration,
             'structure.tasks.*.duration_days.min' => $duration,
             'structure.tasks.*.duration_days.max' => $duration,
         ];
