@@ -102,7 +102,8 @@ it('el informe detallado cabe en su presupuesto de consultas y responde en menos
             if ($result['repeats'] > 3) {
                 $problems[] = "{$label} ({$cache}): la misma consulta {$result['repeats']} veces: {$result['repeated']}";
             }
-            if ($result['ms'] > 1000) {
+            $limit = perfTimeLimit(1000);
+            if ($limit !== null && $result['ms'] > $limit) {
                 $problems[] = "{$label} ({$cache}): ".round($result['ms']).' ms';
             }
         }

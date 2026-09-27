@@ -508,7 +508,8 @@ test('aprobaciones responde en menos de 1 s y sin el detalle de las entradas con
             ->missing('pending.0.entries'));
 
         // Holgura sobre lo medido (~150 ms y ~150 KB): el objetivo del SPEC es menos de 1 s.
-        expect($ms)->toBeLessThan(1000)
+        $limit = perfTimeLimit(1000);
+        expect($limit === null || $ms < $limit)->toBeTrue("{$ms} ms (límite {$limit} ms)")
             ->and($bytes)->toBeLessThan(300_000);
     }
 });

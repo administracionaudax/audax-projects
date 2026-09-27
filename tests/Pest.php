@@ -61,3 +61,23 @@ function insertSession(?User $user, string $userAgent = 'Mozilla/5.0 (Windows NT
 
     return $id;
 }
+
+/**
+ * Límite de tiempo de una página en los tests de rendimiento (objetivo del SPEC §17: < 1 s).
+ * El tiempo depende de la máquina: se exige en una ejecución normal en local; en paralelo
+ * (TEST_TOKEN) o con la máquina saturada (carga media > 8) solo se informa (null), y en la CI
+ * (PostgreSQL en un contenedor compartido, con picos de lentitud) solo se vigila que no se
+ * dispare. Las consultas y el N+1 se comprueban siempre; la medida buena es la del servidor en
+ * el despliegue (D-046).
+ */
+function perfTimeLimit(int $localMs): ?int
+{
+    $load = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
+
+    return match (true) {
+        getenv('TEST_TOKEN') !== false => null,
+        getenv('CI') !== false => max($localMs * 10, 10_000),
+        $load !== false && $load[0] > 8 => null,
+        default => $localMs,
+    };
+}

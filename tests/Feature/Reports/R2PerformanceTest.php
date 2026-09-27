@@ -178,8 +178,8 @@ test('cada página de R2 cabe en su presupuesto de consultas en frío, sin consu
             $problems[] = "{$label}: la misma consulta {$result['repeats']} veces: {$result['repeated']}";
         }
         $download = str_ends_with($label, '.export') || $label === 'reports.hour-bank-pdf';
-        $maxMs = $download ? 2500 : 1000;
-        if ($result['ms'] > $maxMs) {
+        $maxMs = perfTimeLimit($download ? 2500 : 1000);
+        if ($maxMs !== null && $result['ms'] > $maxMs) {
             $problems[] = "{$label}: ".round($result['ms'])." ms en frío (máximo {$maxMs})";
         }
     }
