@@ -42,8 +42,9 @@ use RuntimeException;
 /**
  * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes,
  * 15 proyectos de todos los tipos, bolsas en todos los estados (activa, casi agotada, agotada con
- * exceso, con política block, cerrada y renovada) y 12 meses de horas con su flujo de aprobación
- * (aprobadas, enviadas, devueltas, bloqueadas al facturar y borradores de esta semana).
+ * exceso, con política block, cerrada y renovada), festivos nacionales, ausencias pasadas y
+ * futuras, y 12 meses de horas con su flujo de aprobación (aprobadas, enviadas, devueltas,
+ * bloqueadas al facturar y borradores de esta semana). Nadie imputa en un día sin capacidad.
  *
  * SOLO local, testing y CI (nunca en el servidor, D-018). Determinista (semilla fija) y relativo a
  * hoy, para que los dashboards tengan siempre datos recientes. Se ejecuta una sola vez: si ya hay
@@ -148,6 +149,9 @@ class DemoDataSeeder extends Seeder
             $internal = $this->internalProject();
             $projects[] = $internal;
 
+            // Antes que las horas: los festivos y las ausencias aprobadas dejan esos días sin
+            // capacidad (Capacity), así que nadie imputa en ellos (SPEC §9 y §15).
+            $this->holidaysAndAbsences();
             $this->timeEntries($projects, $internal);
             $this->sizeBanks($projects);
             $this->approvalWorkflow();
@@ -155,14 +159,17 @@ class DemoDataSeeder extends Seeder
                 $this->lockInvoicedHours($clients['Hoteles Mirador']);
             }
             $this->comments($projects);
-            $this->holidaysAndAbsences();
         });
     }
 
     /**
      * Fase 3 (SPEC §15): festivos nacionales del año pasado, este y el que viene, y ausencias de
-     * ejemplo en las próximas semanas (aprobadas, una pendiente de aprobar y una de medio día),
-     * para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día.
+     * ejemplo para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día:
+     * - pasadas y aprobadas (en los 12 meses de horas): una semana de vacaciones de Lucía y otra de
+     *   Sergio, un día de formación de Irene, una baja de dos días de Daniel y medio día de permiso
+     *   de Pablo,
+     * - en las próximas semanas: las vacaciones de Elena (la semana que viene), la formación de
+     *   Pablo, medio día de Irene y una solicitud pendiente de Lucía (los E2E cuentan con ellas).
      */
     private function holidaysAndAbsences(): void
     {
@@ -173,8 +180,15 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        $monday = $this->today->startOfWeek()->addWeek();
+        $thisWeek = $this->today->startOfWeek();
+        $monday = $thisWeek->addWeek();
         $absences = [
+            // Pasadas, aprobadas por su responsable una semana antes de empezar.
+            ['sergio', AbsenceType::Vacation, $thisWeek->subWeeks(20), $thisWeek->subWeeks(20)->addDays(4), null, AbsenceStatus::Approved, 'marta'],
+            ['lucia', AbsenceType::Vacation, $thisWeek->subWeeks(10), $thisWeek->subWeeks(10)->addDays(4), null, AbsenceStatus::Approved, 'raul'],
+            ['irene', AbsenceType::Training, $thisWeek->subWeeks(6)->addDays(2), $thisWeek->subWeeks(6)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['daniel', AbsenceType::Sick, $thisWeek->subWeeks(4)->addDays(1), $thisWeek->subWeeks(4)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['pablo', AbsenceType::Leave, $thisWeek->subWeeks(3)->addDays(3), $thisWeek->subWeeks(3)->addDays(3), 240, AbsenceStatus::Approved, 'marta'],
             // Semana que viene: vacaciones de Elena (Diseño), ya aprobadas por Raúl.
             ['elena', AbsenceType::Vacation, $monday->addDays(1), $monday->addDays(3), null, AbsenceStatus::Approved, 'raul'],
             // Dentro de dos semanas: formación de Pablo (Desarrollo), aprobada por Marta.
@@ -187,8 +201,10 @@ class DemoDataSeeder extends Seeder
 
         foreach ($absences as [$who, $type, $from, $to, $partial, $status, $approver]) {
             $reviewer = is_string($approver) ? $this->people[$approver] : null;
+            // Las pasadas se pidieron y aprobaron antes de empezar; las futuras, ayer.
+            $reviewed = $from < $this->today ? $from->subWeek()->setTime(10, 0) : $this->today->subDay();
 
-            Absence::query()->create([
+            $absence = new Absence([
                 'user_id' => $this->people[$who]->id,
                 'type' => $type,
                 'start_date' => $from->toDateString(),
@@ -196,8 +212,13 @@ class DemoDataSeeder extends Seeder
                 'partial_minutes' => $partial,
                 'status' => $status,
                 'approved_by' => $reviewer?->id,
-                'reviewed_at' => $reviewer === null ? null : $this->today->subDay(),
+                'reviewed_at' => $reviewer === null ? null : $reviewed,
             ]);
+            if ($from < $this->today) {
+                $absence->created_at = $reviewed->subDay();
+                $absence->updated_at = $reviewed;
+            }
+            $absence->save();
         }
     }
 
@@ -489,9 +510,11 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * 12 meses de horas: cada día laborable, cada persona imputa casi su jornada repartida entre
-     * 2 y 4 tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un
-     * 10 % a reuniones internas y dos semanas de vacaciones en verano.
+     * 12 meses de horas: cada día con capacidad (Capacity, que ya descuenta los festivos y las
+     * ausencias aprobadas: nadie imputa en un festivo ni en un día de vacaciones, y con medio día
+     * de permiso se imputa la mitad), cada persona imputa casi su jornada repartida entre 2 y 4
+     * tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un 10 % a
+     * reuniones internas y dos semanas sin imputar en verano.
      *
      * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
      * @param  array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}  $internal
