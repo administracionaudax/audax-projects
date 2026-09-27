@@ -52,18 +52,23 @@ let visits = 0;
 
 /**
  * Lo que emite Inertia al terminar una visita: por defecto, síncrona, completa y con página
- * (`success` con su id y después `finish`). Con `failed`, como Inertia 3 tras un error HTTP, de red
- * o una respuesta que no es de Inertia: la da por terminada (completed) sin `success` ni props.
+ * (`success` con su id y después `finish`). Con `result: 'error'`, con página y errores de
+ * validación (`error`). Con `result: 'failed'`, como Inertia 3 tras un error HTTP, de red o una
+ * respuesta que no es de Inertia: la da por terminada (completed) sin página ni props.
  */
 function finishVisit({
-    failed = false,
+    result = 'success',
     ...visit
-}: Partial<FinishedVisit> & { failed?: boolean } = {}) {
+}: Partial<FinishedVisit> & { result?: 'success' | 'error' | 'failed' } = {}) {
     const id = `visita-${++visits}`;
 
     act(() => {
-        if (!failed && visit.completed !== false) {
+        if (result === 'success' && visit.completed !== false) {
             emit('success', { page: {}, visitId: id });
+        }
+
+        if (result === 'error' && visit.completed !== false) {
+            emit('error', { errors: { due_date: 'No vale.' }, visitId: id });
         }
 
         emit('finish', {
@@ -504,6 +509,26 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
         );
     });
 
+    it('si la visita que lo interrumpió vuelve con errores de validación, sus props también han llegado', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        const { rerender } = render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+
+        // Otro guardado rechazado (back() con errores): Inertia pone las props y emite `error`.
+        rerender(view([{ ...design }, layout, copy]));
+        finishVisit({ only: RELOAD, result: 'error' });
+
+        expect(server.visit).not.toHaveBeenCalled();
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 05/10/2026 al 07/10/2026',
+        );
+    });
+
     it('las visitas asíncronas, las precargas y las que también se cancelan no cuentan; si se interrumpe la recarga, se vuelve a pedir', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [] }));
         const user = userEvent.setup();
@@ -566,7 +591,7 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
             act(() => {
                 fail(second);
             });
-            finishVisit({ only: RELOAD, failed: true });
+            finishVisit({ only: RELOAD, result: 'failed' });
             act(() => second.onFinish?.());
 
             expect(toasts.error).toHaveBeenCalledWith(message);
@@ -617,7 +642,7 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
         // Falla con un error HTTP: la trata ella (sin el modal de Inertia) y no llama a done.
         const first = server.visit.mock.calls[0][1] as VisitOptions;
         expect(first.onHttpException?.({ status: 500 })).toBe(false);
-        finishVisit({ only: RELOAD, failed: true });
+        finishVisit({ only: RELOAD, result: 'failed' });
         act(() => first.onFinish?.());
 
         const warning = [
@@ -695,7 +720,7 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
 
         try {
             // En otra página, ni una visita que falla ni una parcial piden las props del Gantt.
-            finishVisit({ failed: true });
+            finishVisit({ result: 'failed' });
             finishVisit({ only: ['projects'] });
         } finally {
             window.history.replaceState({}, '', gantt);
