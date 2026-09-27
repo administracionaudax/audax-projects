@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\Role;
+use App\Models\Client;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -111,5 +112,13 @@ class UserFactory extends Factory
     public function client(): static
     {
         return $this->withRole(Role::Client);
+    }
+
+    /**
+     * Usuario del portal de ese cliente (Fase 5).
+     */
+    public function portalOf(Client $client): static
+    {
+        return $this->client()->state(['client_id' => $client->id]);
     }
 }

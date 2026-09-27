@@ -36,7 +36,7 @@ Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
     Route::redirect('dashboard', '/')->name('dashboard');
 
     // Fase 1: una ruta por área (routes/app/*.php).
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'schedule', 'gantt', 'planning', 'templates'] as $area) {
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'schedule', 'gantt', 'planning', 'templates', 'portal-access'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 
@@ -54,6 +54,11 @@ Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
 
 Route::middleware(['auth', 'active', 'portal'])->prefix('portal')->name('portal.')->group(function () {
     Route::inertia('/', 'portal/home')->name('home');
+
+    // Fase 5: una ruta por área del portal (routes/portal/*.php). Todo sale de PortalScope (D-064).
+    foreach (['banks', 'projects'] as $area) {
+        require __DIR__."/portal/{$area}.php";
+    }
 });
 
 require __DIR__.'/settings.php';
