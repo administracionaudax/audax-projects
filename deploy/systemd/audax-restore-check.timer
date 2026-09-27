@@ -1,0 +1,10 @@
+[Unit]
+Description=Audax Proyectos - prueba de restauración el día 2 de cada mes a las 05:10
+
+[Timer]
+OnCalendar=*-*-02 05:10:00
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -8,6 +8,10 @@
 #   volcado. Si algo falla, no rota nada y termina con error (queda en el journal: audax-backup).
 # - Rotación: 7 diarias, 4 semanales (domingos) y 6 mensuales (día 1), con enlaces duros.
 # - Las copias diarias del servidor entero (del propietario) incluyen /var/backups/audax.
+# - Deja el resultado en el estado de las copias que lee la app (D-076, app:check-storage):
+#   last_backup_at y last_backup_ok, o last_backup_ok=false y last_backup_failed_at si falla.
+# - Guarda con la copia los recuentos de las tablas clave (recuentos.txt), que usa la prueba
+#   mensual de restauración (audax-restore-check.sh).
 set -euo pipefail
 umask 077
 
@@ -16,8 +20,27 @@ APP=/var/www/vhosts/projects.audaxstudio.com/app
 LOCK="$APP/shared/.heavy.lock"
 STAMP=$(date +%F)
 MIN_DUMP_BYTES=10240
+STATUS="$APP/shared/storage/app/backup-status.json"
+ESTADO=/usr/local/lib/audax/estado-copias.py
+KEY_TABLES="users clients projects hour_banks tasks time_entries timesheet_periods"
+tmp=
 
 log() { echo "$(date '+%F %T') $*"; }
+
+# Al salir, por la razón que sea: borrar el temporal y dejar el resultado para la app.
+finish() {
+  local code=$?
+  if [ -n "$tmp" ] && [ -d "$tmp" ]; then rm -rf "$tmp"; fi
+  if [ -x "$ESTADO" ]; then
+    if [ "$code" -eq 0 ]; then
+      "$ESTADO" "$STATUS" last_backup_at=now last_backup_ok=true || true
+    else
+      "$ESTADO" "$STATUS" last_backup_failed_at=now last_backup_ok=false || true
+    fi
+  fi
+  exit "$code"
+}
+trap finish EXIT
 
 install -d -m 700 "$DEST" "$DEST/daily" "$DEST/weekly" "$DEST/monthly"
 
@@ -37,7 +60,15 @@ fi
 tmp="$DEST/.tmp-$STAMP"
 rm -rf "$tmp"
 install -d -m 700 "$tmp"
-trap 'rm -rf "$tmp"' EXIT
+
+# Recuentos de las tablas clave justo antes del volcado (la prueba de restauración los compara).
+: > "$tmp/recuentos.txt"
+for table in $KEY_TABLES; do
+  if docker exec audax-pg psql -U audax_admin -d audax_projects -Atc "select to_regclass('public.$table') is not null" | grep -qx t; then
+    count=$(docker exec audax-pg psql -U audax_admin -d audax_projects -Atc "select count(*) from public.$table")
+    echo "$table|$count" >> "$tmp/recuentos.txt"
+  fi
+done
 
 log "volcando la base audax_projects"
 docker exec audax-pg pg_dump -U audax_admin -Fc audax_projects > "$tmp/audax_projects.dump"
@@ -73,7 +104,7 @@ fi
 
 rm -rf "$DEST/daily/$STAMP"
 mv "$tmp" "$DEST/daily/$STAMP"
-trap - EXIT
+tmp=
 
 if [ "$(date +%u)" = 7 ]; then
   rm -rf "$DEST/weekly/$STAMP"

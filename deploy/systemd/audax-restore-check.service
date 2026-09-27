@@ -1,0 +1,17 @@
+[Unit]
+Description=Audax Proyectos - prueba mensual de restauración de la copia
+After=docker.service
+Documentation=file:///var/www/vhosts/projects.audaxstudio.com/app/current/docs/DEPLOY.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/audax/audax-restore-check.sh
+Slice=system-audax.slice
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=50%
+MemoryLimit=512M
+TimeoutStartSec=3600
+PrivateTmp=yes
+NoNewPrivileges=yes
+SyslogIdentifier=audax-restore-check

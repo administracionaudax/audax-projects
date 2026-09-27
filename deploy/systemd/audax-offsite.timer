@@ -1,0 +1,10 @@
+[Unit]
+Description=Audax Proyectos - copia externa cada día a las 04:40 (tras la copia de las 03:40)
+
+[Timer]
+OnCalendar=*-*-* 04:40:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

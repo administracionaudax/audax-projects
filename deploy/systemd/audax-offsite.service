@@ -1,0 +1,18 @@
+[Unit]
+Description=Audax Proyectos - copia fuera del servidor (restic)
+After=network-online.target audax-backup.service
+Wants=network-online.target
+Documentation=file:///var/www/vhosts/projects.audaxstudio.com/app/current/docs/DEPLOY.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/audax/audax-offsite.sh
+Slice=system-audax.slice
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=50%
+MemoryLimit=512M
+TimeoutStartSec=7200
+PrivateTmp=yes
+NoNewPrivileges=yes
+SyslogIdentifier=audax-offsite
