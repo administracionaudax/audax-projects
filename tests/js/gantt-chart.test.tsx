@@ -543,6 +543,111 @@ describe('Gantt: ratón', () => {
     });
 });
 
+describe('Gantt: desplazamiento', () => {
+    /** jsdom no desplaza: scrollLeft guarda lo que se le asigna (nunca menos de 0). */
+    function trackScroll(element: HTMLElement, initial: number) {
+        let value = initial;
+        Object.defineProperty(element, 'scrollLeft', {
+            configurable: true,
+            get: () => value,
+            set: (next: number) => {
+                value = Math.max(next, 0);
+            },
+        });
+    }
+
+    function chart(timeline: ReturnType<typeof createTimeline>) {
+        const tasks = [design, layout];
+
+        return (
+            <GanttChart
+                label="Diagrama de Gantt de «Web»"
+                rows={buildTaskRows(tasks).rows}
+                dependencies={[]}
+                timeline={timeline}
+                today="2026-10-06"
+                colors={statusColors(tasks, statuses)}
+                onOpen={vi.fn()}
+            />
+        );
+    }
+
+    it('si el diagrama empieza antes (el servidor recalcula el rango al guardar), no salta', () => {
+        const { rerender } = render(
+            chart(
+                createTimeline(
+                    { start: '2026-10-05', end: '2026-10-25' },
+                    'week',
+                ),
+            ),
+        );
+        const scroller = document.querySelector<HTMLElement>(
+            '[data-test="gantt-scroll"]',
+        ) as HTMLElement;
+        trackScroll(scroller, 200);
+
+        // Una semana antes (7 días × 16 px): todo se desplaza 112 px y el scroll lo compensa.
+        rerender(
+            chart(
+                createTimeline(
+                    { start: '2026-09-28', end: '2026-10-25' },
+                    'week',
+                ),
+            ),
+        );
+        expect(scroller.scrollLeft).toBe(312);
+
+        // Con el mismo inicio, no se toca.
+        rerender(
+            chart(
+                createTimeline(
+                    { start: '2026-09-28', end: '2026-11-08' },
+                    'week',
+                ),
+            ),
+        );
+        expect(scroller.scrollLeft).toBe(312);
+
+        // Y si vuelve a empezar después, lo contrario.
+        rerender(
+            chart(
+                createTimeline(
+                    { start: '2026-10-05', end: '2026-11-08' },
+                    'week',
+                ),
+            ),
+        );
+        expect(scroller.scrollLeft).toBe(200);
+    });
+
+    it('al cambiar de escala, el mismo día queda a la izquierda', () => {
+        const { rerender } = render(
+            chart(
+                createTimeline(
+                    { start: '2026-09-28', end: '2026-10-25' },
+                    'day',
+                ),
+            ),
+        );
+        const scroller = document.querySelector<HTMLElement>(
+            '[data-test="gantt-scroll"]',
+        ) as HTMLElement;
+        // 8 días × 32 px: el 6 de octubre a la izquierda.
+        trackScroll(scroller, 256);
+        fireEvent.scroll(scroller);
+
+        rerender(
+            chart(
+                createTimeline(
+                    { start: '2026-09-28', end: '2026-10-25' },
+                    'week',
+                ),
+            ),
+        );
+        expect(scroller.scrollLeft).toBe(8 * 16);
+    });
+});
+
 describe('Gantt: conflictos y marcas', () => {
     it('una dependencia en conflicto va marcada con icono y texto, también en la sucesora', () => {
         const overlapping = { ...layout, start_date: '2026-10-07' };

@@ -178,6 +178,7 @@ export function GanttChart({
     const anchor = useRef<string | null>(null);
     const initialized = useRef(false);
     const previousScale = useRef(timeline.scale);
+    const previousStartDay = useRef(timeline.startDay);
     const menuCloseFocus = useRef<'bar' | 'none' | 'default'>('default');
 
     const [activeId, setActiveId] = useState<number | null>(null);
@@ -424,7 +425,8 @@ export function GanttChart({
     useImperativeHandle(handleRef, () => ({ scrollToDate, focusTask }));
 
     // Al montar: hoy (o la primera barra) a la vista. Al cambiar de escala: el mismo día a la
-    // izquierda que antes.
+    // izquierda que antes. Si cambia el primer día del diagrama (p. ej. al guardar una tarea que
+    // era la primera, el servidor recalcula el rango), se compensa para que nada salte.
     useLayoutEffect(() => {
         const element = scrollRef.current;
 
@@ -449,6 +451,7 @@ export function GanttChart({
 
         if (!initialized.current) {
             initialized.current = true;
+            previousStartDay.current = timeline.startDay;
             const first = order
                 .map((id) => layouts.get(id)?.dates)
                 .map((dates) => dates?.start_date ?? dates?.due_date)
@@ -460,6 +463,7 @@ export function GanttChart({
 
         if (previousScale.current !== timeline.scale) {
             previousScale.current = timeline.scale;
+            previousStartDay.current = timeline.startDay;
 
             if (anchor.current) {
                 element.scrollLeft = Math.max(
@@ -467,6 +471,16 @@ export function GanttChart({
                     0,
                 );
             }
+
+            return;
+        }
+
+        if (previousStartDay.current !== timeline.startDay) {
+            const shift =
+                (previousStartDay.current - timeline.startDay) *
+                timeline.dayWidth;
+            previousStartDay.current = timeline.startDay;
+            element.scrollLeft = Math.max(element.scrollLeft + shift, 0);
         }
     });
 
