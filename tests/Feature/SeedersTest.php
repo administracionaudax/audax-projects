@@ -11,6 +11,7 @@ use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
@@ -100,6 +101,17 @@ test('los datos de ejemplo tienen festivos y ausencias, y nadie imputa en un dí
     expect(Absence::query()->approved()->where('user_id', $email('empleado@example.com'))->where('type', AbsenceType::Vacation->value)
         ->whereBetween('start_date', [$nextMonday->toDateString(), $nextMonday->addDays(6)->toDateString()])->exists())->toBeTrue()
         ->and(Absence::query()->where('status', AbsenceStatus::Requested->value)->where('user_id', $email('lucia.martin@example.com'))->exists())->toBeTrue();
+
+    // El día sobrecargado de Lucía para el E2E de Carga: 16 h en el primer día laborable de la
+    // semana que viene, sin horas imputadas.
+    $overload = Task::query()->where('title', 'Maquetas para la feria de turismo')->sole();
+    expect($overload->assignee_user_id)->toBe($email('lucia.martin@example.com'))
+        ->and($overload->estimated_minutes)->toBe(960)
+        ->and($overload->start_date?->toDateString())->toBe($overload->due_date?->toDateString())
+        ->and($overload->due_date?->toDateString() >= $nextMonday->toDateString())->toBeTrue()
+        ->and($overload->due_date?->isWeekend())->toBeFalse()
+        ->and(Holiday::query()->whereDate('date', (string) $overload->due_date?->toDateString())->exists())->toBeFalse()
+        ->and(TimeEntry::query()->where('task_id', $overload->id)->exists())->toBeFalse();
 
     // Nadie imputa en un festivo ni en un día de ausencia completa; con medio día, no más de lo que queda.
     expect(TimeEntry::query()->whereIn('date', Holiday::query()->pluck('date')->map(fn ($date): string => $date->toDateString()))->count())->toBe(0);

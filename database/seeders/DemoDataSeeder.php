@@ -32,6 +32,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,7 @@ class DemoDataSeeder extends Seeder
                 $this->lockInvoicedHours($clients['Hoteles Mirador']);
             }
             $this->comments($projects);
+            $this->overloadedDay($projects);
         });
     }
 
@@ -220,6 +222,55 @@ class DemoDataSeeder extends Seeder
             }
             $absence->save();
         }
+    }
+
+    /**
+     * Un día sobrecargado seguro, para el E2E de la vista Carga (reasignar desde la celda de una
+     * persona sobrecargada): Lucía tiene en «MIR-WEB · Rediseño web» una tarea de 16 h que empieza
+     * y se entrega el primer día laborable de la semana que viene (sin festivo), además de la carga
+     * que le toque al azar. Se crea después de las horas, así que no tiene nada imputado.
+     *
+     * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
+     */
+    private function overloadedDay(array $projects): void
+    {
+        $data = null;
+        foreach ($projects as $candidate) {
+            if ($candidate['project']->code === 'MIR-WEB') {
+                $data = $candidate;
+            }
+        }
+
+        if ($data === null || $data['banks'] === []) {
+            return;
+        }
+
+        $holidays = Holiday::query()->pluck('date')->map(fn (CarbonInterface $date): string => $date->toDateString())->all();
+        $day = $this->today->startOfWeek()->addWeek();
+        while ($day->isWeekend() || in_array($day->toDateString(), $holidays, true)) {
+            $day = $day->addDay();
+        }
+
+        $project = $data['project'];
+        $lucia = $this->people['lucia'];
+
+        /** @var Task $task */
+        $task = Task::withoutEvents(fn () => Task::query()->forceCreate([
+            'project_id' => $project->id,
+            'hour_bank_id' => end($data['banks'])['bank']->id,
+            'title' => 'Maquetas para la feria de turismo',
+            'task_type_id' => $this->types['Diseño UI']->id,
+            'status_id' => $this->statuses['todo'],
+            'priority' => TaskPriority::High->value,
+            'assignee_user_id' => $lucia->id,
+            'start_date' => $day->toDateString(),
+            'due_date' => $day->toDateString(),
+            'estimated_minutes' => 16 * 60,
+            'is_billable' => true,
+            'position' => 999,
+            'created_by' => $project->owner_user_id,
+        ]));
+        $task->watchers()->syncWithoutDetaching(array_unique([$lucia->id, $project->owner_user_id]));
     }
 
     private function taskTypes(): void
