@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FolderKanban, Plus, SearchX } from 'lucide-react';
+import { ChartGantt, FolderKanban, Plus, SearchX } from 'lucide-react';
 import { useCallback } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
@@ -14,6 +14,7 @@ import { ProjectsTable } from '@/components/projects-list/projects-table';
 import { Button } from '@/components/ui/button';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
+import { urls } from '@/lib/urls';
 import { create, index } from '@/routes/projects';
 import type { ProjectListFilters, ProjectsIndexProps } from '@/types';
 
@@ -49,14 +50,22 @@ export default function ProjectsIndex({
                     title={t('projects.index.heading')}
                     description={t('projects.index.description')}
                     actions={
-                        can.createProjects ? (
-                            <Button asChild>
-                                <Link href={create()}>
-                                    <Plus aria-hidden="true" />
-                                    {t('projects.index.create')}
+                        <>
+                            <Button asChild variant="outline">
+                                <Link href={urls.gantt()}>
+                                    <ChartGantt aria-hidden="true" />
+                                    {t('gantt.index.open')}
                                 </Link>
                             </Button>
-                        ) : null
+                            {can.createProjects ? (
+                                <Button asChild>
+                                    <Link href={create()}>
+                                        <Plus aria-hidden="true" />
+                                        {t('projects.index.create')}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                        </>
                     }
                 />
 
