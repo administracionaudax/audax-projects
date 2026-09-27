@@ -21,8 +21,14 @@ class AudaxPdf extends FPDF
     /** Azul Audax (#0171FF): barras (D-011: permitido en barras y en la serie 1). */
     public const array BLUE = [1, 113, 255];
 
+    /** Azul Audax al 35 % sobre blanco: lo que va dentro de la bolsa sin estar en el listado. */
+    public const array BLUE_LIGHT = [166, 205, 255];
+
     /** Rojo de estado del tema claro (--danger, #B43A36): el exceso, siempre en rojo (SPEC §8.6). */
     public const array DANGER = [180, 58, 54];
+
+    /** Rojo de estado al 35 % sobre blanco: exceso de horas que no están en el listado. */
+    public const array DANGER_LIGHT = [229, 186, 185];
 
     /** Texto secundario (#56667A, D-011). */
     public const array MUTED = [86, 102, 122];

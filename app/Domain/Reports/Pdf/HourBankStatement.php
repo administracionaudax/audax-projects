@@ -21,9 +21,15 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Datos del PDF de consumo de una bolsa (SPEC §10 «Exportación», D-045; R2), pensado para
- * enviárselo al cliente: SOLO las horas aprobadas o bloqueadas (como hará el portal, SPEC §11), de
- * toda la vida de la bolsa. Las cifras de la barra salen de esas mismas horas (consumidas, dentro
- * y exceso según su overage_minutes), así que cuadran con el listado.
+ * enviárselo al cliente: el consumo por mes y el listado llevan SOLO las horas aprobadas o
+ * bloqueadas (como hará el portal, SPEC §11), de toda la vida de la bolsa, con su parte dentro y
+ * su exceso (overage_minutes), así que cuadran entre sí.
+ *
+ * El saldo restante es SIEMPRE el de la bolsa (HourBankLedger: una sola fuente para el saldo, la
+ * barra y la regla `block`), que cuenta las horas en cualquier estado: el exceso se asigna por
+ * fecha, así que una entrada sin aprobar anterior puede dejar en exceso una aprobada posterior. Para
+ * que las cifras cuadren (aprobadas dentro + sin aprobar dentro + restante = total), el PDF enseña
+ * aparte lo que va dentro de la bolsa o en exceso sin estar en el listado (pending_*).
  *
  * Las horas salen de ReportScope::entries() (D-044): un gestor del proyecto o un admin ven todas;
  * un responsable que no gestiona el proyecto, solo las de su equipo (el PDF lo avisa: partial).
@@ -44,7 +50,7 @@ final class HourBankStatement
      *     company: string, client: string|null, project: array{code: string, name: string},
      *     bank: array{name: string, start_date: string, end_date: string|null, status: string, total_minutes: int},
      *     generated_at: CarbonImmutable,
-     *     figures: array{consumed: int, in_bank: int, overage: int, remaining: int, ratio: float},
+     *     figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float},
      *     months: list<array{month: string, in_bank: int, overage: int}>,
      *     entries: list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>,
      *     financials: array{price_amount: string|null, rate: string|null, income: string}|null,
@@ -123,6 +129,8 @@ final class HourBankStatement
         $consumed = $data['consumed'];
         $overage = $data['overage'];
         $inBank = $consumed - $overage;
+        // La bolsa entera (HourBankLedger), en cualquier estado: lo que no sale en el listado va aparte.
+        $bankInBank = $bank->in_bank_minutes;
 
         return [
             'company' => (string) Setting::get('company_name', Setting::DEFAULTS['company_name']),
@@ -140,7 +148,9 @@ final class HourBankStatement
                 'consumed' => $consumed,
                 'in_bank' => $inBank,
                 'overage' => $overage,
-                'remaining' => max($bank->total_minutes - $inBank, 0),
+                'pending_in_bank' => max($bankInBank - $inBank, 0),
+                'pending_overage' => max($bank->overage_minutes - $overage, 0),
+                'remaining' => $bank->remaining_minutes,
                 'ratio' => $bank->total_minutes > 0 ? round($consumed / $bank->total_minutes, 4) : 0.0,
             ],
             'months' => $data['months'],

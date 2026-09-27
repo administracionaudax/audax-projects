@@ -6,13 +6,17 @@ use App\Domain\Reports\Pdf\HourBankStatementPdf;
 use App\Enums\TimeEntryStatus;
 use App\Models\HourBank;
 use App\Models\Setting;
+use App\Models\Task;
+use App\Models\TimeEntry;
 use Tests\Feature\Reports\R2Scenario;
 
 /*
 | PDF de consumo de bolsa (D-045; R2) de B1 en el escenario calculado a mano (R2Scenario): solo
-| las horas aprobadas o bloqueadas (E1 y E2; el borrador E3 no sale), cifras y barra de esas horas
-| (700 consumidos: 600 dentro y 100 de exceso sobre 600 contratados), consumo por mes, acentos,
-| eñes, ¿¡ y € bien codificados, e importes solo en el PDF de uso interno y con view-financials.
+| las horas aprobadas o bloqueadas en el listado y el consumo por mes (E1 y E2; el borrador E3 no
+| sale): 700 aprobados, 600 dentro y 100 de exceso sobre 600 contratados. El saldo es el de la
+| bolsa (HourBankLedger) y el borrador E3 (90, todo exceso) sale aparte como «sin aprobar».
+| Acentos, eñes, ¿¡ y € bien codificados, e importes solo en el PDF de uso interno y con
+| view-financials.
 */
 
 beforeEach(function () {
@@ -81,6 +85,11 @@ test('lleva la marca, los datos de la bolsa, las cifras de las horas aprobadas y
     $has('11:40');
     $has('117 % de la bolsa');
     $has('+1:40');
+    // E3 (borrador, 90 min en exceso): aparte, sin salir en el listado.
+    $has('Sin aprobar');
+    $has('+1:30 de exceso');
+    $has('Exceso sin aprobar: +1:30');
+    $has('Saldo restante: 0:00');
     $has('Septiembre de 2026');
     $has('Solo incluye las horas aprobadas o bloqueadas a fecha de 25/09/2026.');
     $has('Página 1 de 1');
@@ -143,7 +152,10 @@ test('un responsable que no gestiona el proyecto recibe el aviso de que el PDF p
     $s = $this->s;
     $partial = AudaxPdf::encode('Incluye solo las horas');
 
+    // Lo que no sale en su listado se llama «Otras horas» (pueden ser de otras personas).
     expect(($this->text)((string) $this->actingAs($s->raul)->get(($this->url)())->getContent()))->toContain($partial)
+        ->toContain(($this->pdfString)('Otras horas'))
+        ->toContain(($this->pdfString)('Exceso de otras horas: +1:30'))
         ->and(($this->text)((string) $this->actingAs($s->gema)->get(($this->url)())->getContent()))->not->toContain($partial)
         ->and(($this->text)((string) $this->actingAs($s->admin)->get(($this->url)())->getContent()))->not->toContain($partial);
 });
@@ -153,7 +165,7 @@ test('sin compresión (SetCompression(false)) el texto va tal cual en el flujo; 
     $statement = app(HourBankStatement::class)->build($s->admin, $s->b1, withFinancials: true);
     $pdf = app(HourBankStatementPdf::class)->render($statement, compress: false);
 
-    expect($statement['figures'])->toBe(['consumed' => 700, 'in_bank' => 600, 'overage' => 100, 'remaining' => 0, 'ratio' => 1.1667])
+    expect($statement['figures'])->toBe(['consumed' => 700, 'in_bank' => 600, 'overage' => 100, 'pending_in_bank' => 0, 'pending_overage' => 90, 'remaining' => 0, 'ratio' => 1.1667])
         ->and($statement['months'])->toBe([['month' => '2026-09-01', 'in_bank' => 600, 'overage' => 100]])
         ->and(array_column($statement['entries'], 'person'))->toBe(['Ana', 'Luis'])
         ->and($statement['financials'])->toBe(['price_amount' => '1000.00', 'rate' => '70.00', 'income' => '1116.67'])
@@ -179,4 +191,61 @@ test('las cifras del PDF van en la caché de informes y se renuevan al aprobar h
     $s->e3->forceFill(['status' => TimeEntryStatus::Approved])->save();
 
     expect(($this->text)((string) $this->actingAs($s->gema)->get(($this->url)())->getContent()))->toContain($draft);
+});
+
+test('una entrada sin aprobar anterior deja en exceso a la aprobada: el saldo es el de la bolsa y las cifras cuadran', function () {
+    $s = $this->s;
+
+    // Bolsa de 600 (10:00): borrador de 500 (8:20) el 01/09 y aprobada de 300 (5:00) el 05/09.
+    // El exceso va por fecha (HourBankLedger): la aprobada queda con 100 (1:40) dentro y 200 (3:20)
+    // de exceso. La bolsa: 800 consumidos, 600 dentro, 200 de exceso y 0 de saldo.
+    $bank = HourBank::factory()->create(['project_id' => $s->web->id, 'name' => 'Bolsa octubre', 'total_minutes' => 600, 'start_date' => '2026-09-01']);
+    $task = Task::factory()->inBank($bank)->create(['title' => 'Soporte']);
+    TimeEntry::factory()->forTask($task)->on('2026-09-01')->minutes(500)->create(['user_id' => $s->ana->id, 'description' => 'Devuelta']);
+    TimeEntry::factory()->forTask($task)->on('2026-09-05')->minutes(300)->status(TimeEntryStatus::Approved)->create(['user_id' => $s->luis->id, 'description' => 'Aprobada']);
+    $bank->refresh();
+
+    expect([$bank->consumed_minutes, $bank->overage_minutes, $bank->remaining_minutes])->toBe([800, 200, 0]);
+
+    $statement = app(HourBankStatement::class)->build($s->admin, $bank);
+    // Aprobadas dentro (100) + sin aprobar dentro (500) + saldo (0) = 600 contratados.
+    expect($statement['figures'])->toBe(['consumed' => 300, 'in_bank' => 100, 'overage' => 200, 'pending_in_bank' => 500, 'pending_overage' => 0, 'remaining' => 0, 'ratio' => 0.5])
+        ->and(array_column($statement['entries'], 'description'))->toBe(['Aprobada']);
+
+    $text = ($this->text)((string) $this->actingAs($s->admin)->get(($this->url)(null, $bank->id))->getContent());
+    $has = fn (string $utf8) => expect($text)->toContain(($this->pdfString)($utf8));
+    $has('Dentro de la bolsa: 1:40');
+    $has('Sin aprobar, dentro de la bolsa: 8:20');
+    $has('Exceso: +3:20');
+    $has('Saldo restante: 0:00');
+    expect($text)->toContain(AudaxPdf::encode('Hay 8:20 sin aprobar'))
+        ->not->toContain(($this->pdfString)('Saldo restante: 8:20'))
+        ->not->toContain(AudaxPdf::encode('Devuelta'));
+});
+
+test('un listado largo ocupa varias páginas: repite la cabecera de la tabla y recorta las descripciones a 600 caracteres', function () {
+    $s = $this->s;
+    $bank = HourBank::factory()->create(['project_id' => $s->web->id, 'name' => 'Bolsa grande', 'total_minutes' => 6000, 'start_date' => '2026-09-01']);
+    $task = Task::factory()->inBank($bank)->create();
+    // 592 caracteres de palabras + «MARCAFIN» = 600; lo que sigue no cabe.
+    $long = str_repeat('palabra ', 74).'MARCAFIN COLAFUERA';
+    foreach (range(1, 24) as $day) {
+        TimeEntry::factory()->forTask($task)->on(sprintf('2026-09-%02d', $day))->minutes(60)->status(TimeEntryStatus::Approved)
+            ->create(['user_id' => $s->ana->id, 'description' => $long]);
+    }
+
+    $statement = app(HourBankStatement::class)->build($s->admin, $bank->refresh());
+    $pdf = app(HourBankStatementPdf::class)->render($statement, compress: false);
+
+    preg_match_all('/\(P\xE1gina (\d+) de (\d+)\)/', $pdf, $pages);
+    $count = count($pages[1]);
+
+    expect($count)->toBeGreaterThanOrEqual(3)
+        ->and($pages[1])->toBe(array_map('strval', range(1, $count)))
+        ->and(array_unique($pages[2]))->toBe([(string) $count])
+        // La cabecera del listado se repite en cada página por la que pasa la tabla.
+        ->and(substr_count($pdf, AudaxPdf::encode('(Descripción)')))->toBeGreaterThanOrEqual($count - 1)
+        ->and($pdf)->toContain("MARCAFIN\x85")
+        ->and($pdf)->not->toContain('COLAFUERA')
+        ->and(substr_count($pdf, 'MARCAFIN'))->toBe(24);
 });

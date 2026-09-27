@@ -7,8 +7,9 @@ use Carbon\CarbonImmutable;
 /**
  * Maqueta del PDF de consumo de una bolsa (D-045; R2) a partir de HourBankStatement::build():
  * logotipo y nombre de la empresa, cliente, proyecto y bolsa, cifras y barra de consumo (dentro de
- * la bolsa en azul y el exceso aparte, en rojo), consumo por mes y listado de las entradas
- * aprobadas o bloqueadas con sus totales. Los importes, solo si el statement los trae.
+ * la bolsa en azul y el exceso aparte, en rojo; lo que no sale en el listado, en tono claro),
+ * consumo por mes y listado de las entradas aprobadas o bloqueadas con sus totales. Los importes,
+ * solo si el statement los trae. Todos los textos, con __() (lang/es/reports.php, r2.pdf).
  */
 final class HourBankStatementPdf
 {
@@ -20,7 +21,7 @@ final class HourBankStatementPdf
      *     company: string, client: string|null, project: array{code: string, name: string},
      *     bank: array{name: string, start_date: string, end_date: string|null, status: string, total_minutes: int},
      *     generated_at: CarbonImmutable,
-     *     figures: array{consumed: int, in_bank: int, overage: int, remaining: int, ratio: float},
+     *     figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float},
      *     months: list<array{month: string, in_bank: int, overage: int}>,
      *     entries: list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>,
      *     financials: array{price_amount: string|null, rate: string|null, income: string}|null,
@@ -63,6 +64,14 @@ final class HourBankStatementPdf
         return $sign.intdiv($minutes, 60).':'.str_pad((string) ($minutes % 60), 2, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Exceso con su signo: «+1:40», o «0:00» si no hay.
+     */
+    public static function overage(int $minutes): string
+    {
+        return ($minutes > 0 ? '+' : '').self::minutes($minutes);
+    }
+
     public static function money(?string $amount): string
     {
         return number_format((float) ($amount ?? '0'), 2, ',', '.').' €';
@@ -78,8 +87,6 @@ final class HourBankStatementPdf
         return number_format($ratio * 100, 0, ',', '.').' %';
     }
 
-    public const array MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
     /**
      * «2026-09-01» → «Septiembre de 2026».
      */
@@ -87,7 +94,10 @@ final class HourBankStatementPdf
     {
         $date = CarbonImmutable::parse($month);
 
-        return self::MONTHS[$date->month - 1].' de '.$date->year;
+        return self::t('reports.r2.pdf.month_year', [
+            'month' => self::t('reports.r2.pdf.months.'.$date->month),
+            'year' => (string) $date->year,
+        ]);
     }
 
     /**
@@ -148,18 +158,30 @@ final class HourBankStatementPdf
     }
 
     /**
-     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, remaining: int, ratio: float}}  $statement
+     * Cifras: las de las horas aprobadas (las del listado), las que no salen en él (sin aprobar; en
+     * un PDF parcial, también las de otras personas) y el saldo restante de la bolsa.
+     *
+     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}, partial: bool}  $statement
      */
     private function figures(AudaxPdf $pdf, array $statement): void
     {
         $f = $statement['figures'];
+        $pending = $f['pending_in_bank'] + $f['pending_overage'];
         $items = [
             [self::t('reports.r2.pdf.contracted'), self::minutes($statement['bank']['total_minutes']), null, AudaxPdf::NAVY],
             [self::t('reports.r2.pdf.consumed'), self::minutes($f['consumed']), self::t('reports.r2.pdf.consumed_pct', ['pct' => self::percent($f['ratio'])]), AudaxPdf::NAVY],
             [self::t('reports.r2.pdf.in_bank'), self::minutes($f['in_bank']), null, AudaxPdf::NAVY],
-            [self::t('reports.r2.pdf.overage'), ($f['overage'] > 0 ? '+' : '').self::minutes($f['overage']), null, $f['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY],
-            [self::t('reports.r2.pdf.remaining'), self::minutes($f['remaining']), null, AudaxPdf::NAVY],
+            [self::t('reports.r2.pdf.overage'), self::overage($f['overage']), null, $f['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY],
         ];
+        if ($pending > 0) {
+            $items[] = [
+                self::t($statement['partial'] ? 'reports.r2.pdf.pending_partial' : 'reports.r2.pdf.pending'),
+                self::minutes($pending),
+                $f['pending_overage'] > 0 ? self::t('reports.r2.pdf.pending_overage_detail', ['minutes' => self::overage($f['pending_overage'])]) : null,
+                AudaxPdf::NAVY,
+            ];
+        }
+        $items[] = [self::t('reports.r2.pdf.remaining'), self::minutes($f['remaining']), null, AudaxPdf::NAVY];
 
         $width = $pdf->contentWidth() / count($items);
         $y = $pdf->GetY();
@@ -190,15 +212,17 @@ final class HourBankStatementPdf
 
     /**
      * Barra de consumo como la de la app (HourBankMeter): lo que va dentro de la bolsa hasta el total
-     * y el exceso a continuación, en rojo; una marca negra señala el total contratado.
+     * y el exceso a continuación, en rojo; una marca navy señala el total contratado. Lo que no sale
+     * en el listado (sin aprobar), en el tono claro de cada color, tras lo aprobado.
      *
-     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, remaining: int, ratio: float}}  $statement
+     * @param  array{bank: array{total_minutes: int}, figures: array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}, partial: bool}  $statement
      */
     private function bar(AudaxPdf $pdf, array $statement): void
     {
         $total = $statement['bank']['total_minutes'];
         $f = $statement['figures'];
-        $scale = max($total + $f['overage'], $f['in_bank'], 1);
+        $overageTotal = $f['overage'] + $f['pending_overage'];
+        $scale = max($total + $overageTotal, $f['in_bank'] + $f['pending_in_bank'], 1);
         $width = $pdf->contentWidth();
         $x = 15.0;
         $y = $pdf->GetY();
@@ -218,9 +242,20 @@ final class HourBankStatementPdf
             $pdf->Rect($x, $y, $width * $inside / $scale, $height, 'F');
         }
 
+        $pendingInside = min($f['pending_in_bank'], max($total - $inside, 0));
+        if ($pendingInside > 0) {
+            $pdf->fillColor(AudaxPdf::BLUE_LIGHT);
+            $pdf->Rect($x + $width * $inside / $scale, $y, $width * $pendingInside / $scale, $height, 'F');
+        }
+
+        $overageStart = $x + $width * $total / $scale + 0.4;
         if ($f['overage'] > 0) {
             $pdf->fillColor(AudaxPdf::DANGER);
-            $pdf->Rect($x + $width * $total / $scale + 0.4, $y, max($width * $f['overage'] / $scale - 0.4, 0.3), $height, 'F');
+            $pdf->Rect($overageStart, $y, max($width * $f['overage'] / $scale - 0.4, 0.3), $height, 'F');
+        }
+        if ($f['pending_overage'] > 0) {
+            $pdf->fillColor(AudaxPdf::DANGER_LIGHT);
+            $pdf->Rect($overageStart + $width * $f['overage'] / $scale, $y, max($width * $f['pending_overage'] / $scale - 0.4, 0.3), $height, 'F');
         }
 
         if ($total > 0) {
@@ -230,39 +265,56 @@ final class HourBankStatementPdf
             $pdf->Line($mark, $y - 1, $mark, $y + $height + 1);
         }
 
-        // Leyenda: cuadrado de color + texto (nunca solo color).
-        $pdf->SetXY($x, $y + $height + 2.5);
+        // Leyenda: cuadrado de color + texto (nunca solo color); salta de línea si no cabe.
         $legend = [
             [AudaxPdf::BLUE, self::t('reports.r2.pdf.in_bank').': '.self::minutes($f['in_bank'])],
         ];
+        if ($f['pending_in_bank'] > 0) {
+            $legend[] = [AudaxPdf::BLUE_LIGHT, self::t($statement['partial'] ? 'reports.r2.pdf.legend_pending_partial' : 'reports.r2.pdf.legend_pending').': '.self::minutes($f['pending_in_bank'])];
+        }
         if ($f['overage'] > 0) {
-            $legend[] = [AudaxPdf::DANGER, self::t('reports.r2.pdf.overage').': +'.self::minutes($f['overage'])];
+            $legend[] = [AudaxPdf::DANGER, self::t('reports.r2.pdf.overage').': '.self::overage($f['overage'])];
+        }
+        if ($f['pending_overage'] > 0) {
+            $legend[] = [AudaxPdf::DANGER_LIGHT, self::t($statement['partial'] ? 'reports.r2.pdf.legend_pending_overage_partial' : 'reports.r2.pdf.legend_pending_overage').': '.self::overage($f['pending_overage'])];
         }
         $legend[] = [AudaxPdf::TRACK, self::t('reports.r2.pdf.remaining').': '.self::minutes($f['remaining'])];
 
         $pdf->SetFont('Helvetica', '', 8);
+        $lx = $x;
+        $ly = $y + $height + 2.5;
         foreach ($legend as [$color, $label]) {
-            $lx = $pdf->GetX();
-            $ly = $pdf->GetY();
+            $text = AudaxPdf::encode($label);
+            $itemWidth = 4.5 + $pdf->GetStringWidth($text) + 6;
+            if ($lx > $x && $lx + $itemWidth > $x + $width) {
+                $lx = $x;
+                $ly += 5;
+            }
             $pdf->fillColor($color);
             $pdf->Rect($lx, $ly + 1, 3, 3, 'F');
             $pdf->SetXY($lx + 4.5, $ly);
             $pdf->textColor(AudaxPdf::NAVY);
-            $text = AudaxPdf::encode($label);
-            $pdf->Cell($pdf->GetStringWidth($text) + 8, 5, $text);
+            $pdf->Cell($itemWidth - 4.5, 5, $text);
+            $lx += $itemWidth;
         }
 
-        $pdf->SetXY(15, $y + $height + 9);
+        $pdf->SetXY(15, $ly + 6.5);
     }
 
     /**
-     * @param  array{generated_at: CarbonImmutable, partial: bool}  $statement
+     * @param  array{generated_at: CarbonImmutable, figures: array{pending_in_bank: int, pending_overage: int}, partial: bool}  $statement
      */
     private function notes(AudaxPdf $pdf, array $statement): void
     {
         $pdf->SetFont('Helvetica', '', 8);
         $pdf->textColor(AudaxPdf::MUTED);
         $pdf->MultiCell(0, 4, AudaxPdf::encode(self::t('reports.r2.pdf.approved_only', ['date' => $statement['generated_at']->format('d/m/Y')])));
+
+        $pending = $statement['figures']['pending_in_bank'] + $statement['figures']['pending_overage'];
+        if ($pending > 0 && ! $statement['partial']) {
+            $pdf->Ln(1);
+            $pdf->MultiCell(0, 4, AudaxPdf::encode(self::t('reports.r2.pdf.pending_note', ['hours' => self::minutes($pending)])));
+        }
 
         if ($statement['partial']) {
             $pdf->Ln(1);
@@ -282,7 +334,7 @@ final class HourBankStatementPdf
         $this->heading($pdf, self::t('reports.r2.pdf.financials'));
         $rows = [
             [self::t('reports.r2.pdf.price'), $financials['price_amount'] !== null ? self::money($financials['price_amount']) : self::t('reports.r2.pdf.no_price')],
-            [self::t('reports.r2.pdf.rate'), $financials['rate'] !== null ? self::money($financials['rate']).'/h' : self::t('reports.r2.pdf.rate_person')],
+            [self::t('reports.r2.pdf.rate'), $financials['rate'] !== null ? self::t('reports.r2.pdf.per_hour', ['amount' => self::money($financials['rate'])]) : self::t('reports.r2.pdf.rate_person')],
             [self::t('reports.r2.pdf.income'), self::money($financials['income'])],
         ];
 
@@ -318,7 +370,7 @@ final class HourBankStatementPdf
             $pdf->tableRow($widths, [
                 self::month($month['month']),
                 self::minutes($month['in_bank']),
-                $month['overage'] > 0 ? '+'.self::minutes($month['overage']) : '0:00',
+                self::overage($month['overage']),
                 self::minutes($month['in_bank'] + $month['overage']),
             ], $aligns, [2 => $month['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY]);
         }
@@ -326,7 +378,7 @@ final class HourBankStatementPdf
         $pdf->tableRow($widths, [
             self::t('reports.r2.pdf.total'),
             self::minutes($inBank),
-            $overage > 0 ? '+'.self::minutes($overage) : '0:00',
+            self::overage($overage),
             self::minutes($inBank + $overage),
         ], $aligns, [2 => $overage > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY], total: true);
         $pdf->endTable();
@@ -335,7 +387,7 @@ final class HourBankStatementPdf
 
     /**
      * @param  list<array{date: string, person: string, task: string, in_bank: int, overage: int, description: string}>  $entries
-     * @param  array{consumed: int, in_bank: int, overage: int, remaining: int, ratio: float}  $figures
+     * @param  array{consumed: int, in_bank: int, overage: int, pending_in_bank: int, pending_overage: int, remaining: int, ratio: float}  $figures
      */
     private function entries(AudaxPdf $pdf, array $entries, array $figures): void
     {
@@ -366,7 +418,7 @@ final class HourBankStatementPdf
                 $entry['person'],
                 $entry['task'],
                 self::minutes($entry['in_bank']),
-                $entry['overage'] > 0 ? '+'.self::minutes($entry['overage']) : '0:00',
+                self::overage($entry['overage']),
                 $description,
             ], $aligns, [4 => $entry['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY]);
         }
@@ -374,7 +426,7 @@ final class HourBankStatementPdf
         $pdf->tableRow($widths, [
             self::t('reports.r2.pdf.total'), '', '',
             self::minutes($figures['in_bank']),
-            $figures['overage'] > 0 ? '+'.self::minutes($figures['overage']) : '0:00',
+            self::overage($figures['overage']),
             '',
         ], $aligns, [4 => $figures['overage'] > 0 ? AudaxPdf::DANGER : AudaxPdf::NAVY], total: true);
         $pdf->endTable();
