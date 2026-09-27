@@ -76,9 +76,12 @@ class ClientReportController extends Controller
         $scope = $this->reportScope($request, $fixed);
         $projectIds = $scope->filters->projectIds === [] ? $allowed : array_values(array_intersect($scope->filters->projectIds, $allowed));
         $bucket = $scope->filters->days() > self::MONTHLY_FROM_DAYS ? Dimension::Month : Dimension::Week;
+        // Un gestor ve todas las horas de sus proyectos (y un admin, todas): la precisión de
+        // estimación cuenta las tareas de cualquier responsable. Un responsable, las de su equipo.
+        $everyAssignee = $user->isAdmin() || $limited;
 
         $data = $cache->remember($scope, 'r2.client.'.$client->id, fn (): array => [
-            'summary' => $metrics->summary($scope, withCapacity: false),
+            'summary' => $metrics->summary($scope, withCapacity: false, everyAssignee: $everyAssignee),
             'projects' => $metrics->breakdown($scope, Dimension::Project),
             'timeline' => $this->timeline($pivot->run($scope, Dimension::Project, $bucket), $scope->filters, $bucket),
             ...$this->banks($scope, $projectIds, $metrics, $history, $commitment),
@@ -92,7 +95,7 @@ class ClientReportController extends Controller
         $comparison = null;
         if ($scope->filters->compare) {
             $previous = $scope->withFilters($scope->filters->comparison());
-            $comparison = $cache->remember($previous, 'r2.client.'.$client->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false));
+            $comparison = $cache->remember($previous, 'r2.client.'.$client->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false, everyAssignee: $everyAssignee));
         }
 
         return Inertia::render('reports/client', [

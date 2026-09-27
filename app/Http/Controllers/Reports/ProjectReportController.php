@@ -53,9 +53,12 @@ class ProjectReportController extends Controller
         /** @var User $user */
         $user = $request->user();
         $scope = $this->reportScope($request, ['projectIds' => [$project->id], 'clientIds' => []]);
+        // Quien gestiona el proyecto (o un admin) ve todas sus horas: la precisión de estimación
+        // cuenta las tareas de cualquier responsable. Un responsable, las de su equipo (D-021).
+        $everyAssignee = $user->isAdmin() || $user->isManagerOf($project);
 
         $data = $cache->remember($scope, 'r2.project.'.$project->id, fn (): array => [
-            'summary' => $metrics->summary($scope, withCapacity: false),
+            'summary' => $metrics->summary($scope, withCapacity: false, everyAssignee: $everyAssignee),
             'by_person' => $metrics->breakdown($scope, Dimension::Person),
             'by_type' => $metrics->breakdown($scope, Dimension::TaskType),
             'weekly' => $this->weekly($metrics->breakdown($scope, Dimension::Week), $scope->filters),
@@ -72,7 +75,7 @@ class ProjectReportController extends Controller
         $comparison = null;
         if ($scope->filters->compare) {
             $previous = $scope->withFilters($scope->filters->comparison());
-            $comparison = $cache->remember($previous, 'r2.project.'.$project->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false));
+            $comparison = $cache->remember($previous, 'r2.project.'.$project->id.'.summary', fn (): array => $metrics->summary($previous, withCapacity: false, everyAssignee: $everyAssignee));
         }
 
         $project->loadMissing(['client' => fn ($query) => $query->withTrashed()->select(['id', 'name'])]);

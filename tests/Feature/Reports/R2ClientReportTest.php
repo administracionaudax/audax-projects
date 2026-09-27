@@ -157,6 +157,9 @@ test('un gestor solo ve los proyectos del cliente que gestiona, aunque pida otro
     $this->actingAs($s->gema)->get(($this->url)())
         ->assertInertia(fn (Assert $page) => $page
             ->where('summary.logged_minutes', 790)
+            // Ve todas las horas de su proyecto: cuenta T2 aunque sea de Luis (240 frente a 400).
+            ->where('summary.estimation.tasks', 1)
+            ->where('summary.estimation.accuracy', 0.6)
             ->has('projects', 1)
             ->where('projects.0.name', 'NAN-WEB · Web corporativa')
             ->has('banks', 1)

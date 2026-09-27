@@ -40,13 +40,14 @@ final class Metrics
      * Sin capacidad ($withCapacity = false: informes de cliente y de proyecto, que no la muestran;
      * se ahorra el cálculo de la capacidad de todas las personas del alcance), capacity_minutes es
      * 0 y la ocupación y la productividad facturable son null. El resto es igual.
+     * $everyAssignee: ver estimation().
      *
      * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
      *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
      *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
      *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
      */
-    public function summary(ReportScope $scope, bool $withCapacity = true): array
+    public function summary(ReportScope $scope, bool $withCapacity = true, bool $everyAssignee = false): array
     {
         $totals = (clone $scope->entries())->toBase()->selectRaw(
             'COALESCE(SUM(time_entries.minutes), 0) as logged,
@@ -68,7 +69,7 @@ final class Metrics
             'occupancy' => $withCapacity ? self::ratio($logged, $capacity) : null,
             'billability' => self::ratio($billable, $logged),
             'billable_productivity' => $withCapacity ? self::ratio($billable, $capacity) : null,
-            'estimation' => $this->estimation($scope),
+            'estimation' => $this->estimation($scope, $everyAssignee),
             'income' => null,
             'cost' => null,
             'margin' => null,
@@ -225,9 +226,14 @@ final class Metrics
      * Precisión de estimación (SPEC §10): tareas hoja completadas en el periodo, con estimación, de
      * los proyectos y personas del alcance. Reales = todas sus horas (de cualquier fecha).
      *
+     * $everyAssignee (informes de un proyecto o de los proyectos que gestiona quien mira, que ve
+     * todas sus horas, D-021): cuentan las tareas de cualquier responsable, acotadas solo por los
+     * filtros de persona y departamento de la URL. Sin él (por defecto), las de las personas del
+     * alcance (people()), como hasta ahora.
+     *
      * @return array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null}
      */
-    public function estimation(ReportScope $scope): array
+    public function estimation(ReportScope $scope, bool $everyAssignee = false): array
     {
         $f = $scope->filters;
         $zone = LocalTime::timezone();
@@ -244,7 +250,9 @@ final class Metrics
             ->when($f->clientIds !== [], fn (Builder $q) => $q->whereIn('project_id', Project::query()->withTrashed()->select('id')->whereIn('client_id', $f->clientIds)))
             ->when($f->bankIds !== [], fn (Builder $q) => $q->whereIn('hour_bank_id', $f->bankIds))
             ->when($f->taskTypeIds !== [], fn (Builder $q) => $q->whereIn('task_type_id', $f->taskTypeIds))
-            ->when(! $scope->viewer->isAdmin() || $f->userIds !== [] || $f->departmentIds !== [],
+            ->when($everyAssignee && $f->userIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', $f->userIds))
+            ->when($everyAssignee && $f->departmentIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', User::query()->select('id')->whereIn('department_id', $f->departmentIds)))
+            ->when(! $everyAssignee && (! $scope->viewer->isAdmin() || $f->userIds !== [] || $f->departmentIds !== []),
                 fn (Builder $q) => $q->whereIn('assignee_user_id', $scope->people()->modelKeys()));
 
         $estimated = (int) (clone $tasks)->sum('estimated_minutes');

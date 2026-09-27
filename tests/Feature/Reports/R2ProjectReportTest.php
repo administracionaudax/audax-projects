@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\TimeEntryStatus;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\TimeEntry;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -236,4 +239,37 @@ test('exporta el estimado frente a real y las horas por persona (con importes so
 
     $weeks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'semanas']))->streamedContent());
     expect($weeks[1])->toBe(['2026-09-21', 13.17, 13.17, 10, 3.17, 1221.67]);
+});
+
+test('la precisión de estimación: el gestor cuenta las tareas de cualquiera; un responsable, las de su equipo', function () {
+    $s = $this->s;
+
+    // T5 de Marta (Desarrollo): estimada 60, real 90, completada el 25/09.
+    $s->web->addMember($s->marta);
+    $t5 = Task::factory()->inBank($s->b1)->assignedTo($s->marta)->create(['title' => 'Revisión técnica', 'estimated_minutes' => 60]);
+    TimeEntry::factory()->forTask($t5)->on('2026-09-24')->minutes(90)->status(TimeEntryStatus::Approved)->create(['user_id' => $s->marta->id]);
+    $t5->update(['status_id' => TaskStatus::query()->where('category', 'done')->value('id')]);
+
+    // Gema (gestora) y el admin: T2 (240 → 400) y T5 (60 → 90) = 300 frente a 490.
+    foreach ([$s->gema, $s->admin] as $viewer) {
+        $this->actingAs($viewer)->get(($this->url)())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.estimation.tasks', 2)
+                ->where('summary.estimation.estimated_minutes', 300)
+                ->where('summary.estimation.actual_minutes', 490)
+                ->where('summary.estimation.accuracy', 0.6122));
+    }
+
+    // Raúl (responsable de Diseño, no gestiona el proyecto): solo T2, de Luis.
+    $this->actingAs($s->raul)->get(($this->url)())
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('summary.estimation.tasks', 1)
+            ->where('summary.estimation.estimated_minutes', 240));
+
+    // Con el filtro de persona, la gestora ve solo las de esa persona.
+    $this->actingAs($s->gema)->get(($this->url)(['persona' => [$s->marta->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('summary.estimation.tasks', 1)
+            ->where('summary.estimation.estimated_minutes', 60)
+            ->where('summary.estimation.actual_minutes', 90));
 });

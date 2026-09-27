@@ -11,8 +11,6 @@ return [
         'total' => 'Total',
         'no_bank' => 'Sin bolsa',
         'no_type' => 'Sin tipo',
-        'yes' => 'Sí',
-        'no' => 'No',
 
         'client' => [
             'export_name' => 'Informe de :client',
