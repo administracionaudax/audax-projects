@@ -75,6 +75,9 @@ import type {
 } from '@/components/reports/r2-types';
 
 // Intl usa espacios de no separación (U+00A0 / U+202F) antes de % y de €.
+// Páginas y gráficas completas: con la máquina cargada (CI) pueden pasar de los 5 s por defecto.
+vi.setConfig({ testTimeout: 20_000 });
+
 const norm = (value: string | null | undefined) =>
     (value ?? '').replace(/[  ]/g, ' ');
 
@@ -482,6 +485,12 @@ describe('gráficas de R2', () => {
                 name: /Horas imputadas por proyecto: 20:40 en 2 periodos\. Por serie: NAN-WEB, 18:10, NAN-CAMP, 2:30\./,
             }),
         ).toBeTruthy();
+        // El total va encima de cada barra, aunque la última serie no tenga horas ese mes.
+        expect(
+            [...document.querySelectorAll('svg text')].map(
+                (node) => node.textContent,
+            ),
+        ).toEqual(expect.arrayContaining(['5:00', '15:40']));
 
         await user.click(
             screen.getByRole('button', { name: 'Ver como tabla' }),
@@ -528,6 +537,12 @@ describe('gráficas de R2', () => {
             }),
         ).toBeTruthy();
         expect(screen.getByText('Exceso')).toBeTruthy();
+        // El total al final de cada barra, con exceso o sin él.
+        expect(
+            [...document.querySelectorAll('svg text')].map(
+                (node) => node.textContent,
+            ),
+        ).toEqual(expect.arrayContaining(['6:40', '6:30']));
 
         await user.click(
             screen.getByRole('button', { name: 'Ver como tabla' }),

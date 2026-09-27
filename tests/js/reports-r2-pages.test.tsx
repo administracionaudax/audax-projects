@@ -73,6 +73,9 @@ import BillingReport from '@/pages/reports/billing';
 import ClientReport from '@/pages/reports/client';
 import ProjectReport from '@/pages/reports/project';
 
+// Páginas y gráficas completas: con la máquina cargada (CI) pueden pasar de los 5 s por defecto.
+vi.setConfig({ testTimeout: 20_000 });
+
 const norm = (value: string | null | undefined) =>
     (value ?? '').replace(/[  ]/g, ' ');
 

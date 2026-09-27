@@ -22,6 +22,7 @@ import { ChartFrame } from '@/components/charts/chart-frame';
 import { ChartLegend } from '@/components/charts/chart-legend';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { formatOverage } from '@/components/reports/r2-helpers';
+import { cartesianBox } from '@/components/reports/r2-stacked-bars-chart';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { BreakdownRow } from '@/types';
@@ -128,6 +129,31 @@ export function R2HoursBars({
               },
           ]
         : [];
+
+    const endLabel = (props: { value?: unknown; viewBox?: unknown }) => {
+        const box = cartesianBox(props.viewBox);
+        const text = typeof props.value === 'string' ? props.value : '';
+
+        return text && box ? (
+            <text
+                x={box.x + box.width + 8}
+                y={box.y + box.height / 2}
+                dominantBaseline="central"
+                fill={CHART_INK.label}
+                fontSize={12}
+            >
+                {text}
+            </text>
+        ) : (
+            <g />
+        );
+    };
+    // El total de la fila va al final de la barra: en el tramo del exceso si lo hay y, si no, en
+    // el de las horas (un tramo a 0 no lleva etiqueta).
+    const endValue = (onOverage: boolean) => (row: BarRow) =>
+        row.logged > 0 && row.overage > 0 === onOverage
+            ? formatMinutes(row.logged)
+            : '';
 
     return (
         <ChartFrame
@@ -261,20 +287,10 @@ export function R2HoursBars({
                         }
                         isAnimationActive={false}
                     >
-                        {withOverage ? null : (
-                            <LabelList
-                                dataKey="logged"
-                                position="right"
-                                offset={8}
-                                fill={CHART_INK.label}
-                                fontSize={12}
-                                formatter={(value: unknown) =>
-                                    typeof value === 'number'
-                                        ? formatMinutes(value)
-                                        : ''
-                                }
-                            />
-                        )}
+                        <LabelList
+                            dataKey={endValue(false)}
+                            content={endLabel}
+                        />
                     </Bar>
                     {withOverage ? (
                         <Bar
@@ -289,16 +305,8 @@ export function R2HoursBars({
                             isAnimationActive={false}
                         >
                             <LabelList
-                                dataKey="logged"
-                                position="right"
-                                offset={8}
-                                fill={CHART_INK.label}
-                                fontSize={12}
-                                formatter={(value: unknown) =>
-                                    typeof value === 'number'
-                                        ? formatMinutes(value)
-                                        : ''
-                                }
+                                dataKey={endValue(true)}
+                                content={endLabel}
                             />
                         </Bar>
                     ) : null}

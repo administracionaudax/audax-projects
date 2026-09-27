@@ -41,6 +41,24 @@ export type R2StackValues = Record<string, Record<string, number>>;
 
 export const R2_OTHERS_KEY = '__others__';
 
+/** Caja de una barra (x, y, ancho y alto) que Recharts pasa a las etiquetas; null si no es cartesiana. */
+export function cartesianBox(
+    viewBox: unknown,
+): { x: number; y: number; width: number; height: number } | null {
+    if (viewBox === null || typeof viewBox !== 'object') {
+        return null;
+    }
+
+    const box = viewBox as Record<string, unknown>;
+    const [x, y, width, height] = [box.x, box.y, box.width, box.height].map(
+        Number,
+    );
+
+    return [x, y, width, height].every(Number.isFinite)
+        ? { x, y, width, height }
+        : null;
+}
+
 /**
  * D-012: la paleta categórica tiene 6 colores y nunca se cicla. Con más series, se quedan las
  * 5 primeras (llegan ordenadas de más a menos horas) y el resto se suma en «Otros».
@@ -122,6 +140,12 @@ export function R2StackedBarsChart({
             total += minutes;
         });
         row.total = total;
+        // Serie de arriba con horas: lleva la etiqueta del total (la última puede estar a 0).
+        row.top =
+            [...grouped.series.keys()]
+                .reverse()
+                .map((index) => `s${index}`)
+                .find((key) => Number(row[key]) > 0) ?? '';
 
         return row;
     });
@@ -231,18 +255,31 @@ export function R2StackedBarsChart({
                             }
                             isAnimationActive={false}
                         >
-                            {index === lastIndex && buckets.length <= 16 ? (
+                            {buckets.length <= 16 ? (
                                 <LabelList
-                                    dataKey="total"
-                                    position="top"
-                                    offset={6}
-                                    fill={CHART_INK.label}
-                                    fontSize={12}
-                                    formatter={(value: unknown) =>
-                                        typeof value === 'number' && value > 0
-                                            ? formatMinutes(value)
+                                    // Solo la serie de arriba con horas lleva el total de la barra.
+                                    dataKey={(row: Record<string, unknown>) =>
+                                        row.top === def.key
+                                            ? formatMinutes(Number(row.total))
                                             : ''
                                     }
+                                    content={(props) => {
+                                        const box = cartesianBox(props.viewBox);
+
+                                        return props.value && box ? (
+                                            <text
+                                                x={box.x + box.width / 2}
+                                                y={box.y - 6}
+                                                textAnchor="middle"
+                                                fill={CHART_INK.label}
+                                                fontSize={12}
+                                            >
+                                                {String(props.value)}
+                                            </text>
+                                        ) : (
+                                            <g />
+                                        );
+                                    }}
                                 />
                             ) : null}
                         </Bar>
