@@ -1,7 +1,7 @@
 import { router } from '@inertiajs/react';
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { ganttColors } from '@/components/gantt/colors';
 import { ConflictDialog } from '@/components/gantt/conflict-dialog';
 import { conflictingDependencies } from '@/components/gantt/conflicts';
@@ -82,6 +82,7 @@ export function GanttView({
     onOpenTask,
     emptyChart,
 }: GanttViewProps) {
+    const root = useRef<HTMLDivElement>(null);
     const chart = useRef<GanttChartHandle>(null);
     const editing = useGanttEditing({ tasks, reload });
     const [scale, setScale] = useState(preferences.scale);
@@ -93,8 +94,12 @@ export function GanttView({
     const [datesFor, setDatesFor] = useState<GanttTask | null>(null);
     const [dependencyFor, setDependencyFor] = useState<GanttTask | null>(null);
 
-    // Barra a la que vuelve el foco al cerrar un diálogo abierto desde el diagrama.
+    // Tarea a la que vuelve el foco al cerrar un diálogo (el foco sigue a la tarea).
     const [returnFocus, setReturnFocus] = useState<number | null>(null);
+    // Tarea a la que hay que llevar el foco en cuanto se pinte (tras «Quitar fechas»).
+    const [followAfterPaint, setFollowAfterPaint] = useState<number | null>(
+        null,
+    );
 
     if (editing.conflict && editing.conflict.task.id !== returnFocus) {
         setReturnFocus(editing.conflict.task.id);
@@ -139,6 +144,31 @@ export function GanttView({
         onPreferencesChange?.(next);
     };
 
+    /**
+     * El foco sigue a la tarea: a su barra si la tiene; si no, a su fila de la tabla o a su entrada
+     * de la lista «Sin fechas». False si no está en ninguna parte (p. ej. en un proyecto plegado).
+     */
+    const followTask = (taskId: number): boolean => {
+        if (chart.current?.focusTask(taskId)) {
+            return true;
+        }
+
+        const target = root.current?.querySelector<HTMLElement>(
+            `[data-gantt-focus="${taskId}"]`,
+        );
+        target?.focus();
+
+        return target !== null && target !== undefined;
+    };
+
+    // Tras quitar las fechas, la tarea ya se ha ido del diagrama en este mismo render.
+    useLayoutEffect(() => {
+        if (followAfterPaint !== null) {
+            setFollowAfterPaint(null);
+            followTask(followAfterPaint);
+        }
+    });
+
     const action = (kind: GanttTaskAction, task: GanttTask) => {
         setReturnFocus(task.id);
 
@@ -147,6 +177,7 @@ export function GanttView({
         } else if (kind === 'dependency') {
             setDependencyFor(task);
         } else {
+            setFollowAfterPaint(task.id);
             void editing.reschedule(task, {
                 start_date: null,
                 due_date: null,
@@ -154,17 +185,17 @@ export function GanttView({
         }
     };
 
-    const backToChart = (event: Event) => {
-        if (returnFocus !== null && view === 'chart') {
+    // Al cerrar un diálogo: el foco vuelve a la tarea, esté donde esté ahora.
+    const restoreFocus = (event: Event) => {
+        if (returnFocus !== null && followTask(returnFocus)) {
             event.preventDefault();
-            chart.current?.focusTask(returnFocus);
         }
     };
 
     const hasRows = rows.length > 0;
 
     return (
-        <div className="flex min-w-0 flex-col gap-4">
+        <div ref={root} className="flex min-w-0 flex-col gap-4">
             <GanttToolbar
                 scale={scale}
                 color={color}
@@ -258,7 +289,7 @@ export function GanttView({
                     parents={parents}
                     readOnly={readOnly}
                     onAssign={(task) => {
-                        setReturnFocus(null);
+                        setReturnFocus(task.id);
                         setDatesFor(task);
                     }}
                     onOpen={open}
@@ -271,7 +302,7 @@ export function GanttView({
                         conflict={editing.conflict}
                         resolving={editing.resolving}
                         onChoose={editing.resolveConflict}
-                        onCloseAutoFocus={backToChart}
+                        onCloseAutoFocus={restoreFocus}
                     />
                     <DatesDialog
                         task={datesFor}
@@ -283,7 +314,7 @@ export function GanttView({
                         onSave={(task, dates) =>
                             void editing.reschedule(task, dates)
                         }
-                        onCloseAutoFocus={backToChart}
+                        onCloseAutoFocus={restoreFocus}
                     />
                     <DependencyDialog
                         task={dependencyFor}
@@ -298,7 +329,7 @@ export function GanttView({
                                 setDependencyFor(null);
                             }
                         }}
-                        onCloseAutoFocus={backToChart}
+                        onCloseAutoFocus={restoreFocus}
                     />
                 </>
             )}

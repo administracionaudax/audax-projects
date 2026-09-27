@@ -67,8 +67,11 @@ import type { TaskDependencyItem } from '@/types/schedule';
 export type GanttChartHandle = {
     /** Desplaza el diagrama para que la fecha quede a un tercio del ancho visible. */
     scrollToDate: (date: string, behavior?: ScrollBehavior) => void;
-    /** Enfoca la barra de la tarea (p. ej. al cerrar un diálogo abierto desde su menú). */
-    focusTask: (taskId: number) => void;
+    /**
+     * Enfoca la barra de la tarea (p. ej. al cerrar un diálogo abierto desde su menú). Devuelve
+     * false si la tarea no tiene barra (sin fechas o en un proyecto plegado).
+     */
+    focusTask: (taskId: number) => boolean;
 };
 
 type Layout = {
@@ -180,6 +183,9 @@ export function GanttChart({
     const previousScale = useRef(timeline.scale);
     const previousStartDay = useRef(timeline.startDay);
     const menuCloseFocus = useRef<'bar' | 'none' | 'default'>('default');
+    // Las barras del último render ya pintado: para enfocar desde efectos y avisos que llegan
+    // después (el cierre de un menú o de un diálogo), cuando la tarea puede haberse ido.
+    const paintedLayouts = useRef<ReadonlyMap<number, Layout>>(new Map());
 
     const [activeId, setActiveId] = useState<number | null>(null);
     const [drag, setDrag] = useState<{
@@ -403,11 +409,11 @@ export function GanttChart({
             `[data-task-id="${taskId}"][data-gantt-part="bar"]`,
         ) ?? null;
 
-    const focusTask = (taskId: number) => {
-        const layout = layouts.get(taskId);
+    const focusTask = (taskId: number): boolean => {
+        const layout = paintedLayouts.current.get(taskId);
 
         if (!layout) {
-            return;
+            return false;
         }
 
         setActiveId(taskId);
@@ -420,6 +426,8 @@ export function GanttChart({
             // Fila aún sin pintar (virtualizada): se enfoca tras el siguiente render.
             pendingFocus.current = taskId;
         }
+
+        return true;
     };
 
     useImperativeHandle(handleRef, () => ({ scrollToDate, focusTask }));
@@ -428,6 +436,7 @@ export function GanttChart({
     // izquierda que antes. Si cambia el primer día del diagrama (p. ej. al guardar una tarea que
     // era la primera, el servidor recalcula el rango), se compensa para que nada salte.
     useLayoutEffect(() => {
+        paintedLayouts.current = layouts;
         const element = scrollRef.current;
 
         if (!element) {
@@ -903,8 +912,9 @@ export function GanttChart({
     };
 
     const action = (kind: GanttTaskAction, task: GanttTask) => {
-        // Los diálogos se quedan el foco; «Quitar fechas» vuelve a la barra.
-        menuCloseFocus.current = kind === 'clear' ? 'bar' : 'none';
+        // El foco lo lleva quien hace la acción (GanttView): los diálogos se lo quedan y, al
+        // quitar las fechas, sigue a la tarea hasta la lista «Sin fechas».
+        menuCloseFocus.current = 'none';
         onAction?.(kind, task);
     };
 

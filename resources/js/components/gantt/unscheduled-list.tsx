@@ -50,6 +50,7 @@ export function UnscheduledList({
             </p>
             <ul className="grid divide-y">
                 {tasks.map((task) => {
+                    const assignable = !readOnly && task.can.update;
                     const parent =
                         task.parent_task_id !== null
                             ? parents.get(task.parent_task_id)
@@ -66,6 +67,9 @@ export function UnscheduledList({
                                     type="button"
                                     onClick={() => onOpen(task)}
                                     className="max-w-full truncate rounded-[3px] text-left text-sm text-foreground underline-offset-2 hover:underline"
+                                    data-gantt-focus={
+                                        assignable ? undefined : task.id
+                                    }
                                 >
                                     {task.title}
                                 </button>
@@ -84,12 +88,13 @@ export function UnscheduledList({
                                     done={task.status.category === 'done'}
                                 />
                             ) : null}
-                            {!readOnly && task.can.update ? (
+                            {assignable ? (
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
                                     onClick={() => onAssign(task)}
+                                    data-gantt-focus={task.id}
                                     aria-label={t(
                                         'gantt.unscheduled.assign_label',
                                         { task: task.title },

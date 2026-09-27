@@ -565,6 +565,55 @@ describe('dependencias y fechas desde el Gantt', () => {
         expect(toasts.error).not.toHaveBeenCalled();
     });
 
+    it('«Quitar fechas» lleva el foco tras la tarea, a su entrada de la lista «Sin fechas»', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        renderView();
+
+        bar(/^Maquetación/).focus();
+        await user.keyboard('{Shift>}{F10}{/Shift}');
+        await user.click(
+            await screen.findByRole('menuitem', { name: 'Quitar fechas' }),
+        );
+
+        const list = screen.getByRole('region', { name: 'Sin fechas (2)' });
+        const assign = within(list).getByRole('button', {
+            name: 'Asignar fechas a «Maquetación»',
+        });
+        await waitFor(() => expect(document.activeElement).toBe(assign));
+
+        // El cierre del menú (Radix, en un setTimeout) no se lo lleva.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+        expect(document.activeElement).toBe(assign);
+        await waitFor(() =>
+            expect(server.post.mock.calls[0]?.[1]).toEqual({
+                start_date: null,
+                due_date: null,
+                shift_successors: false,
+            }),
+        );
+    });
+
+    it('si era la última barra y el diagrama desaparece, el foco también va a «Sin fechas»', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        renderView({ tasks: [design, copy], dependencies: [] });
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{Shift>}{F10}{/Shift}');
+        await user.click(
+            await screen.findByRole('menuitem', { name: 'Quitar fechas' }),
+        );
+
+        expect(document.querySelector('[data-test="gantt-scroll"]')).toBeNull();
+        const assign = within(
+            screen.getByRole('region', { name: 'Sin fechas (2)' }),
+        ).getByRole('button', { name: 'Asignar fechas a «Diseño»' });
+        await waitFor(() => expect(document.activeElement).toBe(assign));
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+        expect(document.activeElement).toBe(assign);
+    });
+
     it('«Asignar fechas» en la lista «Sin fechas» reprograma la tarea', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [] }));
         const user = userEvent.setup();
