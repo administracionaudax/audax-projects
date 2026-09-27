@@ -74,7 +74,6 @@ test('las secciones pendientes se sirven con la página placeholder y su secció
 })->with([
     ['/carga', 'workload'],
     ['/informes', 'reports'],
-    ['/chat', 'chat'],
 ]);
 
 test('los internos reciben el temporizador activo, las notificaciones sin leer y la configuración (Fase 1)', function () {
