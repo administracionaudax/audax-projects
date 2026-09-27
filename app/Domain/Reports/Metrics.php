@@ -37,12 +37,16 @@ final class Metrics
     ) {}
 
     /**
+     * Sin capacidad ($withCapacity = false: informes de cliente y de proyecto, que no la muestran;
+     * se ahorra el cálculo de la capacidad de todas las personas del alcance), capacity_minutes es
+     * 0 y la ocupación y la productividad facturable son null. El resto es igual.
+     *
      * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
      *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
      *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
      *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
      */
-    public function summary(ReportScope $scope): array
+    public function summary(ReportScope $scope, bool $withCapacity = true): array
     {
         $totals = (clone $scope->entries())->toBase()->selectRaw(
             'COALESCE(SUM(time_entries.minutes), 0) as logged,
@@ -53,7 +57,7 @@ final class Metrics
         $logged = (int) ($totals->logged ?? 0);
         $billable = (int) ($totals->billable ?? 0);
         $overage = (int) ($totals->overage ?? 0);
-        $capacity = array_sum($this->capacityByDate($scope));
+        $capacity = $withCapacity ? array_sum($this->capacityByDate($scope)) : 0;
 
         $summary = [
             'capacity_minutes' => $capacity,
@@ -61,9 +65,9 @@ final class Metrics
             'billable_minutes' => $billable,
             'in_bank_minutes' => $logged - $overage,
             'overage_minutes' => $overage,
-            'occupancy' => self::ratio($logged, $capacity),
+            'occupancy' => $withCapacity ? self::ratio($logged, $capacity) : null,
             'billability' => self::ratio($billable, $logged),
-            'billable_productivity' => self::ratio($billable, $capacity),
+            'billable_productivity' => $withCapacity ? self::ratio($billable, $capacity) : null,
             'estimation' => $this->estimation($scope),
             'income' => null,
             'cost' => null,
