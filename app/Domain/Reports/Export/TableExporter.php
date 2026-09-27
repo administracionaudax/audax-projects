@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   descripciones, tareas y nombres los escribe cualquiera. En XLSX van como celdas de texto
  *   (Row::fromValues de OpenSpout convertiría en fórmula cualquier texto que empiece por «=») y en
  *   CSV llevan un apóstrofo delante si empiezan por = + - @, tabulador o retorno de carro.
+ * - Límite de filas (D-045: sin cola hasta 20.000): maxRows(). write() nunca pasa de ahí; quien
+ *   pueda superarlo lo comprueba antes (la exportación para facturar responde 422, R2).
  * Los controladores deciden qué filas y columnas exportar respetando los permisos (D-044) y
  * `view-financials`: este servicio solo escribe.
  */
@@ -37,6 +39,8 @@ final class TableExporter
 
     /** Primeros caracteres con los que una hoja de cálculo interpreta un texto de CSV como fórmula. */
     private const string FORMULA_TRIGGERS = "=+-@\t\r";
+
+    private int $maxRows = self::MAX_ROWS;
 
     public static function format(?string $requested): string
     {
@@ -66,6 +70,25 @@ final class TableExporter
     public static function neutralize(string $text): string
     {
         return $text !== '' && str_contains(self::FORMULA_TRIGGERS, $text[0]) && ! is_numeric($text) ? "'".$text : $text;
+    }
+
+    /**
+     * Copia con otro límite de filas (tests del límite sin generar 20.000 entradas).
+     */
+    public function withMaxRows(int $rows): self
+    {
+        $copy = clone $this;
+        $copy->maxRows = max(1, $rows);
+
+        return $copy;
+    }
+
+    /**
+     * Filas de datos que admite una exportación, incluida la de totales si la hay (sin la cabecera).
+     */
+    public function maxRows(): int
+    {
+        return $this->maxRows;
     }
 
     /**
@@ -101,7 +124,7 @@ final class TableExporter
 
         $count = 0;
         foreach ($rows as $row) {
-            if (++$count > self::MAX_ROWS) {
+            if (++$count > $this->maxRows) {
                 break;
             }
             $writer->addRow(self::row(array_values($row), $csv));
@@ -109,7 +132,7 @@ final class TableExporter
 
         $writer->close();
 
-        return min($count, self::MAX_ROWS);
+        return min($count, $this->maxRows);
     }
 
     /**

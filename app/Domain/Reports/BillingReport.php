@@ -17,6 +17,9 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  *   facturables, no facturables y pendientes de aprobar (borrador o enviadas) y, con
  *   view-financials, la tarifa de referencia y el ingreso estimado (RevenueCalculator, D-043),
  * - el detalle de cada entrada, valorada una a una con EntryValuation (mismo criterio).
+ * Céntimos: el ingreso total se redondea una sola vez (la suma exacta de los grupos) y se reparte
+ * entre las filas del resumen por resto mayor y entre las entradas del detalle en orden (Cents): la
+ * página y la exportación dan el mismo total y sus filas siempre suman ese total.
  * Todo sale de ReportScope::entries(): respeta quién ve qué horas (D-044).
  */
 final class BillingReport
@@ -38,7 +41,7 @@ final class BillingReport
      *     bank: array{id: int, name: string, status: string}|null, logged_minutes: int, in_bank_minutes: int, overage_minutes: int,
      *     billable_minutes: int, non_billable_minutes: int, pending_minutes: int, pricing: string|null, rate: string|null,
      *     price_amount: string|null, income: string|null}>,
-     *     totals: array{logged_minutes: int, in_bank_minutes: int, overage_minutes: int, billable_minutes: int,
+     *     totals: array{entries: int, logged_minutes: int, in_bank_minutes: int, overage_minutes: int, billable_minutes: int,
      *     non_billable_minutes: int, pending_minutes: int, income: string|null}}
      */
     public function summary(ReportScope $scope): array
@@ -46,6 +49,7 @@ final class BillingReport
         $pending = [TimeEntryStatus::Draft->value, TimeEntryStatus::Submitted->value];
         $groups = (clone $scope->entries())->toBase()
             ->selectRaw('time_entries.project_id as project_id, time_entries.hour_bank_id as hour_bank_id,
+                COUNT(*) as entries,
                 SUM(time_entries.minutes) as logged,
                 SUM(time_entries.overage_minutes) as overage,
                 SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable,
@@ -54,7 +58,7 @@ final class BillingReport
             ->get();
 
         $financials = $scope->canSeeFinancials();
-        $totals = ['logged_minutes' => 0, 'in_bank_minutes' => 0, 'overage_minutes' => 0, 'billable_minutes' => 0,
+        $totals = ['entries' => 0, 'logged_minutes' => 0, 'in_bank_minutes' => 0, 'overage_minutes' => 0, 'billable_minutes' => 0,
             'non_billable_minutes' => 0, 'pending_minutes' => 0, 'income' => $financials ? '0.00' : null];
 
         if ($groups->isEmpty()) {
@@ -74,15 +78,15 @@ final class BillingReport
                 ->get(['id', 'default_hourly_rate'])->keyBy('id')
             : collect();
 
-        /** @var array<int, string> $bankIncome ingreso por bolsa */
+        /** @var array<int, string> $bankIncome ingreso exacto por bolsa */
         $bankIncome = [];
-        /** @var array<int, string> $projectIncome ingreso de las horas sin bolsa, por proyecto */
+        /** @var array<int, string> $projectIncome ingreso exacto de las horas sin bolsa, por proyecto */
         $projectIncome = [];
         if ($financials) {
-            foreach ($this->revenue->compute((clone $scope->entries())->whereNotNull('time_entries.hour_bank_id'), Dimension::HourBank) as $key => $money) {
+            foreach ($this->revenue->computeExact((clone $scope->entries())->whereNotNull('time_entries.hour_bank_id'), Dimension::HourBank) as $key => $money) {
                 $bankIncome[(int) $key] = $money['income'];
             }
-            foreach ($this->revenue->compute((clone $scope->entries())->whereNull('time_entries.hour_bank_id'), Dimension::Project) as $key => $money) {
+            foreach ($this->revenue->computeExact((clone $scope->entries())->whereNull('time_entries.hour_bank_id'), Dimension::Project) as $key => $money) {
                 $projectIncome[(int) $key] = $money['income'];
             }
         }
@@ -128,10 +132,10 @@ final class BillingReport
                     $bank !== null => $bank->price_amount,
                     default => null,
                 };
-                $row['income'] = $bank !== null ? ($bankIncome[$bank->id] ?? '0.00') : ($projectIncome[$project->id] ?? '0.00');
-                $totals['income'] = Money::round(Money::add((string) $totals['income'], $row['income']));
+                $row['income'] = $bank !== null ? ($bankIncome[$bank->id] ?? '0') : ($projectIncome[$project->id] ?? '0');
             }
 
+            $totals['entries'] += (int) $group->entries;
             foreach (['logged_minutes', 'in_bank_minutes', 'overage_minutes', 'billable_minutes', 'non_billable_minutes', 'pending_minutes'] as $key) {
                 $totals[$key] += $row[$key];
             }
@@ -141,12 +145,21 @@ final class BillingReport
 
         usort($rows, fn (array $a, array $b): int => $a['_sort'] <=> $b['_sort']);
 
+        // Un solo redondeo del total y sus céntimos repartidos entre las filas (resto mayor).
+        $shares = [];
+        if ($financials) {
+            $exact = array_map(fn (array $row): string => (string) $row['income'], $rows);
+            $totals['income'] = Money::round(Money::add('0', ...$exact));
+            $shares = Cents::largestRemainder($exact);
+        }
+
         return [
-            'rows' => array_map(function (array $row): array {
+            'rows' => array_map(function (array $row, int $index) use ($shares): array {
                 unset($row['_sort']);
+                $row['income'] = $shares[$index] ?? $row['income'];
 
                 return $row;
-            }, $rows),
+            }, $rows, array_keys($rows)),
             'totals' => $totals,
         ];
     }
@@ -154,13 +167,33 @@ final class BillingReport
     /**
      * Entradas del alcance para el detalle (fecha e id ascendentes), con los nombres de la persona,
      * el proyecto, la bolsa y la tarea en la misma consulta (filas sin hidratar, por lotes de 1.000:
-     * miles de entradas en poco tiempo y memoria) y su valoración con view-financials.
+     * miles de entradas en poco tiempo y memoria), su valoración con view-financials y su importe en
+     * céntimos (amount): los importes suman $total (el ingreso del resumen) si se indica; si no, el
+     * redondeo de su suma exacta.
      *
+     * @return Generator<int, array{entry: array{id: int, date: string, person: string, project_code: string, project_name: string,
+     *     bank: string|null, task: string, description: string, minutes: int, overage_minutes: int, is_billable: bool,
+     *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: string, basis: string}|null, amount: numeric-string|null}>
+     */
+    public function entries(ReportScope $scope, ?string $total = null): Generator
+    {
+        $lines = Cents::running(
+            $this->valuedEntries($scope),
+            fn (array $line): ?string => $line['valuation']['income'] ?? null,
+            $total,
+        );
+
+        foreach ($lines as [$line, $amount]) {
+            yield [...$line, 'amount' => $amount];
+        }
+    }
+
+    /**
      * @return Generator<int, array{entry: array{id: int, date: string, person: string, project_code: string, project_name: string,
      *     bank: string|null, task: string, description: string, minutes: int, overage_minutes: int, is_billable: bool,
      *     status: TimeEntryStatus}, valuation: array{rate: string|null, income: numeric-string, basis: string}|null}>
      */
-    public function entries(ReportScope $scope): Generator
+    private function valuedEntries(ReportScope $scope): Generator
     {
         $valuation = $scope->canSeeFinancials() ? EntryValuation::for($scope->entries()) : null;
 

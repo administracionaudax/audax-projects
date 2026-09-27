@@ -65,6 +65,7 @@ return [
         'billing' => [
             'export_name' => 'Horas para facturar :client',
             'client_required' => 'Elige un cliente para exportar sus horas.',
+            'too_many_rows' => 'Hay :entries entradas y la exportación admite hasta :max. Elige un periodo más corto o filtra por proyecto.',
             'columns' => [
                 'date' => 'Fecha',
                 'person' => 'Persona',

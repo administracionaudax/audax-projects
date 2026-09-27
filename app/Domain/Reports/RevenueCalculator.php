@@ -32,6 +32,25 @@ final class RevenueCalculator
      */
     public function compute(Builder $entries, ?Dimension $groupBy = null): array
     {
+        $result = $this->computeExact($entries, $groupBy);
+
+        foreach ($result as $key => $values) {
+            $result[$key]['income'] = Money::round($values['income']);
+            $result[$key]['cost'] = Money::round($values['cost']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Lo mismo que compute() sin redondear a céntimos (6 decimales): para sumar grupos y redondear
+     * una sola vez su total, o repartir sus céntimos (exportación para facturar, R2).
+     *
+     * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
+     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}> Clave del grupo ('all' sin agrupar).
+     */
+    public function computeExact(Builder $entries, ?Dimension $groupBy = null): array
+    {
         $query = clone $entries;
         $groupBy?->join($query);
         $keyExpression = $groupBy?->expression();
@@ -136,11 +155,6 @@ final class RevenueCalculator
                     Money::div(Money::mul($project->fixed_price_amount, (string) $minutes), (string) $base),
                 );
             }
-        }
-
-        foreach ($result as $key => $values) {
-            $result[$key]['income'] = Money::round($values['income']);
-            $result[$key]['cost'] = Money::round($values['cost']);
         }
 
         return $result;

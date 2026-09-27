@@ -62,7 +62,9 @@ beforeEach(function () {
         'reports.project.export' => 40,
         'reports.billing' => 17,
         'reports.billing.empty' => 6,
-        'reports.billing.export' => 11,
+        // Cuenta las entradas (límite de filas) y, en frío, calcula el resumen para que el total
+        // del fichero sea el de la página (con la página ya vista, el resumen sale de la caché).
+        'reports.billing.export' => 22,
         'reports.hour-bank-pdf' => 14,
     ];
 

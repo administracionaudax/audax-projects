@@ -1,6 +1,12 @@
 <?php
 
+use App\Domain\Reports\Export\TableExporter;
 use App\Enums\Permission;
+use App\Models\Client;
+use App\Models\HourBank;
+use App\Models\Project;
+use App\Models\Task;
+use App\Models\TimeEntry;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\CSV\Options as CsvOptions;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
@@ -89,8 +95,10 @@ test('resumen por proyecto y bolsa con tarifas e importes (D-043), calculado a m
                 'billable_minutes' => 790, 'non_billable_minutes' => 0, 'pending_minutes' => 90,
                 'pricing' => 'bank_price', 'rate' => '70.00', 'price_amount' => '1000.00', 'income' => '1221.67',
             ])
+            ->where('export_limit', 19999)
+            ->where('can.viewReport', true)
             ->where('summary.totals', [
-                'logged_minutes' => 940, 'in_bank_minutes' => 600, 'overage_minutes' => 190, 'billable_minutes' => 910,
+                'entries' => 5, 'logged_minutes' => 940, 'in_bank_minutes' => 600, 'overage_minutes' => 190, 'billable_minutes' => 910,
                 'non_billable_minutes' => 30, 'pending_minutes' => 120, 'income' => '1337.67',
             ]));
 });
@@ -202,4 +210,90 @@ test('los textos que empiezan por = + - @ salen como texto, nunca como fórmula 
         ->and($csv[2][5])->toBe("'@SUM(A1)")
         ->and($csv[3][5])->toBe("'-2+3")
         ->and($csv[1][6])->toBe('5,00');
+});
+
+test('el total del importe es el mismo en la página y en la exportación, y las líneas suman ese total', function () {
+    $s = $this->s;
+
+    // Dos bolsas de 1000 € por 3600 min (60 h) con 7 min cada una: 1000 × 7/3600 = 1,944444 €.
+    // Redondeando cada grupo saldría 1,94 + 1,94 = 3,88; la suma exacta es 3,888888 → 3,89. Los
+    // céntimos se reparten por resto mayor (a igualdad, la primera fila): 1,95 + 1,94.
+    $client = Client::factory()->create(['name' => 'Redondeos']);
+    $project = Project::factory()->hourBank()->create(['client_id' => $client->id, 'code' => 'RED-WEB']);
+    foreach (['Bolsa A', 'Bolsa B'] as $name) {
+        $bank = HourBank::factory()->create(['project_id' => $project->id, 'name' => $name, 'total_minutes' => 3600, 'price_amount' => '1000.00', 'start_date' => '2026-09-01']);
+        TimeEntry::factory()->forTask(Task::factory()->inBank($bank)->create())->on('2026-09-22')->minutes(7)->create(['user_id' => $s->ana->id]);
+    }
+    $url = '/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id]]);
+
+    $this->actingAs($s->admin)->get($url)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('summary.rows.0.income', '1.95')
+            ->where('summary.rows.1.income', '1.94')
+            ->where('summary.totals.income', '3.89'));
+
+    $rows = ($this->read)($this->actingAs($s->admin)->get($url.'&formato=xlsx')->streamedContent(), 'xlsx');
+    expect(array_column(array_slice($rows, 1, -1), 12))->toBe([1.94, 1.95])
+        ->and(end($rows)[12])->toBe(3.89);
+});
+
+test('si el total del resumen difiere por el truncado de cada entrada, la última línea con importe recoge el céntimo', function () {
+    $s = $this->s;
+
+    // Bolsa de 30 min por 0,05 €: tres entradas de 1 min valen 0,05/30 = 0,001666… cada una. Por
+    // grupos: 0,05 × 3/30 = 0,005 → 0,01 €. Entrada a entrada (truncadas a 6 decimales) sumarían
+    // 0,004998 → 0,00 €: la última línea con importe lleva el céntimo y el fichero cuadra con la página.
+    $client = Client::factory()->create(['name' => 'Céntimos']);
+    $project = Project::factory()->hourBank()->create(['client_id' => $client->id, 'code' => 'CEN-WEB']);
+    $bank = HourBank::factory()->create(['project_id' => $project->id, 'total_minutes' => 30, 'price_amount' => '0.05', 'start_date' => '2026-09-01']);
+    $task = Task::factory()->inBank($bank)->create();
+    foreach (['2026-09-21', '2026-09-22', '2026-09-23'] as $date) {
+        TimeEntry::factory()->forTask($task)->on($date)->minutes(1)->create(['user_id' => $s->ana->id]);
+    }
+    // Una entrada no facturable al final: nunca recibe importe.
+    TimeEntry::factory()->forTask($task)->on('2026-09-24')->minutes(1)->create(['user_id' => $s->ana->id, 'is_billable' => false]);
+    $url = '/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id]]);
+
+    $this->actingAs($s->admin)->get($url)->assertInertia(fn (Assert $page) => $page->where('summary.totals.income', '0.01'));
+
+    $rows = ($this->read)($this->actingAs($s->admin)->get($url.'&formato=csv')->streamedContent(), 'csv');
+    expect(array_column(array_slice($rows, 1, -1), 12))->toBe(['0,00', '0,00', '0,01', '0,00'])
+        ->and(end($rows)[12])->toBe('0,01');
+});
+
+test('si las entradas no caben en la exportación responde 422 en vez de recortarla; la página lo avisa', function () {
+    $s = $this->s;
+    // 5 entradas + la fila de totales = 6 filas.
+    app()->instance(TableExporter::class, (new TableExporter)->withMaxRows(5));
+
+    $this->actingAs($s->admin)->get(($this->url)())
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('export_limit', 4)
+            ->where('summary.totals.entries', 5));
+
+    $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))
+        ->assertStatus(422)
+        ->assertSee('Hay 5 entradas y la exportación admite hasta 4.');
+
+    // Con el filtro de proyecto caben (NAN-CAMP: 2 entradas + totales).
+    $rows = ($this->read)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'csv', 'proyecto' => [$s->campaign->id]]))->assertOk()->streamedContent(), 'csv');
+    expect($rows)->toHaveCount(4)
+        ->and(end($rows)[0])->toBe('Total');
+
+    app()->instance(TableExporter::class, (new TableExporter)->withMaxRows(6));
+    $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk();
+});
+
+test('el enlace al informe del cliente solo va a quien puede verlo', function () {
+    $s = $this->s;
+    $s->luis->givePermissionTo(Permission::ViewFinancials->value);
+
+    // Luis (empleado con view-financials) exporta para facturar, pero no ve el informe del cliente.
+    $this->actingAs($s->luis->fresh())->get(($this->url)())
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false));
+    $this->actingAs($s->luis->fresh())->get('/informes/clientes/'.$s->client->id)->assertForbidden();
+
+    $this->actingAs($s->admin)->get('/informes/facturacion')
+        ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false)->where('client', null));
 });
