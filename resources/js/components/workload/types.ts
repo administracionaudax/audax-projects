@@ -177,14 +177,31 @@ export type WorkloadUnassignedGroup = {
     tasks: WorkloadTask[];
 };
 
+/**
+ * Tarea de un proyecto que gestiona quien mira y que no le llega por su equipo (D-052): de la
+ * persona responsable solo se ve el nombre, nunca su carga.
+ */
+export type WorkloadManagedTask = WorkloadTask & {
+    assignee: { id: number; name: string } | null;
+    missing: ('estimate' | 'due_date')[];
+};
+
 export type WorkloadTrays = {
-    /** Tareas que se pintan como mucho en cada bandeja. */
+    /** Tareas que se pintan como mucho en cada bandeja (vencidas y más urgentes primero). */
     limit: number;
     unplanned: { total: number; tasks: WorkloadUnplannedTask[] };
     unassigned: {
         visible: boolean;
         total: number;
         groups: WorkloadUnassignedGroup[];
+    };
+    /** «De tus proyectos»: solo para quien gestiona proyectos (y no es admin). */
+    managed: {
+        visible: boolean;
+        total: number;
+        /** Cuántas del total están sin asignar. */
+        unassigned: number;
+        tasks: WorkloadManagedTask[];
     };
     extra_people: WorkloadExtraPerson[];
 };

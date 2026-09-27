@@ -329,6 +329,7 @@ export function pageProps(
                     },
                 ],
             },
+            managed: { visible: false, total: 0, unassigned: 0, tasks: [] },
             extra_people: [],
         },
         cell: null,

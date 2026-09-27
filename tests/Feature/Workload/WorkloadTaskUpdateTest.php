@@ -227,6 +227,41 @@ describe('bandeja «Sin asignar»', function () {
     });
 });
 
+describe('bandeja «De tus proyectos»', function () {
+    it('un gestor reparte desde ahí las tareas de su proyecto: la carga de los miembros no se ve, la suya sí', function () {
+        $managedTitles = function (): array {
+            $titles = [];
+
+            $this->actingAs($this->people['sergio'])->get('/carga')->assertInertia(function (Assert $page) use (&$titles) {
+                $titles = array_column($page->toArray()['props']['trays']['managed']['tasks'], 'assignee', 'title');
+            });
+
+            return $titles;
+        };
+
+        // Asigna una sin asignar de Diseño a Lucía (miembro de WEB): sigue en la bandeja, ya con su nombre.
+        ($this->patch)('sergio', 'unassigned_design', ['assignee_user_id' => $this->people['lucia']->id])->assertSessionHasNoErrors();
+        expect($managedTitles()['Banner de campaña'])->toBe(['id' => $this->people['lucia']->id, 'name' => 'Lucía Martín']);
+
+        // Se queda «Iconos» (de Lucía): sale de la bandeja y pasa a su carga (Lucía tenía vacaciones el
+        // 13 y el 14; él trabaja del 13 al 16: 2 h cada día).
+        expect(($this->cellPlanned)('sergio', 'sergio', '2026-10-13'))->toBe(0);
+        ($this->patch)('sergio', 'lucia_web', ['assignee_user_id' => $this->people['sergio']->id])->assertSessionHasNoErrors();
+        expect($managedTitles())->not->toHaveKey('Iconos')
+            ->and(($this->cellPlanned)('sergio', 'sergio', '2026-10-13'))->toBe(120)
+            ->and(($this->cellPlanned)('sergio', 'sergio', '2026-10-16'))->toBe(120);
+
+        // Replanifica una de Elena sin tocar el responsable.
+        ($this->patch)('sergio', 'elena_unplanned', ['estimated_minutes' => 120])->assertSessionHasNoErrors();
+        expect($this->tasks['elena_unplanned']->fresh()->estimated_minutes)->toBe(120);
+    });
+
+    it('un empleado sin proyectos que gestionar no reparte las tareas de esa bandeja', function () {
+        ($this->patch)('lucia', 'unassigned_none', ['assignee_user_id' => $this->people['lucia']->id])->assertForbidden();
+        ($this->patch)('lucia', 'elena_web', ['assignee_user_id' => $this->people['lucia']->id])->assertForbidden();
+    });
+});
+
 describe('bandeja «Sin planificar»', function () {
     it('poner la estimación o la entrega saca la tarea de la bandeja y la pone en la matriz', function () {
         ($this->patch)('raul', 'elena_unplanned', ['estimated_minutes' => 480, 'start_date' => '2026-10-15'])->assertSessionHasNoErrors();

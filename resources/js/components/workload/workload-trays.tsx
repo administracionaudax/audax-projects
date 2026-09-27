@@ -4,6 +4,7 @@ import {
     ChevronDown,
     CircleCheck,
     ExternalLink,
+    FolderKanban,
     Hourglass,
     Inbox,
     ListTodo,
@@ -14,6 +15,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import type {
+    WorkloadManagedTask,
     WorkloadPerson,
     WorkloadTask,
     WorkloadTrays as WorkloadTraysData,
@@ -38,10 +40,12 @@ import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 
 /**
- * Bandejas de la vista Carga (SPEC §9, D-051): «Sin planificar» (tareas de las personas visibles
- * sin estimación o sin entrega: no suman carga hasta completarlas) y, para quien reparte trabajo,
- * «Sin asignar» por departamento. Las vencidas van primero y señaladas. Acciones rápidas con las
- * reglas de Tareas (PATCH /carga/tareas/{id}).
+ * Bandejas de la vista Carga (SPEC §9, D-051, D-052): «Sin planificar» (tareas de las personas
+ * visibles sin estimación o sin entrega: no suman carga hasta completarlas); para quien reparte
+ * trabajo, «Sin asignar» por departamento, y para quien gestiona proyectos, «De tus proyectos» (las
+ * tareas de sus proyectos que no le llegan por su equipo, con el nombre de quien las tiene pero no
+ * su carga). Las vencidas van primero y señaladas. Acciones rápidas con las reglas de Tareas
+ * (PATCH /carga/tareas/{id}).
  */
 export function WorkloadTrays({
     trays,
@@ -56,7 +60,8 @@ export function WorkloadTrays({
         <div
             className={cn(
                 'grid min-w-0 gap-6',
-                trays.unassigned.visible && 'xl:grid-cols-2',
+                (trays.unassigned.visible || trays.managed.visible) &&
+                    'xl:grid-cols-2',
             )}
         >
             <TraySection
@@ -186,6 +191,54 @@ export function WorkloadTrays({
                     )}
                 </TraySection>
             ) : null}
+
+            {trays.managed.visible ? (
+                <TraySection
+                    id="workload-managed"
+                    icon={FolderKanban}
+                    title={t('workload_trays.managed_title')}
+                    count={trays.managed.total}
+                    description={t('workload_trays.managed_description')}
+                >
+                    {trays.managed.total === 0 ? (
+                        <EmptyState
+                            icon={CircleCheck}
+                            title={t('workload_trays.managed_empty')}
+                            description={t(
+                                'workload_trays.managed_empty_description',
+                            )}
+                        />
+                    ) : (
+                        <>
+                            {trays.managed.unassigned > 0 ? (
+                                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Inbox
+                                        aria-hidden="true"
+                                        className="size-3.5 shrink-0"
+                                    />
+                                    {t('workload_trays.managed_summary', {
+                                        count: trays.managed.unassigned,
+                                    })}
+                                </p>
+                            ) : null}
+                            <ul className="grid gap-2">
+                                {trays.managed.tasks.map((task) => (
+                                    <ManagedItem
+                                        key={task.id}
+                                        task={task}
+                                        people={people}
+                                        trays={trays}
+                                    />
+                                ))}
+                            </ul>
+                            <Truncated
+                                shown={trays.managed.tasks.length}
+                                total={trays.managed.total}
+                            />
+                        </>
+                    )}
+                </TraySection>
+            ) : null}
         </div>
     );
 }
@@ -246,6 +299,84 @@ function Truncated({ shown, total }: { shown: number; total: number }) {
     );
 }
 
+/** Lo que le falta para sumar carga (sin estimación, sin entrega), con icono y texto. */
+function MissingBadges({ missing }: { missing: ('estimate' | 'due_date')[] }) {
+    return (
+        <>
+            {missing.map((item) => (
+                <span
+                    key={item}
+                    className="inline-flex items-center gap-1 rounded-[3px] bg-warning-soft px-1.5 py-0.5"
+                >
+                    {item === 'estimate' ? (
+                        <Hourglass
+                            aria-hidden="true"
+                            className="size-3.5 text-warning"
+                        />
+                    ) : (
+                        <CalendarX
+                            aria-hidden="true"
+                            className="size-3.5 text-warning"
+                        />
+                    )}
+                    {t(`workload_trays.missing_${item}`)}
+                </span>
+            ))}
+        </>
+    );
+}
+
+/**
+ * Tarea de un proyecto que gestiona: quién la tiene (solo el nombre) o «Sin asignar», y repartirla
+ * entre los miembros del proyecto, además de sus fechas y su estimación.
+ */
+function ManagedItem({
+    task,
+    people,
+    trays,
+}: {
+    task: WorkloadManagedTask;
+    people: WorkloadPerson[];
+    trays: WorkloadTraysData;
+}) {
+    return (
+        <TrayItem
+            task={task}
+            people={people}
+            trays={trays}
+            fields={['assignee', 'dates', 'estimate']}
+            actionLabel={t('workload_trays.reassign')}
+            hideMissing
+            trayId="workload-managed"
+            header={
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {task.assignee ? (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <UserRound
+                                aria-hidden="true"
+                                className="size-3.5"
+                            />
+                            <span className="sr-only">
+                                {`${t('workload_trays.assignee')}: `}
+                            </span>
+                            {task.assignee.name}
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 rounded-[3px] bg-muted px-1.5 py-0.5">
+                            <Inbox
+                                aria-hidden="true"
+                                className="size-3.5 text-muted-foreground"
+                            />
+                            {t('workload_trays.no_assignee')}
+                        </span>
+                    )}
+                    <MissingBadges missing={task.missing} />
+                </div>
+            }
+        />
+    );
+}
+
 function UnplannedItem({
     task,
     people,
@@ -268,25 +399,7 @@ function UnplannedItem({
             trayId="workload-unplanned"
             header={
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    {task.missing.map((missing) => (
-                        <span
-                            key={missing}
-                            className="inline-flex items-center gap-1 rounded-[3px] bg-warning-soft px-1.5 py-0.5"
-                        >
-                            {missing === 'estimate' ? (
-                                <Hourglass
-                                    aria-hidden="true"
-                                    className="size-3.5 text-warning"
-                                />
-                            ) : (
-                                <CalendarX
-                                    aria-hidden="true"
-                                    className="size-3.5 text-warning"
-                                />
-                            )}
-                            {t(`workload_trays.missing_${missing}`)}
-                        </span>
-                    ))}
+                    <MissingBadges missing={task.missing} />
                     {showAssignee ? (
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                             <UserRound

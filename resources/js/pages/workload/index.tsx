@@ -51,7 +51,7 @@ function failureHandlers(onFailure?: () => void): Partial<VisitOptions> {
  * - Horizonte y filtros en la URL; el panel de una celda, con ?celda=persona:fecha (recarga
  *   parcial de la prop `cell`, sin cambiar de página). Al reasignar o replanificar, la matriz se
  *   recalcula.
- * - Bandejas «Sin planificar» y «Sin asignar».
+ * - Bandejas «Sin planificar», «Sin asignar» y «De tus proyectos» (gestores).
  * Qué ve cada uno lo decide el servidor (admin: todo; responsable: su departamento; el resto: su fila).
  */
 export default function WorkloadIndex({

@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Collection;
  * - responsable (departamentos del pivote department_managers): las de sus departamentos y él
  *   mismo, y las «Sin asignar» de sus departamentos; reasigna la carga de su equipo,
  * - el resto: solo su fila (sin filtros de persona ni bandeja «Sin asignar»),
- * - un gestor reasigna además las tareas de SUS proyectos (entre los miembros del proyecto), sin
- *   ver la carga de personas de otros departamentos.
+ * - un gestor ve y reasigna además las tareas de SUS proyectos (entre los miembros del proyecto)
+ *   en la bandeja «De tus proyectos», sin ver la carga de personas de otros departamentos.
  * Es el mismo alcance por persona que las horas (User::canSeeHoursOf). Las reglas de edición de
  * cada tarea siguen siendo las de Tareas (TaskPolicy::update y TaskWriter): esto solo acota.
  */
@@ -123,12 +123,30 @@ final class WorkloadScope
      */
     public function reaches(Task $task): bool
     {
+        return $this->reachesAsTeam($task) || $this->viewer->isManagerOf($task->project_id);
+    }
+
+    /**
+     * ¿Le llega por su equipo (matriz, «Sin planificar» o «Sin asignar»)? Asignada a alguien de su
+     * alcance o sin asignar en uno de los departamentos cuya bandeja ve. Lo que no le llega así y
+     * es de un proyecto que gestiona va a la bandeja «De tus proyectos».
+     */
+    public function reachesAsTeam(Task $task): bool
+    {
         if ($task->assignee_user_id !== null) {
-            return $this->includes($task->assignee_user_id) || $this->viewer->isManagerOf($task->project_id);
+            return $this->includes($task->assignee_user_id);
         }
 
-        return ($this->seesUnassigned() && $this->seesUnassignedOf(self::departmentOf($task)))
-            || $this->viewer->isManagerOf($task->project_id);
+        return $this->seesUnassigned() && $this->seesUnassignedOf(self::departmentOf($task));
+    }
+
+    /**
+     * ¿Tiene la bandeja «De tus proyectos» (D-052: los gestores ven y reparten las tareas de sus
+     * proyectos)? Quien gestiona algún proyecto; el admin no la necesita (ya lo ve todo).
+     */
+    public function seesManagedProjects(): bool
+    {
+        return ! $this->isAdmin() && $this->viewer->managedProjectIds() !== [];
     }
 
     /**

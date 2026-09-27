@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Workload\WorkloadBoard;
+use App\Enums\ProjectStatus;
 use App\Models\Absence;
 use App\Models\Project;
 use App\Models\Task;
@@ -345,6 +346,65 @@ describe('bandejas', function () {
         $trays = ($this->page)('ana', "departamento[]={$this->departments['design']->id}")['trays'];
 
         expect(array_column(array_column($trays['unassigned']['groups'], 'department'), 'name'))->toBe(['Diseño']);
+    });
+});
+
+describe('bandeja «De tus proyectos» (D-052: los gestores ven y reparten las tareas de sus proyectos)', function () {
+    it('un gestor que no es responsable ve las de su proyecto asignadas a otros y las sin asignar, con el nombre pero sin su carga', function () {
+        $props = ($this->page)('sergio');
+        $managed = $props['trays']['managed'];
+        $member = fn (string $key): int => $this->people[$key]->id;
+
+        expect($managed['visible'])->toBeTrue()
+            ->and($managed['total'])->toBe(6)
+            ->and($managed['unassigned'])->toBe(2)
+            // Vencidas primero; después por entrega y por título.
+            ->and(collect($managed['tasks'])->map(fn (array $task) => [$task['title'], $task['assignee']['name'] ?? null])->all())->toBe([
+                ['Revisión atrasada', 'Elena Empleada'],
+                ['Textos legales', 'Elena Empleada'],
+                ['Iconos', 'Lucía Martín'],
+                ['Maquetar la home', 'Elena Empleada'],
+                ['Banner de campaña', null],
+                ['Reunión de arranque', null],
+            ])
+            ->and($managed['tasks'][0]['overdue'])->toBeTrue()
+            ->and($managed['tasks'][1]['missing'])->toBe(['estimate'])
+            // Las reparte entre los miembros del proyecto (y él mismo).
+            ->and(collect($managed['tasks'])->every(fn (array $task) => $task['can_edit']))->toBeTrue()
+            ->and($managed['tasks'][2]['assignee_ids'])->toEqualCanonicalizing([$member('sergio'), $member('elena'), $member('lucia'), $member('pablo')])
+            // De los miembros, solo el nombre: su carga no llega (la matriz y `people` siguen siendo solo él).
+            ->and($this->workloadRowNames($props['matrix']))->toBe(['Sergio Gómez'])
+            ->and(array_column($props['people'], 'name'))->toBe(['Sergio Gómez'])
+            ->and(array_column($props['trays']['extra_people'], 'name'))->toBe(['Elena Empleada', 'Lucía Martín', 'Pablo Ruiz'])
+            ->and(array_keys($props['trays']['extra_people'][0]))->toBe(['id', 'name', 'department'])
+            // Ni «Sin asignar» por departamento ni tareas de proyectos que no gestiona.
+            ->and($props['trays']['unassigned']['visible'])->toBeFalse()
+            ->and(array_column($managed['tasks'], 'title'))->not->toContain('API de citas', 'Corregir login');
+    });
+
+    it('un responsable que gestiona un proyecto ve ahí solo lo que no le llega por su equipo', function () {
+        $props = ($this->page)('marta');
+
+        // APP: «Pantalla de reservas» es de Elena (Diseño). «API de citas» y «Notificaciones push» son
+        // de Pablo (su equipo) y «Corregir login» ya está en su «Sin asignar» (Desarrollo).
+        expect($props['trays']['managed'])->toMatchArray(['visible' => true, 'total' => 1, 'unassigned' => 0])
+            ->and($props['trays']['managed']['tasks'][0])->toMatchArray(['title' => 'Pantalla de reservas', 'assignee' => ['id' => $this->people['elena']->id, 'name' => 'Elena Empleada'], 'can_edit' => true])
+            ->and(array_column($props['trays']['extra_people'], 'name'))->toBe(['Elena Empleada']);
+    });
+
+    it('quien no gestiona proyectos no la tiene, y el admin tampoco (ya lo ve todo)', function (string $who) {
+        expect(($this->page)($who)['trays']['managed'])->toBe(['visible' => false, 'total' => 0, 'unassigned' => 0, 'tasks' => []]);
+    })->with(['ana', 'raul', 'elena', 'lucia']);
+
+    it('los filtros de cliente y proyecto también la acotan', function () {
+        expect(($this->page)('sergio', "proyecto[]={$this->projects['app']->id}")['trays']['managed']['total'])->toBe(0)
+            ->and(($this->page)('sergio', "cliente[]={$this->projects['web']->client_id}")['trays']['managed']['total'])->toBe(6);
+    });
+
+    it('sin las tareas de los proyectos archivados', function () {
+        $this->projects['web']->forceFill(['status' => ProjectStatus::Archived])->save();
+
+        expect(($this->page)('sergio')['trays']['managed'])->toMatchArray(['visible' => true, 'total' => 0, 'tasks' => []]);
     });
 });
 

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WorkloadTrays as WorkloadTraysData } from '@/components/workload/types';
 import { WorkloadTrays } from '@/components/workload/workload-trays';
 import WorkloadIndex from '@/pages/workload';
 import {
@@ -13,6 +14,7 @@ import {
     byTest,
     pageProps,
     panel,
+    task,
 } from './workload-fixtures';
 
 // La matriz y los paneles completos tardan en jsdom: margen para las máquinas cargadas (CI).
@@ -449,4 +451,154 @@ describe('bandejas', () => {
         expect(url).toBe('/carga/tareas/60');
         expect(data).toEqual({ assignee_user_id: 4 });
     }, 15_000);
+});
+
+describe('bandeja «De tus proyectos» (gestores, D-052)', () => {
+    const SERGIO = {
+        id: 8,
+        name: 'Sergio Gómez',
+        department_id: 2,
+        department: 'Desarrollo',
+        planned: 0,
+        capacity: 1920,
+        is_me: true,
+    };
+
+    function managedTrays(): WorkloadTraysData {
+        const base = pageProps().trays;
+
+        return {
+            ...base,
+            unassigned: { visible: false, total: 0, groups: [] },
+            managed: {
+                visible: true,
+                total: 2,
+                unassigned: 1,
+                tasks: [
+                    {
+                        ...task({
+                            id: 70,
+                            title: 'Iconos',
+                            project: {
+                                id: 8,
+                                code: 'WEB',
+                                name: 'Web corporativa',
+                                color: '#0171FF',
+                            },
+                            assignee_id: 4,
+                            assignee_ids: [8, 3, 4, 7],
+                        }),
+                        assignee: { id: 4, name: 'Lucía Martín' },
+                        missing: [],
+                    },
+                    {
+                        ...task({
+                            id: 71,
+                            title: 'Reunión de arranque',
+                            assignee_id: null,
+                            due_date: '2026-10-22',
+                            start_date: null,
+                            assignee_ids: [8, 3, 4, 7],
+                        }),
+                        assignee: null,
+                        missing: [],
+                    },
+                ],
+            },
+            extra_people: [
+                { id: 3, name: 'Elena Empleada', department: 'Diseño' },
+                { id: 4, name: 'Lucía Martín', department: 'Diseño' },
+                { id: 7, name: 'Pablo Ruiz', department: 'Desarrollo' },
+            ],
+        };
+    }
+
+    it('enseña quién tiene cada tarea (solo el nombre) o que está sin asignar', () => {
+        render(
+            <WorkloadTrays
+                trays={managedTrays()}
+                people={[SERGIO]}
+                seesTeam={false}
+            />,
+        );
+
+        const managed = byTest('workload-managed');
+        expect(
+            within(managed).getByRole('heading', {
+                level: 2,
+                name: /De tus proyectos/,
+            }),
+        ).toBeTruthy();
+        // Con icono y texto; el lector de pantalla oye de qué es ese nombre.
+        expect(within(managed).getByText('Lucía Martín').textContent).toBe(
+            'Responsable: Lucía Martín',
+        );
+        expect(within(managed).getByText('Sin asignar: 1')).toBeTruthy();
+        expect(
+            within(managed).getByText('Sin asignar', { selector: 'span' }),
+        ).toBeTruthy();
+        expect(allByTest('workload-tray-task', managed)).toHaveLength(2);
+        // Sin «Sin asignar» por departamento: no es responsable.
+        expect(
+            screen.queryByRole('heading', { level: 2, name: /^Sin asignar/ }),
+        ).toBeNull();
+    });
+
+    it('reparte una tarea entre los miembros del proyecto', async () => {
+        const user = userEvent.setup();
+        render(
+            <WorkloadTrays
+                trays={managedTrays()}
+                people={[SERGIO]}
+                seesTeam={false}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Repartir: Iconos' }),
+        );
+        await user.click(screen.getByRole('combobox', { name: 'Responsable' }));
+        await user.click(
+            await screen.findByRole('option', { name: /Pablo Ruiz/ }),
+        );
+        await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+        const [url, data] = server.patch.mock.calls[0];
+        expect(url).toBe('/carga/tareas/70');
+        expect(data).toEqual({ assignee_user_id: 7 });
+    }, 15_000);
+
+    it('sin tareas que repartir, un estado vacío', () => {
+        const trays = managedTrays();
+
+        render(
+            <WorkloadTrays
+                trays={{
+                    ...trays,
+                    managed: {
+                        visible: true,
+                        total: 0,
+                        unassigned: 0,
+                        tasks: [],
+                    },
+                }}
+                people={[SERGIO]}
+                seesTeam={false}
+            />,
+        );
+
+        expect(
+            within(byTest('workload-managed')).getByText(
+                'Nada más que repartir',
+            ),
+        ).toBeTruthy();
+    });
+
+    it('quien no gestiona proyectos no la ve', () => {
+        render(<WorkloadIndex {...pageProps()} />);
+
+        expect(
+            document.querySelector('[data-test="workload-managed"]'),
+        ).toBeNull();
+    });
 });

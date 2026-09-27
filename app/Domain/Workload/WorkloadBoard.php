@@ -12,12 +12,14 @@ use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * La vista «Carga» (SPEC §9, D-051, D-052) de una persona con unos filtros: la matriz personas ×
- * días (o semanas), el panel de una celda y las bandejas «Sin planificar» y «Sin asignar».
+ * días (o semanas), el panel de una celda y las bandejas «Sin planificar», «Sin asignar» y «De tus
+ * proyectos».
  *
  * Rendimiento: el reparto se calcula UNA vez por petición con WorkloadPlanner (todas las personas
  * del alcance) y el detalle de la capacidad con Capacity::detailsForRanges (una consulta de
@@ -407,9 +409,12 @@ final class WorkloadBoard
     }
 
     /**
-     * Bandejas (D-051):
+     * Bandejas (D-051, D-052):
      * - «Sin planificar»: tareas de las filas sin estimación o sin entrega,
-     * - «Sin asignar» por departamento (el de la bolsa o, si no, el del tipo), solo para quien reparte.
+     * - «Sin asignar» por departamento (el de la bolsa o, si no, el del tipo), solo para quien reparte,
+     * - «De tus proyectos», para quien gestiona proyectos: las tareas de esos proyectos que no le
+     *   llegan por su equipo (asignadas a personas fuera de su vista, de las que solo ve el nombre, o
+     *   sin asignar fuera de sus departamentos), para verlas y repartirlas entre los miembros.
      * Sin las tareas «cajón» de los proyectos internos (InternalBuckets). Cada bandeja pinta como
      * mucho TRAY_LIMIT tareas, elegidas DESPUÉS de ordenar: las vencidas primero y después por
      * entrega, así que una vencida nunca se queda fuera por el corte.
@@ -437,17 +442,22 @@ final class WorkloadBoard
             }
         }
 
+        $managed = $this->managedItems();
         $unassignedIds = array_merge(...array_values(array_map(fn (array $items): array => array_column($items, 'task_id'), $unassigned)));
 
-        // El orden de las bandejas, con una consulta ligera, antes de cortar.
-        $rank = array_flip($this->ranked([...array_column($unplanned, 'task_id'), ...$unassignedIds]));
-        usort($unplanned, fn (array $a, array $b): int => ($rank[$a['task_id']] ?? PHP_INT_MAX) <=> ($rank[$b['task_id']] ?? PHP_INT_MAX));
+        // El orden de las tres bandejas, con una consulta ligera, antes de cortar.
+        $rank = array_flip($this->ranked([...array_column($unplanned, 'task_id'), ...$unassignedIds, ...array_column($managed, 'task_id')]));
+        $byRank = fn (array $a, array $b): int => ($rank[$a['task_id']] ?? PHP_INT_MAX) <=> ($rank[$b['task_id']] ?? PHP_INT_MAX);
+        usort($unplanned, $byRank);
+        usort($managed, $byRank);
         $shownUnplanned = array_slice($unplanned, 0, self::TRAY_LIMIT);
+        $shownManaged = array_slice($managed, 0, self::TRAY_LIMIT);
         $shownUnassigned = array_fill_keys(array_slice(self::sortIds($unassignedIds, $rank), 0, self::TRAY_LIMIT), true);
 
         $tasks = $this->loadTasks([
             ...array_column($shownUnplanned, 'task_id'),
             ...array_keys($shownUnassigned),
+            ...array_column($shownManaged, 'task_id'),
         ]);
         $members = $this->projectMembers($tasks);
         $people = $this->scope->people()->keyBy('id');
@@ -491,6 +501,19 @@ final class WorkloadBoard
         usort($groups, fn (array $a, array $b): int => [$a['department']['id'] === null, mb_strtolower((string) $a['department']['name'])]
             <=> [$b['department']['id'] === null, mb_strtolower((string) $b['department']['name'])]);
 
+        $managedRows = [];
+        foreach ($shownManaged as $item) {
+            $task = $tasks->get($item['task_id']);
+
+            if ($task !== null) {
+                $managedRows[] = [
+                    ...$this->taskData($task, $members),
+                    'assignee' => $item['assignee'],
+                    'missing' => self::missing($task),
+                ];
+            }
+        }
+
         return [
             'limit' => self::TRAY_LIMIT,
             'unplanned' => [
@@ -502,8 +525,43 @@ final class WorkloadBoard
                 'total' => (int) array_sum(array_column($groups, 'total')),
                 'groups' => $groups,
             ],
+            'managed' => [
+                'visible' => $this->scope->seesManagedProjects(),
+                'total' => count($managed),
+                'unassigned' => count(array_filter($managed, fn (array $item): bool => $item['assignee'] === null)),
+                'tasks' => $managedRows,
+            ],
             'extra_people' => $this->extraPeople($members),
         ];
+    }
+
+    /**
+     * Tareas abiertas de los proyectos que gestiona (con los filtros de cliente y proyecto) que no le
+     * llegan por su equipo: asignadas a personas fuera de su vista (solo su nombre, nunca su carga) o
+     * sin asignar fuera de los departamentos cuya bandeja ve. Una consulta (y las de sus relaciones),
+     * solo si gestiona algún proyecto.
+     *
+     * @return list<array{task_id: int, assignee: array{id: int, name: string}|null}>
+     */
+    private function managedItems(): array
+    {
+        if (! $this->scope->seesManagedProjects()) {
+            return [];
+        }
+
+        $buckets = $this->internalBuckets();
+
+        return array_values($this->planner->openTasks($this->filters->plannerFilters())
+            ->whereIn('project_id', $this->scope->viewer->managedProjectIds())
+            ->where(fn (Builder $query) => $query->whereNull('assignee_user_id')->orWhereNotIn('assignee_user_id', $this->scope->peopleIds()))
+            ->with('assignee:id,name')
+            ->get()
+            ->reject(fn (Task $task): bool => isset($buckets[$task->id]) || $this->scope->reachesAsTeam($task))
+            ->map(fn (Task $task): array => [
+                'task_id' => $task->id,
+                'assignee' => $task->assignee === null ? null : ['id' => $task->assignee->id, 'name' => $task->assignee->name],
+            ])
+            ->all());
     }
 
     /**
