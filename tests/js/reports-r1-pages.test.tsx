@@ -21,6 +21,8 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@inertiajs/react')>()),
     Head: () => null,
     setLayoutProps: () => {},
+    // Las props diferidas se pintan tal cual: la página decide qué enseñar mientras no llegan.
+    Deferred: ({ children }: { children?: ReactNode }) => <>{children}</>,
     usePage: () => ({
         url: '/informes',
         props: { config: { hour_bank_thresholds: [75, 90, 100] } },
@@ -566,8 +568,11 @@ describe('dashboard de departamento', () => {
                 'Ocupación baja por debajo del 70 % y alta por encima del 110 %.',
             ),
         ).toBeTruthy();
+        // La carga futura es una prop diferida: mientras no llega, se anuncia que se está calculando.
         expect(screen.getByText('Carga futura')).toBeTruthy();
-        expect(screen.getByText('Llega en la Fase 3')).toBeTruthy();
+        expect(
+            screen.getByText('Calculando la carga de las próximas semanas…'),
+        ).toBeTruthy();
 
         // Los miembros y el reparto por cliente (BIZ-05).
         const exports = screen.getAllByRole('button', { name: 'Exportar' });

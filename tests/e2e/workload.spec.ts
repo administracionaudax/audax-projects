@@ -255,3 +255,36 @@ test('una empleada solo ve su propia fila en Carga (D-052)', async ({
         page.getByRole('button', { name: /^Lucía Martín, / }),
     ).toHaveCount(0);
 });
+
+test('el informe del departamento enseña la carga futura del equipo y enlaza con Carga', async ({
+    page,
+}) => {
+    await login(page, USERS.manager);
+
+    await page.goto('/informes');
+    await page
+        .getByRole('list', { name: 'Departamentos' })
+        .getByRole('link', { name: 'Diseño', exact: true })
+        .click();
+    await expect(page).toHaveURL(/\/informes\/departamentos\/\d+/);
+
+    // Prop diferida: la tabla llega después de pintar el informe.
+    const table = page.getByRole('table', {
+        name: 'Carga planificada de cada persona del departamento en las próximas cuatro semanas',
+    });
+    await expect(table).toBeVisible();
+    await expect(
+        table.getByRole('rowheader', { name: 'Elena Empleada' }),
+    ).toBeVisible();
+    await expect(
+        table.getByRole('rowheader', { name: 'Equipo' }),
+    ).toBeVisible();
+
+    await page.getByRole('link', { name: 'Ver en Carga' }).click();
+    await expect(page).toHaveURL(
+        /\/carga\?horizonte=4-semanas&departamento=\d+/,
+    );
+    await expect(
+        page.getByRole('heading', { level: 1, name: 'Carga' }),
+    ).toBeVisible();
+});

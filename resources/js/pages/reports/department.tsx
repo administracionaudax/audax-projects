@@ -1,10 +1,14 @@
-import { Head, setLayoutProps } from '@inertiajs/react';
-import { CalendarClock, SearchX, Users } from 'lucide-react';
+import { Deferred, Head, setLayoutProps } from '@inertiajs/react';
+import { SearchX, Users } from 'lucide-react';
 import { defineSeries } from '@/components/charts/chart-config';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import {
+    R1FutureLoad,
+    R1FutureLoadSkeleton,
+} from '@/components/reports/r1-future-load';
 import { R1BarChart } from '@/components/reports/r1-bar-chart';
 import {
     breakdownBars,
@@ -36,8 +40,8 @@ const LOGGED_SERIES = defineSeries([
 
 /**
  * Dashboard de un departamento (SPEC §10.4, D-044): KPIs del equipo, ocupación y facturabilidad
- * de cada miembro (tabla con estado y barras), reparto por cliente y, en la Fase 3, la carga
- * futura.
+ * de cada miembro (tabla con estado y barras), reparto por cliente y la carga futura de las
+ * próximas cuatro semanas (prop diferida, como en la vista Carga).
  */
 export default function DepartmentReport({
     department,
@@ -48,6 +52,7 @@ export default function DepartmentReport({
     members,
     clients,
     occupancy_thresholds: thresholds,
+    future_load: futureLoad,
 }: DepartmentReportProps) {
     const state = useReportVisit();
     const financials = filters.can_see_financials;
@@ -232,11 +237,16 @@ export default function DepartmentReport({
                             'reports_r1.department.future_load_description',
                         )}
                     >
-                        <EmptyState
-                            icon={CalendarClock}
-                            title={t('reports_r1.department.future_load_empty')}
-                            phase={3}
-                        />
+                        <Deferred
+                            data="future_load"
+                            fallback={<R1FutureLoadSkeleton />}
+                        >
+                            {futureLoad ? (
+                                <R1FutureLoad load={futureLoad} />
+                            ) : (
+                                <R1FutureLoadSkeleton />
+                            )}
+                        </Deferred>
                     </PageSection>
                 </ReportContent>
             </div>
