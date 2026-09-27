@@ -20,12 +20,45 @@ type VisitOptions = {
     onFinish?: () => void;
 };
 
+type FinishedVisit = {
+    completed: boolean;
+    async: boolean;
+    prefetch: boolean;
+    only: string[];
+    except: string[];
+};
+
+type FinishListener = (event: { detail: { visit: FinishedVisit } }) => void;
+
 const server = vi.hoisted(() => ({
     post: vi.fn<(url: string, data: unknown, options: VisitOptions) => void>(),
     delete: vi.fn<(url: string, options: VisitOptions) => void>(),
-    visit: vi.fn(),
+    visit: vi.fn<(url: string, options?: VisitOptions) => void>(),
     get: vi.fn(),
+    /** Escuchas de router.on('finish'). */
+    finish: new Set<FinishListener>(),
 }));
+
+/** Lo que emite Inertia al terminar una visita (por defecto, síncrona, completa y terminada). */
+function finishVisit(visit: Partial<FinishedVisit> = {}) {
+    act(() => {
+        // Copia: cada escucha se quita a sí misma al atenderla.
+        for (const listener of Array.from(server.finish)) {
+            listener({
+                detail: {
+                    visit: {
+                        completed: true,
+                        async: false,
+                        prefetch: false,
+                        only: [],
+                        except: [],
+                        ...visit,
+                    },
+                },
+            });
+        }
+    });
+}
 
 const toasts = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
 
@@ -39,8 +72,18 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
             server.post(url, data, options),
         delete: (url: string, options: VisitOptions) =>
             server.delete(url, options),
-        visit: (...args: unknown[]) => server.visit(...args),
+        visit: (url: string, options?: VisitOptions) =>
+            server.visit(url, options),
         get: (...args: unknown[]) => server.get(...args),
+        on: (type: string, listener: FinishListener) => {
+            if (type !== 'finish') {
+                return () => {};
+            }
+
+            server.finish.add(listener);
+
+            return () => server.finish.delete(listener);
+        },
     },
     Link: ({
         href,
@@ -154,6 +197,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    // Una visita completa atiende las recargas pendientes tras una interrupción (estado del módulo).
+    finishVisit();
     vi.unstubAllGlobals();
     server.post.mockReset();
     server.delete.mockReset();
@@ -342,10 +387,25 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
             options.onFinish?.();
         });
 
-    it('la tarea deja de estar «guardando», se puede volver a mover y se ve donde se dejó hasta que llegan las tareas', async () => {
+    const view = (tasks: GanttTask[]) => (
+        <GanttView
+            label="Diagrama de Gantt de «Web»"
+            tasks={tasks}
+            dependencies={[link]}
+            statuses={statuses}
+            range={{ start: '2026-10-01', end: '2026-10-20' }}
+            today="2026-10-06"
+            preferences={{ scale: 'day', color: 'status' }}
+            reload={RELOAD}
+            showUnscheduled
+            keyboardCommitDelay={0}
+        />
+    );
+
+    it('la tarea deja de estar «guardando» y se puede volver a mover; si la visita que lo interrumpió no trae las tareas, se piden', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [] }));
         const user = userEvent.setup();
-        const view = renderView();
+        const { rerender } = render(view([design, layout, copy]));
 
         bar(/^Diseño/).focus();
         await user.keyboard('{ArrowRight}');
@@ -354,13 +414,14 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
 
         interrupt(server.post.mock.calls[0][2]);
 
+        // Libre al momento, sin avisos, y donde se dejó (sin saltar atrás).
         expect(bar(/^Diseño/).getAttribute('aria-busy')).toBeNull();
         expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
             'Del 06/10/2026 al 08/10/2026',
         );
         expect(toasts.error).not.toHaveBeenCalled();
 
-        // Se puede volver a mover (no se queda bloqueada).
+        // Se puede volver a mover (no se queda bloqueada) y también se interrumpe.
         bar(/^Diseño/).focus();
         await user.keyboard('{ArrowRight}');
         await waitFor(() => expect(server.post).toHaveBeenCalledTimes(2));
@@ -371,60 +432,92 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
         });
         interrupt(server.post.mock.calls[1][2]);
 
-        // La visita que lo interrumpió trae las tareas del servidor: mandan sus fechas.
-        view.rerender(
-            <GanttView
-                label="Diagrama de Gantt de «Web»"
-                tasks={[
-                    {
-                        ...design,
-                        start_date: '2026-10-06',
-                        due_date: '2026-10-08',
-                    },
-                    layout,
-                    copy,
-                ]}
-                dependencies={[link]}
-                statuses={statuses}
-                range={{ start: '2026-10-01', end: '2026-10-20' }}
-                today="2026-10-06"
-                preferences={{ scale: 'day', color: 'status' }}
-                reload={RELOAD}
-                showUnscheduled
-                keyboardCommitDelay={0}
-            />,
-        );
+        // La visita que lo interrumpió (cambiar la escala) no trae las tareas: se piden, una vez.
+        expect(server.visit).not.toHaveBeenCalled();
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(1);
+        const [url, options] = server.visit.mock.calls[0];
+        expect(url).toBe(window.location.href);
+        expect(options).toMatchObject({
+            only: RELOAD,
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        });
 
+        // Hasta que llegan, se ve donde se dejó; al llegar, mandan las fechas del servidor.
+        rerender(
+            view([
+                { ...design, start_date: '2026-10-06', due_date: '2026-10-08' },
+                layout,
+                copy,
+            ]),
+        );
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 07/10/2026 al 09/10/2026',
+        );
+        act(() => options?.onFinish?.());
         expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
             'Del 06/10/2026 al 08/10/2026',
         );
-        expect(bar(/^Diseño/).getAttribute('aria-busy')).toBeNull();
+    });
+
+    it('si la visita que lo interrumpió ya trae las props del Gantt, no se piden otra vez', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        const { rerender } = render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+
+        // Otra tarea guardada (recarga tasks, dependencies y range); el servidor no aplicó el primero.
+        rerender(view([{ ...design }, layout, copy]));
+        finishVisit({ only: RELOAD });
+
+        expect(server.visit).not.toHaveBeenCalled();
+        expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
+            'Del 05/10/2026 al 07/10/2026',
+        );
+    });
+
+    it('las visitas asíncronas, las precargas y las que también se cancelan no cuentan; si se interrumpe la recarga, se vuelve a pedir', async () => {
+        vi.stubGlobal('fetch', respond(200, { proposals: [] }));
+        const user = userEvent.setup();
+        render(view([design, layout, copy]));
+
+        bar(/^Diseño/).focus();
+        await user.keyboard('{ArrowRight}');
+        await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
+        interrupt(server.post.mock.calls[0][2]);
+
+        finishVisit({ only: ['notifications'], async: true });
+        finishVisit({ only: ['preferences'], prefetch: true });
+        finishVisit({ only: ['preferences'], completed: false });
+        expect(server.visit).not.toHaveBeenCalled();
+
+        finishVisit({ only: ['preferences'] });
+        expect(server.visit).toHaveBeenCalledTimes(1);
+
+        // La recarga también se interrumpe: se pedirá al terminar la siguiente.
+        interrupt(server.visit.mock.calls[0][1] as VisitOptions);
+        finishVisit({ only: ['filters'] });
+        expect(server.visit).toHaveBeenCalledTimes(2);
+        expect(server.visit.mock.calls[1][1]).toMatchObject({ only: RELOAD });
     });
 
     it('las fechas de las tareas que se siguen guardando no se pisan con las del servidor', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [] }));
         const user = userEvent.setup();
-        const view = renderView();
+        const { rerender } = render(view([design, layout, copy]));
 
         bar(/^Diseño/).focus();
         await user.keyboard('{ArrowRight}');
         await waitFor(() => expect(server.post).toHaveBeenCalledTimes(1));
 
         // Llegan tareas (otra recarga) mientras Diseño sigue guardándose.
-        view.rerender(
-            <GanttView
-                label="Diagrama de Gantt de «Web»"
-                tasks={[{ ...design }, layout, copy]}
-                dependencies={[link]}
-                statuses={statuses}
-                range={{ start: '2026-10-01', end: '2026-10-20' }}
-                today="2026-10-06"
-                preferences={{ scale: 'day', color: 'status' }}
-                reload={RELOAD}
-                showUnscheduled
-                keyboardCommitDelay={0}
-            />,
-        );
+        rerender(view([{ ...design }, layout, copy]));
 
         expect(bar(/^Diseño/).getAttribute('aria-label')).toContain(
             'Del 06/10/2026 al 08/10/2026',
@@ -435,7 +528,7 @@ describe('guardado interrumpido por otra visita de Inertia', () => {
     it('en el diálogo de conflicto, si se interrumpe, se cierra y la tarea queda libre', async () => {
         vi.stubGlobal('fetch', respond(200, { proposals: [proposal] }));
         const user = userEvent.setup();
-        renderView();
+        render(view([design, layout, copy]));
 
         bar(/^Diseño/).focus();
         await user.keyboard('{ArrowRight}');

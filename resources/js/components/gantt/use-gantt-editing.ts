@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { sameDates } from '@/components/gantt/geometry';
 import {
@@ -35,8 +35,9 @@ type LinkCallbacks = {
  *    «Solo esta tarea» o «Cancelar» (vuelve a su sitio); si no, se guarda directamente;
  * 3. guardar recarga solo las props del Gantt (`reload`); si falla, la barra vuelve y se avisa;
  * 4. si otra visita de Inertia interrumpe el guardado (otro guardado, los filtros, la escala…), la
- *    tarea deja de estar «guardando» al momento y conserva las fechas nuevas solo hasta que lleguen
- *    las tareas del servidor (la petición ya había salido: no se sabe si se aplicó).
+ *    tarea deja de estar «guardando» al momento y conserva las fechas nuevas solo hasta que vuelven
+ *    a llegar las tareas del servidor (la petición ya había salido: no se sabe si se aplicó; ver
+ *    refreshAfterInterruption).
  * Nunca se desplazan sucesoras sin confirmarlo (SPEC §6.1).
  */
 export function useGanttEditing({
@@ -52,19 +53,9 @@ export function useGanttEditing({
     const [saving, setSaving] = useState<ReadonlySet<number>>(() => new Set());
     const [conflict, setConflict] = useState<RescheduleConflict | null>(null);
     const [resolving, setResolving] = useState<ConflictChoice | null>(null);
-    const [basis, setBasis] = useState(tasks);
-
-    // Llegan tareas nuevas del servidor: las fechas optimistas de las tareas que ya no se están
-    // guardando (un guardado interrumpido) dejan paso a las reales.
-    if (basis !== tasks) {
-        setBasis(tasks);
-
-        if ([...overrides.keys()].some((id) => !saving.has(id))) {
-            setOverrides(
-                new Map([...overrides].filter(([id]) => saving.has(id))),
-            );
-        }
-    }
+    // Intentos de cada tarea: tras una interrupción, solo se quitan sus fechas optimistas si
+    // mientras tanto no se ha vuelto a mover.
+    const attempts = useRef(new Map<number, number>());
 
     const effectiveTasks =
         overrides.size === 0
@@ -88,7 +79,7 @@ export function useGanttEditing({
         });
     };
 
-    const release = (taskId: number) => {
+    const dropOverride = (taskId: number) => {
         setOverrides((previous) => {
             if (!previous.has(taskId)) {
                 return previous;
@@ -99,6 +90,10 @@ export function useGanttEditing({
 
             return next;
         });
+    };
+
+    const release = (taskId: number) => {
+        dropOverride(taskId);
         stopSaving(taskId);
     };
 
@@ -118,6 +113,7 @@ export function useGanttEditing({
         onFinish?: () => void,
     ) => {
         let settled = false;
+        const attempt = attempts.current.get(task.id);
 
         saveReschedule(task.id, dates, shift, reload, {
             onSuccess: () => {
@@ -129,10 +125,15 @@ export function useGanttEditing({
                 fail(task.id, message);
             },
             onCancel: () => {
-                // Las fechas nuevas se ven hasta que la visita que lo ha interrumpido traiga las
-                // tareas del servidor (ver `basis`).
+                // Deja de estar ocupada ya; las fechas nuevas se ven hasta que vuelvan a llegar
+                // las del servidor (onRefreshed), para que no salte atrás y adelante.
                 settled = true;
                 stopSaving(task.id);
+            },
+            onRefreshed: () => {
+                if (attempts.current.get(task.id) === attempt) {
+                    dropOverride(task.id);
+                }
             },
             onFinish: () => {
                 if (!settled) {
@@ -149,6 +150,7 @@ export function useGanttEditing({
             return;
         }
 
+        attempts.current.set(task.id, (attempts.current.get(task.id) ?? 0) + 1);
         setOverrides((previous) => new Map(previous).set(task.id, dates));
         setSaving((previous) => new Set(previous).add(task.id));
 

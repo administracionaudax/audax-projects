@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import type { VisitOptions } from '@inertiajs/core';
+import type { ActiveVisit, VisitOptions } from '@inertiajs/core';
 import type { GanttDates } from '@/components/gantt/types';
 import { t } from '@/lib/i18n';
 import { store as storeTask } from '@/routes/tasks';
@@ -18,7 +18,8 @@ import type { ShiftProposal } from '@/types/schedule';
  * - la propuesta de reprogramar es JSON (fetch con el token CSRF de la cookie XSRF-TOKEN, como
  *   Laravel espera en las peticiones de la app); no cambia nada,
  * - guardar fechas, enlazar, quitar dependencias y crear tareas van con el router de Inertia
- *   (responden con back()), conservan el scroll y el estado y recargan solo las props del Gantt.
+ *   (responden con back()), conservan el scroll y el estado y recargan solo las props del Gantt,
+ * - si otra visita las interrumpe, se vuelven a pedir las props del Gantt (refreshAfterInterruption).
  */
 
 export class GanttRequestError extends Error {}
@@ -29,15 +30,89 @@ export type GanttVisitCallbacks = {
     onFailure?: (message: string, errors?: Record<string, string>) => void;
     /**
      * Otra visita síncrona de Inertia la ha interrumpido (otro guardado, los filtros, la escala, el
-     * temporizador…). La petición ya había salido, así que no se sabe si el servidor la aplicó: la
-     * visita que la interrumpe trae los datos nuevos. Después se llama a onFinish.
+     * temporizador…). La petición ya había salido, así que no se sabe si el servidor la aplicó:
+     * se vuelven a pedir las props del Gantt y, cuando llegan, se llama a onRefreshed. Después de
+     * onCancel se llama a onFinish.
      */
     onCancel?: () => void;
+    /** Tras una interrupción, cuando ya han llegado otra vez las props del Gantt. */
+    onRefreshed?: () => void;
     /** Siempre al terminar: bien, mal o interrumpida. */
     onFinish?: () => void;
 };
 
 type Callbacks = GanttVisitCallbacks;
+
+type RefreshWaiter = { props: ReadonlyArray<string>; done: () => void };
+
+let waiters: RefreshWaiter[] = [];
+let stopWaiting: VoidFunction | null = null;
+
+/** Si una visita ya terminada ha vuelto a traer la prop (las completas traen todas). */
+function reloaded(visit: ActiveVisit, prop: string): boolean {
+    return (
+        (visit.only.length === 0 || visit.only.includes(prop)) &&
+        !visit.except.includes(prop)
+    );
+}
+
+/**
+ * Inertia cancela la visita síncrona en curso cuando empieza otra. Si era un cambio del Gantt, no
+ * se sabe si llegó al servidor, así que hay que volver a pedir sus props: cuando termina la
+ * siguiente visita síncrona (normalmente la que la interrumpió), si esa no las ha traído (p. ej.
+ * cambiar la escala solo recarga `preferences`), se lanza una recarga parcial. `done` se llama en
+ * cuanto están al día. Una sola escucha y una sola recarga aunque se interrumpan varias visitas.
+ */
+export function refreshAfterInterruption(
+    reload: ReadonlyArray<string>,
+    done: () => void = () => {},
+): void {
+    waiters.push({ props: reload, done });
+
+    stopWaiting ??= router.on('finish', (event) => {
+        const visit = event.detail.visit;
+
+        // La propia visita cancelada, las que se cancelen después y las asíncronas no cuentan.
+        if (!visit.completed || visit.async || visit.prefetch) {
+            return;
+        }
+
+        const current = waiters;
+        waiters = [];
+        stopWaiting?.();
+        stopWaiting = null;
+
+        const pending = current.filter((waiter) =>
+            waiter.props.some((prop) => !reloaded(visit, prop)),
+        );
+        current
+            .filter((waiter) => !pending.includes(waiter))
+            .forEach((waiter) => waiter.done());
+
+        if (pending.length === 0) {
+            return;
+        }
+
+        let interrupted = false;
+        router.visit(window.location.href, {
+            only: [...new Set(pending.flatMap((waiter) => waiter.props))],
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            onCancel: () => {
+                interrupted = true;
+                pending.forEach((waiter) =>
+                    refreshAfterInterruption(waiter.props, waiter.done),
+                );
+            },
+            onFinish: () => {
+                if (!interrupted) {
+                    pending.forEach((waiter) => waiter.done());
+                }
+            },
+        });
+    });
+}
 
 /** Valor de la cookie XSRF-TOKEN (Laravel la acepta en la cabecera X-XSRF-TOKEN). */
 export function xsrfToken(): string | null {
@@ -152,7 +227,10 @@ function visitOptions(reload: string[], callbacks: Callbacks): VisitOptions {
 
             return false;
         },
-        onCancel: () => callbacks.onCancel?.(),
+        onCancel: () => {
+            refreshAfterInterruption(reload, () => callbacks.onRefreshed?.());
+            callbacks.onCancel?.();
+        },
         onFinish: () => callbacks.onFinish?.(),
     };
 }
