@@ -106,6 +106,30 @@ it('agrupa por mes en columnas con los meses ordenados', function () {
             ->where('pivot.total', 1480));
 });
 
+it('con semanas en las filas, van en orden de fecha (en la página y en la exportación)', function () {
+    $s = $this->s;
+    // Agosto (60 min) tiene menos horas que septiembre (1420): por horas iría detrás.
+    $query = ['periodo' => 'trimestre', 'fecha' => '2026-07-01', 'filas' => 'semana', 'columnas' => 'persona', 'departamento' => [$s->design->id]];
+
+    $this->actingAs($s->admin)
+        ->get('/informes/detalle?'.http_build_query($query))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows.0.key', '2026-08-10')
+            ->where('pivot.rows.1.key', '2026-09-21')
+            ->where('pivot.row_totals.2026-08-10', 60)
+            ->where('pivot.row_totals.2026-09-21', 1420));
+
+    $csv = $this->actingAs($s->admin)->get('/informes/detalle?'.http_build_query([...$query, 'formato' => 'csv']))->streamedContent();
+
+    expect($csv)->toContain('"Sem. 10/08/2026";')
+        ->and(strpos($csv, 'Sem. 10/08/2026'))->toBeLessThan(strpos($csv, 'Sem. 21/09/2026'));
+
+    $months = $this->actingAs($s->admin)->get('/informes/detalle?'.http_build_query([...$query, 'filas' => 'mes', 'formato' => 'csv']))->streamedContent();
+
+    expect($months)->toContain('"Agosto 2026";')
+        ->and(strpos($months, 'Agosto 2026'))->toBeLessThan(strpos($months, 'Septiembre 2026'));
+});
+
 it('cada rol ve lo suyo (D-044)', function (string $who, int $total, bool $person) {
     $s = $this->s;
     $user = match ($who) {

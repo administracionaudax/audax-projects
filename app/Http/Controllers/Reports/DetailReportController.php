@@ -63,7 +63,7 @@ class DetailReportController extends Controller
         $result = $cache->remember(
             $scope,
             "r3.detail.pivot.{$rows->value}.{$columns->value}.{$measure}",
-            fn (): array => $pivot->run($scope, $rows, $columns, self::MEASURES[$measure]),
+            fn (): array => self::chronological($pivot->run($scope, $rows, $columns, self::MEASURES[$measure]), $rows),
         );
 
         if ($request->filled('formato')) {
@@ -136,6 +136,26 @@ class DetailReportController extends Controller
     }
 
     /**
+     * Con semanas o meses en las filas, van en orden de fecha (PivotReport las ordena por horas,
+     * como al resto de dimensiones). En la página y en la exportación.
+     *
+     * @param  array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
+     *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
+     *     total: int, truncated: bool}  $result
+     * @return array{rows: list<array{key: string|null, name: string}>, columns: list<array{key: string|null, name: string}>,
+     *     cells: array<string, array<string, int>>, row_totals: array<string, int>, column_totals: array<string, int>,
+     *     total: int, truncated: bool}
+     */
+    private static function chronological(array $result, Dimension $rows): array
+    {
+        if ($rows->isTime()) {
+            usort($result['rows'], fn (array $a, array $b): int => strcmp((string) $a['key'], (string) $b['key']));
+        }
+
+        return $result;
+    }
+
+    /**
      * KPIs de horas del informe (Metrics::summary, en caché). Sin datos económicos.
      *
      * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
@@ -167,14 +187,14 @@ class DetailReportController extends Controller
     {
         $headers = [
             self::text('reports.r3.detail.corner', ['rows' => $rows->label(), 'columns' => $columns->label()]),
-            ...array_map(fn (array $column): string => self::columnLabel($columns, $column), $result['columns']),
+            ...array_map(fn (array $column): string => self::headerLabel($columns, $column), $result['columns']),
             self::text('reports.r3.detail.total'),
         ];
 
         $lines = [];
         foreach ($result['rows'] as $row) {
             $rowKey = $row['key'] ?? '';
-            $line = [$row['name']];
+            $line = [self::headerLabel($rows, $row)];
             foreach ($result['columns'] as $column) {
                 $minutes = $result['cells'][$rowKey][$column['key'] ?? ''] ?? null;
                 $line[] = $minutes === null ? null : TableExporter::hours($minutes);
@@ -206,18 +226,18 @@ class DetailReportController extends Controller
     }
 
     /**
-     * Cabecera de una columna: las semanas por su lunes («Sem. 21/09/2026») y los meses por su
-     * nombre («Septiembre 2026»).
+     * Texto de una cabecera de fila o columna: las semanas por su lunes («Sem. 21/09/2026») y los
+     * meses por su nombre («Septiembre 2026»); el resto, su nombre.
      *
-     * @param  array{key: string|null, name: string}  $column
+     * @param  array{key: string|null, name: string}  $header
      */
-    public static function columnLabel(Dimension $dimension, array $column): string
+    private static function headerLabel(Dimension $dimension, array $header): string
     {
-        if ($column['key'] === null || ! $dimension->isTime()) {
-            return $column['name'];
+        if ($header['key'] === null || ! $dimension->isTime()) {
+            return $header['name'];
         }
 
-        $date = CarbonImmutable::parse($column['key']);
+        $date = CarbonImmutable::parse($header['key']);
 
         return match ($dimension) {
             Dimension::Week => self::text('reports.r3.detail.week', ['date' => $date->format('d/m/Y')]),
