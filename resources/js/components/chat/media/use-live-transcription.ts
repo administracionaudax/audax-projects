@@ -26,7 +26,8 @@ export const POLL_MS = 15_000;
 
 export const POLL_MS_WITH_REALTIME = 60_000;
 
-type Listener = (update: TranscriptionUpdate) => void;
+/** null: la consulta ya no devuelve ese mensaje (borrado, oculto o ya no se ve): se deja de vigilar. */
+type Listener = (update: TranscriptionUpdate | null) => void;
 
 const listeners = new Map<number, Set<Listener>>();
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -62,8 +63,8 @@ export async function fetchTranscriptionUpdates(
     return Array.isArray(data.messages) ? data.messages : [];
 }
 
-function notify(update: TranscriptionUpdate): void {
-    for (const listener of listeners.get(update.id) ?? []) {
+function notify(id: number, update: TranscriptionUpdate | null): void {
+    for (const listener of listeners.get(id) ?? []) {
         listener(update);
     }
 }
@@ -74,7 +75,12 @@ async function poll(): Promise<void> {
 
     if (ids.length > 0 && document.visibilityState !== 'hidden') {
         try {
-            (await fetchTranscriptionUpdates(ids)).forEach(notify);
+            const updates = await fetchTranscriptionUpdates(ids);
+            const found = new Map(updates.map((update) => [update.id, update]));
+
+            for (const id of ids) {
+                notify(id, found.get(id) ?? null);
+            }
         } catch {
             // Sin conexión o error puntual: se vuelve a intentar en la siguiente vuelta.
         }
@@ -188,6 +194,7 @@ export function useLiveTranscription(message: AudioMessageData): {
     const [state, setState] = useState({
         audio: message.audio,
         transcription: message.transcription,
+        gone: false,
     });
     const [previous, setPrevious] = useState(message);
 
@@ -200,10 +207,12 @@ export function useLiveTranscription(message: AudioMessageData): {
         setState({
             audio: message.audio,
             transcription: message.transcription,
+            gone: false,
         });
     }
 
     const pending =
+        !state.gone &&
         state.audio !== null &&
         (state.transcription === null || state.transcription.status !== 'done');
     const realtime = realtimeEnabled();
@@ -216,10 +225,15 @@ export function useLiveTranscription(message: AudioMessageData): {
         return watchTranscription(
             message.id,
             (update) =>
-                setState((current) => ({
-                    audio: update.audio ?? current.audio,
-                    transcription: update.transcription,
-                })),
+                setState((current) =>
+                    update === null
+                        ? { ...current, gone: true }
+                        : {
+                              audio: update.audio ?? current.audio,
+                              transcription: update.transcription,
+                              gone: false,
+                          },
+                ),
             realtime ? POLL_MS_WITH_REALTIME : POLL_MS,
         );
     }, [message.id, pending, realtime]);
@@ -239,6 +253,7 @@ export function useLiveTranscription(message: AudioMessageData): {
                 setState((current) => ({
                     audio: update.audio ?? current.audio,
                     transcription: update.transcription,
+                    gone: false,
                 }));
             }
         };
@@ -251,7 +266,8 @@ export function useLiveTranscription(message: AudioMessageData): {
     }, [message.id, message.conversation_id, pending, realtime]);
 
     return {
-        ...state,
+        audio: state.audio,
+        transcription: state.transcription,
         refreshAudio: async () => {
             const [update] = await fetchTranscriptionUpdates([message.id]);
 
@@ -262,6 +278,7 @@ export function useLiveTranscription(message: AudioMessageData): {
             setState({
                 audio: update.audio,
                 transcription: update.transcription,
+                gone: false,
             });
 
             return update.audio.url;

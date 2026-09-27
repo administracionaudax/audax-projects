@@ -285,6 +285,22 @@ describe('AudioMessage', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('deja de consultar un audio que la consulta ya no devuelve (borrado u oculto)', async () => {
+        const fetchMock = vi
+            .spyOn(globalThis, 'fetch')
+            .mockResolvedValue(new Response(JSON.stringify({ messages: [] })));
+        render(<AudioMessage message={message()} />);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(POLL_MS);
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it('un audio ya transcrito no consulta nada', async () => {
         const fetchMock = vi.spyOn(globalThis, 'fetch');
         render(
