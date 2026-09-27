@@ -125,7 +125,10 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
         due: useId(),
         billable: useId(),
         milestone: useId(),
+        milestoneHelp: useId(),
     };
+    const milestoneBlocked =
+        !task.is_milestone && (task.logged_minutes ?? 0) > 0;
     const [pendingBank, setPendingBank] = useState<number | null | undefined>(
         undefined,
     );
@@ -221,12 +224,19 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={ids.start}>{t('task_panel.start_date')}</Label>
-                <DatePicker
-                    id={ids.start}
-                    value={task.start_date}
-                    onChange={(date) => save({ start_date: date })}
-                    disabled={disabled}
-                />
+                {task.is_milestone ? (
+                    // Un hito solo tiene entrega (D-062): el servidor le quita el inicio.
+                    <p id={ids.start} className="text-sm text-muted-foreground">
+                        {t('planning.milestone.only_due')}
+                    </p>
+                ) : (
+                    <DatePicker
+                        id={ids.start}
+                        value={task.start_date}
+                        onChange={(date) => save({ start_date: date })}
+                        disabled={disabled}
+                    />
+                )}
             </div>
             <div className="grid gap-2">
                 <Label htmlFor={ids.due}>{t('task_panel.due_date')}</Label>
@@ -259,12 +269,24 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                         onCheckedChange={(checked) =>
                             save({ is_milestone: checked })
                         }
-                        disabled={disabled}
+                        // Una tarea con horas no puede pasar a hito (TaskWriter).
+                        disabled={disabled || milestoneBlocked}
+                        aria-describedby={
+                            milestoneBlocked ? ids.milestoneHelp : undefined
+                        }
                     />
                     <Label htmlFor={ids.milestone} className="font-normal">
                         {t('task_panel.milestone')}
                     </Label>
                 </div>
+                {milestoneBlocked ? (
+                    <p
+                        id={ids.milestoneHelp}
+                        className="text-xs text-muted-foreground"
+                    >
+                        {t('planning.milestone.has_time')}
+                    </p>
+                ) : null}
             </div>
 
             <ConfirmDialog
