@@ -3,6 +3,7 @@
 namespace App\Listeners\Chat;
 
 use App\Broadcasting\ChatNoticeThrottle;
+use App\Broadcasting\Realtime;
 use App\Events\Chat\AudioTranscribed;
 use App\Events\Chat\BroadcastAudioTranscribed;
 use App\Events\Chat\BroadcastConversationActivity;
@@ -23,8 +24,9 @@ use App\Models\Message;
  * - App.Models.User.{id} de quien lee: su lectura, para sus otras pestañas.
  *
  * Es síncrono a propósito: solo prepara ids (una consulta, la de los participantes) y encola; así
- * la pista de qué cambió en un mensaje (wasChanged) se toma en el momento. Al leer una
- * conversación, además, se reinicia la agrupación de avisos de esa persona en ella.
+ * la pista de qué cambió en un mensaje (wasChanged) se toma en el momento. Sin tiempo real
+ * (Realtime::enabled) no se emite nada. Al leer una conversación, además, se reinicia la
+ * agrupación de avisos de esa persona en ella (con o sin tiempo real).
  */
 final class ChatRealtimeRelay
 {
@@ -32,6 +34,10 @@ final class ChatRealtimeRelay
 
     public function handleMessagePosted(MessagePosted $event): void
     {
+        if (! Realtime::enabled()) {
+            return;
+        }
+
         $message = $event->message;
 
         event(BroadcastMessagePosted::fromMessage($message));
@@ -52,18 +58,26 @@ final class ChatRealtimeRelay
 
     public function handleMessageUpdated(MessageUpdated $event): void
     {
-        event(BroadcastMessageUpdated::fromMessage($event->message));
+        if (Realtime::enabled()) {
+            event(BroadcastMessageUpdated::fromMessage($event->message));
+        }
     }
 
     public function handleConversationRead(ConversationRead $event): void
     {
-        event(BroadcastConversationRead::fromParticipant($event->participant));
-
         $this->throttle->reset($event->participant->user_id, $event->participant->conversation_id);
+
+        if (Realtime::enabled()) {
+            event(BroadcastConversationRead::fromParticipant($event->participant));
+        }
     }
 
     public function handleAudioTranscribed(AudioTranscribed $event): void
     {
+        if (! Realtime::enabled()) {
+            return;
+        }
+
         $transcription = $event->transcription;
         $conversationId = Message::query()->withTrashed()->whereKey($transcription->message_id)->value('conversation_id');
 

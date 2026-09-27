@@ -1,5 +1,6 @@
 <?php
 
+use App\Broadcasting\ChatNoticeThrottle;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Domain\Chat\Transcription\FakeTranscriber;
@@ -62,7 +63,12 @@ beforeEach(function () {
             $this->sent->append(['channels' => $this->formatChannels($channels), 'event' => $event, 'payload' => $payload]);
         }
     });
-    config(['broadcasting.default' => 'capture', 'broadcasting.connections.capture' => ['driver' => 'capture']]);
+    config([
+        'broadcasting.default' => 'capture',
+        'broadcasting.connections.capture' => ['driver' => 'capture'],
+        // Con Reverb configurado (en los tests, BROADCAST_CONNECTION=null lo deja apagado).
+        'realtime.enabled' => true,
+    ]);
 
     $this->broadcasts = fn (string $event): array => array_values(array_filter(
         $this->sent->getArrayCopy(),
@@ -193,4 +199,20 @@ it('cada evento del dominio produce su evento de broadcast (Event::fake)', funct
         && $event->broadcastOn()[0]->name === "private-conversation.{$dm->id}" && $event->broadcastAs() === 'message.posted');
     Event::assertDispatched(BroadcastConversationActivity::class, fn (BroadcastConversationActivity $event): bool => $event->recipientIds === [$this->luis->id]);
     Event::assertDispatched(BroadcastConversationRead::class, fn (BroadcastConversationRead $event): bool => $event->userId === $this->luis->id && $event->lastReadMessageId === $message->id);
+});
+
+it('sin tiempo real no se emite ni se encola nada, pero leer sigue reiniciando la agrupación de avisos', function () {
+    config(['realtime.enabled' => false]);
+    Queue::fake();
+    $dm = $this->directory->direct($this->ana, $this->luis);
+    $throttle = app(ChatNoticeThrottle::class);
+    $throttle->attempt($this->luis->id, $dm->id);
+
+    $message = $this->writer->post($this->ana, $dm, 'Hola');
+    $this->writer->edit($this->ana, $message->fresh(), 'Hola de nuevo');
+    $this->writer->markRead($this->luis, $dm, $message->id);
+
+    Queue::assertNotPushed(BroadcastEvent::class);
+    expect($this->sent->count())->toBe(0)
+        ->and($throttle->attempt($this->luis->id, $dm->id))->toBeTrue();
 });

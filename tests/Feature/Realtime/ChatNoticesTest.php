@@ -4,6 +4,7 @@ use App\Broadcasting\ConversationViewers;
 use App\Broadcasting\WebPushChannel;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
+use App\Listeners\Chat\SendChatNotices;
 use App\Models\ConversationParticipant;
 use App\Models\Project;
 use App\Models\PushSubscription;
@@ -14,7 +15,11 @@ use App\Notifications\Chat\ChatExcerpt;
 use App\Notifications\Chat\ChatMentionNotification;
 use App\Notifications\Chat\ChatMessageNotification;
 use App\Notifications\Chat\ChatNotices;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Events\CallQueuedListener;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Minishlink\WebPush\VAPID;
 
@@ -212,4 +217,42 @@ it('el resumen del aviso quita el markdown, cambia las menciones por nombres y r
         ->and(ChatExcerpt::plain('nombre_de_archivo y 2 * 3'))->toBe('nombre_de_archivo y 2 * 3')
         ->and(ChatExcerpt::plain("```php\necho 1;\n```"))->toBe('echo 1;')
         ->and(mb_strlen(ChatExcerpt::plain(str_repeat('palabra ', 60))))->toBeLessThanOrEqual(ChatExcerpt::LENGTH + 1);
+});
+
+it('decidir quién recibe aviso hace las mismas consultas con 4 que con 30 participantes', function () {
+    $selects = function (): int {
+        $message = $this->writer->post($this->ana, $this->chat, "@todos y <@{$this->luis->id}>, hola");
+        $count = 0;
+        DB::listen(function (QueryExecuted $query) use (&$count): void {
+            if (str_starts_with(strtolower(ltrim($query->sql)), 'select')) {
+                $count++;
+            }
+        });
+
+        app(ChatNotices::class)->forMessage($message->id);
+
+        return $count;
+    };
+    $before = $selects();
+
+    foreach (User::factory()->employee()->count(26)->create() as $member) {
+        $this->project->addMember($member);
+    }
+
+    expect($selects())->toBe($before)->and($before)->toBeLessThanOrEqual(10);
+});
+
+it('solo encola el trabajo de avisos si el mensaje puede avisar a alguien', function () {
+    Queue::fake();
+    $queued = fn (): int => Queue::pushed(CallQueuedListener::class, fn (CallQueuedListener $job): bool => $job->class === SendChatNotices::class)->count();
+    $dm = $this->directory->direct($this->ana, $this->luis);
+
+    $this->writer->post($this->ana, $this->chat, 'Subo los cambios');
+    $this->writer->system($this->chat, 'hour_bank.threshold', ['threshold' => 90]);
+    expect($queued())->toBe(0);
+
+    $this->writer->post($this->ana, $this->chat, "<@{$this->luis->id}> mira");
+    $this->writer->post($this->ana, $this->chat, '@todos a las 12');
+    $this->writer->post($this->ana, $dm, 'Hola');
+    expect($queued())->toBe(3);
 });

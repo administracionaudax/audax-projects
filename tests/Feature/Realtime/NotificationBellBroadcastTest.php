@@ -7,6 +7,7 @@ use App\Notifications\Chat\ChatDirectMessageNotification;
 use App\Notifications\Chat\TranscriptionsFailing;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 
 /*
 | Campana en tiempo real (D-037 → Fase 6): toda notificación que se guarda en la base de datos,
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Event;
 */
 
 beforeEach(function () {
+    config(['realtime.enabled' => true]);
     Event::fake([BroadcastAppNotification::class]);
     $this->luis = User::factory()->employee()->create();
 });
@@ -82,4 +84,15 @@ it('solo el canal database genera el aviso en vivo', function () {
     $this->luis->notifyNow($mailOnly);
 
     Event::assertNotDispatched(BroadcastAppNotification::class);
+});
+
+it('sin tiempo real no emite nada: la campana consulta y los avisos «sin cola» siguen sin cola', function () {
+    config(['realtime.enabled' => false]);
+    Queue::fake();
+
+    $this->luis->notifyNow(new ChatDirectMessageNotification(7, 42, null, 'Ana', 'Hola'));
+
+    expect($this->luis->notifications()->count())->toBe(1);
+    Event::assertNotDispatched(BroadcastAppNotification::class);
+    Queue::assertNothingPushed();
 });
