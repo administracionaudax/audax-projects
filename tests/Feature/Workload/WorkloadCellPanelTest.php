@@ -78,7 +78,7 @@ it('las tareas vencidas salen en la celda de hoy, marcadas', function () {
 it('una celda semanal (3 meses) junta los días de la semana, con el detalle de cada uno', function () {
     $cell = ($this->cell)('ana', 'lucia', '2026-10-14', 'horizonte=3-meses');
 
-    expect($cell)->toMatchArray(['from' => '2026-10-12', 'to' => '2026-10-18', 'planned' => 480, 'capacity' => 960])
+    expect($cell)->toMatchArray(['key' => "{$this->people['lucia']->id}:2026-10-12", 'from' => '2026-10-12', 'to' => '2026-10-18', 'planned' => 480, 'capacity' => 960])
         ->and(array_column($cell['days'], 'date'))->toBe(['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'])
         ->and($cell['days'][0]['reason'])->toBe(['type' => 'holiday', 'label' => 'Fiesta Nacional de España'])
         ->and($cell['days'][1]['reason'])->toBe(['type' => 'absence', 'label' => 'Vacaciones'])
@@ -93,7 +93,7 @@ it('la primera semana del horizonte de 3 meses empieza hoy', function () {
 
     $cell = ($this->cell)('ana', 'elena', '2026-10-08', 'horizonte=3-meses');
 
-    expect($cell)->toMatchArray(['from' => '2026-10-06', 'to' => '2026-10-11', 'planned' => 300]);
+    expect($cell)->toMatchArray(['key' => "{$this->people['elena']->id}:2026-10-06", 'from' => '2026-10-06', 'to' => '2026-10-11', 'planned' => 300]);
 });
 
 it('una fecha fuera del horizonte no abre nada', function () {

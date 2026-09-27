@@ -380,7 +380,9 @@ final class WorkloadBoard
         }
 
         return [
-            'key' => $userId.':'.$date,
+            // La de la columna (en 3 meses, el primer día de la semana en el horizonte), aunque la
+            // URL traiga otro día de esa semana: así se marca la celda abierta en la matriz.
+            'key' => $userId.':'.$from->toDateString(),
             'person' => [
                 'id' => $person->id,
                 'name' => $person->name,
