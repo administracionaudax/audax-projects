@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, Clock, Receipt, SearchX } from 'lucide-react';
+import { Building2, Clock, FileWarning, Receipt, SearchX } from 'lucide-react';
 import { useId } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
@@ -20,7 +20,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency, formatDate, formatMinutes } from '@/lib/format';
+import {
+    formatCurrency,
+    formatDate,
+    formatMinutes,
+    formatNumber,
+} from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import {
@@ -49,17 +54,30 @@ export default function BillingReport({
     clients,
     summary,
     scope,
+    export_limit: exportLimit,
+    can,
 }: R2BillingProps) {
     const id = useId();
     const url = billing.url();
     const financials = filters.can_see_financials;
+    // Más entradas de las que caben en el fichero: se pide acotar en lugar de recortarlo.
+    const tooManyRows =
+        summary !== null && summary.totals.entries > exportLimit;
 
-    const chooseClient = (value: string) =>
+    // Los proyectos y bolsas elegidos son del cliente anterior: al cambiar de cliente se quitan.
+    const chooseClient = (value: string) => {
+        const query = Object.fromEntries(
+            Object.entries(filters.query).filter(
+                ([key]) => key !== 'proyecto' && key !== 'bolsa',
+            ),
+        );
+
         router.get(
             url,
-            { ...filters.query, cliente: [Number(value)] },
+            { ...query, cliente: [Number(value)] },
             { preserveState: true, preserveScroll: true },
         );
+    };
 
     return (
         <>
@@ -72,25 +90,31 @@ export default function BillingReport({
                     actions={
                         client ? (
                             <>
-                                <Button variant="outline" asChild>
-                                    <Link
-                                        href={clientReport.url(client.id, {
-                                            query: filters.query,
+                                {can.viewReport ? (
+                                    <Button variant="outline" asChild>
+                                        <Link
+                                            href={clientReport.url(client.id, {
+                                                query: filters.query,
+                                            })}
+                                        >
+                                            <Building2 aria-hidden="true" />
+                                            {t(
+                                                'reports_r2.billing.client_report',
+                                            )}
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                                {tooManyRows ? null : (
+                                    <ExportMenu
+                                        href={billing.url({
+                                            query: {
+                                                ...filters.query,
+                                                cliente: [client.id],
+                                            },
                                         })}
-                                    >
-                                        <Building2 aria-hidden="true" />
-                                        {t('reports_r2.billing.client_report')}
-                                    </Link>
-                                </Button>
-                                <ExportMenu
-                                    href={billing.url({
-                                        query: {
-                                            ...filters.query,
-                                            cliente: [client.id],
-                                        },
-                                    })}
-                                    label={t('reports_r2.billing.export')}
-                                />
+                                        label={t('reports_r2.billing.export')}
+                                    />
+                                )}
                             </>
                         ) : null
                     }
@@ -231,6 +255,24 @@ export default function BillingReport({
                                     />
                                 ) : null}
                             </section>
+
+                            {tooManyRows ? (
+                                <p
+                                    role="status"
+                                    className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground"
+                                >
+                                    <FileWarning
+                                        aria-hidden="true"
+                                        className="mt-0.5 size-4 shrink-0 text-warning"
+                                    />
+                                    {t('reports_r2.billing.too_many_rows', {
+                                        entries: formatNumber(
+                                            summary.totals.entries,
+                                        ),
+                                        max: formatNumber(exportLimit),
+                                    })}
+                                </p>
+                            ) : null}
 
                             {summary.totals.pending_minutes > 0 ? (
                                 <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">

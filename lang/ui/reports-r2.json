@@ -160,6 +160,7 @@
     "reports_r2.billing.pending": "Sin aprobar",
     "reports_r2.billing.pending_definition": "Horas en borrador o enviadas: todavía pueden cambiar.",
     "reports_r2.billing.pending_warning": "Hay :hours sin aprobar: pueden cambiar antes de facturar.",
+    "reports_r2.billing.too_many_rows": "Este periodo tiene :entries entradas y la exportación admite hasta :max. Elige un periodo más corto o filtra por proyecto para exportar el detalle.",
     "reports_r2.billing.summary": "Resumen de :client por proyecto y bolsa",
     "reports_r2.billing.summary_description": "Del :from al :to. El exceso de cada bolsa va aparte para facturarlo o descontarlo de la renovación.",
     "reports_r2.billing.table_caption": "Horas para facturar por proyecto y bolsa",

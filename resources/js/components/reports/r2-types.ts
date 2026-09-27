@@ -193,6 +193,8 @@ export type R2BillingRow = {
 export type R2BillingSummary = {
     rows: R2BillingRow[];
     totals: {
+        /** Entradas del periodo (una fila cada una en la exportación). */
+        entries: number;
         logged_minutes: number;
         in_bank_minutes: number;
         overage_minutes: number;
@@ -209,4 +211,8 @@ export type R2BillingProps = {
     clients: { id: number; name: string; is_active: boolean }[];
     summary: R2BillingSummary | null;
     scope: { team_only: boolean };
+    /** Entradas que caben en la exportación (D-045: hasta 20.000 filas, sin la de totales). */
+    export_limit: number;
+    /** viewReport: el informe del cliente (ClientPolicy::viewReport). */
+    can: { viewReport: boolean };
 };

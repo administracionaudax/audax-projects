@@ -543,6 +543,8 @@ const billingProps = (
     ],
     summary: null,
     scope: { team_only: false },
+    export_limit: 19999,
+    can: { viewReport: true },
     ...overrides,
 });
 
@@ -558,7 +560,7 @@ describe('horas para facturar', () => {
         ).toBeNull();
     });
 
-    it('al elegir cliente visita la misma página con cliente[] y los filtros', async () => {
+    it('al elegir cliente visita la misma página con cliente[] y los filtros, sin los proyectos ni las bolsas del anterior', async () => {
         // Radix Select usa la captura del puntero, que jsdom no tiene.
         if (!('hasPointerCapture' in Element.prototype)) {
             Object.assign(Element.prototype, {
@@ -567,7 +569,22 @@ describe('horas para facturar', () => {
             });
         }
         const user = userEvent.setup();
-        renderPage(<BillingReport {...billingProps()} />);
+        const base = filters(true);
+        renderPage(
+            <BillingReport
+                {...billingProps({
+                    filters: {
+                        ...base,
+                        query: {
+                            ...base.query,
+                            cliente: [5],
+                            proyecto: [21],
+                            bolsa: [30],
+                        },
+                    },
+                })}
+            />,
+        );
 
         await user.click(screen.getByRole('combobox', { name: 'Cliente' }));
         await user.click(
@@ -615,6 +632,7 @@ describe('horas para facturar', () => {
                             },
                         ],
                         totals: {
+                            entries: 3,
                             logged_minutes: 150,
                             in_bank_minutes: 0,
                             overage_minutes: 0,
@@ -657,6 +675,7 @@ describe('horas para facturar', () => {
                     summary: {
                         rows: [],
                         totals: {
+                            entries: 0,
                             logged_minutes: 0,
                             in_bank_minutes: 0,
                             overage_minutes: 0,
@@ -672,6 +691,95 @@ describe('horas para facturar', () => {
 
         expect(
             screen.getByText('Bodega Ñandú no tiene horas en este periodo'),
+        ).toBeTruthy();
+    });
+});
+
+describe('horas para facturar: permisos y límite de la exportación', () => {
+    const withClient = (
+        overrides: Partial<R2BillingProps> = {},
+    ): R2BillingProps =>
+        billingProps({
+            client: { id: 4, name: 'Bodega Ñandú', is_active: true },
+            summary: {
+                rows: [
+                    {
+                        project: {
+                            id: 10,
+                            code: 'NAN-CAMP',
+                            name: 'Campaña otoño',
+                            billing_type: 'time_and_materials',
+                        },
+                        bank: null,
+                        logged_minutes: 150,
+                        in_bank_minutes: 0,
+                        overage_minutes: 0,
+                        billable_minutes: 150,
+                        non_billable_minutes: 0,
+                        pending_minutes: 0,
+                        pricing: 'hourly',
+                        rate: '60.00',
+                        price_amount: null,
+                        income: '150.00',
+                    },
+                ],
+                totals: {
+                    entries: 25300,
+                    logged_minutes: 150,
+                    in_bank_minutes: 0,
+                    overage_minutes: 0,
+                    billable_minutes: 150,
+                    non_billable_minutes: 0,
+                    pending_minutes: 0,
+                    income: '150.00',
+                },
+            },
+            ...overrides,
+        });
+
+    it('el enlace al informe del cliente solo sale a quien puede verlo', () => {
+        const { unmount } = renderPage(<BillingReport {...withClient()} />);
+        expect(
+            screen.getByRole('link', { name: 'Informe del cliente' }),
+        ).toBeTruthy();
+        unmount();
+
+        renderPage(
+            <BillingReport {...withClient({ can: { viewReport: false } })} />,
+        );
+        expect(
+            screen.queryByRole('link', { name: 'Informe del cliente' }),
+        ).toBeNull();
+    });
+
+    it('con más entradas de las que caben, avisa y no ofrece exportar', () => {
+        renderPage(<BillingReport {...withClient()} />);
+
+        expect(norm(screen.getByRole('status').textContent)).toContain(
+            'Este periodo tiene 25.300 entradas y la exportación admite hasta 19.999.',
+        );
+        expect(
+            screen.queryByRole('button', { name: 'Exportar el detalle' }),
+        ).toBeNull();
+    });
+
+    it('si caben, no hay aviso y se puede exportar', () => {
+        const props = withClient();
+        renderPage(
+            <BillingReport
+                {...props}
+                summary={
+                    props.summary && {
+                        ...props.summary,
+                        totals: { ...props.summary.totals, entries: 19999 },
+                    }
+                }
+            />,
+        );
+
+        expect(screen.queryByText(/la exportación admite hasta/)).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Exportar el detalle' }),
         ).toBeTruthy();
     });
 });
