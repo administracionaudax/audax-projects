@@ -231,23 +231,14 @@ class DetailReportController extends Controller
     }
 
     /**
-     * KPIs de horas del informe (Metrics::summary, en caché). Sin datos económicos.
+     * KPIs de horas del informe (Metrics::hours, en caché): sin capacidad, estimación ni datos
+     * económicos, que el detallado no muestra.
      *
      * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
      */
     private function summary(ReportCache $cache, Metrics $metrics, ReportScope $scope): array
     {
-        return $cache->remember($scope, 'r3.detail.summary', function () use ($metrics, $scope): array {
-            $summary = $metrics->summary($scope);
-
-            return [
-                'logged_minutes' => $summary['logged_minutes'],
-                'billable_minutes' => $summary['billable_minutes'],
-                'in_bank_minutes' => $summary['in_bank_minutes'],
-                'overage_minutes' => $summary['overage_minutes'],
-                'billability' => $summary['billability'],
-            ];
-        });
+        return $cache->remember($scope, 'r3.detail.hours', fn (): array => $metrics->hours($scope));
     }
 
     /**

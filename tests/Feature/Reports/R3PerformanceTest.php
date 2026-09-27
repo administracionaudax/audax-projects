@@ -71,13 +71,14 @@ dataset('r3_roles', [
 
 it('el informe detallado cabe en su presupuesto de consultas y responde en menos de 1 s', function (string $email) {
     $user = ($this->user)($email);
-    // Presupuesto con la caché fría: lo medido (máximo de los tres roles) más 3. Con la caché
-    // caliente solo quedan las props compartidas y la sesión (2 a 5 consultas).
+    // Presupuesto con la caché fría: lo medido (máximo de los tres roles) más 3; sin capacidad,
+    // estimación ni importes (Metrics::hours), que el detallado no muestra. Con la caché caliente
+    // solo quedan las props compartidas y la sesión (2 a 5 consultas).
     $pages = [
-        'por defecto (proyecto × semana, mes)' => ['/informes/detalle', 22],
-        'persona × proyecto, año' => ['/informes/detalle?periodo=anio&filas=persona&columnas=proyecto', 23],
-        'tarea × mes, año (recortada)' => ['/informes/detalle?periodo=anio&filas=tarea&columnas=mes&medida=facturables', 22],
-        'cliente × semana, trimestre, comparando' => ['/informes/detalle?periodo=trimestre&filas=cliente&columnas=semana&comparar=1', 37],
+        'por defecto (proyecto × semana, mes)' => ['/informes/detalle', 11],
+        'persona × proyecto, año' => ['/informes/detalle?periodo=anio&filas=persona&columnas=proyecto', 11],
+        'tarea × mes, año (recortada)' => ['/informes/detalle?periodo=anio&filas=tarea&columnas=mes&medida=facturables', 12],
+        'cliente × semana, trimestre, comparando' => ['/informes/detalle?periodo=trimestre&filas=cliente&columnas=semana&comparar=1', 12],
     ];
 
     $problems = [];
