@@ -328,16 +328,52 @@ it('ignora las elecciones no válidas y nunca repite la dimensión de filas en c
         ->assertInertia(fn (Assert $page) => $page->where('layout', ['filas' => 'proyecto', 'columnas' => 'semana', 'medida' => 'imputadas']));
 });
 
-it('compara con el periodo anterior', function () {
+it('compara con el periodo anterior al mismo punto (D-079): la semana en curso, con los mismos días de la anterior', function () {
     $s = $this->s;
     TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-15')->minutes(90)->create(['user_id' => $s->ana->id]);
+    // El sábado 19 queda fuera del tramo comparado: hoy es viernes 25, el 5.º día de la semana.
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-19')->minutes(45)->create(['user_id' => $s->ana->id]);
 
     $this->actingAs($s->admin)
         ->get(($this->url)(['comparar' => '1', 'departamento' => [$s->design->id]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('summary.logged_minutes', 1420)
             ->where('comparison.logged_minutes', 90)
+            ->where('comparison.billable_minutes', 90)
+            ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-18']));
+});
+
+it('compara un periodo cerrado con el anterior entero', function () {
+    $s = $this->s;
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-15')->minutes(90)->create(['user_id' => $s->ana->id]);
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-19')->minutes(45)->create(['user_id' => $s->ana->id]);
+    $this->travelTo(CarbonImmutable::parse('2026-09-29 10:00', 'Europe/Madrid'));
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['comparar' => '1', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('summary.logged_minutes', 1420)
+            ->where('comparison.logged_minutes', 135)
             ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-20']));
+});
+
+it('solo exporta con formato=xlsx o csv: un formato en lista o desconocido muestra la página (SEC-01)', function () {
+    $admin = $this->s->admin;
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => ['x']]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('reports/detail'));
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => 'cualquiercosa']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('reports/detail'));
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => 'csv']))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
 });
 
 it('no manda datos económicos: solo horas', function () {

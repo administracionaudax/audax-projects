@@ -69,8 +69,8 @@ class ProjectReportController extends Controller
             'milestones' => $this->milestones($project),
         ]);
 
-        $format = $request->query('formato');
-        if (is_string($format) && in_array($format, TableExporter::FORMATS, true)) {
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
             return $this->export($exporter, $project, $scope, $data, $request->query('tabla'), $format);
         }
 

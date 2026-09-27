@@ -90,8 +90,8 @@ class ClientReportController extends Controller
             ...$this->banks($scope, $projectIds, $metrics, $history, $commitment),
         ]);
 
-        $format = $request->query('formato');
-        if (is_string($format) && in_array($format, TableExporter::FORMATS, true)) {
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
             return $this->export($exporter, $client, $scope, $data, $request->query('tabla'), $format);
         }
 

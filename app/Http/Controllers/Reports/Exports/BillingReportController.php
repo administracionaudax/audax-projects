@@ -43,11 +43,10 @@ class BillingReportController extends Controller
         $urlFilters = ReportFilters::fromQuery($request->query());
         $client = $urlFilters->clientIds === [] ? null : Client::query()->find($urlFilters->clientIds[0], ['id', 'name', 'is_active']);
 
-        $format = $request->query('formato');
-        $exporting = is_string($format) && in_array($format, TableExporter::FORMATS, true);
+        $format = $this->exportFormat($request);
 
         if ($client === null) {
-            abort_if($exporting, 422, self::text('reports.r2.billing.client_required'));
+            abort_if($format !== null, 422, self::text('reports.r2.billing.client_required'));
 
             return $this->page($user, $urlFilters, null, null, $exporter->maxRows() - 1);
         }
@@ -56,7 +55,7 @@ class BillingReportController extends Controller
 
         $summary = fn (): array => $cache->remember($scope, 'r2.billing.'.$client->id, fn (): array => $billing->summary($scope));
 
-        if ($exporting) {
+        if ($format !== null) {
             $entries = (clone $scope->entries())->count();
             abort_if($entries + 1 > $exporter->maxRows(), 422, self::text('reports.r2.billing.too_many_rows', [
                 'entries' => number_format($entries, 0, ',', '.'),
