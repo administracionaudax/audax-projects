@@ -27,7 +27,13 @@ const RELOAD = ['limit', 'projects', 'tasks', 'dependencies', 'range'];
 export default function GanttIndex(props: GanttIndexPageProps) {
     const { filters, limit, projects } = props;
 
-    const visit = (next: GanttFilters, preferences: GanttPreferences) => {
+    // Cambiar la escala o los colores solo toca la URL: los datos no dependen de ellos, así que
+    // no se vuelven a pedir las tareas (hasta 1.500).
+    const visit = (
+        next: GanttFilters,
+        preferences: GanttPreferences,
+        only: string[],
+    ) => {
         router.get(
             ganttIndex.url({
                 query: {
@@ -37,7 +43,7 @@ export default function GanttIndex(props: GanttIndexPageProps) {
             }),
             {},
             {
-                only: ['filters', 'preferences', ...RELOAD],
+                only,
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
@@ -58,7 +64,13 @@ export default function GanttIndex(props: GanttIndexPageProps) {
                 <GanttFiltersBar
                     filters={filters}
                     options={props.options}
-                    onChange={(next) => visit(next, props.preferences)}
+                    onChange={(next) =>
+                        visit(next, props.preferences, [
+                            'filters',
+                            'preferences',
+                            ...RELOAD,
+                        ])
+                    }
                 />
 
                 {limit.exceeded !== null ? (
@@ -104,7 +116,7 @@ export default function GanttIndex(props: GanttIndexPageProps) {
                         today={props.today}
                         preferences={props.preferences}
                         onPreferencesChange={(preferences) =>
-                            visit(filters, preferences)
+                            visit(filters, preferences, ['preferences'])
                         }
                         reload={RELOAD}
                         projects={projects}

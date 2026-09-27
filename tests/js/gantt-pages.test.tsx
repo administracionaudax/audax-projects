@@ -456,4 +456,32 @@ describe('Gantt multiproyecto', () => {
             }),
         );
     });
+
+    it('cambiar la escala conserva los filtros en la URL y no vuelve a pedir las tareas', async () => {
+        const user = userEvent.setup();
+        render(
+            <GanttIndex
+                {...indexProps({
+                    filters: {
+                        cliente: 3,
+                        departamento: null,
+                        responsable: null,
+                        estado: 'active',
+                    },
+                })}
+            />,
+        );
+
+        await user.click(screen.getByRole('radio', { name: 'Mes' }));
+
+        expect(server.get).toHaveBeenCalledWith(
+            '/gantt?cliente=3&escala=mes',
+            {},
+            expect.objectContaining({
+                only: ['preferences'],
+                preserveState: true,
+                replace: true,
+            }),
+        );
+    });
 });
