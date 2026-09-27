@@ -367,7 +367,7 @@ export default function AdminHolidays({
                     </section>
                 </div>
 
-                <HolidayImport limits={limits} />
+                <HolidayImport limits={limits} year={year} />
             </div>
         </>
     );

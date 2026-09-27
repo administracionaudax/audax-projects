@@ -112,6 +112,13 @@ return [
             'out_of_range' => 'La fecha :date está fuera del rango admitido (:min a :max).',
             'existing' => 'Ya hay un festivo ese día: «:name». Se deja como está.',
             'duplicate' => 'La fecha se repite en el fichero (línea :line).',
+            'invalid_end' => 'La fecha de fin «:value» no es válida.',
+            'invalid_duration' => 'La duración «:value» no es válida.',
+            'too_long' => 'El evento dura :days días: un festivo importado dura :max días como mucho.',
+            'multi_day' => 'Evento de :days días (del :from al :to): se añade un festivo por día.',
+            'recurring' => 'Se repite cada año desde el :from: se toma su fecha de :year.',
+            'recurring_not_in_year' => 'Se repite cada año desde el :from, pero no cae en :year.',
+            'recurring_unsupported' => 'Se repite de una forma que no se puede importar (:rule). Añádelo a mano.',
         ],
         'names' => [
             'new_year' => 'Año Nuevo',

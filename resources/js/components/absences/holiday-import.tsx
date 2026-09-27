@@ -59,14 +59,17 @@ export function ImportStatusBadge({ status }: { status: HolidayImportStatus }) {
 
 /**
  * Importar festivos autonómicos y locales (D-050): se sube un .ics o un CSV, el servidor devuelve
- * la vista previa (flash `holiday_import`: cada línea con su estado y su error) y se confirman los
- * nuevos. No se guarda nada hasta confirmar.
+ * la vista previa (flash `holiday_import`: cada línea con su estado, su error y su aviso) y se
+ * confirman los nuevos. No se guarda nada hasta confirmar. Los eventos del .ics que se repiten
+ * cada año se toman en `year` (el año de la página); uno de varios días da una fila por día.
  */
 export function HolidayImport({
     limits,
+    year,
     initialPreview = null,
 }: {
     limits: HolidaysPageProps['limits'];
+    year: number;
     initialPreview?: HolidayImportPreview | null;
 }) {
     const id = useId();
@@ -92,7 +95,7 @@ export function HolidayImport({
 
         router.post(
             preview.url(),
-            { file },
+            { file, year },
             {
                 forceFormData: true,
                 preserveScroll: true,
@@ -205,7 +208,8 @@ export function HolidayImport({
                         {t('holidays.import.file_help', {
                             kb: limits.max_kilobytes,
                             rows: limits.max_rows,
-                        })}
+                        })}{' '}
+                        {t('holidays.import.recurring_help', { year })}
                     </p>
                     <InputError id={`${id}-file-error`} message={error} />
                 </div>
@@ -284,9 +288,10 @@ export function HolidayImport({
                                 </tr>
                             </thead>
                             <tbody>
-                                {result.rows.map((row) => (
+                                {result.rows.map((row, index) => (
                                     <tr
-                                        key={row.line}
+                                        // Un evento de varios días da varias filas con su misma línea.
+                                        key={`${row.line}-${index}`}
                                         className="border-b align-top last:border-b-0"
                                         data-test="holiday-preview-row"
                                     >

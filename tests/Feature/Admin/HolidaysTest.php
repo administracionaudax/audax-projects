@@ -310,6 +310,147 @@ test('la confirmación vuelve a validar cada fila', function () {
     expect(Holiday::query()->count())->toBe(0);
 });
 
+test('un .ics ignora las propiedades de sus alarmas (VALARM)', function () {
+    $ics = implode("\r\n", [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'BEGIN:VEVENT',
+        'DTSTART;VALUE=DATE:20260908',
+        'SUMMARY:Día de Asturias',
+        'BEGIN:VALARM',
+        'ACTION:EMAIL',
+        'SUMMARY:Recordatorio del festivo',
+        'DESCRIPTION:Mañana es festivo',
+        'TRIGGER:-P1D',
+        'END:VALARM',
+        'END:VEVENT',
+        'BEGIN:VEVENT',
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'SUMMARY:Solo en la alarma',
+        'DTSTART:20300101T000000',
+        'END:VALARM',
+        'DTSTART;VALUE=DATE:20261009',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ]);
+
+    $preview = app(HolidayImporter::class)->preview($ics, 'ics', 2026);
+
+    expect($preview['rows'])->toBe([
+        ['line' => 3, 'date' => '2026-09-08', 'name' => 'Día de Asturias', 'status' => 'new', 'message' => null],
+        ['line' => 13, 'date' => '2026-10-09', 'name' => null, 'status' => 'error', 'message' => 'El evento no tiene nombre (SUMMARY).'],
+    ]);
+});
+
+test('un evento que se repite cada año (RRULE) se toma en el año elegido o explica por qué no', function () {
+    $event = fn (string $name, string ...$lines): array => ['BEGIN:VEVENT', ...$lines, "SUMMARY:{$name}", 'END:VEVENT'];
+    $ics = implode("\r\n", [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        ...$event('Año Nuevo', 'DTSTART;VALUE=DATE:20100101', 'RRULE:FREQ=YEARLY'),
+        ...$event('Cada dos años', 'DTSTART;VALUE=DATE:20250315', 'RRULE:FREQ=YEARLY;INTERVAL=2;BYMONTH=3;BYMONTHDAY=15'),
+        ...$event('Tres veces', 'DTSTART;VALUE=DATE:20100501', 'RRULE:FREQ=YEARLY;COUNT=3'),
+        ...$event('Hasta 2020', 'DTSTART;VALUE=DATE:20100601', 'RRULE:FREQ=YEARLY;UNTIL=20201231T235959Z'),
+        ...$event('Excluido', 'DTSTART;VALUE=DATE:20100724', 'RRULE:FREQ=YEARLY', 'EXDATE;VALUE=DATE:20260724,20270724'),
+        ...$event('Primer lunes', 'DTSTART;VALUE=DATE:20100405', 'RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1MO'),
+        ...$event('Mensual', 'DTSTART;VALUE=DATE:20100110', 'RRULE:FREQ=MONTHLY'),
+        ...$event('Con RDATE', 'DTSTART;VALUE=DATE:20260816', 'RDATE;VALUE=DATE:20270816'),
+        ...$event('Bisiesto', 'DTSTART;VALUE=DATE:20240229', 'RRULE:FREQ=YEARLY'),
+        ...$event('Futuro', 'DTSTART;VALUE=DATE:20300101', 'RRULE:FREQ=YEARLY'),
+        ...$event('Nochebuena y Navidad', 'DTSTART;VALUE=DATE:20101224', 'DTEND;VALUE=DATE:20101226', 'RRULE:FREQ=YEARLY'),
+        ...$event('Sin repetición', 'DTSTART;VALUE=DATE:20261225'),
+        'END:VCALENDAR',
+    ]);
+
+    $preview = app(HolidayImporter::class)->preview($ics, 'ics', 2027);
+    $rows = array_map(fn (array $row): array => [$row['date'], $row['status'], $row['message']], $preview['rows']);
+
+    expect($rows)->toBe([
+        ['2027-01-01', 'new', 'Se repite cada año desde el 01/01/2010: se toma su fecha de 2027.'],
+        ['2027-03-15', 'new', 'Se repite cada año desde el 15/03/2025: se toma su fecha de 2027.'],
+        ['2010-05-01', 'error', 'Se repite cada año desde el 01/05/2010, pero no cae en 2027.'],
+        ['2010-06-01', 'error', 'Se repite cada año desde el 01/06/2010, pero no cae en 2027.'],
+        ['2010-07-24', 'error', 'Se repite cada año desde el 24/07/2010, pero no cae en 2027.'],
+        ['2010-04-05', 'error', 'Se repite de una forma que no se puede importar (FREQ=YEARLY;BYMONTH=4;BYDAY=1MO). Añádelo a mano.'],
+        ['2010-01-10', 'error', 'Se repite de una forma que no se puede importar (FREQ=MONTHLY). Añádelo a mano.'],
+        ['2026-08-16', 'error', 'Se repite de una forma que no se puede importar (RDATE). Añádelo a mano.'],
+        ['2024-02-29', 'error', 'Se repite cada año desde el 29/02/2024, pero no cae en 2027.'],
+        ['2030-01-01', 'error', 'Se repite cada año desde el 01/01/2030, pero no cae en 2027.'],
+        ['2027-12-24', 'new', 'Se repite cada año desde el 24/12/2010: se toma su fecha de 2027. Evento de 2 días (del 24/12/2027 al 25/12/2027): se añade un festivo por día.'],
+        ['2027-12-25', 'new', 'Se repite cada año desde el 24/12/2010: se toma su fecha de 2027. Evento de 2 días (del 24/12/2027 al 25/12/2027): se añade un festivo por día.'],
+        ['2026-12-25', 'new', null],
+    ])->and($preview['counts'])->toBe(['new' => 5, 'existing' => 0, 'duplicate' => 0, 'error' => 8]);
+});
+
+test('la vista previa toma los festivos que se repiten en el año de la página o en el actual', function () {
+    $ics = implode("\r\n", ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20100101', 'RRULE:FREQ=YEARLY', 'SUMMARY:Año Nuevo', 'END:VEVENT', 'END:VCALENDAR']);
+    $file = fn () => UploadedFile::fake()->createWithContent('fijos.ics', $ics);
+
+    $this->actingAs($this->admin)
+        ->post('/admin/festivos/importar/vista-previa', ['file' => $file(), 'year' => 2027])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('holiday_import.rows.0.date', '2027-01-01');
+
+    $this->actingAs($this->admin)
+        ->post('/admin/festivos/importar/vista-previa', ['file' => $file()])
+        ->assertInertiaFlash('holiday_import.rows.0.date', '2026-01-01');
+
+    $this->actingAs($this->admin)
+        ->post('/admin/festivos/importar/vista-previa', ['file' => $file(), 'year' => 1999])
+        ->assertSessionHasErrors(['year' => 'El campo año debe estar entre 2000 y 2100.']);
+});
+
+test('un evento de varios días (DTEND o DURATION) da un festivo por día, con su aviso', function () {
+    Holiday::factory()->create(['date' => '2026-12-25', 'name' => 'Natividad']);
+
+    $event = fn (string $name, string ...$lines): array => ['BEGIN:VEVENT', ...$lines, "SUMMARY:{$name}", 'END:VEVENT'];
+    $ics = implode("\r\n", [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        ...$event('Navidades', 'DTSTART;VALUE=DATE:20261224', 'DTEND;VALUE=DATE:20261227'),
+        ...$event('Fiestas', 'DTSTART;VALUE=DATE:20260908', 'DURATION:P2D'),
+        ...$event('Un día', 'DTSTART;VALUE=DATE:20261009', 'DTEND;VALUE=DATE:20261010'),
+        ...$event('Con horas', 'DTSTART:20261012T100000', 'DTEND:20261012T120000'),
+        ...$event('En UTC', 'DTSTART:20261231T230000Z', 'DTEND:20270101T230000Z'),
+        ...$event('Fin roto', 'DTSTART;VALUE=DATE:20261101', 'DTEND:mañana'),
+        ...$event('Duración rota', 'DTSTART;VALUE=DATE:20261102', 'DURATION:P1X'),
+        ...$event('Todo el verano', 'DTSTART;VALUE=DATE:20260701', 'DTEND;VALUE=DATE:20260901'),
+        'END:VCALENDAR',
+    ]);
+
+    $preview = app(HolidayImporter::class)->preview($ics, 'ics', 2026);
+    $rows = array_map(fn (array $row): array => [$row['line'], $row['date'], $row['status'], $row['message']], $preview['rows']);
+    $christmas = 'Evento de 3 días (del 24/12/2026 al 26/12/2026): se añade un festivo por día.';
+    $fiestas = 'Evento de 2 días (del 08/09/2026 al 09/09/2026): se añade un festivo por día.';
+
+    expect($rows)->toBe([
+        [3, '2026-12-24', 'new', $christmas],
+        [3, '2026-12-25', 'existing', 'Ya hay un festivo ese día: «Natividad». Se deja como está. '.$christmas],
+        [3, '2026-12-26', 'new', $christmas],
+        [8, '2026-09-08', 'new', $fiestas],
+        [8, '2026-09-09', 'new', $fiestas],
+        [13, '2026-10-09', 'new', null],
+        [18, '2026-10-12', 'new', null],
+        [23, '2027-01-01', 'new', null],
+        [28, '2026-11-01', 'error', 'La fecha de fin «mañana» no es válida.'],
+        [33, '2026-11-02', 'error', 'La duración «P1X» no es válida.'],
+        [38, '2026-07-01', 'error', 'El evento dura 62 días: un festivo importado dura 31 días como mucho.'],
+    ])->and($preview['counts'])->toBe(['new' => 7, 'existing' => 1, 'duplicate' => 0, 'error' => 3]);
+});
+
+test('los días de los eventos largos cuentan para el límite de festivos por fichero', function () {
+    $lines = ['BEGIN:VCALENDAR'];
+    foreach (range(1, 17) as $month) {
+        $start = CarbonImmutable::create(2026, 1, 1)->addMonths($month - 1);
+        $lines = [...$lines, 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:'.$start->format('Ymd'), 'DURATION:P31D', "SUMMARY:Mes {$month}", 'END:VEVENT'];
+    }
+    $ics = implode("\r\n", [...$lines, 'END:VCALENDAR']);
+
+    expect(fn () => app(HolidayImporter::class)->preview($ics, 'ics', 2026))
+        ->toThrow(ValidationException::class, 'El fichero tiene más de 500 líneas. Divídelo en varios.');
+});
+
 test('el importador lee también un CSV separado por comas y líneas CRLF', function () {
     [$format, $rows] = app(HolidayImporter::class)->parse("2026-06-24,San Juan\r\n2026-08-16,San Roque\r\n", 'csv');
 

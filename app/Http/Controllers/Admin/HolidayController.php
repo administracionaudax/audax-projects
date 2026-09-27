@@ -153,16 +153,18 @@ class HolidayController extends Controller
 
     /**
      * POST /admin/festivos/importar/vista-previa: lee el fichero y devuelve (flash `holiday_import`)
-     * cada festivo con su estado, sin guardar nada.
+     * cada festivo con su estado, sin guardar nada. Los eventos que se repiten cada año se toman en
+     * el año de la página (`year`; si no llega, el actual).
      */
     public function preview(HolidayFileRequest $request): RedirectResponse
     {
         /** @var UploadedFile $file */
         $file = $request->file('file');
+        $year = $request->filled('year') ? $request->integer('year') : null;
 
         Inertia::flash('holiday_import', [
             'file_name' => mb_substr($file->getClientOriginalName(), 0, 120),
-            ...$this->importer->preview((string) $file->get(), strtolower($file->getClientOriginalExtension())),
+            ...$this->importer->preview((string) $file->get(), strtolower($file->getClientOriginalExtension()), $year),
         ]);
 
         return back();

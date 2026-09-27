@@ -169,7 +169,7 @@ describe('festivos (/admin/festivos)', () => {
 describe('importación de festivos', { timeout: 20_000 }, () => {
     it('pide un fichero antes de la vista previa', async () => {
         const user = userEvent.setup();
-        render(<HolidayImport limits={LIMITS} />);
+        render(<HolidayImport limits={LIMITS} year={2027} />);
 
         await user.click(
             screen.getByRole('button', { name: 'Ver la vista previa' }),
@@ -190,7 +190,7 @@ describe('importación de festivos', { timeout: 20_000 }, () => {
                 options: { onFlash?: (flash: unknown) => void },
             ) => options.onFlash?.({ holiday_import: PREVIEW }),
         );
-        render(<HolidayImport limits={LIMITS} />);
+        render(<HolidayImport limits={LIMITS} year={2027} />);
 
         const file = new File(['BEGIN:VCALENDAR'], 'asturias.ics', {
             type: 'text/calendar',
@@ -200,9 +200,10 @@ describe('importación de festivos', { timeout: 20_000 }, () => {
             screen.getByRole('button', { name: 'Ver la vista previa' }),
         );
 
+        // Con el año de la página: en él se toman los eventos que se repiten cada año.
         expect(inertia.post).toHaveBeenCalledWith(
             '/admin/festivos/importar/vista-previa',
-            { file },
+            { file, year: 2027 },
             expect.objectContaining({ forceFormData: true }),
         );
         expect(screen.getByText('Vista previa de «asturias.ics»')).toBeTruthy();
@@ -215,7 +216,13 @@ describe('importación de festivos', { timeout: 20_000 }, () => {
 
     it('confirma solo los festivos nuevos', async () => {
         const user = userEvent.setup();
-        render(<HolidayImport limits={LIMITS} initialPreview={PREVIEW} />);
+        render(
+            <HolidayImport
+                limits={LIMITS}
+                year={2027}
+                initialPreview={PREVIEW}
+            />,
+        );
 
         await user.click(
             screen.getByRole('button', { name: 'Añadir 1 festivo' }),
@@ -224,6 +231,73 @@ describe('importación de festivos', { timeout: 20_000 }, () => {
         expect(inertia.post).toHaveBeenCalledWith(
             '/admin/festivos/importar',
             { rows: [{ date: '2026-09-21', name: 'San Mateo' }] },
+            expect.any(Object),
+        );
+    });
+
+    it('explica en qué año se toman los festivos que se repiten', () => {
+        render(<HolidayImport limits={LIMITS} year={2027} />);
+
+        expect(
+            screen.getByText(
+                /Los festivos del \.ics que se repiten cada año se toman en 2027\./,
+            ),
+        ).toBeTruthy();
+    });
+
+    it('un evento de varios días pinta una fila por día y los confirma todos', async () => {
+        const user = userEvent.setup();
+        const note =
+            'Evento de 2 días (del 24/12/2026 al 25/12/2026): se añade un festivo por día.';
+        const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+        render(
+            <HolidayImport
+                limits={LIMITS}
+                year={2026}
+                initialPreview={{
+                    file_name: 'navidad.ics',
+                    format: 'ics',
+                    rows: [
+                        {
+                            line: 3,
+                            date: '2026-12-24',
+                            name: 'Navidad',
+                            status: 'new',
+                            message: note,
+                        },
+                        {
+                            line: 3,
+                            date: '2026-12-25',
+                            name: 'Navidad',
+                            status: 'new',
+                            message: note,
+                        },
+                    ],
+                    counts: { new: 2, existing: 0, duplicate: 0, error: 0 },
+                }}
+            />,
+        );
+
+        expect(
+            document.querySelectorAll('[data-test="holiday-preview-row"]'),
+        ).toHaveLength(2);
+        expect(screen.getAllByText(note)).toHaveLength(2);
+        // Sin claves repetidas en la tabla (React lo avisaría por consola).
+        expect(errors).not.toHaveBeenCalled();
+        errors.mockRestore();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Añadir 2 festivos' }),
+        );
+
+        expect(inertia.post).toHaveBeenCalledWith(
+            '/admin/festivos/importar',
+            {
+                rows: [
+                    { date: '2026-12-24', name: 'Navidad' },
+                    { date: '2026-12-25', name: 'Navidad' },
+                ],
+            },
             expect.any(Object),
         );
     });
@@ -237,7 +311,7 @@ describe('importación de festivos', { timeout: 20_000 }, () => {
                 options: { onError?: (errors: Record<string, string>) => void },
             ) => options.onError?.({ file: 'El fichero está vacío.' }),
         );
-        render(<HolidayImport limits={LIMITS} />);
+        render(<HolidayImport limits={LIMITS} year={2027} />);
 
         await user.upload(
             screen.getByLabelText('Fichero .ics o .csv'),
