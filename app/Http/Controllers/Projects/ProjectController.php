@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Projects;
 
 use App\Domain\HourBanks\FirstHourBank;
 use App\Domain\HourBanks\HourBankCommitment;
+use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Projects\ProjectActivityFeed;
 use App\Domain\Projects\ProjectColors;
 use App\Domain\Projects\ProjectCreator;
@@ -141,6 +142,7 @@ class ProjectController extends Controller
         ProjectSummary $summary,
         ProjectActivityFeed $activity,
         HourBankCommitment $commitment,
+        UpcomingMilestones $milestones,
     ): Response {
         $this->authorize('view', $project);
 
@@ -180,6 +182,8 @@ class ProjectController extends Controller
             'membersCount' => $project->members()->count(),
             'hourBanks' => $banks,
             'activity' => $activity->latest($project, $user),
+            // Próximos hitos (D-062): los vencidos y los 5 siguientes sin completar.
+            'milestones' => $milestones->forProject($project),
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Enums\TimesheetStatus;
@@ -24,7 +25,8 @@ use Inertia\Response;
  * - sus tareas abiertas vencidas, de hoy y de esta semana (D-037),
  * - sus horas de hoy y de la semana frente a su capacidad,
  * - el estado de su semana (con el comentario si se la han devuelto),
- * - los días laborables sin imputar de las dos últimas semanas.
+ * - los días laborables sin imputar de las dos últimas semanas,
+ * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  */
 class HomeController extends Controller
@@ -38,6 +40,7 @@ class HomeController extends Controller
 
     public function __construct(
         private readonly Capacity $capacity,
+        private readonly UpcomingMilestones $milestones,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -60,6 +63,7 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            'milestones' => $this->milestones->forUser($user, $today),
         ]);
     }
 

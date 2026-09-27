@@ -21,7 +21,8 @@ use Illuminate\Validation\ValidationException;
  * - en los proyectos de bolsas, la bolsa es obligatoria y debe estar abierta (activa o agotada),
  * - subtareas de un solo nivel, en el proyecto y con la bolsa de su padre (siempre),
  * - si una tarea tiene subtareas con estimación, la suya es la suma (solo lectura),
- * - un hito no lleva estimación ni horas; una tarea con horas no puede pasar a hito,
+ * - un hito no lleva estimación ni horas ni inicio: su única fecha es la entrega (D-062); una
+ *   tarea con horas no puede pasar a hito,
  * - no cambia de bolsa con un temporizador en marcha en ella o en sus subtareas (hasRunningTimer),
  * - completed_at lo gestiona el modelo al cambiar de estado,
  * - las tareas nuevas van al final de su columna; al cambiar de estado, al final de la nueva,
@@ -54,6 +55,12 @@ final class TaskWriter
         $startDate = $this->dateOrNull($data['start_date'] ?? null);
         $dueDate = $this->dateOrNull($data['due_date'] ?? null);
         $this->assertDates($startDate, $dueDate);
+
+        // Un hito solo tiene entrega (D-062): si solo traía inicio, esa fecha pasa a ser la entrega.
+        if ($isMilestone) {
+            $dueDate ??= $startDate;
+            $startDate = null;
+        }
 
         $description = RichText::sanitize($this->stringOrNull($data['description'] ?? null));
 
@@ -177,8 +184,12 @@ final class TaskWriter
             $task->estimated_minutes = $estimate;
         }
 
+        // Un hito no tiene duración: sin estimación y con la entrega como única fecha (D-062). Si
+        // solo tenía inicio, esa fecha pasa a ser la entrega.
         if ($task->is_milestone) {
             $task->estimated_minutes = null;
+            $task->due_date ??= $task->start_date;
+            $task->start_date = null;
         }
 
         $bankChanged = false;
