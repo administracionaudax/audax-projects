@@ -25,11 +25,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * cualquiera; un responsable, los que dirige; el resto, 403.
  * - KPIs del departamento (con variación si comparar=1),
  * - ocupación y facturabilidad de cada miembro (tabla y barras): las personas del departamento
- *   (activas o con horas en el periodo), también las que no han imputado nada,
+ *   (activas o con horas en el periodo), también las que no han imputado nada. La ocupación y la
+ *   productividad facturable, las del SPEC §10 (contra la capacidad del periodo completo, como en
+ *   el resto de informes); la capacidad transcurrida hasta ayer va aparte, como dato informativo,
  * - reparto por cliente y «Carga futura» (Fase 3),
  * - ?formato=xlsx|csv exporta la tabla de miembros (con ingreso, coste y margen si hay permiso).
  *
- * @phpstan-type Member array{id: int, name: string, is_active: bool, capacity_minutes: int, logged_minutes: int,
+ * @phpstan-type Member array{id: int, name: string, is_active: bool, capacity_minutes: int, capacity_to_date_minutes: int, logged_minutes: int,
  *     billable_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
  *     income: string|null, cost: string|null, margin: string|null}
  */
@@ -49,7 +51,7 @@ class DepartmentReportController extends Controller
         Gate::authorize('viewReport', $department);
 
         $scope = $this->reportScope($request, ['departmentIds' => [$department->id]]);
-        $members = $cache->remember($scope, 'r1.department.members', fn (): array => $this->members($scope, $metrics));
+        $members = $cache->remember($scope, self::daily('r1.department.members'), fn (): array => $this->members($scope, $metrics));
 
         $format = $this->exportFormat($request);
         if ($format !== null) {
@@ -59,15 +61,17 @@ class DepartmentReportController extends Controller
         }
 
         $clients = $cache->remember($scope, 'r1.department.clients', fn (): array => $this->withMargin($metrics->breakdown($scope, Dimension::Client)));
-        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
+        $summaries = $this->summaries($scope, $metrics, $cache);
+        $clients = $this->top($clients, self::TOP);
 
         return Inertia::render('reports/department', [
             'department' => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color],
-            'filters' => $this->filterPropsWithout($scope, ['departamento']),
-            'summary' => $summary,
-            'comparison' => $comparison,
+            'filters' => self::withComparisonRange($this->filterPropsWithout($scope, ['departamento']), $summaries['comparison_range']),
+            'summary' => $summaries['summary'],
+            'comparison' => $summaries['comparison'],
+            'comparison_partial' => $summaries['comparison_partial'],
             'members' => $members,
-            'clients' => $this->top($clients, self::TOP),
+            'clients' => $clients,
             'occupancy_thresholds' => [
                 'low' => (int) Setting::get('occupancy_low_threshold', 70),
                 'high' => (int) Setting::get('occupancy_high_threshold', 110),
@@ -76,14 +80,17 @@ class DepartmentReportController extends Controller
     }
 
     /**
-     * Cifras de cada persona del alcance: capacidad (Metrics::capacityByPerson) e imputadas y
-     * facturables (Metrics::breakdown por persona), de más a menos horas.
+     * Cifras de cada persona del alcance: capacidad del periodo y transcurrida hasta ayer
+     * (Metrics::capacityByPerson y elapsedCapacityByPerson) e imputadas y facturables
+     * (Metrics::breakdown por persona), de más a menos horas. La ocupación y la productividad
+     * facturable, contra la capacidad del periodo (SPEC §10, como Metrics::summary).
      *
      * @return list<Member>
      */
     private function members(ReportScope $scope, Metrics $metrics): array
     {
         $capacity = $metrics->capacityByPerson($scope);
+        $elapsed = $metrics->elapsedCapacityByPerson($scope);
         $hours = collect($metrics->breakdown($scope, Dimension::Person))->keyBy('key');
         $members = [];
 
@@ -91,6 +98,7 @@ class DepartmentReportController extends Controller
             /** @var User $person */
             $row = $hours->get((string) $person->id);
             $capacityMinutes = array_sum($capacity[$person->id] ?? []);
+            $toDate = $elapsed[$person->id] ?? 0;
             $logged = (int) ($row['logged_minutes'] ?? 0);
             $billable = (int) ($row['billable_minutes'] ?? 0);
             $income = $scope->canSeeFinancials() ? ($row['income'] ?? '0.00') : null;
@@ -101,6 +109,7 @@ class DepartmentReportController extends Controller
                 'name' => $person->name,
                 'is_active' => $person->is_active,
                 'capacity_minutes' => $capacityMinutes,
+                'capacity_to_date_minutes' => $toDate,
                 'logged_minutes' => $logged,
                 'billable_minutes' => $billable,
                 'occupancy' => Metrics::ratio($logged, $capacityMinutes),
@@ -118,14 +127,19 @@ class DepartmentReportController extends Controller
     }
 
     /**
+     * Tabla de miembros para exportar. Si al periodo aún le quedan días con jornada, lleva además
+     * la capacidad transcurrida hasta ayer (informativa, como en la tabla de la página).
+     *
      * @param  list<Member>  $members
      * @return array{0: list<string>, 1: list<list<string|int|float|null>>}
      */
     private function membersTable(array $members, bool $financials): array
     {
+        $inProgress = array_sum(array_column($members, 'capacity_to_date_minutes')) < array_sum(array_column($members, 'capacity_minutes'));
         $headers = [
             __('reports.r1.columns.person'),
             __('reports.r1.columns.capacity'),
+            ...($inProgress ? [__('reports.r1.columns.capacity_to_date')] : []),
             __('reports.r1.columns.logged'),
             __('reports.r1.columns.billable'),
             __('reports.r1.columns.occupancy'),
@@ -142,6 +156,7 @@ class DepartmentReportController extends Controller
             $line = [
                 $member['name'],
                 TableExporter::hours($member['capacity_minutes']),
+                ...($inProgress ? [TableExporter::hours($member['capacity_to_date_minutes'])] : []),
                 TableExporter::hours($member['logged_minutes']),
                 TableExporter::hours($member['billable_minutes']),
                 self::percent($member['occupancy']),

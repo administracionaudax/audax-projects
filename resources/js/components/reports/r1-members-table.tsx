@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
+    CalendarClock,
     CalendarOff,
     CircleCheck,
     CircleGauge,
@@ -16,16 +17,24 @@ import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-export type OccupancyLevel = 'none' | 'low' | 'ok' | 'high';
+export type OccupancyLevel = 'none' | 'upcoming' | 'low' | 'ok' | 'high';
 
 /**
  * Nivel de ocupación frente a los umbrales configurados (D-047: 70 % y 110 % por defecto): por
- * debajo del bajo, «baja»; por encima del alto, «alta»; sin capacidad, «sin jornada».
+ * debajo del bajo, «baja»; por encima del alto, «alta»; sin capacidad, «sin jornada», o «aún sin
+ * días» si tiene jornada en el periodo pero todavía no ha pasado ninguno de esos días (hasta ayer):
+ * el primer día del periodo, o en uno futuro, nadie sale «baja». La ocupación es la del SPEC §10
+ * (contra la capacidad del periodo).
  */
 export function occupancyLevel(
     occupancy: number | null,
     thresholds: R1OccupancyThresholds,
+    upcoming = false,
 ): OccupancyLevel {
+    if (upcoming) {
+        return 'upcoming';
+    }
+
     if (occupancy === null) {
         return 'none';
     }
@@ -50,6 +59,11 @@ const LEVELS: Record<
         tone: 'text-muted-foreground',
         label: 'reports_r1.occupancy.none',
     },
+    upcoming: {
+        icon: CalendarClock,
+        tone: 'text-muted-foreground',
+        label: 'reports_r1.occupancy.upcoming',
+    },
     low: {
         icon: CircleGauge,
         tone: 'text-info',
@@ -71,11 +85,13 @@ const LEVELS: Record<
 export function OccupancyStatus({
     occupancy,
     thresholds,
+    upcoming = false,
 }: {
     occupancy: number | null;
     thresholds: R1OccupancyThresholds;
+    upcoming?: boolean;
 }) {
-    const level = LEVELS[occupancyLevel(occupancy, thresholds)];
+    const level = LEVELS[occupancyLevel(occupancy, thresholds, upcoming)];
     const Icon = level.icon;
 
     return (
@@ -208,6 +224,16 @@ export function R1MembersTable({
                             </th>
                             <td className="tabular px-3 py-1.5 text-right">
                                 {formatMinutes(member.capacity_minutes)}
+                                {member.capacity_to_date_minutes <
+                                member.capacity_minutes ? (
+                                    <span className="block text-xs text-muted-foreground">
+                                        {t('reports_r1.department.to_date', {
+                                            capacity: formatMinutes(
+                                                member.capacity_to_date_minutes,
+                                            ),
+                                        })}
+                                    </span>
+                                ) : null}
                             </td>
                             <td className="tabular px-3 py-1.5 text-right">
                                 {formatMinutes(member.logged_minutes)}
@@ -219,6 +245,10 @@ export function R1MembersTable({
                                 <OccupancyStatus
                                     occupancy={member.occupancy}
                                     thresholds={thresholds}
+                                    upcoming={
+                                        member.capacity_minutes > 0 &&
+                                        member.capacity_to_date_minutes === 0
+                                    }
                                 />
                             </td>
                             <td className="tabular px-3 py-1.5 text-right">

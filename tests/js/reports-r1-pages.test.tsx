@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { cloneElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import type { MetricsSummary, ReportFiltersProps } from '@/types';
+import type { ReportFiltersProps } from '@/types';
 
 /*
  * R1 · Páginas de informes: qué ve cada uno (D-044), datos económicos solo con view-financials,
@@ -66,6 +66,7 @@ import type {
     DepartmentReportProps,
     DirectionReportProps,
     PersonReportProps,
+    R1Summary,
     ReportIndexProps,
 } from '@/components/reports/r1-types';
 import DepartmentReport from '@/pages/reports/department';
@@ -119,8 +120,9 @@ const filters = (
     ...overrides,
 });
 
-const summary: MetricsSummary = {
+const summary: R1Summary = {
     capacity_minutes: 3600,
+    capacity_to_date_minutes: 3600,
     logged_minutes: 1420,
     billable_minutes: 1360,
     in_bank_minutes: 1320,
@@ -141,7 +143,7 @@ const summary: MetricsSummary = {
     margin_pct: 0.7159,
 };
 
-const noMoney: MetricsSummary = {
+const noMoney: R1Summary = {
     ...summary,
     income: null,
     cost: null,
@@ -238,6 +240,7 @@ const direction = (
     filters: filters(),
     summary,
     comparison: null,
+    comparison_partial: false,
     limited_to: null,
     series: {
         bucket: 'semana',
@@ -302,6 +305,35 @@ describe('dashboard de dirección', () => {
         ).toBe(
             '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=proyectos&formato=csv',
         );
+    });
+
+    it('con el periodo en curso, avisa de que compara con los mismos días del anterior', () => {
+        render(
+            withTooltips(
+                <DirectionReport
+                    {...direction({
+                        filters: filters({
+                            compare: true,
+                            comparison: {
+                                from: '2026-09-14',
+                                to: '2026-09-18',
+                            },
+                        }),
+                        comparison: { ...summary, logged_minutes: 710 },
+                        comparison_partial: true,
+                    })}
+                />,
+            ),
+        );
+
+        expect(
+            screen.getByText(
+                'El periodo sigue en curso: la variación compara con los mismos días del periodo anterior.',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen.getByText('Comparado con: del 14/09/2026 al 18/09/2026'),
+        ).toBeTruthy();
     });
 
     it('un responsable ve el aviso de su alcance y ninguna cifra económica', () => {
@@ -418,12 +450,14 @@ describe('dashboard de departamento', () => {
         filters: filters({ can_see_financials: false }),
         summary: noMoney,
         comparison: null,
+        comparison_partial: false,
         members: [
             {
                 id: 6,
                 name: 'Luis',
                 is_active: true,
                 capacity_minutes: 1200,
+                capacity_to_date_minutes: 1200,
                 logged_minutes: 760,
                 billable_minutes: 700,
                 occupancy: 0.6333,
@@ -475,6 +509,23 @@ describe('dashboard de departamento', () => {
         );
     });
 
+    it('con el periodo en curso explica que la ocupación cuenta todo el periodo', () => {
+        render(
+            withTooltips(
+                <DepartmentReport
+                    {...props}
+                    summary={{ ...noMoney, capacity_to_date_minutes: 2880 }}
+                />,
+            ),
+        );
+
+        expect(
+            screen.getByText(
+                /El periodo sigue en curso: la ocupación cuenta la capacidad de todo el periodo/,
+            ),
+        ).toBeTruthy();
+    });
+
     it('sin miembros lo dice', () => {
         render(withTooltips(<DepartmentReport {...props} members={[]} />));
 
@@ -498,6 +549,7 @@ describe('dashboard de una persona', () => {
         filters: filters({ can_see_financials: false }),
         summary: noMoney,
         comparison: null,
+        comparison_partial: false,
         clients: { rows: [row('3', 'Acme', 760, false)], others: null },
         projects: { rows: [], others: null },
         types: { rows: [row(null, 'Sin tipo', 760, false)], others: null },

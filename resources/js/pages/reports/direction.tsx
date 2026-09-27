@@ -44,6 +44,7 @@ export default function DirectionReport({
     limited_to: limitedTo,
     summary,
     comparison,
+    comparison_partial: comparisonPartial,
     series,
     departments,
     clients,
@@ -101,6 +102,7 @@ export default function DirectionReport({
                         <R1KpiGrid
                             summary={summary}
                             comparison={comparison}
+                            comparisonPartial={comparisonPartial}
                             loading={state.loading}
                             kpis={[
                                 'logged',

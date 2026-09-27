@@ -9,6 +9,8 @@ use App\Domain\Reports\Money;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Support\LocalTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
 /**
@@ -30,21 +32,85 @@ trait BuildsDashboards
     public const int WEEKLY_MAX_DAYS = 92;
 
     /**
-     * Resumen del periodo y, con comparar=1, el del periodo anterior con los mismos filtros.
+     * Resumen del periodo (Metrics::summary, SPEC §10) con la capacidad transcurrida hasta ayer
+     * como dato informativo (capacity_to_date_minutes; la ocupación no se mide contra ella) y, con
+     * comparar=1, el del periodo anterior con los mismos filtros.
      *
-     * @return array{summary: array<string, mixed>, comparison: array<string, mixed>|null}
+     * Si el periodo está en curso (hoy cae dentro), la comparación es «al mismo punto»: los mismos
+     * días transcurridos del periodo anterior frente a su capacidad completa
+     * (Metrics::summaryFirstDays). Comparar el mes a medias con el anterior entero daría a mitad de
+     * mes −50 % en horas, ingreso y ocupación aunque se fuera al mismo ritmo. `comparison_range` es
+     * el tramo comparado (para la barra de filtros) y `comparison_partial` dice si es un tramo.
+     *
+     * @return array{summary: array<string, mixed>, comparison: array<string, mixed>|null,
+     *     comparison_range: array{from: string, to: string}|null, comparison_partial: bool}
      */
     protected function summaries(ReportScope $scope, Metrics $metrics, ReportCache $cache): array
     {
-        $summary = $cache->remember($scope, 'r1.summary', fn (): array => $metrics->summary($scope));
-        $comparison = null;
+        $summary = $cache->remember($scope, self::daily('r1.summary'), fn (): array => $metrics->summary($scope)
+            + ['capacity_to_date_minutes' => $metrics->elapsedCapacity($scope)]);
 
-        if ($scope->filters->compare) {
-            $previous = $scope->withFilters($scope->filters->comparison());
-            $comparison = $cache->remember($previous, 'r1.summary', fn (): array => $metrics->summary($previous));
+        if (! $scope->filters->compare) {
+            return ['summary' => $summary, 'comparison' => null, 'comparison_range' => null, 'comparison_partial' => false];
         }
 
-        return ['summary' => $summary, 'comparison' => $comparison];
+        $previous = $scope->withFilters($scope->filters->comparison());
+        $days = self::elapsedDays($scope->filters);
+        $partial = $days !== null && $days < $previous->filters->days();
+        $comparison = $partial
+            ? $cache->remember($previous, 'r1.summary.first.'.$days, fn (): array => $metrics->summaryFirstDays($previous, $days))
+            : $cache->remember($previous, 'r1.summary.previous', fn (): array => $metrics->summary($previous));
+        $to = $partial ? $previous->filters->from->addDays($days - 1) : $previous->filters->to;
+
+        return [
+            'summary' => $summary,
+            'comparison' => $comparison,
+            'comparison_range' => ['from' => $previous->filters->from->toDateString(), 'to' => $to->toDateString()],
+            'comparison_partial' => $partial,
+        ];
+    }
+
+    /**
+     * Días transcurridos de un periodo en curso, hoy incluido (hoy ya tiene horas), o null si el
+     * periodo ya ha acabado o aún no ha empezado.
+     */
+    protected static function elapsedDays(ReportFilters $filters): ?int
+    {
+        $today = LocalTime::todayString();
+
+        if ($today < $filters->from->toDateString() || $today > $filters->to->toDateString()) {
+            return null;
+        }
+
+        // Fechas de calendario en UTC: sin horas ni cambios de hora de por medio.
+        return (int) CarbonImmutable::parse($filters->from->toDateString(), 'UTC')->diffInDays(CarbonImmutable::parse($today, 'UTC')) + 1;
+    }
+
+    /**
+     * Props de la barra de filtros con el tramo de comparación real (en un periodo en curso, los
+     * mismos días del periodo anterior: summaries()).
+     *
+     * @param  array<string, mixed>  $props
+     * @param  array{from: string, to: string}|null  $range
+     * @return array<string, mixed>
+     */
+    protected static function withComparisonRange(array $props, ?array $range): array
+    {
+        if ($range !== null) {
+            $props['comparison'] = $range;
+        }
+
+        return $props;
+    }
+
+    /**
+     * Nombre de caché de un bloque que depende del día de hoy (capacidad transcurrida, tareas
+     * vencidas…): la clave de ReportCache lleva el periodo pero no la fecha, y sin ella un bloque
+     * calculado antes de medianoche se serviría hasta 10 minutos después.
+     */
+    protected static function daily(string $name): string
+    {
+        return $name.'@'.LocalTime::todayString();
     }
 
     /**

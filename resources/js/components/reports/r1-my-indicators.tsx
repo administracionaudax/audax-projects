@@ -132,9 +132,10 @@ function ShareList({
 }
 
 /**
- * «Mis indicadores» de Inicio (SPEC §5.1): del mes en curso y solo lo mío. Ocupación,
- * facturabilidad y precisión de estimación (con su definición) y el reparto de mis horas por
- * cliente y proyecto, con enlace a mi informe personal.
+ * «Mis indicadores» de Inicio (SPEC §5.1): del mes en curso y solo lo mío. Ocupación (contra
+ * mi capacidad del mes, SPEC §10; con la transcurrida hasta ayer como dato), facturabilidad y
+ * precisión de estimación (con su definición) y el reparto de mis horas por cliente y proyecto,
+ * con enlace a mi informe personal.
  */
 export function R1MyIndicators({
     indicators,
@@ -174,14 +175,29 @@ export function R1MyIndicators({
                                     ? '—'
                                     : formatPercent(indicators.occupancy)
                             }
-                            detail={t('reports_r1.home.of_capacity', {
-                                logged: formatMinutes(
-                                    indicators.logged_minutes,
-                                ),
-                                capacity: formatMinutes(
-                                    indicators.capacity_minutes,
-                                ),
-                            })}
+                            detail={
+                                indicators.capacity_to_date_minutes <
+                                indicators.capacity_minutes
+                                    ? t('reports_r1.home.of_capacity_to_date', {
+                                          logged: formatMinutes(
+                                              indicators.logged_minutes,
+                                          ),
+                                          capacity: formatMinutes(
+                                              indicators.capacity_minutes,
+                                          ),
+                                          to_date: formatMinutes(
+                                              indicators.capacity_to_date_minutes,
+                                          ),
+                                      })
+                                    : t('reports_r1.home.of_capacity', {
+                                          logged: formatMinutes(
+                                              indicators.logged_minutes,
+                                          ),
+                                          capacity: formatMinutes(
+                                              indicators.capacity_minutes,
+                                          ),
+                                      })
+                            }
                         />
                         <Stat
                             label={t('reports.metric.billability.label')}

@@ -25,7 +25,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Dashboard de una persona (/informes/personas/{user}, SPEC §10.5, D-044): la propia persona,
  * quien la supervisa (responsable de su departamento) o un admin; el resto, 403.
  * - capacidad, imputadas, facturables, ocupación, facturabilidad y precisión de estimación (con
- *   variación si comparar=1); ingreso, coste y margen solo con view-financials,
+ *   variación si comparar=1; en un periodo en curso, frente a los mismos días del anterior) y la
+ *   capacidad transcurrida hasta ayer como dato informativo; ingreso, coste y margen solo con
+ *   view-financials,
  * - reparto por cliente, proyecto y tipo de tarea y calendario de calor diario del periodo (con
  *   los filtros de la URL),
  * - días sin imputar: con capacidad y sin ninguna hora (de ningún cliente ni proyecto: aquí no
@@ -66,7 +68,7 @@ class PersonReportController extends Controller
             'projects' => $this->withMargin($metrics->breakdown($scope, Dimension::Project)),
             'types' => $this->withMargin($metrics->breakdown($scope, Dimension::TaskType)),
         ]);
-        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
+        $summaries = $this->summaries($scope, $metrics, $cache);
 
         $user->loadMissing('department:id,name');
 
@@ -82,9 +84,10 @@ class PersonReportController extends Controller
                 ],
             ],
             'is_self' => $viewer->id === $user->id,
-            'filters' => $this->filterPropsWithout($scope, ['persona', 'departamento']),
-            'summary' => $summary,
-            'comparison' => $comparison,
+            'filters' => self::withComparisonRange($this->filterPropsWithout($scope, ['persona', 'departamento']), $summaries['comparison_range']),
+            'summary' => $summaries['summary'],
+            'comparison' => $summaries['comparison'],
+            'comparison_partial' => $summaries['comparison_partial'],
             'clients' => $this->top($data['clients'], self::TOP),
             'projects' => $this->top($data['projects'], self::TOP),
             'types' => $this->top($data['types'], self::TOP),
@@ -142,8 +145,9 @@ class PersonReportController extends Controller
     }
 
     /**
-     * Detalle diario para exportar: fecha, día, capacidad, imputadas, facturables, ocupación y,
-     * con datos económicos, el ingreso estimado.
+     * Detalle diario para exportar: fecha, día, capacidad, imputadas, facturables, ocupación del
+     * día (vacía en los días que aún no han llegado: no es un 0 %) y, con datos económicos, el
+     * ingreso estimado.
      *
      * @param  list<DayPoint>  $days
      * @return array{0: list<string>, 1: list<list<string|int|float|null>>}
@@ -163,6 +167,7 @@ class PersonReportController extends Controller
             $headers[] = __('reports.r1.columns.income');
         }
 
+        $today = LocalTime::todayString();
         $rows = [];
         foreach ($days as $day) {
             $date = CarbonImmutable::parse($day['bucket']);
@@ -172,7 +177,7 @@ class PersonReportController extends Controller
                 TableExporter::hours($day['capacity_minutes']),
                 TableExporter::hours($day['logged_minutes']),
                 TableExporter::hours($day['billable_minutes']),
-                self::percent(Metrics::ratio($day['logged_minutes'], $day['capacity_minutes'])),
+                $day['bucket'] > $today ? null : self::percent(Metrics::ratio($day['logged_minutes'], $day['capacity_minutes'])),
             ];
 
             if ($financials) {

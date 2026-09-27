@@ -79,9 +79,11 @@ class HomeController extends Controller
      * «Mis indicadores» (SPEC §5.1): ocupación, facturabilidad, precisión de estimación y reparto
      * de mis horas por cliente y proyecto del mes en curso. El alcance fija a quien mira como única
      * persona (ReportScope, D-044): un responsable o un admin tampoco ve aquí a su equipo. Sin
-     * datos económicos (ni se calculan). Con la caché de los informes (D-046).
+     * datos económicos (ni se calculan). Con la caché de los informes (D-046), por día. La
+     * ocupación es la del SPEC §10 (contra la capacidad del mes, como en los informes); la
+     * capacidad transcurrida hasta ayer va aparte, como dato informativo.
      *
-     * @return array{from: string, to: string, capacity_minutes: int, logged_minutes: int, billable_minutes: int,
+     * @return array{from: string, to: string, capacity_minutes: int, capacity_to_date_minutes: int, logged_minutes: int, billable_minutes: int,
      *     occupancy: float|null, billability: float|null,
      *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
      *     clients: list<array{key: string|null, name: string, logged_minutes: int}>,
@@ -91,13 +93,14 @@ class HomeController extends Controller
     {
         $scope = (new ReportScope($user, ReportFilters::fromQuery([])->with(['userIds' => [$user->id]])))->withoutFinancials();
 
-        return $cache->remember($scope, 'r1.home', function () use ($scope, $metrics): array {
+        return $cache->remember($scope, 'r1.home@'.LocalTime::todayString(), function () use ($scope, $metrics): array {
             $summary = $metrics->summary($scope);
 
             return [
                 'from' => $scope->filters->from->toDateString(),
                 'to' => $scope->filters->to->toDateString(),
                 'capacity_minutes' => $summary['capacity_minutes'],
+                'capacity_to_date_minutes' => $metrics->elapsedCapacity($scope),
                 'logged_minutes' => $summary['logged_minutes'],
                 'billable_minutes' => $summary['billable_minutes'],
                 'occupancy' => $summary['occupancy'],

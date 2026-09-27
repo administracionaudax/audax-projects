@@ -32,6 +32,7 @@ return [
             'date' => 'Fecha',
             'weekday' => 'Día',
             'capacity' => 'Capacidad (h)',
+            'capacity_to_date' => 'Capacidad hasta ayer (h)',
             'logged' => 'Horas imputadas',
             'billable' => 'Horas facturables',
             'share' => '% del total',

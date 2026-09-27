@@ -2,6 +2,9 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Domain\Reports\Metrics;
+use App\Domain\Reports\ReportFilters;
+use App\Domain\Reports\ReportScope;
 use App\Enums\HourBankStatus;
 use App\Enums\TimeEntryStatus;
 use App\Models\Client;
@@ -16,6 +19,7 @@ use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
+use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 
 /*
@@ -81,6 +85,32 @@ beforeEach(function () {
 
     $this->week = fn (array $query = []): string => '?'.http_build_query(['periodo' => 'semana', 'fecha' => '2026-09-21', ...$query]);
     $this->projectName = fn (Project $project): string => $project->code.' · '.$project->name;
+
+    // Lectores de las exportaciones: celdas del XLSX (con su tipo) y filas del CSV.
+    $this->xlsxCells = function (string $content): array {
+        $path = tempnam(sys_get_temp_dir(), 'r1').'.xlsx';
+        file_put_contents($path, $content);
+        $reader = new XlsxReader;
+        $reader->open($path);
+        $rows = [];
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $rows[] = $row->cells;
+            }
+        }
+        $reader->close();
+        unlink($path);
+
+        return $rows;
+    };
+    $this->xlsx = fn (string $content): array => array_map(
+        fn (array $cells): array => array_map(fn (Cell $cell): mixed => $cell->getValue(), $cells),
+        ($this->xlsxCells)($content),
+    );
+    $this->csv = fn (string $content): array => array_map(
+        fn (string $line): array => str_getcsv($line, ';', '"', ''),
+        array_values(array_filter(explode("\n", str_replace("\xEF\xBB\xBF", '', $content)), fn (string $line): bool => trim($line) !== '')),
+    );
 });
 
 describe('dirección', function () {
@@ -92,6 +122,8 @@ describe('dirección', function () {
                 ->component('reports/direction')
                 ->where('limited_to', null)
                 ->where('summary.capacity_minutes', 3600)
+                // Dato informativo: la capacidad transcurrida hasta ayer (de lunes a jueves, 4 × 720).
+                ->where('summary.capacity_to_date_minutes', 2880)
                 ->where('summary.logged_minutes', 1420)
                 ->where('summary.billable_minutes', 1360)
                 ->where('summary.occupancy', 0.3944)
@@ -104,6 +136,7 @@ describe('dirección', function () {
                 ->where('summary.estimation.accuracy', 0.7143)
                 ->where('summary.estimation.deviation', 0.4)
                 ->where('comparison', null)
+                ->where('comparison_partial', false)
                 ->has('departments', 1)
                 ->where('departments.0.name', 'Diseño')
                 ->where('departments.0.logged_minutes', 1420)
@@ -161,14 +194,25 @@ describe('dirección', function () {
             ->assertInertia($assert);
     });
 
-    it('compara con el periodo anterior con comparar=1', function () {
+    it('compara con el periodo anterior con comparar=1: con la semana en curso, con los mismos días', function () {
+        // Hoy es el viernes 25, quinto día de la semana: se compara con los 5 primeros días de la
+        // anterior (del lunes 14 al viernes 18), frente a la capacidad de toda esa semana.
         $this->actingAs($this->admin)
             ->get('/informes/direccion'.($this->week)(['departamento' => [$this->design->id], 'comparar' => 1]))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-20'])
+                ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-18'])
+                ->where('comparison_partial', true)
                 ->where('comparison.logged_minutes', 0)
                 ->where('comparison.capacity_minutes', 3600)
                 ->where('comparison.income', '0.00'));
+
+        // Una semana ya cerrada se compara con la anterior entera.
+        $this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['departamento' => [$this->design->id], 'comparar' => 1, 'fecha' => '2026-09-14']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.comparison', ['from' => '2026-09-07', 'to' => '2026-09-13'])
+                ->where('comparison_partial', false)
+                ->where('comparison.capacity_minutes', 3600));
     });
 
     it('agrupa la evolución por meses si el periodo es mayor que un trimestre', function () {
@@ -275,13 +319,13 @@ describe('departamento', function () {
                 ->has('members', 2)
                 ->where('members.0', [
                     'id' => $this->luis->id, 'name' => 'Luis', 'is_active' => true,
-                    'capacity_minutes' => 1200, 'logged_minutes' => 760, 'billable_minutes' => 700,
+                    'capacity_minutes' => 1200, 'capacity_to_date_minutes' => 960, 'logged_minutes' => 760, 'billable_minutes' => 700,
                     'occupancy' => 0.6333, 'billability' => 0.9211, 'billable_productivity' => 0.5833,
                     'income' => '1116.67', 'cost' => '380.00', 'margin' => '736.67',
                 ])
                 ->where('members.1', [
                     'id' => $this->ana->id, 'name' => 'Ana', 'is_active' => true,
-                    'capacity_minutes' => 2400, 'logged_minutes' => 660, 'billable_minutes' => 660,
+                    'capacity_minutes' => 2400, 'capacity_to_date_minutes' => 1920, 'logged_minutes' => 660, 'billable_minutes' => 660,
                     'occupancy' => 0.275, 'billability' => 1, 'billable_productivity' => 0.275,
                     'income' => '995.00', 'cost' => '220.00', 'margin' => '775.00',
                 ])
@@ -443,12 +487,15 @@ describe('índice', function () {
 
 describe('Inicio: mis indicadores', function () {
     it('da a Ana los suyos del mes en curso', function () {
-        // Septiembre de 2026: 22 días laborables × 8 h = 10560 min.
+        // Septiembre de 2026: 22 días laborables × 8 h = 10560 min: ocupación 660 / 10560 = 6,25 %
+        // (SPEC §10, como en los informes). Dato informativo: hasta ayer (jueves 24), 18 días
+        // laborables (del martes 1 al jueves 24) × 480 = 8640 min.
         $this->actingAs($this->ana)->get('/')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('home', false)
             ->where('indicators.from', '2026-09-01')
             ->where('indicators.to', '2026-09-30')
             ->where('indicators.capacity_minutes', 10560)
+            ->where('indicators.capacity_to_date_minutes', 8640)
             ->where('indicators.logged_minutes', 660)
             ->where('indicators.billable_minutes', 660)
             ->where('indicators.occupancy', 0.0625)
@@ -473,30 +520,165 @@ describe('Inicio: mis indicadores', function () {
     });
 });
 
-describe('exportaciones', function () {
+describe('periodo en curso', function () {
     beforeEach(function () {
-        $this->xlsx = function (string $content): array {
-            $path = tempnam(sys_get_temp_dir(), 'r1').'.xlsx';
-            file_put_contents($path, $content);
-            $reader = new XlsxReader;
-            $reader->open($path);
-            $rows = [];
-            foreach ($reader->getSheetIterator() as $sheet) {
-                foreach ($sheet->getRowIterator() as $row) {
-                    $rows[] = $row->toArray();
-                }
-            }
-            $reader->close();
-            unlink($path);
-
-            return $rows;
-        };
-        $this->csv = fn (string $content): array => array_map(
-            fn (string $line): array => str_getcsv($line, ';', '"', ''),
-            array_values(array_filter(explode("\n", str_replace("\xEF\xBB\xBF", '', $content)), fn (string $line): bool => trim($line) !== '')),
-        );
+        // «Hoy» es el jueves 10/09/2026. Septiembre tiene 22 días laborables; hasta ayer, 7 (del
+        // martes 1 al viernes 4 y del lunes 7 al miércoles 9). En Producción, Eva (8 h/día) imputa
+        // sus 8 h cada día laborable del 1 al 10 (8 × 480 = 3840) y Leo (4 h/día), 2 h (8 × 120 = 960).
+        //  - Eva: capacidad 22 × 480 = 10560 → ocupación 3840 / 10560 = 36,36 % (SPEC §10: contra la
+        //    capacidad del periodo, como en el resto de informes); hasta ayer, 7 × 480 = 3360.
+        //  - Leo: capacidad 22 × 240 = 5280 → 960 / 5280 = 18,18 %; hasta ayer, 7 × 240 = 1680.
+        //  - Producción: capacidad 15840; imputadas 4800 → 30,30 %; hasta ayer, 5040.
+        // Todo a «Por horas» (60 €/h del cliente): Eva 3840 €, coste 64 h × 20 = 1280 €; Leo 960 €,
+        // coste 16 h × 30 = 480 €.
+        // En agosto (21 días laborables: 10080 + 5040 = 15120 de capacidad), Eva imputó 480 min el
+        // lunes 3, el lunes 10 y el martes 11.
+        $this->travelTo(CarbonImmutable::parse('2026-09-10 12:00', 'Europe/Madrid'));
+        $this->production = Department::factory()->create(['name' => 'Producción']);
+        $this->eva = User::factory()->employee()->create(['name' => 'Eva', 'department_id' => $this->production->id, 'hourly_cost' => '20.00', 'created_at' => '2026-01-01 08:00']);
+        $this->leo = User::factory()->employee()->create(['name' => 'Leo', 'department_id' => $this->production->id, 'hourly_cost' => '30.00', 'created_at' => '2026-01-01 08:00']);
+        WorkSchedule::factory()->for($this->eva)->create(['valid_from' => '2026-01-01']);
+        WorkSchedule::factory()->for($this->leo)->create(['valid_from' => '2026-01-01', 'mon_minutes' => 240, 'tue_minutes' => 240, 'wed_minutes' => 240, 'thu_minutes' => 240, 'fri_minutes' => 240]);
+        $task = Task::factory()->create(['project_id' => $this->tm->id]);
+        foreach (['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10'] as $day) {
+            TimeEntry::factory()->forTask($task)->on($day)->minutes(480)->create(['user_id' => $this->eva->id]);
+            TimeEntry::factory()->forTask($task)->on($day)->minutes(120)->create(['user_id' => $this->leo->id]);
+        }
+        foreach (['2026-08-03', '2026-08-10', '2026-08-11'] as $day) {
+            TimeEntry::factory()->forTask($task)->on($day)->minutes(480)->create(['user_id' => $this->eva->id]);
+        }
+        $this->month = fn (array $query = []): string => '?'.http_build_query(['periodo' => 'mes', 'fecha' => '2026-09-01', ...$query]);
     });
 
+    it('da la ocupación del SPEC §10 (la de Metrics::summary) y la capacidad hasta ayer solo como dato', function () {
+        $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->production->id}".($this->month)())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.capacity_minutes', 15840)
+                ->where('summary.capacity_to_date_minutes', 5040)
+                ->where('summary.logged_minutes', 4800)
+                ->where('summary.occupancy', 0.303)
+                ->where('summary.billable_productivity', 0.303)
+                ->where('members.0', [
+                    'id' => $this->eva->id, 'name' => 'Eva', 'is_active' => true,
+                    'capacity_minutes' => 10560, 'capacity_to_date_minutes' => 3360, 'logged_minutes' => 3840, 'billable_minutes' => 3840,
+                    'occupancy' => 0.3636, 'billability' => 1, 'billable_productivity' => 0.3636,
+                    'income' => '3840.00', 'cost' => '1280.00', 'margin' => '2560.00',
+                ])
+                ->where('members.1.capacity_minutes', 5280)
+                ->where('members.1.capacity_to_date_minutes', 1680)
+                ->where('members.1.occupancy', 0.1818)
+                ->where('members.1.billable_productivity', 0.1818));
+    });
+
+    it('usa la misma ocupación en dirección, en el informe personal, en Inicio y en el resto de informes', function () {
+        $contract = fn (User $viewer, array $query): array => app(Metrics::class)
+            ->summary(new ReportScope($viewer, ReportFilters::fromQuery(['periodo' => 'mes', 'fecha' => '2026-09-01', ...$query])));
+
+        $this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->month)(['departamento' => [$this->production->id]]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.capacity_to_date_minutes', 5040)
+                ->where('summary.occupancy', 0.303)
+                ->where('summary.occupancy', $contract($this->admin, ['departamento' => [$this->production->id]])['occupancy']));
+
+        $this->actingAs($this->eva)
+            ->get("/informes/personas/{$this->eva->id}".($this->month)())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.capacity_minutes', 10560)
+                ->where('summary.capacity_to_date_minutes', 3360)
+                ->where('summary.occupancy', 0.3636)
+                ->where('summary.occupancy', $contract($this->eva, ['persona' => [$this->eva->id]])['occupancy'])
+                ->where('unlogged', []));
+
+        $this->actingAs($this->leo)->get('/')->assertInertia(fn (Assert $page) => $page
+            ->where('indicators.capacity_minutes', 5280)
+            ->where('indicators.capacity_to_date_minutes', 1680)
+            ->where('indicators.logged_minutes', 960)
+            ->where('indicators.occupancy', 0.1818));
+    });
+
+    it('compara con los mismos días del periodo anterior (del 1 al 10 de agosto) frente a su capacidad completa', function () {
+        // Del 1 al 10 de agosto, Eva imputó 960 min (el 11 queda fuera): 960 / 15120 = 6,35 %;
+        // 16 h × 60 € = 960 € de ingreso y 16 h × 20 € = 320 € de coste.
+        $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->production->id}".($this->month)(['comparar' => 1]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.comparison', ['from' => '2026-08-01', 'to' => '2026-08-10'])
+                ->where('comparison_partial', true)
+                ->where('comparison.capacity_minutes', 15120)
+                ->where('comparison.logged_minutes', 960)
+                ->where('comparison.billable_minutes', 960)
+                ->where('comparison.occupancy', 0.0635)
+                ->where('comparison.billable_productivity', 0.0635)
+                ->where('comparison.income', '960.00')
+                ->where('comparison.cost', '320.00')
+                ->where('comparison.margin', '640.00')
+                ->missing('comparison.capacity_to_date_minutes')
+                // El periodo en curso no cambia.
+                ->where('summary.logged_minutes', 4800)
+                ->where('summary.occupancy', 0.303));
+
+        // Agosto ya ha acabado: se compara con julio entero.
+        $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->production->id}".($this->month)(['comparar' => 1, 'fecha' => '2026-08-01']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.comparison', ['from' => '2026-07-01', 'to' => '2026-07-31'])
+                ->where('comparison_partial', false)
+                ->where('summary.logged_minutes', 1440)
+                ->where('summary.capacity_to_date_minutes', 15120));
+    });
+
+    it('el primer día del periodo no hay capacidad transcurrida (nadie sale con ocupación «baja»)', function () {
+        $this->travelTo(CarbonImmutable::parse('2026-09-01 09:00', 'Europe/Madrid'));
+
+        $this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->production->id}".($this->month)())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.capacity_to_date_minutes', 0)
+                ->where('members.0.capacity_to_date_minutes', 0)
+                ->where('members.1.capacity_to_date_minutes', 0));
+    });
+
+    it('exporta la capacidad hasta ayer de cada miembro y deja vacía la ocupación de los días que no han llegado', function () {
+        $members = ($this->csv)($this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->production->id}".($this->month)(['formato' => 'csv']))
+            ->assertOk()->streamedContent());
+
+        expect($members[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and($members[1])->toBe(['Eva', '176,00', '56,00', '64,00', '64,00', '36,40', '100,00', '36,40', '3840,00', '1280,00', '2560,00'])
+            ->and($members[2])->toBe(['Leo', '88,00', '28,00', '16,00', '16,00', '18,20', '100,00', '18,20', '960,00', '480,00', '480,00']);
+
+        $days = collect(($this->csv)($this->actingAs($this->eva)
+            ->get("/informes/personas/{$this->eva->id}".($this->month)(['formato' => 'csv']))
+            ->streamedContent()))->keyBy(0);
+
+        expect($days['10/09/2026'])->toBe(['10/09/2026', 'jueves', '8,00', '8,00', '8,00', '100,00'])
+            ->and($days['11/09/2026'])->toBe(['11/09/2026', 'viernes', '8,00', '0,00', '0,00', '']);
+    });
+});
+
+describe('caché y cambio de día', function () {
+    it('las tareas vencidas de dirección se recalculan al pasar la medianoche aunque no se escriba nada', function () {
+        $task = Task::factory()->create(['project_id' => $this->tm->id, 'assignee_user_id' => $this->ana->id, 'due_date' => '2026-09-25', 'title' => 'Vence hoy']);
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-25 23:58', 'Europe/Madrid'));
+        $this->actingAs($this->admin)->get('/informes/direccion'.($this->week)())
+            ->assertInertia(fn (Assert $page) => $page->where('overdue.count', 0));
+
+        // Cuatro minutos después (dentro de los 10 de la caché), ya es sábado 26: vencida de 1 día.
+        $this->travelTo(CarbonImmutable::parse('2026-09-26 00:02', 'Europe/Madrid'));
+        $this->actingAs($this->admin)->get('/informes/direccion'.($this->week)())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('overdue.count', 1)
+                ->where('overdue.tasks.0.id', $task->id)
+                ->where('overdue.tasks.0.days_overdue', 1));
+    });
+});
+
+describe('exportaciones', function () {
     it('exporta a XLSX el reparto por proyecto de dirección con ingreso, coste y margen (admin)', function () {
         $response = $this->actingAs($this->admin)
             ->get('/informes/direccion'.($this->week)(['departamento' => [$this->design->id], 'tabla' => 'proyectos', 'formato' => 'xlsx']))
@@ -533,15 +715,24 @@ describe('exportaciones', function () {
             ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))
             ->assertOk()->streamedContent());
 
-        expect($admin[0])->toBe(['Persona', 'Capacidad (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
-            ->and($admin[1])->toBe(['Luis', '20,00', '12,67', '11,67', '63,30', '92,10', '58,30', '1116,67', '380,00', '736,67'])
-            ->and($admin[2])->toBe(['Ana', '40,00', '11,00', '11,00', '27,50', '100,00', '27,50', '995,00', '220,00', '775,00']);
+        // La semana sigue en curso (hoy es viernes): lleva también la capacidad hasta ayer
+        // (informativa: la ocupación es contra la de la semana entera).
+        expect($admin[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and($admin[1])->toBe(['Luis', '20,00', '16,00', '12,67', '11,67', '63,30', '92,10', '58,30', '1116,67', '380,00', '736,67'])
+            ->and($admin[2])->toBe(['Ana', '40,00', '32,00', '11,00', '11,00', '27,50', '100,00', '27,50', '995,00', '220,00', '775,00']);
 
         $head = ($this->csv)($this->actingAs($this->head)
             ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))
             ->streamedContent());
 
-        expect($head[0])->toHaveCount(7)->and($head[1])->toHaveCount(7);
+        expect($head[0])->toHaveCount(8)->and($head[1])->toHaveCount(8);
+
+        // Una semana cerrada no la lleva.
+        $closed = ($this->csv)($this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv', 'fecha' => '2026-09-14']))
+            ->streamedContent());
+
+        expect($closed[0])->toBe(['Persona', 'Capacidad (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)']);
     });
 
     it('exporta el detalle diario de una persona (con el ingreso solo para quien puede verlo)', function () {

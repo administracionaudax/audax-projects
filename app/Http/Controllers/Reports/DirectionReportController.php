@@ -25,7 +25,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Dashboard de dirección (/informes/direccion, SPEC §10.1, D-044):
  * - admin: toda la agencia; responsable: limitado a los departamentos que dirige (se le imponen
  *   siempre: con el filtro de departamento solo puede acotar dentro de los suyos); el resto, 403,
- * - KPIs (con variación si comparar=1), evolución semanal o mensual, reparto por departamento y
+ * - KPIs (con variación si comparar=1; en un periodo en curso, frente a los mismos días del
+ *   anterior: BuildsDashboards::summaries), evolución semanal o mensual, reparto por departamento y
  *   por cliente, top 10 de clientes y proyectos, bolsas en riesgo y tareas vencidas,
  * - ingreso, coste y margen solo con view-financials (también en la exportación),
  * - ?formato=xlsx|csv&tabla=clientes|proyectos|departamentos exporta el reparto completo.
@@ -66,24 +67,29 @@ class DirectionReportController extends Controller
             return $exporter->download(__('reports.r1.exports.direction', ['table' => __('reports.r1.tables.'.$name)]), $headers, $lines, $format);
         }
 
-        ['summary' => $summary, 'comparison' => $comparison] = $this->summaries($scope, $metrics, $cache);
+        $summaries = $this->summaries($scope, $metrics, $cache);
         $bucket = $this->seriesBucket($scope->filters);
-        $page = $cache->remember($scope, 'r1.direction.page.'.$bucket->value, fn (): array => [
+        // Las tareas vencidas (y sus días de retraso) dependen de hoy: el bloque lleva la fecha.
+        $page = $cache->remember($scope, self::daily('r1.direction.page.'.$bucket->value), fn (): array => [
             'series' => $metrics->series($scope, $bucket),
             'at_risk' => $atRisk->forScope($scope),
             'overdue' => $overdue->forScope($scope),
         ]);
 
+        $clients = $this->top($table('clientes'), self::TOP);
+        $projects = $this->top($table('proyectos'), self::TOP);
+
         return Inertia::render('reports/direction', [
-            'filters' => $this->filterProps($scope),
+            'filters' => self::withComparisonRange($this->filterProps($scope), $summaries['comparison_range']),
             'limited_to' => $user->isAdmin() ? null : Department::query()
                 ->whereKey($scope->filters->departmentIds)->orderBy('name')->pluck('name')->all(),
-            'summary' => $summary,
-            'comparison' => $comparison,
+            'summary' => $summaries['summary'],
+            'comparison' => $summaries['comparison'],
+            'comparison_partial' => $summaries['comparison_partial'],
             'series' => ['bucket' => $bucket->value, 'points' => $page['series']],
             'departments' => $table('departamentos'),
-            'clients' => $this->top($table('clientes'), self::TOP),
-            'projects' => $this->top($table('proyectos'), self::TOP),
+            'clients' => $clients,
+            'projects' => $projects,
             'at_risk' => $page['at_risk'],
             'overdue' => $page['overdue'],
         ]);

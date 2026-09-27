@@ -74,6 +74,7 @@ export default function PersonReport({
     filters,
     summary,
     comparison,
+    comparison_partial: comparisonPartial,
     clients,
     projects,
     types,
@@ -166,6 +167,7 @@ export default function PersonReport({
                         <R1KpiGrid
                             summary={summary}
                             comparison={comparison}
+                            comparisonPartial={comparisonPartial}
                             loading={state.loading}
                             kpis={[
                                 'capacity',

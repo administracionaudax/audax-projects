@@ -10,7 +10,7 @@ import {
     breakdownBars,
     R1BreakdownTable,
 } from '@/components/reports/r1-breakdown-table';
-import { R1KpiGrid } from '@/components/reports/r1-kpi-grid';
+import { inProgress, R1KpiGrid } from '@/components/reports/r1-kpi-grid';
 import { R1MembersTable } from '@/components/reports/r1-members-table';
 import {
     ReportContent,
@@ -44,6 +44,7 @@ export default function DepartmentReport({
     filters,
     summary,
     comparison,
+    comparison_partial: comparisonPartial,
     members,
     clients,
     occupancy_thresholds: thresholds,
@@ -94,6 +95,7 @@ export default function DepartmentReport({
                         <R1KpiGrid
                             summary={summary}
                             comparison={comparison}
+                            comparisonPartial={comparisonPartial}
                             loading={state.loading}
                             kpis={[
                                 'logged',
@@ -110,13 +112,17 @@ export default function DepartmentReport({
 
                     <PageSection
                         title={t('reports_r1.department.members')}
-                        description={t(
-                            'reports_r1.department.members_description',
-                            {
+                        description={[
+                            t('reports_r1.department.members_description', {
                                 low: thresholds.low,
                                 high: thresholds.high,
-                            },
-                        )}
+                            }),
+                            inProgress(summary)
+                                ? t('reports_r1.department.members_to_date')
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' ')}
                         action={
                             <ExportMenu
                                 href={reportUrls.department(

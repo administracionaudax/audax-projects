@@ -82,6 +82,7 @@ import {
 import type {
     MyIndicators,
     R1Member,
+    R1Summary,
     R1TopRows,
 } from '@/components/reports/r1-types';
 import {
@@ -101,9 +102,10 @@ vi.setConfig({ testTimeout: 20_000 });
 const norm = (value: string | null | undefined) =>
     (value ?? '').replace(/[  ]/g, ' ');
 
-/** Resumen de Diseño en la semana del escenario calculado a mano (MetricsTest). */
-const summary: MetricsSummary = {
+/** Resumen de Diseño en la semana del escenario calculado a mano (MetricsTest), ya cerrada. */
+const summary: R1Summary = {
     capacity_minutes: 3600,
+    capacity_to_date_minutes: 3600,
     logged_minutes: 1420,
     billable_minutes: 1360,
     in_bank_minutes: 1320,
@@ -124,7 +126,7 @@ const summary: MetricsSummary = {
     margin_pct: 0.7159,
 };
 
-const withoutMoney: MetricsSummary = {
+const withoutMoney: R1Summary = {
     ...summary,
     income: null,
     cost: null,
@@ -167,8 +169,72 @@ describe('KPIs (R1KpiGrid y kpiView)', () => {
         });
     });
 
+    it('en un periodo en curso, la capacidad transcurrida hasta ayer es solo un dato: la ocupación es la del SPEC', () => {
+        // Hoy es viernes: de lunes a jueves, 48 h de las 60 de la semana.
+        const running: R1Summary = {
+            ...summary,
+            capacity_to_date_minutes: 2880,
+        };
+
+        expect(kpiView('capacity', summary, null).detail).toBeUndefined();
+        expect(kpiView('capacity', running, null)).toMatchObject({
+            value: '60:00',
+            detail: 'Transcurrida hasta ayer: 48:00',
+        });
+        // Imputadas / capacidad del periodo completo (1420 / 3600), no contra las 48 h.
+        expect(kpiView('logged', running, null).detail).toBe(
+            'De 60:00 de capacidad',
+        );
+        expect(norm(kpiView('occupancy', running, null).value)).toBe('39,4 %');
+    });
+
+    it('avisa de que la variación compara con los mismos días del periodo anterior si sigue en curso', () => {
+        const kpis = ['logged', 'occupancy'] as const;
+        const { unmount } = render(
+            <TooltipProvider>
+                <R1KpiGrid
+                    summary={summary}
+                    comparison={{ ...summary, logged_minutes: 710 }}
+                    comparisonPartial
+                    kpis={[...kpis]}
+                />
+            </TooltipProvider>,
+        );
+
+        expect(
+            screen.getByText(
+                'El periodo sigue en curso: la variación compara con los mismos días del periodo anterior.',
+            ),
+        ).toBeTruthy();
+        expect(
+            norm(
+                screen.getByText(/más que en el periodo anterior/).textContent,
+            ),
+        ).toBe('100 % más que en el periodo anterior');
+        unmount();
+
+        // Sin comparar, o con un periodo cerrado, no hay aviso.
+        render(
+            <TooltipProvider>
+                <R1KpiGrid
+                    summary={summary}
+                    comparison={null}
+                    comparisonPartial
+                    kpis={[...kpis]}
+                />
+                <R1KpiGrid
+                    summary={summary}
+                    comparison={summary}
+                    kpis={[...kpis]}
+                />
+            </TooltipProvider>,
+        );
+
+        expect(screen.queryByText(/sigue en curso/)).toBeNull();
+    });
+
     it('compara con el periodo anterior: el coste que sube es a peor y la precisión no varía', () => {
-        const previous = {
+        const previous: MetricsSummary = {
             ...summary,
             logged_minutes: 1000,
             cost: '500.00',
@@ -465,6 +531,7 @@ const member = (overrides: Partial<R1Member>): R1Member => ({
     name: 'Luis',
     is_active: true,
     capacity_minutes: 1200,
+    capacity_to_date_minutes: 1200,
     logged_minutes: 760,
     billable_minutes: 700,
     occupancy: 0.6333,
@@ -487,6 +554,41 @@ describe('miembros del departamento', () => {
         expect(occupancyLevel(0.7, { low: 70, high: 110 })).toBe('ok');
         expect(occupancyLevel(0.29, { low: 29, high: 110 })).toBe('ok');
         expect(occupancyLevel(1.11, thresholds)).toBe('high');
+        // Con jornada en el periodo pero sin ningún día transcurrido (el primer día, o un periodo
+        // futuro), aún no hay nivel: nadie sale «baja».
+        expect(occupancyLevel(0, thresholds, true)).toBe('upcoming');
+        expect(occupancyLevel(0, thresholds, false)).toBe('low');
+    });
+
+    it('en un periodo en curso enseña la capacidad hasta ayer y «Aún sin días» si no ha pasado ninguno', () => {
+        render(
+            <R1MembersTable
+                members={[
+                    member({ capacity_to_date_minutes: 960 }),
+                    member({
+                        id: 2,
+                        name: 'Ana',
+                        capacity_minutes: 2400,
+                        capacity_to_date_minutes: 0,
+                        logged_minutes: 0,
+                        billable_minutes: 0,
+                        occupancy: 0,
+                        billability: null,
+                        billable_productivity: 0,
+                    }),
+                ]}
+                thresholds={thresholds}
+                financials={false}
+                personHref={(row) => `/informes/personas/${row.id}`}
+            />,
+        );
+
+        const rows = within(screen.getByRole('table')).getAllByRole('row');
+        expect(norm(rows[1].textContent)).toContain('20:00Hasta ayer: 16:00');
+        // La ocupación es la del SPEC (760 / 1200): el dato de «hasta ayer» no la cambia.
+        expect(norm(rows[1].textContent)).toContain('63,3 %Baja');
+        expect(norm(rows[2].textContent)).toContain('Aún sin días');
+        expect(norm(rows[2].textContent)).not.toContain('Baja');
     });
 
     it('cada fila enlaza al informe de la persona y dice el estado con texto', () => {
@@ -775,6 +877,7 @@ describe('Mis indicadores (Inicio)', () => {
         from: '2026-09-01',
         to: '2026-09-30',
         capacity_minutes: 10560,
+        capacity_to_date_minutes: 10560,
         logged_minutes: 660,
         billable_minutes: 660,
         occupancy: 0.0625,
@@ -833,6 +936,26 @@ describe('Mis indicadores (Inicio)', () => {
                 .getAttribute('href'),
         ).toBe('/informes/personas/5');
         expect(screen.queryByText(/€/)).toBeNull();
+    });
+
+    it('con el mes en curso, la ocupación es contra el mes entero y la capacidad hasta ayer, un dato', () => {
+        render(
+            <TooltipProvider>
+                <R1MyIndicators
+                    indicators={{
+                        ...indicators,
+                        capacity_to_date_minutes: 8640,
+                    }}
+                    userId={5}
+                />
+            </TooltipProvider>,
+        );
+
+        const stats = screen.getAllByRole('definition');
+        expect(norm(stats[0].textContent)).toBe('6,3 %');
+        expect(stats[1].textContent).toBe(
+            '11:00 de 176:00 (hasta ayer, 144:00 de capacidad)',
+        );
     });
 
     it('sin horas ni tareas del mes enseña el estado vacío', () => {

@@ -1,5 +1,7 @@
+import { CalendarClock } from 'lucide-react';
 import { KpiCard } from '@/components/reports/kpi-card';
 import type { KpiDelta } from '@/components/reports/kpi-card';
+import type { R1Summary } from '@/components/reports/r1-types';
 import { formatCurrency, formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -50,13 +52,22 @@ type KpiView = {
 };
 
 /**
+ * ¿Le quedan al periodo días con jornada por llegar (hoy incluido)? Entonces se enseña, como dato
+ * informativo, la capacidad transcurrida hasta ayer. La ocupación es siempre la del SPEC §10:
+ * imputadas / capacidad del periodo completo.
+ */
+export function inProgress(summary: R1Summary): boolean {
+    return summary.capacity_to_date_minutes < summary.capacity_minutes;
+}
+
+/**
  * Valor, línea secundaria y variación de cada KPI. La variación compara con el periodo anterior
  * (comparar=1); el coste sube «a peor». La precisión de estimación no lleva variación: lo bueno es
  * acercarse al 100 %, no subir ni bajar.
  */
 export function kpiView(
     key: R1Kpi,
-    summary: MetricsSummary,
+    summary: R1Summary,
     previous: MetricsSummary | null,
 ): KpiView {
     const delta = (
@@ -80,6 +91,13 @@ export function kpiView(
         case 'capacity':
             return {
                 value: formatMinutes(summary.capacity_minutes),
+                detail: inProgress(summary)
+                    ? t('reports_r1.kpi.capacity_to_date', {
+                          capacity: formatMinutes(
+                              summary.capacity_to_date_minutes,
+                          ),
+                      })
+                    : undefined,
                 delta: delta(
                     summary.capacity_minutes,
                     previous?.capacity_minutes,
@@ -156,17 +174,20 @@ export function kpiView(
 
 /**
  * Rejilla de KPIs de un dashboard (SPEC §10): cada tarjeta con su definición (tooltip) y, si se
- * compara, su variación frente al periodo anterior con icono y texto.
+ * compara, su variación frente al periodo anterior con icono y texto. Si el periodo sigue en curso
+ * (comparisonPartial), la variación compara con los mismos días del periodo anterior y se avisa.
  */
 export function R1KpiGrid({
     summary,
     comparison,
+    comparisonPartial = false,
     kpis,
     loading = false,
     className,
 }: {
-    summary: MetricsSummary;
+    summary: R1Summary;
     comparison: MetricsSummary | null;
+    comparisonPartial?: boolean;
     kpis: R1Kpi[];
     loading?: boolean;
     className?: string;
@@ -176,28 +197,39 @@ export function R1KpiGrid({
     );
 
     return (
-        <div
-            className={cn(
-                'grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4',
-                className,
-            )}
-            data-test="r1-kpis"
-        >
-            {visible.map((key) => {
-                const view = kpiView(key, summary, comparison);
+        <div className={cn('grid gap-2', className)}>
+            <div
+                className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4"
+                data-test="r1-kpis"
+            >
+                {visible.map((key) => {
+                    const view = kpiView(key, summary, comparison);
 
-                return (
-                    <KpiCard
-                        key={key}
-                        label={t(`reports.metric.${key}.label`)}
-                        definition={t(`reports.metric.${key}.definition`)}
-                        value={view.value}
-                        detail={view.detail}
-                        delta={view.delta}
-                        loading={loading}
+                    return (
+                        <KpiCard
+                            key={key}
+                            label={t(`reports.metric.${key}.label`)}
+                            definition={t(`reports.metric.${key}.definition`)}
+                            value={view.value}
+                            detail={view.detail}
+                            delta={view.delta}
+                            loading={loading}
+                        />
+                    );
+                })}
+            </div>
+            {comparison !== null && comparisonPartial ? (
+                <p
+                    className="inline-flex items-start gap-1.5 text-xs text-muted-foreground"
+                    data-test="r1-comparison-partial"
+                >
+                    <CalendarClock
+                        aria-hidden="true"
+                        className="mt-px size-3.5 shrink-0"
                     />
-                );
-            })}
+                    {t('reports_r1.kpi.comparison_partial')}
+                </p>
+            ) : null}
         </div>
     );
 }
