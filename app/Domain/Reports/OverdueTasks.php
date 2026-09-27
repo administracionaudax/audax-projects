@@ -22,13 +22,15 @@ use Illuminate\Database\Eloquent\Collection;
 final class OverdueTasks
 {
     /**
+     * Vencidas a $today (por defecto, hoy en Madrid).
+     *
      * @return array{count: int, tasks: list<array{id: int, title: string, project_id: int,
      *     project: array{code: string, name: string, color: string}, assignee: string|null,
      *     due_date: string, days_overdue: int, is_milestone: bool}>}
      */
-    public function forScope(ReportScope $scope, int $limit = 10): array
+    public function forScope(ReportScope $scope, int $limit = 10, ?CarbonImmutable $today = null): array
     {
-        $today = LocalTime::today();
+        $today ??= LocalTime::today();
         $query = $this->query($scope, $today->toDateString());
         $count = (clone $query)->count();
 
