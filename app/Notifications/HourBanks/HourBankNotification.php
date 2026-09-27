@@ -44,14 +44,6 @@ abstract class HourBankNotification extends AppNotification
         $this->overageMinutes = $bank->overage_minutes;
     }
 
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database', 'mail'];
-    }
-
     public function url(object $notifiable): ?string
     {
         return route('projects.hour-banks.show', ['project' => $this->projectId, 'hourBank' => $this->hourBankId], absolute: false);

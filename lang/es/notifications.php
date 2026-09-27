@@ -1,0 +1,71 @@
+<?php
+
+/*
+| Notificaciones (SPEC §13, D-073): el email genérico de AppNotification y los nombres de los
+| grupos, eventos y canales de /ajustes/notificaciones (NotificationPreferences::forUser).
+| Las claves de los eventos siguen su kind(): «task.assigned» → events.task.assigned.
+*/
+
+return [
+    'mail' => [
+        'greeting' => 'Hola, :name:',
+        'greeting_anonymous' => 'Hola:',
+        'action' => 'Abrir en Audax Proyectos',
+        'salutation' => "Un saludo,\n:company",
+    ],
+
+    'channels' => [
+        'app' => 'En la app',
+        'email' => 'Email',
+        'push' => 'Avisos del navegador',
+    ],
+
+    'groups' => [
+        'tasks' => 'Tareas',
+        'time' => 'Horas',
+        'hour_banks' => 'Bolsas de horas',
+        'absences' => 'Ausencias',
+        'chat' => 'Chat',
+        'reports' => 'Informes',
+        'system' => 'Sistema',
+    ],
+
+    'events' => [
+        'task' => [
+            'assigned' => ['label' => 'Te asignan una tarea', 'description' => 'Cuando alguien te hace responsable de una tarea.'],
+            'mentioned' => ['label' => 'Te mencionan en una tarea', 'description' => 'Cuando alguien te menciona en la descripción o en un comentario.'],
+            'commented' => ['label' => 'Comentarios en tareas que sigues', 'description' => 'Cuando alguien comenta una tarea que sigues.'],
+            'status_changed' => ['label' => 'Cambios de estado en tareas que sigues', 'description' => 'Cuando una tarea que sigues cambia de estado.'],
+            'due' => ['label' => 'Tareas que vencen', 'description' => 'Tus tareas que vencen mañana o ya han vencido.'],
+        ],
+        'time' => [
+            'returned' => ['label' => 'Semana devuelta', 'description' => 'Cuando te devuelven la semana para corregirla.'],
+            'approved' => ['label' => 'Semana aprobada', 'description' => 'Cuando te aprueban la semana.'],
+            'week_reminder' => ['label' => 'Recordatorio de enviar la semana', 'description' => 'Los viernes, si aún no has enviado la semana.'],
+            'timer_long' => ['label' => 'Temporizador encendido demasiado tiempo', 'description' => 'Cuando tu temporizador lleva muchas horas en marcha.'],
+        ],
+        'hour_bank' => [
+            'threshold' => ['label' => 'Bolsas que llegan a un umbral', 'description' => 'Cuando una bolsa que gestionas llega al 75, 90 o 100 %.'],
+            'overage' => ['label' => 'Horas en exceso', 'description' => 'Cuando una bolsa agotada sigue recibiendo horas (como mucho un aviso al día).'],
+        ],
+        'absence' => [
+            'requested' => ['label' => 'Ausencias por aprobar', 'description' => 'Cuando alguien de tu equipo pide una ausencia.'],
+            'approved' => ['label' => 'Ausencia aprobada', 'description' => 'Cuando te aprueban una ausencia.'],
+            'rejected' => ['label' => 'Ausencia rechazada', 'description' => 'Cuando te rechazan una ausencia.'],
+            'updated' => ['label' => 'Ausencia modificada', 'description' => 'Cuando otra persona cambia una ausencia tuya.'],
+            'cancelled' => ['label' => 'Ausencia anulada', 'description' => 'Cuando se anula una ausencia tuya o de tu equipo.'],
+        ],
+        'chat' => [
+            'direct' => ['label' => 'Mensajes directos', 'description' => 'Cuando alguien te escribe por mensaje directo.'],
+            'mention' => ['label' => 'Menciones en el chat', 'description' => 'Cuando te mencionan o escriben @todos en una conversación (salvo las silenciadas).'],
+        ],
+        'reports' => [
+            'weekly_digest' => ['label' => 'Resumen semanal de productividad', 'description' => 'Los lunes, la ocupación de tu equipo en la semana anterior.'],
+        ],
+        'system' => [
+            'transcriptions_failing' => ['label' => 'Transcripciones que fallan', 'description' => 'Audios del chat que no se consiguen transcribir.'],
+            'disk_space' => ['label' => 'Espacio en disco', 'description' => 'Cuando el disco o los adjuntos pasan del umbral.'],
+            'backup_failed' => ['label' => 'Copias de seguridad', 'description' => 'Cuando falla una copia o su prueba de restauración.'],
+        ],
+    ],
+];

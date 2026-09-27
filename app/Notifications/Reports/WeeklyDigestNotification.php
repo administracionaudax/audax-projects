@@ -33,14 +33,6 @@ class WeeklyDigestNotification extends AppNotification
     /** Elementos que se citan por sección en el email; del resto, «y N más». */
     public const int ITEMS_IN_MAIL = 10;
 
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
-
     public function kind(): string
     {
         return 'reports.weekly_digest';

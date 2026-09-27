@@ -44,14 +44,6 @@ abstract class AbsenceNotification extends AppNotification
     }
 
     /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['database', 'mail'];
-    }
-
-    /**
      * «/ausencias» para la persona y «/ausencias/equipo» para quien aprueba.
      */
     public function url(object $notifiable): ?string
