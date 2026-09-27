@@ -1,5 +1,6 @@
 import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/react';
 import {
+    ChartColumn,
     Clock,
     FolderKanban,
     Globe,
@@ -41,6 +42,7 @@ import {
     reactivate,
     show,
 } from '@/routes/clients';
+import { client as clientReport } from '@/routes/reports';
 import type { ClientShowProps } from '@/types';
 
 const MONTHS = new Intl.DateTimeFormat('es-ES', {
@@ -164,51 +166,69 @@ export default function ClientShow({
                             ) : null}
                         </div>
                     </div>
-                    {can.update ? (
+                    {can.update || can.viewReport ? (
                         <div className="flex flex-wrap gap-2">
-                            <ClientDialog
-                                client={client}
-                                showFinancials={showFinancials}
-                                trigger={
-                                    <Button variant="outline">
-                                        <Pencil aria-hidden="true" />
-                                        {t('clients.edit')}
-                                    </Button>
-                                }
-                            />
-                            {client.is_active ? (
-                                <ConfirmDialog
-                                    open={confirmOpen}
-                                    onOpenChange={setConfirmOpen}
-                                    trigger={
-                                        <Button variant="outline">
-                                            <PowerOff aria-hidden="true" />
-                                            {t('clients.deactivate')}
-                                        </Button>
-                                    }
-                                    title={t('clients.deactivate_title', {
-                                        name: client.name,
-                                    })}
-                                    description={t(
-                                        'clients.deactivate_description',
-                                    )}
-                                    confirmLabel={t('clients.deactivate')}
-                                    processing={processing}
-                                    onConfirm={toggleActive}
-                                />
-                            ) : (
-                                <Button
-                                    onClick={toggleActive}
-                                    disabled={processing}
-                                >
-                                    {processing ? (
-                                        <Spinner />
-                                    ) : (
-                                        <Power aria-hidden="true" />
-                                    )}
-                                    {t('clients.reactivate')}
+                            {/* Informe del cliente (Fase 2, R2): admins, responsables y sus gestores. */}
+                            {can.viewReport ? (
+                                <Button variant="outline" asChild>
+                                    <Link href={clientReport.url(client.id)}>
+                                        <ChartColumn aria-hidden="true" />
+                                        {t('reports_r2.link.client_report')}
+                                    </Link>
                                 </Button>
-                            )}
+                            ) : null}
+                            {can.update ? (
+                                <>
+                                    <ClientDialog
+                                        client={client}
+                                        showFinancials={showFinancials}
+                                        trigger={
+                                            <Button variant="outline">
+                                                <Pencil aria-hidden="true" />
+                                                {t('clients.edit')}
+                                            </Button>
+                                        }
+                                    />
+                                    {client.is_active ? (
+                                        <ConfirmDialog
+                                            open={confirmOpen}
+                                            onOpenChange={setConfirmOpen}
+                                            trigger={
+                                                <Button variant="outline">
+                                                    <PowerOff aria-hidden="true" />
+                                                    {t('clients.deactivate')}
+                                                </Button>
+                                            }
+                                            title={t(
+                                                'clients.deactivate_title',
+                                                {
+                                                    name: client.name,
+                                                },
+                                            )}
+                                            description={t(
+                                                'clients.deactivate_description',
+                                            )}
+                                            confirmLabel={t(
+                                                'clients.deactivate',
+                                            )}
+                                            processing={processing}
+                                            onConfirm={toggleActive}
+                                        />
+                                    ) : (
+                                        <Button
+                                            onClick={toggleActive}
+                                            disabled={processing}
+                                        >
+                                            {processing ? (
+                                                <Spinner />
+                                            ) : (
+                                                <Power aria-hidden="true" />
+                                            )}
+                                            {t('clients.reactivate')}
+                                        </Button>
+                                    )}
+                                </>
+                            ) : null}
                         </div>
                     ) : null}
                 </header>
