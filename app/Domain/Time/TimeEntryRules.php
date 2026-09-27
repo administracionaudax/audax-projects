@@ -3,6 +3,7 @@
 namespace App\Domain\Time;
 
 use App\Domain\HourBanks\HourBankLedger;
+use App\Enums\AbsenceType;
 use App\Enums\OveragePolicy;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -272,7 +273,15 @@ final class TimeEntryRules
             $warnings[] = new TimeEntryWarning(TimeEntryWarning::TASK_COMPLETED, $this->message('time.warnings.task_completed'));
         }
 
-        $capacity = $this->capacity->onDate($target, $date);
+        // Una sola lectura de la capacidad del día: sus minutos y, si la hay, la ausencia aprobada.
+        $day = $this->capacity->details($target, $date, $date)[$date->toDateString()] ?? null;
+        $capacity = $day['minutes'] ?? 0;
+
+        // Día con una ausencia aprobada (SPEC §7, D-049): aviso sin bloqueo. Añadido por la Fase 3.
+        if ($day !== null && $day['absence'] !== null) {
+            $warnings[] = $this->absenceWarning($day['absence']);
+        }
+
         if ($dayTotal > $capacity * 1.25) {
             $warnings[] = new TimeEntryWarning(TimeEntryWarning::OVER_CAPACITY, $capacity > 0
                 ? $this->message('time.warnings.over_capacity', ['total' => Duration::format($dayTotal), 'capacity' => Duration::format($capacity)])
@@ -294,6 +303,18 @@ final class TimeEntryRules
         }
 
         return $warnings;
+    }
+
+    /**
+     * @param  array{type: string, partial_minutes: int|null}  $absence
+     */
+    private function absenceWarning(array $absence): TimeEntryWarning
+    {
+        $type = AbsenceType::tryFrom($absence['type'])?->label() ?? $absence['type'];
+
+        return new TimeEntryWarning(TimeEntryWarning::ABSENCE, $absence['partial_minutes'] === null
+            ? $this->message('absences.warnings.time_entry', ['type' => $type])
+            : $this->message('absences.warnings.time_entry_partial', ['type' => $type, 'minutes' => Duration::format($absence['partial_minutes'])]));
     }
 
     /**
