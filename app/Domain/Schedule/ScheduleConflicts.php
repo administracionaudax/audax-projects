@@ -12,8 +12,8 @@ use Carbon\CarbonImmutable;
  * su duración y sigue en cascada. NUNCA se aplica sola: la interfaz la enseña y pide confirmación.
  * Mover una tarea antes (o sin cambiar su entrega) no propone nada: las sucesoras nunca se
  * adelantan solas, y un conflicto que ya estaba no lo causa ese cambio.
- * A prueba de ciclos (que D-056 no permite crear, pero la base podría tener): la tarea movida
- * nunca se desplaza y la cascada no vuelve a una tarea de su propio camino.
+ * A prueba de ciclos (D-090; D-056 no permite crearlos, pero la base podría tener alguno): la
+ * tarea movida nunca se desplaza y la cascada no vuelve a una tarea de su propio camino.
  */
 final class ScheduleConflicts
 {

@@ -22,7 +22,7 @@ use Illuminate\Validation\Validator;
  *   proyecto), bolsa (obligatoria y abierta si el proyecto es de bolsas), estimación y prioridad,
  * - regla: semanal (cada 1-12 semanas, día 1-7 con lunes = 1) o mensual (cada 1-12 meses, día
  *   1-31; si el mes no lo tiene, el último), vencimiento a 0-60 días, desde y hasta (≥ desde),
- *   ambas entre el 01/01/2000 y el 31/12/2100 (RecurringTaskRule::MIN_DATE y MAX_DATE),
+ *   ambas entre el 01/01/2000 y el 31/12/2100 (D-089, RecurringTaskRule::MIN_DATE y MAX_DATE),
  * - un proyecto archivado no admite reglas activas.
  */
 class RecurringRuleRequest extends FormRequest

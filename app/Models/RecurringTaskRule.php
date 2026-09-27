@@ -51,8 +51,8 @@ class RecurringTaskRule extends Model
     public const string MONTHLY = 'monthly';
 
     /**
-     * Fechas admitidas (desde, hasta y las de las instancias): de 2000 a 2100, como el calendario
-     * de tareas (App\Domain\Planning\CalendarPeriod). Lo valida RecurringRuleRequest y
+     * Fechas admitidas (D-089; desde, hasta y las de las instancias): de 2000 a 2100, como el
+     * calendario de tareas (App\Domain\Planning\CalendarPeriod). Lo valida RecurringRuleRequest y
      * occurrencesBetween() no da fechas fuera de ese rango.
      */
     public const string MIN_DATE = '2000-01-01';

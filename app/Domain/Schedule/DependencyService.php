@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Dependencias fin-inicio (SPEC §6.1, D-056): solo entre tareas del mismo proyecto, sin enlazar
  * una tarea consigo misma y sin ciclos. Enlazar dos veces lo mismo no duplica. Los enlaces de un
- * mismo proyecto se hacen de uno en uno (la fila del proyecto queda bloqueada durante la
+ * mismo proyecto se hacen de uno en uno (D-090: la fila del proyecto queda bloqueada durante la
  * comprobación del ciclo y el alta).
  */
 final class DependencyService
