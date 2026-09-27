@@ -6,16 +6,17 @@ use App\Enums\MessageType;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\User;
+use App\Search\Sources\MessageSource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Consulta ligera del estado de las transcripciones (SPEC §12): GET /chat/transcripciones?mensajes=1,2,3.
  * La usa el navegador cuando no hay tiempo real (o como red de seguridad si se pierde el evento
  * AudioTranscribed) para cambiar «Transcribiendo…» por el texto, y para renovar la URL firmada de un
  * audio que lleva mucho rato en pantalla. Una sola petición para todos los audios pendientes a la
- * vista; solo devuelve los de conversaciones que quien pregunta puede ver (ConversationPolicy::view).
+ * vista; solo devuelve los de conversaciones que quien pregunta puede ver (la regla de
+ * ConversationPolicy::view, comprobada para todas a la vez: MessageSource::visibleConversationIds).
  */
 class TranscriptionStatusController extends Controller
 {
@@ -35,25 +36,18 @@ class TranscriptionStatusController extends Controller
             ->whereKey($ids)
             ->where('type', MessageType::Audio)
             ->whereNull('hidden_at')
-            ->with(['conversation', ...MediaPayload::RELATIONS])
             ->orderBy('id')
             ->get();
 
-        $gate = Gate::forUser($user);
-        $allowed = [];
-        $items = [];
+        // Visibilidad de todas sus conversaciones en una consulta (la regla de ConversationPolicy::view).
+        $visible = MessageSource::visibleConversationIds($user, array_values(array_unique($messages->pluck('conversation_id')->all())));
+        $messages = $messages->filter(fn (Message $message): bool => in_array($message->conversation_id, $visible, true))->values();
+        $messages->load(MediaPayload::RELATIONS);
 
-        foreach ($messages as $message) {
-            $allowed[$message->conversation_id] ??= $gate->allows('view', $message->conversation);
-
-            if (! $allowed[$message->conversation_id]) {
-                continue;
-            }
-
+        return response()->json(['messages' => array_values($messages->map(function (Message $message): array {
             $media = MediaPayload::of($message);
-            $items[] = ['id' => $message->id, 'audio' => $media['audio'], 'transcription' => $media['transcription']];
-        }
 
-        return response()->json(['messages' => $items]);
+            return ['id' => $message->id, 'audio' => $media['audio'], 'transcription' => $media['transcription']];
+        })->all())]);
     }
 }

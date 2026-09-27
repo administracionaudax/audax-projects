@@ -17,6 +17,7 @@
  */
 import base from '../../../lang/es.json';
 import admin from '../../../lang/ui/admin.json';
+import chatMedia from '../../../lang/ui/chat-media.json';
 import clients from '../../../lang/ui/clients.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
@@ -35,6 +36,7 @@ const messages = {
     ...tasks,
     ...time,
     ...notifications,
+    ...chatMedia,
 };
 
 export type TranslationKey = keyof typeof messages;

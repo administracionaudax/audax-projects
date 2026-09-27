@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Chat\Media\AudioController;
+use App\Http\Controllers\Chat\Media\ChatSearchController;
 use App\Http\Controllers\Chat\Media\MessageMediaController;
 use App\Http\Controllers\Chat\Media\TranscriptionStatusController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 | - GET /chat/buscar?q=: búsqueda del chat (?conversacion=, ?tipo=, ?antes=),
 | - /admin/transcripciones: estado de las transcripciones y «Relanzar» (solo admin).
 */
+
+Route::get('chat/buscar', ChatSearchController::class)
+    ->middleware('throttle:60,1')
+    ->name('chat.search');
 
 Route::post('chat/{conversation}/multimedia', [MessageMediaController::class, 'store'])
     ->whereNumber('conversation')
