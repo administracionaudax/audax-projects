@@ -10,6 +10,8 @@ use Carbon\CarbonImmutable;
  * si empieza (o, sin inicio, vence) el mismo día o antes de que acabe su predecesora. La
  * propuesta desplaza cada sucesora en conflicto lo justo para empezar el día siguiente, conserva
  * su duración y sigue en cascada. NUNCA se aplica sola: la interfaz la enseña y pide confirmación.
+ * A prueba de ciclos (que D-056 no permite crear, pero la base podría tener): la tarea movida
+ * nunca se desplaza y la cascada no vuelve a una tarea de su propio camino.
  */
 final class ScheduleConflicts
 {
@@ -27,12 +29,17 @@ final class ScheduleConflicts
 
         $edges = [];
         foreach ($this->dependencies->projectDependencies($task->project_id) as [$from, $to]) {
-            $edges[$from][] = $to;
+            // La tarea movida nunca se desplaza, aunque un ciclo vuelva a ella.
+            if ($to !== $task->id) {
+                $edges[$from][] = $to;
+            }
         }
 
         if (($edges[$task->id] ?? []) === []) {
             return [];
         }
+
+        [$order, $links] = self::acyclicFrom($task->id, $edges);
 
         /** @var array<int, string|null> $start */
         $start = [];
@@ -49,17 +56,18 @@ final class ScheduleConflicts
         $due[$task->id] = $newDue->toDateString();
 
         $proposals = [];
-        $queue = [$task->id];
-        $guard = 0;
+        // Solo propaga lo que se mueve: la tarea movida y las sucesoras que se desplazan (un
+        // conflicto que ya había más abajo no lo causa este cambio). En orden topológico, cada tarea
+        // se revisa una vez, con sus fechas definitivas.
+        $moved = [$task->id => true];
 
-        while ($queue !== [] && $guard++ < 10000) {
-            $current = array_shift($queue);
+        foreach ($order as $current) {
             $end = $due[$current] ?? null;
-            if ($end === null) {
+            if (! isset($moved[$current]) || $end === null) {
                 continue;
             }
 
-            foreach ($edges[$current] ?? [] as $successor) {
+            foreach ($links[$current] ?? [] as $successor) {
                 if (! isset($original[$successor])) {
                     continue;
                 }
@@ -85,11 +93,59 @@ final class ScheduleConflicts
                     'shift_days' => $from !== null && $to !== null ? (int) CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to)) : 0,
                     'predecessor_id' => $current,
                 ];
-                $queue[] = $successor;
+                $moved[$successor] = true;
             }
         }
 
         return array_values($proposals);
+    }
+
+    /**
+     * Tareas que se alcanzan desde la movida, en orden topológico, y los enlaces por los que se
+     * propaga el desplazamiento (búsqueda en profundidad). Sin ciclos es todo el subgrafo; con uno
+     * (datos dañados), se descarta el enlace que vuelve a una tarea del camino en curso, así que
+     * la cascada nunca da vueltas.
+     *
+     * @param  array<int, list<int>>  $edges  predecesora → sucesoras
+     * @return array{0: list<int>, 1: array<int, list<int>>}
+     */
+    private static function acyclicFrom(int $root, array $edges): array
+    {
+        // 1 = en el camino en curso, 2 = terminada.
+        $state = [$root => 1];
+        $links = [];
+        $finished = [];
+        /** @var list<array{0: int, 1: int}> $stack tarea y siguiente enlace por revisar */
+        $stack = [[$root, 0]];
+
+        while ($stack !== []) {
+            $top = count($stack) - 1;
+            [$node, $index] = $stack[$top];
+            $next = $edges[$node][$index] ?? null;
+
+            if ($next === null) {
+                array_pop($stack);
+                $state[$node] = 2;
+                $finished[] = $node;
+
+                continue;
+            }
+
+            $stack[$top][1] = $index + 1;
+
+            if (($state[$next] ?? 0) === 1) {
+                continue;
+            }
+
+            $links[$node][] = $next;
+
+            if (! isset($state[$next])) {
+                $state[$next] = 1;
+                $stack[] = [$next, 0];
+            }
+        }
+
+        return [array_reverse($finished), $links];
     }
 
     private static function addDays(?string $date, int $days): ?string

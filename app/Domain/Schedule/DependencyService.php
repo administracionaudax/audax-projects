@@ -2,6 +2,7 @@
 
 namespace App\Domain\Schedule;
 
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskDependency;
 use App\Models\User;
@@ -10,7 +11,9 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Dependencias fin-inicio (SPEC §6.1, D-056): solo entre tareas del mismo proyecto, sin enlazar
- * una tarea consigo misma y sin ciclos. Enlazar dos veces lo mismo no duplica.
+ * una tarea consigo misma y sin ciclos. Enlazar dos veces lo mismo no duplica. Los enlaces de un
+ * mismo proyecto se hacen de uno en uno (la fila del proyecto queda bloqueada durante la
+ * comprobación del ciclo y el alta).
  */
 final class DependencyService
 {
@@ -28,6 +31,11 @@ final class DependencyService
         }
 
         return DB::transaction(function () use ($predecessor, $successor, $actor): TaskDependency {
+            // Un enlace del proyecto a la vez: con dos simultáneos (A → B y B → A), cada uno buscaría
+            // el ciclo sin ver el alta del otro (READ COMMITTED) y entre los dos lo crearían. Con la
+            // fila del proyecto bloqueada, el segundo espera a que el primero termine y ya lo ve.
+            $this->lockProject($predecessor->project_id);
+
             $existing = TaskDependency::query()
                 ->where('predecessor_task_id', $predecessor->id)
                 ->where('successor_task_id', $successor->id)
@@ -52,6 +60,15 @@ final class DependencyService
     public function unlink(TaskDependency $dependency): void
     {
         $dependency->delete();
+    }
+
+    /**
+     * Bloquea la fila del proyecto hasta el final de la transacción en curso: SELECT … FOR UPDATE
+     * en PostgreSQL (SQLite, que solo usan los tests, no bloquea filas y lo ignora).
+     */
+    private function lockProject(int $projectId): void
+    {
+        Project::query()->withoutGlobalScopes()->whereKey($projectId)->lockForUpdate()->value('id');
     }
 
     /**
@@ -85,7 +102,7 @@ final class DependencyService
     }
 
     /**
-     * @return list<array{0: int, 1: int}> pares [predecesora, sucesora]
+     * @return list<array{0: int, 1: int}> pares [predecesora, sucesora], en el orden en que se crearon
      */
     public function projectDependencies(int $projectId): array
     {
@@ -94,6 +111,8 @@ final class DependencyService
             ->join('tasks as dep_pred', 'dep_pred.id', '=', 'task_dependencies.predecessor_task_id')
             ->where('dep_pred.project_id', $projectId)
             ->whereNull('dep_pred.deleted_at')
+            // Siempre el mismo orden en cualquier motor (PostgreSQL no garantiza ninguno sin ORDER BY).
+            ->orderBy('task_dependencies.id')
             ->get(['task_dependencies.predecessor_task_id', 'task_dependencies.successor_task_id']);
 
         foreach ($rows as $dependency) {
