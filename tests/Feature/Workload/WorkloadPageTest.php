@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Workload\WorkloadBoard;
 use App\Models\Absence;
 use App\Models\Project;
 use App\Models\Task;
@@ -309,6 +310,35 @@ describe('bandejas', function () {
             ->and($trays['unassigned']['total'])->toBe(4)
             ->and(array_column($trays['unplanned']['tasks'], 'title'))->not->toContain('Formación')
             ->and($trays['unplanned']['total'])->toBe(2);
+    });
+
+    it('las bandejas ordenan antes de cortar: una vencida nunca se queda fuera aunque haya más de las que se pintan', function () {
+        $limit = WorkloadBoard::TRAY_LIMIT;
+        $designType = $this->tasks['unassigned_design']->task_type_id;
+        $unassigned = fn (string $title, string $due) => Task::factory()->create(['project_id' => $this->projects['web']->id, 'assignee_user_id' => null, 'task_type_id' => $designType, 'title' => $title, 'estimated_minutes' => 60, 'due_date' => $due]);
+
+        // Más de las que se pintan, con entrega en noviembre: sin estimar de Elena y sin asignar de
+        // Diseño. Las vencidas, de otra persona (Pablo) y creadas antes y después: sea cual sea el orden
+        // en que las devuelva la base de datos, sin ordenar antes alguna quedaría detrás del corte.
+        $unassigned('Banner vencido antes', '2026-10-03');
+        Task::factory()->count($limit + 5)->create(['project_id' => $this->projects['web']->id, 'assignee_user_id' => null, 'task_type_id' => $designType, 'estimated_minutes' => 60, 'due_date' => '2026-11-20']);
+        Task::factory()->count($limit + 5)->create(['project_id' => $this->projects['web']->id, 'assignee_user_id' => $this->people['elena']->id, 'estimated_minutes' => null, 'due_date' => '2026-11-20']);
+        $unassigned('Banner vencido después', '2026-10-04');
+        Task::factory()->create(['project_id' => $this->projects['web']->id, 'assignee_user_id' => $this->people['pablo']->id, 'title' => 'Vencida de Pablo', 'estimated_minutes' => null, 'due_date' => '2026-10-02']);
+
+        $trays = ($this->page)('ana')['trays'];
+        $design = collect($trays['unassigned']['groups'])->firstWhere('department.name', 'Diseño');
+        $shownUnassigned = array_sum(array_map(fn (array $group): int => count($group['tasks']), $trays['unassigned']['groups']));
+
+        expect($trays['unplanned']['total'])->toBe($limit + 5 + 3)
+            ->and($trays['unplanned']['tasks'])->toHaveCount($limit)
+            ->and(array_column(array_slice($trays['unplanned']['tasks'], 0, 2), 'title'))->toBe(['Vencida de Pablo', 'Textos legales'])
+            ->and($trays['unplanned']['tasks'][0]['overdue'])->toBeTrue()
+            ->and($trays['unassigned']['total'])->toBe($limit + 5 + 5)
+            ->and($shownUnassigned)->toBe($limit)
+            ->and($design['total'])->toBe($limit + 5 + 3)
+            ->and(array_column(array_slice($design['tasks'], 0, 3), 'title'))->toBe(['Banner vencido antes', 'Banner vencido después', 'Banner de campaña'])
+            ->and(collect($trays['unassigned']['groups'])->firstWhere('department.name', 'Desarrollo')['tasks'][0]['title'])->toBe('Corregir login');
     });
 
     it('con filtro de departamento, «Sin asignar» solo lleva ese departamento', function () {

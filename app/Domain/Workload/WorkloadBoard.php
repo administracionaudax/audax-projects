@@ -407,9 +407,12 @@ final class WorkloadBoard
     }
 
     /**
-     * Bandejas (D-051): «Sin planificar» (tareas de las filas sin estimación o sin entrega) y «Sin
-     * asignar» por departamento (el de la bolsa o, si no, el del tipo), solo para quien reparte.
-     * Sin las tareas «cajón» de los proyectos internos (InternalBuckets).
+     * Bandejas (D-051):
+     * - «Sin planificar»: tareas de las filas sin estimación o sin entrega,
+     * - «Sin asignar» por departamento (el de la bolsa o, si no, el del tipo), solo para quien reparte.
+     * Sin las tareas «cajón» de los proyectos internos (InternalBuckets). Cada bandeja pinta como
+     * mucho TRAY_LIMIT tareas, elegidas DESPUÉS de ordenar: las vencidas primero y después por
+     * entrega, así que una vencida nunca se queda fuera por el corte.
      *
      * @return array<string, mixed>
      */
@@ -435,15 +438,22 @@ final class WorkloadBoard
         }
 
         $unassignedIds = array_merge(...array_values(array_map(fn (array $items): array => array_column($items, 'task_id'), $unassigned)));
+
+        // El orden de las bandejas, con una consulta ligera, antes de cortar.
+        $rank = array_flip($this->ranked([...array_column($unplanned, 'task_id'), ...$unassignedIds]));
+        usort($unplanned, fn (array $a, array $b): int => ($rank[$a['task_id']] ?? PHP_INT_MAX) <=> ($rank[$b['task_id']] ?? PHP_INT_MAX));
+        $shownUnplanned = array_slice($unplanned, 0, self::TRAY_LIMIT);
+        $shownUnassigned = array_fill_keys(array_slice(self::sortIds($unassignedIds, $rank), 0, self::TRAY_LIMIT), true);
+
         $tasks = $this->loadTasks([
-            ...array_slice(array_column($unplanned, 'task_id'), 0, self::TRAY_LIMIT),
-            ...array_slice($unassignedIds, 0, self::TRAY_LIMIT),
+            ...array_column($shownUnplanned, 'task_id'),
+            ...array_keys($shownUnassigned),
         ]);
         $members = $this->projectMembers($tasks);
         $people = $this->scope->people()->keyBy('id');
 
         $unplannedRows = [];
-        foreach (array_slice($unplanned, 0, self::TRAY_LIMIT) as $item) {
+        foreach ($shownUnplanned as $item) {
             $task = $tasks->get($item['task_id']);
 
             if ($task === null) {
@@ -453,25 +463,20 @@ final class WorkloadBoard
             $unplannedRows[] = [
                 ...$this->taskData($task, $members),
                 'assignee' => ['id' => $item['user_id'], 'name' => (string) $people->get($item['user_id'])?->name],
-                'missing' => array_values(array_filter([
-                    $task->estimated_minutes ? null : 'estimate',
-                    $task->due_date === null ? 'due_date' : null,
-                ])),
+                'missing' => self::missing($task),
             ];
         }
 
         $groups = [];
-        $shown = 0;
         foreach ($unassigned as $departmentKey => $items) {
             $department = $departmentKey === 0 ? null : $this->departments()->get($departmentKey);
             $rows = [];
 
-            foreach ($items as $item) {
-                $task = $shown < self::TRAY_LIMIT ? $tasks->get($item['task_id']) : null;
+            foreach (self::sortIds(array_column($items, 'task_id'), $rank) as $taskId) {
+                $task = isset($shownUnassigned[$taskId]) ? $tasks->get($taskId) : null;
 
                 if ($task !== null) {
                     $rows[] = $this->taskData($task, $members);
-                    $shown++;
                 }
             }
 
@@ -479,7 +484,7 @@ final class WorkloadBoard
                 'department' => ['id' => $department?->id, 'name' => $department?->name, 'color' => $department?->color],
                 'total' => count($items),
                 'remaining_minutes' => (int) array_sum(array_column($items, 'remaining_minutes')),
-                'tasks' => self::sortTasks($rows),
+                'tasks' => $rows,
             ];
         }
 
@@ -490,7 +495,7 @@ final class WorkloadBoard
             'limit' => self::TRAY_LIMIT,
             'unplanned' => [
                 'total' => count($unplanned),
-                'tasks' => self::sortTasks($unplannedRows),
+                'tasks' => $unplannedRows,
             ],
             'unassigned' => [
                 'visible' => $this->scope->seesUnassigned(),
@@ -499,6 +504,58 @@ final class WorkloadBoard
             ],
             'extra_people' => $this->extraPeople($members),
         ];
+    }
+
+    /**
+     * Orden de las bandejas: por entrega (sin fecha al final; las vencidas, que son las de entrega
+     * más antigua, quedan las primeras), por título y por id. Una consulta ligera (id, título y
+     * entrega) de todas las candidatas, sin cargar las tareas.
+     *
+     * @param  list<int>  $ids
+     * @return list<int>
+     */
+    private function ranked(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $keys = array_map(
+            fn (object $row): array => [
+                $row->due_date === null ? '9999-12-31' : substr((string) $row->due_date, 0, 10),
+                mb_strtolower((string) $row->title),
+                (int) $row->id,
+            ],
+            Task::query()->whereKey(array_values(array_unique($ids)))->toBase()->get(['id', 'title', 'due_date'])->all(),
+        );
+        sort($keys);
+
+        return array_column($keys, 2);
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @param  array<int, int>  $rank  id → posición
+     * @return list<int>
+     */
+    private static function sortIds(array $ids, array $rank): array
+    {
+        usort($ids, fn (int $a, int $b): int => ($rank[$a] ?? PHP_INT_MAX) <=> ($rank[$b] ?? PHP_INT_MAX));
+
+        return $ids;
+    }
+
+    /**
+     * Lo que le falta a una tarea para sumar carga.
+     *
+     * @return list<'estimate'|'due_date'>
+     */
+    private static function missing(Task $task): array
+    {
+        return array_values(array_filter([
+            $task->estimated_minutes ? null : 'estimate',
+            $task->due_date === null ? 'due_date' : null,
+        ]));
     }
 
     /**
@@ -753,20 +810,6 @@ final class WorkloadBoard
         $this->memberProjectIds ??= array_values($viewer->projects()->pluck('projects.id')->map(fn (mixed $id): int => (int) $id)->all());
 
         return in_array($task->project_id, $this->memberProjectIds, true);
-    }
-
-    /**
-     * Vencidas primero; después por entrega (sin fecha al final) y por título.
-     *
-     * @param  list<array<string, mixed>>  $rows
-     * @return list<array<string, mixed>>
-     */
-    private static function sortTasks(array $rows): array
-    {
-        usort($rows, fn (array $a, array $b): int => [! $a['overdue'], $a['due_date'] ?? '9999-12-31', mb_strtolower((string) $a['title'])]
-            <=> [! $b['overdue'], $b['due_date'] ?? '9999-12-31', mb_strtolower((string) $b['title'])]);
-
-        return $rows;
     }
 
     /**
