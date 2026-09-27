@@ -188,12 +188,24 @@ describe('R2BreakdownTable', () => {
         }),
     ];
 
-    it('con view-financials muestra ingreso, coste, rentabilidad y margen, y los totales', () => {
+    // Los totales del resumen del servidor: el ingreso con los céntimos repartidos (1312,67 €),
+    // aunque las filas redondeadas por separado sumasen otra cosa; nunca se suman en el navegador.
+    const serverTotal = {
+        logged_minutes: 940,
+        billable_minutes: 910,
+        in_bank_minutes: 600,
+        overage_minutes: 190,
+        income: '1312.67',
+        cost: '390.00',
+    };
+
+    it('con view-financials muestra ingreso, coste, rentabilidad y margen, y los totales del servidor (INT-04)', () => {
         render(
             <R2BreakdownTable
                 caption="Resumen"
                 firstColumn="Proyecto"
                 rows={rows}
+                total={serverTotal}
                 financials
             />,
         );
@@ -223,12 +235,12 @@ describe('R2BreakdownTable', () => {
         expect(cells).toEqual([
             '15:40',
             '15:10',
-            '12:30',
+            '10:00',
             'Exceso: +3:10',
-            '1.337,67 €',
+            '1.312,67 €',
             '390,00 €',
-            '947,67 €',
-            '70,8 %',
+            '922,67 €',
+            '70,3 %',
         ]);
     });
 
@@ -238,6 +250,7 @@ describe('R2BreakdownTable', () => {
                 caption="Resumen"
                 firstColumn="Proyecto"
                 rows={rows.map((row) => ({ ...row, income: null, cost: null }))}
+                total={{ ...serverTotal, income: null, cost: null }}
                 financials={false}
             />,
         );
