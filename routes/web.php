@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PortalAccess\BrandLogoController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StyleguideController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,13 @@ Route::middleware('guest')->group(function () {
 
 // Guía de estilo: pública durante el desarrollo (APP_STYLEGUIDE_PUBLIC=true); después, solo admin.
 Route::get('styleguide', StyleguideController::class)->name('styleguide');
+
+// Logo de la empresa (Fase 5, D-067): público porque lo cargan los emails, y sin el grupo web (sin
+// sesión ni cookies: cada email abierto no crea una fila en sessions).
+Route::get('marca/logo/{version}', BrandLogoController::class)
+    ->where('version', '[a-f0-9]{1,40}')
+    ->withoutMiddleware('web')
+    ->name('brand.logo');
 
 Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');

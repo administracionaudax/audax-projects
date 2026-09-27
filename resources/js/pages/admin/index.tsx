@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
 import { index as departmentsIndex } from '@/routes/admin/departments';
 import { index as holidaysIndex } from '@/routes/admin/holidays';
+import { edit as identityEdit } from '@/routes/admin/identity';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
@@ -154,6 +155,13 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.identity.title',
         description: 'admin.areas.identity.description',
         phase: 5,
+        links: [
+            {
+                label: 'identity.admin_link',
+                href: identityEdit.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'audit',

@@ -87,6 +87,8 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         '#^two-factor-challenge$#', '#^invitacion#',
         // Públicas o técnicas.
         '#^health$#', '#^up$#', '#^styleguide$#', '#^storage/#', '#^_inertia/#',
+        // Logo de la empresa (D-067): público para los emails, sin sesión.
+        '#^marca/logo/#',
         // Horizon: su propia puerta (solo admin fuera de local).
         '#^horizon#',
     ];

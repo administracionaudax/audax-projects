@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reports\Pdf;
 
+use App\Domain\Identity\CompanyIdentity;
 use FPDF;
 
 /**
@@ -50,6 +51,14 @@ class AudaxPdf extends FPDF
     public const float LOGO_WIDTH = 500.0;
 
     public const float LOGO_HEIGHT = 83.0;
+
+    /** Caja del logo de la empresa (D-067) en la cabecera, en mm. */
+    public const float CUSTOM_LOGO_WIDTH = 45.0;
+
+    public const float CUSTOM_LOGO_HEIGHT = 8.0;
+
+    /** @var array{path: string, width: int, height: int}|false|null  null: sin consultar; false: no hay. */
+    private array|false|null $customLogo = null;
 
     /** @var array{widths: list<float>, cells: list<string>, aligns: list<string>}|null */
     private ?array $tableHeader = null;
@@ -132,13 +141,44 @@ class AudaxPdf extends FPDF
     }
 
     /**
-     * Logotipo «AUDAX» en vectorial, en navy, con la esquina superior izquierda en ($x, $y) mm.
+     * Logotipo con la esquina superior izquierda en ($x, $y) mm: el logo de la empresa si se ha
+     * subido en /admin/identidad (D-067, un PNG que cabe en CUSTOM_LOGO_WIDTH × CUSTOM_LOGO_HEIGHT
+     * mm) y, si no, «AUDAX» en vectorial y en navy, de $height mm de alto.
      */
     public function logo(float $x, float $y, float $height): void
     {
+        $custom = $this->customLogo();
+
+        if ($custom !== null) {
+            $ratio = min(self::CUSTOM_LOGO_WIDTH / $custom['width'], max($height, self::CUSTOM_LOGO_HEIGHT) / $custom['height']);
+            $this->Image($custom['path'], $x, $y, $custom['width'] * $ratio, $custom['height'] * $ratio, 'PNG');
+
+            return;
+        }
+
         $scale = $height / self::LOGO_HEIGHT;
         $this->fillColor(self::NAVY);
         $this->_out($this->svgPathToPdf(self::LOGO_PATH, $x, $y, $scale).' f');
+    }
+
+    /**
+     * Logo de la empresa (CompanyIdentity, D-067): se consulta una vez por documento.
+     *
+     * @return array{path: string, width: int, height: int}|null
+     */
+    private function customLogo(): ?array
+    {
+        if ($this->customLogo === null) {
+            $identity = app(CompanyIdentity::class);
+            $logo = $identity->logo();
+            $path = $identity->logoPath();
+
+            $this->customLogo = $logo === null || $path === null || ! is_file($path)
+                ? false
+                : ['path' => $path, 'width' => $logo['width'], 'height' => $logo['height']];
+        }
+
+        return $this->customLogo === false ? null : $this->customLogo;
     }
 
     /**

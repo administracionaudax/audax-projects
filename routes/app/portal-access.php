@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\IdentityController;
 use App\Http\Controllers\PortalAccess\ClientPortalSettingsController;
 use App\Http\Controllers\PortalAccess\PortalUserController;
 use App\Http\Controllers\PortalAccess\ProjectPortalSettingsController;
@@ -39,3 +40,9 @@ Route::prefix('clientes/{client}/portal')->whereNumber('client')->name('clients.
 Route::put('proyectos/{project}/portal', [ProjectPortalSettingsController::class, 'update'])
     ->whereNumber('project')
     ->name('projects.portal.update');
+
+Route::prefix('admin/identidad')->middleware('role:admin')->name('admin.identity.')->group(function () {
+    Route::get('/', [IdentityController::class, 'edit'])->name('edit');
+    Route::post('/', [IdentityController::class, 'update'])->name('update');
+    Route::delete('logo', [IdentityController::class, 'destroyLogo'])->name('logo.destroy');
+});
