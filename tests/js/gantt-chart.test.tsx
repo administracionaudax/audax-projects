@@ -529,6 +529,86 @@ describe('Gantt: ratón', () => {
         expect(onOpen).toHaveBeenCalledWith(layout);
     });
 
+    it('arrastrar el conector hasta otra barra crea la dependencia; sobre la misma barra, en vacío o cancelando, no', () => {
+        const { onLink } = renderChart();
+        const from = bar(/^Diseño/);
+        const connector = from.querySelector(
+            '[data-gantt-part="connector"]',
+        ) as Element;
+        expect(connector).not.toBeNull();
+
+        // Lo que hay bajo el puntero al soltar (jsdom no calcula posiciones).
+        let under: Element | null = null;
+        const own = Object.getOwnPropertyDescriptor(
+            document,
+            'elementFromPoint',
+        );
+        Object.defineProperty(document, 'elementFromPoint', {
+            configurable: true,
+            value: vi.fn(() => under),
+        });
+        const line = () => document.querySelector('svg line');
+        const drag = (
+            pointerId: number,
+            target: Element | null,
+            end: 'pointerUp' | 'pointerCancel' = 'pointerUp',
+        ) => {
+            under = target;
+            fireEvent.pointerDown(connector, {
+                button: 0,
+                pointerId,
+                clientX: 200,
+                clientY: 20,
+            });
+            fireEvent.pointerMove(connector, {
+                pointerId,
+                clientX: 380,
+                clientY: 90,
+            });
+            expect(line()).not.toBeNull();
+            fireEvent[end](connector, { pointerId, clientX: 380, clientY: 90 });
+            expect(line()).toBeNull();
+        };
+
+        try {
+            // Soltar sobre el rombo de «Entrega» (o sobre cualquier parte de su barra).
+            drag(1, bar(/^Entrega/));
+            expect(onLink).toHaveBeenCalledTimes(1);
+            expect(onLink).toHaveBeenLastCalledWith(design, delivery);
+
+            drag(
+                2,
+                bar(/^Maquetación/).querySelector('[data-gantt-part="end"]'),
+            );
+            expect(onLink).toHaveBeenCalledTimes(2);
+            expect(onLink).toHaveBeenLastCalledWith(design, layout);
+
+            // Sobre la misma barra, en vacío o cancelado: nada.
+            drag(3, from);
+            drag(4, document.body);
+            drag(5, null);
+            drag(6, bar(/^Entrega/), 'pointerCancel');
+            expect(onLink).toHaveBeenCalledTimes(2);
+        } finally {
+            if (own) {
+                Object.defineProperty(document, 'elementFromPoint', own);
+            } else {
+                Reflect.deleteProperty(document, 'elementFromPoint');
+            }
+        }
+    });
+
+    it('sin permiso para editar la tarea no hay conector', () => {
+        renderChart({}, [{ ...design, can: { update: false } }, layout]);
+
+        expect(
+            bar(/^Diseño/).querySelector('[data-gantt-part="connector"]'),
+        ).toBeNull();
+        expect(
+            bar(/^Maquetación/).querySelector('[data-gantt-part="connector"]'),
+        ).not.toBeNull();
+    });
+
     it('quitar una dependencia desde su flecha', async () => {
         const user = userEvent.setup();
         const { onUnlink } = renderChart();
