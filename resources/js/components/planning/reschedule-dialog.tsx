@@ -9,8 +9,10 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import type { ShiftProposal } from '@/types/schedule';
 
 function datesText(start: string | null, due: string | null): string {
@@ -72,11 +74,13 @@ export function RescheduleDialog({
     saving,
     onConfirm,
     onCancel,
+    onCloseAutoFocus,
 }: {
     pending: PendingReschedule | null;
     saving: boolean;
     onConfirm: (shiftSuccessors: boolean) => void;
     onCancel: () => void;
+    onCloseAutoFocus?: (event: Event) => void;
 }) {
     return (
         <Dialog
@@ -87,7 +91,10 @@ export function RescheduleDialog({
                 }
             }}
         >
-            <DialogContent data-test="reschedule-dialog">
+            <DialogContent
+                data-test="reschedule-dialog"
+                onCloseAutoFocus={onCloseAutoFocus}
+            >
                 <DialogTitle className="flex items-center gap-2">
                     <TriangleAlert
                         aria-hidden="true"
@@ -108,8 +115,13 @@ export function RescheduleDialog({
                 </DialogDescription>
                 {pending ? (
                     <ul
-                        className="grid max-h-64 gap-2 overflow-y-auto"
+                        // Con muchas sucesoras la lista se desplaza: se puede enfocar para hacerlo con el teclado.
+                        className={cn(
+                            'grid max-h-64 gap-2 overflow-y-auto rounded-[3px]',
+                            FOCUS_RING,
+                        )}
                         aria-label={t('planning.reschedule.list')}
+                        tabIndex={0}
                     >
                         {pending.proposals.map((proposal) => (
                             <ProposalItem

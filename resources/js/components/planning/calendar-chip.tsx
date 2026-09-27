@@ -103,7 +103,15 @@ export function chipLabel(
         .join('. ');
 }
 
-export type ChipMoveHandler = (task: CalendarTask, newDue: string) => void;
+/**
+ * Llevar una tarea a otro día de entrega. `keepFocus`: se movió con el teclado (o con «Asignar
+ * fecha»), así que el foco sigue a la tarea hasta su día nuevo (o vuelve si se cancela).
+ */
+export type ChipMoveHandler = (
+    task: CalendarTask,
+    newDue: string,
+    keepFocus?: boolean,
+) => void;
 
 /**
  * Una tarea en el calendario: botón que abre su panel. Si se puede editar:
@@ -189,7 +197,7 @@ export function CalendarChip({
         if (event.key === 'Enter') {
             event.preventDefault();
             setOffset(0);
-            onMove(task, target);
+            onMove(task, target, true);
         } else if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
@@ -204,8 +212,12 @@ export function CalendarChip({
             ref={setNodeRef}
             {...attributes}
             {...listeners}
-            // Si no se puede arrastrar sigue siendo un botón que abre la tarea: nunca «desactivado».
+            // Si no se puede arrastrar sigue siendo un botón que abre la tarea: nunca «desactivado»;
+            // y solo se anuncia como «tarea que se puede mover» a quien puede moverla.
             aria-disabled={undefined}
+            aria-roledescription={
+                canEdit ? attributes['aria-roledescription'] : undefined
+            }
             aria-label={chipLabel(task, status, today)}
             aria-describedby={canEdit ? helpId : undefined}
             onClick={() => onOpen(task.id)}

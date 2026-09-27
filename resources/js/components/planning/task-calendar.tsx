@@ -19,7 +19,7 @@ import {
     ChevronRight,
     Diamond,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DatePicker } from '@/components/domain/date-picker';
 import { CalendarChip, StatusIcon } from '@/components/planning/calendar-chip';
@@ -204,9 +204,9 @@ function MoreTasks({
                                     setOpen(false);
                                     context.onOpen(taskId);
                                 }}
-                                onMove={(moved, newDue) => {
+                                onMove={(moved, newDue, keepFocus) => {
                                     setOpen(false);
-                                    context.onMove(moved, newDue);
+                                    context.onMove(moved, newDue, keepFocus);
                                 }}
                                 onAnnounce={context.onAnnounce}
                             />
@@ -426,7 +426,7 @@ function WeekGrid({
                                             context.onOpen(cell.span.task.id)
                                         }
                                         className={cn(
-                                            'flex w-full min-w-0 items-center gap-1 border border-primary/40 bg-info-soft px-1.5 py-0.5 text-left text-xs text-foreground hover:underline',
+                                            'flex w-full min-w-0 items-center gap-1 border border-info bg-info-soft px-1.5 py-0.5 text-left text-xs text-foreground hover:underline',
                                             cell.span.continuesBefore
                                                 ? 'rounded-l-none border-l-0'
                                                 : 'rounded-l-[3px]',
@@ -578,7 +578,7 @@ function UndatedList({
                                     )}
                                     onChange={(date) => {
                                         if (date) {
-                                            context.onMove(task, date);
+                                            context.onMove(task, date, true);
                                         }
                                     }}
                                     className="h-7 w-auto self-start px-2 text-xs"
@@ -664,11 +664,44 @@ export function TaskCalendar({
     const undated = all.filter((task) => task.due_date === null);
     const byDay = tasksByDueDate(dated);
 
-    const move: ChipMoveHandler = (task, newDue) => {
+    // Tarea que debe conservar el foco al moverla con el teclado: al cambiar de día su botón se
+    // vuelve a crear en otra celda (y otra vez si se cancela), así que se le devuelve el foco
+    // cuando no hay un diálogo abierto; se olvida al terminar el movimiento.
+    const keepFocusOn = useRef<number | null>(null);
+    // Última tarea movida: al cerrar el diálogo de conflictos, el foco vuelve a ella.
+    const lastMoved = useRef<number | null>(null);
+
+    const focusChip = (taskId: number) => {
+        const chip = document.querySelector<HTMLElement>(
+            `[data-test="calendar-chip"][data-task-id="${taskId}"]`,
+        );
+
+        if (chip && document.activeElement !== chip) {
+            chip.focus();
+        }
+    };
+
+    useEffect(() => {
+        const taskId = keepFocusOn.current;
+
+        if (taskId === null || reschedule.pending !== null) {
+            return;
+        }
+
+        focusChip(taskId);
+
+        if (reschedule.moving === null) {
+            keepFocusOn.current = null;
+        }
+    });
+
+    const move: ChipMoveHandler = (task, newDue, keepFocus = false) => {
         if (!canEdit || newDue === task.due_date) {
             return;
         }
 
+        keepFocusOn.current = keepFocus ? task.id : null;
+        lastMoved.current = task.id;
         const dates = movedDates(task, newDue);
         setAnnouncement(
             t('planning.keyboard.moving', {
@@ -921,6 +954,14 @@ export function TaskCalendar({
                 saving={reschedule.saving}
                 onConfirm={reschedule.confirm}
                 onCancel={reschedule.cancel}
+                // Al cerrar, el foco vuelve a la tarea movida (en su día nuevo o en el de antes).
+                onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+
+                    if (lastMoved.current !== null) {
+                        focusChip(lastMoved.current);
+                    }
+                }}
             />
         </div>
     );

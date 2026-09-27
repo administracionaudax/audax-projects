@@ -345,6 +345,14 @@ describe('mover con el teclado', () => {
                 expect.anything(),
             ),
         );
+        // El foco sigue a la tarea hasta su día nuevo.
+        await waitFor(() =>
+            expect(
+                document.activeElement
+                    ?.closest('[data-date]')
+                    ?.getAttribute('data-date'),
+            ).toBe('2026-10-14'),
+        );
     });
 
     it('Escape cancela y, sin día elegido, Enter abre la tarea', async () => {
@@ -564,6 +572,12 @@ describe('conflictos con las sucesoras (D-057)', () => {
         expect(
             document.querySelector('[data-date="2026-10-09"]')?.textContent,
         ).toContain('Diseño');
+        // Y el foco vuelve a la tarea, en su día de siempre.
+        await waitFor(() =>
+            expect(document.activeElement?.getAttribute('data-task-id')).toBe(
+                '10',
+            ),
+        );
     });
 });
 
