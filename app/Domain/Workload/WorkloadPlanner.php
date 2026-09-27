@@ -38,6 +38,9 @@ final class WorkloadPlanner
     {
         $today = ($today ?? LocalTime::today())->startOfDay();
         $plan = new WorkloadPlan;
+        // Las fechas de la vista, una vez (se comparan por cada día de cada tarea: rendimiento).
+        $fromDate = $from->toDateString();
+        $toDate = $to->toDateString();
 
         $tasks = $this->openTasks($filters)
             ->where(fn (Builder $q) => $q->whereIn('assignee_user_id', $userIds)->orWhereNull('assignee_user_id'))
@@ -71,7 +74,7 @@ final class WorkloadPlanner
         foreach ($userIds as $userId) {
             $plan->capacity[$userId] = array_filter(
                 $capacity[$userId] ?? [],
-                fn (string $date): bool => $date >= $from->toDateString() && $date <= $to->toDateString(),
+                fn (string $date): bool => $date >= $fromDate && $date <= $toDate,
                 ARRAY_FILTER_USE_KEY,
             );
         }
@@ -107,7 +110,7 @@ final class WorkloadPlanner
             $days = $this->distribute($task, $remaining, $capacity[$task->assignee_user_id] ?? [], $today, $limit, $plan);
 
             foreach ($days as $date => $minutes) {
-                if ($date < $from->toDateString() || $date > $to->toDateString()) {
+                if ($date < $fromDate || $date > $toDate) {
                     continue;
                 }
                 $plan->load[$task->assignee_user_id][$date] = ($plan->load[$task->assignee_user_id][$date] ?? 0) + $minutes;
