@@ -56,6 +56,9 @@ final class EntryValuation
         private readonly array $fixedBases,
     ) {}
 
+    /** @var array<string, array{basis: string, rate: string|null, price: string|null, total: int}> */
+    private array $contexts = [];
+
     /**
      * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
      */
@@ -95,51 +98,48 @@ final class EntryValuation
      */
     public function value(TimeEntry $entry): array
     {
-        /** @var Project|null $project */
-        $project = $this->projects->get($entry->project_id);
-
         if (! $entry->is_billable) {
             return ['rate' => null, 'income' => '0', 'basis' => self::NOT_BILLABLE];
         }
 
-        if ($project === null || $project->billing_type === BillingType::Internal) {
-            return ['rate' => null, 'income' => '0', 'basis' => self::INTERNAL];
-        }
+        $context = $this->context($entry->project_id, $entry->hour_bank_id, $entry->user_id);
+        $minutes = (string) $entry->minutes;
 
-        if ($project->billing_type === BillingType::FixedPrice) {
-            $base = $this->fixedBases[$project->id] ?? 0;
-            $income = $project->fixed_price_amount === null || $base <= 0
-                ? '0'
-                : Money::div(Money::mul($project->fixed_price_amount, (string) $entry->minutes), (string) $base);
-
-            return ['rate' => null, 'income' => $income, 'basis' => self::FIXED_PRICE];
-        }
-
-        /** @var HourBank|null $bank */
-        $bank = $entry->hour_bank_id !== null ? $this->banks->get($entry->hour_bank_id) : null;
-        /** @var User|null $user */
-        $user = $this->users->get($entry->user_id);
-        /** @var Client|null $client */
-        $client = $project->client_id !== null ? $this->clients->get($project->client_id) : null;
-        $rate = $this->revenue->rate($bank, $project, $client, $user);
-
-        if ($bank !== null && $bank->price_amount !== null && $bank->total_minutes > 0) {
-            $overage = $entry->overage_minutes;
-
-            return [
-                'rate' => $rate,
+        return match ($context['basis']) {
+            self::INTERNAL => ['rate' => null, 'income' => '0', 'basis' => self::INTERNAL],
+            self::FIXED_PRICE => [
+                'rate' => null,
+                'income' => $context['price'] === null ? '0' : Money::div(Money::mul($context['price'], $minutes), (string) $context['total']),
+                'basis' => self::FIXED_PRICE,
+            ],
+            self::BANK_PRICE => [
+                'rate' => $context['rate'],
                 'income' => Money::add(
-                    Money::div(Money::mul($bank->price_amount, (string) ($entry->minutes - $overage)), (string) $bank->total_minutes),
-                    Money::forMinutes($overage, $rate),
+                    Money::div(Money::mul((string) $context['price'], (string) ($entry->minutes - $entry->overage_minutes)), (string) $context['total']),
+                    Money::forMinutes($entry->overage_minutes, $context['rate']),
                 ),
                 'basis' => self::BANK_PRICE,
-            ];
-        }
+            ],
+            default => $this->hourly($entry, $context['rate']),
+        };
+    }
 
-        if ($entry->hourly_rate_snapshot !== null) {
+    /**
+     * Por horas: la instantánea de tarifa si la entrada la tiene (aprobada o bloqueada); si no, la
+     * tarifa vigente.
+     *
+     * @return array{rate: string|null, income: numeric-string, basis: string}
+     */
+    private function hourly(TimeEntry $entry, ?string $rate): array
+    {
+        $snapshot = $entry->getRawOriginal('hourly_rate_snapshot');
+
+        if ($snapshot !== null && $snapshot !== '') {
+            $snapshot = Money::round((string) $snapshot);
+
             return [
-                'rate' => (string) $entry->hourly_rate_snapshot,
-                'income' => Money::forMinutes($entry->minutes, (string) $entry->hourly_rate_snapshot),
+                'rate' => $snapshot,
+                'income' => Money::forMinutes($entry->minutes, $snapshot),
                 'basis' => self::SNAPSHOT,
             ];
         }
@@ -149,5 +149,57 @@ final class EntryValuation
             'income' => Money::forMinutes($entry->minutes, $rate),
             'basis' => $rate === null ? self::NO_RATE : self::RATE,
         ];
+    }
+
+    /**
+     * Lo que no depende de la entrada sino de su proyecto, bolsa y persona (criterio, tarifa vigente,
+     * precio y total o base), calculado una sola vez por combinación: valorar miles de entradas no
+     * repite la lectura de los atributos (con sus conversiones) de los mismos modelos.
+     *
+     * @return array{basis: string, rate: string|null, price: string|null, total: int}
+     */
+    private function context(int $projectId, ?int $bankId, int $userId): array
+    {
+        $key = $projectId.':'.($bankId ?? '-').':'.$userId;
+
+        return $this->contexts[$key] ??= $this->resolveContext($projectId, $bankId, $userId);
+    }
+
+    /**
+     * @return array{basis: string, rate: string|null, price: string|null, total: int}
+     */
+    private function resolveContext(int $projectId, ?int $bankId, int $userId): array
+    {
+        /** @var Project|null $project */
+        $project = $this->projects->get($projectId);
+
+        if ($project === null || $project->billing_type === BillingType::Internal) {
+            return ['basis' => self::INTERNAL, 'rate' => null, 'price' => null, 'total' => 0];
+        }
+
+        if ($project->billing_type === BillingType::FixedPrice) {
+            $base = $this->fixedBases[$project->id] ?? 0;
+
+            return [
+                'basis' => self::FIXED_PRICE,
+                'rate' => null,
+                'price' => $project->fixed_price_amount === null || $base <= 0 ? null : (string) $project->fixed_price_amount,
+                'total' => $base,
+            ];
+        }
+
+        /** @var HourBank|null $bank */
+        $bank = $bankId !== null ? $this->banks->get($bankId) : null;
+        /** @var User|null $user */
+        $user = $this->users->get($userId);
+        /** @var Client|null $client */
+        $client = $project->client_id !== null ? $this->clients->get($project->client_id) : null;
+        $rate = $this->revenue->rate($bank, $project, $client, $user);
+
+        if ($bank !== null && $bank->price_amount !== null && $bank->total_minutes > 0) {
+            return ['basis' => self::BANK_PRICE, 'rate' => $rate, 'price' => (string) $bank->price_amount, 'total' => $bank->total_minutes];
+        }
+
+        return ['basis' => self::RATE, 'rate' => $rate, 'price' => null, 'total' => 0];
     }
 }
