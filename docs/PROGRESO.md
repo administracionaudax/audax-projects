@@ -73,8 +73,17 @@ _Última actualización: 27/09/2026 02:20_
 - **Tests:** 1996 en PostgreSQL 18 en el servidor; 338 E2E con Playwright y axe; CI en verde.
 - ✅ **FASE 3 CERRADA el 02/10/2026** (etiqueta `fase-3-cerrada`).
 
+### Fase 4: Gantt (rama `fase-4`, desplegada el 02/10)
+- **Planificación:**
+  - dependencias fin-inicio sin ciclos, con propuesta al mover (D-056, D-057 y D-090),
+  - Gantt propio con hitos, calendario por mes y semana,
+  - plantillas de proyecto con importación y exportación (D-058),
+  - tareas recurrentes (D-059 y D-089).
+- **Revisión global:** 7 hallazgos corregidos con sus tests, entre ellos las franjas del calendario y la serialización de los enlaces.
+- **Tests:** 2321 en PostgreSQL 18 en el servidor; 385 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 4 CERRADA el 02/10/2026** (etiqueta `fase-4-cerrada`).
+
 ## En curso (modo autónomo, D-027)
-- **Fase 4 (Gantt):** integrada; corrigiendo los hallazgos de la revisión global.
 - **Fase 5 (portal):** integrada; en revisión global.
 - **Fase 6 (chat):** tres agentes implementando. El contenedor de transcripción ya está en el servidor.
 - **Fase 7 (pulido):** contrato hecho (D-073 a D-077); dos agentes implementando.
