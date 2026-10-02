@@ -183,5 +183,14 @@
     "chat.project.no_access.title": "Solo los miembros del proyecto participan en su chat",
     "chat.project.no_access.description": "Pide a quien gestiona el proyecto que te añada como miembro.",
     "chat.nav.unread": ":count mensajes sin leer",
-    "chat.emoji.skin_tone": "Cambiar el tono de piel"
+    "chat.emoji.skin_tone": "Cambiar el tono de piel",
+    "chat.home.mentions": "Menciones recientes",
+    "chat.home.mention_by": ":name te ha mencionado en «:conversation»",
+    "chat.home.mention_everyone": ":name ha avisado a todos en «:conversation»",
+    "chat.home.someone": "Alguien",
+    "chat.home.unread_mention": "Sin leer",
+    "chat.home.unread": "Conversaciones sin leer",
+    "chat.home.count": ":count sin leer",
+    "chat.home.open": "Abrir el chat",
+    "chat.home.open_unread": "Abrir el chat (:count sin leer)"
 }

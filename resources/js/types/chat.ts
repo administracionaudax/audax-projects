@@ -246,3 +246,29 @@ export type ChatProjectPageProps = ChatConversationProps & {
 export type ChatSharedProps = {
     unread: number;
 };
+
+/** Tarjeta «Menciones» de Inicio (HomeChatSummary, prop diferida `chat`). */
+export type HomeChatSummary = {
+    /** Total de la navegación (sin las silenciadas). */
+    unread_total: number;
+    conversations: {
+        id: number;
+        type: ChatConversationType;
+        title: string;
+        unread: number;
+        url: string;
+    }[];
+    mentions: {
+        id: number;
+        conversation_id: number;
+        conversation: string;
+        author: string | null;
+        excerpt: string;
+        /** @todos (y no una mención personal). */
+        everyone: boolean;
+        unread: boolean;
+        created_at: string | null;
+        /** /chat/{conversación}?mensaje={id} */
+        url: string;
+    }[];
+};

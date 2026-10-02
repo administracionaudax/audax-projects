@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     AtSign,
@@ -16,6 +16,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import {
+    HomeChatCard,
+    HomeChatSkeleton,
+} from '@/components/chat/home-chat-card';
 import {
     TaskStatusBadge,
     TimesheetStatusBadge,
@@ -87,14 +91,6 @@ const LATER: LaterCard[] = [
         phase: 4,
     },
     {
-        id: 'mentions',
-        icon: AtSign,
-        title: 'home.cards.mentions.title',
-        description: 'home.cards.mentions.description',
-        empty: 'home.cards.mentions.empty',
-        phase: 6,
-    },
-    {
         id: 'absences',
         icon: CalendarOff,
         title: 'home.cards.absences.title',
@@ -146,13 +142,15 @@ function PanelCard({
 
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
- * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar.
+ * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
+ * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat`).
  */
 export default function Home({
     tasks,
     hours,
     week,
     unlogged_days: unloggedDays,
+    chat,
 }: HomePageProps) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
@@ -372,6 +370,17 @@ export default function Home({
                                 ))}
                             </ul>
                         )}
+                    </PanelCard>
+
+                    <PanelCard
+                        id="mentions"
+                        icon={AtSign}
+                        title={t('home.cards.mentions.title')}
+                        description={t('home.cards.mentions.description')}
+                    >
+                        <Deferred data="chat" fallback={<HomeChatSkeleton />}>
+                            {chat ? <HomeChatCard summary={chat} /> : null}
+                        </Deferred>
                     </PanelCard>
 
                     {LATER.map((card) => (

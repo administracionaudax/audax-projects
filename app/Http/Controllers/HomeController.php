@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Enums\TimesheetStatus;
+use App\Http\Resources\Chat\HomeChatSummary;
 use App\Http\Resources\Time\HomeTaskResource;
 use App\Http\Resources\Time\Plain;
 use App\Http\Resources\Time\TimesheetPeriodResource;
@@ -24,7 +25,8 @@ use Inertia\Response;
  * - sus tareas abiertas vencidas, de hoy y de esta semana (D-037),
  * - sus horas de hoy y de la semana frente a su capacidad,
  * - el estado de su semana (con el comentario si se la han devuelto),
- * - los días laborables sin imputar de las dos últimas semanas.
+ * - los días laborables sin imputar de las dos últimas semanas,
+ * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  */
 class HomeController extends Controller
@@ -38,6 +40,7 @@ class HomeController extends Controller
 
     public function __construct(
         private readonly Capacity $capacity,
+        private readonly HomeChatSummary $chat,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -60,6 +63,8 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
+            'chat' => Inertia::defer(fn (): array => $this->chat->for($user)),
         ]);
     }
 
