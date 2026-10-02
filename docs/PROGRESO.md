@@ -83,8 +83,14 @@ _Última actualización: 27/09/2026 02:20_
 - **Tests:** 2321 en PostgreSQL 18 en el servidor; 385 E2E con Playwright y axe; CI en verde.
 - ✅ **FASE 4 CERRADA el 02/10/2026** (etiqueta `fase-4-cerrada`).
 
+### Fase 5: portal de cliente (rama `fase-5`, desplegada el 02/10)
+- **Portal:** usuarios por invitación, bolsas con su consumo e histórico, PDF sin importes, proyectos y Gantt de solo lectura (si se abren), avisos al cliente del 90 y 100 %, e identidad de la empresa (D-063 a D-067 y D-092 a D-101).
+- **Aislamiento:** comprobado en todas las rutas internas y del portal (`ClientIsolationTest` y `PortalRoutesIsolationTest`).
+- **Revisión global:** 12 hallazgos corregidos. El más importante: un aviso al cliente ya no puede romper una imputación o una aprobación interna.
+- **Tests:** 2450 en PostgreSQL 18 en el servidor; 391 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 5 CERRADA el 02/10/2026** (etiqueta `fase-5-cerrada`).
+
 ## En curso (modo autónomo, D-027)
-- **Fase 5 (portal):** integrada; en revisión global.
 - **Fase 6 (chat):** tres agentes implementando. El contenedor de transcripción ya está en el servidor.
 - **Fase 7 (pulido):** contrato hecho (D-073 a D-077); dos agentes implementando.
 

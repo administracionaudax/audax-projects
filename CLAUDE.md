@@ -17,7 +17,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 2. Informes | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-2-cerrada`) |
 | 3. Carga | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-3-cerrada`) |
 | 4. Gantt | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-4-cerrada`) |
-| 5. Portal | En curso (rama `fase-5`) |
+| 5. Portal | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-5-cerrada`) |
 | 6. Chat | En curso (rama `fase-6`) |
 | 7. Pulido | En curso (rama `fase-7`) |
 

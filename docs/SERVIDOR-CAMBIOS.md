@@ -68,6 +68,12 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 |---|---|---|---|---|
 | 02/10 21:18–21:45 | Despliegue de la Fase 4 (`scripts/desplegar-dev.sh --tests` desde `fase-4`, usuario `audaxprojects`, sin root): dependencias, Gantt, calendario, plantillas y tareas recurrentes; migraciones `task_dependencies`, `project_templates` y `recurring_task_rules` | Cierre de la Fase 4 | **2321/2321 tests en PostgreSQL 18** (25 min). `/login` 200 y `/health` ok. Batería V (T0 21:18:21): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. Webs: **33/35 iguales**; las 2 distintas siguen siendo las suspendidas en Plesk (ver la Fase 3) | Volver a desplegar `fase-3-cerrada` y `migrate:rollback --step=3` |
 
+### Fase 5 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 02/10 22:07–22:35 | Despliegue de la Fase 5 (`scripts/desplegar-dev.sh --tests` desde `fase-5`, usuario `audaxprojects`, sin root): portal de cliente (bolsas, PDF, proyectos y Gantt de solo lectura, acceso por invitación) e identidad de la empresa; migración de los ajustes del portal | Cierre de la Fase 5 | **2450/2450 tests en PostgreSQL 18** (26 min). `/login` 200, `/health` ok y `/portal` 302 a `/login`. GD con WebP, PNG y JPEG y `fileinfo` disponibles en PHP 8.4 (logo de la empresa). Batería V (T0 22:07:00): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. Webs: **33/35 iguales** (las 2 suspendidas en Plesk, ver la Fase 3) | Volver a desplegar `fase-4-cerrada` y `migrate:rollback --step=1` |
+
 ### Fase 6 (modo autónomo, D-027)
 
 | Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
