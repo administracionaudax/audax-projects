@@ -73,6 +73,12 @@ export type TaskAttachment = {
     task?: { id: number; title: string; project_id: number } | null;
     in_comment: boolean;
     can_delete: boolean;
+    /** Pestaña Archivos: adjunto del chat del proyecto, con su enlace al mensaje (D-118). */
+    message?: {
+        conversation_id: number;
+        message_id: number;
+        deleted: boolean;
+    } | null;
 };
 
 export type TaskCommentReaction = {

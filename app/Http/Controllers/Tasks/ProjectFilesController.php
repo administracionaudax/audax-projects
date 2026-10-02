@@ -7,6 +7,9 @@ use App\Http\Resources\ProjectResource;
 use App\Http\Resources\Tasks\AttachmentResource;
 use App\Http\Resources\Tasks\Plain;
 use App\Models\Attachment;
+use App\Models\AudioTranscription;
+use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -19,9 +22,11 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pestaña Archivos del proyecto (SPEC §6): todos los adjuntos de sus tareas y de sus comentarios
- * (los del chat llegan en la Fase 6), con filtros por tipo (?tipo=) y por tarea (?tarea_id=).
- * Los de tareas o comentarios borrados no aparecen.
+ * Pestaña Archivos del proyecto (SPEC §6): todos los adjuntos de sus tareas, de sus comentarios y
+ * de su chat, con filtros por tipo (?tipo=) y por tarea (?tarea_id=). Los de tareas o comentarios
+ * borrados no aparecen. Los del chat (D-118), solo para quien ve la conversación del proyecto
+ * (D-071), sin las notas de voz y sin los de mensajes borrados u ocultados salvo para quien modera
+ * (como AttachmentPolicy), cada uno con su enlace al mensaje.
  */
 class ProjectFilesController extends Controller
 {
@@ -69,14 +74,28 @@ class ProjectFilesController extends Controller
         $taskMorph = (new Task)->getMorphClass();
         $commentMorph = (new TaskComment)->getMorphClass();
 
+        // El chat del proyecto, si existe y quien mira lo ve (D-071); quien modera ve también lo
+        // de los mensajes borrados u ocultados.
+        $conversation = Conversation::query()->where('project_id', $project->id)->first();
+        $chat = $conversation !== null && Gate::allows('view', $conversation) ? $conversation : null;
+        $moderates = $chat !== null && Gate::allows('moderate', $chat);
+        $types = $chat !== null && $taskId === null ? [Task::class, TaskComment::class, Message::class] : [Task::class, TaskComment::class];
+
         $attachments = Attachment::query()
             ->where('project_id', $project->id)
             // Solo adjuntos de tareas y comentarios vivos (un comentario de una tarea borrada, tampoco).
-            ->whereHasMorph('attachable', [Task::class, TaskComment::class], function (Builder $query, string $type): void {
+            ->whereHasMorph('attachable', $types, function (Builder $query, string $type) use ($chat, $moderates): void {
                 if ($type === TaskComment::class) {
                     $query->whereHas('task');
                 }
+
+                if ($type === Message::class && $chat !== null) {
+                    $query->where('conversation_id', $chat->id)
+                        ->when($moderates, fn (Builder $messages) => $messages->withTrashed(), fn (Builder $messages) => $messages->whereNull('hidden_at'));
+                }
             })
+            // Las notas de voz son audios del chat, no archivos (SPEC §12): se escuchan en el chat.
+            ->whereNotIn('id', AudioTranscription::query()->select('attachment_id'))
             ->when($mimes !== null, fn (Builder $query) => $query->whereIn('mime', (array) $mimes))
             ->when($taskId !== null, fn (Builder $query) => $query->where(function (Builder $scope) use ($taskId, $taskMorph, $commentMorph): void {
                 $scope->where(fn (Builder $tasks) => $tasks->where('attachable_type', $taskMorph)->where('attachable_id', $taskId))
@@ -91,6 +110,9 @@ class ProjectFilesController extends Controller
         // La tarea de cada adjunto de comentario (para enlazar al panel), en una sola consulta.
         $files = new EloquentCollection($attachments->items());
         $files->loadMorph('attachable', [TaskComment::class => ['task:id,title,project_id']]);
+        // Los mensajes (borrados u ocultos incluidos, para quien modera) en una sola consulta.
+        $messageIds = $files->where('attachable_type', (new Message)->getMorphClass())->pluck('attachable_id')->all();
+        $messages = $messageIds === [] ? collect() : Message::withTrashed()->whereKey($messageIds)->get(['id', 'conversation_id', 'deleted_at'])->keyBy('id');
 
         $tasks = Task::query()
             ->where('project_id', $project->id)
@@ -101,7 +123,7 @@ class ProjectFilesController extends Controller
         return Inertia::render('projects/files', [
             'project' => Plain::of(ProjectResource::make($project)),
             'canManage' => $user->canManageProject($project),
-            'files' => AttachmentResource::listFor($files, $user, $user->canManageProject($project)),
+            'files' => AttachmentResource::listFor($files, $user, $user->canManageProject($project), $messages->all()),
             'pagination' => [
                 'current_page' => $attachments->currentPage(),
                 'last_page' => $attachments->lastPage(),

@@ -4,6 +4,7 @@ namespace App\Http\Resources\Tasks;
 
 use App\Http\Resources\UserSummaryResource;
 use App\Models\Attachment;
+use App\Models\Message;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
@@ -48,18 +49,32 @@ class AttachmentResource extends JsonResource
     /**
      * Lista con `can_delete` para quien mira: quien lo subió, un admin o quien gestiona el proyecto
      * (AttachmentPolicy::delete). $canManageProject se calcula una vez para todo el proyecto.
+     * Los del chat nunca se borran sueltos (se borra el mensaje) y llevan su enlace al mensaje
+     * (`message`): $messages son sus mensajes ya cargados, por id.
      *
      * @param  Collection<int, Attachment>  $attachments
+     * @param  array<int, Message>  $messages
      * @return list<array<array-key, mixed>>
      */
-    public static function listFor(Collection $attachments, User $viewer, bool $canManageProject): array
+    public static function listFor(Collection $attachments, User $viewer, bool $canManageProject, array $messages = []): array
     {
         $isAdmin = $viewer->isAdmin();
+        $messageMorph = (new Message)->getMorphClass();
 
-        return array_values($attachments->map(fn (Attachment $attachment): array => [
-            ...Plain::of(new self($attachment)),
-            'can_delete' => $isAdmin || $canManageProject || $attachment->user_id === $viewer->id,
-        ])->all());
+        return array_values($attachments->map(function (Attachment $attachment) use ($isAdmin, $canManageProject, $viewer, $messages, $messageMorph): array {
+            $inChat = $attachment->attachable_type === $messageMorph;
+            $message = $inChat ? ($messages[$attachment->attachable_id] ?? null) : null;
+
+            return [
+                ...Plain::of(new self($attachment)),
+                'can_delete' => ! $inChat && ($isAdmin || $canManageProject || $attachment->user_id === $viewer->id),
+                'message' => $message === null ? null : [
+                    'conversation_id' => $message->conversation_id,
+                    'message_id' => $message->id,
+                    'deleted' => $message->trashed(),
+                ],
+            ];
+        })->all());
     }
 
     /**

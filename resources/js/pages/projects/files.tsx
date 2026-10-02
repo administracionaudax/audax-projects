@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FolderOpen, Trash2 } from 'lucide-react';
+import { FolderOpen, MessageSquare, Trash2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
@@ -70,8 +70,9 @@ function DeleteButton({ file }: { file: TaskAttachment }) {
 }
 
 /**
- * Pestaña Archivos del proyecto (SPEC §6): todos los adjuntos de sus tareas y comentarios, con
- * filtros por tipo y por tarea. Descarga con URL firmada; los SVG y documentos se descargan.
+ * Pestaña Archivos del proyecto (SPEC §6): todos los adjuntos de sus tareas, sus comentarios y su
+ * chat (solo para quien ve el chat; D-118), con filtros por tipo y por tarea. Descarga con URL
+ * firmada; los SVG y documentos se descargan. Los del chat enlazan a su mensaje.
  */
 export default function ProjectFiles({
     project,
@@ -351,6 +352,34 @@ export default function ProjectFiles({
                                                                 'project_files.in_comment',
                                                             )}
                                                         </span>
+                                                    ) : null}
+                                                    {file.message ? (
+                                                        <Link
+                                                            href={urls.chatMessage(
+                                                                file.message
+                                                                    .conversation_id,
+                                                                file.message
+                                                                    .message_id,
+                                                            )}
+                                                            className={cn(
+                                                                'inline-flex items-center gap-1 rounded-[3px] text-primary-text hover:underline',
+                                                                FOCUS_RING,
+                                                            )}
+                                                            data-test="file-message-link"
+                                                        >
+                                                            <MessageSquare
+                                                                aria-hidden="true"
+                                                                className="size-3.5"
+                                                            />
+                                                            {file.message
+                                                                .deleted
+                                                                ? t(
+                                                                      'project_files.in_chat_deleted',
+                                                                  )
+                                                                : t(
+                                                                      'project_files.in_chat',
+                                                                  )}
+                                                        </Link>
                                                     ) : null}
                                                 </td>
                                                 <td className="tabular px-3 py-2 text-right whitespace-nowrap">
