@@ -34,11 +34,13 @@ class PortalHomeController extends Controller
         $thresholds = $ledger->thresholds();
         $first = PortalBankData::firstThreshold($thresholds);
 
+        $ids = [];
         $open = [];
         $history = [];
         $nearLimit = 0;
 
         foreach ($banks as $bank) {
+            $ids[] = $bank->id;
             $item = PortalBankData::item($bank, $figures[$bank->id]);
 
             if (! PortalBankData::isOpen($bank)) {
@@ -63,7 +65,7 @@ class PortalHomeController extends Controller
             'visibility' => $scope->client->portal_entry_visibility->value,
             'thresholds' => $thresholds,
             'summary' => [
-                ...$this->month($scope, $banks->isNotEmpty()),
+                ...$this->month($scope, $ids),
                 'open_count' => count($open),
                 'near_limit_count' => $nearLimit,
                 'first_threshold' => $first,
@@ -74,29 +76,21 @@ class PortalHomeController extends Controller
     }
 
     /**
-     * Horas de este mes (Europe/Madrid) en las bolsas del cliente, de las que ve, con su exceso.
+     * Horas de este mes (Europe/Madrid) en las bolsas del cliente, de las que ve, con el exceso que
+     * ve (D-092). Sin bolsas, ni se consultan.
      *
+     * @param  list<int>  $bankIds
      * @return array{month: string, month_minutes: int, month_overage_minutes: int}
      */
-    private function month(PortalScope $scope, bool $hasBanks): array
+    private function month(PortalScope $scope, array $bankIds): array
     {
         $today = LocalTime::today();
-        $month = ['month' => $today->startOfMonth()->toDateString(), 'month_minutes' => 0, 'month_overage_minutes' => 0];
+        $hours = PortalBankFigures::between($scope, $bankIds, $today->startOfMonth()->toDateString(), $today->endOfMonth()->toDateString());
 
-        if (! $hasBanks) {
-            return $month;
-        }
-
-        $row = $scope->entries()
-            ->whereIn('hour_bank_id', $scope->hourBanks()->select('id'))
-            ->whereBetween('date', [$today->startOfMonth()->toDateString(), $today->endOfMonth()->toDateString()])
-            ->toBase()
-            ->selectRaw('COALESCE(SUM(minutes), 0) as minutes_sum, COALESCE(SUM(overage_minutes), 0) as overage_sum')
-            ->first();
-
-        $month['month_minutes'] = (int) ($row->minutes_sum ?? 0);
-        $month['month_overage_minutes'] = (int) ($row->overage_sum ?? 0);
-
-        return $month;
+        return [
+            'month' => $today->startOfMonth()->toDateString(),
+            'month_minutes' => $hours['minutes'],
+            'month_overage_minutes' => $hours['overage_minutes'],
+        ];
     }
 }

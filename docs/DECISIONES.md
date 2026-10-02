@@ -566,9 +566,17 @@ _Detalle y contexto en `docs/PLAN-FASE-4.md`._
 - **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
 - **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
 
-## 27/09/2026: Decisiones tomadas en autonomía durante la implementación de la Fase 5 (P2 · acceso, proyectos e identidad)
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 5)
 
-_Concretan D-063, D-064 y D-067 (`docs/PLAN-FASE-5.md`). Sin número: se numeran al integrar la fase._
+_Concretan D-063 a D-067 (`docs/PLAN-FASE-5.md`). Numeradas desde D-092 porque las fases en curso ya habían reservado hasta D-091._
+
+### D-092 · Dentro y exceso en el portal **[concreta D-019, D-053 y D-064]**
+- **Problema:** el exceso guardado en cada entrada (`overage_minutes`) lo reparte `HourBankLedger` entre **todas** las horas de la bolsa, también los borradores y las enviadas. Con horas ocultas de fecha anterior que llenan la bolsa, horas que el cliente ve salían como exceso aunque le quedara saldo (bolsa de 600, borrador de 480 el 01/09 y aprobada de 300 el 15/09: el portal enseñaba 120 dentro, 180 de exceso, 480 restantes y «Activa»; y el email del 100 % podía llegar con la bolsa activa).
+- **Regla:** en el portal, dentro y exceso se reparten **solo entre las horas que ve el cliente**, contra el total de la bolsa y con la regla del libro:
+  - las **bloqueadas** conservan su exceso fijo (D-019, D-053) y reservan lo que llevan dentro,
+  - el resto del total se reparte entre las demás en orden cronológico (fecha, `created_at`, id); la que cruza el límite queda con la parte que no cabe como exceso.
+- **Dónde:** `PortalBankFigures` (`allocation`, `many`, `byMonth`, `between` y `entries`), que usan las cifras y el estado de las bolsas, el consumo por mes, el listado de horas, las «horas de este mes» del inicio, los avisos al cliente y el PDF. Así todo cuadra siempre. Por dentro la bolsa sigue con sus cifras de siempre (la nota del portal lo explica).
+- **Cómo:** en SQL, con una suma acumulada (`SUM(...) OVER (PARTITION BY bolsa ORDER BY fecha, created_at, id)`), que funciona en PostgreSQL y en SQLite ≥ 3.25, en una consulta por pantalla y sin N+1.
 
 ### P2-a · Quién gestiona el portal **[concreta D-063 y D-064]**
 - **Usuarios del portal** (invitar, reenviar, revocar y reactivar): `ClientPolicy::managePortal`, es decir, admin, responsables (rol) y gestores de algún proyecto sin borrar del cliente.

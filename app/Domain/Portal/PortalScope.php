@@ -72,15 +72,16 @@ final class PortalScope
     }
 
     /**
-     * Horas visibles para el cliente (de sus proyectos y en los estados que permite).
+     * Horas visibles para el cliente (de sus proyectos y en los estados que permite). Las columnas
+     * van cualificadas, para poder unir otras tablas (PortalBankFigures::entries).
      *
      * @return Builder<TimeEntry>
      */
     public function entries(): Builder
     {
         return TimeEntry::query()
-            ->whereIn('project_id', $this->projects()->select('id'))
-            ->whereIn('status', $this->visibleStatuses());
+            ->whereIn('time_entries.project_id', $this->projects()->select('id'))
+            ->whereIn('time_entries.status', $this->visibleStatuses());
     }
 
     /**
@@ -88,7 +89,7 @@ final class PortalScope
      */
     public function bankEntries(HourBank $bank): Builder
     {
-        return $this->entries()->where('hour_bank_id', $bank->id);
+        return $this->entries()->where('time_entries.hour_bank_id', $bank->id);
     }
 
     /**

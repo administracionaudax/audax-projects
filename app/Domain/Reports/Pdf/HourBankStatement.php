@@ -200,22 +200,24 @@ final class HourBankStatement
         $display = $scope->client->portal_person_display;
         $named = $display !== PortalPersonDisplay::Team;
 
-        $query = $scope->bankEntries($bank)
+        // Con el exceso que ve el cliente (D-092), como el listado del portal.
+        $query = PortalBankFigures::entries($scope, $bank)
             ->with(['task' => fn ($task) => $task->select(['id', 'title'])])
-            ->orderBy('date')
-            ->orderBy('id');
+            ->orderBy('time_entries.date')
+            ->orderBy('time_entries.id');
         if ($named) {
             $query->with(['user' => fn ($user) => $user->select(['id', 'name'])]);
         }
 
         $entries = [];
-        foreach ($query->get(['id', 'user_id', 'task_id', 'date', 'minutes', 'overage_minutes', 'description']) as $entry) {
+        foreach ($query->get() as $entry) {
+            $overage = PortalBankFigures::overage($entry);
             $entries[] = [
                 'date' => $entry->date->toDateString(),
                 'person' => $scope->personLabel($named ? $entry->user : null),
                 'task' => $entry->task->title,
-                'in_bank' => $entry->minutes - $entry->overage_minutes,
-                'overage' => $entry->overage_minutes,
+                'in_bank' => $entry->minutes - $overage,
+                'overage' => $overage,
                 'description' => (string) $entry->description,
             ];
         }

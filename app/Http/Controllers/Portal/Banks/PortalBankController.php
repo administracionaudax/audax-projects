@@ -49,16 +49,18 @@ class PortalBankController extends Controller
         $month = self::month($request->query('mes'));
         $named = $scope->client->portal_person_display !== PortalPersonDisplay::Team;
 
-        $entries = $scope->bankEntries($current)
+        // Con el exceso que ve el cliente (D-092), repartido entre TODAS sus horas de la bolsa
+        // aunque la página solo lleve 25 o un mes.
+        $entries = PortalBankFigures::entries($scope, $current)
             ->with([
                 'task' => fn ($task) => $task->select(['id', 'title', 'task_type_id']),
                 'task.type' => fn ($type) => $type->select(['id', 'name', 'color']),
             ])
             ->when($named, fn (Builder $query) => $query->with(['user' => fn ($person) => $person->select(['id', 'name'])]))
-            ->when($month !== null, fn (Builder $query) => $query->whereBetween('date', [$month['from'] ?? '', $month['to'] ?? '']))
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->paginate(self::ENTRIES_PER_PAGE, ['id', 'user_id', 'task_id', 'date', 'minutes', 'overage_minutes', 'description'], 'pagina')
+            ->when($month !== null, fn (Builder $query) => $query->whereBetween('time_entries.date', [$month['from'] ?? '', $month['to'] ?? '']))
+            ->orderByDesc('time_entries.date')
+            ->orderByDesc('time_entries.id')
+            ->paginate(self::ENTRIES_PER_PAGE, pageName: 'pagina')
             ->withQueryString();
 
         $items = [];
@@ -111,7 +113,8 @@ class PortalBankController extends Controller
     }
 
     /**
-     * Una entrada tal como la ve el cliente: la persona según su ajuste y sin ningún dato económico.
+     * Una entrada tal como la ve el cliente: la persona según su ajuste, su exceso en el portal
+     * (D-092) y sin ningún dato económico.
      *
      * @return array{id: int, date: string, task: string, type: array{name: string, color: string}|null, person: string, minutes: int, overage_minutes: int, description: string|null}
      */
@@ -126,7 +129,7 @@ class PortalBankController extends Controller
             'type' => $type === null ? null : ['name' => $type->name, 'color' => $type->color],
             'person' => $scope->personLabel($named ? $entry->user : null),
             'minutes' => $entry->minutes,
-            'overage_minutes' => $entry->overage_minutes,
+            'overage_minutes' => PortalBankFigures::overage($entry),
             'description' => $entry->description,
         ];
     }
