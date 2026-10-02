@@ -48,7 +48,7 @@ it('vale para las notificaciones de cualquier área, no solo las del chat', func
     $admin->notify(new TranscriptionsFailing(2));
 
     Event::assertDispatched(BroadcastAppNotification::class, fn (BroadcastAppNotification $event): bool => $event->userId === $admin->id
-        && $event->notification['data']['kind'] === 'chat.transcriptions_failing'
+        && $event->notification['data']['kind'] === 'system.transcriptions_failing'
         && $event->notification['data']['url'] === '/admin/transcripciones');
 });
 

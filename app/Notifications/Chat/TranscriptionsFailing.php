@@ -14,7 +14,7 @@ class TranscriptionsFailing extends AppNotification
 
     public function kind(): string
     {
-        return 'chat.transcriptions_failing';
+        return 'system.transcriptions_failing';
     }
 
     public function title(object $notifiable): string

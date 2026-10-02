@@ -80,7 +80,9 @@ it('@todos avisa a todos los participantes salvo al autor y a quien la tiene sil
 
     $this->writer->post($this->ana, $this->chat, '@todos reunión a las 12');
 
-    Notification::assertSentTo($this->luis, ChatEveryoneNotification::class, fn (ChatEveryoneNotification $n): bool => $n->toArray($this->luis)['title'] === 'Ana ha avisado a todos en «Web de Arrieta»');
+    // Un @todos es una mención más (tipo chat.mention); el título dice que es para todos.
+    Notification::assertSentTo($this->luis, ChatEveryoneNotification::class, fn (ChatEveryoneNotification $n): bool => $n->toArray($this->luis)['title'] === 'Ana ha avisado a todos en «Web de Arrieta»'
+        && $n->toArray($this->luis)['kind'] === 'chat.mention');
     Notification::assertSentTo($this->owner, ChatEveryoneNotification::class);
     Notification::assertNotSentTo([$this->ana, $this->eva], ChatMessageNotification::class);
 });
