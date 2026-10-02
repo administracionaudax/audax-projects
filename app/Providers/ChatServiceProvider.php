@@ -15,6 +15,8 @@ use App\Events\Chat\MessagePosted;
 use App\Models\Conversation;
 use App\Models\ProjectMember;
 use App\Models\Task;
+use App\Notifications\Channels\AppDatabaseChannel;
+use Illuminate\Notifications\Channels\DatabaseChannel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +35,9 @@ class ChatServiceProvider extends ServiceProvider
     {
         // Previsualización de enlaces (C1): DNS del sistema (en los tests, resoluciones simuladas).
         $this->app->bind(HostResolver::class, DnsHostResolver::class);
+
+        // La campana guarda el mensaje del que habla cada aviso del chat (D-115).
+        $this->app->bind(DatabaseChannel::class, AppDatabaseChannel::class);
 
         $this->app->singleton(TranscriptionService::class, function (): TranscriptionService {
             return match (config('services.transcription.driver')) {

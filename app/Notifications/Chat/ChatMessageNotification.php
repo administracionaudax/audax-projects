@@ -5,6 +5,7 @@ namespace App\Notifications\Chat;
 use App\Broadcasting\SendsWebPush;
 use App\Broadcasting\WebPushChannel;
 use App\Broadcasting\WebPushMessage;
+use App\Models\Message;
 use App\Notifications\AppNotification;
 
 /**
@@ -12,7 +13,8 @@ use App\Notifications\AppNotification;
  * algún navegador y no ha silenciado la conversación, también como aviso del navegador (D-072).
  * Guarda datos planos (ids y textos), no modelos: la cola no falla si el mensaje se borra antes.
  * El enlace es estable (/tiempo-real/conversaciones/{id}/abrir) y lleva a la conversación en la
- * pantalla del chat que haya al pulsarlo.
+ * pantalla del chat que haya al pulsarlo. Si el mensaje se oculta o se borra antes de que la cola
+ * lo envíe, no se envía (y los ya guardados pierden el extracto: ChatNotificationExcerpts, D-115).
  */
 abstract class ChatMessageNotification extends AppNotification implements SendsWebPush
 {
@@ -39,6 +41,14 @@ abstract class ChatMessageNotification extends AppNotification implements SendsW
     public function viaQueues(): array
     {
         return [...parent::viaQueues(), WebPushChannel::class => 'default'];
+    }
+
+    /**
+     * Solo si el mensaje sigue vivo y visible cuando la cola envía el aviso (una consulta).
+     */
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        return Message::query()->whereKey($this->messageId)->whereNull('hidden_at')->exists();
     }
 
     public function body(object $notifiable): ?string
