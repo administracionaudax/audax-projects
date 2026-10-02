@@ -92,7 +92,7 @@ _Última actualización: 03/10/2026_
 
 ## En curso (modo autónomo, D-027)
 - **Fase 6 (chat):** desplegada el 03/10 (2839 tests en PostgreSQL 18 en el servidor, 398 E2E con Reverb local, CI en verde). Reverb y el transcriptor activos en el servidor. Falta que el propietario pegue en Plesk la directiva de nginx `/app/` (RUNBOOK A1) y cerrar la fase.
-- **Fase 7 (pulido):** contrato (D-073 a D-077), preferencias de notificación, resumen diario, recordatorio de los viernes, auditoría, privacidad, retención, exportación de datos y avisos de almacenamiento hechos; integración con el chat de la Fase 6 en la rama `fase-7`.
+- **Fase 7 (pulido):** contrato (D-073 a D-077), preferencias de notificación, resumen diario, recordatorio de los viernes, auditoría, privacidad, retención, exportación de datos y avisos de almacenamiento hechos; integrada con el chat de la Fase 6 en la rama `fase-7` (Web Push en las preferencias, chat en la auditoría, la retención y la exportación; D-122 a D-133). Falta: E2E, revisión, despliegue y cierre.
 
 ## Siguiente
 1. Cerrar la Fase 6 cuando esté la directiva de nginx `/app/`.

@@ -853,10 +853,93 @@ _Detalle y contexto en `docs/PLAN-FASE-7.md`._
 - **Documentación:** `DEPLOY.md` final.
 - **Revisión final:** accesibilidad AA y rendimiento de todas las páginas.
 
-### Numeración
-Las correcciones de las revisiones globales usan D-078 a D-091:
-- Fase 2: D-078 a D-087,
-- Fase 3: D-088 y D-091,
-- Fase 4: D-089 y D-090.
+## 03/10/2026: Decisiones tomadas en autonomía durante la implementación y la integración de la Fase 7
 
-La siguiente libre es **D-092**.
+Lo que decidieron N (notificaciones) y A (auditoría y RGPD) sin numerar, en sus commits, y lo que se decidió al integrar la Fase 7 con el chat de la Fase 6. Concretan D-073 a D-077.
+
+### D-122 · Preferencias de notificación: página y enlaces (N) **[concreta D-073]**
+- **`/ajustes/notificaciones`**, solo para internos: una sección por grupo (`fieldset` y `legend`) con una fila por evento y un interruptor por canal, con nombre accesible «evento: canal». En el móvil los canales van debajo de cada evento, sin scroll horizontal.
+- **Obligatorios:** se ven desactivados, con candado y «Obligatorio». Lo que llega con la petición para un obligatorio o un evento que no se ofrece se ignora y no se guarda.
+- **Enlaces:** «Preferencias» en el desplegable de la campana y en la cabecera de `/notificaciones`, y la página en la búsqueda global para los internos.
+
+### D-123 · Resumen diario y recordatorio de los viernes (N) **[concreta D-073]**
+- **Resumen diario:** no es un evento del catálogo. Va solo por email, por la cola `mail` y con la identidad de la empresa, una vez por persona y día de Madrid (`Cache::add`). Hasta 10 avisos por grupo, con su título y su enlace, y «y N más». Se calcula con dos consultas sea cual sea el número de personas.
+- **Recordatorio de los viernes** (`time.week_reminder`, `WeekSubmissionReminder`):
+  - a cada persona interna y activa con capacidad esa semana (jornada menos festivos y ausencias aprobadas, `Capacity`) que no la ha enviado (sin semana, abierta o devuelta),
+  - con sus horas imputadas frente a la capacidad y el enlace a `/horas?semana=AAAA-Www`,
+  - en la app por defecto y por email si la persona lo activa,
+  - una vez por persona y semana (`Cache::add` y, si se vaciara la caché, el aviso ya guardado).
+- **Interruptor:** `week_reminder_enabled` se cambia en `/admin/ajustes` (sección de Horas). Si la petición no lo trae, se conserva el valor guardado.
+
+### D-124 · Auditoría visible: detalle y rendimiento (A) **[concreta D-074]**
+- **Índices** de `activity_log` para fechas, persona, entidad y acción. Consulta por cursor sin N+1: una consulta por tipo de elemento citado, con la papelera incluida para nombrar también lo borrado.
+- **Detalle:** nombres legibles de campos, valores (personas, proyectos, enumerados, fechas de Madrid, duraciones h:mm e importes) y elementos. Enlace a la entidad solo si sigue existiendo; lo borrado de verdad se nombra con lo que guardó la entrada.
+- **CSV** en streaming, con el límite de exportaciones de los informes (D-085).
+- **Ajustes:** los cambios de `/admin/ajustes` quedan en la auditoría (`activity('settings')`) con el antes y el después.
+
+### D-125 · Privacidad: texto, lectura y exportación (A) **[concreta D-075]**
+- **Texto:** markdown pintado saneado en el navegador (sin HTML crudo), con versión. Cambiarlo sube la versión y queda en la auditoría. Los plazos de retención y los umbrales de los avisos de almacenamiento también se editan en `/admin/privacidad` y quedan en la auditoría.
+- **Exportación:** un ZIP con un JSON y un CSV por sección y un `LEEME.txt` (`BuildPersonalDataExport`), con URL firmada y política. Las secciones se registran en `config('privacy.export_sections')`. Solo datos de la propia persona: nunca contraseñas, secretos del doble factor, tokens ni datos económicos de la empresa.
+- **Búsqueda global:** «Auditoría» y «Privacidad» (admin) para el admin; «Privacidad» y «Mis datos» para toda la plantilla.
+
+### D-126 · Retención por lotes y avisos de almacenamiento (A) **[concreta D-075 y D-076]**
+- **`app:prune-data`:** borra por lotes cortos (`BatchDelete`), caduca las exportaciones vencidas (borra el fichero) y da por fallidas las que llevan más de 24 h sin terminar. Deja un resumen en el log.
+- **`app:check-storage`:**
+  - el disco se mide tras la interfaz `DiskUsage`; los adjuntos, frente a `attachments_warning_gb`,
+  - el estado de las copias sale del JSON de `config('backups.status_path')`, que escriben los scripts del servidor: copia fallida o de más de 36 h, restauración fallida y copia externa fallida,
+  - como mucho un aviso al día por motivo (`StorageWarningNotification` y `BackupWarningNotification`, obligatorios).
+
+### D-127 · Copias: estado para la app, restauración de prueba y copia externa preparada **[concreta D-076]**
+- `audax-backup.sh` deja el resultado y los recuentos de las tablas clave en el fichero de estado.
+- `audax-restore-check` restaura la última copia en una base temporal de su propio contenedor, compara los recuentos y la borra.
+- `audax-offsite` (restic) queda lista y sin activar hasta que el propietario indique el destino.
+
+### D-128 · Avisos del chat y Web Push con las preferencias **[concreta D-072 y D-073]**
+- **Canal de Web Push:** `config('notifications.channels.push')` es `WebPushChannel` cuando las claves VAPID del `.env` son válidas (las mismas comprobaciones que `WebPushConfig`) y `null` si no. Se decide al cargar la configuración (con `config:cache`, al desplegar). Con el canal, la columna «Avisos del navegador» de `/ajustes/notificaciones` se activa y la página ofrece «Activar avisos en este navegador» (`PushNotificationsToggle`).
+- **Toda `AppNotification` puede ir por Web Push** (`toWebPush` genérico, por la cola `default`). Llega por defecto en los eventos que lo tienen (menciones y directos); el resto, si la persona lo activa.
+- **Avisos del chat:** ya no deciden sus canales. Usan `NotificationPreferences` (`chat.direct` y `chat.mention`) y solo pueden **quitar** el navegador cuando `ChatNotices` no lo permite: conversación silenciada o sin navegadores suscritos. Las reglas de D-072 siguen en `ChatNotices`: no avisar con la conversación abierta, silenciadas y agrupación de 5 minutos.
+- **Silenciar** quita el navegador, no el email: quien pide el email de las menciones lo recibe (y entra en su resumen diario) aunque haya silenciado la conversación.
+- **`TranscriptionsFailing`** (`system.transcriptions_failing`) es obligatorio para el admin: campana y email.
+- **Contrato:** un test comprueba que toda `AppNotification`, también las del chat, tiene su evento, y que ninguna sobrescribe `via()` salvo la base del chat.
+
+### D-129 · El chat en la auditoría **[concreta D-074, D-115 y D-119]**
+- Entidad «Chat» (log `chat`) con tres acciones: mensajes ocultados, mensajes visibles de nuevo y cambios en los grupos.
+- `ConversationDirectory` deja en la auditoría la creación del grupo (con sus personas), el cambio de nombre (antes y después), las personas añadidas o quitadas y quien sale.
+- El mensaje moderado se nombra «Mensaje de Ana en Chat de WEB · Web» y enlaza al mensaje (el admin lo abre en modo moderación); el grupo enlaza a la conversación.
+- Las conversaciones directas no se auditan ni se nombran por sus personas.
+
+### D-130 · Retención de los mensajes del chat **[concreta D-075]**
+- **Sin límite por defecto.** Con un plazo (`retention_chat_messages_months`, mínimo 1 mes), `ChatMessagesPruner` borra **de verdad**, por lotes, cada mensaje más antiguo con todo lo que solo existe por él:
+  - sus adjuntos y notas de voz (filas y ficheros, también las miniaturas) y la transcripción de cada audio,
+  - sus reacciones y menciones,
+  - los avisos de la campana que hablan de él (`notifications.chat_message_id`).
+- **Se conservan:** las conversaciones y sus participantes, las tareas creadas desde un mensaje y, como siempre, horas, bolsas, tareas y proyectos. Las respuestas más recientes pierden la cita (`parent_id` a null).
+- La auditoría de una moderación guarda el texto del mensaje ocultado (D-115) y sigue el plazo de la auditoría, no el del chat.
+- Los ficheros se borran después de las filas: un fallo del disco deja como mucho un fichero huérfano, nunca un adjunto sin fichero.
+
+### D-131 · Los mensajes del chat en la exportación de datos personales **[concreta D-075]**
+- Sección `mensajes-chat` (JSON y CSV): conversación (proyecto, grupo o «Directa con» la otra persona), tipo, texto con las menciones como @Nombre, adjuntos, transcripción de los audios propios, respuesta y fechas de escritura, edición, borrado y ocultación.
+- Nunca los mensajes de otras personas ni los de sistema. Incluye los borrados que siguen guardados y los ocultados por el admin.
+
+### D-132 · Colas tras la integración
+- **`app:notify-due-tasks`** envía por la cola (`notify`): la campana por `default` y el email de `task.due` por `mail`, sin esperar al SMTP dentro del programador. `Cache::add` sigue evitando el doble aviso aunque la cola aún no se haya procesado; si además se vaciara la caché antes de procesarla, podría repetirse uno (riesgo aceptado).
+- **`REDIS_QUEUE_RETRY_AFTER` = 660 s** (valor por defecto y `.env.example`), por encima de la exportación de datos personales (600 s): Horizon ya no puede darla por perdida y lanzarla otra vez. La conexión `redis-transcriptions` no cambia (2700 s). Un test compara `retry_after` con los timeouts.
+
+### D-133 · Aviso de privacidad, E2E y repaso de la interfaz **[concreta D-075]**
+- **Aviso de lectura:**
+  - va en el flujo de la página (no flota ni tapa nada) y a 375 px apila el texto y el botón,
+  - deja su alto en `--privacy-banner-space` y las páginas de altura fija, como el chat, lo restan: el editor del chat sigue a la vista.
+- **E2E:** el `DemoDataSeeder` deja leído el texto vigente a toda la plantilla de ejemplo salvo a Daniel Ortega (`PRIVACY_PENDING`). Así ningún E2E depende de que el aviso esté o no, sin añadir pasos al login de `tests/e2e/support.ts` (el login está limitado por minuto). `privacy.spec.ts` usa a Daniel (`PRIVACY_PENDING_USER`) para ver el aviso, también a 375 px, y para aceptarlo.
+- **Calendario:** mientras se pide la propuesta, se pregunta por las sucesoras o se guarda un movimiento, el selector Lista, Kanban y Calendario se desactiva con su motivo visible y anunciado. Antes, el cambio de vista se ignoraba sin aviso.
+- **Búsqueda global:** el campo se anuncia «Buscar en la aplicación». cmdk nombra el campo con la etiqueta del `Command` (`aria-labelledby`), que tapaba el `aria-label`.
+- **Limpieza:** se borra `pages/placeholder.tsx` y sus textos: ninguna ruta lo usa desde la Fase 6.
+
+### Numeración
+- Fase 2: D-078 a D-087.
+- Fase 3: D-088 y D-091.
+- Fase 4: D-089 y D-090.
+- Fase 5: D-092 a D-109.
+- Fase 6: D-110 a D-121.
+- Fase 7: D-122 a D-133.
+
+La siguiente libre es **D-134**.
