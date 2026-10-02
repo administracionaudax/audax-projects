@@ -2,6 +2,7 @@
 
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
+use App\Domain\Projects\ProjectMembership;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\User;
@@ -95,12 +96,25 @@ it('una conversación silenciada no suma en el total de la navegación pero sí 
         ->assertJsonPath('conversations.1.unread', 1);
 });
 
-it('al volver a un proyecto, lo anterior cuenta como leído', function () {
-    $this->project->members()->detach($this->ana->id);
-    $this->writer->post($this->luis, $this->projectChat, 'Mientras no estabas');
-    $this->project->addMember($this->ana);
+it('al volver a un proyecto, lo anterior cuenta como leído (también lo publicado mientras no estaba)', function () {
+    $first = $this->writer->post($this->luis, $this->projectChat, 'Antes de salir');
+    $this->writer->markRead($this->ana, $this->projectChat, $first->id);
+    $membership = app(ProjectMembership::class);
 
-    expect($this->directory->unreadTotal($this->ana))->toBe(0);
+    $membership->remove($this->project, $this->ana, $this->admin);
+    expect($this->projectChat->hasParticipant($this->ana))->toBeFalse();
+
+    $this->writer->post($this->luis, $this->projectChat, 'Mientras no estabas 1');
+    $this->writer->post($this->luis, $this->projectChat, 'Mientras no estabas 2');
+
+    $membership->add($this->project, $this->ana, false, $this->admin);
+    expect($this->projectChat->hasParticipant($this->ana))->toBeTrue()
+        ->and($this->directory->unreadTotal($this->ana))->toBe(0)
+        ->and($this->directory->unreadCounts($this->ana))->toBe([]);
+
+    // Lo nuevo sí cuenta.
+    $this->writer->post($this->luis, $this->projectChat, 'Ya de vuelta');
+    expect($this->directory->unreadCounts($this->ana))->toBe([$this->projectChat->id => 1]);
 });
 
 it('abre una conversación con la cabecera, los participantes, los mensajes y los fijados', function () {

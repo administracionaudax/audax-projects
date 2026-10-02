@@ -71,8 +71,12 @@ final class ConversationDirectory
 
         if (! $participant->exists || $participant->left_at !== null) {
             $participant->fill(['joined_at' => $participant->exists ? $participant->joined_at : now(), 'left_at' => null]);
-            // Al volver, lo anterior cuenta como leído: solo avisa de lo nuevo.
-            $participant->last_read_message_id ??= $conversation->messages()->max('id');
+            // Al entrar o al volver, lo anterior (también lo publicado mientras no estaba) cuenta
+            // como leído: solo avisa de lo nuevo. Nunca hacia atrás.
+            $last = $conversation->messages()->withTrashed()->max('id');
+            if ($last !== null && (int) $last > (int) ($participant->last_read_message_id ?? 0)) {
+                $participant->last_read_message_id = (int) $last;
+            }
             $participant->save();
         }
 
