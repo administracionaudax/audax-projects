@@ -18,6 +18,7 @@
 import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
+import audit from '../../../lang/ui/audit.json';
 import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
@@ -38,6 +39,7 @@ const messages = {
     ...base,
     ...shared,
     ...admin,
+    ...audit,
     ...clients,
     ...projects,
     ...hourBanks,
