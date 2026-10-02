@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Chat\ConversationDirectory;
+use App\Domain\Chat\MessageWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Time\Capacity;
 use App\Enums\BillingType;
@@ -13,9 +15,14 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatusCategory;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
+use App\Events\Chat\ConversationRead;
+use App\Events\Chat\MessagePosted;
+use App\Events\Chat\MessageUpdated;
 use App\Models\Client;
+use App\Models\Conversation;
 use App\Models\Department;
 use App\Models\HourBank;
+use App\Models\Message;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -30,6 +37,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 use RuntimeException;
@@ -38,7 +46,9 @@ use RuntimeException;
  * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes,
  * 15 proyectos de todos los tipos, bolsas en todos los estados (activa, casi agotada, agotada con
  * exceso, con política block, cerrada y renovada) y 12 meses de horas con su flujo de aprobación
- * (aprobadas, enviadas, devueltas, bloqueadas al facturar y borradores de esta semana).
+ * (aprobadas, enviadas, devueltas, bloqueadas al facturar y borradores de esta semana), y chat
+ * (Fase 6): conversaciones de proyecto, dos directas y un grupo, con menciones, @todos, una
+ * reacción, un hilo y un mensaje fijado (sin audios ni adjuntos).
  *
  * SOLO local, testing y CI (nunca en el servidor, D-018). Determinista (semilla fija) y relativo a
  * hoy, para que los dashboards tengan siempre datos recientes. Se ejecuta una sola vez: si ya hay
@@ -151,6 +161,8 @@ class DemoDataSeeder extends Seeder
             }
             $this->comments($projects);
         });
+
+        $this->chat();
     }
 
     private function taskTypes(): void
@@ -740,6 +752,76 @@ class DemoDataSeeder extends Seeder
                 ]);
             }
         }
+    }
+
+    /**
+     * Chat (Fase 6) con MessageWriter, la única vía de escritura (D-069): el de tres proyectos, dos
+     * directas y un grupo, en los últimos días. Sin avisos ni tiempo real (los eventos del chat se
+     * silencian mientras tanto) y sin enlaces, audios ni adjuntos. Elena (empleado@example.com) se
+     * queda con mensajes sin leer y menciones recientes para la tarjeta de Inicio.
+     */
+    private function chat(): void
+    {
+        Event::fakeFor(function (): void {
+            DB::transaction(function (): void {
+                $directory = app(ConversationDirectory::class);
+                $writer = app(MessageWriter::class);
+                $p = $this->people;
+                $mention = fn (string $key): string => '<@'.$p[$key]->id.'>';
+                $project = fn (string $code): Conversation => $directory->forProject(Project::query()->where('code', $code)->firstOrFail());
+
+                /** @var list<array{0: Message, 1: CarbonImmutable}> $timeline */
+                $timeline = [];
+                $post = function (string $who, Conversation $conversation, string $body, int $daysAgo, string $time, ?Message $parent = null) use ($writer, $p, &$timeline): Message {
+                    $message = $writer->post($p[$who], $conversation, $body, $parent?->id);
+                    $timeline[] = [$message, LocalTime::today()->subDays($daysAgo)->setTimeFromTimeString($time)];
+
+                    return $message;
+                };
+
+                $web = $project('ARR-WEB');
+                $post('raul', $web, 'Buenos días. Esta semana cerramos la **maqueta de la home** y empezamos con las fichas de producto.', 6, '09:12');
+                $brief = $post('elena', $web, "He dejado las tres propuestas de cabecera en la tarea. {$mention('raul')}, ¿las revisas cuando puedas?", 6, '10:40');
+                $post('raul', $web, 'Me quedo con la segunda: más aire y la tipografía respira mejor. 👍', 6, '12:05', $brief);
+                $writer->toggleReaction($p['elena'], $timeline[2][0], '🙌');
+                $plan = $post('marta', $web, '@todos el lunes a las 10:00 revisamos el plan de lanzamiento. Traed las dudas apuntadas.', 4, '17:30');
+                $writer->setPinned($p['marta'], $plan, true);
+                $post('pablo', $web, "{$mention('sergio')} el formulario de contacto ya valida en el servidor; falta el aviso por correo.", 3, '11:15');
+                $post('sergio', $web, 'Hecho. Lo subo a la rama de desarrollo esta tarde.', 3, '13:02');
+                $post('lucia', $web, "{$mention('elena')} ¿me pasas los iconos en `svg` para la ficha de producto?", 1, '09:48');
+                $post('raul', $web, "{$mention('elena')} el cliente pide un tono más cálido en las fotos de la bodega. ¿Lo vemos mañana?", 1, '18:30');
+
+                $app = $project('SON-APP');
+                $post('marta', $app, 'La pasarela de pago ya funciona en el entorno de pruebas del banco.', 5, '16:20');
+                $post('pablo', $app, "{$mention('elena')} ¿puedes revisar los textos de la pantalla de confirmación de cita?", 2, '10:05');
+                $post('elena', $app, 'Revisados: he cambiado «Agendar» por «Reservar cita», que se entiende mejor.', 2, '12:30');
+
+                $mirador = $project('MIR-WEB');
+                $post('raul', $mirador, 'Hoy nos mandan las fotos nuevas de las habitaciones.', 1, '15:10');
+
+                $toElena = $directory->direct($p['raul'], $p['elena']);
+                $post('raul', $toElena, '¿Tienes un rato a las 12 para ver la propuesta de color?', 2, '09:30');
+                $post('elena', $toElena, 'Sí, te llamo a las 12.', 2, '09:41');
+                $post('raul', $toElena, 'Perfecto. Te dejo el enlace a la carpeta en la tarea.', 1, '19:05');
+
+                $toSergio = $directory->direct($p['marta'], $p['sergio']);
+                $post('marta', $toSergio, '¿Cómo vas con la migración de la intranet?', 1, '17:45');
+                $post('sergio', $toSergio, 'Terminando las pruebas de carga. Mañana te cuento.', 1, '18:02');
+
+                $group = $directory->group($p['raul'], 'Diseño y desarrollo', [$p['elena']->id, $p['lucia']->id, $p['marta']->id, $p['pablo']->id]);
+                $post('marta', $group, 'Propongo una revisión conjunta de componentes cada dos semanas. ¿Qué os parece?', 5, '11:00');
+                $post('lucia', $group, 'Me parece bien. Así no se nos duplican botones con estilos distintos.', 5, '11:20');
+                $post('raul', $group, "@todos primera revisión el jueves a las 16:00. {$mention('pablo')}, ¿preparas el inventario?", 1, '13:40');
+
+                // Fechas de los últimos días (MessageWriter publica «ahora»), en orden.
+                foreach ($timeline as [$message, $at]) {
+                    $instant = $at->utc();
+                    DB::table('messages')->where('id', $message->id)->update(['created_at' => $instant, 'updated_at' => $instant]);
+                    DB::table('conversations')->where('id', $message->conversation_id)->update(['last_message_at' => $instant]);
+                }
+                DB::table('messages')->where('id', $plan->id)->update(['pinned_at' => $timeline[4][1]->addMinutes(2)->utc()]);
+            });
+        }, [MessagePosted::class, MessageUpdated::class, ConversationRead::class]);
     }
 
     private function monthsAgo(int $months): CarbonImmutable
