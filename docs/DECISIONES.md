@@ -445,3 +445,43 @@ Resumen de lo que decidieron C1 (chat), C2 (tiempo real y avisos) y C3 (audios, 
 - **Desde el chat:** «Buscar en el chat» y «Activar avisos en este navegador» en la cabecera de la lista.
 - **Datos de ejemplo:** chat en tres proyectos, dos directas y un grupo, sin audios ni adjuntos.
 - **CI de los E2E:** Reverb local y el transcriptor falso con la cola síncrona.
+
+## 02/10/2026: Decisiones tomadas en autonomía en la revisión global de la Fase 6
+Correcciones de la revisión adversarial de la Fase 6. Concretan D-068 a D-072 y D-110 a D-114.
+
+### D-115 · Moderación y solo lectura **[concreta D-069 y D-071]**
+- **Proyecto archivado:** su chat es de solo lectura para todo: tampoco se borra lo propio (`MessagePolicy::delete` exige poder escribir), ni se edita, reacciona, fija o crea una tarea.
+- **Mensaje ocultado:** su autor ya no lo puede borrar (el moderador conserva su contenido) y la auditoría de la moderación (`activity('chat')`) guarda el texto que tenía.
+- **Campana:** cada aviso del chat guarda su mensaje (`notifications.chat_message_id`, con índice) y, al ocultarlo o borrarlo, se vacía su extracto (`ChatNotificationExcerpts`); no se restaura al volver a mostrarlo. Un aviso que la cola aún no ha enviado no se envía si el mensaje ya está borrado u ocultado. Lo ya enviado por Web Push no se puede retirar.
+- **Volver a un proyecto:** lo publicado mientras no se estaba cuenta como leído (solo avisa de lo nuevo).
+
+### D-116 · Transcripción acotada **[concreta D-070]**
+- **Tamaño:** el audio no puede pesar más de 16 KB por segundo declarado (el navegador graba a 64 kbit/s, unos 8 KB/s; el margen es para mp4 y ogg), más 64 KB de cabeceras.
+- **Duración procesada:** `whisper-server` 1.9.4 admite el campo `duration` (milisegundos) en `/inference` (`examples/server/server.cpp`, `get_req_parameters` → `wparams.duration_ms`): se procesa como mucho el máximo de los audios (`max_audio_seconds` más 2 s). La respuesta trae la duración real, así que un fichero más largo queda transcrito hasta el máximo y `/admin/transcripciones` lo señala con «Supera el máximo».
+- **Sin reintentos infinitos:** tras 9 intentos se avisa al admin una vez (D-070) y se reintenta como mucho cada hora hasta 18 intentos; a partir de ahí ya no se relanza sola y solo el admin la relanza. Si el worker corta el job por tiempo, la transcripción queda fallida con su error. Antes de volver a encolar una fallida o interrumpida se suelta su candado de job único (si el worker se cayó, seguiría puesto 2 h).
+
+### D-117 · Reacciones con los emojis del selector **[concreta D-110]**
+- Se admite como reacción cualquier emoji de los datos del selector (Emojibase 16 de `public/emojibase/es/data.json`, con tonos de piel), comparados sin el selector de variación U+FE0F; así entran 0️⃣ o ℹ️ y nunca texto. La lista va en caché, renovada con la fecha del fichero.
+
+### D-118 · Pestaña Archivos con los adjuntos del chat **[concreta SPEC §6 y D-113]**
+- Incluye los adjuntos del chat del proyecto solo para quien ve esa conversación (D-071), sin las notas de voz (se escuchan en el chat) y sin los de mensajes borrados u ocultados salvo para el admin que modera (como `AttachmentPolicy`). Cada uno enlaza a su mensaje y nunca se borra suelto. El filtro por tarea los deja fuera; el filtro por tipo, no.
+
+### D-119 · Grupos y moderación del admin **[concreta D-071]**
+- **Moderar:** el admin tiene «Moderar conversaciones» en la lista del chat (`/chat/moderar`): los chats de proyecto y los grupos en los que no participa (nunca las directas); los abre en modo moderación.
+- **Gestión del grupo:** lo renombran y añaden o quitan personas quien lo creó (mientras siga en él) o el admin; cualquiera de sus participantes puede salir. Todo pasa por `ConversationDirectory` (con `ConversationPolicy::manage` y `::leave`) y cada cambio deja un mensaje de sistema (`group.renamed`, `group.added`, `group.removed`, `group.left`). Quien entra ve como leído lo anterior.
+
+### D-120 · Seguridad del tiempo real **[concreta D-068, D-111 y D-112]**
+- **`/broadcasting/auth`** exige también el 2FA obligatorio (`2fa`), como el resto de rutas internas.
+- **Orígenes de Reverb:** `REVERB_ALLOWED_ORIGINS` (hosts separados por comas); por defecto, el host de `APP_URL`; nunca `*`. Al desplegar hay que reiniciar `audax-reverb.service` para que lo lea.
+- **Peticiones del chat:** se autorizan antes de validar (un admin no distingue una directa ajena por los errores de validación).
+- **Service worker:** la URL de un aviso se resuelve como lo haría el navegador y se exige el mismo origen (tabuladores, saltos de línea o barras invertidas no llevan a otra web).
+- **Whispers:** «escribiendo…» solo cuenta a los participantes de la conversación según el servidor que estén conectados según el canal de presencia, y enseña el nombre del servidor; la presencia solo atiende a los miembros del canal (los firma Reverb) y, si Reverb indica quién envía el whisper, solo si coincide.
+
+### D-121 · Interfaz del chat tras la revisión **[concreta D-110, D-111 y D-113]**
+- **Foco (WCAG 2.4.3):** los diálogos y popovers abiertos desde un menú devuelven el foco a su botón (o al mensaje) al cerrarse; tras borrar o editar, al mensaje (o al editor si se editó con ↑); al saltar a un fijado o a una cita, al mensaje; al abrir una conversación en el móvil, a su título.
+- **Editor:** combobox de menciones con `aria-expanded`, `aria-haspopup`, `aria-controls` (la lista existe siempre) y `aria-activedescendant`. «Responder» le pide el foco sin volver a montarlo: no se pierden el borrador ni una grabación.
+- **Markdown:** el análisis tiene un presupuesto de pasos proporcional a la longitud (las marcas que quedan sin analizar se pintan como texto) y cada mensaje se analiza una vez (`MessageItem` memorizado, con manejadores estables).
+- **Contadores:** `/tiempo-real/no-leidos` dice hasta qué mensaje ha contado (`latest_message_id`) y el navegador vuelve a sumar los avisos en vivo posteriores: un recuento que llega tarde no pisa un +1 en vivo.
+- **Multimedia:** el reproductor solo adopta una URL firmada nueva si el audio no se ha empezado a escuchar o si la actual falla; un audio grabado durante otra subida espera su turno; un «Ver más» de una búsqueda anterior se descarta.
+- **Estados con icono y texto visible** («Silenciada», «Solo lectura»; el error de los avisos del navegador, con el token AA) y «Nuevo» con un nombre accesible que empieza por su texto visible.
+- **E2E:** el chat de dos navegadores demuestra el tiempo real (el segundo no recarga; cada paso espera menos que cualquier consulta periódica) con «escribiendo…», hilo, reacción y adjunto; en la CI Reverb es obligatorio y su ausencia hace fallar los tests.
