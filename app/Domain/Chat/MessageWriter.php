@@ -36,8 +36,10 @@ final class MessageWriter
 
     /**
      * @param  list<UploadedFile>  $files  adjuntos (imágenes, PDF, ofimática…)
+     * @param  int|null  $audioDurationMs  duración del audio según el navegador (ya validada): se
+     *                                     muestra hasta que el transcriptor mide la real
      */
-    public function post(User $author, Conversation $conversation, ?string $body, ?int $parentId = null, array $files = [], ?UploadedFile $audio = null): Message
+    public function post(User $author, Conversation $conversation, ?string $body, ?int $parentId = null, array $files = [], ?UploadedFile $audio = null, ?int $audioDurationMs = null): Message
     {
         Gate::forUser($author)->authorize('post', $conversation);
 
@@ -52,7 +54,7 @@ final class MessageWriter
             throw ValidationException::withMessages(['parent_id' => __('chat.errors.parent')]);
         }
 
-        $message = DB::transaction(function () use ($author, $conversation, $body, $parentId, $files, $audio): Message {
+        $message = DB::transaction(function () use ($author, $conversation, $body, $parentId, $files, $audio, $audioDurationMs): Message {
             $message = $conversation->messages()->create([
                 'user_id' => $author->id,
                 'type' => $audio !== null ? MessageType::Audio : ($body === null || $body === '' ? MessageType::File : MessageType::Text),
@@ -64,7 +66,7 @@ final class MessageWriter
 
             if ($audio !== null) {
                 $attachment = $this->storage->store($audio, $message, $projectId, $author, audio: true);
-                $this->transcriptions->forAudio($message, $attachment);
+                $this->transcriptions->forAudio($message, $attachment, $audioDurationMs);
             }
 
             foreach ($files as $file) {

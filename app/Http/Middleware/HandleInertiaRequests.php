@@ -109,6 +109,9 @@ class HandleInertiaRequests extends Middleware
                 'timer_warning_hours' => (int) Setting::get('timer_warning_hours', 10),
                 'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
                 'description_required' => (bool) Setting::get('time_entry_description_required', false),
+                // Chat (Fase 6): límites de los adjuntos y de los audios que se graban.
+                'max_attachment_mb' => (int) Setting::get('max_attachment_mb', 50),
+                'max_audio_seconds' => (int) Setting::get('max_audio_seconds', 300),
             ],
             'realtime' => fn (): ?array => $this->realtime(),
         ];

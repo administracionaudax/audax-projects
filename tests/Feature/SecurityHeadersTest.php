@@ -9,7 +9,7 @@ test('todas las respuestas llevan las cabeceras de seguridad y noindex', functio
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()')
         ->assertHeader('Content-Security-Policy');
 })->with(['/login', '/health', '/', '/ruta-que-no-existe']);
 

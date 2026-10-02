@@ -20,6 +20,14 @@ class SettingsRequest extends FormRequest
      */
     public const array ROUNDINGS = [1, 5, 10, 15, 30];
 
+    /**
+     * Duración máxima de los audios del chat (segundos). El techo de 10 minutos lo pone el
+     * transcriptor: tarda unas 3,6 veces la duración del audio y su tiempo máximo es de 40 minutos (D-070).
+     */
+    public const int MIN_AUDIO_SECONDS = 30;
+
+    public const int MAX_AUDIO_SECONDS = 600;
+
     public function authorize(): bool
     {
         return Gate::allows('manage-settings');
@@ -47,6 +55,8 @@ class SettingsRequest extends FormRequest
             'allow_future_time_entries' => ['required', 'boolean'],
             'time_entry_description_required' => ['required', 'boolean'],
             'max_attachment_mb' => ['required', 'integer', 'between:1,200'],
+            // Opcional en la petición: quien no lo envía conserva el valor guardado (Fase 6).
+            'max_audio_seconds' => ['sometimes', 'required', 'integer', 'between:'.self::MIN_AUDIO_SECONDS.','.self::MAX_AUDIO_SECONDS],
             'default_work_minutes' => ['required', 'array', 'list', 'size:7'],
             'default_work_minutes.*' => ['required', 'integer', 'between:0,1440'],
         ];
@@ -81,6 +91,7 @@ class SettingsRequest extends FormRequest
             'timer_warning_hours' => __('admin.attributes.timer_warning_hours'),
             'hour_bank_alert_thresholds' => __('admin.attributes.thresholds'),
             'max_attachment_mb' => __('admin.attributes.max_attachment_mb'),
+            'max_audio_seconds' => __('chat_media.attributes.max_audio_seconds'),
             'default_work_minutes' => __('admin.attributes.default_work_minutes'),
         ];
     }
@@ -112,6 +123,7 @@ class SettingsRequest extends FormRequest
             'time_entry_description_required' => $this->boolean('time_entry_description_required'),
             'max_attachment_mb' => $this->integer('max_attachment_mb'),
             'default_work_minutes' => array_map('intval', array_values($week)),
+            ...($this->has('max_audio_seconds') ? ['max_audio_seconds' => $this->integer('max_audio_seconds')] : []),
         ];
     }
 }

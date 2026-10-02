@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
+    AudioLines,
     Building,
     CalendarDays,
     History,
@@ -30,6 +31,7 @@ import { index as departmentsIndex } from '@/routes/admin/departments';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
+import { index as transcriptionsIndex } from '@/routes/admin/transcriptions';
 import { index as usersIndex } from '@/routes/admin/users';
 import type { Abilities } from '@/types';
 
@@ -108,6 +110,20 @@ const AREAS: AdminArea[] = [
             {
                 label: 'admin.home.open_settings',
                 href: settingsEdit.url(),
+                ability: 'manageSettings',
+            },
+        ],
+    },
+    {
+        id: 'transcriptions',
+        icon: AudioLines,
+        title: 'chat_media.admin_area.title',
+        description: 'chat_media.admin_area.description',
+        phase: 6,
+        links: [
+            {
+                label: 'chat_media.admin_area.open',
+                href: transcriptionsIndex.url(),
                 ability: 'manageSettings',
             },
         ],

@@ -4,6 +4,7 @@ namespace App\Search;
 
 use App\Models\User;
 use App\Search\Sources\ClientSource;
+use App\Search\Sources\MessageSource;
 use App\Search\Sources\PageSource;
 use App\Search\Sources\PeopleSource;
 use App\Search\Sources\ProjectSource;
@@ -31,6 +32,8 @@ class GlobalSearch
         TaskSource::class => 6,
         ClientSource::class => 4,
         PeopleSource::class => 4,
+        // Fase 6: mensajes, archivos y transcripciones del chat (solo de las conversaciones que ve).
+        MessageSource::class => 4,
     ];
 
     public function __construct(private readonly Container $container) {}
