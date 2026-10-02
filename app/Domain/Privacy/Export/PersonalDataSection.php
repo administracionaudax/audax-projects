@@ -6,8 +6,8 @@ use App\Models\User;
 
 /**
  * Una sección del ZIP de datos personales (D-075): un fichero JSON y otro CSV con las mismas
- * filas. Las secciones se registran en config/privacy.php (export_sections); al integrar la
- * Fase 6 se añade la de los mensajes del chat sin tocar nada más.
+ * filas. Las secciones se registran en config/privacy.php (export_sections), también la de los
+ * mensajes del chat (ChatMessagesSection).
  *
  * Reglas: solo datos de la propia persona; nunca contraseñas, secretos del doble factor ni tokens;
  * sin datos económicos de la empresa (costes y tarifas, SPEC §5). Los instantes van en ISO 8601 con

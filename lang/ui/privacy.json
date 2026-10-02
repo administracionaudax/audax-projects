@@ -17,7 +17,7 @@
     "privacy.my_data.title": "Mis datos",
     "privacy.my_data.heading": "Mis datos",
     "privacy.my_data.description": "Descarga una copia de los datos personales que la aplicación guarda sobre ti.",
-    "privacy.my_data.contents": "Incluye tu perfil, tus horarios, tus horas, tus ausencias, tus comentarios en tareas, tus notificaciones y tus registros de acceso.",
+    "privacy.my_data.contents": "Incluye tu perfil, tus horarios, tus horas, tus ausencias, tus comentarios en tareas, tus mensajes del chat con la transcripción de tus audios, tus notificaciones y tus registros de acceso.",
     "privacy.my_data.formats": "Llega en un ZIP con un fichero JSON y otro CSV (se abre en Excel) por cada tipo de dato, y un LEEME que lo explica.",
     "privacy.my_data.availability": "El enlace de descarga caduca a los :days días.",
     "privacy.my_data.request": "Preparar mis datos",

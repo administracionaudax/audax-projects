@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
+use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
 use App\Domain\Privacy\Export\Sections\NotificationsSection;
 use App\Domain\Privacy\Export\Sections\ProfileSection;
@@ -33,6 +34,7 @@ return [
         TimeEntriesSection::class,
         AbsencesSection::class,
         TaskCommentsSection::class,
+        ChatMessagesSection::class,
         NotificationsSection::class,
         LoginEventsSection::class,
     ],
