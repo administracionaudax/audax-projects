@@ -82,7 +82,12 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // Orígenes (solo el host) que pueden abrir el WebSocket: REVERB_ALLOWED_ORIGINS,
+                // separados por comas; por defecto, el host de APP_URL (D-120). Nunca '*'.
+                'allowed_origins' => array_values(array_filter(array_map(
+                    'trim',
+                    explode(',', (string) (env('REVERB_ALLOWED_ORIGINS') ?: (parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'))),
+                ), fn (string $origin): bool => $origin !== '')),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),

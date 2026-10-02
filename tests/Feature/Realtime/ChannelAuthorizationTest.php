@@ -3,6 +3,7 @@
 use App\Domain\Chat\ConversationDirectory;
 use App\Models\Conversation;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Testing\TestResponse;
@@ -110,4 +111,18 @@ it('la presencia «online» da a conocer id, nombre y avatar de cada persona int
     // Pusher manda el user_id como texto; Echo entrega a here()/joining() el user_info (id numérico).
     expect($data['user_id'])->toBe((string) $this->ana->id)
         ->and($data['user_info'])->toBe(['id' => $this->ana->id, 'name' => 'Ana', 'avatar' => null]);
+});
+
+it('con el 2FA obligatorio, quien aún no lo tiene no se suscribe a nada (D-120)', function () {
+    Setting::set('require_2fa', true);
+
+    foreach ([($this->conversation)($this->projectChat), "private-App.Models.User.{$this->ana->id}", 'presence-online'] as $channel) {
+        ($this->auth)($this->ana, $channel)->assertForbidden();
+    }
+
+    $secured = User::factory()->withTwoFactor()->employee()->create();
+    $this->project->addMember($secured);
+    ($this->auth)($secured, ($this->conversation)($this->projectChat))->assertOk();
+    ($this->auth)($secured, "private-App.Models.User.{$secured->id}")->assertOk();
+    ($this->auth)($secured, 'presence-online')->assertOk();
 });
