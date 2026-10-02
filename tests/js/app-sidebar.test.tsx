@@ -71,9 +71,13 @@ const none: Abilities = {
     viewHourBanks: false,
     viewAdmin: false,
     viewFinancials: false,
+    viewTeamAbsences: false,
 };
 
-beforeEach(() => setAbilities(none));
+beforeEach(() => {
+    page.url = '/';
+    setAbilities(none);
+});
 
 describe('navegación principal', () => {
     it('sigue el orden del SPEC §3 con todos los permisos', () => {
@@ -81,8 +85,10 @@ describe('navegación principal', () => {
             viewHourBanks: true,
             viewAdmin: true,
             viewFinancials: true,
+            viewTeamAbsences: true,
         }).map((item) => item.title);
 
+        // «Ausencias», tras «Carga» (D-091).
         expect(titles).toEqual([
             'Inicio',
             'Mis tareas',
@@ -91,10 +97,49 @@ describe('navegación principal', () => {
             'Bolsas',
             'Horas',
             'Carga',
+            'Ausencias',
             'Informes',
             'Chat',
             'Administración',
         ]);
+    });
+
+    it('todos ven «Ausencias»; solo quien las aprueba, «Ausencias del equipo»', () => {
+        const nav = renderSidebar();
+
+        expect(
+            nav.getByRole('link', { name: 'Ausencias' }).getAttribute('href'),
+        ).toBe('/ausencias');
+        expect(
+            nav.queryByRole('link', { name: 'Ausencias del equipo' }),
+        ).toBeNull();
+    });
+
+    it('a quien aprueba ausencias le enseña «Ausencias del equipo» dentro de «Ausencias»', () => {
+        setAbilities({ ...none, viewTeamAbsences: true });
+        const nav = renderSidebar();
+
+        expect(
+            nav
+                .getByRole('link', { name: 'Ausencias del equipo' })
+                .getAttribute('href'),
+        ).toBe('/ausencias/equipo');
+        expect(
+            nav.getByRole('link', { name: 'Ausencias' }).getAttribute('href'),
+        ).toBe('/ausencias');
+    });
+
+    it('en «Ausencias del equipo», esa es la página actual y la sección queda resaltada', () => {
+        page.url = '/ausencias/equipo';
+        setAbilities({ ...none, viewTeamAbsences: true });
+        const nav = renderSidebar();
+
+        const section = nav.getByRole('link', { name: 'Ausencias' });
+        const team = nav.getByRole('link', { name: 'Ausencias del equipo' });
+
+        expect(team.getAttribute('aria-current')).toBe('page');
+        expect(section.getAttribute('aria-current')).toBeNull();
+        expect(section.getAttribute('data-active')).toBe('true');
     });
 
     it('oculta Bolsas y Administración a un empleado', () => {

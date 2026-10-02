@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports\Concerns;
 
+use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
 use App\Models\User;
@@ -35,6 +36,17 @@ trait BuildsReportScope
         $user = $request->user();
 
         return new ReportScope($user, ReportFilters::fromQuery([]));
+    }
+
+    /**
+     * ?formato=xlsx|csv pide la exportación (D-045); cualquier otro valor (otro texto, una lista…)
+     * muestra la página: nunca un error ni una descarga que no se ha pedido.
+     */
+    protected function exportFormat(Request $request): ?string
+    {
+        $format = $request->query('formato');
+
+        return is_string($format) && in_array($format, TableExporter::FORMATS, true) ? $format : null;
     }
 
     /**

@@ -116,6 +116,10 @@ test('crear un proyecto desde una plantilla con sus tareas y dependencias', asyn
 
     await page.goto('/proyectos/nuevo');
     await page.getByLabel('Nombre', { exact: true }).fill(projectName);
+    // Código único en cada ejecución (el sugerido a partir del nombre ya puede existir).
+    await page
+        .getByLabel('Código', { exact: true })
+        .fill(`E2E-${suffix.toUpperCase()}`);
     await page.getByLabel('Tipo de facturación').click();
     await page.getByRole('option', { name: 'Interno' }).click();
 

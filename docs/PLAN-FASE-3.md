@@ -40,7 +40,7 @@ Se trabaja en modo autónomo (D-027).
 - **Casos especiales:**
   - una tarea vencida lleva todo su restante a hoy y se marca,
   - sin ningún día con capacidad en el rango, todo va al primer día,
-  - como mucho se calcula un año hacia delante.
+  - la capacidad día a día se calcula, y se pinta, como mucho un año hacia delante. Una entrega posterior reparte igualmente entre **todos** sus días laborables: los que pasan del año se cuentan con la jornada semanal vigente al final de ese año, sin festivos ni ausencias, para no amontonar el restante en el primer año (revisión global).
 - **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
 - **Bandejas:**
   - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
@@ -62,6 +62,7 @@ Se trabaja en modo autónomo (D-027).
   - verde: del 70 % al 100 %,
   - ámbar: del 100 % al 120 %,
   - rojo: más del 120 %.
+  - El nivel se decide con el porcentaje redondeado que se enseña, para que la cifra y el color no se contradigan: 481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde (revisión global).
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
 

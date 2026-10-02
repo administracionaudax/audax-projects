@@ -330,13 +330,15 @@ final class WorkloadBoard
 
     /**
      * Panel de una celda (?celda=persona:fecha): las tareas que forman esa carga, con los minutos que
-     * ponen en ella, y el detalle de cada día. Una persona fuera del alcance → 403 (D-052).
+     * ponen en ella, y el detalle de cada día. Una persona fuera del alcance (D-052): en una visita
+     * completa se ignora, como cualquier otro valor de la URL que no vale (WorkloadFilters); al
+     * pedir solo el panel ($strict, la recarga parcial que lo abre), 403.
      *
      * @return array<string, mixed>|null
      *
      * @throws AuthorizationException
      */
-    public function cell(): ?array
+    public function cell(bool $strict = false): ?array
     {
         $userId = $this->filters->cellUserId;
         $date = $this->filters->cellDate;
@@ -346,7 +348,11 @@ final class WorkloadBoard
         }
 
         if (! $this->scope->includes($userId)) {
-            throw new AuthorizationException(__('workload.errors.person_out_of_scope'));
+            if ($strict) {
+                throw new AuthorizationException(__('workload.errors.person_out_of_scope'));
+            }
+
+            return null;
         }
 
         if ($date < $this->from->toDateString() || $date > $this->to->toDateString()) {

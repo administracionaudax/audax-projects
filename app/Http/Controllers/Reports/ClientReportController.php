@@ -90,8 +90,8 @@ class ClientReportController extends Controller
             ...$this->banks($scope, $projectIds, $metrics, $history, $commitment),
         ]);
 
-        $format = $request->query('formato');
-        if (is_string($format) && in_array($format, TableExporter::FORMATS, true)) {
+        $format = $this->exportFormat($request);
+        if ($format !== null) {
             return $this->export($exporter, $client, $scope, $data, $request->query('tabla'), $format);
         }
 
@@ -236,7 +236,9 @@ class ClientReportController extends Controller
     }
 
     /**
-     * @param  array{projects: list<array{name: string, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, has_bank: bool}>, timeline: array{bucket: string, buckets: list<string>, series: list<array{key: string, name: string, total: int}>, cells: array<string, array<string, int>>}, all_banks: list<array<string, mixed>>}  $data
+     * @param  array{summary: array{logged_minutes: int, billable_minutes: int, overage_minutes: int, income: string|null, cost: string|null, margin: string|null},
+     *     banked: array{has_bank: bool, in_bank_minutes: int},
+     *     projects: list<array{name: string, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null, has_bank: bool}>, timeline: array{bucket: string, buckets: list<string>, series: list<array{key: string, name: string, total: int}>, cells: array<string, array<string, int>>}, all_banks: list<array<string, mixed>>}  $data
      */
     private function export(TableExporter $exporter, Client $client, ReportScope $scope, array $data, mixed $table, string $format): StreamedResponse
     {
@@ -285,32 +287,33 @@ class ClientReportController extends Controller
         if ($financials) {
             array_push($headers, $c('income'), $c('cost'), $c('margin'));
         }
+        // D-081: al final, los minutos (enteros) de las columnas de horas, que suman exacto su total.
+        array_push($headers, $c('logged_minutes'), $c('billable_minutes'), $c('in_bank_minutes'), $c('overage_minutes'));
 
         // «Dentro de bolsa» solo en los proyectos con horas en bolsas (en los demás, vacío).
-        $totals = ['logged' => 0, 'billable' => 0, 'in_bank' => 0, 'overage' => 0, 'income' => '0', 'cost' => '0'];
         $rows = [];
         foreach ($data['projects'] as $project) {
             $row = [$project['name'], TableExporter::hours($project['logged_minutes']), TableExporter::hours($project['billable_minutes']),
                 $project['has_bank'] ? TableExporter::hours($project['in_bank_minutes']) : null, TableExporter::hours($project['overage_minutes'])];
-            foreach (['logged', 'billable', 'in_bank', 'overage'] as $key) {
-                $totals[$key] += $project[$key.'_minutes'];
-            }
             if ($financials) {
                 $income = (string) $project['income'];
                 $cost = (string) $project['cost'];
                 array_push($row, TableExporter::money($income), TableExporter::money($cost), TableExporter::money(Money::round(Money::sub($income, $cost))));
-                $totals['income'] = Money::add($totals['income'], $income);
-                $totals['cost'] = Money::add($totals['cost'], $cost);
             }
+            array_push($row, $project['logged_minutes'], $project['billable_minutes'],
+                $project['has_bank'] ? $project['in_bank_minutes'] : null, $project['overage_minutes']);
             $rows[] = $row;
         }
 
-        $total = [self::text('reports.r2.total'), TableExporter::hours($totals['logged']), TableExporter::hours($totals['billable']),
-            TableExporter::hours($totals['in_bank']), TableExporter::hours($totals['overage'])];
+        // Los totales, los del resumen del servidor (INT-04): los importes de los proyectos son su
+        // parte en céntimos del mismo total (RevenueCalculator), así que suman exactamente esto.
+        $summary = $data['summary'];
+        $total = [self::text('reports.r2.total'), TableExporter::hours($summary['logged_minutes']), TableExporter::hours($summary['billable_minutes']),
+            TableExporter::hours($data['banked']['in_bank_minutes']), TableExporter::hours($summary['overage_minutes'])];
         if ($financials) {
-            array_push($total, TableExporter::money(Money::round($totals['income'])), TableExporter::money(Money::round($totals['cost'])),
-                TableExporter::money(Money::round(Money::sub($totals['income'], $totals['cost']))));
+            array_push($total, TableExporter::money($summary['income']), TableExporter::money($summary['cost']), TableExporter::money($summary['margin']));
         }
+        array_push($total, $summary['logged_minutes'], $summary['billable_minutes'], $data['banked']['in_bank_minutes'], $summary['overage_minutes']);
         $rows[] = $total;
 
         return $exporter->download($name, $headers, $rows, $format);

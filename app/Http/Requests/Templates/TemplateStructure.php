@@ -36,6 +36,48 @@ final class TemplateStructure
     public const int MAX_ESTIMATE_MINUTES = 999 * 60;
 
     /**
+     * Mensaje si la estructura tiene más tareas o dependencias de las que se admiten; null si no.
+     * Se comprueba ANTES de validar el contenido: las reglas con comodín (structure.tasks.*.…) se
+     * expanden por cada elemento al crear el validador y «distinct» compara cada referencia con
+     * todas, así que una estructura enorme tardaría segundos en rechazarse.
+     */
+    public static function sizeError(mixed $structure): ?string
+    {
+        if (! is_array($structure)) {
+            return null;
+        }
+
+        if (is_array($structure['tasks'] ?? null) && count($structure['tasks']) > ProjectTemplateService::MAX_TASKS) {
+            return self::text('templates.errors.tasks_count', ['max' => ProjectTemplateService::MAX_TASKS]);
+        }
+
+        if (is_array($structure['dependencies'] ?? null) && count($structure['dependencies']) > self::MAX_DEPENDENCIES) {
+            return self::text('templates.errors.dependencies_count', ['max' => self::MAX_DEPENDENCIES]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Reglas para una estructura concreta: si es demasiado grande (sizeError()), solo las de tamaño,
+     * que la rechazan al momento con su mensaje; si no, todas (rules()).
+     *
+     * @return array<string, mixed>
+     */
+    public static function rulesFor(mixed $structure): array
+    {
+        if (self::sizeError($structure) === null) {
+            return self::rules();
+        }
+
+        return [
+            'structure' => ['required', 'array'],
+            'structure.tasks' => ['required', 'array', 'min:1', 'max:'.ProjectTemplateService::MAX_TASKS],
+            'structure.dependencies' => ['nullable', 'array', 'max:'.self::MAX_DEPENDENCIES],
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function rules(): array
@@ -82,6 +124,7 @@ final class TemplateStructure
             'structure.tasks.required' => $count,
             'structure.tasks.min' => $count,
             'structure.tasks.max' => $count,
+            'structure.dependencies.max' => self::text('templates.errors.dependencies_count', ['max' => self::MAX_DEPENDENCIES]),
             'structure.tasks.*.ref.required' => self::text('templates.errors.task_ref'),
             'structure.tasks.*.ref.distinct' => self::text('templates.errors.task_ref'),
             'structure.tasks.*.title.required' => self::text('templates.errors.task_title'),

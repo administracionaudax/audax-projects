@@ -98,7 +98,8 @@ test('los internos reciben el temporizador activo, las notificaciones sin leer y
             ->where('config.timer_warning_hours', 10)
             ->where('config.description_required', false)
             ->where('auth.can.createProjects', false)
-            ->where('auth.can.approveTime', false));
+            ->where('auth.can.approveTime', false)
+            ->where('auth.can.viewTeamAbsences', false));
 });
 
 test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar', function () {
@@ -111,7 +112,8 @@ test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar',
             ->where('auth.can.createClients', true)
             ->where('auth.can.createProjects', true)
             ->where('auth.can.approveTime', true)
-            ->where('auth.can.lockTime', false));
+            ->where('auth.can.lockTime', false)
+            ->where('auth.can.viewTeamAbsences', true));
 });
 
 test('el portal de cliente no recibe temporizador ni configuración interna', function () {

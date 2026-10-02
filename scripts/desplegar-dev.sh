@@ -52,7 +52,7 @@ fi
 $PHP artisan migrate --force --no-interaction
 $PHP artisan horizon:terminate >/dev/null 2>&1 || true
 if [ "$tests" = 1 ]; then
-  sh scripts/heavy.sh timeout 20m $PHP -d memory_limit=512M vendor/bin/pest --colors=never | tail -5
+  sh scripts/heavy.sh timeout 45m $PHP -d memory_limit=512M vendor/bin/pest --colors=never | tail -5
 fi
 EOF
 

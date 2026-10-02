@@ -22,6 +22,9 @@ class TemplateRequest extends FormRequest
     }
 
     /**
+     * Con demasiadas tareas o dependencias, solo las reglas de tamaño (TemplateStructure::rulesFor):
+     * se rechaza al momento, sin expandir las reglas de cada tarea. Se calcula después de authorize().
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -30,7 +33,7 @@ class TemplateRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['required', 'boolean'],
-            ...TemplateStructure::rules(),
+            ...TemplateStructure::rulesFor($this->input('structure')),
         ];
     }
 

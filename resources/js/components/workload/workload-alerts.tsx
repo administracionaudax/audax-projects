@@ -1,8 +1,12 @@
 import { CalendarRange, OctagonAlert, TriangleAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { LOAD_LEVELS, loadLevel } from '@/components/charts/thresholds';
+import {
+    formatLoadPercent,
+    LOAD_LEVELS,
+    loadLevel,
+} from '@/components/charts/thresholds';
 import type { WorkloadRow, WorkloadTotals } from '@/components/workload/types';
-import { formatMinutes, formatPercent } from '@/lib/format';
+import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +27,7 @@ function describe(row: WorkloadRow): string {
 
     return t('workload_page.person_ratio', {
         name: row.name,
-        percent: formatPercent(row.total.planned / row.total.capacity, 0),
+        percent: formatLoadPercent(row.total.planned, row.total.capacity),
         planned: formatMinutes(row.total.planned),
         capacity: formatMinutes(row.total.capacity),
     });

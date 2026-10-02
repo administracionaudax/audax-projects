@@ -2,6 +2,7 @@
 
 namespace App\Domain\Admin;
 
+use App\Domain\Reports\ReportCache;
 use App\Enums\TaskStatusCategory;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -223,6 +224,8 @@ final class TaskStatusCatalog
     private function syncCompletedAt(array $statusIds, bool $done): int
     {
         $query = Task::withTrashed()->whereIn('status_id', $statusIds);
+        // completed_at cambia la precisión de estimación: la caché de informes, tras el commit (INT-03).
+        ReportCache::bumpAfterCommit();
 
         return $done
             ? $query->whereNull('completed_at')->update(['completed_at' => now()])

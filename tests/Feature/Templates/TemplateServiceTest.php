@@ -27,10 +27,52 @@ beforeEach(function () {
 
 it('rechaza ciclos directos e indirectos', function (array $dependencies) {
     expect(fn () => ProjectTemplateService::normalize(['tasks' => $this->tasks, 'dependencies' => $dependencies]))
-        ->toThrow(ValidationException::class, 'las dependencias forman un ciclo');
+        ->toThrow(ValidationException::class, 'Las dependencias de la plantilla forman un ciclo.');
 })->with([
     'directo' => [[['from_ref' => 'a', 'to_ref' => 'c'], ['from_ref' => 'c', 'to_ref' => 'a']]],
     'indirecto' => [[['from_ref' => 'a', 'to_ref' => 'c'], ['from_ref' => 'c', 'to_ref' => 'd'], ['from_ref' => 'd', 'to_ref' => 'a']]],
+]);
+
+it('explica por qué una estructura no vale con los textos de lang/es/templates.php', function (array $structure, string $key, string $message) {
+    $thrown = null;
+
+    try {
+        ProjectTemplateService::normalize($structure);
+    } catch (ValidationException $exception) {
+        $thrown = $exception;
+    }
+
+    // El texto sale de su clave (no está escrito en el código) y es el que se enseña, sin envoltorio.
+    expect($thrown?->errors())->toBe(['structure' => [$message]])
+        ->and(__("templates.errors.{$key}", ['max' => ProjectTemplateService::MAX_TASKS]))->toBe($message);
+})->with([
+    'sin tareas' => [['tasks' => []], 'tasks_count', 'La plantilla necesita entre 1 y 500 tareas.'],
+    'más de 500 tareas' => [
+        ['tasks' => array_map(fn (int $i): array => ['ref' => "t{$i}", 'title' => "T{$i}"], range(1, 501))],
+        'tasks_count',
+        'La plantilla necesita entre 1 y 500 tareas.',
+    ],
+    'referencia repetida' => [
+        ['tasks' => [['ref' => 'a', 'title' => 'A'], ['ref' => 'a', 'title' => 'B']]],
+        'structure_task',
+        'Cada tarea de la plantilla necesita una referencia única y un título.',
+    ],
+    'sin título' => [['tasks' => [['ref' => 'a', 'title' => ' ']]], 'structure_task', 'Cada tarea de la plantilla necesita una referencia única y un título.'],
+    'subtarea de una subtarea' => [
+        ['tasks' => [['ref' => 'a', 'title' => 'A'], ['ref' => 'b', 'parent_ref' => 'a', 'title' => 'B'], ['ref' => 'c', 'parent_ref' => 'b', 'title' => 'C']]],
+        'structure_parent',
+        'Las subtareas deben colgar de una tarea de primer nivel de la plantilla.',
+    ],
+    'dependencia con una tarea que no existe' => [
+        ['tasks' => [['ref' => 'a', 'title' => 'A']], 'dependencies' => [['from_ref' => 'a', 'to_ref' => 'z']]],
+        'structure_dependency',
+        'Hay dependencias con referencias que no existen en la plantilla.',
+    ],
+    'ciclo' => [
+        ['tasks' => [['ref' => 'a', 'title' => 'A'], ['ref' => 'b', 'title' => 'B']], 'dependencies' => [['from_ref' => 'a', 'to_ref' => 'b'], ['from_ref' => 'b', 'to_ref' => 'a']]],
+        'structure_cycle',
+        'Las dependencias de la plantilla forman un ciclo.',
+    ],
 ]);
 
 it('no repite la misma dependencia y admite caminos que no son ciclos', function () {

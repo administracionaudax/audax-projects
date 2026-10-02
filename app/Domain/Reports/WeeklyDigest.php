@@ -2,15 +2,10 @@
 
 namespace App\Domain\Reports;
 
-use App\Domain\HourBanks\HourBankRenewal;
-use App\Enums\HourBankStatus;
-use App\Models\HourBank;
 use App\Models\Setting;
-use App\Models\Task;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Contenido del resumen semanal de productividad (SPEC §10 «Alertas de productividad», D-047) de
@@ -18,13 +13,15 @@ use Illuminate\Database\Eloquent\Builder;
  * - un responsable, sobre su equipo (las personas de los departamentos que dirige, D-024);
  * - un admin, sobre toda la agencia.
  * Contenido:
- * - días sin imputar por persona: días con capacidad (Metrics::capacityByDate) y sin horas,
+ * - días sin imputar por persona: días con capacidad y sin horas,
  * - ocupación de cada persona (Metrics::ratio de imputadas / capacidad) por encima de
  *   occupancy_high_threshold o por debajo de occupancy_low_threshold (%),
- * - bolsas en riesgo: abiertas y desde el primer umbral de aviso (D-035, lo que va dentro de la
- *   bolsa), de los departamentos que dirige (todas para un admin),
- * - tareas vencidas hoy: abiertas con fecha límite pasada, de su equipo (todas para un admin).
- * Las horas y la capacidad salen del contrato de informes (ReportScope, Metrics y PivotReport).
+ * - bolsas en riesgo y tareas vencidas hoy, con el MISMO alcance que el dashboard de dirección
+ *   (HourBanksAtRisk::forScope y OverdueTasks::forScope, INT-02): quien lo recibe ve en el email lo
+ *   que vería en el dashboard.
+ * Las horas y la capacidad salen del contrato de informes (ReportScope, Metrics y PivotReport): la
+ * capacidad de todo el equipo con una sola llamada por destinatario (Metrics::capacityByPerson,
+ * PERF-07), no persona a persona.
  * Añadido por R3 (clase nueva del contrato).
  */
 final class WeeklyDigest
@@ -32,13 +29,11 @@ final class WeeklyDigest
     /** Elementos que se detallan por sección; del resto solo se dice cuántos más hay. */
     public const int MAX_ITEMS = 15;
 
-    /** @var array<string, array<int, array<string, int>>> capacidad por semana, persona y fecha (no depende de quién mira) */
-    private array $capacity = [];
-
     public function __construct(
         private readonly Metrics $metrics,
         private readonly PivotReport $pivot,
-        private readonly HourBankRenewal $renewal,
+        private readonly HourBanksAtRisk $atRisk,
+        private readonly OverdueTasks $overdueTasks,
     ) {}
 
     /**
@@ -66,6 +61,7 @@ final class WeeklyDigest
      *     high: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     low: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     banks: list<array{id: int, project_id: int, name: string, consumed_pct: float, remaining_minutes: int, overage_minutes: int}>,
+     *     banks_count: int,
      *     overdue: list<array{id: int, title: string, project: string, assignee: string|null, due_date: string}>,
      *     overdue_count: int, thresholds: array{low: int, high: int}}
      */
@@ -94,14 +90,15 @@ final class WeeklyDigest
             }
         }
 
+        // La capacidad de todo el equipo por persona y fecha, de una vez (PERF-07).
+        $capacities = $people->isEmpty() ? [] : $this->metrics->capacityByPerson($scope);
+
         $unlogged = [];
         $high = [];
         $low = [];
-        $teamIds = [];
 
         foreach ($people as $person) {
-            $teamIds[] = $person->id;
-            $capacity = $this->capacity($scope, $person);
+            $capacity = $capacities[$person->id] ?? [];
             $days = $loggedByDay[$person->id] ?? [];
 
             $missing = [];
@@ -138,7 +135,8 @@ final class WeeklyDigest
         usort($high, fn (array $a, array $b): int => $b['occupancy'] <=> $a['occupancy']);
         usort($low, fn (array $a, array $b): int => $a['occupancy'] <=> $b['occupancy']);
 
-        [$overdue, $overdueCount] = $this->overdueTasks($agency, $teamIds, $today);
+        $banks = $this->atRisk->forScope($scope, self::MAX_ITEMS);
+        $overdue = $this->overdueTasks->forScope($scope, self::MAX_ITEMS, $today);
 
         return [
             'scope' => $agency ? 'agency' : 'team',
@@ -148,9 +146,24 @@ final class WeeklyDigest
             'unlogged' => $unlogged,
             'high' => $high,
             'low' => $low,
-            'banks' => $this->banksAtRisk($agency, $departmentIds),
-            'overdue' => $overdue,
-            'overdue_count' => $overdueCount,
+            'banks' => array_map(fn (array $bank): array => [
+                'id' => $bank['id'],
+                'project_id' => $bank['project']['id'],
+                'name' => $bank['project']['code'].' · '.$bank['name'],
+                // El consumo en % (puede pasar del 100 %) y el saldo, como HourBank::consumed_pct y remaining_minutes.
+                'consumed_pct' => $bank['total_minutes'] > 0 ? round($bank['consumed_minutes'] * 100 / $bank['total_minutes'], 2) : 0.0,
+                'remaining_minutes' => max($bank['total_minutes'] - ($bank['consumed_minutes'] - $bank['overage_minutes']), 0),
+                'overage_minutes' => $bank['overage_minutes'],
+            ], $banks['banks']),
+            'banks_count' => $banks['count'],
+            'overdue' => array_map(fn (array $task): array => [
+                'id' => $task['id'],
+                'title' => $task['title'],
+                'project' => $task['project']['code'],
+                'assignee' => $task['assignee'],
+                'due_date' => $task['due_date'],
+            ], $overdue['tasks']),
+            'overdue_count' => $overdue['count'],
             'thresholds' => $thresholds,
         ];
     }
@@ -180,96 +193,5 @@ final class WeeklyDigest
             'low' => is_numeric($low) ? (int) $low : 70,
             'high' => is_numeric($high) ? (int) $high : 110,
         ];
-    }
-
-    /**
-     * Capacidad por fecha de una persona en la semana (una vez por persona aunque haya varios destinatarios).
-     *
-     * @return array<string, int>
-     */
-    private function capacity(ReportScope $scope, User $person): array
-    {
-        return $this->capacity[$scope->filters->from->toDateString()][$person->id] ??= $this->metrics->capacityByDate(
-            $scope->withFilters($scope->filters->with(['userIds' => [$person->id]])),
-        );
-    }
-
-    /**
-     * Bolsas abiertas de proyectos no archivados desde el primer umbral (o agotadas), de más a menos consumidas.
-     *
-     * @param  list<int>  $departmentIds
-     * @return list<array{id: int, project_id: int, name: string, consumed_pct: float, remaining_minutes: int, overage_minutes: int}>
-     */
-    private function banksAtRisk(bool $agency, array $departmentIds): array
-    {
-        if (! $agency && $departmentIds === []) {
-            return [];
-        }
-
-        $threshold = $this->renewal->firstThreshold();
-
-        return array_values(HourBank::query()
-            ->open()
-            ->whereHas('project', fn (Builder $project) => $project->notArchived())
-            ->when(! $agency, fn (Builder $query) => $query->whereIn('department_id', $departmentIds))
-            ->where(fn (Builder $near) => $near
-                ->where('status', HourBankStatus::Exhausted->value)
-                ->orWhereRaw('(consumed_minutes - overage_minutes) * 100 >= ? * total_minutes', [$threshold]))
-            ->with(['project' => fn ($project) => $project->select(['id', 'code', 'name'])])
-            ->get(['id', 'project_id', 'name', 'total_minutes', 'consumed_minutes', 'overage_minutes', 'status'])
-            ->sortByDesc(fn (HourBank $bank): float => $bank->consumed_pct)
-            ->values()
-            ->map(fn (HourBank $bank): array => [
-                'id' => $bank->id,
-                'project_id' => $bank->project_id,
-                'name' => $bank->project->code.' · '.$bank->name,
-                'consumed_pct' => $bank->consumed_pct,
-                'remaining_minutes' => $bank->remaining_minutes,
-                'overage_minutes' => $bank->overage_minutes,
-            ])
-            ->all());
-    }
-
-    /**
-     * Tareas abiertas con la fecha límite pasada (antes de hoy), de proyectos no archivados: las del
-     * equipo o, para un admin, todas. Las más antiguas primero.
-     *
-     * @param  list<int>  $teamIds
-     * @return array{0: list<array{id: int, title: string, project: string, assignee: string|null, due_date: string}>, 1: int}
-     */
-    private function overdueTasks(bool $agency, array $teamIds, CarbonImmutable $today): array
-    {
-        if (! $agency && $teamIds === []) {
-            return [[], 0];
-        }
-
-        $query = Task::query()
-            ->open()
-            ->whereNotNull('due_date')
-            ->where('due_date', '<', $today->toDateString())
-            ->whereHas('project', fn (Builder $project) => $project->notArchived())
-            ->when(! $agency, fn (Builder $tasks) => $tasks->whereIn('assignee_user_id', $teamIds));
-
-        $count = (clone $query)->count();
-
-        $items = $query
-            ->with([
-                'project' => fn ($project) => $project->select(['id', 'code']),
-                'assignee' => fn ($assignee) => $assignee->select(['id', 'name']),
-            ])
-            ->orderBy('due_date')
-            ->orderBy('id')
-            ->limit(self::MAX_ITEMS)
-            ->get(['id', 'title', 'project_id', 'assignee_user_id', 'due_date'])
-            ->map(fn (Task $task): array => [
-                'id' => $task->id,
-                'title' => $task->title,
-                'project' => $task->project->code,
-                'assignee' => $task->assignee?->name,
-                'due_date' => (string) $task->due_date?->toDateString(),
-            ])
-            ->all();
-
-        return [array_values($items), $count];
     }
 }

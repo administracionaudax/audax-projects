@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Domain\Reports\Dimension;
+use App\Domain\Reports\EntryValuation;
+use App\Domain\Reports\Export\KeysetPages;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportPeriod;
 use App\Domain\Reports\ReportScope;
-use App\Domain\Reports\RevenueCalculator;
-use App\Domain\Time\RateResolver;
-use App\Enums\BillingType;
+use App\Domain\Reports\RunningCents;
+use App\Domain\Reports\Valuation;
 use App\Enums\TimeEntryStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
@@ -18,8 +20,10 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Generator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use stdClass;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -31,15 +35,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *
  * Columnas: fecha, persona, cliente, proyecto, bolsa, tarea, tipo, horas, dentro de bolsa, exceso,
  * facturable, estado y descripción. Con view-financials, además la tarifa, las instantáneas de
- * tarifa y coste y los importes de cada entrada (RevenueCalculator::perEntry, D-043).
- * En streaming y por bloques: hasta TableExporter::MAX_ROWS filas; si hay más, la última avisa.
+ * tarifa y coste y los importes de cada entrada (EntryValuation, D-043): su parte exacta del total
+ * con los céntimos repartidos en orden (RunningCents), así que la suma de la columna es el ingreso
+ * (y el coste) del informe con los mismos filtros, con los mismos céntimos (INT-04).
+ * En streaming, con filas planas (los nombres por LEFT JOIN, sin hidratar modelos) y por bloques
+ * con paginación por clave (KeysetPages: una escritura entre bloques no duplica ni pierde filas):
+ * hasta TableExporter::MAX_ROWS filas; si hay más, la última avisa (PERF-03, PERF-06).
  */
 class HoursExportController extends Controller
 {
     use BuildsReportScope;
 
-    /** Entradas por bloque (una consulta de entradas y, con importes, una valoración por bloque). */
-    public const int CHUNK = 500;
+    /** Entradas por bloque (una consulta por bloque; la valoración se prepara una vez). */
+    public const int CHUNK = 1000;
 
     /** Límites de fecha de la pestaña Horas sin «desde» o «hasta»: todas sus entradas. */
     public const string OPEN_FROM = '2000-01-01';
@@ -53,8 +61,6 @@ class HoursExportController extends Controller
      */
     public function __construct(
         private readonly TableExporter $exporter,
-        private readonly RevenueCalculator $revenue,
-        private readonly RateResolver $rates,
         private readonly int $maxRows = TableExporter::MAX_ROWS,
         private readonly int $chunkSize = self::CHUNK,
     ) {}
@@ -133,113 +139,102 @@ class HoursExportController extends Controller
     }
 
     /**
-     * Filas por bloques (sin cargar todas las entradas a la vez), en orden de fecha.
+     * Filas por bloques (sin cargar todas las entradas a la vez), en orden de fecha e id.
      *
      * @param  Builder<TimeEntry>  $entries
      * @return Generator<int, array<int, string|int|float|bool|null>>
      */
     private function rows(Builder $entries, bool $financials): Generator
     {
-        $query = (clone $entries)
-            ->select('time_entries.*')
-            ->with([
-                'user:id,name,default_hourly_rate',
-                'project' => fn ($project) => $project->select(['id', 'code', 'name', 'client_id', 'billing_type', 'hourly_rate']),
-                'project.client' => fn ($client) => $client->withTrashed()->select(['id', 'name', 'default_hourly_rate']),
-                'hourBank' => fn ($bank) => $bank->select(['id', 'name', 'hourly_rate']),
-                'task' => fn ($task) => $task->select(['id', 'title', 'task_type_id']),
-                'task.type' => fn ($type) => $type->select(['id', 'name']),
-            ])
-            ->orderBy('time_entries.date')
-            ->orderBy('time_entries.id');
-
+        $valuation = $financials ? EntryValuation::for($entries) : null;
+        $income = new RunningCents;
+        $cost = new RunningCents;
+        /** @var array<string, string> $statuses textos de estado, traducidos una vez */
+        $statuses = [];
         $written = 0;
         $limit = min($this->maxRows, TableExporter::MAX_ROWS) - 1;
 
-        for ($page = 1; ; $page++) {
-            $chunk = (clone $query)->forPage($page, $this->chunkSize)->get();
+        foreach (KeysetPages::byDateAndId(self::flat($entries), $this->chunkSize) as $row) {
+            if ($written === $limit) {
+                // La última fila avisa de que hay más (mejor que cortar en silencio una exportación para facturar).
+                yield [self::text('reports.r3.hours.truncated', ['count' => $limit])];
 
-            if ($chunk->isEmpty()) {
                 return;
             }
 
-            $amounts = [];
-            if ($financials) {
-                foreach ($this->revenue->perEntry((clone $entries)->whereIn('time_entries.id', $chunk->modelKeys())) as $id => $amount) {
-                    $amounts[(int) $id] = $amount;
-                }
-            }
+            $written++;
+            $status = (string) $row->status;
 
-            foreach ($chunk as $entry) {
-                if ($written === $limit) {
-                    // La última fila avisa de que hay más (mejor que cortar en silencio una exportación para facturar).
-                    yield [self::text('reports.r3.hours.truncated', ['count' => $limit])];
-
-                    return;
-                }
-
-                $written++;
-
-                yield $this->row($entry, $financials, $amounts[$entry->id] ?? null);
-            }
-
-            if ($chunk->count() < $this->chunkSize) {
-                return;
-            }
+            yield $this->row($row, $statuses[$status] ??= TimeEntryStatus::from($status)->label(), $valuation, $income, $cost);
         }
     }
 
     /**
-     * @param  array{income: string, cost: string, billable_minutes: int}|null  $amounts
+     * Las columnas de cada entrada y los nombres de su persona, cliente, proyecto, bolsa, tarea y
+     * tipo por LEFT JOIN (también los borrados: sus horas siguen), sin hidratar modelos.
+     *
+     * @param  Builder<TimeEntry>  $entries
+     */
+    private static function flat(Builder $entries): QueryBuilder
+    {
+        $query = clone $entries;
+        foreach (['users', 'projects', 'hour_banks', 'tasks'] as $table) {
+            Dimension::ensureJoin($query, $table);
+        }
+
+        return $query->toBase()
+            ->leftJoin('clients as report_clients', 'report_clients.id', '=', 'report_projects.client_id')
+            ->leftJoin('task_types as report_task_types', 'report_task_types.id', '=', 'report_tasks.task_type_id')
+            ->select(['time_entries.id', 'time_entries.date', 'time_entries.user_id', 'time_entries.project_id', 'time_entries.hour_bank_id',
+                'time_entries.minutes', 'time_entries.overage_minutes', 'time_entries.is_billable', 'time_entries.status',
+                'time_entries.description', 'time_entries.hourly_rate_snapshot', 'time_entries.hourly_cost_snapshot',
+                'report_users.name as person_name', 'report_clients.name as client_name', 'report_projects.code as project_code',
+                'report_projects.name as project_name', 'report_hour_banks.name as bank_name', 'report_tasks.title as task_title',
+                'report_task_types.name as type_name']);
+    }
+
+    /**
      * @return array<int, string|int|float|bool|null>
      */
-    private function row(TimeEntry $entry, bool $financials, ?array $amounts): array
+    private function row(stdClass $entry, string $status, ?EntryValuation $valuation, RunningCents $income, RunningCents $cost): array
     {
-        $project = $entry->project;
-        $bank = $entry->hourBank;
-        $inBank = $bank !== null;
+        $minutes = (int) $entry->minutes;
+        $overage = (int) $entry->overage_minutes;
+        $billable = (bool) $entry->is_billable;
+        $bankId = $entry->hour_bank_id === null ? null : (int) $entry->hour_bank_id;
+        $inBank = $bankId !== null;
 
         $row = [
-            $entry->date->toDateString(),
-            $entry->user->name,
-            $project->client !== null ? $project->client->name : null,
-            $project->code.' · '.$project->name,
-            $bank?->name,
-            $entry->task->title,
-            $entry->task->type?->name,
-            TableExporter::hours($entry->minutes),
-            $inBank ? TableExporter::hours($entry->minutes - $entry->overage_minutes) : null,
-            $inBank ? TableExporter::hours($entry->overage_minutes) : null,
-            $entry->is_billable,
-            $entry->status->label(),
-            $entry->description,
+            substr((string) $entry->date, 0, 10),
+            (string) $entry->person_name,
+            $entry->client_name === null ? null : (string) $entry->client_name,
+            $entry->project_code.' · '.$entry->project_name,
+            $inBank ? (string) $entry->bank_name : null,
+            (string) $entry->task_title,
+            $entry->type_name === null ? null : (string) $entry->type_name,
+            TableExporter::hours($minutes),
+            $inBank ? TableExporter::hours($minutes - $overage) : null,
+            $inBank ? TableExporter::hours($overage) : null,
+            $billable,
+            $status,
+            (string) $entry->description,
         ];
 
-        if ($financials) {
-            $row[] = TableExporter::money($this->rate($entry));
-            $row[] = TableExporter::money($entry->hourly_rate_snapshot);
-            $row[] = TableExporter::money($entry->hourly_cost_snapshot);
-            $row[] = TableExporter::money($amounts['income'] ?? '0.00');
-            $row[] = TableExporter::money($amounts['cost'] ?? '0.00');
+        if ($valuation !== null) {
+            // La tarifa de D-043: la instantánea si está aprobada o bloqueada (también la del exceso
+            // de una bolsa con precio); si no, la vigente. Sin tarifa si no es facturable ni en
+            // proyectos internos o de precio cerrado (su ingreso es el reparto del importe).
+            $valued = $valuation->next((int) $entry->project_id, $bankId, (int) $entry->user_id, $billable, $minutes, $overage,
+                $entry->hourly_rate_snapshot, $entry->hourly_cost_snapshot);
+
+            $row[] = TableExporter::money($valued['rate']);
+            $row[] = TableExporter::money(Valuation::snapshot($entry->hourly_rate_snapshot));
+            $row[] = TableExporter::money(Valuation::snapshot($entry->hourly_cost_snapshot));
+            $row[] = TableExporter::money($income->next($valued['income']));
+            $row[] = TableExporter::money($cost->next($valued['cost']));
         }
 
         return $row;
-    }
-
-    /**
-     * Tarifa por hora de la entrada (D-043): la instantánea si está aprobada o bloqueada; si no, la
-     * vigente (bolsa > proyecto > cliente > persona). Sin tarifa si no es facturable, si el proyecto es
-     * interno o de precio cerrado (su ingreso es el reparto del importe).
-     */
-    private function rate(TimeEntry $entry): ?string
-    {
-        $project = $entry->project;
-
-        if (! $entry->is_billable || in_array($project->billing_type, [BillingType::Internal, BillingType::FixedPrice], true)) {
-            return null;
-        }
-
-        return $entry->hourly_rate_snapshot ?? $this->rates->rate($entry->hourBank, $project, $project->client, $entry->user);
     }
 
     private function format(Request $request): string

@@ -71,12 +71,15 @@ export function ReportFilterBar({
     filters,
     show = ALL_FILTERS,
     url,
+    compare = true,
 }: {
     filters: ReportFiltersProps;
     /** Filtros visibles (los dashboards fijos ocultan el suyo, p. ej. «cliente» en la ficha de cliente). */
     show?: ReportFilterKey[];
     /** URL de la página (sin query); por defecto, la actual. */
     url?: string;
+    /** Interruptor «Comparar con el periodo anterior»: solo en las páginas que comparan (no en Facturación). */
+    compare?: boolean;
 }) {
     const id = useId();
     const [options, setOptions] = useState<ReportOptions | null>(null);
@@ -270,21 +273,23 @@ export function ReportFilterBar({
                     })}
                 </p>
 
-                <div className="ml-auto flex items-center gap-2 self-center">
-                    <Switch
-                        id={`${id}-compare`}
-                        checked={filters.compare}
-                        onCheckedChange={(checked) =>
-                            update({ comparar: checked ? '1' : undefined })
-                        }
-                    />
-                    <Label htmlFor={`${id}-compare`}>
-                        {t('reports.filters.compare')}
-                    </Label>
-                </div>
+                {compare ? (
+                    <div className="ml-auto flex items-center gap-2 self-center">
+                        <Switch
+                            id={`${id}-compare`}
+                            checked={filters.compare}
+                            onCheckedChange={(checked) =>
+                                update({ comparar: checked ? '1' : undefined })
+                            }
+                        />
+                        <Label htmlFor={`${id}-compare`}>
+                            {t('reports.filters.compare')}
+                        </Label>
+                    </div>
+                ) : null}
             </div>
 
-            {filters.comparison ? (
+            {compare && filters.comparison ? (
                 <p className="text-xs text-muted-foreground">
                     {t('reports.filters.comparison_summary', {
                         from: formatDate(filters.comparison.from),

@@ -49,3 +49,16 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 | 27/09 ~01:55 | Redespliegue con el test corregido (`desplegar-dev.sh --sin-build --tests`) | Cierre de la Fase 1 | **1359/1359 tests en PostgreSQL 18.** `/health` ok | Volver a desplegar el commit anterior |
 | 27/09 02:05 | Prueba de subida de 50 MB **desde el Mac** (`curl -F files[]=@…` de 1 MB y de 50 MB contra `/tareas/1/adjuntos` sin sesión) | Plan de la Fase 1: comprobar que nginx, ModSecurity, Apache y PHP admiten adjuntos de 50 MB | Las dos llegan a Laravel (419 por falta de token CSRF, no 413 del proxy ni de PHP): los límites del dominio bastan y **no hace falta tocar nada**. 50 MB tardan unos 70 s con la subida de la oficina | No aplica (nada guardado) |
 | 27/09 02:13 | Despliegue de la corrección de aislamiento (`desplegar-dev.sh --sin-build`): `active`, `internal` y `portal` se ejecutan antes que la búsqueda de modelos de la URL | Un cliente distinguía un id existente (redirección) de uno inexistente (404) | `/proyectos/999999` sin sesión → 302 a `/login`; `/health` ok. **35/35 webs iguales** | Volver a desplegar el commit anterior |
+
+### Fase 2 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 27/09 17:33–17:58 | Despliegue de la Fase 2 integrada y corregida (`scripts/desplegar-dev.sh --tests` desde `fase-2`, 89a4664, usuario `audaxprojects`, sin root): informes, exportaciones, PDF de bolsa y caché de informes; `composer install` por las dependencias nuevas; sin migraciones | Cierre de la Fase 2 | **1717/1717 tests en PostgreSQL 18** (incluidos los de rendimiento de los dashboards, < 1 s). `/login` 200 y `/health` ok. Batería V (T0 17:32:52): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. **35/35 webs iguales** | Volver a desplegar `fase-1-cerrada` |
+
+### Fase 3 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 02/10 20:35–21:22 | Despliegue de la Fase 3 (`scripts/desplegar-dev.sh --tests` desde `fase-3`, usuario `audaxprojects`, sin root): festivos, ausencias, capacidad real y vista Carga; migraciones `holidays` y `absences`. Los tests se cortaron a los 20 min (límite del script) y se repitieron con `heavy.sh timeout 45m` | Cierre de la Fase 3 | Migraciones correctas. **1996/1996 tests en PostgreSQL 18** (21 min). `/login` 200 y `/health` ok. Batería V (T0 20:35:24): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. Webs: **33/35 iguales**; las 2 distintas (`beevo.endesarrollo.pro` y `staging.vitatrendy.com`) están **suspendidas en Plesk** (por el administrador y por el cliente, respectivamente) y sirven el certificado genérico del servidor: ajeno a la app, no se toca | Volver a desplegar `fase-2-cerrada` y `migrate:rollback --step=2` |
+

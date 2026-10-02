@@ -11,6 +11,7 @@ use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -146,7 +147,7 @@ it('muestra el estado vacío, no una tabla de ceros, si la medida no tiene horas
     // La exportación, igual: solo la cabecera y la fila de totales.
     $rows = ($this->readXlsx)($this->actingAs($s->admin)->get(($this->url)([...$query, 'formato' => 'xlsx']))->assertOk()->streamedContent());
 
-    expect($rows)->toBe([['Persona / Semana (horas)', 'Total'], ['Total', 0]]);
+    expect($rows)->toBe([['Persona / Semana (horas)', 'Total', 'Total (minutos)'], ['Total', 0, 0], ['Total (minutos)', '', 0]]);
 })->with([
     'exceso en un proyecto sin bolsa' => ['exceso', 'tm'],
     'dentro de bolsa en un proyecto sin bolsa' => ['dentro', 'tm'],
@@ -224,7 +225,58 @@ it('nombra cada tarea con el código de su proyecto (muchas se llaman igual), en
         ->get(($this->url)(['filas' => 'persona', 'columnas' => 'tarea', 'departamento' => [$s->design->id], 'formato' => 'xlsx']))
         ->streamedContent());
 
-    expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total']);
+    expect($rows[0])->toBe(['Persona / Tarea (horas)', 'BOL · Soporte', 'TM · Maquetación', 'FIX · Maquetación', 'INT · Reunión', 'Total', 'Total (minutos)']);
+});
+
+it('las horas de una subtarea suman en su tarea padre (SPEC §6), en la página y en la exportación (BIZ-04)', function () {
+    $s = $this->s;
+    // Subtarea de «Maquetación» (TM) con 45 min de Ana, y otra borrada con 15: siguen sumando en el padre.
+    $subtask = Task::factory()->create(['project_id' => $s->tm->id, 'parent_task_id' => $s->tmTask->id, 'title' => 'Versión móvil']);
+    $deleted = Task::factory()->create(['project_id' => $s->tm->id, 'parent_task_id' => $s->tmTask->id, 'title' => 'Borrador']);
+    TimeEntry::factory()->forTask($subtask)->on('2026-09-24')->minutes(45)->create(['user_id' => $s->ana->id]);
+    TimeEntry::factory()->forTask($deleted)->on('2026-09-24')->minutes(15)->create(['user_id' => $s->ana->id]);
+    $deleted->delete();
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pivot.rows.1', ['key' => (string) $s->tmTask->id, 'name' => 'TM · Maquetación'])
+            // 420 de la tarea + 45 + 15 de sus subtareas; ninguna subtarea sale como fila.
+            ->where('pivot.row_totals.'.$s->tmTask->id, 480)
+            ->where('pivot.cells.'.$s->tmTask->id.'.'.$s->ana->id, 480)
+            ->missing('pivot.row_totals.'.$subtask->id)
+            ->missing('pivot.row_totals.'.$deleted->id)
+            ->where('pivot.total', 1480));
+
+    $rows = ($this->readXlsx)($this->actingAs($s->admin)
+        ->get(($this->url)(['filas' => 'tarea', 'columnas' => 'persona', 'departamento' => [$s->design->id], 'formato' => 'xlsx']))
+        ->streamedContent());
+
+    expect(array_column($rows, 0))->toContain('TM · Maquetación')
+        ->and(array_column($rows, 0))->not->toContain('TM · Versión móvil');
+});
+
+it('la dimensión tarea agrupa por la tarea padre con la misma expresión en SQLite y en PostgreSQL', function () {
+    $expected = 'COALESCE(report_tasks.parent_task_id, time_entries.task_id)';
+
+    expect(Dimension::Task->expression())->toBe($expected);
+
+    if (DB::connection()->getDriverName() === 'pgsql') {
+        return; // En la CI y el servidor, los tests ya corren en PostgreSQL.
+    }
+
+    // En SQLite, con una conexión de PostgreSQL por defecto (sin conectar: el PDO se abre al
+    // consultar), la misma expresión.
+    $default = config('database.default');
+    config(['database.default' => 'pgsql']);
+
+    try {
+        expect(DB::connection()->getDriverName())->toBe('pgsql')
+            ->and(Dimension::Task->expression())->toBe($expected);
+    } finally {
+        config(['database.default' => $default]);
+        DB::purge('pgsql');
+    }
 });
 
 it('con semanas en las filas, van en orden de fecha (en la página y en la exportación)', function () {
@@ -328,16 +380,52 @@ it('ignora las elecciones no válidas y nunca repite la dimensión de filas en c
         ->assertInertia(fn (Assert $page) => $page->where('layout', ['filas' => 'proyecto', 'columnas' => 'semana', 'medida' => 'imputadas']));
 });
 
-it('compara con el periodo anterior', function () {
+it('compara con el periodo anterior al mismo punto (D-079): la semana en curso, con los mismos días de la anterior', function () {
     $s = $this->s;
     TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-15')->minutes(90)->create(['user_id' => $s->ana->id]);
+    // El sábado 19 queda fuera del tramo comparado: hoy es viernes 25, el 5.º día de la semana.
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-19')->minutes(45)->create(['user_id' => $s->ana->id]);
 
     $this->actingAs($s->admin)
         ->get(($this->url)(['comparar' => '1', 'departamento' => [$s->design->id]]))
         ->assertInertia(fn (Assert $page) => $page
             ->where('summary.logged_minutes', 1420)
             ->where('comparison.logged_minutes', 90)
+            ->where('comparison.billable_minutes', 90)
+            ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-18']));
+});
+
+it('compara un periodo cerrado con el anterior entero', function () {
+    $s = $this->s;
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-15')->minutes(90)->create(['user_id' => $s->ana->id]);
+    TimeEntry::factory()->forTask($s->tmTask)->on('2026-09-19')->minutes(45)->create(['user_id' => $s->ana->id]);
+    $this->travelTo(CarbonImmutable::parse('2026-09-29 10:00', 'Europe/Madrid'));
+
+    $this->actingAs($s->admin)
+        ->get(($this->url)(['comparar' => '1', 'departamento' => [$s->design->id]]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('summary.logged_minutes', 1420)
+            ->where('comparison.logged_minutes', 135)
             ->where('filters.comparison', ['from' => '2026-09-14', 'to' => '2026-09-20']));
+});
+
+it('solo exporta con formato=xlsx o csv: un formato en lista o desconocido muestra la página (SEC-01)', function () {
+    $admin = $this->s->admin;
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => ['x']]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('reports/detail'));
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => 'cualquiercosa']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('reports/detail'));
+
+    $this->actingAs($admin)
+        ->get(($this->url)(['formato' => 'csv']))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
 });
 
 it('no manda datos económicos: solo horas', function () {
@@ -373,17 +461,21 @@ it('exporta la tabla tal cual a XLSX, con subtotales y la fila de totales', func
 
     $rows = ($this->readXlsx)($response->streamedContent());
 
-    expect($rows[0])->toBe(['Persona / Proyecto (horas)', 'BOL · Bolsa', 'TM · Por horas', 'FIX · Precio cerrado', 'INT · Interno', 'Total'])
+    expect($rows[0])->toBe(['Persona / Proyecto (horas)', 'BOL · Bolsa', 'TM · Por horas', 'FIX · Precio cerrado', 'INT · Interno', 'Total', 'Total (minutos)'])
         ->and($rows[1][0])->toBe('Luis')
         ->and($rows[1][1])->toBe(11.67)
         ->and($rows[1][4])->toBe(1)
         ->and($rows[1][5])->toBe(12.67)
+        ->and($rows[1][6])->toBe(760)
         ->and($rows[2][0])->toBe('Ana')
         ->and($rows[2][2])->toBe(7)
         ->and($rows[2][3])->toBe(4)
         ->and($rows[2][5])->toBe(11)
-        ->and($rows[3])->toBe(['Total', 11.67, 7, 4, 1, 23.67])
-        ->and($rows)->toHaveCount(4);
+        ->and($rows[2][6])->toBe(660)
+        // 11,67 + 7 + 4 + 1 = 23,67 en horas; en minutos, la suma exacta (D-081).
+        ->and($rows[3])->toBe(['Total', 11.67, 7, 4, 1, 23.67, 1420])
+        ->and($rows[4])->toBe(['Total (minutos)', 700, 420, 240, 60, '', 1420])
+        ->and($rows)->toHaveCount(5);
 });
 
 it('exporta a CSV con las semanas por su lunes y lo que ve cada uno', function () {

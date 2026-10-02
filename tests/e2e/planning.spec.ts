@@ -136,11 +136,15 @@ test('mover una tarea en el calendario (teclado y arrastre) y verla en la lista 
         calendar
             .getByRole('button', { name: new RegExp(`^${title}\\.`) })
             .first();
+    // La tarjeta de la tarea en un día. Por su nombre («título. estado…»), nunca su franja del
+    // inicio a la entrega (««título», del … al …»), que en el mes puede empezar en la misma celda.
+    const chipOn = (date: string) =>
+        calendar
+            .locator(`[data-date="${date}"]`)
+            .getByRole('button', { name: new RegExp(`^${title}\\.`) });
 
     await test.step('con el teclado: flechas y Enter', async () => {
-        await expect(
-            calendar.locator(`[data-date="${due}"]`).getByText(title),
-        ).toBeVisible();
+        await expect(chipOn(due)).toBeVisible();
         await chip().focus();
         await page.keyboard.press('ArrowRight');
         await page.keyboard.press('ArrowRight');
@@ -149,9 +153,7 @@ test('mover una tarea en el calendario (teclado y arrastre) y verla en la lista 
         ).toHaveText(es(`${month}-12`));
         await page.keyboard.press('Enter');
 
-        await expect(
-            calendar.locator(`[data-date="${month}-12"]`).getByText(title),
-        ).toBeVisible();
+        await expect(chipOn(`${month}-12`)).toBeVisible();
         // Un cambio de día a la vez: la tarea queda bloqueada hasta que se guarda el anterior.
         await page.waitForLoadState('networkidle');
     });
@@ -176,9 +178,7 @@ test('mover una tarea en el calendario (teclado y arrastre) y verla en la lista 
         );
         await page.mouse.up();
 
-        await expect(
-            calendar.locator(`[data-date="${month}-15"]`).getByText(title),
-        ).toBeVisible();
+        await expect(chipOn(`${month}-15`)).toBeVisible();
     });
 
     await test.step('la lista enseña las fechas nuevas (la duración se conserva)', async () => {

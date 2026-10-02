@@ -102,6 +102,25 @@ it('reprogramar sin confirmar no mueve las sucesoras; confirmando, sí', functio
         ->and($b->fresh()->due_date->toDateString())->toBe('2026-10-15');
 });
 
+it('adelantar una tarea con un conflicto previo no propone ni desplaza nada, aunque se confirme', function () {
+    $a = ($this->make)('A', '2026-10-05', '2026-10-10');
+    $b = ($this->make)('B', '2026-10-08', '2026-10-09');
+    TaskDependency::query()->create(['predecessor_task_id' => $a->id, 'successor_task_id' => $b->id]);
+
+    $this->actingAs($this->member)
+        ->postJson("/tareas/{$a->id}/reprogramar/propuesta", ['start_date' => '2026-10-04', 'due_date' => '2026-10-09'])
+        ->assertOk()
+        ->assertExactJson(['proposals' => []]);
+
+    $this->actingAs($this->member)
+        ->post("/tareas/{$a->id}/reprogramar", ['start_date' => '2026-10-04', 'due_date' => '2026-10-09', 'shift_successors' => true])
+        ->assertSessionHasNoErrors();
+
+    expect($a->fresh()->due_date->toDateString())->toBe('2026-10-09')
+        ->and($b->fresh()->start_date->toDateString())->toBe('2026-10-08')
+        ->and($b->fresh()->due_date->toDateString())->toBe('2026-10-09');
+});
+
 it('valida las fechas y exige poder editar la tarea', function () {
     $a = ($this->make)('A', '2026-10-05', '2026-10-07');
 

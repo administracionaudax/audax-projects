@@ -353,13 +353,14 @@ describe('departamento', function () {
                 ->where('members.0', [
                     'id' => $this->luis->id, 'name' => 'Luis', 'is_active' => true,
                     'capacity_minutes' => 1200, 'capacity_to_date_minutes' => 960, 'logged_minutes' => 760, 'billable_minutes' => 700,
-                    'occupancy' => 0.6333, 'billability' => 0.9211, 'billable_productivity' => 0.5833,
+                    // Semana en curso (D-080): el ritmo, 760 / 960 hasta ayer, da el nivel.
+                    'occupancy' => 0.6333, 'pace' => 0.7917, 'billability' => 0.9211, 'billable_productivity' => 0.5833,
                     'income' => '1116.67', 'cost' => '380.00', 'margin' => '736.67',
                 ])
                 ->where('members.1', [
                     'id' => $this->ana->id, 'name' => 'Ana', 'is_active' => true,
                     'capacity_minutes' => 2400, 'capacity_to_date_minutes' => 1920, 'logged_minutes' => 660, 'billable_minutes' => 660,
-                    'occupancy' => 0.275, 'billability' => 1, 'billable_productivity' => 0.275,
+                    'occupancy' => 0.275, 'pace' => 0.3438, 'billability' => 1, 'billable_productivity' => 0.275,
                     'income' => '995.00', 'cost' => '220.00', 'margin' => '775.00',
                 ])
                 ->where('clients.rows.1.name', 'Cliente por horas')
@@ -598,12 +599,15 @@ describe('periodo en curso', function () {
                 ->where('members.0', [
                     'id' => $this->eva->id, 'name' => 'Eva', 'is_active' => true,
                     'capacity_minutes' => 10560, 'capacity_to_date_minutes' => 3360, 'logged_minutes' => 3840, 'billable_minutes' => 3840,
-                    'occupancy' => 0.3636, 'billability' => 1, 'billable_productivity' => 0.3636,
+                    // D-080: la ocupación del SPEC (36 %, «baja» contra el mes entero) y el ritmo que
+                    // da el nivel: 3840 / 3360 hasta ayer = 114 %, «alta».
+                    'occupancy' => 0.3636, 'pace' => 1.1429, 'billability' => 1, 'billable_productivity' => 0.3636,
                     'income' => '3840.00', 'cost' => '1280.00', 'margin' => '2560.00',
                 ])
                 ->where('members.1.capacity_minutes', 5280)
                 ->where('members.1.capacity_to_date_minutes', 1680)
                 ->where('members.1.occupancy', 0.1818)
+                ->where('members.1.pace', 0.5714)
                 ->where('members.1.billable_productivity', 0.1818));
     });
 
@@ -674,7 +678,10 @@ describe('periodo en curso', function () {
             ->assertInertia(fn (Assert $page) => $page
                 ->where('summary.capacity_to_date_minutes', 0)
                 ->where('members.0.capacity_to_date_minutes', 0)
-                ->where('members.1.capacity_to_date_minutes', 0));
+                ->where('members.1.capacity_to_date_minutes', 0)
+                // Sin capacidad transcurrida no hay ritmo: sin nivel («aún sin datos», D-080).
+                ->where('members.0.pace', null)
+                ->where('members.1.pace', null));
     });
 
     it('exporta la capacidad hasta ayer de cada miembro y deja vacía la ocupación de los días que no han llegado', function () {
@@ -682,9 +689,9 @@ describe('periodo en curso', function () {
             ->get("/informes/departamentos/{$this->production->id}".($this->month)(['formato' => 'csv']))
             ->assertOk()->streamedContent());
 
-        expect($members[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
-            ->and($members[1])->toBe(['Eva', '176,00', '56,00', '64,00', '64,00', '36,40', '100,00', '36,40', '3840,00', '1280,00', '2560,00'])
-            ->and($members[2])->toBe(['Leo', '88,00', '28,00', '16,00', '16,00', '18,20', '100,00', '18,20', '960,00', '480,00', '480,00']);
+        expect($members[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Ritmo (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and($members[1])->toBe(['Eva', '176,00', '56,00', '64,00', '64,00', '36,40', '114,30', '100,00', '36,40', '3840,00', '1280,00', '2560,00'])
+            ->and($members[2])->toBe(['Leo', '88,00', '28,00', '16,00', '16,00', '18,20', '57,10', '100,00', '18,20', '960,00', '480,00', '480,00']);
 
         $days = collect(($this->csv)($this->actingAs($this->eva)
             ->get("/informes/personas/{$this->eva->id}".($this->month)(['formato' => 'csv']))
@@ -745,22 +752,82 @@ describe('exportaciones', function () {
             ->and($rows[4])->toBe(['Interno (sin cliente)', '1,00', '0,00', '4,20', '0,00']);
     });
 
+    it('exporta enteras las bolsas en riesgo y las tareas vencidas de dirección (BIZ-05)', function () {
+        $task = fn (array $attributes) => Task::factory()->create(['project_id' => $this->tm->id, ...$attributes]);
+        $task(['title' => 'De Ana', 'assignee_user_id' => $this->ana->id, 'due_date' => '2026-09-20']);
+        $task(['title' => 'Sin asignar', 'assignee_user_id' => null, 'due_date' => '2026-09-01']);
+        $task(['title' => 'Hito vencido', 'assignee_user_id' => $this->luis->id, 'due_date' => '2026-09-24', 'is_milestone' => true, 'estimated_minutes' => null]);
+
+        $banks = ($this->csv)($this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'bolsas-en-riesgo']))
+            ->assertOk()->streamedContent());
+
+        // La bolsa del escenario: 600 contratadas, 700 consumidas (600 dentro y 100 de exceso), agotada.
+        expect($banks[0])->toBe(['Bolsa', 'Proyecto', 'Cliente', 'Estado', 'Horas contratadas', 'Horas dentro de la bolsa', 'Horas en exceso', 'Horas comprometidas', 'Consumo dentro de la bolsa (%)'])
+            ->and($banks[1])->toBe([$this->bank->name, ($this->projectName)($this->bank->project), $this->bank->project->client->name, 'Agotada', '10,00', '10,00', '1,67', '0,00', '100,00'])
+            ->and($banks)->toHaveCount(2);
+
+        $overdue = ($this->csv)($this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'tareas-vencidas']))
+            ->assertOk()->streamedContent());
+
+        expect($overdue[0])->toBe(['Tarea', 'Proyecto', 'Responsable', 'Fecha límite', 'Días de retraso', 'Hito'])
+            ->and($overdue[1])->toBe(['Sin asignar', ($this->projectName)($this->tm), 'Sin asignar', '2026-09-01', '24', 'No'])
+            ->and($overdue[2])->toBe(['De Ana', ($this->projectName)($this->tm), 'Ana', '2026-09-20', '5', 'No'])
+            ->and($overdue[3])->toBe(['Hito vencido', ($this->projectName)($this->tm), 'Luis', '2026-09-24', '1', 'Sí'])
+            ->and($overdue)->toHaveCount(4);
+
+        // Un responsable, solo lo de su alcance (D-044): las de su equipo.
+        $head = ($this->csv)($this->actingAs($this->head)
+            ->get('/informes/direccion'.($this->week)(['formato' => 'csv', 'tabla' => 'tareas-vencidas']))
+            ->streamedContent());
+        expect(array_column(array_slice($head, 1), 0))->toBe(['De Ana', 'Hito vencido']);
+    });
+
+    it('exporta el reparto por cliente del departamento (BIZ-05)', function () {
+        $rows = ($this->csv)($this->actingAs($this->admin)
+            ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv', 'tabla' => 'clientes']))
+            ->assertOk()->streamedContent());
+
+        expect($rows[0])->toBe(['Cliente', 'Horas imputadas', 'Horas facturables', '% del total', 'Facturabilidad (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and(array_column(array_slice($rows, 1), 0))->toContain('Cliente por horas', 'Interno (sin cliente)')
+            ->and(collect($rows)->firstWhere(0, 'Cliente por horas'))->toBe(['Cliente por horas', '7,00', '7,00', '29,60', '100,00', '395,00', '140,00', '255,00']);
+    });
+
+    it('exporta los repartos de la persona y sus días sin imputar (BIZ-05)', function () {
+        $url = fn (string $table): string => "/informes/personas/{$this->ana->id}".($this->week)(['formato' => 'csv', 'tabla' => $table]);
+
+        $clients = ($this->csv)($this->actingAs($this->ana)->get($url('clientes'))->assertOk()->streamedContent());
+        expect($clients[0])->toBe(['Cliente', 'Horas imputadas', 'Horas facturables', '% del total', 'Facturabilidad (%)'])
+            ->and(collect($clients)->firstWhere(0, 'Cliente por horas'))->toBe(['Cliente por horas', '7,00', '7,00', '63,60', '100,00']);
+
+        $projects = ($this->csv)($this->actingAs($this->ana)->get($url('proyectos'))->streamedContent());
+        expect($projects[0][0])->toBe('Proyecto')->and($projects)->toHaveCount(3);
+
+        $types = ($this->csv)($this->actingAs($this->ana)->get($url('tipos'))->streamedContent());
+        expect($types[0][0])->toBe('Tipo de tarea')->and($types[1][0])->toBe('Sin tipo');
+
+        // Ana imputa el 22, el 23 y el 24: el lunes 21 queda sin imputar (hasta ayer, jueves 24).
+        $unlogged = ($this->csv)($this->actingAs($this->ana)->get($url('dias-sin-imputar'))->assertOk()->streamedContent());
+        expect($unlogged)->toBe([['Fecha', 'Día', 'Jornada (h)'], ['21/09/2026', 'lunes', '8,00']]);
+    });
+
     it('exporta la tabla de miembros del departamento', function () {
         $admin = ($this->csv)($this->actingAs($this->admin)
             ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))
             ->assertOk()->streamedContent());
 
-        // La semana sigue en curso (hoy es viernes): lleva también la capacidad hasta ayer
-        // (informativa: la ocupación es contra la de la semana entera).
-        expect($admin[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
-            ->and($admin[1])->toBe(['Luis', '20,00', '16,00', '12,67', '11,67', '63,30', '92,10', '58,30', '1116,67', '380,00', '736,67'])
-            ->and($admin[2])->toBe(['Ana', '40,00', '32,00', '11,00', '11,00', '27,50', '100,00', '27,50', '995,00', '220,00', '775,00']);
+        // La semana sigue en curso (hoy es viernes): lleva también la capacidad hasta ayer y el
+        // ritmo (D-080: la ocupación es contra la de la semana entera; el ritmo, hasta ayer).
+        expect($admin[0])->toBe(['Persona', 'Capacidad (h)', 'Capacidad hasta ayer (h)', 'Horas imputadas', 'Horas facturables', 'Ocupación (%)', 'Ritmo (%)', 'Facturabilidad (%)', 'Productividad facturable (%)', 'Ingreso estimado (€)', 'Coste (€)', 'Rentabilidad (€)'])
+            ->and($admin[1])->toBe(['Luis', '20,00', '16,00', '12,67', '11,67', '63,30', '79,20', '92,10', '58,30', '1116,67', '380,00', '736,67'])
+            ->and($admin[2])->toBe(['Ana', '40,00', '32,00', '11,00', '11,00', '27,50', '34,40', '100,00', '27,50', '995,00', '220,00', '775,00']);
 
         $head = ($this->csv)($this->actingAs($this->head)
             ->get("/informes/departamentos/{$this->design->id}".($this->week)(['formato' => 'csv']))
             ->streamedContent());
 
-        expect($head[0])->toHaveCount(8)->and($head[1])->toHaveCount(8);
+        expect($head[0])->toHaveCount(9)->and($head[1])->toHaveCount(9);
 
         // Una semana cerrada no la lleva.
         $closed = ($this->csv)($this->actingAs($this->admin)

@@ -11,4 +11,6 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Subpáginas de la sección (p. ej. «Ausencias del equipo» bajo «Ausencias»). */
+    items?: NavItem[];
 };
