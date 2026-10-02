@@ -10,6 +10,7 @@ export type ProjectTab =
     | 'gantt'
     | 'bolsas'
     | 'horas'
+    | 'chat'
     | 'archivos'
     | 'ajustes';
 
@@ -61,4 +62,9 @@ export const urls = {
     timerDiscard: () => '/temporizador',
     admin: () => '/admin',
     adminUsers: () => '/admin/usuarios',
+    /** Chat (Fase 6): lista de conversaciones, una conversación y un mensaje concreto. */
+    chat: () => '/chat',
+    chatConversation: (conversationId: number) => `/chat/${conversationId}`,
+    chatMessage: (conversationId: number, messageId: number) =>
+        `/chat/${conversationId}?mensaje=${messageId}`,
 } as const;

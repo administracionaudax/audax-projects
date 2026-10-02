@@ -31,6 +31,13 @@ Schedule::command('app:notify-due-tasks')
     ->onOneServer()
     ->when(fn (): bool => array_key_exists('app:notify-due-tasks', Artisan::all()));
 
+// Transcripciones de audios del chat (SPEC §12): cada 15 minutos se vuelven a encolar las que
+// siguen sin texto; las que agotan los intentos se avisan al admin una vez.
+Schedule::command('transcriptions:requeue')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Tareas recurrentes (Fase 4, D-059): cada día a las 06:00 de Madrid.
 Schedule::command('tasks:generate-recurring')
     ->dailyAt('06:00')

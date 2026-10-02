@@ -57,6 +57,30 @@ class ClientPolicy
     }
 
     /**
+     * Usuarios del portal del cliente (Fase 5, D-063): invitar, reenviar la invitación, revocar y
+     * reactivar. Admins, responsables y los gestores de algún proyecto (sin borrar) de ese cliente.
+     * Los ajustes del portal del cliente (qué horas ve, cómo se nombra a las personas y los avisos)
+     * son datos del cliente: los cambia quien lo edita (update).
+     */
+    public function managePortal(User $user, Client $client): bool
+    {
+        if (! $user->isInternal()) {
+            return false;
+        }
+
+        if ($user->isAdmin() || $user->isDepartmentManager()) {
+            return true;
+        }
+
+        $managed = $user->managedProjectIds();
+
+        return $managed !== [] && Project::query()
+            ->where('client_id', $client->id)
+            ->whereKey($managed)
+            ->exists();
+    }
+
+    /**
      * Exportación de horas para facturar (/informes/facturacion, D-045): admins y quien tenga
      * view-financials. Las tarifas e importes, además, solo con view-financials.
      */

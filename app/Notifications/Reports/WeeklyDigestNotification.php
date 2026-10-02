@@ -25,6 +25,7 @@ class WeeklyDigestNotification extends AppNotification
      *     high: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     low: list<array{user_id: int, name: string, occupancy: float, logged_minutes: int, capacity_minutes: int}>,
      *     banks: list<array{id: int, project_id: int, name: string, consumed_pct: float, remaining_minutes: int, overage_minutes: int}>,
+     *     banks_count?: int,
      *     overdue: list<array{id: int, title: string, project: string, assignee: string|null, due_date: string}>,
      *     overdue_count: int, thresholds: array{low: int, high: int}}  $digest
      */
@@ -54,7 +55,7 @@ class WeeklyDigestNotification extends AppNotification
             $parts[] = $this->choice('reports.r3.digest.count_occupancy', count($this->digest['high']) + count($this->digest['low']));
         }
         if ($this->digest['banks'] !== []) {
-            $parts[] = $this->choice('reports.r3.digest.count_banks', count($this->digest['banks']));
+            $parts[] = $this->choice('reports.r3.digest.count_banks', $this->digest['banks_count'] ?? count($this->digest['banks']));
         }
         if ($this->digest['overdue_count'] > 0) {
             $parts[] = $this->choice('reports.r3.digest.count_overdue', $this->digest['overdue_count']);
@@ -127,7 +128,7 @@ class WeeklyDigestNotification extends AppNotification
                     'remaining' => Duration::format($bank['remaining_minutes']),
                     'overage' => Duration::format($bank['overage_minutes']),
                 ],
-            ), $d['banks'])));
+            ), $d['banks']), [], $d['banks_count'] ?? count($d['banks'])));
         }
 
         if ($d['overdue_count'] > 0) {

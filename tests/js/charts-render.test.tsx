@@ -348,6 +348,25 @@ describe('LoadCell', () => {
         expect(container.textContent).toContain('Festivo');
         expect(container.textContent).toContain('0:00 planificadas');
     });
+
+    // El nivel sale del porcentaje que se enseña: la cifra y el color no se contradicen.
+    it.each([
+        [481, '100 %', 'Equilibrada'],
+        [480, '100 %', 'Equilibrada'],
+        [335, '70 %', 'Equilibrada'],
+        [576, '120 %', 'Alta'],
+        [577, '120 %', 'Alta'],
+    ])(
+        '%i de 480 min se lee «%s» y su nivel es «%s»',
+        (planned, percent, level) => {
+            const { container } = render(
+                <LoadCell planned={planned} capacity={480} />,
+            );
+
+            expect(norm(container.textContent)).toContain(percent);
+            expect(container.textContent).toContain(level);
+        },
+    );
 });
 
 describe('HourBankMeter', () => {

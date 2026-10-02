@@ -28,7 +28,8 @@ use Illuminate\Support\Str;
 | WORKLOAD_PERF_REPORT=1 imprime las consultas y los tiempos.
 */
 
-const WORKLOAD_PERF_BUDGET = 30;
+// +1 fija con la Fase 6: el total sin leer del chat (prop compartida `chat.unread`), no por fila.
+const WORKLOAD_PERF_BUDGET = 31;
 
 const WORKLOAD_PERF_MAX_REPEATS = 3;
 

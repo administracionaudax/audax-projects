@@ -3,6 +3,7 @@
 namespace App\Domain\Reports;
 
 use App\Domain\Time\Capacity;
+use App\Domain\Time\CapacityPlan;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
@@ -33,10 +34,11 @@ final class Metrics
 {
     /**
      * Capacidades ya calculadas en esta instancia (el resumen y la serie de un mismo alcance piden
-     * la misma), por persona que mira y filtros. Metrics se resuelve por petición o por tarea: la
-     * memoria no sobrevive a otra escritura. Con un tope para no crecer sin límite.
+     * la misma), por persona que mira y filtros, como tramos (CapacityPlan: se suman con
+     * aritmética, PERF-05). Metrics se resuelve por petición o por tarea: la memoria no sobrevive
+     * a otra escritura. Con un tope para no crecer sin límite.
      *
-     * @var array<string, array<int, array<string, int>>>
+     * @var array<string, array<int, CapacityPlan>>
      */
     private array $capacityMemo = [];
 
@@ -60,7 +62,7 @@ final class Metrics
      */
     public function summary(ReportScope $scope, bool $withCapacity = true, bool $everyAssignee = false): array
     {
-        return $this->summaryAgainst($scope, $withCapacity ? array_sum($this->capacityByDate($scope)) : null, $everyAssignee);
+        return $this->summaryAgainst($scope, $withCapacity ? $this->capacityTotal($scope) : null, $everyAssignee);
     }
 
     /**
@@ -91,7 +93,7 @@ final class Metrics
             $partial = $partial->withoutFinancials();
         }
 
-        return $this->summaryAgainst($partial, $withCapacity ? array_sum($this->capacityByDate($scope)) : null, $everyAssignee);
+        return $this->summaryAgainst($partial, $withCapacity ? $this->capacityTotal($scope) : null, $everyAssignee);
     }
 
     /**
@@ -186,13 +188,35 @@ final class Metrics
     public function capacityByDate(ReportScope $scope): array
     {
         $byDate = [];
-        foreach ($this->capacityByPerson($scope) as $days) {
-            foreach ($days as $date => $minutes) {
+        foreach ($this->capacityPlans($scope) as $plan) {
+            foreach ($plan->byDate() as $date => $minutes) {
                 $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
             }
         }
 
+        ksort($byDate);
+
         return $byDate;
+    }
+
+    /**
+     * Capacidad total del alcance en el periodo (la suma de capacityByDate), con aritmética por
+     * tramos: sin recorrer los días (PERF-05).
+     */
+    public function capacityTotal(ReportScope $scope): int
+    {
+        return array_sum($this->capacityTotalsByPerson($scope));
+    }
+
+    /**
+     * Capacidad total de cada persona del alcance en el periodo (id → minutos; la suma de su
+     * capacityByPerson), con aritmética por tramos.
+     *
+     * @return array<int, int>
+     */
+    public function capacityTotalsByPerson(ReportScope $scope): array
+    {
+        return array_map(fn (CapacityPlan $plan): int => $plan->total(), $this->capacityPlans($scope));
     }
 
     /**
@@ -205,6 +229,17 @@ final class Metrics
      */
     public function capacityByPerson(ReportScope $scope): array
     {
+        return array_map(fn (CapacityPlan $plan): array => $plan->byDate(), $this->capacityPlans($scope));
+    }
+
+    /**
+     * La capacidad de cada persona del alcance como tramos (id → CapacityPlan), en memoria por
+     * quien mira y filtros.
+     *
+     * @return array<int, CapacityPlan>
+     */
+    public function capacityPlans(ReportScope $scope): array
+    {
         $key = $scope->viewer->id.':'.$scope->filters->cacheKey();
 
         if (! array_key_exists($key, $this->capacityMemo)) {
@@ -212,7 +247,7 @@ final class Metrics
                 array_shift($this->capacityMemo);
             }
 
-            $this->capacityMemo[$key] = $this->computeCapacityByPerson($scope);
+            $this->capacityMemo[$key] = $this->computeCapacityPlans($scope);
         }
 
         return $this->capacityMemo[$key];
@@ -222,22 +257,17 @@ final class Metrics
      * Capacidad transcurrida de cada persona del alcance (id → minutos): la de los días del periodo
      * anteriores a hoy en Madrid (hasta ayer, como los días sin imputar: hoy aún se está
      * imputando). En un periodo cerrado es su capacidad; en uno que empieza hoy o más adelante, 0.
-     * Sale de capacityByPerson (sin más consultas). Añadido por R1 como dato informativo de un
-     * periodo en curso: la ocupación y la productividad facturable son siempre las de summary(),
-     * contra la capacidad del periodo completo (SPEC §10).
+     * Sale de los tramos de capacityPlans (sin más consultas). Añadido por R1 como dato informativo
+     * de un periodo en curso: la ocupación y la productividad facturable son siempre las de
+     * summary(), contra la capacidad del periodo completo (SPEC §10).
      *
      * @return array<int, int>
      */
     public function elapsedCapacityByPerson(ReportScope $scope, ?CarbonImmutable $today = null): array
     {
-        $cut = $today !== null ? $today->toDateString() : LocalTime::todayString();
-        $elapsed = [];
+        $yesterday = CapacityPlan::date(CapacityPlan::day($today !== null ? $today->toDateString() : LocalTime::todayString()) - 1);
 
-        foreach ($this->capacityByPerson($scope) as $userId => $days) {
-            $elapsed[$userId] = array_sum(array_filter($days, fn (string $date): bool => $date < $cut, ARRAY_FILTER_USE_KEY));
-        }
-
-        return $elapsed;
+        return array_map(fn (CapacityPlan $plan): int => $plan->total(null, $yesterday), $this->capacityPlans($scope));
     }
 
     /**
@@ -249,9 +279,9 @@ final class Metrics
     }
 
     /**
-     * @return array<int, array<string, int>>
+     * @return array<int, CapacityPlan>
      */
-    private function computeCapacityByPerson(ReportScope $scope): array
+    private function computeCapacityPlans(ReportScope $scope): array
     {
         $f = $scope->filters;
         $people = $scope->people();
@@ -280,12 +310,12 @@ final class Metrics
             $ranges[] = ['user_id' => $person->id, 'from' => CarbonImmutable::parse($start), 'to' => CarbonImmutable::parse($end)];
         }
 
-        $byPerson = [];
-        foreach ($this->capacity->forRanges($ranges) as $index => $days) {
-            $byPerson[$ranges[$index]['user_id']] = $days;
+        $plans = [];
+        foreach ($this->capacity->plansForRanges($ranges) as $index => $plan) {
+            $plans[$ranges[$index]['user_id']] = $plan;
         }
 
-        return $byPerson;
+        return $plans;
     }
 
     /**
@@ -310,11 +340,10 @@ final class Metrics
 
         $income = $scope->canSeeFinancials() ? $this->revenue->compute($scope->entries(), $bucket) : [];
 
-        $capacity = [];
-        foreach ($this->capacityByDate($scope) as $date => $minutes) {
-            $key = self::bucketOf($bucket, $date);
-            $capacity[$key] = ($capacity[$key] ?? 0) + $minutes;
-        }
+        // La capacidad de cada día (del plan de cada persona) o, por semanas y meses, la de cada
+        // tramo del periodo con aritmética (PERF-05).
+        $plans = $this->capacityPlans($scope);
+        $byDay = $bucket === Dimension::Day ? $this->capacityByDate($scope) : [];
 
         $series = [];
         foreach (CarbonPeriod::create($f->from, $f->to) as $day) {
@@ -327,7 +356,9 @@ final class Metrics
                 'bucket' => $key,
                 'logged_minutes' => (int) ($row->logged ?? 0),
                 'billable_minutes' => (int) ($row->billable ?? 0),
-                'capacity_minutes' => $capacity[$key] ?? 0,
+                'capacity_minutes' => $bucket === Dimension::Day
+                    ? ($byDay[$key] ?? 0)
+                    : self::bucketCapacity($plans, $bucket, $key, $f),
                 'income' => $scope->canSeeFinancials() ? ($income[$key]['income'] ?? '0.00') : null,
             ];
         }
@@ -380,8 +411,13 @@ final class Metrics
     }
 
     /**
-     * Precisión de estimación (SPEC §10): tareas hoja completadas en el periodo, con estimación, de
-     * los proyectos y personas del alcance. Reales = todas sus horas (de cualquier fecha).
+     * Precisión de estimación (SPEC §10) de las tareas completadas en el periodo, con la regla de
+     * subtareas del SPEC §6 (la de EstimateComparison y RevenueCalculator::fixedPriceBases, BIZ-03),
+     * de los proyectos y personas del alcance. Unidades, sin contar nada dos veces:
+     * - las hojas con estimación (subtareas y tareas sin subtareas),
+     * - las tareas raíz con subtareas de las que ninguna está estimada, con su propia estimación.
+     *   Una raíz con alguna subtarea estimada se estima con ellas: cuentan sus subtareas.
+     * Reales = las horas de la tarea y las de sus subtareas (de cualquier fecha).
      *
      * $everyAssignee (informes de un proyecto o de los proyectos que gestiona quien mira, que ve
      * todas sus horas, D-021): cuentan las tareas de cualquier responsable, acotadas solo por los
@@ -401,8 +437,15 @@ final class Metrics
             ->whereBetween('completed_at', [$start, $end])
             ->where('is_milestone', false)
             ->where('estimated_minutes', '>', 0)
-            ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
-                ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
+            ->where(fn (Builder $unit) => $unit
+                // Hojas: sin subtareas.
+                ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                    ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
+                // Raíces cuyas subtareas no están estimadas: su estimación es la suya (SPEC §6).
+                ->orWhere(fn (Builder $root) => $root->whereNull('tasks.parent_task_id')
+                    ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                        ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at')
+                        ->where('children.is_milestone', false)->whereNotNull('children.estimated_minutes'))))
             ->when($f->projectIds !== [], fn (Builder $q) => $q->whereIn('project_id', $f->projectIds))
             ->when($f->clientIds !== [], fn (Builder $q) => $q->whereIn('project_id', Project::query()->withTrashed()->select('id')->whereIn('client_id', $f->clientIds)))
             ->when($f->bankIds !== [], fn (Builder $q) => $q->whereIn('hour_bank_id', $f->bankIds))
@@ -414,7 +457,11 @@ final class Metrics
 
         $estimated = (int) (clone $tasks)->sum('estimated_minutes');
         $count = (clone $tasks)->count();
-        $actual = (int) TimeEntry::query()->whereIn('task_id', (clone $tasks)->select('tasks.id'))->sum('minutes');
+        // Las horas de una subtarea suman en su tarea padre (SPEC §6), también si está borrada.
+        $actual = (int) TimeEntry::query()->where(fn ($units) => $units
+            ->whereIn('task_id', (clone $tasks)->select('tasks.id'))
+            ->orWhereIn('task_id', Task::query()->withTrashed()->select('id')->whereIn('parent_task_id', (clone $tasks)->select('tasks.id'))))
+            ->sum('minutes');
 
         return [
             'tasks' => $count,
@@ -423,6 +470,21 @@ final class Metrics
             'accuracy' => self::ratio($estimated, $actual),
             'deviation' => $estimated > 0 ? round(($actual - $estimated) / $estimated, 4) : null,
         ];
+    }
+
+    /**
+     * Capacidad de una semana o un mes de la serie, recortado al periodo: la suma de los planes.
+     *
+     * @param  array<int, CapacityPlan>  $plans
+     */
+    private static function bucketCapacity(array $plans, Dimension $bucket, string $key, ReportFilters $filters): int
+    {
+        $start = CarbonImmutable::parse($key);
+        $end = $bucket === Dimension::Week ? $start->addDays(6) : $start->endOfMonth();
+        $from = max($start->toDateString(), $filters->from->toDateString());
+        $to = min($end->toDateString(), $filters->to->toDateString());
+
+        return array_sum(array_map(fn (CapacityPlan $plan): int => $plan->total($from, $to), $plans));
     }
 
     public static function ratio(int $numerator, int $denominator): ?float

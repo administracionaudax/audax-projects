@@ -5,6 +5,10 @@
  * decimal y solo con view-financials (null si no); ratios de 0 a 1 o null sin base.
  */
 import type {
+    WorkloadColumn,
+    WorkloadTotals,
+} from '@/components/workload/types';
+import type {
     BreakdownRow,
     EstimationSummary,
     MetricsSummary,
@@ -136,7 +140,8 @@ export type DirectionReportProps = Dashboard & {
 
 /**
  * Fila de la tabla de miembros del departamento. La ocupación y la productividad facturable, contra
- * la capacidad del periodo (SPEC §10); capacity_to_date_minutes (hasta ayer) es informativa.
+ * la capacidad del periodo (SPEC §10); capacity_to_date_minutes (hasta ayer) es informativa. En un
+ * periodo en curso, pace (el ritmo: imputadas / capacidad hasta ayer) da el nivel (D-080).
  */
 export type R1Member = {
     id: number;
@@ -147,6 +152,8 @@ export type R1Member = {
     logged_minutes: number;
     billable_minutes: number;
     occupancy: number | null;
+    /** Imputadas / capacidad transcurrida hasta ayer; null si el periodo ya acabó o aún no ha pasado ningún día con jornada. */
+    pace: number | null;
     billability: number | null;
     billable_productivity: number | null;
     income: string | null;
@@ -158,11 +165,30 @@ export type R1Member = {
 export type R1OccupancyThresholds = { low: number; high: number };
 
 /** GET /informes/departamentos/{department}. */
+/**
+ * «Carga futura» del departamento: la carga planificada de las próximas cuatro semanas de cada
+ * persona, la misma de la vista Carga (D-051), con el enlace a /carga con el departamento.
+ */
+export type R1FutureLoad = {
+    columns: WorkloadColumn[];
+    people: {
+        id: number;
+        name: string;
+        cells: WorkloadTotals[];
+        total: WorkloadTotals;
+    }[];
+    totals: WorkloadTotals[];
+    total: WorkloadTotals;
+    url: string;
+};
+
 export type DepartmentReportProps = Dashboard & {
     department: { id: number; name: string; color: string };
     members: R1Member[];
     clients: R1TopRows;
     occupancy_thresholds: R1OccupancyThresholds;
+    /** Prop diferida: llega después de pintar la página. */
+    future_load?: R1FutureLoad;
 };
 
 export type R1UnloggedDay = {

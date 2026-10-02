@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\RecurringTaskRule;
 use App\Models\TaskType;
 use App\Support\Duration;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -21,6 +22,7 @@ use Illuminate\Validation\Validator;
  *   proyecto), bolsa (obligatoria y abierta si el proyecto es de bolsas), estimación y prioridad,
  * - regla: semanal (cada 1-12 semanas, día 1-7 con lunes = 1) o mensual (cada 1-12 meses, día
  *   1-31; si el mes no lo tiene, el último), vencimiento a 0-60 días, desde y hasta (≥ desde),
+ *   ambas entre el 01/01/2000 y el 31/12/2100 (D-089, RecurringTaskRule::MIN_DATE y MAX_DATE),
  * - un proyecto archivado no admite reglas activas.
  */
 class RecurringRuleRequest extends FormRequest
@@ -79,8 +81,9 @@ class RecurringRuleRequest extends FormRequest
             'weekday' => ['nullable', 'required_if:frequency,'.RecurringTaskRule::WEEKLY, 'integer', 'min:1', 'max:7'],
             'month_day' => ['nullable', 'required_if:frequency,'.RecurringTaskRule::MONTHLY, 'integer', 'min:1', 'max:31'],
             'due_offset_days' => ['required', 'integer', 'min:0', 'max:'.self::MAX_DUE_OFFSET],
-            'starts_on' => ['required', 'date_format:Y-m-d'],
-            'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
+            'starts_on' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.RecurringTaskRule::MIN_DATE, 'before_or_equal:'.RecurringTaskRule::MAX_DATE],
+            // Desde ya es de 2000 en adelante, así que hasta (≥ desde) también.
+            'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on', 'before_or_equal:'.RecurringTaskRule::MAX_DATE],
             'is_active' => ['required', 'boolean'],
         ];
     }
@@ -123,7 +126,15 @@ class RecurringRuleRequest extends FormRequest
      */
     public function messages(): array
     {
+        $dateRange = $this->text('templates.errors.rule_date_range', [
+            'min' => CarbonImmutable::parse(RecurringTaskRule::MIN_DATE)->format('d/m/Y'),
+            'max' => CarbonImmutable::parse(RecurringTaskRule::MAX_DATE)->format('d/m/Y'),
+        ]);
+
         return [
+            'starts_on.after_or_equal' => $dateRange,
+            'starts_on.before_or_equal' => $dateRange,
+            'ends_on.before_or_equal' => $dateRange,
             'hour_bank_id.required' => $this->text('templates.errors.rule_bank_required'),
             'weekday.required_if' => $this->text('templates.errors.rule_weekday'),
             'weekday.min' => $this->text('templates.errors.rule_weekday'),

@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 27/09/2026 02:20_
+_Última actualización: 03/10/2026_
 
 ## Hecho
 
@@ -58,14 +58,45 @@ _Última actualización: 27/09/2026 02:20_
 - **Tests:** 1363 de Pest en local; 1359 en PostgreSQL 18 en el servidor (todos en verde); 539 de Vitest; 232 E2E con Playwright y axe.
 - **Subida de 50 MB** comprobada contra el servidor: no hace falta tocar nginx, ModSecurity ni PHP.
 
+### Fase 2: informes (rama `fase-2`, desplegada el 27/09)
+- **Dashboards:** dirección, departamento, persona, cliente y proyecto, más facturación y el informe detallado. Todos tienen filtros en la URL, comparación «al mismo punto» y exportación a Excel y CSV.
+- **PDF y resumen:** PDF de consumo de bolsa y resumen semanal por email (D-043 a D-048, D-078 y D-079).
+- **Revisión global:** 21 hallazgos confirmados y corregidos con sus tests (D-080 a D-087). Entre ellos, los mismos céntimos en todas partes, la caché invalidada tras el commit y con el alcance de quien mira, y la capacidad por tramos.
+- **Tests:** 1717 de Pest en local y **1717 en PostgreSQL 18 en el servidor**, incluidos los de rendimiento de los dashboards (< 1 s); 637 de Vitest; **290 E2E** con Playwright y axe; CI en verde.
+- ✅ **FASE 2 CERRADA el 27/09/2026** (etiqueta `fase-2-cerrada`).
+
+### Fase 3: carga (rama `fase-3`, desplegada el 02/10)
+- **Capacidad real:** festivos con importación anual, ausencias con su aprobación, y capacidad que las descuenta en horas, informes y carga (D-049 a D-052).
+- **Vista Carga:** personas × días o semanas, con celdas de semáforo, panel de la celda y reasignación, y bandejas «Sin planificar», «Sin asignar» y «De tus proyectos».
+- **Carga futura** en el informe de departamento y en Inicio.
+- **Revisión global:** 8 hallazgos corregidos con sus tests (D-088 y D-091), entre ellos el tipo de ausencia oculto a quien no supervisa (RGPD).
+- **Tests:** 1996 en PostgreSQL 18 en el servidor; 338 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 3 CERRADA el 02/10/2026** (etiqueta `fase-3-cerrada`).
+
+### Fase 4: Gantt (rama `fase-4`, desplegada el 02/10)
+- **Planificación:**
+  - dependencias fin-inicio sin ciclos, con propuesta al mover (D-056, D-057 y D-090),
+  - Gantt propio con hitos, calendario por mes y semana,
+  - plantillas de proyecto con importación y exportación (D-058),
+  - tareas recurrentes (D-059 y D-089).
+- **Revisión global:** 7 hallazgos corregidos con sus tests, entre ellos las franjas del calendario y la serialización de los enlaces.
+- **Tests:** 2321 en PostgreSQL 18 en el servidor; 385 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 4 CERRADA el 02/10/2026** (etiqueta `fase-4-cerrada`).
+
+### Fase 5: portal de cliente (rama `fase-5`, desplegada el 02/10)
+- **Portal:** usuarios por invitación, bolsas con su consumo e histórico, PDF sin importes, proyectos y Gantt de solo lectura (si se abren), avisos al cliente del 90 y 100 %, e identidad de la empresa (D-063 a D-067 y D-092 a D-101).
+- **Aislamiento:** comprobado en todas las rutas internas y del portal (`ClientIsolationTest` y `PortalRoutesIsolationTest`).
+- **Revisión global:** 12 hallazgos corregidos. El más importante: un aviso al cliente ya no puede romper una imputación o una aprobación interna.
+- **Tests:** 2450 en PostgreSQL 18 en el servidor; 391 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 5 CERRADA el 02/10/2026** (etiqueta `fase-5-cerrada`).
+
 ## En curso (modo autónomo, D-027)
-- **Fase 2 (informes):** contrato hecho (`docs/PLAN-FASE-2.md`, D-043 a D-048); agentes R1, R2 y R3 implementando.
-- **Fase 3 (carga):** contrato hecho (`docs/PLAN-FASE-3.md`, D-049 a D-052); agentes W1 y W2 implementando.
-- **Fase 4 (Gantt):** contrato hecho (`docs/PLAN-FASE-4.md`, D-056 a D-062); agentes G1, G2 y G3 implementando.
+- **Fase 6 (chat):** desplegada el 03/10 (2839 tests en PostgreSQL 18 en el servidor, 398 E2E con Reverb local, CI en verde). Reverb y el transcriptor activos en el servidor. Falta que el propietario pegue en Plesk la directiva de nginx `/app/` (RUNBOOK A1) y cerrar la fase.
+- **Fase 7 (pulido):** contrato (D-073 a D-077), preferencias de notificación, resumen diario, recordatorio de los viernes, auditoría, privacidad, retención, exportación de datos y avisos de almacenamiento hechos; integración con el chat de la Fase 6 en la rama `fase-7`.
 
 ## Siguiente
-1. Integrar las Fases 2, 3 y 4 en orden, con revisión global, E2E y despliegue de cada una.
-2. Fase 5 (portal), Fase 6 (chat, Reverb y transcripción) y Fase 7 (pulido).
+1. Cerrar la Fase 6 cuando esté la directiva de nginx `/app/`.
+2. Fase 7: E2E, revisión, despliegue, copia externa y prueba de restauración en el servidor, `DEPLOY.md` y cierre.
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).

@@ -237,11 +237,14 @@ final class ProjectTemplateService
      */
     public static function normalize(array $structure): array
     {
-        $fail = fn (string $reason) => throw ValidationException::withMessages(['structure' => __('schedule.errors.template_invalid', ['reason' => $reason])]);
+        // Los motivos, en lang/es/templates.php (templates.errors.*).
+        $fail = fn (string $reason, array $replace = []) => throw ValidationException::withMessages([
+            'structure' => self::text("templates.errors.{$reason}", $replace),
+        ]);
         $rawTasks = $structure['tasks'] ?? null;
 
         if (! is_array($rawTasks) || $rawTasks === [] || count($rawTasks) > self::MAX_TASKS) {
-            $fail('necesita entre 1 y '.self::MAX_TASKS.' tareas');
+            $fail('tasks_count', ['max' => self::MAX_TASKS]);
         }
 
         $tasks = [];
@@ -250,7 +253,7 @@ final class ProjectTemplateService
             $ref = is_array($raw) ? trim((string) ($raw['ref'] ?? '')) : '';
             $title = is_array($raw) ? trim((string) ($raw['title'] ?? '')) : '';
             if ($ref === '' || $title === '' || isset($refs[$ref]) || mb_strlen($title) > 255) {
-                $fail('cada tarea necesita una referencia única y un título');
+                $fail('structure_task');
             }
             $refs[$ref] = true;
             /** @var array<string, mixed> $raw */
@@ -271,7 +274,7 @@ final class ProjectTemplateService
             if ($task['parent_ref'] !== null) {
                 $parent = collect($tasks)->firstWhere('ref', $task['parent_ref']);
                 if ($parent === null || $parent['parent_ref'] !== null) {
-                    $fail('las subtareas deben colgar de una tarea de primer nivel de la plantilla');
+                    $fail('structure_parent');
                 }
             }
         }
@@ -280,7 +283,7 @@ final class ProjectTemplateService
         $seen = [];
         foreach ((array) ($structure['dependencies'] ?? []) as $link) {
             if (! is_array($link) || ! isset($refs[(string) ($link['from_ref'] ?? '')], $refs[(string) ($link['to_ref'] ?? '')]) || ($link['from_ref'] ?? null) === ($link['to_ref'] ?? null)) {
-                $fail('hay dependencias con referencias que no existen');
+                $fail('structure_dependency');
             }
 
             // Enlazar dos veces lo mismo no duplica (D-056).
@@ -293,7 +296,7 @@ final class ProjectTemplateService
         }
 
         if (self::findCycle($dependencies) !== null) {
-            $fail('las dependencias forman un ciclo');
+            $fail('structure_cycle');
         }
 
         return ['tasks' => $tasks, 'dependencies' => $dependencies];

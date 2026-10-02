@@ -12,7 +12,8 @@ const COLORS: GanttColorMode[] = ['status', 'assignee'];
 
 /**
  * Controles del Gantt: escala (día, semana o mes), colores (por estado o por responsable), «Ir a
- * hoy» y la vista (diagrama o tabla accesible). Controles segmentados con etiqueta.
+ * hoy» y la vista (diagrama o tabla accesible). Controles segmentados con etiqueta. Sin
+ * `showColorModes` (portal de cliente, F5) no se ofrece colorear por responsable.
  */
 export function GanttToolbar({
     scale,
@@ -22,6 +23,7 @@ export function GanttToolbar({
     onColorChange,
     onViewChange,
     onToday,
+    showColorModes = true,
 }: {
     scale: GanttScale;
     color: GanttColorMode;
@@ -30,6 +32,7 @@ export function GanttToolbar({
     onColorChange: (color: GanttColorMode) => void;
     onViewChange: (view: GanttViewMode) => void;
     onToday: () => void;
+    showColorModes?: boolean;
 }) {
     const scaleId = useId();
     const colorId = useId();
@@ -101,35 +104,40 @@ export function GanttToolbar({
                 </ToggleGroup>
             </div>
 
-            <div className="grid gap-1">
-                <span id={colorId} className="text-xs text-muted-foreground">
-                    {t('gantt.toolbar.color')}
-                </span>
-                <ToggleGroup
-                    type="single"
-                    variant="outline"
-                    value={color}
-                    onValueChange={(next) => {
-                        const found = COLORS.find((item) => item === next);
+            {showColorModes ? (
+                <div className="grid gap-1">
+                    <span
+                        id={colorId}
+                        className="text-xs text-muted-foreground"
+                    >
+                        {t('gantt.toolbar.color')}
+                    </span>
+                    <ToggleGroup
+                        type="single"
+                        variant="outline"
+                        value={color}
+                        onValueChange={(next) => {
+                            const found = COLORS.find((item) => item === next);
 
-                        if (found) {
-                            onColorChange(found);
-                        }
-                    }}
-                    aria-labelledby={colorId}
-                >
-                    {COLORS.map((item) => (
-                        <ToggleGroupItem
-                            key={item}
-                            value={item}
-                            className="px-3"
-                            data-test={`gantt-color-${item}`}
-                        >
-                            {t(`gantt.color.${item}`)}
-                        </ToggleGroupItem>
-                    ))}
-                </ToggleGroup>
-            </div>
+                            if (found) {
+                                onColorChange(found);
+                            }
+                        }}
+                        aria-labelledby={colorId}
+                    >
+                        {COLORS.map((item) => (
+                            <ToggleGroupItem
+                                key={item}
+                                value={item}
+                                className="px-3"
+                                data-test={`gantt-color-${item}`}
+                            >
+                                {t(`gantt.color.${item}`)}
+                            </ToggleGroupItem>
+                        ))}
+                    </ToggleGroup>
+                </div>
+            ) : null}
 
             {view === 'chart' ? (
                 <Button type="button" variant="outline" onClick={onToday}>

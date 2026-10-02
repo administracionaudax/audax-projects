@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ActiveTimer;
+use App\Models\Client;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
@@ -45,7 +46,8 @@ test('un empleado no tiene permisos de bolsas, administración ni datos económi
 });
 
 test('un cliente se identifica como tal en su portal', function () {
-    $client = userWithRole('client');
+    // Un usuario del portal es de un cliente activo (D-063); sin cliente, el portal da 403.
+    $client = User::factory()->portalOf(Client::factory()->create())->create();
 
     $this->actingAs($client)
         ->get('/portal')
@@ -65,14 +67,17 @@ test('un invitado recibe auth.user nulo y ningún permiso', function () {
             ->where('auth.can.viewFinancials', false));
 });
 
-test('las secciones pendientes se sirven con la página placeholder y su sección', function (string $path, string $section) {
+test('las secciones de la barra lateral ya son páginas reales, ninguna es el placeholder', function (string $path, string $component) {
+    // Tras unir las Fases 2 a 5 con la 6, ya no queda ninguna sección pendiente: Carga, Informes y
+    // Chat tienen su página.
     $this->actingAs(userWithRole('admin'))
         ->get($path)
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('placeholder', false)
-            ->where('section', $section));
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component($component, false));
 })->with([
-    ['/chat', 'chat'],
+    ['/carga', 'workload/index'],
+    ['/informes', 'reports/index'],
+    ['/chat', 'chat/index'],
 ]);
 
 test('los internos reciben el temporizador activo, las notificaciones sin leer y la configuración (Fase 1)', function () {
@@ -96,7 +101,8 @@ test('los internos reciben el temporizador activo, las notificaciones sin leer y
             ->where('config.timer_warning_hours', 10)
             ->where('config.description_required', false)
             ->where('auth.can.createProjects', false)
-            ->where('auth.can.approveTime', false));
+            ->where('auth.can.approveTime', false)
+            ->where('auth.can.viewTeamAbsences', false));
 });
 
 test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar', function () {
@@ -109,11 +115,12 @@ test('sin temporizador, timer es nulo; los responsables pueden crear y aprobar',
             ->where('auth.can.createClients', true)
             ->where('auth.can.createProjects', true)
             ->where('auth.can.approveTime', true)
-            ->where('auth.can.lockTime', false));
+            ->where('auth.can.lockTime', false)
+            ->where('auth.can.viewTeamAbsences', true));
 });
 
 test('el portal de cliente no recibe temporizador ni configuración interna', function () {
-    $this->actingAs(userWithRole('client'))
+    $this->actingAs(User::factory()->portalOf(Client::factory()->create())->create())
         ->get('/portal')
         ->assertInertia(fn (Assert $page) => $page
             ->missing('timer')

@@ -120,18 +120,18 @@ test('el PDF para el cliente nunca lleva importes; el de uso interno, solo con v
     $plainAdmin = ($this->text)((string) $this->actingAs($s->admin)->get(($this->url)())->getContent());
     expect($plainAdmin)
         ->not->toContain(AudaxPdf::encode('Datos económicos'))
-        ->not->toContain(AudaxPdf::encode('1.116,67 €'));
+        ->not->toContain(AudaxPdf::encode('1.091,67 €'));
 
     $response = $this->actingAs($s->admin)->get(($this->url)().'?importes=1');
     expect($response->headers->get('Content-Disposition'))->toBe('attachment; filename=NAN-WEB-consumo-bolsa-diseno-n-interno-2026-09-25.pdf');
     $admin = ($this->text)((string) $response->getContent());
 
-    // 1000 × 600/600 + 100 × 70/60 = 1116,67 €.
+    // 1000 × 600/600 + 100 × 55/60 (el exceso de E1, aprobada, a su tarifa congelada: BIZ-01) = 1091,67 €.
     expect($admin)
         ->toContain(AudaxPdf::encode('Datos económicos \\(uso interno\\)'))
         ->toContain(($this->pdfString)('1.000,00 €'))
         ->toContain(($this->pdfString)('70,00 €/h'))
-        ->toContain(($this->pdfString)('1.116,67 €'));
+        ->toContain(($this->pdfString)('1.091,67 €'));
 
     // Sin view-financials, ?importes=1 no cambia nada (ni el nombre del fichero).
     foreach ([$s->gema, $s->raul] as $viewer) {
@@ -143,7 +143,7 @@ test('el PDF para el cliente nunca lleva importes; el de uso interno, solo con v
             ->not->toContain(AudaxPdf::encode('Datos económicos'))
             ->not->toContain(AudaxPdf::encode('1.000,00 €'))
             ->not->toContain(AudaxPdf::encode('70,00 €/h'))
-            ->not->toContain(AudaxPdf::encode('1.116,67 €'))
+            ->not->toContain(AudaxPdf::encode('1.091,67 €'))
             ->toContain(($this->pdfString)('11:40'));
     }
 });
@@ -168,7 +168,7 @@ test('sin compresión (SetCompression(false)) el texto va tal cual en el flujo; 
     expect($statement['figures'])->toBe(['consumed' => 700, 'in_bank' => 600, 'overage' => 100, 'pending_in_bank' => 0, 'pending_overage' => 90, 'remaining' => 0, 'ratio' => 1.1667])
         ->and($statement['months'])->toBe([['month' => '2026-09-01', 'in_bank' => 600, 'overage' => 100]])
         ->and(array_column($statement['entries'], 'person'))->toBe(['Ana', 'Luis'])
-        ->and($statement['financials'])->toBe(['price_amount' => '1000.00', 'rate' => '70.00', 'income' => '1116.67'])
+        ->and($statement['financials'])->toBe(['price_amount' => '1000.00', 'rate' => '70.00', 'income' => '1091.67'])
         ->and($pdf)->toContain("(\xBFQu\xE9 tal? \xA1S\xED! 12 \x80)")
         ->and($pdf)->not->toContain('/Filter /FlateDecode');
 

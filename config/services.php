@@ -35,4 +35,38 @@ return [
         ],
     ],
 
+    /*
+    | Transcripción de audios del chat (SPEC §12, D-070): whisper.cpp en el propio servidor
+    | (contenedor audax-whisper, 127.0.0.1:18091). En local y en los tests, el motor falso.
+    */
+    'transcription' => [
+        'driver' => env('TRANSCRIPTION_DRIVER', 'whisper'),
+        'queue_connection' => env('TRANSCRIPTION_QUEUE_CONNECTION', 'redis-transcriptions'),
+        'language' => env('TRANSCRIPTION_LANGUAGE', 'es'),
+        'whisper' => [
+            'url' => env('WHISPER_URL', 'http://127.0.0.1:18091'),
+            'model' => env('WHISPER_MODEL', 'small'),
+            // Menor que el timeout del job (2400 s).
+            'timeout' => (int) env('WHISPER_TIMEOUT', 2340),
+        ],
+    ],
+
+    /*
+    | Web Push (SPEC §12 y §13, D-072). Las claves VAPID se generan en el servidor con
+    | `php artisan push:vapid-keys` y se guardan en .env (nunca en Git). Sin claves válidas el
+    | canal queda desactivado sin errores. Solo se envía a los servicios de push de los navegadores
+    | (allowed_hosts): el endpoint lo manda el navegador y nunca puede apuntar a otro sitio (SSRF).
+    */
+    'webpush' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject' => env('VAPID_SUBJECT', 'mailto:no-responder@audaxstudio.com'),
+        // Un aviso del chat que no se entrega en 12 horas ya no sirve.
+        'ttl' => (int) env('WEBPUSH_TTL', 43200),
+        'timeout' => (int) env('WEBPUSH_TIMEOUT', 10),
+        'allowed_hosts' => ['googleapis.com', 'mozilla.com', 'push.apple.com', 'notify.windows.com'],
+        // Suscripciones como mucho por persona (se borran las más antiguas).
+        'max_per_user' => 10,
+    ],
+
 ];

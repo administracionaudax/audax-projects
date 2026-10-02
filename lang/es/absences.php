@@ -89,10 +89,15 @@ return [
         'salutation' => "Un saludo,\n:company",
     ],
 
-    // Aviso al imputar en un día con ausencia aprobada (SPEC §7).
+    // Aviso al imputar en un día con ausencia aprobada (SPEC §7). Al imputar por otra persona, el
+    // tipo solo lo ven un admin o quien la supervisa; los demás, que no está disponible (D-088).
     'warnings' => [
         'time_entry' => 'Ese día hay una ausencia aprobada (:type). Revisa que la fecha sea correcta.',
         'time_entry_partial' => 'Ese día hay una ausencia aprobada de parte del día (:type, :minutes).',
+        'time_entry_other' => 'Ese día :name tiene una ausencia aprobada (:type). Revisa que la fecha sea correcta.',
+        'time_entry_partial_other' => 'Ese día :name tiene una ausencia aprobada de parte del día (:type, :minutes).',
+        'time_entry_unavailable' => 'Ese día :name no está disponible. Revisa que la fecha sea correcta.',
+        'time_entry_unavailable_partial' => 'Ese día :name no está disponible una parte de la jornada.',
     ],
 
     'holidays' => [

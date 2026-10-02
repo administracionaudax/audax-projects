@@ -1,0 +1,42 @@
+[Unit]
+Description=Audax Proyectos - transcriptor de audios del chat (cola transcriptions, un proceso)
+After=network-online.target docker.service
+Wants=network-online.target
+PartOf=audax-projects.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=audaxprojects
+Group=psacln
+Slice=system-audax.slice
+WorkingDirectory=/var/www/vhosts/projects.audaxstudio.com/app/current
+Environment=XDEBUG_MODE=off
+ExecStartPre=/usr/local/lib/audax/esperar-puerto.sh 16379 60
+ExecStartPre=/usr/local/lib/audax/esperar-puerto.sh 15432 60
+ExecStartPre=/usr/local/lib/audax/esperar-puerto.sh 18091 120
+# Un único proceso (D-070): el trabajo pesado lo hace el contenedor audax-whisper (núcleos 6-7).
+# --timeout mayor que el del job (2400 s) y menor que retry_after (2700 s).
+ExecStart=/opt/plesk/php/8.4/bin/php -d memory_limit=192M artisan queue:work redis-transcriptions --queue=transcriptions --sleep=5 --tries=3 --timeout=2450 --max-jobs=50 --max-time=21600
+TimeoutStartSec=180
+KillSignal=SIGTERM
+# El job en curso termina antes de parar (timeout del job + margen).
+TimeoutStopSec=2500
+Restart=always
+RestartSec=15
+MemoryLimit=256M
+CPUQuota=25%
+TasksMax=16
+Nice=19
+IOSchedulingClass=idle
+OOMScoreAdjust=1000
+LimitNOFILE=4096
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+SyslogIdentifier=audax-transcriber
+
+[Install]
+WantedBy=audax-projects.target

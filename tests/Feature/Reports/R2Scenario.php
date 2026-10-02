@@ -48,8 +48,9 @@ use Tests\TestCase;
  * 25); Raúl, responsable de Diseño; Gema, gestora de NAN-WEB; Olga, gestora de NAN-CAMP.
  *
  * Cifras de la semana para el cliente (admin): imputadas 940, facturables 910, exceso 190,
- * ingreso 1000 × 600/600 + 190 × 70/60 + 120 × 58/60 = 1337,67 €, coste 100 + 200 + 30 + 50 + 10 =
- * 390,00 €, rentabilidad 947,67 € (70,84 %).
+ * ingreso 1000 × 600/600 + 100 × 55/60 (el exceso de E1, aprobada, a su tarifa congelada: D-043,
+ * BIZ-01) + 90 × 70/60 (E3, borrador, a la vigente) + 120 × 58/60 = 1312,67 €, coste 100 + 200 +
+ * 30 + 50 + 10 = 390,00 €, rentabilidad 922,67 € (70,29 %). NAN-WEB: 1196,67 €.
  */
 final class R2Scenario
 {

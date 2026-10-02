@@ -1,83 +1,118 @@
 import { Head } from '@inertiajs/react';
-import { FolderOpen, Wallet } from 'lucide-react';
-import { EmptyState } from '@/components/empty-state';
+import { Wallet } from 'lucide-react';
+import { useId } from 'react';
+import { EmptyState, HeroEmptyState } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { PortalBankCard } from '@/components/portal/banks/portal-bank-card';
+import { PortalBankHistoryList } from '@/components/portal/banks/portal-bank-history-list';
+import { PortalBanksSummary } from '@/components/portal/banks/portal-banks-summary';
+import { PortalVisibilityNote } from '@/components/portal/banks/portal-visibility-note';
+import type { PortalHomeProps } from '@/components/portal/banks/types';
+import { usePortalShell } from '@/components/portal/projects/portal-nav';
+import { PortalProjectsCard } from '@/components/portal/projects/portal-projects-card';
 import { firstName, useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 
-/** Portal de cliente (SPEC §11). En la Fase 0 solo existe la estructura. */
-export default function PortalHome() {
+/**
+ * Inicio del portal de cliente (SPEC §11, D-064): el resumen (horas de este mes y bolsas cerca del
+ * límite), los proyectos abiertos al portal (si los hay), las bolsas activas con su barra y sus
+ * cifras, y las bolsas anteriores. Solo con las horas
+ * que ve el cliente, con una nota que lo explica. Sin bolsas, un estado vacío grande con el
+ * degradado de marca (SPEC §3.1).
+ */
+export default function PortalHome({
+    client,
+    visibility,
+    thresholds,
+    summary,
+    banks,
+    history,
+}: PortalHomeProps) {
     const user = useRequiredUser();
+    const greeting = t('portal.greeting', { name: firstName(user) });
+    const openId = useId();
+    const historyId = useId();
+    const hasProjects = (usePortalShell()?.projects.length ?? 0) > 0;
+
+    if (banks.length === 0 && history.length === 0) {
+        return (
+            <>
+                <Head title={t('portal.title')} />
+                <div className="grid gap-8">
+                    <HeroEmptyState
+                        icon={Wallet}
+                        eyebrow={client.name}
+                        title={greeting}
+                        description={t('portal_banks.home.empty_description')}
+                    />
+                    {hasProjects ? <PortalProjectsCard /> : null}
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
             <Head title={t('portal.title')} />
 
-            <div className="space-y-8">
-                <header className="space-y-1">
-                    <h1 className="text-3xl font-normal tracking-tight">
-                        <KeywordText
-                            text={t('portal.greeting', {
-                                name: firstName(user),
-                            })}
-                        />
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {t('portal.subtitle')}
-                    </p>
+            <div className="grid gap-8">
+                <header className="grid gap-3">
+                    <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                            {client.name}
+                        </p>
+                        <h1 className="text-3xl font-normal tracking-tight">
+                            <KeywordText text={greeting} />
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            {t('portal.subtitle')}
+                        </p>
+                    </div>
+                    <PortalVisibilityNote visibility={visibility} />
                 </header>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Card className="gap-4">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <Wallet
-                                    aria-hidden="true"
-                                    className="size-4 text-muted-foreground"
-                                    strokeWidth={1.5}
+                <PortalBanksSummary summary={summary} />
+
+                {hasProjects ? <PortalProjectsCard /> : null}
+
+                <section aria-labelledby={openId} className="grid gap-4">
+                    <h2 id={openId} className="text-lg font-normal">
+                        {t('portal_banks.home.open_title')}
+                    </h2>
+                    {banks.length > 0 ? (
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            {banks.map((bank) => (
+                                <PortalBankCard
+                                    key={bank.id}
+                                    bank={bank}
+                                    thresholds={thresholds}
                                 />
-                                <h2>{t('portal.cards.hour_banks.title')}</h2>
-                            </CardTitle>
-                            <CardDescription>
-                                {t('portal.cards.hour_banks.description')}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <EmptyState
-                                title={t('portal.cards.hour_banks.empty')}
-                                phase={5}
-                            />
-                        </CardContent>
-                    </Card>
-                    <Card className="gap-4">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <FolderOpen
-                                    aria-hidden="true"
-                                    className="size-4 text-muted-foreground"
-                                    strokeWidth={1.5}
-                                />
-                                <h2>{t('portal.cards.projects.title')}</h2>
-                            </CardTitle>
-                            <CardDescription>
-                                {t('portal.cards.projects.description')}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <EmptyState
-                                title={t('portal.cards.projects.empty')}
-                                phase={5}
-                            />
-                        </CardContent>
-                    </Card>
-                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <EmptyState
+                            icon={Wallet}
+                            title={t('portal_banks.home.open_empty')}
+                            description={t(
+                                'portal_banks.home.open_empty_description',
+                            )}
+                        />
+                    )}
+                </section>
+
+                {history.length > 0 ? (
+                    <section aria-labelledby={historyId} className="grid gap-4">
+                        <div className="space-y-1">
+                            <h2 id={historyId} className="text-lg font-normal">
+                                {t('portal_banks.home.history_title')}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                                {t('portal_banks.home.history_description')}
+                            </p>
+                        </div>
+                        <PortalBankHistoryList banks={history} />
+                    </section>
+                ) : null}
             </div>
         </>
     );

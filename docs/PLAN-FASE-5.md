@@ -59,7 +59,7 @@ Todo sale de `App\Domain\Portal\PortalScope`:
   - en `projects`: `portal_project_visible`, `portal_show_task_hours` y `portal_gantt_visible`.
 - **Enums:** `PortalPersonDisplay` y `PortalEntryVisibility` (con `statuses()`).
 - **Dominio `App\Domain\Portal`:**
-  - `PortalScope`: `for(User)`, `projects`, `hourBanks`, `entries`, `bankEntries`, `visibleStatuses`, `ownsProject`, `ownsBank`, `canViewProject`, `canViewGantt`, `canViewTaskHours` y `personLabel`/`label`,
+  - `PortalScope`: `for(User)`, `forClient(Client)` (los avisos, sin usuario), `projects`, `hourBanks`, `entries`, `bankEntries`, `visibleStatuses`, `ownsProject`, `ownsBank`, `canViewProject`, `canViewGantt`, `canViewTaskHours` y `personLabel`/`label`,
   - `PortalBankFigures`: `many`, `one` y `byMonth`,
   - `PortalBankAlerts`: `queue`, `flush` y `check`.
 - **Notificación:** `App\Notifications\Portal\ClientHourBankThreshold`. **Proveedor:** `PortalServiceProvider`.

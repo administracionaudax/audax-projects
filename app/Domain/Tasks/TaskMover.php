@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tasks;
 
+use App\Domain\Reports\ReportCache;
 use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
@@ -80,6 +81,9 @@ final class TaskMover
                     ->where(fn (Builder $from) => $from->whereIn('predecessor_task_id', $taskIds)->whereNotIn('successor_task_id', $taskIds))
                     ->orWhere(fn (Builder $to) => $to->whereIn('successor_task_id', $taskIds)->whereNotIn('predecessor_task_id', $taskIds)))
                 ->delete();
+
+            // La tarea y sus subtareas cambian de proyecto: la caché de informes, tras el commit (INT-03).
+            ReportCache::bumpAfterCommit();
 
             return $task;
         });

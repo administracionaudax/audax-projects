@@ -38,11 +38,14 @@ $isInternal = function (Route $route): bool {
 it('toda ruta interna manda al cliente a su portal y no ejecuta nada', function () use ($uriFor, $isInternal) {
     $failures = [];
     $checked = 0;
+    $uris = [];
 
     foreach (RouteFacade::getRoutes()->getRoutes() as $route) {
         if (! $isInternal($route)) {
             continue;
         }
+
+        $uris[] = $route->uri();
 
         foreach (array_diff($route->methods(), ['HEAD', 'OPTIONS']) as $method) {
             $checked++;
@@ -56,7 +59,20 @@ it('toda ruta interna manda al cliente a su portal y no ejecuta nada', function 
         }
     }
 
+    // Las rutas del chat (Fase 6) son internas y están en el recorrido: mensajes, multimedia, tiempo
+    // real, avisos del navegador y la autorización de los canales de Reverb.
     expect($checked)->toBeGreaterThan(100)
+        ->and($uris)->toContain(
+            'chat',
+            'chat/{conversation}/mensajes',
+            'chat/{conversation}/multimedia',
+            'chat/audios/{attachment}',
+            'proyectos/{project}/chat',
+            'tiempo-real/no-leidos',
+            'avisos-navegador/suscripciones',
+            'broadcasting/auth',
+            'admin/transcripciones',
+        )
         ->and($failures)->toBe([]);
 });
 
@@ -87,6 +103,8 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         '#^two-factor-challenge$#', '#^invitacion#',
         // Públicas o técnicas.
         '#^health$#', '#^up$#', '#^styleguide$#', '#^storage/#', '#^_inertia/#',
+        // Logo de la empresa (D-067): público para los emails, sin sesión.
+        '#^marca/logo/#',
         // Horizon: su propia puerta (solo admin fuera de local).
         '#^horizon#',
     ];

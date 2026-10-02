@@ -152,7 +152,13 @@ export default function BillingReport({
                     </Select>
                 </div>
 
-                <ReportFilterBar filters={filters} show={FILTERS} url={url} />
+                {/* Facturación no compara con el periodo anterior: sin el interruptor. */}
+                <ReportFilterBar
+                    filters={filters}
+                    show={FILTERS}
+                    url={url}
+                    compare={false}
+                />
 
                 {scope.team_only ? (
                     <R2ScopeNote>

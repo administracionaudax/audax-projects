@@ -1,0 +1,35 @@
+# Servicio que se añade a /opt/audax/compose.yml en el despliegue de la Fase 6 (RUNBOOK A2, D-070).
+# La imagen se carga con docker load (no hay registro): el tag queda fijado por su ID en SERVIDOR-CAMBIOS.
+  whisper:
+    image: audax-whisper:v1.9.4-sse2-openblas
+    container_name: audax-whisper
+    restart: unless-stopped
+    networks: [audax-net]
+    ports: ["127.0.0.1:18091:8080"]
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --model
+      - /models/ggml-small.bin
+      - --language
+      - es
+      - --threads
+      - "2"
+      - --convert
+      - --tmp-dir
+      - /tmp
+    volumes:
+      - /var/lib/audax/whisper/models:/models:ro
+    tmpfs: ["/tmp:size=512m"]
+    read_only: true
+    mem_limit: 1536m
+    mem_swappiness: 0
+    cpus: 2
+    cpuset: "6,7"
+    cpu_shares: 64
+    pids_limit: 64
+    oom_score_adj: 1000
+    security_opt: ["no-new-privileges:true"]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }

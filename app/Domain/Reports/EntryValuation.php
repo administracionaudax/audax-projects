@@ -2,27 +2,31 @@
 
 namespace App\Domain\Reports;
 
-use App\Enums\BillingType;
-use App\Models\Client;
-use App\Models\HourBank;
-use App\Models\Project;
 use App\Models\TimeEntry;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 
 /**
- * Valoración de cada entrada suelta con el criterio de D-043 (exportación para facturar, R2): la
- * misma que aplica RevenueCalculator a los agregados, entrada a entrada, para que la suma de los
- * importes de las entradas sea el ingreso estimado del informe.
+ * Valoración de cada entrada suelta con el criterio de D-043 (exportaciones con importes por
+ * entrada: facturación y horas), con las mismas fórmulas que RevenueCalculator (Valuation):
  *
  * - no facturable o proyecto interno: 0,
  * - precio cerrado: importe × minutos / base de avance (RevenueCalculator::fixedPriceBases),
- * - bolsa con precio: precio × minutos dentro / total de la bolsa + exceso × tarifa vigente,
+ * - bolsa con precio: precio × minutos dentro / divisor (D-082) + exceso × (instantánea de tarifa
+ *   si la tiene, aprobada o bloqueada; si no, la tarifa vigente) (D-043, BIZ-01),
  * - resto: minutos × (instantánea de tarifa si la tiene; si no, la tarifa vigente).
  *
+ * Dos usos:
+ * - value() y valueOf(): el importe de una entrada por sí sola,
+ * - next(), en streaming (PERF-02): la parte de cada entrada del total de su unidad, en el orden
+ *   de la exportación. Es lo que suma al acumulado de su unidad, así que la suma de las entradas
+ *   es EXACTAMENTE el total canónico de RevenueCalculator para esas entradas (sin el sesgo del
+ *   truncado de cada una) y, con Cents::running, el fichero cuadra con la página sin forzar nada.
+ *
  * Se prepara una vez para una consulta ya acotada (ReportScope::entries()): carga proyectos,
- * clientes, bolsas y personas con un número fijo de consultas; después value() no consulta.
+ * clientes, bolsas y personas con un número fijo de consultas; después no consulta.
+ *
+ * @phpstan-import-type Sums from Valuation
+ * @phpstan-import-type Unit from Valuation
  */
 final class EntryValuation
 {
@@ -40,54 +44,32 @@ final class EntryValuation
 
     public const string NO_RATE = 'no_rate';
 
-    /**
-     * @param  Collection<int, Project>  $projects
-     * @param  Collection<int, Client>  $clients
-     * @param  Collection<int, HourBank>  $banks
-     * @param  Collection<int, User>  $users
-     * @param  array<int, int>  $fixedBases
-     */
-    private function __construct(
-        private readonly RevenueCalculator $revenue,
-        private readonly Collection $projects,
-        private readonly Collection $clients,
-        private readonly Collection $banks,
-        private readonly Collection $users,
-        private readonly array $fixedBases,
-    ) {}
+    /** @var array<string, array{sums: Sums, income: numeric-string, cost: numeric-string}> acumulado de next() por unidad */
+    private array $running = [];
 
-    /** @var array<string, array{basis: string, rate: string|null, price: string|null, total: int}> */
-    private array $contexts = [];
+    /** @var array<int, array{minutes: int, income: numeric-string}> acumulado de next() por proyecto de precio cerrado */
+    private array $fixed = [];
+
+    /** @var numeric-string */
+    private string $incomeTotal = '0';
+
+    /** @var numeric-string */
+    private string $costTotal = '0';
+
+    private function __construct(private readonly Valuation $valuation) {}
 
     /**
      * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
      */
     public static function for(Builder $entries): self
     {
-        $revenue = app(RevenueCalculator::class);
         $keys = (clone $entries)->toBase()->distinct()
             ->select(['time_entries.project_id', 'time_entries.hour_bank_id', 'time_entries.user_id'])
             ->get();
+        $ids = fn (string $column): array => array_values($keys->pluck($column)->filter(fn ($id): bool => $id !== null)
+            ->map(fn ($id): int => (int) $id)->unique()->all());
 
-        $projects = Project::query()->withTrashed()
-            ->whereIn('id', $keys->pluck('project_id')->map(fn ($id): int => (int) $id)->unique()->values())
-            ->get(['id', 'client_id', 'billing_type', 'fixed_price_amount', 'budget_minutes', 'hourly_rate'])
-            ->keyBy('id');
-        $clients = Client::query()->withTrashed()
-            ->whereIn('id', $projects->pluck('client_id')->filter()->unique()->values())
-            ->get(['id', 'default_hourly_rate'])->keyBy('id');
-        $banks = HourBank::query()->withTrashed()
-            ->whereIn('id', $keys->pluck('hour_bank_id')->filter()->map(fn ($id): int => (int) $id)->unique()->values())
-            ->get(['id', 'total_minutes', 'hourly_rate', 'price_amount'])->keyBy('id');
-        $users = User::query()
-            ->whereIn('id', $keys->pluck('user_id')->map(fn ($id): int => (int) $id)->unique()->values())
-            ->get(['id', 'default_hourly_rate', 'hourly_cost'])->keyBy('id');
-
-        $fixedBases = $revenue->fixedPriceBases(
-            $projects->filter(fn (Project $project): bool => $project->billing_type === BillingType::FixedPrice),
-        );
-
-        return new self($revenue, $projects, $clients, $banks, $users, $fixedBases);
+        return new self(Valuation::load(app(RevenueCalculator::class), $ids('project_id'), $ids('hour_bank_id'), $ids('user_id')));
     }
 
     /**
@@ -110,112 +92,92 @@ final class EntryValuation
     }
 
     /**
-     * La misma valoración a partir de las columnas de la entrada (filas sin hidratar: la exportación
-     * para facturar lee miles de entradas sin crear un modelo por cada una).
+     * La misma valoración a partir de las columnas de la entrada (filas sin hidratar: las
+     * exportaciones leen miles de entradas sin crear un modelo por cada una).
      *
      * @return array{rate: string|null, income: numeric-string, basis: string}
      */
     public function valueOf(int $projectId, ?int $bankId, int $userId, bool $billable, int $minutes, int $overage, mixed $rateSnapshot): array
     {
-        if (! $billable) {
-            return ['rate' => null, 'income' => '0', 'basis' => self::NOT_BILLABLE];
-        }
-
-        $context = $this->context($projectId, $bankId, $userId);
-
-        return match ($context['basis']) {
-            self::INTERNAL => ['rate' => null, 'income' => '0', 'basis' => self::INTERNAL],
-            self::FIXED_PRICE => [
-                'rate' => null,
-                'income' => $context['price'] === null ? '0' : Money::div(Money::mul($context['price'], (string) $minutes), (string) $context['total']),
-                'basis' => self::FIXED_PRICE,
-            ],
-            self::BANK_PRICE => [
-                'rate' => $context['rate'],
-                'income' => Money::add(
-                    Money::div(Money::mul((string) $context['price'], (string) ($minutes - $overage)), (string) $context['total']),
-                    Money::forMinutes($overage, $context['rate']),
-                ),
-                'basis' => self::BANK_PRICE,
-            ],
-            default => $this->hourly($minutes, $rateSnapshot, $context['rate']),
-        };
-    }
-
-    /**
-     * Por horas: la instantánea de tarifa si la entrada la tiene (aprobada o bloqueada); si no, la
-     * tarifa vigente.
-     *
-     * @return array{rate: string|null, income: numeric-string, basis: string}
-     */
-    private function hourly(int $minutes, mixed $snapshot, ?string $rate): array
-    {
-        if (is_numeric($snapshot)) {
-            $snapshot = Money::round(Money::of(is_string($snapshot) ? $snapshot : (float) $snapshot));
-
-            return [
-                'rate' => $snapshot,
-                'income' => Money::forMinutes($minutes, $snapshot),
-                'basis' => self::SNAPSHOT,
-            ];
-        }
+        $unit = $this->valuation->unit($projectId, $bankId, $userId, $billable);
+        $sums = Valuation::ofEntry($minutes, $overage, $rateSnapshot, null);
+        $described = self::describe($unit, $rateSnapshot);
 
         return [
-            'rate' => $rate,
-            'income' => Money::forMinutes($minutes, $rate),
-            'basis' => $rate === null ? self::NO_RATE : self::RATE,
+            'rate' => $described['rate'],
+            'income' => $unit['basis'] === self::FIXED_PRICE
+                ? $this->valuation->fixedIncome($projectId, $minutes)
+                : $this->valuation->income($unit, $sums),
+            'basis' => $described['basis'],
         ];
     }
 
     /**
-     * Lo que no depende de la entrada sino de su proyecto, bolsa y persona (criterio, tarifa vigente,
-     * precio y total o base), calculado una sola vez por combinación: valorar miles de entradas no
-     * repite la lectura de los atributos (con sus conversiones) de los mismos modelos.
+     * La siguiente entrada de una exportación (en su orden): su tarifa y criterio y su parte exacta
+     * del ingreso y del coste, que es lo que suma al acumulado de su unidad (proyecto · bolsa ·
+     * persona · facturable; el precio cerrado, por proyecto). La suma de todas es totals().
      *
-     * @return array{basis: string, rate: string|null, price: string|null, total: int}
+     * @return array{rate: string|null, income: numeric-string, cost: numeric-string, basis: string}
      */
-    private function context(int $projectId, ?int $bankId, int $userId): array
+    public function next(int $projectId, ?int $bankId, int $userId, bool $billable, int $minutes, int $overage, mixed $rateSnapshot, mixed $costSnapshot): array
     {
-        $key = $projectId.':'.($bankId ?? '-').':'.$userId;
+        $unit = $this->valuation->unit($projectId, $bankId, $userId, $billable);
+        $key = $projectId.':'.($bankId ?? '-').':'.$userId.':'.($billable ? 1 : 0);
+        $before = $this->running[$key] ?? ['sums' => Valuation::zero(), 'income' => '0', 'cost' => '0'];
+        $sums = Valuation::add($before['sums'], Valuation::ofEntry($minutes, $overage, $rateSnapshot, $costSnapshot));
 
-        return $this->contexts[$key] ??= $this->resolveContext($projectId, $bankId, $userId);
+        $after = [
+            'sums' => $sums,
+            'income' => $unit['basis'] === self::FIXED_PRICE ? '0' : $this->valuation->income($unit, $sums),
+            'cost' => $this->valuation->cost($unit, $sums),
+        ];
+        $this->running[$key] = $after;
+
+        $income = Money::sub($after['income'], $before['income']);
+        if ($unit['basis'] === self::FIXED_PRICE) {
+            $fixed = $this->fixed[$projectId] ?? ['minutes' => 0, 'income' => '0'];
+            $total = $this->valuation->fixedIncome($projectId, $fixed['minutes'] + $minutes);
+            $this->fixed[$projectId] = ['minutes' => $fixed['minutes'] + $minutes, 'income' => $total];
+            $income = Money::sub($total, $fixed['income']);
+        }
+
+        $cost = Money::sub($after['cost'], $before['cost']);
+        $this->incomeTotal = Money::add($this->incomeTotal, $income);
+        $this->costTotal = Money::add($this->costTotal, $cost);
+
+        $described = self::describe($unit, $rateSnapshot);
+
+        return ['rate' => $described['rate'], 'income' => $income, 'cost' => $cost, 'basis' => $described['basis']];
     }
 
     /**
-     * @return array{basis: string, rate: string|null, price: string|null, total: int}
+     * Ingreso y coste exactos de las entradas pasadas por next(): el total canónico de
+     * RevenueCalculator para esas mismas entradas.
+     *
+     * @return array{income: numeric-string, cost: numeric-string}
      */
-    private function resolveContext(int $projectId, ?int $bankId, int $userId): array
+    public function totals(): array
     {
-        /** @var Project|null $project */
-        $project = $this->projects->get($projectId);
+        return ['income' => $this->incomeTotal, 'cost' => $this->costTotal];
+    }
 
-        if ($project === null || $project->billing_type === BillingType::Internal) {
-            return ['basis' => self::INTERNAL, 'rate' => null, 'price' => null, 'total' => 0];
-        }
+    /**
+     * Tarifa que se enseña y criterio de una entrada: con instantánea (aprobada o bloqueada), su
+     * tarifa congelada, también la del exceso de una bolsa con precio (BIZ-01); si no, la vigente.
+     *
+     * @param  Unit  $unit
+     * @return array{rate: string|null, basis: string}
+     */
+    private static function describe(array $unit, mixed $rateSnapshot): array
+    {
+        $snapshot = Valuation::snapshot($rateSnapshot);
 
-        if ($project->billing_type === BillingType::FixedPrice) {
-            $base = $this->fixedBases[$project->id] ?? 0;
-
-            return [
-                'basis' => self::FIXED_PRICE,
-                'rate' => null,
-                'price' => $project->fixed_price_amount === null || $base <= 0 ? null : (string) $project->fixed_price_amount,
-                'total' => $base,
-            ];
-        }
-
-        /** @var HourBank|null $bank */
-        $bank = $bankId !== null ? $this->banks->get($bankId) : null;
-        /** @var User|null $user */
-        $user = $this->users->get($userId);
-        /** @var Client|null $client */
-        $client = $project->client_id !== null ? $this->clients->get($project->client_id) : null;
-        $rate = $this->revenue->rate($bank, $project, $client, $user);
-
-        if ($bank !== null && $bank->price_amount !== null && $bank->total_minutes > 0) {
-            return ['basis' => self::BANK_PRICE, 'rate' => $rate, 'price' => (string) $bank->price_amount, 'total' => $bank->total_minutes];
-        }
-
-        return ['basis' => self::RATE, 'rate' => $rate, 'price' => null, 'total' => 0];
+        return match ($unit['basis']) {
+            self::BANK_PRICE => ['rate' => $snapshot ?? $unit['rate'], 'basis' => self::BANK_PRICE],
+            self::RATE, self::NO_RATE => $snapshot !== null
+                ? ['rate' => $snapshot, 'basis' => self::SNAPSHOT]
+                : ['rate' => $unit['rate'], 'basis' => $unit['basis']],
+            default => ['rate' => null, 'basis' => $unit['basis']],
+        };
     }
 }

@@ -23,6 +23,15 @@ export type Recurrence = {
 /** Desde este día del mes, algún mes no lo tiene y se usa su último día. */
 export const LAST_DAY_FROM = 29;
 
+/**
+ * Fechas admitidas (desde, hasta y las de las tareas): de 2000 a 2100, como
+ * RecurringTaskRule::MIN_DATE y MAX_DATE en el servidor.
+ */
+export const MIN_DATE = '2000-01-01';
+export const MAX_DATE = '2100-12-31';
+
+const DAY_MS = 86_400_000;
+
 /** Horizonte de la próxima fecha: la repetición más larga (cada 12 meses) cabe siempre. */
 export const NEXT_HORIZON_MONTHS = 13;
 
@@ -67,12 +76,34 @@ function format(year: number, month: number, day: number): string {
     return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/**
+ * Días desde el 1 de enero de 1970 (negativos antes), para cualquier año: Date.UTC() lleva los años
+ * 0-99 al siglo XX, setUTCFullYear() no.
+ */
+function dayNumber(date: string): number {
+    const [year, month, day] = parts(date);
+    const value = new Date(0);
+    value.setUTCFullYear(year, month - 1, day);
+
+    return Math.round(value.getTime() / DAY_MS);
+}
+
+/** Fecha "YYYY-MM-DD" de un número de día (de dayNumber). */
+function dateOfDay(day: number): string {
+    return new Date(day * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** "2026-10-05" → 2026 × 12 + 9. */
+function monthIndex(date: string): number {
+    const [year, month] = parts(date);
+
+    return year * 12 + month - 1;
+}
+
 /** Día ISO de la semana (1 = lunes … 7 = domingo). */
 export function isoWeekday(date: string): number {
-    const [year, month, day] = parts(date);
-    const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-
-    return weekday === 0 ? 7 : weekday;
+    // El 1 de enero de 1970 (día 0) fue jueves.
+    return ((((dayNumber(date) + 3) % 7) + 7) % 7) + 1;
 }
 
 export function daysInMonth(year: number, month: number): number {
@@ -125,9 +156,11 @@ export function describeRecurrence(
 }
 
 /**
- * Fechas de las tareas entre `from` y `to` (incluidas), respetando desde y hasta. Semanal: cada
- * N semanas desde la primera semana de la regla; mensual: cada N meses desde el mes de inicio, el
- * día elegido o el último del mes si no lo tiene.
+ * Fechas de las tareas entre `from` y `to` (incluidas), respetando desde, hasta y el rango admitido
+ * (MIN_DATE a MAX_DATE). Semanal: cada N semanas desde la primera semana de la regla; mensual: cada
+ * N meses desde el mes de inicio, el día elegido o el último del mes si no lo tiene. Salta
+ * directamente a la primera fecha de la serie dentro de la ventana, sin recorrerla desde el inicio.
+ * Mismos casos que el servidor: tests/fixtures/recurrence-cases.json.
  */
 export function occurrencesBetween(
     rule: Recurrence,
@@ -135,43 +168,60 @@ export function occurrencesBetween(
     to: string,
 ): string[] {
     const start = rule.starts_on;
-    const end = rule.ends_on !== null && rule.ends_on < to ? rule.ends_on : to;
+    const low = [from, start, MIN_DATE].reduce((a, b) => (a > b ? a : b));
+    const high = [to, rule.ends_on ?? MAX_DATE, MAX_DATE].reduce((a, b) =>
+        a < b ? a : b,
+    );
+
+    if (low > high) {
+        return [];
+    }
+
     const interval = Math.max(Math.trunc(rule.interval) || 1, 1);
     const dates: string[] = [];
 
     if (rule.frequency === 'weekly') {
         const weekday = clamp(rule.weekday ?? isoWeekday(start), 1, 7);
-        let cursor = addDays(start, weekday - isoWeekday(start));
+        const step = 7 * interval;
+        const startDay = dayNumber(start);
+        // La primera de la serie: ese día de la semana de inicio o, si ya pasó, N semanas después.
+        let day = startDay - isoWeekday(start) + weekday;
 
-        if (cursor < start) {
-            cursor = addDays(cursor, 7 * interval);
+        if (day < startDay) {
+            day += step;
         }
 
-        for (; cursor <= end; cursor = addDays(cursor, 7 * interval)) {
-            if (cursor >= from) {
-                dates.push(cursor);
-            }
+        const first = dayNumber(low);
+
+        if (day < first) {
+            day += Math.ceil((first - day) / step) * step;
+        }
+
+        for (const last = dayNumber(high); day <= last; day += step) {
+            dates.push(dateOfDay(day));
         }
 
         return dates;
     }
 
     const monthDay = clamp(rule.month_day ?? parts(start)[2], 1, 31);
-    const [startYear, startMonth] = parts(start);
+    let month = monthIndex(start);
+    const first = monthIndex(low);
 
-    for (
-        let month = format(startYear, startMonth, 1);
-        month <= end;
-        month = addMonths(month, interval)
-    ) {
-        const [year, monthNumber] = parts(month);
+    if (month < first) {
+        month += Math.ceil((first - month) / interval) * interval;
+    }
+
+    for (const last = monthIndex(high); month <= last; month += interval) {
+        const year = Math.floor(month / 12);
+        const monthNumber = (month % 12) + 1;
         const candidate = format(
             year,
             monthNumber,
             Math.min(monthDay, daysInMonth(year, monthNumber)),
         );
 
-        if (candidate >= start && candidate >= from && candidate <= end) {
+        if (candidate >= low && candidate <= high) {
             dates.push(candidate);
         }
     }

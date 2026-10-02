@@ -1,14 +1,22 @@
 <?php
 
+use App\Domain\Time\Capacity;
+use App\Enums\AbsenceStatus;
+use App\Enums\AbsenceType;
 use App\Enums\Role;
+use App\Models\Absence;
 use App\Models\Client;
 use App\Models\Department;
+use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
+use App\Support\LocalTime;
+use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DefaultSettingsSeeder;
 use Database\Seeders\DepartmentsSeeder;
@@ -20,11 +28,17 @@ test('el seeder de desarrollo crea las cuentas de los E2E, el responsable de Dis
     expect(User::role(Role::Admin->value)->count())->toBe(1)
         ->and(User::role(Role::DepartmentManager->value)->count())->toBe(3)
         ->and(User::role(Role::Employee->value)->count())->toBe(6)
-        ->and(User::role(Role::Client->value)->count())->toBe(1);
+        ->and(User::role(Role::Client->value)->count())->toBe(2);
 
-    foreach (['admin@example.com', 'responsable@example.com', 'empleado@example.com', 'cliente@example.com'] as $email) {
+    foreach (['admin@example.com', 'responsable@example.com', 'empleado@example.com', 'cliente@example.com', 'cliente.lamas@example.com'] as $email) {
         expect(User::query()->where('email', $email)->exists())->toBeTrue();
     }
+
+    // La persona del portal de un cliente sin bolsas (E2E brand-gradient: estado vacío grande).
+    $withoutBanks = User::query()->where('email', 'cliente.lamas@example.com')->sole();
+    expect($withoutBanks->client_id)->not->toBeNull()
+        ->and($withoutBanks->hasRole(Role::Client->value))->toBeTrue()
+        ->and(HourBank::query()->whereHas('project', fn ($query) => $query->where('client_id', $withoutBanks->client_id))->exists())->toBeFalse();
 
     $manager = User::query()->where('email', 'responsable@example.com')->sole();
 
@@ -73,11 +87,60 @@ test('los datos de ejemplo cubren el SPEC §15 y son coherentes con el motor de 
     expect($foreign)->toBe(0);
 });
 
+test('los datos de ejemplo tienen festivos y ausencias, y nadie imputa en un día sin capacidad (SPEC §9 y §15)', function () {
+    $this->seed(DatabaseSeeder::class);
+    $today = LocalTime::todayString();
+    $email = fn (string $address): int => User::query()->where('email', $address)->value('id');
+
+    // Festivos nacionales del año pasado, este y el que viene.
+    expect(Holiday::query()->count())->toBe(30);
+
+    // Ausencias pasadas y aprobadas dentro de los 12 meses de horas: dos semanas de vacaciones,
+    // un día de formación, una baja de dos días y medio día.
+    $past = Absence::query()->with('user')->approved()->where('end_date', '<', $today)->get();
+    expect($past->map(fn (Absence $absence): string => $absence->type->value.':'.($absence->start_date->diffInWeekdays($absence->end_date) + 1).':'.($absence->partial_minutes ?? 'dia'))->sort()->values()->all())
+        ->toBe(['leave:1:240', 'sick:2:dia', 'training:1:dia', 'vacation:5:dia', 'vacation:5:dia'])
+        ->and($past->every(fn (Absence $absence): bool => $absence->approved_by !== null && $absence->reviewed_at < $absence->start_date))->toBeTrue();
+
+    // Las futuras de los E2E: Elena de vacaciones la semana que viene y una solicitud de Lucía.
+    $nextMonday = CarbonImmutable::parse($today)->startOfWeek()->addWeek();
+    expect(Absence::query()->approved()->where('user_id', $email('empleado@example.com'))->where('type', AbsenceType::Vacation->value)
+        ->whereBetween('start_date', [$nextMonday->toDateString(), $nextMonday->addDays(6)->toDateString()])->exists())->toBeTrue()
+        ->and(Absence::query()->where('status', AbsenceStatus::Requested->value)->where('user_id', $email('lucia.martin@example.com'))->exists())->toBeTrue();
+
+    // El día sobrecargado de Lucía para el E2E de Carga: 16 h en el primer día laborable de la
+    // semana que viene, sin horas imputadas.
+    $overload = Task::query()->where('title', 'Maquetas para la feria de turismo')->sole();
+    expect($overload->assignee_user_id)->toBe($email('lucia.martin@example.com'))
+        ->and($overload->estimated_minutes)->toBe(960)
+        ->and($overload->start_date?->toDateString())->toBe($overload->due_date?->toDateString())
+        ->and($overload->due_date?->toDateString() >= $nextMonday->toDateString())->toBeTrue()
+        ->and($overload->due_date?->isWeekend())->toBeFalse()
+        ->and(Holiday::query()->whereDate('date', (string) $overload->due_date?->toDateString())->exists())->toBeFalse()
+        ->and(TimeEntry::query()->where('task_id', $overload->id)->exists())->toBeFalse();
+
+    // Nadie imputa en un festivo ni en un día de ausencia completa; con medio día, no más de lo que queda.
+    expect(TimeEntry::query()->whereIn('date', Holiday::query()->pluck('date')->map(fn ($date): string => $date->toDateString()))->count())->toBe(0);
+
+    foreach ($past as $absence) {
+        $logged = TimeEntry::query()->where('user_id', $absence->user_id)
+            ->whereBetween('date', [$absence->start_date->toDateString(), $absence->end_date->toDateString()]);
+
+        if ($absence->partial_minutes === null) {
+            expect($logged->count())->toBe(0);
+        } else {
+            $capacity = app(Capacity::class)->onDate($absence->user, $absence->start_date);
+            expect($capacity)->toBeGreaterThan(0)
+                ->and((int) $logged->sum('minutes'))->toBeLessThanOrEqual($capacity);
+        }
+    }
+});
+
 test('el seeder de desarrollo es repetible', function () {
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
-    expect(User::query()->count())->toBe(11)
+    expect(User::query()->count())->toBe(12)
         ->and(Department::query()->count())->toBe(3)
         ->and(Project::query()->count())->toBe(15);
 });

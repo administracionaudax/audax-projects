@@ -268,6 +268,12 @@ export default function DirectionReport({
                             description={t('reports_r1.at_risk.description', {
                                 threshold: atRisk.threshold,
                             })}
+                            action={
+                                <ExportMenu
+                                    href={exportHref('bolsas-en-riesgo')}
+                                    label={t('reports_r1.export')}
+                                />
+                            }
                         >
                             <R1AtRiskBanks atRisk={atRisk} />
                         </PageSection>
@@ -275,6 +281,12 @@ export default function DirectionReport({
                         <PageSection
                             title={t('reports_r1.overdue.title')}
                             description={t('reports_r1.overdue.description')}
+                            action={
+                                <ExportMenu
+                                    href={exportHref('tareas-vencidas')}
+                                    label={t('reports_r1.export')}
+                                />
+                            }
                         >
                             <R1OverdueTasks overdue={overdue} />
                         </PageSection>

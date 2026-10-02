@@ -4,6 +4,7 @@ namespace App\Domain\Tasks;
 
 use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Models\Attachment;
+use App\Models\Message;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -74,6 +75,31 @@ final class AttachmentStorage
     ];
 
     /**
+     * Audios del chat (Fase 6): extensión → tipos reales admitidos. Solo para mensajes de audio.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array AUDIO_EXTENSIONS = [
+        'webm' => ['audio/webm', 'video/webm'],
+        'ogg' => ['audio/ogg', 'application/ogg'],
+        'oga' => ['audio/ogg', 'application/ogg'],
+        'm4a' => ['audio/mp4', 'audio/x-m4a', 'video/mp4'],
+        'mp4' => ['audio/mp4', 'video/mp4'],
+        'mp3' => ['audio/mpeg'],
+        'wav' => ['audio/wav', 'audio/x-wav', 'audio/vnd.wave'],
+    ];
+
+    /**
+     * ¿Es un audio admitido y su extensión casa con el tipo real?
+     */
+    public static function audioMatches(UploadedFile $file): bool
+    {
+        $extension = mb_strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
+
+        return in_array((string) $file->getMimeType(), self::AUDIO_EXTENSIONS[$extension] ?? [], true);
+    }
+
+    /**
      * Tamaño máximo por archivo en KB (ajuste max_attachment_mb, por defecto 50 MB).
      */
     public static function maxKilobytes(): int
@@ -106,12 +132,21 @@ final class AttachmentStorage
         return array_key_exists($extension, self::EXTENSIONS) ? $extension : null;
     }
 
-    public function store(UploadedFile $file, Task|TaskComment $attachable, int $projectId, User $uploader): Attachment
+    /**
+     * @param  int|null  $projectId  null en conversaciones sin proyecto (directas y de grupo)
+     */
+    public function store(UploadedFile $file, Task|TaskComment|Message $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
     {
-        $extension = self::extensionOf($file) ?? throw new RuntimeException('Extensión no admitida.');
+        $extension = $audio
+            ? (self::audioMatches($file) ? mb_strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION)) : throw new RuntimeException('Audio no admitido.'))
+            : (self::extensionOf($file) ?? throw new RuntimeException('Extensión no admitida.'));
         $mime = (string) $file->getMimeType();
         $uuid = (string) Str::uuid();
-        $directory = "attachments/{$projectId}";
+        $directory = match (true) {
+            $projectId !== null => "attachments/{$projectId}",
+            $attachable instanceof Message => "attachments/chat/{$attachable->conversation_id}",
+            default => throw new RuntimeException('Adjunto sin proyecto ni conversación.'),
+        };
 
         $path = $file->storeAs($directory, "{$uuid}.{$extension}", self::DISK);
 

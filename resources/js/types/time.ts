@@ -2,6 +2,7 @@
  * Props de las páginas del área «time» (Fase 1): contrato con app/Http/Controllers/Time/* y
  * app/Http/Controllers/HomeController.php. Los tipos de entidad están en ./domain.
  */
+import type { HomeChatSummary } from '@/types/chat';
 import type {
     Option,
     Project,
@@ -270,6 +271,8 @@ export type HomePageProps = {
     };
     week: { iso: string; period: TimesheetPeriodData };
     unlogged_days: UnloggedDay[];
+    /** Fase 6: menciones y conversaciones sin leer (prop diferida: llega tras pintar; `chat` es la compartida del total). */
+    chat_summary?: HomeChatSummary;
     /** Mis próximos hitos (D-062): vencidos y de los próximos 30 días, como mucho 8. */
     milestones: HomeMilestone[];
 };

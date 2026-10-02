@@ -3,7 +3,11 @@
  * reducida, periodos y el nombre accesible de cada celda). El servidor solo manda datos y nombres
  * propios (festivo, tipo de ausencia): la frase se escribe aquí (lang/ui/workload.json).
  */
-import { LOAD_LEVELS, loadLevel } from '@/components/charts/thresholds';
+import {
+    formatLoadPercent,
+    LOAD_LEVELS,
+    loadLevel,
+} from '@/components/charts/thresholds';
 import type {
     WorkloadColumn,
     WorkloadHorizonKey,
@@ -16,7 +20,7 @@ import {
     weekdayLongLabel,
     weekdayShortLabel,
 } from '@/components/time/week-days';
-import { formatDate, formatMinutes, formatPercent } from '@/lib/format';
+import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 
@@ -137,7 +141,7 @@ export function loadSummary({ planned, capacity }: WorkloadTotals): string {
     return t('workload_cell.summary', {
         planned: formatMinutes(planned),
         capacity: formatMinutes(capacity),
-        percent: formatPercent(planned / capacity, 0),
+        percent: formatLoadPercent(planned, capacity),
         level: LOAD_LEVELS[level].label,
     });
 }

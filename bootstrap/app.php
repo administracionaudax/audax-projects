@@ -32,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::get('health', HealthController::class)->name('health');
         },
     )
+    // Tiempo real (Fase 6): /broadcasting/auth solo para internos activos y, si el 2FA es
+    // obligatorio, con él ya configurado (como el resto de rutas internas; D-120).
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['middleware' => ['web', 'auth', 'active', 'internal', '2fa']])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

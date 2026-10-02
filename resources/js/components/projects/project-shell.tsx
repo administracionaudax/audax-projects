@@ -1,7 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
-import { PhaseBadge } from '@/components/empty-state';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
@@ -11,10 +10,8 @@ import { cn } from '@/lib/utils';
 import type { Project } from '@/types';
 
 type Tab = {
-    id: ProjectTab | 'chat';
+    id: ProjectTab;
     label: TranslationKey;
-    /** Pestañas que llegan en otra fase: se ven, pero desactivadas. */
-    phase?: 6;
 };
 
 const TABS: Tab[] = [
@@ -23,7 +20,7 @@ const TABS: Tab[] = [
     { id: 'gantt', label: 'project_tabs.gantt' },
     { id: 'bolsas', label: 'project_tabs.hour_banks' },
     { id: 'horas', label: 'project_tabs.time' },
-    { id: 'chat', label: 'project_tabs.chat', phase: 6 },
+    { id: 'chat', label: 'project_tabs.chat' },
     { id: 'archivos', label: 'project_tabs.files' },
     { id: 'ajustes', label: 'project_tabs.settings' },
 ];
@@ -86,27 +83,10 @@ export function ProjectShell({
                     {tabs.map((item) => {
                         const current = item.id === tab;
 
-                        if (item.phase) {
-                            return (
-                                <li key={item.id}>
-                                    <span
-                                        aria-disabled="true"
-                                        className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground"
-                                    >
-                                        {t(item.label)}
-                                        <PhaseBadge phase={item.phase} />
-                                    </span>
-                                </li>
-                            );
-                        }
-
                         return (
                             <li key={item.id}>
                                 <Link
-                                    href={urls.project(
-                                        project.id,
-                                        item.id as ProjectTab,
-                                    )}
+                                    href={urls.project(project.id, item.id)}
                                     aria-current={current ? 'page' : undefined}
                                     preserveScroll
                                     className={cn(

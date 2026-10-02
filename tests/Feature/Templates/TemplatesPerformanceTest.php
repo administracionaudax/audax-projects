@@ -41,7 +41,8 @@ beforeEach(function () {
         'templates.create.duplicate' => 7,
         'recurring.index' => 11,
         'projects.create' => 12,
-        'projects.settings' => 14,
+        // +1 fija con la Fase 6: el total sin leer del chat (prop compartida `chat.unread`).
+        'projects.settings' => 15,
         'projects.settings.planning' => 24,
     ];
 

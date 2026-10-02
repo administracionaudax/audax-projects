@@ -9,6 +9,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
+import { useNotificationChannel } from '@/hooks/use-realtime';
 import { t } from '@/lib/i18n';
 import { edit as editNotificationSettings } from '@/routes/notification-settings';
 import {
@@ -18,8 +19,14 @@ import {
 } from '@/routes/notifications';
 import type { AppNotification, RecentNotificationsResponse } from '@/types';
 
-/** La campana consulta el recuento cada 60 s (D-037: tiempo real con Reverb en la Fase 6). */
+/**
+ * Sin tiempo real, la campana consulta el recuento cada 60 s (D-037). Con Reverb (Fase 6) escucha
+ * el canal personal y no consulta: cada notificación nueva llega al momento.
+ */
 export const POLL_MS = 60_000;
+
+/** Las mismas que devuelve GET /notificaciones/recientes. */
+const RECENT_ITEMS = 8;
 
 async function fetchRecent(): Promise<RecentNotificationsResponse> {
     const response = await fetch(recent.url(), {
@@ -67,7 +74,32 @@ export function NotificationBell() {
         }
     }, []);
 
+    // Tiempo real: la notificación llega entera; si se corta la conexión, al volver se recarga.
+    const { live } = useNotificationChannel(
+        (notification) => {
+            if (notification.read_at === null) {
+                setUnread((current) => current + 1);
+            }
+
+            setItems((current) =>
+                current === null
+                    ? null
+                    : [
+                          notification,
+                          ...current.filter(
+                              (item) => item.id !== notification.id,
+                          ),
+                      ].slice(0, RECENT_ITEMS),
+            );
+        },
+        () => void refresh(open),
+    );
+
     useEffect(() => {
+        if (live) {
+            return;
+        }
+
         const id = window.setInterval(() => {
             if (document.visibilityState === 'visible') {
                 void refresh(false);
@@ -75,7 +107,7 @@ export function NotificationBell() {
         }, POLL_MS);
 
         return () => window.clearInterval(id);
-    }, [refresh]);
+    }, [refresh, live]);
 
     const label =
         unread > 0

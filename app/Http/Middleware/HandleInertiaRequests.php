@@ -2,9 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Http\Resources\FinancialResource;
+use App\Models\Absence;
 use App\Models\ActiveTimer;
 use App\Models\Client;
 use App\Models\Project;
@@ -59,6 +62,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => fn (): array => $this->auth($request, $user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             ...($user !== null && $user->isInternal() ? $this->internalProps($user) : []),
+            // Portal (Fase 5, D-067): identidad de la empresa y proyectos abiertos al portal.
+            ...($user !== null && $user->isClient() ? ['portal' => fn (): array => app(PortalShell::class)->for($user)] : []),
         ];
     }
 
@@ -90,13 +95,16 @@ class HandleInertiaRequests extends Middleware
                 'lockTime' => $user ? Gate::forUser($user)->allows('lock-time') : false,
                 'manageUsers' => $user ? Gate::forUser($user)->allows('manage-users') : false,
                 'manageSettings' => $user ? Gate::forUser($user)->allows('manage-settings') : false,
+                // «Ausencias del equipo» (aprobar y registrar): responsables y admins (D-049).
+                'viewTeamAbsences' => $user ? Gate::forUser($user)->allows('viewTeam', Absence::class) : false,
             ],
         ];
     }
 
     /**
-     * Temporizador activo, notificaciones sin leer y configuración (Fase 1), en closures: dos
-     * consultas ligeras solo al pintar una página; la configuración sale de la caché de ajustes.
+     * Temporizador activo, notificaciones sin leer y configuración (Fase 1), tiempo real y no leídos
+     * del chat (Fase 6) y aviso de privacidad (Fase 7), en closures: consultas ligeras solo al pintar una página; la
+     * configuración sale de la caché de ajustes.
      *
      * @return array<string, Closure>
      */
@@ -110,11 +118,39 @@ class HandleInertiaRequests extends Middleware
                 'timer_warning_hours' => (int) Setting::get('timer_warning_hours', 10),
                 'timer_rounding_minutes' => (int) Setting::get('timer_rounding_minutes', 1),
                 'description_required' => (bool) Setting::get('time_entry_description_required', false),
+                // Chat (Fase 6): límites de los adjuntos y de los audios que se graban.
+                'max_attachment_mb' => (int) Setting::get('max_attachment_mb', 50),
+                'max_audio_seconds' => (int) Setting::get('max_audio_seconds', 300),
             ],
             // Aviso de privacidad pendiente de leer (D-075): sin consultas (ajustes en caché).
             'privacy' => fn (): array => [
                 'needs_acknowledgement' => app(PrivacyNotice::class)->needsAcknowledgement($user),
             ],
+            'realtime' => fn (): ?array => $this->realtime(),
+            // Chat (Fase 6, C1): total sin leer de la entrada Chat de la navegación (una consulta).
+            'chat' => fn (): array => ['unread' => app(ConversationDirectory::class)->unreadTotal($user)],
+        ];
+    }
+
+    /**
+     * Conexión de Echo con Reverb para el navegador (Fase 6, config/realtime.php). null si el
+     * tiempo real está apagado: la interfaz sigue funcionando con consultas periódicas.
+     *
+     * @return array{key: string, host: string, port: int, scheme: 'http'|'https'}|null
+     */
+    private function realtime(): ?array
+    {
+        $key = config('realtime.key');
+
+        if (! config('realtime.enabled') || ! is_string($key) || $key === '') {
+            return null;
+        }
+
+        return [
+            'key' => $key,
+            'host' => (string) config('realtime.host'),
+            'port' => (int) config('realtime.port'),
+            'scheme' => config('realtime.scheme') === 'http' ? 'http' : 'https',
         ];
     }
 

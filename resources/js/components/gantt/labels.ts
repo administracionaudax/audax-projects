@@ -46,6 +46,8 @@ export function barLabel(
         conflicts?: ReadonlyArray<string>;
         readOnly?: boolean;
         parentTitle?: string | null;
+        /** Sin responsable (portal de cliente, F5): ni su nombre ni «Sin asignar». */
+        hideAssignee?: boolean;
     } = {},
 ): string {
     const percent = progressPercent(task);
@@ -64,9 +66,11 @@ export function barLabel(
             ? null
             : describeDates(dates, task.is_milestone),
         task.is_milestone ? t('gantt.bar.is_milestone') : null,
-        task.assignee
-            ? t('gantt.bar.assignee', { name: task.assignee.name })
-            : t('gantt.bar.unassigned'),
+        options.hideAssignee
+            ? null
+            : task.assignee
+              ? t('gantt.bar.assignee', { name: task.assignee.name })
+              : t('gantt.bar.unassigned'),
         task.status
             ? t('gantt.bar.status', { status: task.status.name })
             : null,

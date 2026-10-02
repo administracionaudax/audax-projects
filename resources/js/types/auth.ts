@@ -28,6 +28,8 @@ export type Abilities = {
     lockTime: boolean;
     manageUsers: boolean;
     manageSettings: boolean;
+    /** «Ausencias del equipo»: aprobar y registrar las de su equipo (D-049). */
+    viewTeamAbsences: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */
@@ -52,6 +54,10 @@ export type AppConfig = {
     timer_rounding_minutes: number;
     /** Ajuste «descripción obligatoria» de las entradas de horas (SPEC §7). */
     description_required: boolean;
+    /** Chat (Fase 6): tamaño máximo de cada adjunto en MB (por defecto 50). */
+    max_attachment_mb?: number;
+    /** Chat (Fase 6): duración máxima de los audios en segundos (por defecto 300). */
+    max_audio_seconds?: number;
 };
 
 export type Auth = {

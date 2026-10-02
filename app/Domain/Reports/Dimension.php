@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
  * Dimensiones por las que se agrupan las horas en los informes (SPEC §10: desgloses y tabla
  * dinámica). Cada una sabe su expresión SQL de agrupación (en SQLite y PostgreSQL) y las uniones
  * que necesita sobre time_entries. Las uniones usan alias report_* para no chocar con los scopes.
+ * «Tarea» agrupa por la tarea raíz: las horas de una subtarea suman en su padre (SPEC §6).
  */
 enum Dimension: string
 {
@@ -61,7 +62,9 @@ enum Dimension: string
             self::Project => 'time_entries.project_id',
             self::HourBank => 'time_entries.hour_bank_id',
             self::TaskType => 'report_tasks.task_type_id',
-            self::Task => 'time_entries.task_id',
+            // Las horas de una subtarea suman en su tarea padre (SPEC §6): se agrupa por la tarea raíz,
+            // también si la subtarea está borrada (la unión con tasks no filtra los borrados).
+            self::Task => 'COALESCE(report_tasks.parent_task_id, time_entries.task_id)',
             self::Day => $pgsql ? "to_char(time_entries.date, 'YYYY-MM-DD')" : 'time_entries.date',
             // Lunes de la semana (ISO) y primer día del mes, como fecha AAAA-MM-DD.
             self::Week => $pgsql
@@ -83,7 +86,7 @@ enum Dimension: string
         self::ensureJoin($query, match ($this) {
             self::Department => 'users',
             self::Client => 'projects',
-            self::TaskType => 'tasks',
+            self::TaskType, self::Task => 'tasks',
             default => null,
         });
     }

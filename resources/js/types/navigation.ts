@@ -11,4 +11,8 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Contador junto a la entrada (p. ej. mensajes sin leer del chat) y su texto accesible. */
+    badge?: { count: number; label: string };
+    /** Subpáginas de la sección (p. ej. «Ausencias del equipo» bajo «Ausencias»). */
+    items?: NavItem[];
 };

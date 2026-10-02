@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { login, USERS } from './support';
+import { login } from './support';
 
 /**
  * Texto sobre el degradado de marca (UI-02). El cálculo de contraste en toda la superficie
@@ -8,6 +8,9 @@ import { login, USERS } from './support';
  * las superficies con degradado pintan el velo navy encima y que el texto usa los colores
  * validados (blanco al 85 % y la palabra clave en azul claro), en móvil y en escritorio.
  */
+/** DemoDataSeeder: persona del portal de un cliente sin bolsas. */
+const PORTAL_WITHOUT_BANKS = 'cliente.lamas@example.com';
+
 const VIEWPORTS = [
     { width: 375, height: 812 },
     { width: 1440, height: 900 },
@@ -61,16 +64,19 @@ test('degradado con velo y texto AA en móvil y en escritorio', async ({
         });
     }
 
-    // Otro usuario que el admin: el límite de intentos de login es por correo e IP.
-    await login(page, USERS.employee);
+    // La persona del portal de Construcciones Lamas, un cliente sin bolsas en los datos de ejemplo: su
+    // Inicio del portal es el estado vacío grande (HeroEmptyState) con el degradado.
+    await login(page, PORTAL_WITHOUT_BANKS);
 
     for (const viewport of VIEWPORTS) {
         await test.step(`estado vacío grande a ${viewport.width} px`, async () => {
             await page.setViewportSize(viewport);
-            // Una sección que aún llega en otra fase: su estado vacío grande lleva el degradado.
-            await page.goto('/chat');
+            await page.goto('/portal');
             const hero = page.locator('section.bg-brand-gradient');
             await expect(hero).toBeVisible();
+            await expect(hero).toContainText(
+                'Todavía no tienes bolsas de horas',
+            );
             await expectVeiledGradient(hero);
             await expectOnGradientText(hero);
         });

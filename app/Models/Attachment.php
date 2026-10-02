@@ -59,6 +59,15 @@ class Attachment extends Model
     ];
 
     /**
+     * Audios del chat (Fase 6): lo que graba MediaRecorder (webm/opus en Chrome y Firefox,
+     * mp4/aac en Safari) y los formatos habituales. Se sirven con su tipo para reproducirlos.
+     */
+    public const array AUDIO_MIMES = [
+        'audio/webm', 'video/webm', 'audio/ogg', 'application/ogg', 'audio/mp4', 'audio/x-m4a', 'video/mp4',
+        'audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/vnd.wave',
+    ];
+
+    /**
      * Imágenes rasterizadas con miniatura y vista previa en la página (los SVG no).
      */
     public const array PREVIEWABLE_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
@@ -95,6 +104,11 @@ class Attachment extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function isAudio(): bool
+    {
+        return in_array($this->mime, self::AUDIO_MIMES, true) && $this->attachable_type === Message::class;
     }
 
     public function isPreviewableImage(): bool

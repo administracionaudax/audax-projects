@@ -23,7 +23,7 @@ import {
     Diamond,
 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { DatePicker } from '@/components/domain/date-picker';
 import { CalendarChip, StatusIcon } from '@/components/planning/calendar-chip';
 import type { ChipMoveHandler } from '@/components/planning/calendar-chip';
@@ -251,6 +251,108 @@ function MoreTasks({
     );
 }
 
+/**
+ * Franja de una tarea del inicio a la entrega (D-061): un botón que abre su panel, con las fechas
+ * en su nombre accesible (y en el título, por si el texto no cabe). No se arrastra: la tarea se
+ * mueve desde su tarjeta del día de entrega. Si sigue antes del lunes o después del domingo, lo
+ * dice con una flecha y sin esquina redonda.
+ */
+function SpanButton({
+    span,
+    onOpen,
+    className,
+    style,
+    ...rest
+}: {
+    span: WeekSpan;
+    onOpen: (taskId: number) => void;
+    className?: string;
+    style?: CSSProperties;
+    [key: `data-${string}`]: string | number | undefined;
+}) {
+    const { task } = span;
+    const label = t('planning.calendar.span_label', {
+        task: task.title,
+        start: formatDate(task.start_date),
+        due: formatDate(task.due_date),
+    });
+
+    return (
+        <button
+            type="button"
+            onClick={() => onOpen(task.id)}
+            className={cn(
+                'flex min-w-0 items-center gap-1 border border-info bg-info-soft px-1.5 py-0.5 text-left text-xs text-foreground hover:underline',
+                span.continuesBefore
+                    ? 'rounded-l-none border-l-0'
+                    : 'rounded-l-[3px]',
+                span.continuesAfter
+                    ? 'rounded-r-none border-r-0'
+                    : 'rounded-r-[3px]',
+                FOCUS_RING,
+                className,
+            )}
+            style={style}
+            aria-label={label}
+            title={label}
+            data-test="calendar-span"
+            data-task-id={task.id}
+            {...rest}
+        >
+            {span.continuesBefore ? (
+                <ChevronLeft aria-hidden="true" className="size-3 shrink-0" />
+            ) : null}
+            <CalendarRange
+                aria-hidden="true"
+                className="size-3.5 shrink-0 text-primary-text"
+            />
+            <span className="truncate">{task.title}</span>
+            {span.continuesAfter ? (
+                <ChevronRight
+                    aria-hidden="true"
+                    className="ml-auto size-3 shrink-0"
+                />
+            ) : null}
+        </button>
+    );
+}
+
+/**
+ * Filas de franjas de una semana del mes: en cada fila, la franja que empieza en cada columna
+ * (0 = lunes) o null. Todas las celdas de la semana pintan las mismas filas, así que cada franja
+ * queda a la misma altura en todos los días que cruza.
+ */
+function monthLanes(spans: WeekSpan[]): (WeekSpan | null)[][] {
+    const lanes: (WeekSpan | null)[][] = [];
+
+    for (const span of spans) {
+        while (lanes.length <= span.lane) {
+            lanes.push(Array.from({ length: 7 }, () => null));
+        }
+
+        lanes[span.lane][span.startColumn] = span;
+    }
+
+    return lanes;
+}
+
+/**
+ * Ancho de una franja del mes que se pinta en la celda de su primer día y ocupa `days` días: esos
+ * días más lo que hay entre ellos (el relleno de las dos celdas, 2 × 0,25 rem, y el borde de 1 px).
+ */
+function spanWidth(days: number): string {
+    return days === 1
+        ? '100%'
+        : `calc(${days} * 100% + ${days - 1} * (0.5rem + 1px))`;
+}
+
+/**
+ * Rejilla del mes. En cada semana, primero las franjas de las tareas con inicio (del inicio a la
+ * entrega, weekSpans, como en la vista semana) y después las tarjetas de las tareas que vencen ese
+ * día. Las franjas se pintan DENTRO de las celdas de los días (en la del primer día que cruzan esa
+ * semana, por encima de las siguientes): así toda la celda de cada día sigue siendo donde se suelta
+ * una tarea, y el día de destino es siempre el que queda bajo el puntero (dropUnderPointer).
+ */
 function MonthGrid({
     calendar,
     byDay,
@@ -287,66 +389,115 @@ function MonthGrid({
                 </tr>
             </thead>
             <tbody>
-                {weeks.map((week) => (
-                    <tr key={week[0]}>
-                        {week.map((date) => {
-                            const tasks = byDay.get(date) ?? [];
-                            const visible = tasks.slice(0, MONTH_VISIBLE);
-                            const hidden = tasks.length - visible.length;
-                            const outside = !date.startsWith(calendar.period);
+                {weeks.map((week) => {
+                    const lanes = monthLanes(weekSpans(calendar.tasks, week));
 
-                            return (
-                                <DroppableDay
-                                    key={date}
-                                    date={date}
-                                    className={cn(
-                                        'h-28 border p-1 align-top',
-                                        outside && 'bg-muted',
-                                    )}
-                                    data-date={date}
-                                >
-                                    <DayHeader
+                    return (
+                        <tr key={week[0]}>
+                            {week.map((date, column) => {
+                                const tasks = byDay.get(date) ?? [];
+                                const visible = tasks.slice(0, MONTH_VISIBLE);
+                                const hidden = tasks.length - visible.length;
+                                const outside = !date.startsWith(
+                                    calendar.period,
+                                );
+
+                                return (
+                                    <DroppableDay
+                                        key={date}
                                         date={date}
-                                        today={context.today}
-                                        muted={outside}
-                                    />
-                                    {tasks.length > 0 ? (
-                                        <ul
-                                            className="grid gap-1"
-                                            aria-label={t(
-                                                'planning.calendar.day_tasks',
-                                                {
-                                                    date: formatDate(date),
-                                                    count: tasks.length,
-                                                },
-                                            )}
-                                        >
-                                            {visible.map((task) => (
-                                                <li key={task.id}>
-                                                    <CalendarChip
-                                                        task={task}
-                                                        dragId={`grid:${task.id}`}
-                                                        {...context}
-                                                    />
-                                                </li>
-                                            ))}
-                                            {hidden > 0 ? (
-                                                <li>
-                                                    <MoreTasks
-                                                        date={date}
-                                                        tasks={tasks}
-                                                        hidden={hidden}
-                                                        context={context}
-                                                    />
-                                                </li>
-                                            ) : null}
-                                        </ul>
-                                    ) : null}
-                                </DroppableDay>
-                            );
-                        })}
-                    </tr>
-                ))}
+                                        className={cn(
+                                            'h-28 border p-1 align-top',
+                                            outside && 'bg-muted',
+                                        )}
+                                        data-date={date}
+                                    >
+                                        <DayHeader
+                                            date={date}
+                                            today={context.today}
+                                            muted={outside}
+                                        />
+                                        {lanes.length > 0 ? (
+                                            <div
+                                                className="mb-1 grid gap-0.5"
+                                                data-test="calendar-lanes"
+                                            >
+                                                {lanes.map((lane, index) => {
+                                                    const span = lane[column];
+
+                                                    if (span === null) {
+                                                        return (
+                                                            <div
+                                                                key={index}
+                                                                aria-hidden="true"
+                                                                className="h-5"
+                                                            />
+                                                        );
+                                                    }
+
+                                                    const days =
+                                                        span.endColumn -
+                                                        span.startColumn +
+                                                        1;
+
+                                                    return (
+                                                        <SpanButton
+                                                            key={index}
+                                                            span={span}
+                                                            onOpen={
+                                                                context.onOpen
+                                                            }
+                                                            // Por encima de los días siguientes que cruza.
+                                                            className="relative z-10 h-5 py-0"
+                                                            style={{
+                                                                width: spanWidth(
+                                                                    days,
+                                                                ),
+                                                            }}
+                                                            data-days={days}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : null}
+                                        {tasks.length > 0 ? (
+                                            <ul
+                                                className="grid gap-1"
+                                                aria-label={t(
+                                                    'planning.calendar.day_tasks',
+                                                    {
+                                                        date: formatDate(date),
+                                                        count: tasks.length,
+                                                    },
+                                                )}
+                                            >
+                                                {visible.map((task) => (
+                                                    <li key={task.id}>
+                                                        <CalendarChip
+                                                            task={task}
+                                                            dragId={`grid:${task.id}`}
+                                                            {...context}
+                                                        />
+                                                    </li>
+                                                ))}
+                                                {hidden > 0 ? (
+                                                    <li>
+                                                        <MoreTasks
+                                                            date={date}
+                                                            tasks={tasks}
+                                                            hidden={hidden}
+                                                            context={context}
+                                                        />
+                                                    </li>
+                                                ) : null}
+                                            </ul>
+                                        ) : null}
+                                    </DroppableDay>
+                                );
+                            })}
+                        </tr>
+                    );
+                })}
             </tbody>
         </table>
     );
@@ -453,56 +604,11 @@ function WeekGrid({
                                     }
                                     className="px-0.5 py-0.5"
                                 >
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            context.onOpen(cell.span.task.id)
-                                        }
-                                        className={cn(
-                                            'flex w-full min-w-0 items-center gap-1 border border-info bg-info-soft px-1.5 py-0.5 text-left text-xs text-foreground hover:underline',
-                                            cell.span.continuesBefore
-                                                ? 'rounded-l-none border-l-0'
-                                                : 'rounded-l-[3px]',
-                                            cell.span.continuesAfter
-                                                ? 'rounded-r-none border-r-0'
-                                                : 'rounded-r-[3px]',
-                                            FOCUS_RING,
-                                        )}
-                                        aria-label={t(
-                                            'planning.calendar.span_label',
-                                            {
-                                                task: cell.span.task.title,
-                                                start: formatDate(
-                                                    cell.span.task.start_date,
-                                                ),
-                                                due: formatDate(
-                                                    cell.span.task.due_date,
-                                                ),
-                                            },
-                                        )}
-                                        data-test="calendar-span"
-                                        data-task-id={cell.span.task.id}
-                                    >
-                                        {cell.span.continuesBefore ? (
-                                            <ChevronLeft
-                                                aria-hidden="true"
-                                                className="size-3 shrink-0"
-                                            />
-                                        ) : null}
-                                        <CalendarRange
-                                            aria-hidden="true"
-                                            className="size-3.5 shrink-0 text-primary-text"
-                                        />
-                                        <span className="truncate">
-                                            {cell.span.task.title}
-                                        </span>
-                                        {cell.span.continuesAfter ? (
-                                            <ChevronRight
-                                                aria-hidden="true"
-                                                className="ml-auto size-3 shrink-0"
-                                            />
-                                        ) : null}
-                                    </button>
+                                    <SpanButton
+                                        span={cell.span}
+                                        onOpen={context.onOpen}
+                                        className="w-full"
+                                    />
                                 </td>
                             ) : (
                                 <td
@@ -662,10 +768,11 @@ function Legend() {
 
 /**
  * Vista Calendario de la pestaña Tareas (D-061): un mes (semanas desde el lunes) o una semana,
- * con cada tarea el día de su entrega (y, en la semana, la franja del inicio a la entrega), los
- * hitos con su rombo y una lista lateral de las tareas sin fecha. Pulsar una tarea abre su
- * panel; quien puede editar la cambia de día arrastrándola, con el teclado o con «Asignar
- * fecha», siempre con la propuesta de desplazar sucesoras (D-057). Los demás, en solo lectura.
+ * con cada tarea el día de su entrega y, si tiene inicio, su franja del inicio a la entrega (en el
+ * mes y en la semana), los hitos con su rombo y una lista lateral de las tareas sin fecha. Pulsar
+ * una tarea (o su franja) abre su panel; quien puede editar la cambia de día arrastrándola, con el
+ * teclado o con «Asignar fecha», siempre con la propuesta de desplazar sucesoras (D-057). Los
+ * demás, en solo lectura.
  */
 export function TaskCalendar({
     calendar,
@@ -869,7 +976,8 @@ export function TaskCalendar({
             shiftPeriod(calendar.mode, calendar.period, delta),
         );
     const periodLabel = periodTitle(calendar);
-    // Sin entregas en el periodo (las franjas que solo lo cruzan no se ven en el mes).
+    // Sin entregas en el periodo. Las franjas de las tareas que solo lo cruzan (empiezan antes o
+    // vencen después) sí se ven, en el mes y en la semana, pero no son entregas: el aviso lo dice.
     const empty = !dated.some(
         (task) =>
             task.due_date !== null &&
@@ -997,7 +1105,8 @@ export function TaskCalendar({
                     >
                         {calendar.mode === 'month' ? (
                             <MonthGrid
-                                calendar={calendar}
+                                // Con las fechas de la tarea que se está moviendo, como la semana.
+                                calendar={{ ...calendar, tasks: dated }}
                                 byDay={byDay}
                                 context={context}
                             />

@@ -106,7 +106,7 @@ test('crea, edita y borra un festivo, y queda en la auditoría', function () {
         ->assertSessionHasNoErrors();
 
     expect(Holiday::query()->count())->toBe(0)
-        ->and(Activity::query()->where('log_name', 'holidays')->pluck('event')->all())
+        ->and(Activity::query()->where('log_name', 'holidays')->orderBy('id')->pluck('event')->all())
         ->toBe(['holiday_created', 'holiday_updated', 'holiday_deleted']);
 });
 

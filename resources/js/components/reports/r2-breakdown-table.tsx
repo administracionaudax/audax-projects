@@ -4,24 +4,37 @@ import {
     formatOverage,
     marginRatio,
     subtractMoney,
-    sumMoney,
 } from '@/components/reports/r2-helpers';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import type { BreakdownRow } from '@/types';
+import type { BreakdownRow, MetricsSummary } from '@/types';
+
+/** Totales de la tabla: los del resumen del servidor (Metrics::summary). */
+export type R2BreakdownTotal = Pick<
+    MetricsSummary,
+    | 'logged_minutes'
+    | 'billable_minutes'
+    | 'in_bank_minutes'
+    | 'overage_minutes'
+    | 'income'
+    | 'cost'
+>;
 
 /**
  * Tabla de un desglose de horas (por proyecto, persona o tipo): imputadas, facturables, dentro de
  * bolsa («—» en las filas sin horas en bolsas) y exceso por separado (el exceso en rojo con icono, SPEC §8.6) y, con view-financials,
- * ingreso, coste, rentabilidad y margen. Fila de totales al pie. Scroll horizontal propio en el
- * móvil (la página no se desplaza de lado).
+ * ingreso, coste, rentabilidad y margen. Fila de totales al pie con los totales del SERVIDOR
+ * (INT-04): los importes de las filas son su parte en céntimos del mismo total, así que el ingreso
+ * sale con los mismos céntimos aquí, en los KPIs y en las exportaciones. Scroll horizontal propio
+ * en el móvil (la página no se desplaza de lado).
  */
 export function R2BreakdownTable({
     caption,
     firstColumn,
     rows,
+    total,
     financials,
     showBank = true,
     renderName,
@@ -30,24 +43,14 @@ export function R2BreakdownTable({
     firstColumn: string;
     /** has_bank = false: la fila no tiene horas en bolsas («Dentro de bolsa» no aplica). */
     rows: ReadonlyArray<BreakdownRow & { has_bank?: boolean }>;
+    /** Totales del resumen (servidor): nunca se suman aquí. */
+    total: R2BreakdownTotal;
     financials: boolean;
     /** Columna «Dentro de bolsa» (solo tiene sentido si hay bolsas). */
     showBank?: boolean;
     /** Nombre enlazado u otro contenido para la primera columna. */
     renderName?: (row: BreakdownRow) => ReactNode;
 }) {
-    const total = rows.reduce(
-        (sum, row) => ({
-            logged: sum.logged + row.logged_minutes,
-            billable: sum.billable + row.billable_minutes,
-            inBank: sum.inBank + row.in_bank_minutes,
-            overage: sum.overage + row.overage_minutes,
-        }),
-        { logged: 0, billable: 0, inBank: 0, overage: 0 },
-    );
-    const income = sumMoney(rows.map((row) => row.income));
-    const cost = sumMoney(rows.map((row) => row.cost));
-
     const money = (
         rowIncome: string | null,
         rowCost: string | null,
@@ -161,20 +164,24 @@ export function R2BreakdownTable({
                                 {t('reports_r2.total')}
                             </th>
                             <td className="px-3 py-2 text-right font-medium">
-                                {formatMinutes(total.logged)}
+                                {formatMinutes(total.logged_minutes)}
                             </td>
                             <td className="px-3 py-2 text-right font-medium">
-                                {formatMinutes(total.billable)}
+                                {formatMinutes(total.billable_minutes)}
                             </td>
                             {showBank ? (
                                 <td className="px-3 py-2 text-right font-medium">
-                                    {formatMinutes(total.inBank)}
+                                    {formatMinutes(total.in_bank_minutes)}
                                 </td>
                             ) : null}
                             <td className="px-3 py-2 text-right font-medium">
-                                <R2OverageValue minutes={total.overage} />
+                                <R2OverageValue
+                                    minutes={total.overage_minutes}
+                                />
                             </td>
-                            {financials ? money(income, cost) : null}
+                            {financials
+                                ? money(total.income, total.cost)
+                                : null}
                         </tr>
                     </tfoot>
                 ) : null}

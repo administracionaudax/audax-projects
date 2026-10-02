@@ -25,6 +25,9 @@ use Illuminate\Validation\ValidationException;
  * cerrada), lo anota en el log y sigue con las demás.
  * Un responsable desactivado no impide crearla: la tarea queda sin responsable (y un tipo de tarea
  * desactivado, sin tipo).
+ * Pocas consultas aunque haya miles de reglas: solo se cargan las que faltan por generar hoy (con
+ * su proyecto y su creador), quien crea las tareas solo se busca si hay algo que crear (el admin de
+ * reserva, una vez por ejecución) y last_generated_on se guarda por lotes.
  * generateFor() es la generación inmediata al crear, editar o reactivar una regla.
  */
 final class RecurringTaskGenerator
@@ -35,6 +38,14 @@ final class RecurringTaskGenerator
     /** Instancias por regla y ejecución como mucho: red de seguridad (31 días caben de sobra). */
     public const int MAX_CATCH_UP = 31;
 
+    /** Reglas por UPDATE al marcarlas como generadas (cabe en el límite de parámetros de cualquier motor). */
+    private const int MARK_CHUNK = 500;
+
+    /** Admin de reserva de la ejecución en curso de generate() (se busca como mucho una vez). */
+    private ?User $fallbackAdmin = null;
+
+    private bool $fallbackLoaded = false;
+
     public function __construct(private readonly TaskWriter $writer) {}
 
     /**
@@ -44,6 +55,8 @@ final class RecurringTaskGenerator
     {
         $today = self::day($today);
         $created = 0;
+        $this->fallbackAdmin = null;
+        $this->fallbackLoaded = false;
 
         // Reglas de proyectos archivados: no crean nada y los días que pasan archivados quedan como
         // generados (como al reactivar una regla, generateFor()). Así, al recuperar el proyecto no
@@ -55,12 +68,16 @@ final class RecurringTaskGenerator
             ->whereHas('project', fn ($q) => $q->where('status', ProjectStatus::Archived->value))
             ->update(['last_generated_on' => $today->toDateString()]);
 
+        // Solo las que faltan por generar hoy: una segunda ejecución del mismo día no repasa nada.
         $rules = RecurringTaskRule::query()
             ->where('is_active', true)
             ->where('starts_on', '<=', $today->toDateString())
+            ->where(fn ($q) => $q->whereNull('last_generated_on')->orWhere('last_generated_on', '<', $today->toDateString()))
             ->whereHas('project', fn ($q) => $q->where('status', '!=', ProjectStatus::Archived->value))
-            ->with('project')
+            ->with(['project', 'creator'])
             ->get();
+
+        $generated = [];
 
         foreach ($rules as $rule) {
             $from = $rule->last_generated_on !== null ? $rule->last_generated_on->addDay() : $rule->starts_on;
@@ -68,7 +85,7 @@ final class RecurringTaskGenerator
             // una regla semanal o mensual no recupera meses de tareas atrasadas.
             $from = CarbonImmutable::parse($from->toDateString())->max($today->subDays(self::MAX_CATCH_UP_DAYS));
             $dates = array_slice($rule->occurrencesBetween($from, $today), -self::MAX_CATCH_UP);
-            $actor = $this->actorFor($rule);
+            $actor = $dates === [] ? null : $this->actorFor($rule, memoizeFallback: true);
 
             foreach ($dates as $date) {
                 if ($actor === null) {
@@ -80,10 +97,31 @@ final class RecurringTaskGenerator
                 }
             }
 
-            $rule->forceFill(['last_generated_on' => $today->toDateString()])->saveQuietly();
+            $generated[] = $rule->id;
+
+            if (count($generated) === self::MARK_CHUNK) {
+                $this->markGenerated($generated, $today);
+                $generated = [];
+            }
         }
 
+        $this->markGenerated($generated, $today);
+
         return $created;
+    }
+
+    /**
+     * Marca las reglas como generadas hasta hoy, con un UPDATE por lote (sin eventos, como
+     * saveQuietly()). Si la ejecución se corta antes, las que quedan sin marcar se repasan en la
+     * siguiente sin duplicar nada (la clave única regla-fecha).
+     *
+     * @param  list<int>  $ruleIds
+     */
+    private function markGenerated(array $ruleIds, CarbonImmutable $today): void
+    {
+        if ($ruleIds !== []) {
+            RecurringTaskRule::query()->whereKey($ruleIds)->update(['last_generated_on' => $today->toDateString()]);
+        }
     }
 
     /**
@@ -194,16 +232,31 @@ final class RecurringTaskGenerator
     }
 
     /**
-     * Quien «crea» la instancia: quien creó la regla si sigue activo; si no, el primer admin activo.
+     * Quien «crea» la instancia: quien creó la regla si sigue activo; si no, el primer admin activo
+     * (en generate(), buscado una sola vez por ejecución).
      */
-    private function actorFor(RecurringTaskRule $rule): ?User
+    private function actorFor(RecurringTaskRule $rule, bool $memoizeFallback = false): ?User
     {
-        $creator = $rule->created_by !== null ? User::query()->find($rule->created_by) : null;
+        $creator = $rule->created_by !== null ? $rule->creator : null;
 
         if ($creator !== null && $creator->is_active) {
             return $creator;
         }
 
+        if (! $memoizeFallback) {
+            return $this->firstActiveAdmin();
+        }
+
+        if (! $this->fallbackLoaded) {
+            $this->fallbackAdmin = $this->firstActiveAdmin();
+            $this->fallbackLoaded = true;
+        }
+
+        return $this->fallbackAdmin;
+    }
+
+    private function firstActiveAdmin(): ?User
+    {
         return User::role(Role::Admin->value)->where('is_active', true)->orderBy('id')->first();
     }
 }

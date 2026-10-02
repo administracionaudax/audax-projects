@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Chat\ConversationDirectory;
+use App\Domain\Chat\MessageWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
@@ -16,11 +18,16 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatusCategory;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
+use App\Events\Chat\ConversationRead;
+use App\Events\Chat\MessagePosted;
+use App\Events\Chat\MessageUpdated;
 use App\Models\Absence;
 use App\Models\Client;
+use App\Models\Conversation;
 use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\HourBank;
+use App\Models\Message;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskComment;
@@ -32,18 +39,24 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 use RuntimeException;
 
 /**
- * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes,
+ * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes (dos
+ * con persona en el portal: Bodegas Arrieta, con bolsas, y Construcciones Lamas, sin ellas),
  * 15 proyectos de todos los tipos, bolsas en todos los estados (activa, casi agotada, agotada con
- * exceso, con política block, cerrada y renovada) y 12 meses de horas con su flujo de aprobación
- * (aprobadas, enviadas, devueltas, bloqueadas al facturar y borradores de esta semana).
+ * exceso, con política block, cerrada y renovada), festivos nacionales, ausencias pasadas y
+ * futuras, 12 meses de horas con su flujo de aprobación (aprobadas, enviadas, devueltas,
+ * bloqueadas al facturar y borradores de esta semana), y chat (Fase 6): conversaciones de
+ * proyecto, dos directas y un grupo, con menciones, @todos, una reacción, un hilo y un mensaje
+ * fijado (sin audios ni adjuntos). Nadie imputa en un día sin capacidad.
  *
  * SOLO local, testing y CI (nunca en el servidor, D-018). Determinista (semilla fija) y relativo a
  * hoy, para que los dashboards tengan siempre datos recientes. Se ejecuta una sola vez: si ya hay
@@ -148,6 +161,17 @@ class DemoDataSeeder extends Seeder
             $internal = $this->internalProject();
             $projects[] = $internal;
 
+            // Portal (Fase 5, D-064): el cliente de cliente@example.com ve ARR-WEB (tareas, horas por
+            // tarea y Gantt); ARR-MKT sigue cerrado al portal.
+            Project::query()->where('code', 'ARR-WEB')->update([
+                'portal_project_visible' => true,
+                'portal_show_task_hours' => true,
+                'portal_gantt_visible' => true,
+            ]);
+
+            // Antes que las horas: los festivos y las ausencias aprobadas dejan esos días sin
+            // capacidad (Capacity), así que nadie imputa en ellos (SPEC §9 y §15).
+            $this->holidaysAndAbsences();
             $this->timeEntries($projects, $internal);
             $this->sizeBanks($projects);
             $this->approvalWorkflow();
@@ -155,14 +179,20 @@ class DemoDataSeeder extends Seeder
                 $this->lockInvoicedHours($clients['Hoteles Mirador']);
             }
             $this->comments($projects);
-            $this->holidaysAndAbsences();
+            $this->overloadedDay($projects);
         });
+
+        $this->chat();
     }
 
     /**
      * Fase 3 (SPEC §15): festivos nacionales del año pasado, este y el que viene, y ausencias de
-     * ejemplo en las próximas semanas (aprobadas, una pendiente de aprobar y una de medio día),
-     * para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día.
+     * ejemplo para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día:
+     * - pasadas y aprobadas (en los 12 meses de horas): una semana de vacaciones de Lucía y otra de
+     *   Sergio, un día de formación de Irene, una baja de dos días de Daniel y medio día de permiso
+     *   de Pablo,
+     * - en las próximas semanas: las vacaciones de Elena (la semana que viene), la formación de
+     *   Pablo, medio día de Irene y una solicitud pendiente de Lucía (los E2E cuentan con ellas).
      */
     private function holidaysAndAbsences(): void
     {
@@ -173,8 +203,15 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        $monday = $this->today->startOfWeek()->addWeek();
+        $thisWeek = $this->today->startOfWeek();
+        $monday = $thisWeek->addWeek();
         $absences = [
+            // Pasadas, aprobadas por su responsable una semana antes de empezar.
+            ['sergio', AbsenceType::Vacation, $thisWeek->subWeeks(20), $thisWeek->subWeeks(20)->addDays(4), null, AbsenceStatus::Approved, 'marta'],
+            ['lucia', AbsenceType::Vacation, $thisWeek->subWeeks(10), $thisWeek->subWeeks(10)->addDays(4), null, AbsenceStatus::Approved, 'raul'],
+            ['irene', AbsenceType::Training, $thisWeek->subWeeks(6)->addDays(2), $thisWeek->subWeeks(6)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['daniel', AbsenceType::Sick, $thisWeek->subWeeks(4)->addDays(1), $thisWeek->subWeeks(4)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['pablo', AbsenceType::Leave, $thisWeek->subWeeks(3)->addDays(3), $thisWeek->subWeeks(3)->addDays(3), 240, AbsenceStatus::Approved, 'marta'],
             // Semana que viene: vacaciones de Elena (Diseño), ya aprobadas por Raúl.
             ['elena', AbsenceType::Vacation, $monday->addDays(1), $monday->addDays(3), null, AbsenceStatus::Approved, 'raul'],
             // Dentro de dos semanas: formación de Pablo (Desarrollo), aprobada por Marta.
@@ -187,8 +224,10 @@ class DemoDataSeeder extends Seeder
 
         foreach ($absences as [$who, $type, $from, $to, $partial, $status, $approver]) {
             $reviewer = is_string($approver) ? $this->people[$approver] : null;
+            // Las pasadas se pidieron y aprobaron antes de empezar; las futuras, ayer.
+            $reviewed = $from < $this->today ? $from->subWeek()->setTime(10, 0) : $this->today->subDay();
 
-            Absence::query()->create([
+            $absence = new Absence([
                 'user_id' => $this->people[$who]->id,
                 'type' => $type,
                 'start_date' => $from->toDateString(),
@@ -196,9 +235,63 @@ class DemoDataSeeder extends Seeder
                 'partial_minutes' => $partial,
                 'status' => $status,
                 'approved_by' => $reviewer?->id,
-                'reviewed_at' => $reviewer === null ? null : $this->today->subDay(),
+                'reviewed_at' => $reviewer === null ? null : $reviewed,
             ]);
+            if ($from < $this->today) {
+                $absence->created_at = $reviewed->subDay();
+                $absence->updated_at = $reviewed;
+            }
+            $absence->save();
         }
+    }
+
+    /**
+     * Un día sobrecargado seguro, para el E2E de la vista Carga (reasignar desde la celda de una
+     * persona sobrecargada): Lucía tiene en «MIR-WEB · Rediseño web» una tarea de 16 h que empieza
+     * y se entrega el primer día laborable de la semana que viene (sin festivo), además de la carga
+     * que le toque al azar. Se crea después de las horas, así que no tiene nada imputado.
+     *
+     * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
+     */
+    private function overloadedDay(array $projects): void
+    {
+        $data = null;
+        foreach ($projects as $candidate) {
+            if ($candidate['project']->code === 'MIR-WEB') {
+                $data = $candidate;
+            }
+        }
+
+        if ($data === null || $data['banks'] === []) {
+            return;
+        }
+
+        $holidays = Holiday::query()->pluck('date')->map(fn (CarbonInterface $date): string => $date->toDateString())->all();
+        $day = $this->today->startOfWeek()->addWeek();
+        while ($day->isWeekend() || in_array($day->toDateString(), $holidays, true)) {
+            $day = $day->addDay();
+        }
+
+        $project = $data['project'];
+        $lucia = $this->people['lucia'];
+
+        /** @var Task $task */
+        $task = Task::withoutEvents(fn () => Task::query()->forceCreate([
+            'project_id' => $project->id,
+            'hour_bank_id' => end($data['banks'])['bank']->id,
+            'title' => 'Maquetas para la feria de turismo',
+            'task_type_id' => $this->types['Diseño UI']->id,
+            'status_id' => $this->statuses['todo'],
+            'priority' => TaskPriority::High->value,
+            'assignee_user_id' => $lucia->id,
+            'start_date' => $day->toDateString(),
+            'due_date' => $day->toDateString(),
+            'estimated_minutes' => 16 * 60,
+            'is_billable' => true,
+            'position' => 999,
+            'created_by' => $project->owner_user_id,
+        ]));
+        $task->watchers()->syncWithoutDetaching(array_unique([$lucia->id, $project->owner_user_id]));
     }
 
     private function taskTypes(): void
@@ -307,6 +400,19 @@ class DemoDataSeeder extends Seeder
         $first = $clients['Bodegas Arrieta'] ?? null;
         if ($first !== null) {
             User::query()->where('email', 'cliente@example.com')->update(['client_id' => $first->id]);
+        }
+
+        // Otra persona del portal, de un cliente sin bolsas: su Inicio es el estado vacío grande con
+        // el degradado de marca (SPEC §3.1; lo comprueba el E2E brand-gradient).
+        $lamas = $clients['Construcciones Lamas'] ?? null;
+        if ($lamas !== null) {
+            $portalUser = User::query()->firstOrCreate(['email' => 'cliente.lamas@example.com'], [
+                'name' => 'Rosa Lamas',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]);
+            $portalUser->forceFill(['client_id' => $lamas->id])->save();
+            $portalUser->syncRoles([Role::Client->value]);
         }
 
         return $clients;
@@ -489,9 +595,11 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * 12 meses de horas: cada día laborable, cada persona imputa casi su jornada repartida entre
-     * 2 y 4 tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un
-     * 10 % a reuniones internas y dos semanas de vacaciones en verano.
+     * 12 meses de horas: cada día con capacidad (Capacity, que ya descuenta los festivos y las
+     * ausencias aprobadas: nadie imputa en un festivo ni en un día de vacaciones, y con medio día
+     * de permiso se imputa la mitad), cada persona imputa casi su jornada repartida entre 2 y 4
+     * tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un 10 % a
+     * reuniones internas y dos semanas sin imputar en verano.
      *
      * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
      * @param  array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}  $internal
@@ -788,6 +896,77 @@ class DemoDataSeeder extends Seeder
                 ]);
             }
         }
+    }
+
+    /**
+     * Chat (Fase 6) con MessageWriter, la única vía de escritura (D-069): el de tres proyectos, dos
+     * directas y un grupo, en los últimos días. Sin avisos ni tiempo real (los eventos del chat se
+     * silencian mientras tanto) y sin enlaces, audios ni adjuntos. Elena (empleado@example.com) se
+     * queda con mensajes sin leer y menciones recientes para la tarjeta de Inicio. Ningún texto dice
+     * «prueba» (lo busca el E2E de los audios) ni nombra a Ana (el E2E del chat la busca en la lista).
+     */
+    private function chat(): void
+    {
+        Event::fakeFor(function (): void {
+            DB::transaction(function (): void {
+                $directory = app(ConversationDirectory::class);
+                $writer = app(MessageWriter::class);
+                $p = $this->people;
+                $mention = fn (string $key): string => '<@'.$p[$key]->id.'>';
+                $project = fn (string $code): Conversation => $directory->forProject(Project::query()->where('code', $code)->firstOrFail());
+
+                /** @var list<array{0: Message, 1: CarbonImmutable}> $timeline */
+                $timeline = [];
+                $post = function (string $who, Conversation $conversation, string $body, int $daysAgo, string $time, ?Message $parent = null) use ($writer, $p, &$timeline): Message {
+                    $message = $writer->post($p[$who], $conversation, $body, $parent?->id);
+                    $timeline[] = [$message, LocalTime::today()->subDays($daysAgo)->setTimeFromTimeString($time)];
+
+                    return $message;
+                };
+
+                $web = $project('ARR-WEB');
+                $post('raul', $web, 'Buenos días. Esta semana cerramos la **maqueta de la home** y empezamos con las fichas de producto.', 6, '09:12');
+                $brief = $post('elena', $web, "He dejado las tres propuestas de cabecera en la tarea. {$mention('raul')}, ¿las revisas cuando puedas?", 6, '10:40');
+                $post('raul', $web, 'Me quedo con la segunda: más aire y la tipografía respira mejor. 👍', 6, '12:05', $brief);
+                $writer->toggleReaction($p['elena'], $timeline[2][0], '🙌');
+                $plan = $post('marta', $web, '@todos el lunes a las 10:00 revisamos el plan de lanzamiento. Traed las dudas apuntadas.', 4, '17:30');
+                $writer->setPinned($p['marta'], $plan, true);
+                $post('pablo', $web, "{$mention('sergio')} el formulario de contacto ya valida en el servidor; falta el aviso por correo.", 3, '11:15');
+                $post('sergio', $web, 'Hecho. Lo subo a la rama de desarrollo esta tarde.', 3, '13:02');
+                $post('lucia', $web, "{$mention('elena')} ¿me pasas los iconos en `svg` para la ficha de producto?", 1, '09:48');
+                $post('raul', $web, "{$mention('elena')} el cliente pide un tono más cálido en las fotos de la bodega. ¿Lo vemos mañana?", 1, '18:30');
+
+                $app = $project('SON-APP');
+                $post('marta', $app, 'La pasarela de pago ya funciona en el entorno de integración del banco.', 5, '16:20');
+                $post('pablo', $app, "{$mention('elena')} ¿puedes revisar los textos de la pantalla de confirmación de cita?", 2, '10:05');
+                $post('elena', $app, 'Revisados: he cambiado «Agendar» por «Reservar cita», que se entiende mejor.', 2, '12:30');
+
+                $mirador = $project('MIR-WEB');
+                $post('raul', $mirador, 'Hoy nos mandan las fotos nuevas de las habitaciones.', 1, '15:10');
+
+                $toElena = $directory->direct($p['raul'], $p['elena']);
+                $post('raul', $toElena, '¿Tienes un rato a las 12 para ver la propuesta de color?', 2, '09:30');
+                $post('elena', $toElena, 'Sí, te llamo a las 12.', 2, '09:41');
+                $post('raul', $toElena, 'Perfecto. Te dejo el enlace a la carpeta en la tarea.', 1, '19:05');
+
+                $toSergio = $directory->direct($p['marta'], $p['sergio']);
+                $post('marta', $toSergio, '¿Cómo vas con la migración de la intranet?', 1, '17:45');
+                $post('sergio', $toSergio, 'Terminando los tests de carga. Mañana te cuento.', 1, '18:02');
+
+                $group = $directory->group($p['raul'], 'Diseño y desarrollo', [$p['elena']->id, $p['lucia']->id, $p['marta']->id, $p['pablo']->id]);
+                $post('marta', $group, 'Propongo una revisión conjunta de componentes cada dos semanas. ¿Qué os parece?', 5, '11:00');
+                $post('lucia', $group, 'Me parece bien. Así no se nos duplican botones con estilos distintos.', 5, '11:20');
+                $post('raul', $group, "@todos primera revisión el jueves a las 16:00. {$mention('pablo')}, ¿preparas el inventario?", 1, '13:40');
+
+                // Fechas de los últimos días (MessageWriter publica «ahora»), en orden.
+                foreach ($timeline as [$message, $at]) {
+                    $instant = $at->utc();
+                    DB::table('messages')->where('id', $message->id)->update(['created_at' => $instant, 'updated_at' => $instant]);
+                    DB::table('conversations')->where('id', $message->conversation_id)->update(['last_message_at' => $instant]);
+                }
+                DB::table('messages')->where('id', $plan->id)->update(['pinned_at' => $timeline[4][1]->addMinutes(2)->utc()]);
+            });
+        }, [MessagePosted::class, MessageUpdated::class, ConversationRead::class]);
     }
 
     private function monthsAgo(int $months): CarbonImmutable

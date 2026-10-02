@@ -1,5 +1,9 @@
-import { LOAD_LEVELS, loadLevel } from '@/components/charts/thresholds';
-import { formatMinutes, formatPercent } from '@/lib/format';
+import {
+    formatLoadPercent,
+    LOAD_LEVELS,
+    loadLevel,
+} from '@/components/charts/thresholds';
+import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +20,7 @@ type LoadCellProps = {
 /**
  * Celda del semáforo de carga (SPEC §9). Nunca solo color: icono de estado,
  * cifras "planificado / capacidad" y porcentaje, más la etiqueta del nivel para lectores de pantalla.
+ * El nivel sale del mismo porcentaje redondeado que se enseña (loadPercent).
  */
 export function LoadCell({
     planned,
@@ -26,7 +31,6 @@ export function LoadCell({
     const level = loadLevel(planned, capacity);
     const meta = LOAD_LEVELS[level];
     const Icon = meta.icon;
-    const ratio = capacity > 0 ? planned / capacity : 0;
 
     return (
         <div
@@ -46,7 +50,7 @@ export function LoadCell({
                 ) : (
                     <>
                         <span className="tabular font-medium">
-                            {formatPercent(ratio, 0)}
+                            {formatLoadPercent(planned, capacity)}
                         </span>
                         <span className="sr-only">{meta.label}</span>
                     </>

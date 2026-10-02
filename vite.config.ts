@@ -65,12 +65,18 @@ export default defineConfig({
         ignorePatterns: [
             // Documentación en prosa: no se reformatea con el formateador de código.
             '**/*.md',
+            // Ficheros estáticos (p. ej. los datos de emojis autoalojados, minificados) y el
+            // fragmento de compose que se pega sangrado bajo `services:` (D-070).
+            'public/**',
+            'deploy/whisper/compose-service.yml',
             'playwright-report/**',
             'test-results/**',
             '.github/**',
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            // Fragmento YAML que se pega con su sangría en /opt/audax/compose.yml (D-070).
+            'deploy/whisper/compose-service.yml',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

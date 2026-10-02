@@ -1,4 +1,6 @@
 import type { ActiveTimer, AppConfig, Auth } from '@/types/auth';
+import type { ChatSharedProps } from '@/types/chat';
+import type { RealtimeConfig } from '@/lib/realtime';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -16,6 +18,10 @@ declare module '@inertiajs/core' {
             timer?: ActiveTimer | null;
             notifications?: { unread: number };
             config?: AppConfig;
+            /** Conexión de Echo con Reverb (Fase 6); null si el tiempo real está apagado. */
+            realtime?: RealtimeConfig | null;
+            /** Total sin leer del chat para la navegación (Fase 6, C1). */
+            chat?: ChatSharedProps;
             /** Aviso de privacidad pendiente de leer (D-075). */
             privacy?: { needs_acknowledgement: boolean };
             [key: string]: unknown;

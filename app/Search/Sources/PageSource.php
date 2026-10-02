@@ -2,6 +2,7 @@
 
 namespace App\Search\Sources;
 
+use App\Models\Absence;
 use App\Models\User;
 use App\Search\SearchResult;
 use App\Search\SearchSource;
@@ -64,9 +65,12 @@ class PageSource implements SearchSource
             ['route' => 'hour-banks.index', 'key' => 'hour_banks', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-hour-banks')],
             ['route' => 'time.index', 'key' => 'time', 'allowed' => $always],
             ['route' => 'workload.index', 'key' => 'workload', 'allowed' => $always],
+            ['route' => 'absences.index', 'key' => 'absences', 'allowed' => $always],
+            ['route' => 'absences.team.index', 'key' => 'team_absences', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('viewTeam', Absence::class)],
             ['route' => 'reports.index', 'key' => 'reports', 'allowed' => $always],
             ['route' => 'chat.index', 'key' => 'chat', 'allowed' => $always],
             ['route' => 'admin.index', 'key' => 'admin', 'allowed' => fn (User $user): bool => $user->isAdmin()],
+            ['route' => 'admin.holidays.index', 'key' => 'holidays', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('manage-settings')],
             // Fase 7 (D-074 y D-075): auditoría y privacidad.
             ['route' => 'admin.audit.index', 'key' => 'audit', 'allowed' => fn (User $user): bool => $user->isAdmin()],
             ['route' => 'admin.privacy.edit', 'key' => 'privacy_admin', 'allowed' => fn (User $user): bool => $user->isAdmin()],

@@ -124,4 +124,10 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    | Inicios de sesión por minuto y cuenta: 5 (SPEC §15). Solo en APP_ENV=local se puede subir
+    | con LOGIN_RATE_LIMIT, para el servidor local de los E2E (FortifyServiceProvider).
+    */
+    'login_rate_limit' => (int) env('LOGIN_RATE_LIMIT', 5),
+
 ];

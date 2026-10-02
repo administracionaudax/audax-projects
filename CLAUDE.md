@@ -14,12 +14,12 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 |---|---|
 | 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0-cerrada`) |
 | 1. Núcleo | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-1-cerrada`) |
-| 2. Informes | En curso: `docs/PLAN-FASE-2.md` |
-| 3. Carga | En curso: `docs/PLAN-FASE-3.md` |
-| 4. Gantt | En curso: `docs/PLAN-FASE-4.md` |
-| 5. Portal | Pendiente |
-| 6. Chat | Pendiente |
-| 7. Pulido | Pendiente |
+| 2. Informes | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-2-cerrada`) |
+| 3. Carga | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-3-cerrada`) |
+| 4. Gantt | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-4-cerrada`) |
+| 5. Portal | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-5-cerrada`) |
+| 6. Chat | Desplegada el 03/10/2026 (rama `fase-6`; falta el cierre) |
+| 7. Pulido | En curso (rama `fase-7`) |
 
 ## Modo autónomo (D-027)
 Desde la Fase 1 se trabaja fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md` y las decisiones de producto se registran en `docs/DECISIONES.md`. Solo se contacta al propietario para SMTP, lista de empleados y texto RGPD (al final), o por un imprevisto del servidor que no se pueda revertir.

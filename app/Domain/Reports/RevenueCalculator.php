@@ -2,7 +2,6 @@
 
 namespace App\Domain\Reports;
 
-use App\Enums\BillingType;
 use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -14,35 +13,45 @@ use Illuminate\Support\Collection;
 
 /**
  * Ingreso estimado y coste de un conjunto de entradas (SPEC §10, D-043), opcionalmente agrupado
- * por una dimensión. Agrega en SQL y valora en PHP con bcmath, con un número fijo de consultas.
+ * por una dimensión. Agrega en SQL las sumas de cada unidad (proyecto · bolsa · persona ·
+ * facturable) y las valora en PHP con bcmath (Valuation, las mismas fórmulas que EntryValuation),
+ * con un número fijo de consultas.
  *
- * Ingreso (solo horas facturables; los proyectos internos dan 0):
- * - bolsa con price_amount: dentro = precio × minutos dentro / total de la bolsa; el exceso, a la
- *   tarifa bolsa > proyecto > cliente > persona,
- * - precio cerrado: importe × minutos facturables / base, con base = máx(presupuesto, suma de las
- *   estimaciones de las tareas raíz, minutos facturables imputados hasta hoy): nunca supera el importe,
- * - resto: la instantánea de tarifa si la entrada está aprobada o bloqueada; si no, la tarifa vigente.
- * Coste: la instantánea de coste si existe; si no, el coste por hora actual de la persona.
+ * Céntimos (INT-04): el total de un conjunto de entradas es SIEMPRE el mismo, se agrupe como se
+ * agrupe: el de sus unidades (el «total canónico»), redondeado una sola vez. Los grupos de un
+ * desglose reciben su parte de ese total en céntimos por resto mayor (Cents::largestRemainder,
+ * como la exportación para facturar), así que las filas de cualquier tabla suman exactamente el
+ * total del resumen, y el mismo ingreso sale con los mismos céntimos en todas las pantallas.
+ *
+ * @phpstan-import-type Sums from Valuation
+ * @phpstan-import-type Unit from Valuation
  */
 final class RevenueCalculator
 {
     /**
-     * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
-     * @return array<string, array{income: string, cost: string, billable_minutes: int}> Clave del grupo ('all' sin agrupar).
-     */
-    public function compute(Builder $entries, ?Dimension $groupBy = null): array
-    {
-        return self::rounded($this->computeExact($entries, $groupBy));
-    }
-
-    /**
-     * Lo mismo que compute() sin redondear a céntimos (6 decimales): para sumar grupos y redondear
-     * una sola vez su total, o repartir sus céntimos (exportación para facturar, R2).
+     * Importes de cada grupo redondeados a céntimos, repartidos para que sumen el total canónico
+     * redondeado una vez ('all' sin agrupar).
      *
      * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
      * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}> Clave del grupo ('all' sin agrupar).
      */
-    public function computeExact(Builder $entries, ?Dimension $groupBy = null): array
+    public function compute(Builder $entries, ?Dimension $groupBy = null): array
+    {
+        ['groups' => $groups, 'total' => $total] = $this->exact($entries, $groupBy);
+
+        return self::distribute($groups, $total);
+    }
+
+    /**
+     * Importes exactos (6 decimales) de cada grupo y el total canónico del conjunto (el de sus
+     * unidades, que no depende de cómo se agrupe). Para sumar grupos y redondear una sola vez su
+     * total, o repartir sus céntimos (exportación para facturar, R2).
+     *
+     * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
+     * @return array{groups: array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>,
+     *     total: array{income: numeric-string, cost: numeric-string, billable_minutes: int}}
+     */
+    public function exact(Builder $entries, ?Dimension $groupBy = null): array
     {
         $query = clone $entries;
         $groupBy?->join($query);
@@ -51,149 +60,140 @@ final class RevenueCalculator
     }
 
     /**
-     * Ingreso y coste de CADA entrada (clave: su id), con los mismos criterios (D-043). Lo usan las
-     * exportaciones con importes por entrada; la suma de las entradas coincide con compute() salvo
-     * el redondeo a céntimos de cada una. Añadido por R3 (exportación de horas).
+     * Reparte en céntimos el total canónico entre los grupos (resto mayor, por separado el ingreso
+     * y el coste): los grupos suman exactamente el total redondeado.
      *
-     * @param  Builder<TimeEntry>  $entries  Consulta ya acotada (ReportScope::entries()).
+     * @param  array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>  $groups
+     * @param  array{income: numeric-string, cost: numeric-string, billable_minutes: int}  $total
      * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
      */
-    public function perEntry(Builder $entries): array
+    public static function distribute(array $groups, array $total): array
     {
-        return self::rounded($this->valuate(clone $entries, 'time_entries.id'));
-    }
-
-    /**
-     * Importes redondeados a céntimos (compute() y perEntry(); computeExact() no redondea).
-     *
-     * @param  array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>  $result
-     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
-     */
-    private static function rounded(array $result): array
-    {
-        foreach ($result as $key => $values) {
-            $result[$key]['income'] = Money::round($values['income']);
-            $result[$key]['cost'] = Money::round($values['cost']);
+        if ($groups === []) {
+            return [];
         }
 
-        return $result;
+        $income = Cents::largestRemainder(array_map(fn (array $group): string => $group['income'], $groups), Money::round($total['income']));
+        $cost = Cents::largestRemainder(array_map(fn (array $group): string => $group['cost'], $groups), Money::round($total['cost']));
+
+        foreach ($groups as $key => $group) {
+            $groups[$key]['income'] = $income[$key];
+            $groups[$key]['cost'] = $cost[$key];
+        }
+
+        return $groups;
     }
 
     /**
      * @param  Builder<TimeEntry>  $query
      * @param  literal-string|null  $keyExpression
-     * @return array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>
+     * @return array{groups: array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}>,
+     *     total: array{income: numeric-string, cost: numeric-string, billable_minutes: int}}
      */
     private function valuate(Builder $query, ?string $keyExpression): array
     {
         $columns = 'time_entries.project_id, time_entries.hour_bank_id, time_entries.user_id, time_entries.is_billable';
-        $query->selectRaw(($keyExpression ?? "'all'").' as group_key, '.$columns.',
-            SUM(time_entries.minutes) as minutes,
-            SUM(time_entries.overage_minutes) as overage,
-            SUM(CASE WHEN time_entries.hourly_rate_snapshot IS NOT NULL THEN time_entries.minutes ELSE 0 END) as rate_snap_minutes,
-            SUM(CASE WHEN time_entries.hourly_rate_snapshot IS NOT NULL THEN time_entries.minutes * time_entries.hourly_rate_snapshot ELSE 0 END) as rate_snap_amount,
-            SUM(CASE WHEN time_entries.hourly_cost_snapshot IS NOT NULL THEN time_entries.minutes ELSE 0 END) as cost_snap_minutes,
-            SUM(CASE WHEN time_entries.hourly_cost_snapshot IS NOT NULL THEN time_entries.minutes * time_entries.hourly_cost_snapshot ELSE 0 END) as cost_snap_amount')
+        $query->selectRaw(($keyExpression ?? "'all'").' as group_key, '.$columns.', '.Valuation::SUMS_SQL)
             ->groupByRaw(($keyExpression !== null ? $keyExpression.', ' : '').$columns);
 
         /** @var Collection<int, object> $rows */
         $rows = $query->toBase()->get();
+        $zero = ['income' => '0', 'cost' => '0', 'billable_minutes' => 0];
 
         if ($rows->isEmpty()) {
-            return [];
+            return ['groups' => [], 'total' => $zero];
         }
 
-        $projects = Project::query()->withTrashed()->whereIn('id', $rows->pluck('project_id')->unique()->values())
-            ->get(['id', 'client_id', 'billing_type', 'fixed_price_amount', 'budget_minutes', 'hourly_rate'])->keyBy('id');
-        $clients = Client::query()->withTrashed()->whereIn('id', $projects->pluck('client_id')->filter()->unique())
-            ->get(['id', 'default_hourly_rate'])->keyBy('id');
-        $banks = HourBank::query()->withTrashed()->whereIn('id', $rows->pluck('hour_bank_id')->filter()->unique())
-            ->get(['id', 'total_minutes', 'hourly_rate', 'price_amount'])->keyBy('id');
-        $users = User::query()->whereIn('id', $rows->pluck('user_id')->unique())
-            ->get(['id', 'default_hourly_rate', 'hourly_cost'])->keyBy('id');
+        $ids = fn (string $column): array => array_values($rows->pluck($column)->filter(fn ($id): bool => $id !== null)
+            ->map(fn ($id): int => (int) $id)->unique()->all());
+        $valuation = Valuation::load($this, $ids('project_id'), $ids('hour_bank_id'), $ids('user_id'));
 
-        $fixedBases = $this->fixedPriceBases($projects->filter(fn (Project $p): bool => $p->billing_type === BillingType::FixedPrice));
-
-        $result = [];
-        /** @var array<string, array<int, int>> $fixedMinutes grupo → proyecto → minutos facturables */
-        $fixedMinutes = [];
+        /** @var array<string, array{income: numeric-string, cost: numeric-string, billable_minutes: int}> $groups */
+        $groups = [];
+        /** @var array<string, array{unit: Unit, sums: Sums}> $units sumas de cada unidad, de todos los grupos */
+        $units = [];
+        /** @var array<string, array<int, int>> $fixed grupo → proyecto de precio cerrado → minutos facturables */
+        $fixed = [];
 
         foreach ($rows as $raw) {
             /** @var array<string, mixed> $row */
             $row = (array) $raw;
             $key = (string) ($row['group_key'] ?? '');
-            $result[$key] ??= ['income' => '0', 'cost' => '0', 'billable_minutes' => 0];
+            $bankId = $row['hour_bank_id'] !== null ? (int) $row['hour_bank_id'] : null;
+            $unit = $valuation->unit((int) $row['project_id'], $bankId, (int) $row['user_id'], (bool) $row['is_billable']);
+            $sums = Valuation::fromRow($row);
 
-            /** @var Project|null $project */
-            $project = $projects->get((int) $row['project_id']);
-            /** @var User|null $user */
-            $user = $users->get((int) $row['user_id']);
-            /** @var HourBank|null $bank */
-            $bank = $row['hour_bank_id'] !== null ? $banks->get((int) $row['hour_bank_id']) : null;
-            $client = $project?->client_id !== null ? $clients->get($project->client_id) : null;
-            $minutes = (int) $row['minutes'];
+            $groups[$key] ??= $zero;
+            $groups[$key]['cost'] = Money::add($groups[$key]['cost'], $valuation->cost($unit, $sums));
 
-            // Coste
-            $costSnapMinutes = (int) $row['cost_snap_minutes'];
-            $result[$key]['cost'] = Money::add(
-                $result[$key]['cost'],
-                Money::div(Money::of($row['cost_snap_amount']), '60'),
-                Money::forMinutes($minutes - $costSnapMinutes, $user?->hourly_cost),
-            );
+            $unitKey = $row['project_id'].':'.($bankId ?? '-').':'.$row['user_id'].':'.((bool) $row['is_billable'] ? 1 : 0);
+            $units[$unitKey] = ['unit' => $unit, 'sums' => Valuation::add($units[$unitKey]['sums'] ?? Valuation::zero(), $sums)];
 
-            // Ingreso
-            if (! (bool) $row['is_billable'] || $project === null || $project->billing_type === BillingType::Internal) {
+            if (! Valuation::earns($unit)) {
                 continue;
             }
 
-            $result[$key]['billable_minutes'] += $minutes;
+            $groups[$key]['billable_minutes'] += $sums['minutes'];
 
-            if ($project->billing_type === BillingType::FixedPrice) {
-                $fixedMinutes[$key][$project->id] = ($fixedMinutes[$key][$project->id] ?? 0) + $minutes;
+            if ($unit['basis'] === EntryValuation::FIXED_PRICE) {
+                $fixed[$key][$unit['project']] = ($fixed[$key][$unit['project']] ?? 0) + $sums['minutes'];
 
                 continue;
             }
 
-            $rate = $this->rate($bank, $project, $client, $user);
-
-            if ($bank !== null && $bank->price_amount !== null && $bank->total_minutes > 0) {
-                $overage = (int) $row['overage'];
-                $income = Money::add(
-                    Money::div(Money::mul($bank->price_amount, (string) ($minutes - $overage)), (string) $bank->total_minutes),
-                    Money::forMinutes($overage, $rate),
-                );
-            } else {
-                $rateSnapMinutes = (int) $row['rate_snap_minutes'];
-                $income = Money::add(
-                    Money::div(Money::of($row['rate_snap_amount']), '60'),
-                    Money::forMinutes($minutes - $rateSnapMinutes, $rate),
-                );
-            }
-
-            $result[$key]['income'] = Money::add($result[$key]['income'], $income);
+            $groups[$key]['income'] = Money::add($groups[$key]['income'], $valuation->income($unit, $sums));
         }
 
-        foreach ($fixedMinutes as $key => $byProject) {
-            $result[$key] ??= ['income' => '0', 'cost' => '0', 'billable_minutes' => 0];
+        foreach ($fixed as $key => $byProject) {
+            $groups[$key] ??= $zero;
             foreach ($byProject as $projectId => $minutes) {
-                $project = $projects->get($projectId);
-                $base = $fixedBases[$projectId] ?? 0;
-                if ($project === null || $project->fixed_price_amount === null || $base <= 0) {
-                    continue;
-                }
-                $result[$key]['income'] = Money::add(
-                    $result[$key]['income'],
-                    Money::div(Money::mul($project->fixed_price_amount, (string) $minutes), (string) $base),
-                );
+                $groups[$key]['income'] = Money::add($groups[$key]['income'], $valuation->fixedIncome($projectId, $minutes));
             }
         }
 
-        return $result;
+        return ['groups' => $groups, 'total' => self::canonical($valuation, $units)];
+    }
+
+    /**
+     * El total canónico: cada unidad valorada con las sumas de todos sus grupos (y el precio
+     * cerrado, por proyecto). Es el que da compute() sin agrupar para las mismas entradas y el que
+     * suman, entrada a entrada, las exportaciones (EntryValuation::next).
+     *
+     * @param  array<string, array{unit: Unit, sums: Sums}>  $units
+     * @return array{income: numeric-string, cost: numeric-string, billable_minutes: int}
+     */
+    private static function canonical(Valuation $valuation, array $units): array
+    {
+        $total = ['income' => '0', 'cost' => '0', 'billable_minutes' => 0];
+        /** @var array<int, int> $fixed */
+        $fixed = [];
+
+        foreach ($units as ['unit' => $unit, 'sums' => $sums]) {
+            $total['cost'] = Money::add($total['cost'], $valuation->cost($unit, $sums));
+
+            if (! Valuation::earns($unit)) {
+                continue;
+            }
+
+            $total['billable_minutes'] += $sums['minutes'];
+
+            if ($unit['basis'] === EntryValuation::FIXED_PRICE) {
+                $fixed[$unit['project']] = ($fixed[$unit['project']] ?? 0) + $sums['minutes'];
+            } else {
+                $total['income'] = Money::add($total['income'], $valuation->income($unit, $sums));
+            }
+        }
+
+        foreach ($fixed as $projectId => $minutes) {
+            $total['income'] = Money::add($total['income'], $valuation->fixedIncome($projectId, $minutes));
+        }
+
+        return $total;
     }
 
     /**
      * Tarifa vigente: bolsa > proyecto > cliente > persona (la misma prioridad que RateResolver).
-     * Pública para valorar entradas sueltas con el mismo criterio (EntryValuation, R2).
+     * Pública para valorar entradas sueltas con el mismo criterio (Valuation, EntryValuation).
      */
     public function rate(?HourBank $bank, Project $project, ?Client $client, ?User $user): ?string
     {
@@ -209,7 +209,7 @@ final class RevenueCalculator
     /**
      * Base de avance de cada proyecto de precio cerrado (D-043): el mayor del presupuesto, la suma
      * de la estimación efectiva de las tareas raíz y los minutos facturables imputados. Pública para
-     * valorar entradas sueltas con la misma base (EntryValuation, R2).
+     * valorar entradas sueltas con la misma base (Valuation, EntryValuation).
      *
      * @param  \Illuminate\Database\Eloquent\Collection<int, Project>  $projects
      * @return array<int, int>

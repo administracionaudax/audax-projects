@@ -72,6 +72,7 @@ const ALL: Abilities = {
     lockTime: true,
     manageUsers: true,
     manageSettings: true,
+    viewTeamAbsences: true,
 };
 
 function withAbilities(can: Partial<Abilities>) {
@@ -110,6 +111,12 @@ describe('panel de administración', () => {
                 .getByRole('link', { name: 'Gestionar los festivos' })
                 .getAttribute('href'),
         ).toBe('/admin/festivos');
+        // … y la tarjeta «Festivos y ausencias» lleva también a las del equipo.
+        expect(
+            screen
+                .getByRole('link', { name: 'Ver las ausencias del equipo' })
+                .getAttribute('href'),
+        ).toBe('/ausencias/equipo');
         expect(screen.queryByText('Llega en la Fase 3')).toBeNull();
         // Fase 7: auditoría y privacidad (D-074 y D-075).
         expect(
@@ -122,8 +129,8 @@ describe('panel de administración', () => {
                 .getByRole('link', { name: 'Abrir privacidad y datos' })
                 .getAttribute('href'),
         ).toBe('/admin/privacidad');
-        expect(screen.queryByText('Llega en la Fase 7')).toBeNull();
-        expect(screen.getByText('Llega en la Fase 5')).toBeTruthy();
+        // Con las Fases 5 a 7 integradas, todas las áreas tienen ya sus enlaces.
+        expect(screen.queryByText(/^Llega en la Fase/)).toBeNull();
     });
 
     it('sin el permiso, el enlace no aparece', () => {
@@ -430,6 +437,7 @@ const settingsProps: AdminSettingsProps = {
         time_entry_description_required: false,
         max_attachment_mb: 50,
         default_work_minutes: [480, 480, 480, 480, 480, 0, 0],
+        max_audio_seconds: 300,
         weekly_digest_enabled: true,
         occupancy_low_threshold: 70,
         occupancy_high_threshold: 110,

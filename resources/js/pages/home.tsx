@@ -19,11 +19,14 @@ import type { ReactNode } from 'react';
 import { MyAbsencesCard } from '@/components/absences/my-absences-card';
 import type { MyAbsencesSummary } from '@/components/absences/types';
 import {
+    HomeChatCard,
+    HomeChatSkeleton,
+} from '@/components/chat/home-chat-card';
+import {
     TaskStatusBadge,
     TimesheetStatusBadge,
 } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
-import type { Phase } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
 import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
 import type { MyIndicators } from '@/components/reports/r1-types';
@@ -54,33 +57,11 @@ import { firstName, useRequiredUser } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import type { TranslationKey } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import { index as timeIndex } from '@/routes/time';
 import type { ActiveTimer, HomePageProps, HomeTask } from '@/types';
-
-type LaterCard = {
-    id: string;
-    icon: LucideIcon;
-    title: TranslationKey;
-    description: TranslationKey;
-    empty: TranslationKey;
-    phase: Phase;
-};
-
-/** Tarjetas que llegan en otras fases (SPEC §17). */
-const LATER: LaterCard[] = [
-    {
-        id: 'mentions',
-        icon: AtSign,
-        title: 'home.cards.mentions.title',
-        description: 'home.cards.mentions.description',
-        empty: 'home.cards.mentions.empty',
-        phase: 6,
-    },
-];
 
 function PanelCard({
     id,
@@ -126,7 +107,8 @@ function PanelCard({
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
  * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
  * Fase 2, «Mis indicadores» del mes; en la Fase 3, «Mi carga» (prop diferida `workload`: no
- * retrasa la primera carga) y «Mis ausencias»; en la Fase 4, mis próximos hitos (D-062).
+ * retrasa la primera carga) y «Mis ausencias»; en la Fase 4, mis próximos hitos (D-062); en la
+ * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat_summary`).
  */
 export default function Home({
     tasks,
@@ -137,6 +119,7 @@ export default function Home({
     absences,
     workload,
     milestones,
+    chat_summary: chatSummary,
 }: HomePageProps & {
     indicators: MyIndicators;
     absences: MyAbsencesSummary;
@@ -166,7 +149,7 @@ export default function Home({
 
                 <section
                     aria-label={t('home.panel_label')}
-                    className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+                    className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
                 >
                     <PanelCard
                         id="today-tasks"
@@ -409,21 +392,21 @@ export default function Home({
                         <MyMilestones milestones={milestones} />
                     </PanelCard>
 
-                    {LATER.map((card) => (
-                        <PanelCard
-                            key={card.id}
-                            id={card.id}
-                            icon={card.icon}
-                            title={t(card.title)}
-                            description={t(card.description)}
+                    <PanelCard
+                        id="mentions"
+                        icon={AtSign}
+                        title={t('home.cards.mentions.title')}
+                        description={t('home.cards.mentions.description')}
+                    >
+                        <Deferred
+                            data="chat_summary"
+                            fallback={<HomeChatSkeleton />}
                         >
-                            <EmptyState
-                                className="flex-1"
-                                title={t(card.empty)}
-                                phase={card.phase}
-                            />
-                        </PanelCard>
-                    ))}
+                            {chatSummary ? (
+                                <HomeChatCard summary={chatSummary} />
+                            ) : null}
+                        </Deferred>
+                    </PanelCard>
                 </section>
             </div>
 

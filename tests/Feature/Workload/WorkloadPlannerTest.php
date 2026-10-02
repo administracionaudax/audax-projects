@@ -158,6 +158,43 @@ it('lo que cae fuera de la vista no se pinta, pero cuenta para repartir', functi
         ->and($plan->loadOn($this->ana->id, '2026-10-13'))->toBe(0);
 });
 
+it('una entrega a más de un año reparte entre todos los días laborables hasta la entrega y solo pinta el primer año', function () {
+    ($this->task)($this->ana, ['estimated_minutes' => 59940, 'start_date' => '2026-10-06', 'due_date' => '2028-10-06']);
+
+    // Del martes 06/10/2026 al jueves 07/10/2027 (el tope: un año desde hoy) hay 262 días
+    // laborables (sin el festivo del 12/10); del 08/10/2027 a la entrega, 261 más con su jornada de
+    // lunes a viernes. 59.940 / 523 = 114 y sobran 318 minutos, que van a los primeros días: los 262
+    // del primer año llevan 115. Antes se repartía todo en el primer año (~229 al día).
+    $plan = ($this->plan)('2026-10-05', '2028-10-08');
+
+    expect($plan->loadOn($this->ana->id, '2026-10-06'))->toBe(115)
+        ->and($plan->loadOn($this->ana->id, '2026-10-12'))->toBe(0)
+        ->and($plan->loadOn($this->ana->id, '2027-10-07'))->toBe(115)
+        ->and($plan->loadOn($this->ana->id, '2027-10-08'))->toBe(0)
+        ->and($plan->loadBetween($this->ana->id, '2026-10-05', '2028-10-08'))->toBe(262 * 115);
+});
+
+it('más allá del año cuenta los días que trabaja según su jornada vigente (sin festivos ni ausencias)', function () {
+    // Pau trabaja de lunes a miércoles. Del 06/10/2026 al 07/10/2027: 157 días (sin el lunes 12/10);
+    // del 08/10/2027 al 31/12/2027: 36 lunes, martes y miércoles más. 11.580 / 193 = 60 exactos.
+    ($this->task)($this->pau, ['estimated_minutes' => 11580, 'start_date' => '2026-10-06', 'due_date' => '2027-12-31']);
+    // Una ausencia más allá del año no se conoce aún para el reparto: no cambia nada.
+    Absence::factory()->approved()->between('2027-11-01', '2027-11-30')->create(['user_id' => $this->pau->id]);
+
+    $plan = ($this->plan)();
+
+    expect($plan->loadOn($this->pau->id, '2026-10-06'))->toBe(60)
+        ->and($plan->loadOn($this->pau->id, '2026-10-07'))->toBe(60)
+        ->and($plan->loadOn($this->pau->id, '2026-10-08'))->toBe(0)
+        ->and($plan->loadOn($this->pau->id, '2026-10-13'))->toBe(60);
+});
+
+it('una tarea que empieza después del año no pinta nada', function () {
+    ($this->task)($this->ana, ['estimated_minutes' => 6000, 'start_date' => '2027-11-01', 'due_date' => '2027-12-31']);
+
+    expect(($this->plan)('2026-10-05', '2027-12-31')->load)->toBe([]);
+});
+
 it('sin estimación o sin entrega van a «Sin planificar»; sin responsable, a «Sin asignar» por departamento', function () {
     $design = Department::factory()->create();
     $marketing = Department::factory()->create();

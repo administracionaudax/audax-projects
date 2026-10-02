@@ -13,6 +13,7 @@ use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
 use App\Domain\Workload\MyWorkload;
 use App\Enums\TimesheetStatus;
+use App\Http\Resources\Chat\HomeChatSummary;
 use App\Http\Resources\Time\HomeTaskResource;
 use App\Http\Resources\Time\Plain;
 use App\Http\Resources\Time\TimesheetPeriodResource;
@@ -36,7 +37,8 @@ use Inertia\Response;
  * - «Mis indicadores» del mes en curso (Fase 2): solo los suyos, también si es responsable o admin,
  * - mi carga de esta semana y la que viene (Fase 3, prop diferida `workload`),
  * - «Mis ausencias» (Fase 3),
- * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062).
+ * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062),
+ * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  */
 class HomeController extends Controller
@@ -55,6 +57,7 @@ class HomeController extends Controller
 
     public function __construct(
         private readonly Capacity $capacity,
+        private readonly HomeChatSummary $chat,
         private readonly UpcomingMilestones $milestones,
     ) {}
 
@@ -84,6 +87,8 @@ class HomeController extends Controller
             // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio.
             'workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today)),
             'milestones' => $this->milestones->forUser($user, $today),
+            // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
+            'chat_summary' => Inertia::defer(fn (): array => $this->chat->for($user)),
         ]);
     }
 

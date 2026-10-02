@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Projects;
 use App\Domain\HourBanks\FirstHourBank;
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\Planning\UpcomingMilestones;
+use App\Domain\Portal\Access\ProjectPortalSettings;
 use App\Domain\Projects\ProjectActivityFeed;
 use App\Domain\Projects\ProjectColors;
 use App\Domain\Projects\ProjectCreator;
@@ -249,6 +250,8 @@ class ProjectController extends Controller
             // Secciones «Plantilla» y «Tareas recurrentes» (D-058, D-059): diferidas, no pesan en la carga.
             'templating' => Inertia::defer(fn (): array => app(ProjectTemplatingSettings::class)->for($project), 'planning', true),
             'recurring' => Inertia::defer(fn (): array => app(ProjectRecurringSettings::class)->for($project), 'planning', true),
+            // Sección «Portal del cliente» (Fase 5, D-064).
+            'portal' => fn (): array => app(ProjectPortalSettings::class)->for($project),
             'can' => [
                 'manageMembers' => $user->can('manageMembers', $project),
                 'archive' => $user->can('archive', $project),

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Auth\SessionTerminator;
 use App\Enums\Role;
+use App\Events\MembershipsChanged;
 use App\Notifications\ResetPasswordNotification;
 use Closure;
 use Database\Factories\UserFactory;
@@ -238,6 +239,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Navegadores suscritos a los avisos Web Push (Fase 6, D-072).
+     *
+     * @return HasMany<PushSubscription, $this>
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
      * Rol de responsable de departamento (qué departamentos dirige lo marca el pivote, D-024).
      */
     public function isDepartmentManager(): bool
@@ -313,10 +324,13 @@ class User extends Authenticatable
 
     /**
      * Vacía la memoria de pertenencia y gestión de la petición en curso (tras cambiar miembros,
-     * gestores de proyecto o responsables de departamento).
+     * gestores de proyecto o responsables de departamento) y lo avisa (MembershipsChanged: la caché
+     * de los informes se invalida).
      */
     public static function forgetMemberships(): void
     {
+        MembershipsChanged::dispatch();
+
         $request = app()->bound('request') ? app('request') : null;
 
         if (! $request instanceof Request) {
@@ -352,6 +366,15 @@ class User extends Authenticatable
      * Los gestores ven además las horas de sus proyectos: eso se filtra por entrada, no por persona.
      */
     public function canSeeHoursOf(User $other): bool
+    {
+        return $this->id === $other->id || $this->isAdmin() || $this->supervises($other);
+    }
+
+    /**
+     * ¿Puede saber de qué tipo son las ausencias de $other (una baja es un dato de salud)? La propia
+     * persona, un admin o quien la supervisa (D-088). Los demás, como mucho, que ese día no está.
+     */
+    public function canSeeAbsencesOf(User $other): bool
     {
         return $this->id === $other->id || $this->isAdmin() || $this->supervises($other);
     }

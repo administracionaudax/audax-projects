@@ -4,7 +4,9 @@
  * - Fuentes:
  *   · `lang/es.json`: textos de la Fase 0 y claves del backend (`__()` de Laravel lo lee),
  *   · `lang/ui/*.json`: textos del frontend por área desde la Fase 1 (shared, admin, clients,
- *     projects, hour-banks, tasks, time, notifications y reports). Laravel no los lee.
+ *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
+ *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
+ *     privacidad). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -19,14 +21,19 @@ import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import audit from '../../../lang/ui/audit.json';
+import chatMedia from '../../../lang/ui/chat-media.json';
+import chat from '../../../lang/ui/chat.json';
 import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
 import planning from '../../../lang/ui/planning.json';
+import portalBanks from '../../../lang/ui/portal-banks.json';
+import portalAccess from '../../../lang/ui/portal-access.json';
 import privacy from '../../../lang/ui/privacy.json';
 import projects from '../../../lang/ui/projects.json';
+import realtime from '../../../lang/ui/realtime.json';
 import reports from '../../../lang/ui/reports.json';
 import reportsR2 from '../../../lang/ui/reports-r2.json';
 import reportsR1 from '../../../lang/ui/reports-r1.json';
@@ -50,6 +57,9 @@ const messages = {
     ...time,
     ...notifications,
     ...notificationSettings,
+    ...realtime,
+    ...chatMedia,
+    ...chat,
     ...reports,
     ...reportsR2,
     ...reportsR1,
@@ -59,6 +69,8 @@ const messages = {
     ...gantt,
     ...planning,
     ...templates,
+    ...portalBanks,
+    ...portalAccess,
 };
 
 export type TranslationKey = keyof typeof messages;

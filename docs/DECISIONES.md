@@ -422,6 +422,40 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
 - **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
 
+
+### D-080 · Nivel de ocupación de un periodo en curso **[concreta D-047 y D-079]**
+- **Qué se enseña:** la ocupación de cada miembro sigue siendo la del SPEC §10 (imputadas / capacidad del periodo completo, D-079).
+- **Nivel (baja, en rango, alta; umbrales 70 % y 110 % de D-047):** en un periodo en curso (le quedan días con jornada) se mide con el **ritmo**: imputadas / capacidad transcurrida hasta ayer (`pace`). Contra el periodo entero, a mitad de mes todo el mundo salía «baja». Si esa capacidad es 0 (el primer día o un periodo futuro), sin nivel: «Aún sin datos». En un periodo cerrado, el nivel es el de la ocupación.
+- **Dónde:** tabla de miembros del departamento (el ritmo va debajo de la ocupación) y su exportación («Ritmo (%)»).
+
+### D-081 · Minutos en las exportaciones con totales **[concreta D-045]**
+- Las horas en decimal (redondeadas a 2) no siempre suman su total: tres entradas de 20 min son 0,33 + 0,33 + 0,33 = 0,99 h frente a 1,00 h.
+- Las exportaciones con fila de totales (horas para facturar, resumen por proyecto del cliente, estimado frente a real del proyecto y tabla dinámica del detallado) llevan **al final** una columna de **minutos enteros** por cada columna de horas que se suma; en la tabla dinámica, una columna y una fila «Total (minutos)». Las horas decimales siguen para leer; los minutos suman exacto. Al final, para no mover las columnas de siempre.
+
+### D-082 · Tope del precio de una bolsa **[concreta D-043]**
+- La parte de lo que va dentro de una bolsa con precio vale `precio × minutos dentro / máx(total de la bolsa, lo que va dentro de la bolsa entera)`.
+- Normalmente es `precio × dentro / total`. Pero si lo de dentro supera el total (entradas bloqueadas que no cambian al reducir el total, D-019 y D-054), el precio se reparte entre todo lo de dentro: la bolsa nunca vale más que su precio, sume el periodo que se sume. «Lo que va dentro de la bolsa entera» es el de `HourBankLedger` (consumo − exceso).
+- El exceso de una bolsa con precio, como dice D-043: a la instantánea de tarifa de cada entrada si está aprobada o bloqueada y, si no, a la tarifa vigente (antes se valoraba siempre a la vigente).
+
+### D-083 · Un solo total de ingreso y coste, con los mismos céntimos en todas partes **[concreta D-043]**
+- **Total:** el de un conjunto de entradas es el de sus unidades (proyecto · bolsa · persona · facturable; el precio cerrado, por proyecto), redondeado **una sola vez**, se agrupe como se agrupe (`RevenueCalculator`, con las fórmulas en `App\Domain\Reports\Valuation`).
+- **Repartos y series** (por cliente, proyecto, persona, semana…): cada fila recibe su parte de ese total en céntimos por resto mayor (`Cents::largestRemainder`): las filas suman exactamente el resumen. Las tablas enseñan los totales del servidor, nunca sumados en el navegador.
+- **Exportaciones por entrada** (horas y horas para facturar): cada entrada suma su parte exacta del total de su unidad (`EntryValuation::next`) y los céntimos se reparten en orden (`RunningCents`): la columna suma el ingreso del informe y ninguna línea se aleja más de un céntimo de su importe. El total del fichero sale de las mismas filas que exporta (nunca del resumen en caché).
+
+### D-084 · Subtareas en los informes **[concreta el SPEC §6 y §10]**
+- **Precisión de estimación:** las unidades son las hojas con estimación (subtareas y tareas sin subtareas) y las tareas raíz cuyas subtareas no están estimadas (con su propia estimación y las horas de sus subtareas), completadas en el periodo. Una tarea con alguna subtarea estimada cuenta por sus subtareas estimadas (su estimación es su suma); sus horas propias y las de sus subtareas sin estimar no entran en la precisión. Es la regla de la tabla «Estimado frente a real» y de la base del precio cerrado.
+- **Detallado por tarea:** las horas de una subtarea suman en su tarea padre (se agrupa por la tarea raíz).
+
+### D-085 · Límite de las exportaciones de los informes
+- 30 exportaciones por minuto y usuario, comunes a todos los dashboards y al detallado (limitador `report-exports`). Solo cuentan las peticiones con `formato`: ver las páginas no gasta el cupo. La exportación de horas y el PDF de bolsa mantienen su límite propio.
+
+### D-086 · Caché de los informes **[concreta D-046]**
+- **Cuándo se invalida:** siempre **tras el commit** de la transacción (y nunca si se deshace), con un incremento atómico de la versión. Además de entradas, tareas, bolsas, proyectos, clientes, jornadas, ajustes y personas: estados y tipos de tarea, departamentos, semanas de horas, bloqueos, miembros y gestores de proyecto y responsables de departamento, y los servicios con actualizaciones masivas (bloquear y desbloquear horas, pasar un estado a «done», mover tareas y reordenar catálogos).
+- **Clave:** además de quien mira, su permiso económico y los filtros, su **alcance**: roles, departamentos que dirige y proyectos que gestiona. Quien deja de dirigir un departamento no ve nunca lo que vio cacheado, aunque nada haya invalidado la caché.
+
+### D-087 · Resumen semanal con el alcance de dirección **[concreta D-047]**
+- Las bolsas en riesgo y las tareas vencidas del resumen semanal son las del dashboard de dirección de quien lo recibe (`HourBanksAtRisk` y `OverdueTasks`): a un responsable, también las bolsas de los proyectos donde imputa su equipo y las tareas de las personas de su equipo que imputaron esa semana aunque ya estén de baja. El email cuenta lo mismo que el dashboard.
+
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 3)
 
 _Detalle y contexto en `docs/PLAN-FASE-3.md`._
@@ -452,7 +486,7 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
 - **Casos especiales:**
   - una tarea vencida lleva todo su restante a hoy y se marca,
   - sin ningún día con capacidad en el rango, todo va al primer día,
-  - como mucho se calcula un año hacia delante.
+  - la capacidad día a día se calcula, y se pinta, como mucho un año hacia delante. Una entrega posterior reparte igualmente entre **todos** sus días laborables: los que pasan del año se cuentan con la jornada semanal vigente al final de ese año, sin festivos ni ausencias, para no amontonar el restante en el primer año (revisión global).
 - **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
 - **Bandejas:**
   - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
@@ -474,8 +508,23 @@ _Detalle y contexto en `docs/PLAN-FASE-3.md`._
   - verde: del 70 % al 100 %,
   - ámbar: del 100 % al 120 %,
   - rojo: más del 120 %.
+  - El nivel se decide con el porcentaje redondeado que se enseña, para que la cifra y el color no se contradigan: 481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde (revisión global).
 - **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
+  - La celda de alguien fuera de su alcance en la URL (`?celda=`) se ignora en una visita completa, como cualquier otro filtro que no vale; solo la recarga parcial que abre el panel responde 403 (revisión global).
 - **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
+
+### D-088 · Ausencias de otra persona al imputar por ella **[concreta D-036 y D-049; RGPD]**
+- **Quién ve el tipo de una ausencia** (vacaciones, baja, permiso…; una baja es un dato de salud): la propia persona, un admin o quien la supervisa (`User::canSeeAbsencesOf`, que es `supervises` para los responsables).
+- **Aviso al imputar por otra persona en un día con ausencia aprobada** (SPEC §7):
+  - un admin o su responsable ven el tipo, con el nombre de la persona («Ese día Pedro Pérez tiene una ausencia aprobada (Baja)…»),
+  - cualquier otro que pueda imputar por ella (un gestor, en su proyecto) solo ve «Ese día Pedro Pérez no está disponible», sin tipo ni horas (o «no está disponible una parte de la jornada»).
+- **Por qué:** antes el aviso decía el tipo («Baja») a cualquiera que pudiera imputar por la persona, y probando fechas se podía reconstruir su calendario de bajas. Ahora solo sabe que ese día no está disponible, que es lo que necesita para imputar bien.
+- **Avisos de jornada:** al imputar por otra persona hablan de ella y la nombran («Ese día Pedro Pérez no tiene jornada y suma 1:00», «… más de un 25 % por encima de su jornada»), no de quien imputa.
+
+### D-091 · Navegación de ausencias y festivos **[cambia el SPEC §3]**
+- **Barra lateral:** «Ausencias» para todos los internos, tras «Carga». Quien aprueba ausencias (responsables y admins, `auth.can.viewTeamAbsences`) tiene dentro «Ausencias del equipo». Las pestañas «Mis ausencias» y «Ausencias del equipo» de la página siguen igual.
+- **Búsqueda global:** «Ausencias», «Ausencias del equipo» (quien las aprueba) y «Festivos» (`manage-settings`) son secciones propias; «ausencias» deja de ser una palabra clave de «Carga».
+- **Administración:** la tarjeta «Festivos y ausencias» lleva a los festivos y a las ausencias del equipo.
 
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 4)
 
@@ -566,6 +615,213 @@ _Detalle y contexto en `docs/PLAN-FASE-4.md`._
 - **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
 - **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
 
+### D-089 · Fechas de las tareas recurrentes **[concreta D-059]**
+- **Desde y hasta:** entre el 01/01/2000 y el 31/12/2100, como el calendario de tareas (`CalendarPeriod`). El formulario lo valida con su mensaje y no se calcula ninguna tarea fuera de ese rango (`RecurringTaskRule::MIN_DATE` y `MAX_DATE`).
+- **Cálculo:** las fechas de una regla saltan directamente a la ventana pedida, sin recorrer la serie desde su inicio (una regla antigua conserva su ritmo). La vista previa del formulario y el servidor comparten los casos de prueba (`tests/fixtures/recurrence-cases.json`).
+
+### D-090 · Dependencias: enlaces de uno en uno y propuesta a prueba de ciclos **[concreta D-056 y D-057]**
+- **Enlazar:** los enlaces de un mismo proyecto se hacen de uno en uno (la fila del proyecto queda bloqueada mientras se busca el ciclo y se guarda el enlace): dos enlaces a la vez no pueden cerrar un ciclo.
+- **Proponer:** mover una tarea antes **o sin cambiar su entrega** no propone nada, aunque ya hubiera un conflicto: no lo causa ese cambio y el Gantt lo sigue marcando.
+  - La cascada solo sigue desde lo que se desplaza, y cada sucesora se revisa una vez, con sus fechas definitivas.
+  - Si la base tuviera un ciclo (datos antiguos o dañados), nunca se propone mover la tarea movida ni se vuelve a una tarea del propio camino.
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 5)
+
+_Concretan D-063 a D-067 (`docs/PLAN-FASE-5.md`): las de P1 (bolsas), las de P2 (acceso, proyectos e identidad, antes «P2-a» a «P2-d») y las de la revisión global. Numeradas desde D-092 porque las fases en curso ya habían reservado hasta D-091._
+
+### D-092 · Dentro y exceso en el portal **[concreta D-019, D-053 y D-064]**
+- **Problema:** el exceso guardado en cada entrada (`overage_minutes`) lo reparte `HourBankLedger` entre **todas** las horas de la bolsa, también los borradores y las enviadas. Con horas ocultas de fecha anterior que llenan la bolsa, horas que el cliente ve salían como exceso aunque le quedara saldo (bolsa de 600, borrador de 480 el 01/09 y aprobada de 300 el 15/09: el portal enseñaba 120 dentro, 180 de exceso, 480 restantes y «Activa»; y el email del 100 % podía llegar con la bolsa activa).
+- **Regla:** en el portal, dentro y exceso se reparten **solo entre las horas que ve el cliente**, contra el total de la bolsa y con la regla del libro:
+  - las **bloqueadas** conservan su exceso fijo (D-019, D-053) y reservan lo que llevan dentro,
+  - el resto del total se reparte entre las demás en orden cronológico (fecha, `created_at`, id); la que cruza el límite queda con la parte que no cabe como exceso.
+- **Dónde:** `PortalBankFigures` (`allocation`, `many`, `byMonth`, `between` y `entries`), que usan las cifras y el estado de las bolsas, el consumo por mes, el listado de horas, las «horas de este mes» del inicio, los avisos al cliente y el PDF. Así todo cuadra siempre. Por dentro la bolsa sigue con sus cifras de siempre (la nota del portal lo explica).
+- **Cómo:** en SQL, con una suma acumulada (`SUM(...) OVER (PARTITION BY bolsa ORDER BY fecha, created_at, id)`), que funciona en PostgreSQL y en SQLite ≥ 3.25, en una consulta por pantalla y sin N+1.
+
+### D-093 · Estado de la bolsa para el cliente **[concreta D-064]**
+- Sale de `PortalBankFigures::status`: las bolsas **cerradas y renovadas**, tal cual; una **abierta** sale **agotada** cuando lo que el cliente ve dentro de la bolsa llega al total (la regla de `HourBankLedger` con sus horas visibles, D-092) y, si no, activa.
+- Así el estado cuadra con la barra, el listado y el PDF, aunque por dentro la bolsa vaya más avanzada (borradores y semanas sin aprobar).
+
+### D-094 · Inicio del portal **[concreta D-064]**
+- **Bolsas activas:** las activas o agotadas de un proyecto **no archivado** (como la vista global de bolsas, D-054). El resto (cerradas, renovadas y las de proyectos archivados) va a **«Bolsas anteriores»**, de la más reciente a la más antigua.
+- **«Horas de este mes»:** solo las horas **visibles** de sus bolsas (nunca las de proyectos sin bolsa), en el mes en curso de `Europe/Madrid`, con su exceso tal como lo ve el cliente (D-092).
+- **«Cerca del límite»:** las bolsas activas desde el primer umbral configurado (D-035).
+
+### D-095 · PDF del portal **[concreta D-066]**
+- Sus cifras, su consumo por mes y su listado son los de `PortalBankFigures` (D-092), así que **no lleva el bloque «sin aprobar»** del PDF interno (D-045): lo que el cliente no ve no aparece, ni siquiera como total aparte. La nota del PDF explica qué horas ve.
+
+### D-096 · Personas y acceso en el portal **[concreta D-063 y D-064]**
+- **Con «Equipo»**, los nombres de las personas **ni se cargan ni viajan** al navegador ni al PDF (no se pide la relación con la persona); con las iniciales, solo viajan las iniciales.
+- **Internos en `/portal/*`:** reciben **403** (middleware `portal`) antes de buscar nada. Un cliente con un id de otro cliente recibe **404**, como con uno que no existe (`PortalRoutesIsolationTest` recorre todas las rutas del portal).
+
+### D-097 · Quién gestiona el portal **[concreta D-063 y D-064]**
+- **Usuarios del portal** (invitar, reenviar, revocar y reactivar): `ClientPolicy::managePortal`, es decir, admin, responsables (rol) y gestores de algún proyecto sin borrar del cliente.
+- **Ajustes del portal del cliente** (personas, horas visibles y avisos por email): `ClientPolicy::update` (admin y responsables). Afectan a todas las bolsas y proyectos del cliente, así que no los cambia el gestor de uno solo, que los ve en solo lectura.
+- **Portal de cada proyecto** (vista, horas por tarea y Gantt): quien gestiona el proyecto (`ProjectPolicy::update`), desde sus ajustes. El SPEC §11 decía «el admin».
+- Quien no gestiona el portal no recibe la lista de usuarios: la ficha le dice quién lo gestiona.
+- En la ficha, la sección es una **prop diferida** (`portal`, como las secciones de la F4 en los ajustes del proyecto): no pesa en la carga ni en el presupuesto de consultas de la F1, y sus acciones recargan solo esa prop.
+
+### D-098 · Invitaciones y estado de los usuarios del portal **[concreta D-063]**
+- **Alta:** rol `client` y `client_id`, sin departamento ni jornada (no es plantilla). La invitación reutiliza `UserInviter::send` (broker `invitations`, 7 días, cola `mail`) con el asunto y la presentación del portal.
+- **Correo único**, sin distinguir mayúsculas. Si es de una persona del equipo, se explica; si es de otro cliente, el mensaje genérico (no se revela de quién es).
+- **Estado en la ficha:**
+  - aceptada, si fijó su contraseña con la invitación (correo verificado) o ha entrado alguna vez,
+  - pendiente, mientras el enlace esté vigente (con su fecha de caducidad),
+  - caducada, en otro caso.
+  - Último acceso = último inicio de sesión correcto.
+- **Reenviar:** solo a personas activas de un cliente activo; la interfaz lo ofrece a quien todavía no ha entrado (el resto tiene «¿Has olvidado la contraseña?»).
+- **Revocar:** desactiva (User::booted cierra todas sus sesiones y su «Recordarme» con `SessionTerminator`) y anula la invitación pendiente, para que un enlace viejo no sirva si se reactiva. **Reactivar** no reenvía la invitación.
+- Con el cliente desactivado no se invita, no se reenvía ni se reactiva; revocar, sí.
+- **Auditoría:** `activity_log` del cliente (`clients`): `portal_user_invited`, `portal_invitation_resent`, `portal_user_revoked` y `portal_user_reactivated`, con la persona.
+
+### D-099 · Proyectos en el portal **[concreta D-064]**
+- **Abrir:** las horas por tarea solo cuentan con la vista abierta (al cerrarla, se apagan). El Gantt se abre aparte y no exige la vista. Un proyecto sin cliente no se abre.
+- **Qué se ve de cada tarea:** título, estado, inicio y entrega, si es hito y sus subtareas. Nunca descripciones (pueden llevar notas internas), comentarios, adjuntos, responsables, estimaciones, prioridad ni importes.
+- **Horas por tarea:** solo las visibles para el cliente (`PortalScope::entries`). La de una tarea con subtareas suma las suyas; el total no cuenta dos veces.
+- **Páginas:** `/portal/proyectos` (los abiertos, con su avance), `/portal/proyectos/{proyecto}` y `…/gantt`. Un proyecto archivado que siga abierto se ve (histórico); uno en la papelera, no.
+- **Gantt:** el componente de la Fase 4 con `readOnly` y la nueva prop aditiva `hideAssignees` (sin columna de responsable, sin colores por responsable ni su nombre en las barras). Los datos ya llegan sin responsables, estimaciones ni horas y con `can.update = false`. Colores siempre por estado. Una tarea se abre en un diálogo de solo lectura.
+- **Navegación:** la cabecera del portal lleva «Inicio» y, si hay algún proyecto abierto, «Proyectos». Salen de la prop compartida `portal` (identidad y proyectos abiertos), que solo reciben los usuarios del portal. Para el Inicio queda la tarjeta `PortalProjectsCard`.
+
+### D-100 · Identidad de la empresa **[concreta D-067]**
+- **Logo:** se comprueba el tipo real con fileinfo y se vuelve a codificar con GD en un PNG con transparencia que cabe en 960 × 240 px (sin ampliar). No queda nada del fichero original. El original admite hasta 3.000 px por lado. Se procesa en la petición: es un fichero de 1 MB como mucho y solo lo sube el admin.
+- **Dónde se guarda y cómo se sirve:** se guarda en el disco privado y se sirve en `/marca/logo/{versión}`, una ruta pública y fuera del grupo web (sin sesión ni cookies), porque la cargan los emails. La versión actual se guarda en caché un año. `ClientIsolationTest` admite esa ruta.
+- **Emails:** se sobrescribe solo `resources/views/vendor/mail/html/header.blade.php`: el logo (como mucho 240 × 56 px) si lo hay; si no, el texto de siempre.
+- **PDF:** `AudaxPdf::logo` dibuja el PNG en una caja de 45 × 8 mm; sin logo, el vectorial.
+- **Cabecera del portal:** el logo va sobre una placa blanca, porque la cabecera va sobre el degradado.
+- `company_name` es el mismo ajuste que ya se editaba en `/admin/ajustes`: queda en los dos sitios hasta que se decida quitarlo de allí.
+
+### D-101 · Avisos al cliente tras la revisión global **[concreta D-065]**
+- Solo de un cliente **activo** y de una bolsa **abierta** (activa o agotada): nunca de una cerrada o renovada, aunque se aprueben sus horas (D-053).
+- Un cambio que cruza el 90 % y el 100 % a la vez manda **un solo email**, el del umbral más alto; los dos quedan registrados y no se repiten (como los avisos internos).
+- Se comprueban con la escritura interna ya confirmada y **nunca la rompen**: el alcance sale del cliente (`PortalScope::forClient`), cada bolsa se comprueba por separado y un fallo solo se registra (`report()`). Una transacción que se deshace no deja nada pendiente.
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 6)
+
+### D-070 · Transcripción de audios: motor y modelo medidos en el servidor **[concreta el SPEC §12]**
+Detalle completo en `docs/PLAN-FASE-6.md`.
+- **Motor:** whisper.cpp v1.9.4 (MIT) en el contenedor `audax-whisper`, en `127.0.0.1:18091`, con límites: 2 CPU en los núcleos 6-7, `cpu_shares` 64, 1,5 GB sin swap.
+- **Worker:** `audax-transcriber.service`, un único proceso con Nice 19.
+- **La CPU del servidor no tiene AVX:** la imagen se compila en GitHub Actions para x86-64 básico y se prueba con QEMU emulando esa CPU.
+
+Medido el 27/09/2026 en el servidor real (VM KVM, CPU genérica **solo SSE2/SSE3**), con `scripts/server/whisper-bench.sh`.
+- **Condiciones:** contenedores efímeros con 2 CPU fijadas a los núcleos 6-7, `cpu-shares` 64 y memoria acotada; whisper.cpp v1.9.4 compilado para x86-64 básico.
+- **Audio:** 59 s de voz en español con un texto conocido, sintetizado en el Mac; limpio y con ruido rosa y filtro de teléfono.
+- **WER:** error por palabras frente al texto, normalizado (mayúsculas, tildes, signos y cifras).
+
+| Modelo | Variante | Tiempo (59 s de audio) | × duración | Pico de RAM | WER limpio | WER con ruido |
+|---|---|---|---|---|---|---|
+| tiny | sin BLAS | 67 s | 1,1 | 302 MB | 6,5 % | — |
+| tiny | OpenBLAS | 47 s | 0,8 | 313 MB | 5,9 % | 6,5 % |
+| base | sin BLAS | 149 s | 2,5 | 478 MB | 1,6 % | — |
+| base | OpenBLAS | 99 s | 1,7 | 438 MB | 1,6 % | 1,6 % |
+| small | sin BLAS | 526 s | 8,9 | 1.203 MB | 1,1 % | — |
+| small | OpenBLAS | 317 s | 5,3 | 1.012 MB | 1,1 % | 1,1 % |
+| medium | OpenBLAS | 808 s | 13,6 | 3.072 MB (en el límite de 3 GB) | 1,1 % | — |
+| **small (whisper-server, webm/opus del navegador)** | OpenBLAS | **211 s** | **3,6** | **906 MB** | — | **1,1 %** |
+
+**Elección: `small` con OpenBLAS**, servido por `whisper-server --convert`.
+- **Por qué no `base`:** con voz sintética `base` ya acierta mucho, pero en voz real (micrófono de móvil, acentos, ruido) `small` comete aproximadamente la mitad de errores. Además, la búsqueda por palabras dichas en un audio (aceptación de la F6) depende de esa precisión.
+- **No sobrecarga el servidor:**
+  - usa 2 núcleos fijos (6-7) con la prioridad más baja y menos de 1 GB,
+  - la carga media del servidor pasó de ~2,5 a ~3,8 durante la medición, sin afectar a las demás webs.
+- **Tiempo de espera:** un audio de 1 minuto tarda unos 3,5 minutos; uno de 5 minutos (el máximo), unos 18. El audio se escucha desde el primer momento y el texto llega después («Transcribiendo…»).
+  - Límites ajustados: job de 2.400 s, `retry_after` de 2.700 s y petición de 2.340 s.
+- **`medium`, descartado:** triplica el tiempo de `small` y necesita 3 GB, sin mejora medible.
+- **Si con audios reales la cola se acumula**, se puede cambiar a `base` con `WHISPER_MODEL` y el contenedor, sin tocar el código.
+- **Recomendación al propietario:** con el tipo de CPU «host» en el hipervisor (AVX2), el tiempo bajaría varias veces.
+
+
+## 02/10/2026: Decisiones tomadas en autonomía durante la implementación y la integración de la Fase 6
+Resumen de lo que decidieron C1 (chat), C2 (tiempo real y avisos) y C3 (audios, adjuntos y búsqueda) y de lo que se decidió al integrarlas. Concretan D-068 a D-072.
+
+### D-110 · Chat: interfaz y escritura (C1) **[concreta D-069]**
+- **Markdown ligero:** se pinta con elementos de React, nunca con HTML; los enlaces, solo `http(s)` y `mailto`.
+- **Emojis:** selector `frimousse` (MIT) con los datos de Emojibase 16 (MIT) autoalojados en `public/emojibase` (la CSP solo permite `'self'`).
+- **Editor:** envío optimista («Enviando…», con «Reintentar» y «Descartar»), borrador por conversación en el navegador, ↑ con el cuadro vacío edita el último mensaje propio, menciones con autocompletado y `@todos`.
+- **Mensajes:** páginas por cursor (antes, después y alrededor de un mensaje, para `?mensaje=`); sin tiempo real, consulta cada 10 s con la pestaña visible (60 s con él, como red de seguridad); si llegan demasiados de golpe, se avisa para cargar los últimos.
+- **Previsualización de enlaces:** job en la cola `default`, solo los puertos 80 y 443, IP pública comprobada antes de conectar y en cada redirección (IPv4 e IPv6) y conexión fijada a esa IP, 3 redirecciones, 3 s, 512 KB y solo `text/html`. **Se guarda sin imagen** (D-069 permitía «servida por la app o sin imagen»). Apagada en los tests.
+- **Mensajes de sistema** en el chat del proyecto: bolsa al 90 % y agotada, e hito completado.
+- **Tarea desde un mensaje:** el mensaje queda enlazado a la tarea y el panel de la tarea enlaza al mensaje solo para quien ve la conversación.
+- **Límites:** cada `throttle` lleva su prefijo (igual en C2 y C3): sin él, todas las rutas comparten el contador de la persona.
+
+### D-111 · Tiempo real (C2) **[concreta D-068]**
+- **Eventos:** salen por la cola, tras el commit y sin romper nada si la cola falla (`ShouldRescue`), con **solo ids** (y la pista de qué cambió), nunca el texto: el navegador pide los datos a las rutas, que comprueban los permisos.
+- **Sin Reverb** (`BROADCAST_CONNECTION` distinto de `reverb`) no se emite ni se encola nada; la interfaz consulta.
+- **Canal personal:** actividad para los contadores de no leídos, lecturas en otras pestañas y la campana en vivo (sin Reverb, la campana consulta cada 60 s).
+- **Presencia:** canal `online`, «Ausente» a los 5 minutos sin actividad; sin Reverb, latidos cada 60 s. Con forma y texto, nunca solo color.
+- **«Escribiendo…»:** por *whisper*, como mucho uno cada 3 s; caduca a los 6 s.
+- **Conversación abierta:** latido cada 30 s mientras la pestaña está visible; a quien la tiene abierta no le sube el contador ni le llegan avisos.
+- **Contadores:** un almacén compartido por toda la interfaz; sin Reverb se consultan cada 30 s; con él, +1 en vivo y repaso cada 5 minutos.
+- **«Leído por»:** participantes activos y hasta dónde han leído; sin Reverb se consulta cada 30 s.
+
+### D-112 · Avisos del chat y Web Push (C2) **[concreta D-072]**
+- **Qué avisa:** mención personal, `@todos` (salvo a quien la tiene silenciada) y mensajes directos (salvo silenciados); nunca al autor ni a quien tiene la conversación abierta. Una mención personal en una conversación silenciada llega a la campana, pero no al navegador.
+- **Agrupación:** como mucho un aviso por conversación cada 5 minutos por persona; se reinicia al leerla o abrirla.
+- **Cola:** solo se encola si el mensaje puede avisar (menciones, `@todos` o directa).
+- **Web Push:** `minishlink/web-push` 11 (MIT); suscripciones solo de servicios de push conocidos por https y con claves bien formadas (SSRF); `Topic` por conversación; se borran las caducadas (404/410) y las que fallan 5 veces seguidas, y la de ese navegador al cerrar sesión.
+- **Claves VAPID:** `php artisan push:vapid-keys` las imprime (no las guarda; `--check` las valida). Sin claves válidas el canal queda apagado sin errores.
+- **Service worker:** solo abre rutas de la propia app; reutiliza una pestaña abierta.
+- **Enlace estable de los avisos:** `/tiempo-real/conversaciones/{id}/abrir?mensaje={id}`, que comprueba que aún puedes ver la conversación y lleva a `chat.show`.
+
+### D-113 · Audios, adjuntos y búsqueda (C3) **[concreta D-069 y D-070]**
+- **Grabar:** `MediaRecorder` (webm/opus o mp4 según el navegador, 64 kbit/s), forma de onda y contador; los audios de menos de 1 s no se envían. Duración máxima en `/admin/ajustes` (sección «Chat»), entre 30 s y 10 min (el techo lo pone el tiempo máximo del transcriptor).
+- **Servir:** los audios por `chat.media.audio` con `Range` (206); imágenes y archivos por `attachments.show` y `attachments.thumbnail`. URL firmada relativa (1 h) más `AttachmentPolicy`; el tipo de audio se normaliza (fileinfo toma a veces un webm por vídeo).
+- **Permisos de los adjuntos del chat:** solo quien ve la conversación; los de un mensaje borrado u ocultado, solo quien modera; nunca se borran sueltos (se borra el mensaje); los SVG, siempre como descarga.
+- **Subir:** con `XMLHttpRequest` (progreso y cancelar); un audio que falla se reintenta sin volver a grabarlo. Soltar, pegar y el clip.
+- **Transcripción en el navegador:** «Transcribiendo…», «Transcripción pendiente», «Sin voz» o el texto plegable con «Copiar»; sin Reverb, una consulta cada 15 s para todos los audios pendientes a la vista (60 s con él); deja de preguntar por un audio que ya no se devuelve.
+- **Búsqueda:** `MessageSource` busca en el texto, los nombres de archivo y las transcripciones, solo de las conversaciones que se pueden ver y sin borrados, ocultos ni mensajes de sistema, sin tildes en PostgreSQL; `/chat/buscar` con filtros por conversación y tipo y «Ver más» por cursor; también en Ctrl+K.
+- **`/admin/transcripciones`:** estado, intentos, último error y «Relanzar» (una o todas las fallidas); de las directas no se enseña ni quién ni dónde (D-071), y nunca el texto ni el audio.
+
+### D-114 · Integración de C1, C2 y C3
+- **Una sola API por área:** las pantallas del chat usan las de C2 (`hooks/use-realtime.ts`, `components/realtime`) y C3 (`components/chat/media`); `realtime-bridge` y `media-bridge` solo las reexportan.
+- **Una sola fuente de lo multimedia:** cada mensaje lleva `MediaPayload::of` (adjuntos, audio y transcripción), con sus relaciones cargadas a la vez; desaparece `ChatAttachments`.
+- **Una sola regla de no leídos:** la del chat (`ConversationDirectory::unreadCounts`), que usa también `UnreadCounts` (C2). Desaparece `/chat/no-leidos`: la navegación parte de la prop compartida `chat.unread` y, en cuanto llega, usa el contador de C2 (el chat llama a `markRead` tras leer y a `refresh` tras silenciar).
+- **Eventos duplicados:** llegan también a la pestaña que hizo el cambio; el chat mezcla por id y no pide nada por el aviso de un mensaje que ya tiene o que se está enviando.
+- **`audio.transcribed`** lleva solo ids, como los demás eventos de C2; el reproductor pide el estado a `chat.media.transcriptions` y comparte la suscripción al canal de la conversación.
+- **Tipos de aviso** hasta el catálogo de la Fase 7: `chat.direct`, `chat.mention` (también `@todos`) y `system.transcriptions_failing`.
+- **Inicio:** la tarjeta «Menciones» enseña las 5 menciones más recientes (personales y `@todos`, 14 días) y las 5 conversaciones con más mensajes sin leer, en la prop diferida `chat_summary` (`chat` es la compartida).
+- **Enviar con archivos:** «Enviar» publica el texto con los archivos pendientes en un solo mensaje; si falla, el texto no se borra.
+- **Desde el chat:** «Buscar en el chat» y «Activar avisos en este navegador» en la cabecera de la lista.
+- **Datos de ejemplo:** chat en tres proyectos, dos directas y un grupo, sin audios ni adjuntos.
+- **CI de los E2E:** Reverb local y el transcriptor falso con la cola síncrona.
+
+## 02/10/2026: Decisiones tomadas en autonomía en la revisión global de la Fase 6
+Correcciones de la revisión adversarial de la Fase 6. Concretan D-068 a D-072 y D-110 a D-114.
+
+### D-115 · Moderación y solo lectura **[concreta D-069 y D-071]**
+- **Proyecto archivado:** su chat es de solo lectura para todo: tampoco se borra lo propio (`MessagePolicy::delete` exige poder escribir), ni se edita, reacciona, fija o crea una tarea.
+- **Mensaje ocultado:** su autor ya no lo puede borrar (el moderador conserva su contenido) y la auditoría de la moderación (`activity('chat')`) guarda el texto que tenía.
+- **Campana:** cada aviso del chat guarda su mensaje (`notifications.chat_message_id`, con índice) y, al ocultarlo o borrarlo, se vacía su extracto (`ChatNotificationExcerpts`); no se restaura al volver a mostrarlo. Un aviso que la cola aún no ha enviado no se envía si el mensaje ya está borrado u ocultado. Lo ya enviado por Web Push no se puede retirar.
+- **Volver a un proyecto:** lo publicado mientras no se estaba cuenta como leído (solo avisa de lo nuevo).
+
+### D-116 · Transcripción acotada **[concreta D-070]**
+- **Tamaño:** el audio no puede pesar más de 16 KB por segundo declarado (el navegador graba a 64 kbit/s, unos 8 KB/s; el margen es para mp4 y ogg), más 64 KB de cabeceras.
+- **Duración procesada:** `whisper-server` 1.9.4 admite el campo `duration` (milisegundos) en `/inference` (`examples/server/server.cpp`, `get_req_parameters` → `wparams.duration_ms`): se procesa como mucho el máximo de los audios (`max_audio_seconds` más 2 s). La respuesta trae la duración real, así que un fichero más largo queda transcrito hasta el máximo y `/admin/transcripciones` lo señala con «Supera el máximo».
+- **Sin reintentos infinitos:** tras 9 intentos se avisa al admin una vez (D-070) y se reintenta como mucho cada hora hasta 18 intentos; a partir de ahí ya no se relanza sola y solo el admin la relanza. Si el worker corta el job por tiempo, la transcripción queda fallida con su error. Antes de volver a encolar una fallida o interrumpida se suelta su candado de job único (si el worker se cayó, seguiría puesto 2 h).
+
+### D-117 · Reacciones con los emojis del selector **[concreta D-110]**
+- Se admite como reacción cualquier emoji de los datos del selector (Emojibase 16 de `public/emojibase/es/data.json`, con tonos de piel), comparados sin el selector de variación U+FE0F; así entran 0️⃣ o ℹ️ y nunca texto. La lista va en caché, renovada con la fecha del fichero.
+
+### D-118 · Pestaña Archivos con los adjuntos del chat **[concreta SPEC §6 y D-113]**
+- Incluye los adjuntos del chat del proyecto solo para quien ve esa conversación (D-071), sin las notas de voz (se escuchan en el chat) y sin los de mensajes borrados u ocultados salvo para el admin que modera (como `AttachmentPolicy`). Cada uno enlaza a su mensaje y nunca se borra suelto. El filtro por tarea los deja fuera; el filtro por tipo, no.
+
+### D-119 · Grupos y moderación del admin **[concreta D-071]**
+- **Moderar:** el admin tiene «Moderar conversaciones» en la lista del chat (`/chat/moderar`): los chats de proyecto y los grupos en los que no participa (nunca las directas); los abre en modo moderación.
+- **Gestión del grupo:** lo renombran y añaden o quitan personas quien lo creó (mientras siga en él) o el admin; cualquiera de sus participantes puede salir. Todo pasa por `ConversationDirectory` (con `ConversationPolicy::manage` y `::leave`) y cada cambio deja un mensaje de sistema (`group.renamed`, `group.added`, `group.removed`, `group.left`). Quien entra ve como leído lo anterior.
+
+### D-120 · Seguridad del tiempo real **[concreta D-068, D-111 y D-112]**
+- **`/broadcasting/auth`** exige también el 2FA obligatorio (`2fa`), como el resto de rutas internas.
+- **Orígenes de Reverb:** `REVERB_ALLOWED_ORIGINS` (hosts separados por comas); por defecto, el host de `APP_URL`; nunca `*`. Al desplegar hay que reiniciar `audax-reverb.service` para que lo lea.
+- **Peticiones del chat:** se autorizan antes de validar (un admin no distingue una directa ajena por los errores de validación).
+- **Service worker:** la URL de un aviso se resuelve como lo haría el navegador y se exige el mismo origen (tabuladores, saltos de línea o barras invertidas no llevan a otra web).
+- **Whispers:** «escribiendo…» solo cuenta a los participantes de la conversación según el servidor que estén conectados según el canal de presencia, y enseña el nombre del servidor; la presencia solo atiende a los miembros del canal (los firma Reverb) y, si Reverb indica quién envía el whisper, solo si coincide.
+
+### D-121 · Interfaz del chat tras la revisión **[concreta D-110, D-111 y D-113]**
+- **Foco (WCAG 2.4.3):** los diálogos y popovers abiertos desde un menú devuelven el foco a su botón (o al mensaje) al cerrarse; tras borrar o editar, al mensaje (o al editor si se editó con ↑); al saltar a un fijado o a una cita, al mensaje; al abrir una conversación en el móvil, a su título.
+- **Editor:** combobox de menciones con `aria-expanded`, `aria-haspopup`, `aria-controls` (la lista existe siempre) y `aria-activedescendant`. «Responder» le pide el foco sin volver a montarlo: no se pierden el borrador ni una grabación.
+- **Markdown:** el análisis tiene un presupuesto de pasos proporcional a la longitud (las marcas que quedan sin analizar se pintan como texto) y cada mensaje se analiza una vez (`MessageItem` memorizado, con manejadores estables).
+- **Contadores:** `/tiempo-real/no-leidos` dice hasta qué mensaje ha contado (`latest_message_id`) y el navegador vuelve a sumar los avisos en vivo posteriores: un recuento que llega tarde no pisa un +1 en vivo.
+- **Multimedia:** el reproductor solo adopta una URL firmada nueva si el audio no se ha empezado a escuchar o si la actual falla; un audio grabado durante otra subida espera su turno; un «Ver más» de una búsqueda anterior se descarta.
+- **Estados con icono y texto visible** («Silenciada», «Solo lectura»; el error de los avisos del navegador, con el token AA) y «Nuevo» con un nombre accesible que empieza por su texto visible.
+- **E2E:** el chat de dos navegadores demuestra el tiempo real (el segundo no recarga; cada paso espera menos que cualquier consulta periódica) con «escribiendo…», hilo, reacción y adjunto; en la CI Reverb es obligatorio y su ausencia hace fallar los tests.
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 7)
 
 _Detalle y contexto en `docs/PLAN-FASE-7.md`._

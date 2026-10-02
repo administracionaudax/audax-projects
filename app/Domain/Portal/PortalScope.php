@@ -23,7 +23,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 final class PortalScope
 {
     private function __construct(
-        public readonly User $user,
+        /** El usuario del portal; null en el alcance de un cliente sin usuario (forClient). */
+        public readonly ?User $user,
         public readonly Client $client,
     ) {}
 
@@ -44,6 +45,17 @@ final class PortalScope
     }
 
     /**
+     * Lo que ve un cliente sin pasar por uno de sus usuarios, para lo que corre fuera de una
+     * petición del portal (los avisos de bolsa, D-065): todo depende del cliente, así que es lo
+     * mismo que ve cualquiera de sus usuarios. Nunca lanza: no comprueba que el cliente esté activo
+     * (lo decide quien lo usa; los avisos se saltan un cliente desactivado).
+     */
+    public static function forClient(Client $client): self
+    {
+        return new self(null, $client);
+    }
+
+    /**
      * @return Builder<Project>
      */
     public function projects(): Builder
@@ -60,15 +72,16 @@ final class PortalScope
     }
 
     /**
-     * Horas visibles para el cliente (de sus proyectos y en los estados que permite).
+     * Horas visibles para el cliente (de sus proyectos y en los estados que permite). Las columnas
+     * van cualificadas, para poder unir otras tablas (PortalBankFigures::entries).
      *
      * @return Builder<TimeEntry>
      */
     public function entries(): Builder
     {
         return TimeEntry::query()
-            ->whereIn('project_id', $this->projects()->select('id'))
-            ->whereIn('status', $this->visibleStatuses());
+            ->whereIn('time_entries.project_id', $this->projects()->select('id'))
+            ->whereIn('time_entries.status', $this->visibleStatuses());
     }
 
     /**
@@ -76,7 +89,7 @@ final class PortalScope
      */
     public function bankEntries(HourBank $bank): Builder
     {
-        return $this->entries()->where('hour_bank_id', $bank->id);
+        return $this->entries()->where('time_entries.hour_bank_id', $bank->id);
     }
 
     /**

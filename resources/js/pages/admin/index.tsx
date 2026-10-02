@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
+    AudioLines,
     Building,
     CalendarDays,
     History,
@@ -26,14 +27,17 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
 import { index as auditIndex } from '@/routes/admin/audit';
 import { index as departmentsIndex } from '@/routes/admin/departments';
 import { index as holidaysIndex } from '@/routes/admin/holidays';
+import { edit as identityEdit } from '@/routes/admin/identity';
 import { edit as privacyEdit } from '@/routes/admin/privacy';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
+import { index as transcriptionsIndex } from '@/routes/admin/transcriptions';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as recurringIndex } from '@/routes/recurring';
 import { index as templatesIndex } from '@/routes/templates';
@@ -44,7 +48,7 @@ type AreaLink = {
     href: string;
     ability: keyof Pick<
         Abilities,
-        'manageUsers' | 'manageSettings' | 'viewAdmin'
+        'manageUsers' | 'manageSettings' | 'viewTeamAbsences' | 'viewAdmin'
     >;
 };
 
@@ -122,6 +126,20 @@ const AREAS: AdminArea[] = [
         ],
     },
     {
+        id: 'transcriptions',
+        icon: AudioLines,
+        title: 'chat_media.admin_area.title',
+        description: 'chat_media.admin_area.description',
+        phase: 6,
+        links: [
+            {
+                label: 'chat_media.admin_area.open',
+                href: transcriptionsIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
+    },
+    {
         id: 'holidays',
         icon: CalendarDays,
         title: 'admin.areas.holidays.title',
@@ -132,6 +150,11 @@ const AREAS: AdminArea[] = [
                 label: 'holidays.admin_link',
                 href: holidaysIndex.url(),
                 ability: 'manageSettings',
+            },
+            {
+                label: 'holidays.admin_team_link',
+                href: teamAbsencesIndex.url(),
+                ability: 'viewTeamAbsences',
             },
         ],
     },
@@ -160,6 +183,13 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.identity.title',
         description: 'admin.areas.identity.description',
         phase: 5,
+        links: [
+            {
+                label: 'identity.admin_link',
+                href: identityEdit.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'audit',

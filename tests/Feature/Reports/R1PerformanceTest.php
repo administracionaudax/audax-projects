@@ -29,17 +29,20 @@ beforeEach(function () {
     // roles; el admin es quien más consulta porque valora el ingreso) más un margen de 4 a 6. En
     // caliente solo quedan la sesión, los permisos y las props compartidas. Al integrar la Fase 2,
     // la valoración suma una consulta por cálculo (base de precio cerrado con las tareas raíz, R2);
-    // con la Fase 3, la capacidad descuenta festivos y ausencias (dos consultas por cálculo).
+    // con la Fase 3, la capacidad descuenta festivos y ausencias (dos consultas por cálculo). Con la
+    // Fase 6, las props compartidas suman el total sin leer del chat (`chat.unread`): una consulta
+    // fija por página, en frío y en caliente (sube donde no quedaba margen).
     $this->pages = [
         'reports.index' => ['/informes', 14, 14],
-        'reports.direction' => ['/informes/direccion', 75, 8],
-        'reports.direction.year' => ['/informes/direccion?periodo=anio&comparar=1', 92, 8],
-        'reports.department' => ["/informes/departamentos/{$design->id}?comparar=1", 61, 8],
+        'reports.direction' => ['/informes/direccion', 75, 9],
+        'reports.direction.year' => ['/informes/direccion?periodo=anio&comparar=1', 92, 9],
+        'reports.department' => ["/informes/departamentos/{$design->id}?comparar=1", 62, 8],
         'reports.person' => ["/informes/personas/{$elena->id}?periodo=trimestre", 66, 10],
         'reports.person.filtered' => ["/informes/personas/{$elena->id}?cliente[]=1", 56, 10],
         'reports.direction.export' => ['/informes/direccion?formato=xlsx&tabla=proyectos', 14, 6],
-        // Inicio suma «Mis ausencias» (F3) y «Mis próximos hitos» (F4).
-        'home' => ['/', 32, 14],
+        // Inicio suma «Mis ausencias» (F3) y «Mis próximos hitos» (F4), y 2 fijas más con las Fases 2 y 3
+        // juntas: la huella del alcance en la clave de la caché (SEC-03), no por fila.
+        'home' => ['/', 34, 16],
     ];
 
     // Cada valoración económica (RevenueCalculator::compute: resumen, cada reparto, la serie y la
@@ -52,13 +55,7 @@ beforeEach(function () {
     // dispare, y en paralelo (pest --parallel, con TEST_TOKEN) o con la máquina saturada (carga
     // media > 8) solo se informa, porque los procesos compiten por la CPU. La medida buena es la
     // del servidor en el despliegue (D-046).
-    $load = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
-    $this->maxMs = match (true) {
-        getenv('TEST_TOKEN') !== false => null,
-        getenv('CI') !== false => 3000,
-        $load !== false && $load[0] > 8 => null,
-        default => 1000,
-    };
+    $this->maxMs = perfTimeLimit(1000);
 
     $this->expected = fn (string $email, string $page): int => match (true) {
         $email === 'empleado@example.com' && in_array($page, ['reports.direction', 'reports.direction.year', 'reports.department', 'reports.direction.export'], true) => 403,
