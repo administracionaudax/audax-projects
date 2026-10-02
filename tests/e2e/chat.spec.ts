@@ -7,12 +7,16 @@ import { login, USERS } from './support';
  * - Ana (admin@example.com) abre una directa con Elena (empleado@example.com) y le escribe,
  * - Elena ve el mensaje (con tiempo real o, sin él, tras la consulta periódica de 10 s),
  *   responde en hilo citándolo y reacciona,
- * - Ana ve la respuesta con su cita y la reacción, y el «Visto por».
- * Datos del DatabaseSeeder de desarrollo; nunca contra el servidor (playwright.config.ts).
+ * - Ana ve la respuesta con su cita y la reacción, y el «Leído por» de C2.
+ * Datos del DatabaseSeeder de desarrollo (con el chat de ejemplo de DemoDataSeeder); nunca contra
+ * el servidor (playwright.config.ts).
  */
 
 /** Sin tiempo real, lo de la otra persona llega con la consulta periódica (10 s). */
 const LIVE = { timeout: 25_000 };
+
+/** «Leído por» (C2) sin tiempo real se consulta cada 30 s. */
+const READ = { timeout: 40_000 };
 
 async function asUser(browser: Browser, email: string): Promise<Page> {
     const context = await browser.newContext({
@@ -48,6 +52,8 @@ function message(page: Page, text: string) {
 test('dos personas chatean: mensaje, respuesta en hilo, reacción y leído', async ({
     browser,
 }) => {
+    // Sin Reverb, cada paso espera a su consulta periódica.
+    test.setTimeout(150_000);
     const stamp = Date.now().toString(36);
     const hello = `Hola Elena, ¿revisas la maqueta? ${stamp}`;
     const reply = `Sí, esta tarde ${stamp}`;
@@ -66,12 +72,20 @@ test('dos personas chatean: mensaje, respuesta en hilo, reacción y leído', asy
 
     await test.step('Elena la ve en su lista con el mensaje sin leer y la abre', async () => {
         await elena.goto('/chat');
+        // Por su nombre completo: los datos de ejemplo tienen más conversaciones (y «Ana» está
+        // dentro de palabras como «mañana»).
         const item = elena
             .locator('[data-test="chat-conversation-item"]')
-            .filter({ hasText: 'Ana' });
+            .filter({ hasText: 'Ana Administración' });
         await expect(item).toContainText(hello.slice(0, 20), LIVE);
         await item.click();
         await expect(message(elena, hello)).toBeVisible(LIVE);
+    });
+
+    await test.step('Ana ve que Elena lo ha leído («Leído», en una directa)', async () => {
+        await expect(
+            ana.locator('[data-test="chat-read-receipt"]'),
+        ).toContainText('Leído', READ);
     });
 
     await test.step('Elena responde en hilo citando el mensaje', async () => {
@@ -104,7 +118,7 @@ test('dos personas chatean: mensaje, respuesta en hilo, reacción y leído', asy
         ).toHaveAttribute('aria-pressed', 'true');
     });
 
-    await test.step('Ana ve la respuesta con su cita, la reacción y que Elena lo ha leído', async () => {
+    await test.step('Ana ve la respuesta con su cita y la reacción', async () => {
         await expect(message(ana, reply)).toBeVisible(LIVE);
         await expect(
             message(ana, reply).locator('[data-test="chat-parent-quote"]'),
@@ -138,7 +152,10 @@ test('el chat del proyecto se abre desde su pestaña y se puede escribir', async
         .getByRole('link', { name: /Web corporativa/ })
         .first()
         .click();
-    await page.getByRole('link', { name: 'Chat' }).last().click();
+    await page
+        .getByRole('navigation', { name: 'Secciones del proyecto' })
+        .getByRole('link', { name: 'Chat' })
+        .click();
 
     await expect(page).toHaveURL(/\/proyectos\/\d+\/chat$/);
     const text = `Aviso para el equipo ${Date.now().toString(36)}`;

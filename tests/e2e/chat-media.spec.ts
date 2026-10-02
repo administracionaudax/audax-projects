@@ -5,11 +5,13 @@ import { login, USERS } from './support';
 /**
  * Audios, adjuntos y búsqueda del chat (Fase 6, área C3) sobre los datos de ejemplo:
  * - Elena (empleado@example.com) es miembro de ARR-WEB «Web corporativa»; Irene (Marketing) no.
- * - La CI tiene que arrancar con el motor falso de transcripción y la cola síncrona
- *   (TRANSCRIPTION_DRIVER=fake y TRANSCRIPTION_QUEUE_CONNECTION=sync en su .env): el audio sale
- *   transcrito con el texto del FakeTranscriber («Transcripción de prueba»).
+ * - La CI arranca con el motor falso de transcripción y la cola síncrona
+ *   (TRANSCRIPTION_DRIVER=fake y TRANSCRIPTION_QUEUE_CONNECTION=sync en su .env, ci.yml): el audio
+ *   sale transcrito con el texto del FakeTranscriber («Transcripción de prueba»). Los datos de
+ *   ejemplo del chat no dicen «prueba» en ningún mensaje.
  * - Chromium graba del micrófono falso (--use-fake-device-for-media-stream) sin pedir permiso.
- * - El editor y el botón «Enviar» son de C1 (chat); el clip, el grabador y la bandeja, de C3.
+ * - El editor y el botón «Enviar» son de C1 (chat; con archivos pendientes los publica aunque no
+ *   haya texto); el clip, el grabador y la bandeja, de C3.
  * Nunca contra el servidor (playwright.config.ts).
  */
 

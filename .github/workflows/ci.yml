@@ -309,9 +309,24 @@ jobs:
           SESSION_SECURE_COOKIE=false
           CACHE_STORE=file
           QUEUE_CONNECTION=sync
-          BROADCAST_CONNECTION=log
           MAIL_MAILER=log
           VITE_APP_NAME="${APP_NAME}"
+          # Fase 6: Reverb local (tiempo real de verdad en los E2E de dos navegadores) y el motor
+          # falso de transcripción, síncrono (el audio sale transcrito al momento).
+          BROADCAST_CONNECTION=reverb
+          REVERB_APP_ID=audax-e2e
+          REVERB_APP_KEY=audax-e2e-key
+          REVERB_APP_SECRET=audax-e2e-secret
+          REVERB_HOST=127.0.0.1
+          REVERB_PORT=8080
+          REVERB_SCHEME=http
+          REVERB_SERVER_HOST=127.0.0.1
+          REVERB_SERVER_PORT=8080
+          REVERB_CLIENT_HOST=127.0.0.1
+          REVERB_CLIENT_PORT=8080
+          REVERB_CLIENT_SCHEME=http
+          TRANSCRIPTION_DRIVER=fake
+          TRANSCRIPTION_QUEUE_CONNECTION=sync
           EOF
           php artisan key:generate --ansi
 
@@ -323,6 +338,20 @@ jobs:
 
       - name: Migrar y sembrar (DatabaseSeeder de desarrollo)
         run: php artisan migrate --seed --force --no-interaction
+
+      - name: Arrancar Reverb
+        run: |
+          nohup php artisan reverb:start --host=127.0.0.1 --port=8080 > storage/logs/reverb.log 2>&1 &
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; then
+              echo "Reverb listo"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Reverb no responde" >&2
+          cat storage/logs/reverb.log >&2
+          exit 1
 
       - name: Arrancar php artisan serve
         env:

@@ -758,7 +758,8 @@ class DemoDataSeeder extends Seeder
      * Chat (Fase 6) con MessageWriter, la única vía de escritura (D-069): el de tres proyectos, dos
      * directas y un grupo, en los últimos días. Sin avisos ni tiempo real (los eventos del chat se
      * silencian mientras tanto) y sin enlaces, audios ni adjuntos. Elena (empleado@example.com) se
-     * queda con mensajes sin leer y menciones recientes para la tarjeta de Inicio.
+     * queda con mensajes sin leer y menciones recientes para la tarjeta de Inicio. Ningún texto dice
+     * «prueba» (lo busca el E2E de los audios) ni nombra a Ana (el E2E del chat la busca en la lista).
      */
     private function chat(): void
     {
@@ -792,7 +793,7 @@ class DemoDataSeeder extends Seeder
                 $post('raul', $web, "{$mention('elena')} el cliente pide un tono más cálido en las fotos de la bodega. ¿Lo vemos mañana?", 1, '18:30');
 
                 $app = $project('SON-APP');
-                $post('marta', $app, 'La pasarela de pago ya funciona en el entorno de pruebas del banco.', 5, '16:20');
+                $post('marta', $app, 'La pasarela de pago ya funciona en el entorno de integración del banco.', 5, '16:20');
                 $post('pablo', $app, "{$mention('elena')} ¿puedes revisar los textos de la pantalla de confirmación de cita?", 2, '10:05');
                 $post('elena', $app, 'Revisados: he cambiado «Agendar» por «Reservar cita», que se entiende mejor.', 2, '12:30');
 
@@ -806,7 +807,7 @@ class DemoDataSeeder extends Seeder
 
                 $toSergio = $directory->direct($p['marta'], $p['sergio']);
                 $post('marta', $toSergio, '¿Cómo vas con la migración de la intranet?', 1, '17:45');
-                $post('sergio', $toSergio, 'Terminando las pruebas de carga. Mañana te cuento.', 1, '18:02');
+                $post('sergio', $toSergio, 'Terminando los tests de carga. Mañana te cuento.', 1, '18:02');
 
                 $group = $directory->group($p['raul'], 'Diseño y desarrollo', [$p['elena']->id, $p['lucia']->id, $p['marta']->id, $p['pablo']->id]);
                 $post('marta', $group, 'Propongo una revisión conjunta de componentes cada dos semanas. ¿Qué os parece?', 5, '11:00');
