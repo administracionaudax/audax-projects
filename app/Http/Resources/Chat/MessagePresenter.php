@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Chat;
 
 use App\Enums\MessageType;
+use App\Http\Controllers\Chat\Media\MediaPayload;
 use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Models\User;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 /**
  * Mensajes para el navegador (contrato: resources/js/types/chat.ts, ChatMessage) con un número
  * fijo de consultas por página, sin importar cuántos mensajes haya: padres de los hilos,
- * reacciones, adjuntos, transcripciones y tareas con carga anticipada, y TODAS las personas
+ * reacciones, adjuntos y transcripciones (MediaPayload::RELATIONS) y tareas con carga anticipada, y TODAS las personas
  * (autores, citas, reacciones, menciones, quien fijó u ocultó) en una sola consulta.
  *
  * Lo que se ve de cada mensaje (D-069, D-071):
@@ -43,9 +44,9 @@ final class MessagePresenter
         $messages->load([
             'parent' => fn (Relation $query) => $query->select(['id', 'conversation_id', 'user_id', 'type', 'body', 'system_key', 'system_payload', 'hidden_at', 'deleted_at']),
             'reactions' => fn (Relation $query) => $query->select(['id', 'message_id', 'user_id', 'emoji'])->orderBy('id'),
-            'attachments' => fn (Relation $query) => $query->orderBy('id'),
-            'transcription',
             'task' => fn (Relation $query) => $query->select(['id', 'title', 'project_id']),
+            // Lo multimedia (adjuntos, audio y transcripción) lo pinta MediaPayload (C3).
+            ...MediaPayload::RELATIONS,
         ]);
 
         $users = ChatUsers::load($this->userIds($messages));
@@ -94,7 +95,10 @@ final class MessagePresenter
         $mine = $message->user_id !== null && $message->user_id === $this->viewer->id;
         $author = $message->user_id === null ? null : ($users[$message->user_id] ?? null);
 
-        [$audio, $files] = $content ? $this->media($message) : [null, []];
+        // Adjuntos, audio y transcripción con las URLs firmadas de C3 (chat.media.audio con Range
+        // para los audios; attachments.show y attachments.thumbnail para el resto). Lo ocultado
+        // solo lo recibe quien modera ($content); lo borrado, nadie.
+        $media = $content ? MediaPayload::of($message, reveal: true) : ['attachments' => [], 'audio' => null, 'transcription' => null];
 
         return [
             'id' => $message->id,
@@ -111,8 +115,9 @@ final class MessagePresenter
             'pinned_by' => $alive && $message->pinned_by !== null ? ($users[$message->pinned_by] ?? null)?->name : null,
             'parent' => $content ? $this->parent($message, $users) : null,
             'reactions' => $content ? $this->reactions($message, $users) : [],
-            'attachments' => $files,
-            'audio' => $audio,
+            'attachments' => $media['attachments'],
+            'audio' => $media['audio'],
+            'transcription' => $media['transcription'],
             'task' => $content && $message->task !== null ? ['id' => $message->task->id, 'title' => $message->task->title] : null,
             'link_preview' => $content ? $message->link_preview : null,
             'system' => $system ? ['key' => (string) $message->system_key, 'payload' => (object) ($message->system_payload ?? [])] : null,
@@ -126,29 +131,6 @@ final class MessagePresenter
                 'create_task' => $alive && ! $hidden && ! $system && $message->task_id === null && $this->can->createTask,
             ],
         ];
-    }
-
-    /**
-     * El audio (con su transcripción) y el resto de adjuntos.
-     *
-     * @return array{0: array<string, mixed>|null, 1: list<array<string, mixed>>}
-     */
-    private function media(Message $message): array
-    {
-        $audio = null;
-        $files = [];
-
-        foreach ($message->attachments as $attachment) {
-            if ($audio === null && $message->type === MessageType::Audio && $attachment->isAudio()) {
-                $audio = ChatAttachments::audio($attachment, $message->transcription);
-
-                continue;
-            }
-
-            $files[] = ChatAttachments::present($attachment);
-        }
-
-        return [$audio, $files];
     }
 
     /**

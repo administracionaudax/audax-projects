@@ -286,8 +286,45 @@ it('la consulta periódica recoge el texto de un audio recién transcrito', func
     $this->actingAs($this->luis)
         ->getJson("/chat/{$this->chat->id}/novedades?despues={$message->id}&desde={$message->id}&cambios={$since}")
         ->assertJsonPath('updated.0.id', $message->id)
-        ->assertJsonPath('updated.0.audio.transcription.status', 'done')
-        ->assertJsonPath('updated.0.audio.transcription.text', 'Hola equipo');
+        ->assertJsonPath('updated.0.audio.attachment_id', $attachment->id)
+        ->assertJsonPath('updated.0.transcription.status', 'done')
+        ->assertJsonPath('updated.0.transcription.text', 'Hola equipo');
+});
+
+it('cada mensaje lleva lo multimedia de C3 (MediaPayload): el audio por chat.media.audio y los adjuntos por attachments.show', function () {
+    $message = Message::query()->create(['conversation_id' => $this->chat->id, 'user_id' => $this->ana->id, 'type' => 'audio']);
+    $audio = Attachment::factory()->create([
+        'attachable_type' => Message::class,
+        'attachable_id' => $message->id,
+        'project_id' => $this->project->id,
+        'mime' => 'video/webm',
+        'original_name' => 'nota.webm',
+    ]);
+    $file = Attachment::factory()->create([
+        'attachable_type' => Message::class,
+        'attachable_id' => $message->id,
+        'project_id' => $this->project->id,
+        'mime' => 'application/pdf',
+        'original_name' => 'acta.pdf',
+    ]);
+    AudioTranscription::query()->create(['message_id' => $message->id, 'attachment_id' => $audio->id]);
+
+    $json = $this->actingAs($this->luis)->getJson("/chat/mensajes/{$message->id}")->assertOk()->json('message');
+
+    expect($json['audio']['url'])->toStartWith('/chat/audios/'.$audio->id.'?')
+        ->and($json['audio']['mime'])->toBe('audio/webm')
+        ->and($json['transcription']['status'])->toBe('pending')
+        ->and($json['attachments'])->toHaveCount(1)
+        ->and($json['attachments'][0]['id'])->toBe($file->id)
+        ->and($json['attachments'][0]['kind'])->toBe('file')
+        ->and($json['attachments'][0]['url'])->toStartWith('/adjuntos/'.$file->id);
+
+    // Borrado: nada de lo multimedia, para nadie.
+    $this->writer->delete($this->ana, $message);
+    $this->actingAs($this->ana)->getJson("/chat/mensajes/{$message->id}")->assertOk()
+        ->assertJsonPath('message.audio', null)
+        ->assertJsonPath('message.transcription', null)
+        ->assertJsonPath('message.attachments', []);
 });
 
 it('si llegan demasiados mensajes de golpe, avisa para recargar los últimos', function () {
