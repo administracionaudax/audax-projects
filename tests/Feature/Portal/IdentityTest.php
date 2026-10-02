@@ -2,6 +2,7 @@
 
 use App\Domain\Identity\CompanyIdentity;
 use App\Domain\Reports\Pdf\AudaxPdf;
+use App\Models\Client;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\Admin\UserInvitation;
@@ -170,11 +171,13 @@ test('el logo se sirve en una ruta pública, sin sesión ni cookies, con caché 
 });
 
 test('la cabecera del portal recibe el nombre y el logo de la empresa', function () {
-    $client = User::factory()->client()->create();
+    $client = User::factory()->portalOf(Client::factory()->create())->create();
 
     $this->actingAs($client)
         ->get('/portal')
+        ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->component('portal/home')
             ->where('portal.company', ['name' => 'Audax Studio', 'logo' => null])
             ->where('portal.projects', []));
 
@@ -183,7 +186,9 @@ test('la cabecera del portal recibe el nombre y el logo de la empresa', function
 
     $this->actingAs($client)
         ->get('/portal')
+        ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->component('portal/home')
             ->where('portal.company.name', 'Estudio Lur')
             ->where('portal.company.logo', [
                 'url' => route('brand.logo', ['version' => $logo['version']]),
