@@ -17,6 +17,10 @@ import {
 import { MessageList } from '@/components/chat/message-list';
 import { PinnedBar } from '@/components/chat/pinned-bar';
 import {
+    messageFocusTarget,
+    returnFocusTo,
+} from '@/components/chat/return-focus';
+import {
     useReadReceipts,
     useTyping,
     useUnreadCounter,
@@ -34,6 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useRequiredUser } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
@@ -61,6 +66,11 @@ export type ConversationActivity = {
  * personas se anuncian en una región aria-live; «escribiendo…», «leído por» y los contadores, con
  * el tiempo real de C2 (realtime-bridge); los audios y adjuntos (soltar, pegar, adjuntar y grabar),
  * con C3 (media-bridge).
+ *
+ * Foco (WCAG 2.4.3): al responder, el editor (sin volver a montarlo: no se pierden el borrador ni
+ * una grabación); al terminar de editar, el mensaje (o el editor, si se editó con ↑); al cerrar
+ * «Borrar» o «Crear tarea», el mensaje o su menú; y al abrir una conversación en el móvil, su
+ * título.
  */
 export function ConversationView({
     conversation,
@@ -98,7 +108,11 @@ export function ConversationView({
     const [deletingBusy, setDeletingBusy] = useState(false);
     const [taskFor, setTaskFor] = useState<ChatMessage | null>(null);
     const [announcement, setAnnouncement] = useState('');
-    const [composerKey, setComposerKey] = useState(0);
+    const [composerFocus, setComposerFocus] = useState(0);
+    const editOrigin = useRef<'composer' | 'message'>('message');
+    const deleted = useRef<{ id: number; done: boolean } | null>(null);
+    const titleRef = useRef<HTMLHeadingElement>(null);
+    const isMobile = useIsMobile();
     const jumpTo = useRef<((messageId: number) => void) | null>(null);
     const namesRef = useRef<ReadonlyMap<number, string>>(new Map());
     const [, copy] = useClipboard();
@@ -167,7 +181,7 @@ export function ConversationView({
         typers: typing,
         notifyTyping,
         stopTyping,
-    } = useTyping(conversation.id);
+    } = useTyping(conversation.id, conversation.participants);
     const receipts = useReadReceipts(conversation.id);
     // Audios y adjuntos (C3): llegan a la lista con las novedades, que deduplican por id.
     const media = useChatMediaComposer(conversation.id, {
@@ -177,6 +191,23 @@ export function ConversationView({
     useEffect(() => {
         namesRef.current = controller.names;
     }, [controller.names]);
+
+    // En el móvil la lista desaparece al abrir la conversación: el foco va a su título.
+    useEffect(() => {
+        if (isMobile) {
+            titleRef.current?.focus();
+        }
+        // Solo al abrirla (cada conversación monta su propia vista).
+    }, []);
+
+    const focusComposer = () => setComposerFocus((value) => value + 1);
+    const focusMessage = (
+        messageId: number,
+        prefer: 'message' | 'actions' = 'message',
+    ) =>
+        window.requestAnimationFrame(() =>
+            messageFocusTarget(messageId, prefer)?.focus(),
+        );
 
     const people: MentionPerson[] = useMemo(
         () =>
@@ -218,11 +249,17 @@ export function ConversationView({
     const handlersFor = (message: ChatMessage) => ({
         onReply: () => {
             setReplyTo(message);
-            setComposerKey((key) => key + 1);
+            focusComposer();
         },
         onReact: (emoji: string) => void controller.react(message, emoji),
-        onEdit: () => setEditingId(message.id),
-        onDelete: () => setDeleting(message),
+        onEdit: () => {
+            editOrigin.current = 'message';
+            setEditingId(message.id);
+        },
+        onDelete: () => {
+            deleted.current = { id: message.id, done: false };
+            setDeleting(message);
+        },
         onPin: async (value: boolean) => {
             if (await controller.pin(message, value)) {
                 toast.success(
@@ -259,14 +296,30 @@ export function ConversationView({
         onEditSubmit: async (body: string) => {
             if (await controller.edit(message, body)) {
                 setEditingId(null);
+                finishEditing(message.id, 'message');
 
                 return true;
             }
 
             return false;
         },
-        onEditCancel: () => setEditingId(null),
+        onEditCancel: () => {
+            setEditingId(null);
+            finishEditing(message.id, 'actions');
+        },
     });
+
+    // Tras editar: vuelve al editor si se empezó con ↑; si no, al mensaje (o a su menú al cancelar).
+    const finishEditing = (
+        messageId: number,
+        prefer: 'message' | 'actions',
+    ) => {
+        if (editOrigin.current === 'composer') {
+            focusComposer();
+        } else {
+            focusMessage(messageId, prefer);
+        }
+    };
 
     const editLast = () => {
         const own = [...controller.messages]
@@ -276,6 +329,7 @@ export function ConversationView({
             );
 
         if (own) {
+            editOrigin.current = 'composer';
             setEditingId(own.id);
         }
     };
@@ -315,7 +369,8 @@ export function ConversationView({
         }
 
         setDeletingBusy(true);
-        await controller.remove(deleting);
+        const done = await controller.remove(deleting);
+        deleted.current = { id: deleting.id, done: done !== null };
         setDeletingBusy(false);
         setDeleting(null);
     };
@@ -345,6 +400,7 @@ export function ConversationView({
                 onToggleMute={() => void toggleMute()}
                 backHref={backHref}
                 showProjectLink={showProjectLink}
+                titleRef={titleRef}
             />
             <PinnedBar
                 pinned={controller.pinned}
@@ -416,7 +472,6 @@ export function ConversationView({
                         <div className="grid gap-2">
                             <MediaComposerTray composer={media} />
                             <Composer
-                                key={composerKey}
                                 conversationId={conversation.id}
                                 people={people}
                                 onSubmit={send}
@@ -443,7 +498,7 @@ export function ConversationView({
                                 onEditLast={editLast}
                                 onTyping={notifyTyping}
                                 placeholder={placeholder}
-                                autoFocus={composerKey > 0}
+                                focusSignal={composerFocus}
                                 mediaSlot={
                                     <AttachFilesButton
                                         onFiles={media.addFiles}
@@ -471,7 +526,19 @@ export function ConversationView({
                     }
                 }}
             >
-                <DialogContent>
+                <DialogContent
+                    onCloseAutoFocus={returnFocusTo(() => {
+                        const target = deleted.current;
+
+                        // Borrado: al mensaje («Mensaje eliminado»); cancelado: a su menú.
+                        return target
+                            ? messageFocusTarget(
+                                  target.id,
+                                  target.done ? 'message' : 'actions',
+                              )
+                            : null;
+                    })}
+                >
                     <DialogTitle>{t('chat.actions.delete_title')}</DialogTitle>
                     <DialogDescription>
                         {t('chat.actions.delete_description')}
@@ -498,6 +565,9 @@ export function ConversationView({
                 message={taskFor}
                 onClose={() => setTaskFor(null)}
                 onCreated={controller.applyResponse}
+                returnFocus={(messageId) =>
+                    messageFocusTarget(messageId, 'actions')
+                }
             />
         </section>
     );

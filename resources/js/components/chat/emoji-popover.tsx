@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
+import { returnFocusTo } from '@/components/chat/return-focus';
 import {
     Popover,
     PopoverAnchor,
@@ -20,7 +21,8 @@ export const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '🙏'
 /**
  * Popover con el selector de emojis (y, para reaccionar, las reacciones rápidas). Al elegir, se
  * cierra y devuelve el foco al botón que lo abrió (Radix). Con `anchor` en lugar de `trigger` se
- * abre desde fuera (p. ej. «Reaccionar» en el menú de acciones del mensaje).
+ * abre desde fuera (p. ej. «Reaccionar» en el menú de acciones del mensaje): entonces el foco
+ * vuelve a `returnFocus` (el botón de ese menú), porque la opción que lo abrió ya no existe.
  */
 export function EmojiPopover({
     trigger,
@@ -31,9 +33,11 @@ export function EmojiPopover({
     quick = false,
     align = 'start',
     side = 'top',
+    returnFocus,
 }: {
     trigger?: ReactNode;
     anchor?: ReactNode;
+    returnFocus?: RefObject<HTMLElement | null>;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     onSelect: (emoji: string) => void;
@@ -59,7 +63,14 @@ export function EmojiPopover({
             ) : (
                 <PopoverAnchor asChild>{anchor}</PopoverAnchor>
             )}
-            <PopoverContent align={align} side={side} className="w-auto p-0">
+            <PopoverContent
+                align={align}
+                side={side}
+                className="w-auto p-0"
+                onCloseAutoFocus={
+                    returnFocus ? returnFocusTo(returnFocus) : undefined
+                }
+            >
                 {quick ? (
                     <div
                         role="group"

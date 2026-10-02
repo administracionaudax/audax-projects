@@ -40,6 +40,7 @@ export function TypingIndicator({
         <p
             aria-live="polite"
             aria-atomic="true"
+            data-test="chat-typing"
             className={cn(
                 'flex min-h-5 items-center gap-1.5 text-xs text-muted-foreground',
                 className,

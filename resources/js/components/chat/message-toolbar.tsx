@@ -57,6 +57,14 @@ export function MessageToolbar({
     const can = message.can;
     const [reacting, setReacting] = useState(false);
     const openReactAfterMenu = useRef(false);
+    // Responder, editar, borrar y crear tarea llevan el foco a otro sitio (el editor o un
+    // diálogo): el menú no debe devolverlo a su botón al cerrarse.
+    const focusMovesAway = useRef(false);
+    const menuButton = useRef<HTMLButtonElement>(null);
+    const away = (action: () => void) => () => {
+        focusMovesAway.current = true;
+        action();
+    };
     const hasText = message.body !== null && message.body !== '';
 
     return (
@@ -102,11 +110,13 @@ export function MessageToolbar({
                 open={reacting}
                 onOpenChange={setReacting}
                 onSelect={handlers.onReact}
+                returnFocus={menuButton}
                 anchor={
                     <span className="inline-flex">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
+                                    ref={menuButton}
                                     type="button"
                                     variant="ghost"
                                     size="icon"
@@ -127,12 +137,15 @@ export function MessageToolbar({
                                         openReactAfterMenu.current = false;
                                         event.preventDefault();
                                         setReacting(true);
+                                    } else if (focusMovesAway.current) {
+                                        focusMovesAway.current = false;
+                                        event.preventDefault();
                                     }
                                 }}
                             >
                                 {can.reply ? (
                                     <DropdownMenuItem
-                                        onSelect={handlers.onReply}
+                                        onSelect={away(handlers.onReply)}
                                     >
                                         <Reply aria-hidden="true" />
                                         {t('chat.actions.reply')}
@@ -150,7 +163,7 @@ export function MessageToolbar({
                                 ) : null}
                                 {can.edit ? (
                                     <DropdownMenuItem
-                                        onSelect={handlers.onEdit}
+                                        onSelect={away(handlers.onEdit)}
                                     >
                                         <Pencil aria-hidden="true" />
                                         {t('chat.actions.edit')}
@@ -188,7 +201,7 @@ export function MessageToolbar({
                                 ) : null}
                                 {can.create_task ? (
                                     <DropdownMenuItem
-                                        onSelect={handlers.onCreateTask}
+                                        onSelect={away(handlers.onCreateTask)}
                                     >
                                         <ListPlus aria-hidden="true" />
                                         {t('chat.actions.create_task')}
@@ -220,7 +233,7 @@ export function MessageToolbar({
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                             variant="destructive"
-                                            onSelect={handlers.onDelete}
+                                            onSelect={away(handlers.onDelete)}
                                         >
                                             <Trash2 aria-hidden="true" />
                                             {t('chat.actions.delete')}

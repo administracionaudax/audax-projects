@@ -21,6 +21,10 @@ import { cn } from '@/lib/utils';
  * (flechas, Intro o Tab para elegir, Esc para cerrar), selector de emojis y borrador por
  * conversación en localStorage. Con el cuadro vacío, ↑ edita el último mensaje propio.
  * En modo edición se usa dentro del mensaje (Intro guarda, Esc cancela).
+ * El cuadro es un combobox (ARIA 1.2) cuando sugiere menciones: aria-expanded, aria-haspopup,
+ * aria-controls (la lista existe siempre, oculta si no hay sugerencias) y aria-activedescendant.
+ * No se vuelve a montar al responder: `focusSignal` le pide el foco sin perder el borrador ni la
+ * grabación en curso.
  */
 
 export const MAX_BODY = 10_000;
@@ -83,6 +87,7 @@ export function Composer({
     onTyping,
     placeholder,
     autoFocus = false,
+    focusSignal = 0,
     disabled = false,
     mediaSlot,
     recorderSlot,
@@ -103,6 +108,8 @@ export function Composer({
     onTyping?: () => void;
     placeholder?: string;
     autoFocus?: boolean;
+    /** Cada vez que cambia (y es mayor que 0), el cuadro toma el foco (p. ej. al responder). */
+    focusSignal?: number;
     disabled?: boolean;
     /** Botón de adjuntar archivos (área C3), a la izquierda del cuadro. */
     mediaSlot?: ReactNode;
@@ -166,15 +173,23 @@ export function Composer({
     }, [draft.text]);
 
     useEffect(() => {
-        if (autoFocus) {
+        if (!autoFocus && focusSignal === 0) {
+            return;
+        }
+
+        // En la siguiente vuelta: si se pidió desde un menú, este ya se ha cerrado y no atrapa
+        // el foco (Radix lo devolvería a su botón).
+        const timer = window.setTimeout(() => {
             const element = textarea.current;
             element?.focus();
             element?.setSelectionRange(
                 element.value.length,
                 element.value.length,
             );
-        }
-    }, [autoFocus]);
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+    }, [autoFocus, focusSignal]);
 
     const syncQuery = (text: string, position: number) => {
         caret.current = position;
@@ -373,67 +388,66 @@ export function Composer({
             ) : null}
 
             <div className="relative">
-                {menuOpen ? (
-                    <ul
-                        id={listId}
-                        role="listbox"
-                        aria-label={t('chat.mention.list')}
-                        className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-72 max-w-full overflow-y-auto rounded-[3px] border bg-popover p-1 text-popover-foreground"
-                        data-test="chat-mention-list"
-                    >
-                        {candidates.map((candidate, index) => (
-                            <li
-                                key={
-                                    candidate.kind === 'person'
-                                        ? candidate.id
-                                        : 'everyone'
-                                }
-                                id={`${listId}-${index}`}
-                                role="option"
-                                aria-selected={index === active}
-                                onMouseDown={(event) => {
-                                    event.preventDefault();
-                                    choose(candidate);
-                                }}
-                                onMouseEnter={() => setActive(index)}
-                                className={cn(
-                                    'flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-sm',
-                                    index === active && 'bg-accent',
-                                )}
-                            >
-                                {candidate.kind === 'person' ? (
-                                    <>
-                                        <ChatAvatar
-                                            small
-                                            user={{
-                                                name: candidate.name,
-                                                avatar: null,
-                                                is_active: candidate.is_active,
-                                            }}
-                                        />
-                                        <span className="truncate">
-                                            {candidate.name}
+                <ul
+                    id={listId}
+                    role="listbox"
+                    aria-label={t('chat.mention.list')}
+                    hidden={!menuOpen}
+                    className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-72 max-w-full overflow-y-auto rounded-[3px] border bg-popover p-1 text-popover-foreground"
+                    data-test={menuOpen ? 'chat-mention-list' : undefined}
+                >
+                    {candidates.map((candidate, index) => (
+                        <li
+                            key={
+                                candidate.kind === 'person'
+                                    ? candidate.id
+                                    : 'everyone'
+                            }
+                            id={`${listId}-${index}`}
+                            role="option"
+                            aria-selected={index === active}
+                            onMouseDown={(event) => {
+                                event.preventDefault();
+                                choose(candidate);
+                            }}
+                            onMouseEnter={() => setActive(index)}
+                            className={cn(
+                                'flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-sm',
+                                index === active && 'bg-accent',
+                            )}
+                        >
+                            {candidate.kind === 'person' ? (
+                                <>
+                                    <ChatAvatar
+                                        small
+                                        user={{
+                                            name: candidate.name,
+                                            avatar: null,
+                                            is_active: candidate.is_active,
+                                        }}
+                                    />
+                                    <span className="truncate">
+                                        {candidate.name}
+                                    </span>
+                                    {!candidate.is_active ? (
+                                        <span className="text-xs text-muted-foreground">
+                                            {t('chat.mention.inactive')}
                                         </span>
-                                        {!candidate.is_active ? (
-                                            <span className="text-xs text-muted-foreground">
-                                                {t('chat.mention.inactive')}
-                                            </span>
-                                        ) : null}
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="font-medium">
-                                            @{t('chat.mention.everyone')}
-                                        </span>
-                                        <span className="truncate text-xs text-muted-foreground">
-                                            {t('chat.mention.everyone_hint')}
-                                        </span>
-                                    </>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                ) : null}
+                                    ) : null}
+                                </>
+                            ) : (
+                                <>
+                                    <span className="font-medium">
+                                        @{t('chat.mention.everyone')}
+                                    </span>
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {t('chat.mention.everyone_hint')}
+                                    </span>
+                                </>
+                            )}
+                        </li>
+                    ))}
+                </ul>
                 <div aria-live="polite" className="sr-only">
                     {menuOpen
                         ? t('chat.mention.suggestions', {
@@ -464,8 +478,11 @@ export function Composer({
                         }
                         aria-describedby={describedBy}
                         aria-invalid={tooLong || error !== null || undefined}
+                        role="combobox"
                         aria-autocomplete="list"
-                        aria-controls={menuOpen ? listId : undefined}
+                        aria-haspopup="listbox"
+                        aria-expanded={menuOpen}
+                        aria-controls={listId}
                         aria-activedescendant={activeId}
                         onChange={(event) => {
                             const text = event.target.value;

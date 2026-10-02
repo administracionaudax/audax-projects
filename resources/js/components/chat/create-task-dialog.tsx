@@ -1,7 +1,8 @@
 import { router } from '@inertiajs/react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ChatApiError, chatApi } from '@/components/chat/chat-api';
+import { returnFocusTo } from '@/components/chat/return-focus';
 import { DatePicker } from '@/components/domain/date-picker';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -50,10 +51,13 @@ export function CreateTaskDialog({
     message,
     onClose,
     onCreated,
+    returnFocus,
 }: {
     message: ChatMessage | null;
     onClose: () => void;
     onCreated: (response: ChatMessageResponse) => void;
+    /** Al cerrar, a dónde vuelve el foco (se abre desde el menú del mensaje, que ya no está). */
+    returnFocus?: (messageId: number) => HTMLElement | null;
 }) {
     const [options, setOptions] = useState<ChatTaskOptions | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -68,6 +72,14 @@ export function CreateTaskDialog({
     const assigneeId = useId();
     const dueId = useId();
     const messageId = message?.id ?? null;
+    // El último mensaje abierto (al cerrar, `message` ya es null).
+    const lastMessageId = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (messageId !== null) {
+            lastMessageId.current = messageId;
+        }
+    }, [messageId]);
 
     useEffect(() => {
         if (messageId === null) {
@@ -169,7 +181,14 @@ export function CreateTaskDialog({
                 }
             }}
         >
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent
+                className="sm:max-w-lg"
+                onCloseAutoFocus={returnFocusTo(() =>
+                    returnFocus && lastMessageId.current !== null
+                        ? returnFocus(lastMessageId.current)
+                        : null,
+                )}
+            >
                 <DialogTitle>{t('chat.task.title')}</DialogTitle>
                 <DialogDescription>
                     {t('chat.task.description', {

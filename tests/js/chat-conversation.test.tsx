@@ -375,7 +375,7 @@ describe('ConversationView', () => {
 
         expect(screen.getByText('Todavía no hay mensajes')).toBeTruthy();
         expect(
-            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            screen.getByRole('combobox', { name: 'Escribe un mensaje' }),
         ).toBeTruthy();
     });
 
@@ -393,7 +393,7 @@ describe('ConversationView', () => {
                 'El proyecto está archivado: su chat es de solo lectura.',
             ),
         ).toBeTruthy();
-        expect(screen.queryByRole('textbox')).toBeNull();
+        expect(screen.queryByRole('combobox')).toBeNull();
     });
 
     it('responde en hilo desde el menú de acciones y publica al momento', async () => {
@@ -439,7 +439,7 @@ describe('ConversationView', () => {
         expect(screen.getByText('Respondiendo a Luis Gil')).toBeTruthy();
 
         await user.type(
-            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            screen.getByRole('combobox', { name: 'Escribe un mensaje' }),
             'Respuesta{Enter}',
         );
 
@@ -469,7 +469,7 @@ describe('ConversationView', () => {
         renderView([message(5)]);
 
         await user.type(
-            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            screen.getByRole('combobox', { name: 'Escribe un mensaje' }),
             'No sale{Enter}',
         );
 
@@ -624,7 +624,7 @@ describe('ConversationView', () => {
             await screen.findByRole('menuitem', { name: 'Editar' }),
         );
 
-        const editor = screen.getByRole('textbox', {
+        const editor = screen.getByRole('combobox', {
             name: 'Edita el mensaje',
         });
         await user.clear(editor);
@@ -633,7 +633,7 @@ describe('ConversationView', () => {
         expect(await screen.findByText('Segunda versión')).toBeTruthy();
         expect(screen.getByText('(editado)')).toBeTruthy();
         expect(
-            screen.queryByRole('textbox', { name: 'Edita el mensaje' }),
+            screen.queryByRole('combobox', { name: 'Edita el mensaje' }),
         ).toBeNull();
     });
 
@@ -708,7 +708,7 @@ describe('ConversationView', () => {
         renderView([message(10)]);
 
         await user.type(
-            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            screen.getByRole('combobox', { name: 'Escribe un mensaje' }),
             'Solo una vez{Enter}',
         );
         await waitFor(() => expect(items()).toHaveLength(2));

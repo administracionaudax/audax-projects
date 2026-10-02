@@ -227,7 +227,7 @@ describe('chat con tiempo real (C1 + C2)', () => {
         renderView([message(10)]);
 
         await user.type(
-            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            screen.getByRole('combobox', { name: 'Escribe un mensaje' }),
             'Hola Luis{Enter}',
         );
         await waitFor(() => expect(screen.queryByText('Enviando…')).toBeNull());

@@ -1,5 +1,5 @@
 import { ChevronDown, Pin } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { systemText } from '@/components/chat/system-notice';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
@@ -8,7 +8,8 @@ import type { ChatPinnedMessage } from '@/types/chat';
 
 /**
  * Barra de mensajes fijados (SPEC §12): cuántos hay y, desplegada, cada uno con su extracto; al
- * pulsar se va al mensaje (aunque no esté cargado).
+ * pulsar se va al mensaje (aunque no esté cargado) y el foco pasa a él. Si no se puede ir (ya no
+ * está), el foco vuelve a la barra en lugar de perderse al plegarla.
  */
 export function PinnedBar({
     pinned,
@@ -19,6 +20,21 @@ export function PinnedBar({
 }) {
     const [open, setOpen] = useState(false);
     const listId = useId();
+    const toggle = useRef<HTMLButtonElement>(null);
+
+    const jump = (messageId: number) => {
+        setOpen(false);
+        onJump(messageId);
+
+        // La lista se pliega (el botón pulsado desaparece): si el salto no movió el foco, a la barra.
+        window.setTimeout(() => {
+            const active = document.activeElement;
+
+            if (!active || active === document.body || !active.isConnected) {
+                toggle.current?.focus();
+            }
+        }, 0);
+    };
 
     if (pinned.length === 0) {
         return null;
@@ -32,6 +48,7 @@ export function PinnedBar({
     return (
         <div className="border-b bg-background" data-test="chat-pinned-bar">
             <button
+                ref={toggle}
                 type="button"
                 onClick={() => setOpen((value) => !value)}
                 aria-expanded={open}
@@ -70,10 +87,7 @@ export function PinnedBar({
                             <li key={item.id}>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setOpen(false);
-                                        onJump(item.id);
-                                    }}
+                                    onClick={() => jump(item.id)}
                                     aria-label={t('chat.pinned.go', { text })}
                                     className={cn(
                                         'grid w-full gap-0.5 px-4 py-2 text-left text-sm hover:bg-muted',

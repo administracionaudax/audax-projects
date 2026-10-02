@@ -35,7 +35,7 @@ function renderComposer(props: Partial<Parameters<typeof Composer>[0]> = {}) {
         </TooltipProvider>,
     );
 
-    return { ...utils, onSubmit, input: screen.getByRole('textbox') };
+    return { ...utils, onSubmit, input: screen.getByRole('combobox') };
 }
 
 describe('menciones (texto del editor ↔ cuerpo)', () => {
@@ -253,7 +253,7 @@ describe('Composer', () => {
             onCancel,
         });
 
-        expect(screen.getByRole('textbox', { name: 'Edita el mensaje' })).toBe(
+        expect(screen.getByRole('combobox', { name: 'Edita el mensaje' })).toBe(
             input,
         );
         expect((input as HTMLTextAreaElement).value).toBe('Hola @Ana Pérez');

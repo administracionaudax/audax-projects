@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Download, FileImage } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ChatAttachment } from '@/components/chat/media/types';
 import { fileIcon, formatBytes } from '@/components/tasks/task-attachments';
 import { Button } from '@/components/ui/button';
@@ -22,18 +22,29 @@ function extensionLabel(name: string): string {
 
 /**
  * Visor de imágenes accesible: diálogo con foco atrapado, Escape para cerrar y flechas (o los
- * botones) para pasar de una a otra; con «Descargar».
+ * botones) para pasar de una a otra; con «Descargar». Al cerrar, el foco vuelve a la miniatura de
+ * la imagen que se estaba viendo (`returnFocus`), no a la primera que se abrió.
  */
 export function ImageViewer({
     images,
     index,
     onIndexChange,
+    returnFocus,
 }: {
     images: ChatAttachment[];
     index: number | null;
     onIndexChange: (index: number | null) => void;
+    returnFocus?: (index: number) => HTMLElement | null | undefined;
 }) {
-    const image = index === null ? null : (images[index] ?? null);
+    // La última vista: el contenido sigue montado mientras se cierra (y sabe a dónde volver).
+    const [last, setLast] = useState<number | null>(index);
+
+    if (index !== null && index !== last) {
+        setLast(index);
+    }
+
+    const shownIndex = index ?? last;
+    const image = shownIndex === null ? null : (images[shownIndex] ?? null);
     const many = images.length > 1;
 
     const go = (delta: number) => {
@@ -46,7 +57,7 @@ export function ImageViewer({
 
     return (
         <Dialog
-            open={image !== null}
+            open={index !== null && image !== null}
             onOpenChange={(open) => {
                 if (!open) {
                     onIndexChange(null);
@@ -55,6 +66,15 @@ export function ImageViewer({
         >
             {image ? (
                 <DialogContent
+                    onCloseAutoFocus={(event) => {
+                        const target =
+                            last === null ? null : returnFocus?.(last);
+
+                        if (target && target.isConnected) {
+                            event.preventDefault();
+                            target.focus();
+                        }
+                    }}
                     className="grid max-h-[calc(100dvh-2rem)] gap-3 p-3 sm:max-w-4xl sm:p-4"
                     onKeyDown={(event) => {
                         if (event.key === 'ArrowRight') {
@@ -115,7 +135,7 @@ export function ImageViewer({
                             >
                                 {many
                                     ? t('chat_media.viewer.position', {
-                                          current: (index ?? 0) + 1,
+                                          current: (shownIndex ?? 0) + 1,
                                           total: images.length,
                                       })
                                     : formatBytes(image.size)}
@@ -194,6 +214,7 @@ export function AttachmentList({
     className?: string;
 }) {
     const [viewer, setViewer] = useState<number | null>(null);
+    const thumbnails = useRef<Array<HTMLButtonElement | null>>([]);
     const images = attachments.filter((item) => item.kind === 'image');
     const files = attachments.filter((item) => item.kind !== 'image');
 
@@ -213,6 +234,9 @@ export function AttachmentList({
                     {images.map((image, index) => (
                         <li key={image.id}>
                             <button
+                                ref={(element) => {
+                                    thumbnails.current[index] = element;
+                                }}
                                 type="button"
                                 className={cn(
                                     'flex size-24 items-center justify-center overflow-hidden rounded-[3px] border bg-muted sm:size-28',
@@ -260,6 +284,7 @@ export function AttachmentList({
                 images={images}
                 index={viewer}
                 onIndexChange={setViewer}
+                returnFocus={(index) => thumbnails.current[index]}
             />
         </div>
     );
