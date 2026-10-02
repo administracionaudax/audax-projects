@@ -123,7 +123,7 @@ final class MessagePresenter
             'system' => $system ? ['key' => (string) $message->system_key, 'payload' => (object) ($message->system_payload ?? [])] : null,
             'can' => [
                 'edit' => $mine && ! $system && ! $hidden && $alive && $this->can->post,
-                'delete' => $mine && ! $system && $alive && $this->can->view,
+                'delete' => $mine && ! $system && ! $hidden && $alive && $this->can->post,
                 'reply' => $alive && ! $hidden && $this->can->post,
                 'react' => $alive && ! $hidden && $this->can->post,
                 'pin' => $alive && $this->can->post,

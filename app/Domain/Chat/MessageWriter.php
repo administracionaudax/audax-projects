@@ -9,6 +9,7 @@ use App\Enums\MessageType;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
+use App\Models\Attachment;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
@@ -16,10 +17,13 @@ use App\Models\MessageMention;
 use App\Models\MessageReaction;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\Chat\ChatNotificationExcerpts;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * ÚNICA forma de escribir en el chat (SPEC §12, D-069). Comprueba la política en cada acción y
@@ -55,31 +59,44 @@ final class MessageWriter
             throw ValidationException::withMessages(['parent_id' => __('chat.errors.parent')]);
         }
 
-        $message = DB::transaction(function () use ($author, $conversation, $body, $parentId, $files, $audio, $audioDurationMs): Message {
-            $message = $conversation->messages()->create([
-                'user_id' => $author->id,
-                'type' => $audio !== null ? MessageType::Audio : ($body === null || $body === '' ? MessageType::File : MessageType::Text),
-                'body' => $body === '' ? null : $body,
-                'parent_id' => $parentId,
-            ]);
+        /** @var list<Attachment> $stored */
+        $stored = [];
 
-            $projectId = $conversation->type === ConversationType::Project ? $conversation->project_id : null;
+        try {
+            $message = DB::transaction(function () use ($author, $conversation, $body, $parentId, $files, $audio, $audioDurationMs, &$stored): Message {
+                $message = $conversation->messages()->create([
+                    'user_id' => $author->id,
+                    'type' => $audio !== null ? MessageType::Audio : ($body === null || $body === '' ? MessageType::File : MessageType::Text),
+                    'body' => $body === '' ? null : $body,
+                    'parent_id' => $parentId,
+                ]);
 
-            if ($audio !== null) {
-                $attachment = $this->storage->store($audio, $message, $projectId, $author, audio: true);
-                $this->transcriptions->forAudio($message, $attachment, $audioDurationMs);
+                $projectId = $conversation->type === ConversationType::Project ? $conversation->project_id : null;
+
+                if ($audio !== null) {
+                    $stored[] = $attachment = $this->storage->store($audio, $message, $projectId, $author, audio: true);
+                    $this->transcriptions->forAudio($message, $attachment, $audioDurationMs);
+                }
+
+                foreach ($files as $file) {
+                    $stored[] = $this->storage->store($file, $message, $projectId, $author);
+                }
+
+                $this->syncMentions($message, $conversation);
+                $conversation->forceFill(['last_message_at' => $message->created_at])->save();
+                $this->advanceRead($conversation, $author->id, $message->id);
+
+                return $message;
+            });
+        } catch (Throwable $exception) {
+            // La transacción deshace las filas, pero no los ficheros ya guardados en el disco
+            // (como AttachmentController::store de la Fase 1): se borran para no dejar huérfanos.
+            foreach ($stored as $attachment) {
+                rescue(fn () => Storage::disk($attachment->disk)->delete($attachment->path), report: false);
             }
 
-            foreach ($files as $file) {
-                $this->storage->store($file, $message, $projectId, $author);
-            }
-
-            $this->syncMentions($message, $conversation);
-            $conversation->forceFill(['last_message_at' => $message->created_at])->save();
-            $this->advanceRead($conversation, $author->id, $message->id);
-
-            return $message;
-        });
+            throw $exception;
+        }
 
         MessagePosted::dispatch($message);
 
@@ -139,6 +156,7 @@ final class MessageWriter
         Gate::forUser($user)->authorize('delete', $message);
 
         $message->delete();
+        ChatNotificationExcerpts::forget($message->id);
 
         MessageUpdated::dispatch($message);
     }
@@ -152,9 +170,15 @@ final class MessageWriter
 
         $message->forceFill(['hidden_at' => $hidden ? now() : null, 'hidden_by' => $hidden ? $admin->id : null])->save();
 
+        // La campana deja de enseñar su texto (al mostrarlo de nuevo no se restaura; D-115).
+        if ($hidden) {
+            ChatNotificationExcerpts::forget($message->id);
+        }
+
         activity('chat')->causedBy($admin)->performedOn($message)
             ->event($hidden ? 'hidden' : 'unhidden')
-            ->withProperties(['conversation_id' => $message->conversation_id])
+            // El texto que tenía al moderarlo, para que la auditoría no dependa del mensaje.
+            ->withProperties(['conversation_id' => $message->conversation_id, 'body' => $message->body])
             ->log($hidden ? 'Mensaje ocultado' : 'Mensaje visible de nuevo');
 
         MessageUpdated::dispatch($message);
@@ -177,7 +201,8 @@ final class MessageWriter
         Gate::forUser($user)->authorize('react', $message);
 
         $emoji = trim($emoji);
-        if ($emoji === '' || mb_strlen($emoji) > 16 || preg_match('/[\p{L}\p{N}<>]/u', $emoji) === 1) {
+        // Solo los emojis del selector (con 0️⃣ o ℹ️, que llevan cifras o letras), nunca texto.
+        if ($emoji === '' || mb_strlen($emoji) > 16 || ! EmojiCatalog::contains($emoji)) {
             throw ValidationException::withMessages(['emoji' => __('chat.errors.emoji')]);
         }
 

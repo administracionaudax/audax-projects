@@ -3,8 +3,8 @@
 namespace App\Http\Requests\Chat;
 
 /**
- * Poner o quitar una reacción. MessageWriter comprueba además que sea un emoji (sin letras,
- * números ni etiquetas).
+ * Poner o quitar una reacción. MessageWriter comprueba además que sea uno de los emojis del
+ * selector (EmojiCatalog), nunca texto.
  */
 class ReactRequest extends ChatRequest
 {
