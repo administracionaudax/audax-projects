@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Broadcasting\SendsWebPush;
+use App\Broadcasting\WebPushMessage;
 use App\Domain\Notifications\NotificationPreferences;
 use App\Models\Setting;
 use App\Models\User;
@@ -19,11 +21,13 @@ use Illuminate\Notifications\Notification;
  *   body   → detalle opcional (texto plano)
  *   url    → a dónde lleva al pulsar (relativa y estable, p. ej. /tareas/12)
  *   icon   → nombre de icono de lucide (opcional)
- * Los canales los decide SOLO NotificationPreferences (D-073): las subclases no sobrescriben via().
+ * Los canales los decide SOLO NotificationPreferences (D-073): las subclases no sobrescriben via()
+ * (los avisos del chat solo pueden QUITAR el del navegador, por las reglas de D-072).
  * Van por cola: el email por la cola `mail` y el resto por `default`. Toda notificación se puede
- * enviar por email (toMail genérico) y por Web Push (toPushPayload), salvo que su evento no lo ofrezca.
+ * enviar por email (toMail genérico) y por Web Push (toWebPush, con el canal de la Fase 6 que fija
+ * config('notifications.channels.push')), salvo que su evento no lo ofrezca.
  */
-abstract class AppNotification extends Notification implements ShouldQueue
+abstract class AppNotification extends Notification implements SendsWebPush, ShouldQueue
 {
     use Queueable;
 
@@ -67,10 +71,17 @@ abstract class AppNotification extends Notification implements ShouldQueue
      */
     public function viaQueues(): array
     {
-        return [
+        $queues = [
             'database' => 'default',
             'mail' => 'mail',
         ];
+        $push = config('notifications.channels.push');
+
+        if (is_string($push) && $push !== '') {
+            $queues[$push] = 'default';
+        }
+
+        return $queues;
     }
 
     /**
@@ -128,5 +139,21 @@ abstract class AppNotification extends Notification implements ShouldQueue
             'url' => $this->url($notifiable) ?? '/notificaciones',
             'tag' => $this->kind(),
         ];
+    }
+
+    /**
+     * Aviso del navegador (WebPushChannel de la Fase 6) con el mismo contenido que toPushPayload.
+     * La etiqueta agrupa los avisos del mismo tipo: uno nuevo sustituye al anterior.
+     */
+    public function toWebPush(object $notifiable): ?WebPushMessage
+    {
+        $payload = $this->toPushPayload($notifiable);
+
+        return new WebPushMessage(
+            $payload['title'],
+            $payload['body'] === '' ? null : $payload['body'],
+            $payload['url'],
+            $payload['tag'],
+        );
     }
 }

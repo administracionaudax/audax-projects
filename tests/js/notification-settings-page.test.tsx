@@ -236,9 +236,13 @@ describe('/ajustes/notificaciones', () => {
     it('sin Web Push configurado, la columna del navegador está desactivada y lo explica', () => {
         render(<NotificationSettingsPage settings={settings()} />);
 
-        const note = screen.getByText(
-            /Se podrán activar cuando el chat esté disponible/,
-        );
+        expect(
+            screen.queryByRole('switch', {
+                name: 'Activar avisos en este navegador',
+            }),
+        ).toBeNull();
+
+        const note = screen.getByText(/no están activados en este servidor/);
         expect(note).toBeTruthy();
 
         for (const name of [
@@ -250,7 +254,7 @@ describe('/ajustes/notificaciones', () => {
             expect(push.disabled).toBe(true);
             expect(push.getAttribute('aria-checked')).toBe('false');
             expect(describedText(push)).toContain(
-                'Se podrán activar cuando el chat esté disponible',
+                'no están activados en este servidor',
             );
         }
     });
@@ -263,8 +267,18 @@ describe('/ajustes/notificaciones', () => {
         );
 
         expect(
-            screen.queryByText(/Se podrán activar cuando el chat/),
+            screen.queryByText(/no están activados en este servidor/),
         ).toBeNull();
+
+        // El interruptor del navegador de la Fase 6 (D-072), con su explicación.
+        expect(
+            screen.getByRole('switch', {
+                name: 'Activar avisos en este navegador',
+            }),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(/llegan solo a los navegadores donde los actives/),
+        ).toBeTruthy();
 
         const direct = toggle('Mensajes directos: Avisos del navegador');
         expect(direct.disabled).toBe(false);

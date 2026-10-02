@@ -31,6 +31,8 @@ beforeEach(function () {
         'services.webpush.public_key' => $keys['publicKey'],
         'services.webpush.private_key' => $keys['privateKey'],
         'services.webpush.subject' => 'mailto:no-responder@audaxstudio.com',
+        // Con claves válidas, config/notifications.php fija el canal de Web Push (D-073).
+        'notifications.channels.push' => WebPushChannel::class,
     ]);
 
     $this->ana = User::factory()->employee()->create(['name' => 'Ana']);

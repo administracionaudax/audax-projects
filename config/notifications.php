@@ -1,18 +1,26 @@
 <?php
 
+use App\Broadcasting\WebPushChannel;
+use App\Broadcasting\WebPushConfig;
+
 /*
 |--------------------------------------------------------------------------
 | Notificaciones (SPEC §13, D-073)
 |--------------------------------------------------------------------------
 | Canal de Laravel de cada canal lógico de App\Domain\Notifications\NotificationCatalog.
-| `app` es siempre `database` y `email` es siempre `mail`. `push` es la clase del canal de Web Push
-| de la Fase 6 (D-072) y se fija al integrarla, solo si las claves VAPID están en el .env: mientras
-| sea null, Web Push no se ofrece en /ajustes/notificaciones ni se envía.
+| `app` es siempre `database` y `email` es siempre `mail`. `push` es el canal de Web Push de la
+| Fase 6 (WebPushChannel, D-072) solo si las claves VAPID del .env son válidas (las mismas
+| comprobaciones que WebPushConfig); si no, null: Web Push no se ofrece en /ajustes/notificaciones
+| ni se envía. Se decide al cargar la configuración (con config:cache, al desplegar).
 */
 
 return [
     'channels' => [
-        'push' => null,
+        'push' => WebPushConfig::fromValues(
+            env('VAPID_PUBLIC_KEY'),
+            env('VAPID_PRIVATE_KEY'),
+            env('VAPID_SUBJECT', 'mailto:no-responder@audaxstudio.com'),
+        ) !== null ? WebPushChannel::class : null,
     ],
 
     // Resumen diario (notifications:daily-digest): avisos sin leer de las últimas horas.

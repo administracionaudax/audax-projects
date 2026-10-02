@@ -93,7 +93,7 @@ test('una empleada quita el email de las tareas que vencen y activa el resumen d
     ).not.toHaveCount(0);
     // Sin Web Push configurado, la columna del navegador está desactivada y lo explica.
     await expect(
-        page.getByText(/Se podrán activar cuando el chat esté disponible/),
+        page.getByText(/no están activados en este servidor/),
     ).toBeVisible();
     await expect(
         page.getByRole('switch', {

@@ -38,10 +38,21 @@ final class WebPushConfig
      */
     public static function vapid(): ?array
     {
-        $public = config('services.webpush.public_key');
-        $private = config('services.webpush.private_key');
-        $subject = config('services.webpush.subject');
+        return self::fromValues(
+            config('services.webpush.public_key'),
+            config('services.webpush.private_key'),
+            config('services.webpush.subject'),
+        );
+    }
 
+    /**
+     * Las mismas comprobaciones con valores sueltos: config/notifications.php decide con ellas, al
+     * cargar la configuración, si el canal de Web Push existe (D-073).
+     *
+     * @return array{subject: string, publicKey: string, privateKey: string}|null
+     */
+    public static function fromValues(mixed $public, mixed $private, mixed $subject): ?array
+    {
         if (! is_string($public) || ! is_string($private) || ! is_string($subject)) {
             return null;
         }

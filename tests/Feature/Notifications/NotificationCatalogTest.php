@@ -2,6 +2,11 @@
 
 use App\Domain\Notifications\NotificationCatalog;
 use App\Notifications\AppNotification;
+use App\Notifications\Chat\ChatDirectMessageNotification;
+use App\Notifications\Chat\ChatEveryoneNotification;
+use App\Notifications\Chat\ChatMentionNotification;
+use App\Notifications\Chat\ChatMessageNotification;
+use App\Notifications\Chat\TranscriptionsFailing;
 use Illuminate\Support\Str;
 use Symfony\Component\Finder\Finder;
 
@@ -9,6 +14,33 @@ use Symfony\Component\Finder\Finder;
 | Contrato de la Fase 7 (D-073): cada AppNotification tiene su evento en el catálogo, y cada evento
 | tiene sus textos y unos canales coherentes.
 */
+
+/**
+ * Clases concretas que extienden AppNotification en app/Notifications (incluidas las del chat).
+ *
+ * @return list<ReflectionClass<AppNotification>>
+ */
+function appNotificationClasses(): array
+{
+    $classes = [];
+
+    foreach (Finder::create()->files()->in(app_path('Notifications'))->name('*.php') as $file) {
+        $class = 'App\\Notifications\\'.Str::of($file->getRelativePathname())->replace(['/', '.php'], ['\\', '']);
+
+        if (! class_exists($class)) {
+            continue;
+        }
+
+        $reflection = new ReflectionClass($class);
+
+        if (! $reflection->isAbstract() && $reflection->isSubclassOf(AppNotification::class)) {
+            /** @var ReflectionClass<AppNotification> $reflection */
+            $classes[] = $reflection;
+        }
+    }
+
+    return $classes;
+}
 
 test('toda AppNotification concreta tiene su evento en el catálogo', function () {
     $catalog = app(NotificationCatalog::class);
@@ -35,6 +67,36 @@ test('toda AppNotification concreta tiene su evento en el catálogo', function (
     }
 
     expect($checked)->toBeGreaterThan(15);
+});
+
+test('los avisos del chat de la Fase 6 son AppNotification con su evento en el catálogo', function () {
+    $catalog = app(NotificationCatalog::class);
+    $classes = array_map(fn (ReflectionClass $class): string => $class->getName(), appNotificationClasses());
+
+    foreach ([
+        ChatDirectMessageNotification::class => 'chat.direct',
+        ChatMentionNotification::class => 'chat.mention',
+        ChatEveryoneNotification::class => 'chat.mention',
+        TranscriptionsFailing::class => 'system.transcriptions_failing',
+    ] as $class => $kind) {
+        /** @var AppNotification $notification */
+        $notification = (new ReflectionClass($class))->newInstanceWithoutConstructor();
+
+        expect($classes)->toContain($class)
+            ->and($notification->kind())->toBe($kind)
+            ->and($catalog->find($kind))->not->toBeNull();
+    }
+
+    expect($catalog->find('chat.direct')?->group)->toBe('chat')
+        ->and($catalog->find('system.transcriptions_failing')?->mandatory)->toBeTrue();
+});
+
+test('ninguna AppNotification decide sus canales a mano (solo el chat quita el navegador)', function () {
+    foreach (appNotificationClasses() as $class) {
+        $declaring = $class->getMethod('via')->getDeclaringClass()->getName();
+
+        expect($declaring)->toBeIn([AppNotification::class, ChatMessageNotification::class], "{$class->getName()} sobrescribe via()");
+    }
 });
 
 test('cada evento tiene grupo, textos y canales coherentes', function () {

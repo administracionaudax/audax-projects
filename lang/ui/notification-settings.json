@@ -11,11 +11,12 @@
     "notification_settings.switch": ":event: :channel",
     "notification_settings.not_offered": ":channel: no disponible",
     "notification_settings.mandatory": "Obligatorio",
-    "notification_settings.push_unavailable": "Los avisos del navegador aún no están disponibles. Se podrán activar cuando el chat esté disponible.",
+    "notification_settings.push_unavailable": "Los avisos del navegador no están activados en este servidor. Cuando lo estén, podrás elegirlos aquí.",
     "notification_settings.empty": "No hay avisos que puedas configurar.",
     "notification_settings.saving": "Guardando…",
     "notification_settings.unsaved": "Tienes cambios sin guardar.",
     "notification_settings.error_title": "No se han podido guardar las preferencias",
     "notification_settings.link": "Preferencias",
-    "notification_settings.link_label": "Preferencias de notificación"
+    "notification_settings.link_label": "Preferencias de notificación",
+    "notification_settings.push_browser_help": "Los avisos del navegador llegan solo a los navegadores donde los actives. Actívalos aquí en cada ordenador o móvil donde quieras recibirlos."
 }

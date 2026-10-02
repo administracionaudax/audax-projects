@@ -47,7 +47,12 @@ beforeEach(function () {
         ->where(['conversation_id' => $conversation->id, 'user_id' => $user->id])->update(['muted' => true]);
     $this->enablePush = function (): void {
         $keys = VAPID::createVapidKeys();
-        config(['services.webpush.public_key' => $keys['publicKey'], 'services.webpush.private_key' => $keys['privateKey']]);
+        // Con claves válidas, config/notifications.php fija el canal de Web Push (D-073).
+        config([
+            'services.webpush.public_key' => $keys['publicKey'],
+            'services.webpush.private_key' => $keys['privateKey'],
+            'notifications.channels.push' => WebPushChannel::class,
+        ]);
     };
     $this->subscribe = fn (User $user) => PushSubscription::query()->create([
         'user_id' => $user->id,

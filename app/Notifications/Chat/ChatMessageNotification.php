@@ -2,7 +2,6 @@
 
 namespace App\Notifications\Chat;
 
-use App\Broadcasting\SendsWebPush;
 use App\Broadcasting\WebPushChannel;
 use App\Broadcasting\WebPushMessage;
 use App\Models\Message;
@@ -10,14 +9,15 @@ use App\Notifications\AppNotification;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Aviso de un mensaje del chat (SPEC §12 y §13): en la campana y, si la persona lo ha activado en
- * algún navegador y no ha silenciado la conversación, también como aviso del navegador (D-072).
+ * Aviso de un mensaje del chat (SPEC §12 y §13): por los canales que la persona quiere para su
+ * evento (chat.direct o chat.mention, D-073): por defecto la campana y, si lo ha activado en algún
+ * navegador y no ha silenciado la conversación, también el aviso del navegador (D-072).
  * Guarda datos planos (ids y textos), no modelos: la cola no falla si el mensaje se borra antes.
  * El enlace es estable (/tiempo-real/conversaciones/{id}/abrir) y lleva a la conversación en la
  * pantalla del chat que haya al pulsarlo. Si el mensaje se oculta o se borra antes de que la cola
  * lo envíe, no se envía (y los ya guardados pierden el extracto: ChatNotificationExcerpts, D-115).
  */
-abstract class ChatMessageNotification extends AppNotification implements SendsWebPush
+abstract class ChatMessageNotification extends AppNotification
 {
     public function __construct(
         public readonly int $conversationId,
@@ -29,19 +29,22 @@ abstract class ChatMessageNotification extends AppNotification implements SendsW
     ) {}
 
     /**
+     * Los canales que la persona quiere para este evento (NotificationPreferences, D-073), menos
+     * el aviso del navegador cuando ChatNotices no lo permite ($push: conversación silenciada o sin
+     * navegadores suscritos, D-072). Quién recibe aviso, con la conversación abierta o dentro de
+     * los 5 minutos de agrupación, lo decide antes ChatNotices.
+     *
      * @return list<string>
      */
     public function via(object $notifiable): array
     {
-        return $this->push ? ['database', WebPushChannel::class] : ['database'];
-    }
+        $channels = parent::via($notifiable);
 
-    /**
-     * @return array<string, string>
-     */
-    public function viaQueues(): array
-    {
-        return [...parent::viaQueues(), WebPushChannel::class => 'default'];
+        if ($this->push) {
+            return $channels;
+        }
+
+        return array_values(array_filter($channels, fn (string $channel): bool => $channel !== WebPushChannel::class));
     }
 
     /**

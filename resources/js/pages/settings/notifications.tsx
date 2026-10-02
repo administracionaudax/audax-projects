@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useId } from 'react';
 import AlertError from '@/components/alert-error';
 import Heading from '@/components/heading';
+import { PushNotificationsToggle } from '@/components/realtime';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -267,6 +268,19 @@ export default function NotificationSettingsPage({
                             </div>
                         </div>
                     </div>
+
+                    {/* Web Push (D-072): la columna «Avisos del navegador» solo llega a los navegadores activados. */}
+                    {settings.push_available ? (
+                        <div
+                            className="space-y-3 rounded-md border p-4"
+                            data-test="push-browser"
+                        >
+                            <p className="text-sm text-muted-foreground">
+                                {t('notification_settings.push_browser_help')}
+                            </p>
+                            <PushNotificationsToggle />
+                        </div>
+                    ) : null}
 
                     {settings.groups.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
