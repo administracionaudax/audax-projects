@@ -79,15 +79,24 @@ final class HomeChatSummary
             );
         };
 
+        $rows = [];
+        foreach ($unread as $id => $count) {
+            $conversation = $conversations->get($id);
+
+            if ($conversation !== null) {
+                $rows[] = [
+                    'id' => $id,
+                    'type' => $conversation->type->value,
+                    'title' => $title($id),
+                    'unread' => $count,
+                    'url' => route('chat.show', ['conversation' => $id], false),
+                ];
+            }
+        }
+
         return [
             'unread_total' => $counts['total'],
-            'conversations' => array_values(array_map(fn (int $id, int $count): array => [
-                'id' => $id,
-                'type' => $conversations->get($id)?->type->value ?? ConversationType::Group->value,
-                'title' => $conversations->has($id) ? $title($id) : __('conversations.untitled'),
-                'unread' => $count,
-                'url' => route('chat.show', ['conversation' => $id], false),
-            ], array_keys($unread), $unread)),
+            'conversations' => $rows,
             'mentions' => array_values($mentions
                 ->filter(fn (Message $message): bool => $conversations->has($message->conversation_id))
                 ->map(fn (Message $message): array => [
