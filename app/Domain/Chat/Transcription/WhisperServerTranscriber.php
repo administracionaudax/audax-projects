@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Http;
  * whisper.cpp en el propio servidor (whisper-server en el contenedor audax-whisper, arrancado con
  * --convert para que ffmpeg acepte los formatos del navegador). Una petición cada vez: el servidor
  * procesa de una en una y el worker de transcripciones tiene un solo proceso.
+ * El campo `duration` de /inference (milisegundos; whisper.cpp v1.9.4, examples/server/server.cpp,
+ * get_req_parameters → wparams.duration_ms) limita el audio que se procesa al máximo de los
+ * audios; la respuesta sigue dando la duración real del fichero (D-116).
  */
 final class WhisperServerTranscriber implements TranscriptionService
 {
@@ -18,7 +21,7 @@ final class WhisperServerTranscriber implements TranscriptionService
         private readonly int $timeout,
     ) {}
 
-    public function transcribe(string $path, string $language): TranscriptionResult
+    public function transcribe(string $path, string $language, ?int $maxDurationMs = null): TranscriptionResult
     {
         $handle = @fopen($path, 'rb');
         if ($handle === false) {
@@ -29,12 +32,13 @@ final class WhisperServerTranscriber implements TranscriptionService
             $response = Http::timeout($this->timeout)
                 ->connectTimeout(5)
                 ->attach('file', $handle, basename($path))
-                ->post(rtrim($this->url, '/').'/inference', [
+                ->post(rtrim($this->url, '/').'/inference', array_filter([
                     'language' => $language,
                     'response_format' => 'verbose_json',
                     'temperature' => '0.0',
                     'temperature_inc' => '0.2',
-                ]);
+                    'duration' => $maxDurationMs !== null && $maxDurationMs > 0 ? (string) $maxDurationMs : null,
+                ], fn (?string $value): bool => $value !== null));
         } catch (ConnectionException $e) {
             throw new TranscriptionFailed('El transcriptor no responde: '.$e->getMessage(), previous: $e);
         } finally {

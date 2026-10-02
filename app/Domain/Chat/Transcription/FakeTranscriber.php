@@ -13,6 +13,12 @@ final class FakeTranscriber implements TranscriptionService
 
     public int $calls = 0;
 
+    /** Lo que se pidió procesar como mucho en la última llamada. */
+    public ?int $lastMaxDurationMs = null;
+
+    /** Duración «real» que devuelve (la que mediría el motor). */
+    public int $durationMs = 1000;
+
     public function __construct(private string $default = 'Transcripción de prueba') {}
 
     /**
@@ -25,16 +31,17 @@ final class FakeTranscriber implements TranscriptionService
         return $this;
     }
 
-    public function transcribe(string $path, string $language): TranscriptionResult
+    public function transcribe(string $path, string $language, ?int $maxDurationMs = null): TranscriptionResult
     {
         $this->calls++;
+        $this->lastMaxDurationMs = $maxDurationMs;
         $next = array_shift($this->queue) ?? $this->default;
 
         if ($next instanceof TranscriptionFailed) {
             throw $next;
         }
 
-        return new TranscriptionResult($next, $language, 1000);
+        return new TranscriptionResult($next, $language, $this->durationMs);
     }
 
     public function engine(): string

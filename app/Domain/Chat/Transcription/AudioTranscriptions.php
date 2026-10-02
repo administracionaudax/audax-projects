@@ -11,20 +11,30 @@ use App\Models\Message;
 use App\Models\User;
 use App\Notifications\Chat\TranscriptionsFailing;
 use Carbon\CarbonImmutable;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Notification;
 
 /**
  * Garantía de SPEC §12: TODO audio acaba con su transcripción.
  * - forAudio(): al crear el mensaje de audio se crea su transcripción (pending) y se encola,
  * - requeue(): la revisión cada 15 minutos vuelve a encolar las pendientes atascadas, las que se
- *   quedaron «transcribiendo» (worker caído) y las fallidas; tras MAX_ATTEMPTS intentos avisa al
- *   admin (una vez) y sigue reintentando cada hora,
+ *   quedaron «transcribiendo» (worker caído o tiempo agotado) y las fallidas; tras MAX_ATTEMPTS
+ *   intentos avisa al admin (una vez) y sigue reintentando como mucho cada hora hasta
+ *   GIVE_UP_ATTEMPTS: a partir de ahí ya no se relanza sola (un audio que agota siempre el tiempo
+ *   no ocupa para siempre el único proceso de transcripción) y solo el admin la relanza (D-116),
  * - backfill(): transcribe cualquier audio que no tenga texto (restauraciones, cambio de motor),
  * - retry(): el admin la relanza a mano.
  */
 final class AudioTranscriptions
 {
     public const int MAX_ATTEMPTS = 9;
+
+    /**
+     * Intentos tras los que la revisión deja de relanzarla sola (tres rondas más, de una hora,
+     * después del aviso). El admin puede seguir relanzándola a mano.
+     */
+    public const int GIVE_UP_ATTEMPTS = 18;
 
     /**
      * @param  int|null  $declaredDurationMs  la que envía el navegador; el job la cambia por la que
@@ -85,10 +95,31 @@ final class AudioTranscriptions
                 if ($transcription->admin_notified_at === null) {
                     $failing[] = $transcription;
                 }
+
+                if ($transcription->attempts >= self::GIVE_UP_ATTEMPTS) {
+                    // Ya no se relanza sola: queda fallida (si se quedó «en curso», también) y
+                    // espera a que el admin la relance desde /admin/transcripciones.
+                    if ($transcription->status !== TranscriptionStatus::Failed) {
+                        $transcription->forceFill([
+                            'status' => TranscriptionStatus::Failed,
+                            'last_error' => $transcription->last_error ?? __('chat_media.transcription.interrupted'),
+                        ])->save();
+                    }
+
+                    continue;
+                }
+
                 // Tras agotar los intentos, se sigue probando, pero como mucho una vez por hora.
                 if ($transcription->queued_at !== null && $transcription->queued_at->gt($now->subHour())) {
                     continue;
                 }
+            }
+
+            // Fallida o interrumpida: ya no hay ningún job vivo para ella, pero si el worker se
+            // cayó a mitad su candado de job único (uniqueFor, 2 h) seguiría puesto y el nuevo
+            // intento no llegaría a la cola. Las pendientes, no: pueden estar esperando su turno.
+            if ($transcription->status !== TranscriptionStatus::Pending) {
+                (new UniqueLock(app(CacheRepository::class)))->release(new TranscribeAudioMessage($transcription->id));
             }
 
             $this->dispatch($transcription);

@@ -22,6 +22,9 @@ return [
         'duration_ms' => 'duración del audio',
         'max_audio_seconds' => 'duración máxima de los audios',
     ],
+    'transcription' => [
+        'interrupted' => 'La transcripción se ha interrumpido (tiempo agotado o proceso detenido).',
+    ],
     'admin' => [
         'retried' => 'Transcripción relanzada.',
         'failed_again' => 'Se ha relanzado, pero ha vuelto a fallar: :error',

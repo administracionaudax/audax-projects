@@ -22,8 +22,9 @@ use Illuminate\Validation\Validator;
  *   la duración que envía el navegador (duration_ms), que no puede pasar del ajuste
  *   max_audio_seconds (con un margen: MediaRecorder se para unas décimas después). Para que nadie
  *   declare un audio corto con un archivo largo, el tamaño tiene que cuadrar con esa duración (el
- *   navegador graba a 64 kbit/s; se admite hasta ~384). Después, el transcriptor mide la duración
- *   real y /admin/transcripciones señala los que pasan del máximo.
+ *   navegador graba a 64 kbit/s, unos 8 KB/s; se admite hasta 16 KB/s por los contenedores mp4 y
+ *   ogg). Además, el transcriptor procesa como mucho la duración máxima (D-116), mide la real y
+ *   /admin/transcripciones señala los que pasan del máximo.
  */
 final class StoreMediaMessageRequest extends FormRequest
 {
@@ -33,7 +34,7 @@ final class StoreMediaMessageRequest extends FormRequest
 
     public const int DURATION_TOLERANCE_MS = 2000;
 
-    public const int MAX_BYTES_PER_SECOND = 48_000;
+    public const int MAX_BYTES_PER_SECOND = 16_000;
 
     /**
      * Cabeceras del contenedor, que no dependen de la duración.

@@ -9,12 +9,14 @@ use App\Domain\Chat\Transcription\TranscriptionService;
 use App\Domain\Chat\Transcription\WhisperServerTranscriber;
 use App\Enums\MessageType;
 use App\Enums\TranscriptionStatus;
+use App\Jobs\TranscribeAudioMessage;
 use App\Models\AudioTranscription;
 use App\Models\User;
 use App\Notifications\Chat\TranscriptionsFailing;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -69,29 +71,38 @@ it('un audio con otro tipo real se rechaza y no deja nada a medias', function ()
         ->and($this->chat->messages()->count())->toBe(0);
 });
 
-it('la revisión encola las atascadas, avisa al admin una vez tras agotar intentos y sigue probando', function () {
+it('la revisión avisa al admin UNA vez tras agotar intentos y sigue probando como mucho cada hora', function () {
     Notification::fake();
+    // La cola no ejecuta el job: la transcripción sigue fallida entre una revisión y otra.
+    Queue::fake();
     $admin = User::factory()->admin()->create();
     $message = $this->chat->messages()->create(['user_id' => $this->ana->id, 'type' => MessageType::Audio]);
     $attachment = $message->attachments()->create([
         'user_id' => $this->ana->id, 'disk' => 'local', 'path' => 'attachments/chat/x.webm',
         'original_name' => 'nota.webm', 'mime' => 'audio/webm', 'size' => 10,
     ]);
-    Storage::disk('local')->put('attachments/chat/x.webm', 'audio');
 
     $transcription = AudioTranscription::query()->create([
         'message_id' => $message->id, 'attachment_id' => $attachment->id,
         'status' => TranscriptionStatus::Failed, 'attempts' => AudioTranscriptions::MAX_ATTEMPTS, 'queued_at' => now()->subHours(2),
     ]);
+    $transcriptions = app(AudioTranscriptions::class);
 
-    $result = app(AudioTranscriptions::class)->requeue();
-
-    expect($result)->toBe(['requeued' => 1, 'notified' => 1])
-        ->and($transcription->fresh()->status)->toBe(TranscriptionStatus::Done)
+    expect($transcriptions->requeue())->toBe(['requeued' => 1, 'notified' => 1])
+        ->and($transcription->fresh()->status)->toBe(TranscriptionStatus::Failed)
         ->and($transcription->fresh()->admin_notified_at)->not->toBeNull();
-    Notification::assertSentTo($admin, TranscriptionsFailing::class);
+    Queue::assertPushed(TranscribeAudioMessage::class, 1);
 
-    expect(app(AudioTranscriptions::class)->requeue())->toBe(['requeued' => 0, 'notified' => 0]);
+    // 20 minutos después sigue fallida: ni otro aviso ni otro intento (como mucho uno por hora).
+    $this->travel(20)->minutes();
+    expect($transcriptions->requeue())->toBe(['requeued' => 0, 'notified' => 0]);
+
+    // Pasada la hora, otro intento, pero sin otro aviso.
+    $this->travel(45)->minutes();
+    expect($transcriptions->requeue())->toBe(['requeued' => 1, 'notified' => 0]);
+
+    Notification::assertSentToTimes($admin, TranscriptionsFailing::class, 1);
+    Queue::assertPushed(TranscribeAudioMessage::class, 2);
 });
 
 it('un fallo del motor deja la transcripción en failed con el error y relanza la excepción', function () {

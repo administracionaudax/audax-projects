@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Domain\Chat\Transcription\TranscriptionService;
 use App\Enums\TranscriptionStatus;
 use App\Events\Chat\AudioTranscribed;
+use App\Http\Controllers\Chat\Media\StoreMediaMessageRequest;
 use App\Models\AudioTranscription;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -61,7 +62,14 @@ final class TranscribeAudioMessage implements ShouldBeUnique, ShouldQueue
         try {
             $attachment = $transcription->attachment;
             $path = Storage::disk($attachment->disk)->path($attachment->path);
-            $result = $engine->transcribe($path, (string) config('services.transcription.language', 'es'));
+            // Como mucho el máximo de los audios (con su margen): un fichero más largo de lo que
+            // declaró el navegador se transcribe solo hasta ahí y /admin/transcripciones lo señala
+            // («Supera el máximo») con la duración real que devuelve el motor (D-116).
+            $result = $engine->transcribe(
+                $path,
+                (string) config('services.transcription.language', 'es'),
+                StoreMediaMessageRequest::maxDurationMs(),
+            );
         } catch (Throwable $e) {
             $transcription->forceFill([
                 'status' => TranscriptionStatus::Failed,
@@ -84,5 +92,21 @@ final class TranscribeAudioMessage implements ShouldBeUnique, ShouldQueue
         ])->save();
 
         AudioTranscribed::dispatch($transcription);
+    }
+
+    /**
+     * Agotados los intentos de este job (también si el worker lo corta por tiempo y la
+     * transcripción se ha quedado «en curso»): queda fallida con su error y la revisión periódica
+     * decide si la vuelve a encolar (AudioTranscriptions::requeue, con su tope).
+     */
+    public function failed(?Throwable $exception): void
+    {
+        AudioTranscription::query()
+            ->whereKey($this->transcriptionId)
+            ->whereIn('status', [TranscriptionStatus::Pending, TranscriptionStatus::Processing])
+            ->update([
+                'status' => TranscriptionStatus::Failed,
+                'last_error' => mb_substr($exception?->getMessage() ?: __('chat_media.transcription.interrupted'), 0, 1000),
+            ]);
     }
 }
