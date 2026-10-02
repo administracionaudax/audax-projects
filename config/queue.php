@@ -68,8 +68,9 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            // Mayor que el timeout de Horizon (120 s) para que un job lento no se ejecute dos veces.
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 180),
+            // Mayor que el timeout más largo de los jobs de esta conexión (la exportación de los
+            // datos personales, 600 s; Horizon, 120 s) para que un job lento no se ejecute dos veces.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 660),
             'block_for' => null,
             'after_commit' => false,
         ],
