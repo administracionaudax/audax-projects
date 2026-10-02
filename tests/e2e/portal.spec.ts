@@ -193,7 +193,10 @@ test('las horas se filtran por mes y el histórico de renovaciones enlaza a la b
                 name: 'Marketing – 1.er semestre',
             }),
         ).toBeVisible();
-        await expect(page.getByText('Renovada').first()).toBeVisible();
+        // La insignia de estado de la cabecera (no el texto de la cadena de renovaciones).
+        await expect(
+            page.locator('[data-test="portal-bank-status"]'),
+        ).toHaveText('Renovada');
     });
 });
 
@@ -207,35 +210,44 @@ test('inicio y detalle: sin violaciones AA en claro y oscuro, y en el móvil (37
         .getAttribute('href');
     const pages = ['/portal', new URL(detailHref ?? '', 'http://x').pathname];
 
-    for (const theme of ['light', 'dark'] as const satisfies readonly Theme[]) {
-        // El login aplica el tema guardado en la cuenta: se fija aquí (F09).
-        await saveUserTheme(page, theme);
+    // El tema guardado vuelve a «system» pase lo que pase: el cliente de ejemplo no se queda en
+    // oscuro para los demás tests.
+    try {
+        for (const theme of [
+            'light',
+            'dark',
+        ] as const satisfies readonly Theme[]) {
+            // El login aplica el tema guardado en la cuenta: se fija aquí (F09).
+            await saveUserTheme(page, theme);
 
+            for (const url of pages) {
+                await test.step(`${theme}: ${url}`, async () => {
+                    await page.goto(url);
+                    await page.waitForLoadState('networkidle');
+                    await expectTheme(page, theme);
+
+                    const results = await new AxeBuilder({ page })
+                        .withTags(WCAG_AA)
+                        .analyze();
+                    expect(
+                        results.violations.map((item) => item.id),
+                        `${url} (${theme})`,
+                    ).toEqual([]);
+                });
+            }
+        }
+
+        await page.setViewportSize({ width: 375, height: 812 });
         for (const url of pages) {
-            await test.step(`${theme}: ${url}`, async () => {
+            await test.step(`375 px: ${url}`, async () => {
                 await page.goto(url);
-                await page.waitForLoadState('networkidle');
-                await expectTheme(page, theme);
-
-                const results = await new AxeBuilder({ page })
-                    .withTags(WCAG_AA)
-                    .analyze();
-                expect(
-                    results.violations.map((item) => item.id),
-                    `${url} (${theme})`,
-                ).toEqual([]);
+                await expect(
+                    page.getByRole('heading', { level: 1 }),
+                ).toBeVisible();
+                await expectNoHorizontalScroll(page, url);
             });
         }
+    } finally {
+        await saveUserTheme(page, 'system');
     }
-
-    await page.setViewportSize({ width: 375, height: 812 });
-    for (const url of pages) {
-        await test.step(`375 px: ${url}`, async () => {
-            await page.goto(url);
-            await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-            await expectNoHorizontalScroll(page, url);
-        });
-    }
-
-    await saveUserTheme(page, 'system');
 });

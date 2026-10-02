@@ -62,7 +62,12 @@ export default function PortalBankShow({
                                 {bank.name}
                             </h1>
                             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                                <HourBankStatusBadge status={bank.status} />
+                                <span
+                                    className="inline-flex"
+                                    data-test="portal-bank-status"
+                                >
+                                    <HourBankStatusBadge status={bank.status} />
+                                </span>
                                 <span>{bankDates(bank)}</span>
                                 {bank.status === 'closed' && bank.closed_at ? (
                                     <span>
