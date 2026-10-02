@@ -49,7 +49,8 @@ use Random\Randomizer;
 use RuntimeException;
 
 /**
- * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes,
+ * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes (dos
+ * con persona en el portal: Bodegas Arrieta, con bolsas, y Construcciones Lamas, sin ellas),
  * 15 proyectos de todos los tipos, bolsas en todos los estados (activa, casi agotada, agotada con
  * exceso, con política block, cerrada y renovada), festivos nacionales, ausencias pasadas y
  * futuras, 12 meses de horas con su flujo de aprobación (aprobadas, enviadas, devueltas,
@@ -399,6 +400,19 @@ class DemoDataSeeder extends Seeder
         $first = $clients['Bodegas Arrieta'] ?? null;
         if ($first !== null) {
             User::query()->where('email', 'cliente@example.com')->update(['client_id' => $first->id]);
+        }
+
+        // Otra persona del portal, de un cliente sin bolsas: su Inicio es el estado vacío grande con
+        // el degradado de marca (SPEC §3.1; lo comprueba el E2E brand-gradient).
+        $lamas = $clients['Construcciones Lamas'] ?? null;
+        if ($lamas !== null) {
+            $portalUser = User::query()->firstOrCreate(['email' => 'cliente.lamas@example.com'], [
+                'name' => 'Rosa Lamas',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]);
+            $portalUser->forceFill(['client_id' => $lamas->id])->save();
+            $portalUser->syncRoles([Role::Client->value]);
         }
 
         return $clients;

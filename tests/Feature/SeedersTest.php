@@ -28,11 +28,17 @@ test('el seeder de desarrollo crea las cuentas de los E2E, el responsable de Dis
     expect(User::role(Role::Admin->value)->count())->toBe(1)
         ->and(User::role(Role::DepartmentManager->value)->count())->toBe(3)
         ->and(User::role(Role::Employee->value)->count())->toBe(6)
-        ->and(User::role(Role::Client->value)->count())->toBe(1);
+        ->and(User::role(Role::Client->value)->count())->toBe(2);
 
-    foreach (['admin@example.com', 'responsable@example.com', 'empleado@example.com', 'cliente@example.com'] as $email) {
+    foreach (['admin@example.com', 'responsable@example.com', 'empleado@example.com', 'cliente@example.com', 'cliente.lamas@example.com'] as $email) {
         expect(User::query()->where('email', $email)->exists())->toBeTrue();
     }
+
+    // La persona del portal de un cliente sin bolsas (E2E brand-gradient: estado vacío grande).
+    $withoutBanks = User::query()->where('email', 'cliente.lamas@example.com')->sole();
+    expect($withoutBanks->client_id)->not->toBeNull()
+        ->and($withoutBanks->hasRole(Role::Client->value))->toBeTrue()
+        ->and(HourBank::query()->whereHas('project', fn ($query) => $query->where('client_id', $withoutBanks->client_id))->exists())->toBeFalse();
 
     $manager = User::query()->where('email', 'responsable@example.com')->sole();
 
@@ -134,7 +140,7 @@ test('el seeder de desarrollo es repetible', function () {
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
-    expect(User::query()->count())->toBe(11)
+    expect(User::query()->count())->toBe(12)
         ->and(Department::query()->count())->toBe(3)
         ->and(Project::query()->count())->toBe(15);
 });
