@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -289,6 +289,36 @@ describe('página del Gantt en el portal', () => {
             within(dialog).getByRole('button', { name: 'Cerrar' }),
         );
         expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('al cerrar el diálogo con Escape, el foco vuelve a la fila de la tabla que lo abrió', async () => {
+        const user = userEvent.setup();
+        render(<PortalProjectGantt {...props} />);
+
+        await user.click(screen.getByRole('radio', { name: 'Tabla' }));
+        const row = screen.getByRole('button', { name: 'Lanzamiento' });
+        await user.click(row);
+        await screen.findByRole('dialog', { name: 'Lanzamiento' });
+
+        await user.keyboard('{Escape}');
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        await waitFor(() => expect(document.activeElement).toBe(row));
+    });
+
+    it('y a la entrada de «Sin fechas» que lo abrió (también con el teclado)', async () => {
+        const user = userEvent.setup();
+        render(<PortalProjectGantt {...props} />);
+
+        const loose = screen.getByRole('button', { name: 'Textos sin fecha' });
+        loose.focus();
+        await user.keyboard('{Enter}');
+        await screen.findByRole('dialog', { name: 'Textos sin fecha' });
+
+        await user.keyboard('{Escape}');
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        await waitFor(() => expect(document.activeElement).toBe(loose));
     });
 
     it('sin tareas, un estado vacío', () => {

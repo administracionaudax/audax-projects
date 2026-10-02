@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { CalendarX2, ChartGantt } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import type { GanttTask } from '@/components/gantt/types';
 import { GanttView } from '@/components/gantt/gantt-view';
@@ -15,7 +15,7 @@ import { gantt, index, show } from '@/routes/portal/projects';
  * Gantt de solo lectura del portal (/portal/proyectos/{proyecto}/gantt, SPEC §11, D-060, D-064): el
  * componente de la Fase 4 con `readOnly` y `hideAssignees` (barras, hitos en rombo, dependencias,
  * escalas y su tabla accesible), sin arrastrar, sin menú de edición, sin responsables ni horas. Una
- * tarea se abre en un diálogo de solo lectura.
+ * tarea se abre en un diálogo de solo lectura; al cerrarlo, el foco vuelve a donde estaba.
  */
 export default function PortalProjectGantt({
     project,
@@ -29,6 +29,9 @@ export default function PortalProjectGantt({
 }: PortalProjectGanttProps) {
     const [selected, setSelected] = useState<GanttTask | null>(null);
     const [open, setOpen] = useState(false);
+    // El diálogo se abre sin DialogTrigger: al cerrarlo, el foco vuelve a la barra, la fila de la
+    // tabla o la entrada de «Sin fechas» que lo abrió (y no se queda en <body>).
+    const opener = useRef<HTMLElement | null>(null);
 
     return (
         <>
@@ -86,6 +89,11 @@ export default function PortalProjectGantt({
                             hideAssignees
                             showUnscheduled
                             onOpenTask={(task) => {
+                                opener.current =
+                                    document.activeElement instanceof
+                                    HTMLElement
+                                        ? document.activeElement
+                                        : null;
                                 setSelected(task);
                                 setOpen(true);
                             }}
@@ -109,6 +117,15 @@ export default function PortalProjectGantt({
                 tasks={tasks}
                 dependencies={dependencies}
                 onOpenChange={setOpen}
+                onCloseAutoFocus={(event) => {
+                    const target = opener.current;
+                    opener.current = null;
+
+                    if (target?.isConnected) {
+                        event.preventDefault();
+                        target.focus();
+                    }
+                }}
             />
         </>
     );
