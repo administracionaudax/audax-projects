@@ -15,7 +15,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 0. Fundaciones | ✅ **Cerrada el 26/09/2026** (etiqueta `fase-0-cerrada`) |
 | 1. Núcleo | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-1-cerrada`) |
 | 2. Informes | ✅ **Cerrada el 27/09/2026** (etiqueta `fase-2-cerrada`) |
-| 3. Carga | En curso (rama `fase-3`): `docs/PLAN-FASE-3.md` |
+| 3. Carga | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-3-cerrada`) |
 | 4. Gantt | En curso (rama `fase-4`): `docs/PLAN-FASE-4.md` |
 | 5. Portal | En curso (rama `fase-5`) |
 | 6. Chat | En curso (rama `fase-6`) |

@@ -65,8 +65,15 @@ _Última actualización: 27/09/2026 02:20_
 - **Tests:** 1717 de Pest en local y **1717 en PostgreSQL 18 en el servidor**, incluidos los de rendimiento de los dashboards (< 1 s); 637 de Vitest; **290 E2E** con Playwright y axe; CI en verde.
 - ✅ **FASE 2 CERRADA el 27/09/2026** (etiqueta `fase-2-cerrada`).
 
+### Fase 3: carga (rama `fase-3`, desplegada el 02/10)
+- **Capacidad real:** festivos con importación anual, ausencias con su aprobación, y capacidad que las descuenta en horas, informes y carga (D-049 a D-052).
+- **Vista Carga:** personas × días o semanas, con celdas de semáforo, panel de la celda y reasignación, y bandejas «Sin planificar», «Sin asignar» y «De tus proyectos».
+- **Carga futura** en el informe de departamento y en Inicio.
+- **Revisión global:** 8 hallazgos corregidos con sus tests (D-088 y D-091), entre ellos el tipo de ausencia oculto a quien no supervisa (RGPD).
+- **Tests:** 1996 en PostgreSQL 18 en el servidor; 338 E2E con Playwright y axe; CI en verde.
+- ✅ **FASE 3 CERRADA el 02/10/2026** (etiqueta `fase-3-cerrada`).
+
 ## En curso (modo autónomo, D-027)
-- **Fase 3 (carga):** integrada, revisada y corregida (D-088 y D-091), con la Fase 2 ya fusionada. Falta la carga futura en el informe de departamento, E2E, despliegue y cierre.
 - **Fase 4 (Gantt):** integrada; corrigiendo los hallazgos de la revisión global.
 - **Fase 5 (portal):** integrada; en revisión global.
 - **Fase 6 (chat):** tres agentes implementando. El contenedor de transcripción ya está en el servidor.
