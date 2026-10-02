@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $project_id
  * @property int|null $hour_bank_id
  * @property int|null $parent_task_id
+ * @property int|null $recurring_task_rule_id
+ * @property CarbonImmutable|null $occurrence_date
  * @property string $title
  * @property string|null $description
  * @property int|null $task_type_id
@@ -62,6 +64,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'project_id',
     'hour_bank_id',
     'parent_task_id',
+    'recurring_task_rule_id',
+    'occurrence_date',
     'title',
     'description',
     'task_type_id',
@@ -105,6 +109,7 @@ class Task extends Model
             'is_milestone' => 'boolean',
             'position' => 'integer',
             'completed_at' => 'datetime',
+            'occurrence_date' => 'date:Y-m-d',
         ];
     }
 
@@ -223,6 +228,26 @@ class Task extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /**
+     * Dependencias en las que esta tarea es la sucesora (sus predecesoras).
+     *
+     * @return HasMany<TaskDependency, $this>
+     */
+    public function predecessorLinks(): HasMany
+    {
+        return $this->hasMany(TaskDependency::class, 'successor_task_id');
+    }
+
+    /**
+     * Dependencias en las que esta tarea es la predecesora (sus sucesoras).
+     *
+     * @return HasMany<TaskDependency, $this>
+     */
+    public function successorLinks(): HasMany
+    {
+        return $this->hasMany(TaskDependency::class, 'predecessor_task_id');
     }
 
     /**

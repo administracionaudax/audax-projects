@@ -17,7 +17,7 @@
     "admin.areas.departments.title": "Departamentos",
     "admin.areas.holidays.description": "Calendario de festivos con importación anual y gestión de ausencias.",
     "admin.areas.holidays.title": "Festivos y ausencias",
-    "admin.areas.identity.description": "Nombre de la empresa, logotipo y colores del portal y de los PDF.",
+    "admin.areas.identity.description": "Nombre y logo de la empresa para el portal de clientes, los emails y los PDF.",
     "admin.areas.identity.title": "Identidad",
     "admin.areas.settings.description": "Alertas, redondeo del temporizador, aprobación de horas, adjuntos y exceso en bolsas.",
     "admin.areas.settings.title": "Ajustes y umbrales",

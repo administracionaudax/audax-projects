@@ -28,6 +28,9 @@ class HourBankAlert extends Model
 
     public const string KIND_OVERAGE = 'overage';
 
+    /** Aviso al cliente por email al 90 % y al 100 % de lo que ve en el portal (D-065). */
+    public const string KIND_CLIENT_THRESHOLD = 'client_threshold';
+
     /**
      * @return array<string, string>
      */

@@ -2,10 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Time\Capacity;
+use App\Enums\AbsenceStatus;
+use App\Enums\AbsenceType;
 use App\Enums\BillingType;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
@@ -18,9 +21,11 @@ use App\Enums\TimesheetStatus;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
+use App\Models\Absence;
 use App\Models\Client;
 use App\Models\Conversation;
 use App\Models\Department;
+use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Message;
 use App\Models\Project;
@@ -34,6 +39,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -45,10 +51,11 @@ use RuntimeException;
 /**
  * Datos de ejemplo realistas (SPEC §15): 3 departamentos, 10 personas internas, 8 clientes,
  * 15 proyectos de todos los tipos, bolsas en todos los estados (activa, casi agotada, agotada con
- * exceso, con política block, cerrada y renovada) y 12 meses de horas con su flujo de aprobación
- * (aprobadas, enviadas, devueltas, bloqueadas al facturar y borradores de esta semana), y chat
- * (Fase 6): conversaciones de proyecto, dos directas y un grupo, con menciones, @todos, una
- * reacción, un hilo y un mensaje fijado (sin audios ni adjuntos).
+ * exceso, con política block, cerrada y renovada), festivos nacionales, ausencias pasadas y
+ * futuras, 12 meses de horas con su flujo de aprobación (aprobadas, enviadas, devueltas,
+ * bloqueadas al facturar y borradores de esta semana), y chat (Fase 6): conversaciones de
+ * proyecto, dos directas y un grupo, con menciones, @todos, una reacción, un hilo y un mensaje
+ * fijado (sin audios ni adjuntos). Nadie imputa en un día sin capacidad.
  *
  * SOLO local, testing y CI (nunca en el servidor, D-018). Determinista (semilla fija) y relativo a
  * hoy, para que los dashboards tengan siempre datos recientes. Se ejecuta una sola vez: si ya hay
@@ -153,6 +160,17 @@ class DemoDataSeeder extends Seeder
             $internal = $this->internalProject();
             $projects[] = $internal;
 
+            // Portal (Fase 5, D-064): el cliente de cliente@example.com ve ARR-WEB (tareas, horas por
+            // tarea y Gantt); ARR-MKT sigue cerrado al portal.
+            Project::query()->where('code', 'ARR-WEB')->update([
+                'portal_project_visible' => true,
+                'portal_show_task_hours' => true,
+                'portal_gantt_visible' => true,
+            ]);
+
+            // Antes que las horas: los festivos y las ausencias aprobadas dejan esos días sin
+            // capacidad (Capacity), así que nadie imputa en ellos (SPEC §9 y §15).
+            $this->holidaysAndAbsences();
             $this->timeEntries($projects, $internal);
             $this->sizeBanks($projects);
             $this->approvalWorkflow();
@@ -160,9 +178,119 @@ class DemoDataSeeder extends Seeder
                 $this->lockInvoicedHours($clients['Hoteles Mirador']);
             }
             $this->comments($projects);
+            $this->overloadedDay($projects);
         });
 
         $this->chat();
+    }
+
+    /**
+     * Fase 3 (SPEC §15): festivos nacionales del año pasado, este y el que viene, y ausencias de
+     * ejemplo para que Carga, Inicio y los informes enseñen capacidad reducida desde el primer día:
+     * - pasadas y aprobadas (en los 12 meses de horas): una semana de vacaciones de Lucía y otra de
+     *   Sergio, un día de formación de Irene, una baja de dos días de Daniel y medio día de permiso
+     *   de Pablo,
+     * - en las próximas semanas: las vacaciones de Elena (la semana que viene), la formación de
+     *   Pablo, medio día de Irene y una solicitud pendiente de Lucía (los E2E cuentan con ellas).
+     */
+    private function holidaysAndAbsences(): void
+    {
+        $national = new SpanishNationalHolidays;
+        foreach ([$this->today->year - 1, $this->today->year, $this->today->year + 1] as $year) {
+            foreach ($national->forYear($year) as $holiday) {
+                Holiday::query()->firstOrCreate(['date' => $holiday['date']], ['name' => $holiday['name'], 'scope' => 'company']);
+            }
+        }
+
+        $thisWeek = $this->today->startOfWeek();
+        $monday = $thisWeek->addWeek();
+        $absences = [
+            // Pasadas, aprobadas por su responsable una semana antes de empezar.
+            ['sergio', AbsenceType::Vacation, $thisWeek->subWeeks(20), $thisWeek->subWeeks(20)->addDays(4), null, AbsenceStatus::Approved, 'marta'],
+            ['lucia', AbsenceType::Vacation, $thisWeek->subWeeks(10), $thisWeek->subWeeks(10)->addDays(4), null, AbsenceStatus::Approved, 'raul'],
+            ['irene', AbsenceType::Training, $thisWeek->subWeeks(6)->addDays(2), $thisWeek->subWeeks(6)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['daniel', AbsenceType::Sick, $thisWeek->subWeeks(4)->addDays(1), $thisWeek->subWeeks(4)->addDays(2), null, AbsenceStatus::Approved, 'nuria'],
+            ['pablo', AbsenceType::Leave, $thisWeek->subWeeks(3)->addDays(3), $thisWeek->subWeeks(3)->addDays(3), 240, AbsenceStatus::Approved, 'marta'],
+            // Semana que viene: vacaciones de Elena (Diseño), ya aprobadas por Raúl.
+            ['elena', AbsenceType::Vacation, $monday->addDays(1), $monday->addDays(3), null, AbsenceStatus::Approved, 'raul'],
+            // Dentro de dos semanas: formación de Pablo (Desarrollo), aprobada por Marta.
+            ['pablo', AbsenceType::Training, $monday->addWeek(), $monday->addWeek(), null, AbsenceStatus::Approved, 'marta'],
+            // Medio día de Irene (Marketing), aprobado.
+            ['irene', AbsenceType::Leave, $monday->addDays(4), $monday->addDays(4), 240, AbsenceStatus::Approved, 'nuria'],
+            // Solicitud pendiente de Lucía (Diseño): Raúl la ve en «Ausencias del equipo».
+            ['lucia', AbsenceType::Vacation, $monday->addWeeks(3), $monday->addWeeks(3)->addDays(4), null, AbsenceStatus::Requested, null],
+        ];
+
+        foreach ($absences as [$who, $type, $from, $to, $partial, $status, $approver]) {
+            $reviewer = is_string($approver) ? $this->people[$approver] : null;
+            // Las pasadas se pidieron y aprobaron antes de empezar; las futuras, ayer.
+            $reviewed = $from < $this->today ? $from->subWeek()->setTime(10, 0) : $this->today->subDay();
+
+            $absence = new Absence([
+                'user_id' => $this->people[$who]->id,
+                'type' => $type,
+                'start_date' => $from->toDateString(),
+                'end_date' => $to->toDateString(),
+                'partial_minutes' => $partial,
+                'status' => $status,
+                'approved_by' => $reviewer?->id,
+                'reviewed_at' => $reviewer === null ? null : $reviewed,
+            ]);
+            if ($from < $this->today) {
+                $absence->created_at = $reviewed->subDay();
+                $absence->updated_at = $reviewed;
+            }
+            $absence->save();
+        }
+    }
+
+    /**
+     * Un día sobrecargado seguro, para el E2E de la vista Carga (reasignar desde la celda de una
+     * persona sobrecargada): Lucía tiene en «MIR-WEB · Rediseño web» una tarea de 16 h que empieza
+     * y se entrega el primer día laborable de la semana que viene (sin festivo), además de la carga
+     * que le toque al azar. Se crea después de las horas, así que no tiene nada imputado.
+     *
+     * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
+     */
+    private function overloadedDay(array $projects): void
+    {
+        $data = null;
+        foreach ($projects as $candidate) {
+            if ($candidate['project']->code === 'MIR-WEB') {
+                $data = $candidate;
+            }
+        }
+
+        if ($data === null || $data['banks'] === []) {
+            return;
+        }
+
+        $holidays = Holiday::query()->pluck('date')->map(fn (CarbonInterface $date): string => $date->toDateString())->all();
+        $day = $this->today->startOfWeek()->addWeek();
+        while ($day->isWeekend() || in_array($day->toDateString(), $holidays, true)) {
+            $day = $day->addDay();
+        }
+
+        $project = $data['project'];
+        $lucia = $this->people['lucia'];
+
+        /** @var Task $task */
+        $task = Task::withoutEvents(fn () => Task::query()->forceCreate([
+            'project_id' => $project->id,
+            'hour_bank_id' => end($data['banks'])['bank']->id,
+            'title' => 'Maquetas para la feria de turismo',
+            'task_type_id' => $this->types['Diseño UI']->id,
+            'status_id' => $this->statuses['todo'],
+            'priority' => TaskPriority::High->value,
+            'assignee_user_id' => $lucia->id,
+            'start_date' => $day->toDateString(),
+            'due_date' => $day->toDateString(),
+            'estimated_minutes' => 16 * 60,
+            'is_billable' => true,
+            'position' => 999,
+            'created_by' => $project->owner_user_id,
+        ]));
+        $task->watchers()->syncWithoutDetaching(array_unique([$lucia->id, $project->owner_user_id]));
     }
 
     private function taskTypes(): void
@@ -453,9 +581,11 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * 12 meses de horas: cada día laborable, cada persona imputa casi su jornada repartida entre
-     * 2 y 4 tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un
-     * 10 % a reuniones internas y dos semanas de vacaciones en verano.
+     * 12 meses de horas: cada día con capacidad (Capacity, que ya descuenta los festivos y las
+     * ausencias aprobadas: nadie imputa en un festivo ni en un día de vacaciones, y con medio día
+     * de permiso se imputa la mitad), cada persona imputa casi su jornada repartida entre 2 y 4
+     * tareas de proyectos donde puede imputar (miembro y departamento de la bolsa), con un 10 % a
+     * reuniones internas y dos semanas sin imputar en verano.
      *
      * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
      * @param  array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}  $internal

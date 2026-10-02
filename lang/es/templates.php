@@ -1,0 +1,152 @@
+<?php
+
+/*
+| Plantillas de proyecto (D-058) y tareas recurrentes (D-059), Fase 4. Se usan con
+| __('templates.…'). Los textos de la interfaz React están en lang/ui/templates.json.
+*/
+
+return [
+    'copy_of' => 'Copia de :name',
+
+    'flash' => [
+        'created' => 'Plantilla «:name» creada.',
+        'updated' => 'Plantilla «:name» guardada.',
+        'activated' => 'Plantilla «:name» activada: ya se puede aplicar.',
+        'deactivated' => 'Plantilla «:name» desactivada: ya no se ofrece al crear proyectos.',
+        'deleted' => 'Plantilla «:name» enviada a la papelera.',
+        'restored' => 'Plantilla «:name» recuperada de la papelera.',
+        'imported' => 'Plantilla «:name» importada con :count tareas.',
+        'captured' => 'Plantilla «:name» guardada con :count tareas.',
+        'applied' => '{0} La plantilla no tenía tareas nuevas.|{1} Se ha creado 1 tarea de la plantilla «:name».|[2,*] Se han creado :count tareas de la plantilla «:name».',
+        'project_created' => '{1} Proyecto creado con 1 tarea de la plantilla «:name».|[2,*] Proyecto creado con :count tareas de la plantilla «:name».',
+        'rule_created' => 'Tarea recurrente «:title» creada.',
+        'rule_created_now' => 'Tarea recurrente «:title» creada. Hoy toca: ya está creada la tarea de hoy.',
+        'rule_updated' => 'Tarea recurrente «:title» guardada.',
+        'rule_updated_now' => 'Tarea recurrente «:title» guardada. Hoy toca: ya está creada la tarea de hoy.',
+        'rule_activated' => 'Tarea recurrente «:title» activada.',
+        'rule_activated_now' => 'Tarea recurrente «:title» activada. Hoy toca: ya está creada la tarea de hoy.',
+        'rule_deactivated' => 'Tarea recurrente «:title» desactivada: no se crearán más tareas.',
+        'rule_deleted' => 'Tarea recurrente «:title» eliminada. Las tareas ya creadas se conservan.',
+    ],
+
+    'errors' => [
+        'task_title' => 'Escribe el título de la tarea.',
+        'task_ref' => 'Cada tarea necesita una referencia única.',
+        'parent_missing' => 'La tarea de la que cuelga ya no está en la plantilla.',
+        'parent_self' => 'Una tarea no puede ser subtarea de sí misma.',
+        'parent_nested' => 'Solo hay un nivel de subtareas: elige una tarea de primer nivel.',
+        'dependency_missing' => 'Depende de una tarea que ya no está en la plantilla.',
+        'dependency_self' => 'Una tarea no puede depender de sí misma.',
+        'dependency_cycle' => 'Estas dependencias forman un ciclo: una tarea acabaría dependiendo de sí misma.',
+        'tasks_count' => 'La plantilla necesita entre 1 y :max tareas.',
+        'dependencies_count' => 'La plantilla admite como mucho :max dependencias.',
+        // Estructura que no vale al normalizarla (ProjectTemplateService::normalize): al capturar un
+        // proyecto, al aplicar una plantilla guardada y como red de seguridad tras la validación.
+        'structure_task' => 'Cada tarea de la plantilla necesita una referencia única y un título.',
+        'structure_parent' => 'Las subtareas deben colgar de una tarea de primer nivel de la plantilla.',
+        'structure_dependency' => 'Hay dependencias con referencias que no existen en la plantilla.',
+        'structure_cycle' => 'Las dependencias de la plantilla forman un ciclo.',
+        'type_invalid' => 'Elige un tipo de tarea activo.',
+        'estimate_range' => 'La estimación va de 0:01 a :max.',
+        'offset_range' => 'El inicio va del día 0 al :max.',
+        'duration_range' => 'La duración va de 1 a :max días.',
+        'import_json' => 'El fichero no es un JSON válido.',
+        'import_invalid' => 'El fichero no tiene una plantilla válida: :reason',
+        'template_unavailable' => 'Esa plantilla ya no está disponible. Elige otra.',
+        'project_archived' => 'El proyecto está archivado: recupéralo antes de añadirle tareas.',
+        'bank_required' => 'Elige la bolsa a la que irán las tareas de la plantilla.',
+        'bank_invalid' => 'Elige una bolsa abierta de este proyecto.',
+        'capture_empty' => 'El proyecto no tiene tareas que guardar como plantilla.',
+        'capture_span' => 'No se puede guardar como plantilla: sus fechas van del :from (:from_name) al :to (:to_name), más de :max días. Revisa esas fechas y vuelve a intentarlo.',
+        'capture_span_project' => 'inicio del proyecto',
+        'capture_span_task' => '«:title»',
+        'ref_format' => 'El campo :attribute solo puede llevar letras, números, puntos, guiones y guiones bajos, y debe empezar por una letra o un número.',
+        'rule_assignee' => 'Elige a un miembro activo del proyecto.',
+        'rule_bank_required' => 'En un proyecto de bolsas, elige la bolsa de las tareas.',
+        'rule_bank_invalid' => 'Elige una bolsa abierta de este proyecto.',
+        'rule_bank_closed' => 'La bolsa «:bank» ya no admite tareas: edita la regla y elige una bolsa abierta.',
+        'rule_project_archived' => 'El proyecto está archivado: no puede tener tareas recurrentes activas.',
+        'rule_weekday' => 'Elige un día de la semana.',
+        'rule_month_day' => 'Elige un día del mes entre el 1 y el 31.',
+        'rule_interval' => 'La repetición va de 1 a 12.',
+        'rule_due_offset' => 'El vencimiento va de 0 a :max días.',
+        'rule_ends_before' => 'La fecha final no puede ser anterior a la de inicio.',
+        'rule_date_range' => 'Elige una fecha entre el :min y el :max.',
+    ],
+
+    'attributes' => [
+        'name' => 'nombre',
+        'description' => 'descripción',
+        'is_active' => 'activa',
+        'file' => 'fichero',
+        'template_id' => 'plantilla',
+        'template_start' => 'inicio de la plantilla',
+        'start_date' => 'fecha de inicio',
+        'hour_bank_id' => 'bolsa',
+        'structure' => 'estructura',
+        'tasks' => 'tareas',
+        'task' => 'tarea',
+        'ref' => 'referencia',
+        'parent_ref' => 'tarea de la que cuelga',
+        'is_milestone' => 'hito',
+        'start_offset_days' => 'día de inicio',
+        'duration_days' => 'duración en días',
+        'dependencies' => 'dependencias',
+        'dependency' => 'dependencia',
+        'from_ref' => 'tarea de la que depende',
+        'to_ref' => 'tarea que depende',
+        'title' => 'título',
+        'task_type_id' => 'tipo',
+        'assignee_user_id' => 'responsable',
+        'estimated_minutes' => 'estimación',
+        'priority' => 'prioridad',
+        'frequency' => 'frecuencia',
+        'interval' => 'repetición',
+        'weekday' => 'día de la semana',
+        'month_day' => 'día del mes',
+        'due_offset_days' => 'vencimiento',
+        'starts_on' => 'desde',
+        'ends_on' => 'hasta',
+    ],
+
+    /*
+    | Frase legible de una regla recurrente («Cada 2 semanas, los lunes»). Gemela de
+    | resources/js/components/recurring/recurrence.ts.
+    */
+    'recurrence' => [
+        'every_week' => 'Cada semana',
+        'every_n_weeks' => 'Cada :count semanas',
+        'every_month' => 'Cada mes',
+        'every_n_months' => 'Cada :count meses',
+        'weekly' => ':every, los :day',
+        'monthly' => ':every, el día :day',
+        'monthly_last' => ':every, el día :day (o el último)',
+        'weekdays' => [
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábados',
+            7 => 'domingos',
+        ],
+    ],
+
+    'warnings' => [
+        'bank_closed' => 'La bolsa «:bank» ya no admite tareas: no se crearán hasta que elijas otra.',
+        'assignee_inactive' => ':name está de baja: las tareas se crearán sin responsable.',
+        'project_archived' => 'El proyecto está archivado: no se crean tareas.',
+        'ended' => 'La regla terminó el :date.',
+    ],
+
+    'export' => [
+        'filename' => 'plantilla-:slug.json',
+    ],
+
+    'import' => [
+        'copy_suffix' => ':name (:n)',
+        'row' => 'tarea :row: :message',
+        'dependency_row' => 'dependencia :row: :message',
+        'fallback_name' => 'Plantilla importada',
+    ],
+];

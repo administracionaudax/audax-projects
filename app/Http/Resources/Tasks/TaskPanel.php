@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Tasks;
 
+use App\Domain\Planning\TaskDependencyList;
 use App\Domain\Tasks\TaskActivityFeed;
 use App\Http\Resources\TaskResource;
 use App\Http\Resources\TimeEntryResource;
@@ -20,13 +21,17 @@ use Illuminate\Support\Facades\Gate;
  * Datos del panel lateral de una tarea (contrato: resources/js/types/tasks.ts, TaskPanelData).
  * Se carga con una recarga parcial de Inertia (prop `panel`) al abrir ?tarea={id}.
  *
- * Las horas son solo las que quien mira puede ver (TimeEntry::visibleTo, D-021).
+ * Las horas son solo las que quien mira puede ver (TimeEntry::visibleTo, D-021). Las dependencias
+ * (predecesoras y sucesoras, con su conflicto) llegan en la Fase 4 (D-062, TaskDependencyList).
  */
 final class TaskPanel
 {
     public const int TIME_ENTRIES_LIMIT = 50;
 
-    public function __construct(private readonly TaskActivityFeed $activity) {}
+    public function __construct(
+        private readonly TaskActivityFeed $activity,
+        private readonly TaskDependencyList $dependencies,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -89,6 +94,7 @@ final class TaskPanel
             'has_time' => (int) ($task->time_entries_sum_minutes ?? 0) > 0
                 || ($subtaskIds !== [] && TimeEntry::query()->whereIn('task_id', $subtaskIds)->exists()),
             'activity' => $this->activity->for($task),
+            'dependencies' => $this->dependencies->for($task),
             'reaction_emojis' => CommentReaction::EMOJIS,
             'delete_blocked' => $blocked,
             'source_message' => $this->sourceMessage($task, $viewer),

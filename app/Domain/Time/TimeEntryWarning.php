@@ -14,6 +14,9 @@ final readonly class TimeEntryWarning
 
     public const string OVERAGE = 'overage';
 
+    /** Día con una ausencia aprobada de la persona (SPEC §7, D-049). Añadido por la Fase 3. */
+    public const string ABSENCE = 'absence';
+
     public function __construct(
         public string $code,
         public string $message,

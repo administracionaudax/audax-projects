@@ -11,6 +11,8 @@ import type {
     UserSummary,
 } from './domain';
 import type { HourBankCard } from './hour-banks';
+import type { ProjectMilestones } from './planning';
+import type { TemplateOption } from './templates';
 
 /** App\Http\Resources\Projects\Paginated: una página de resultados. */
 export type ProjectsPaginated<T> = {
@@ -76,6 +78,11 @@ export type ProjectCreateProps = {
         status: ProjectStatus;
         billing_type: BillingType;
     };
+    /** «Desde plantilla» (Fase 4, D-058): plantillas activas. */
+    templates?: TemplateOption[];
+    /** Para la primera bolsa de un proyecto de bolsas creado desde plantilla. */
+    departments?: Option[];
+    overageDefault?: 'allow' | 'block';
 };
 
 /** App\Domain\Projects\ProjectSummary. */
@@ -106,6 +113,8 @@ export type ProjectShowProps = {
     /** Bolsas abiertas (solo en proyectos de bolsas). */
     hourBanks: HourBankCard[];
     activity: ProjectActivityItem[];
+    /** Próximos hitos (D-062): vencidos y los 5 siguientes. */
+    milestones: ProjectMilestones;
 };
 
 export type ProjectSettingsProps = {

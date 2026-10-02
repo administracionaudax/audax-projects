@@ -1,0 +1,118 @@
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
+
+export type FilterOption = { id: number; name: string; muted?: boolean };
+
+/**
+ * Selector múltiple accesible (combobox con búsqueda) para la barra de filtros de los informes.
+ */
+export function MultiSelectFilter({
+    label,
+    options,
+    value,
+    onChange,
+    disabled,
+}: {
+    label: string;
+    options: FilterOption[];
+    value: number[];
+    onChange: (ids: number[]) => void;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const selected = options.filter((option) => value.includes(option.id));
+    const summary =
+        selected.length === 0
+            ? t('reports.filters.all')
+            : selected.length === 1
+              ? selected[0].name
+              : t('reports.filters.selected', { count: selected.length });
+
+    const toggle = (id: number) =>
+        onChange(
+            value.includes(id)
+                ? value.filter((item) => item !== id)
+                : [...value, id].sort((a, b) => a - b),
+        );
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    aria-label={`${label}: ${summary}`}
+                    disabled={disabled}
+                    className="h-9 min-w-0 justify-between gap-2 font-normal"
+                >
+                    <span className="truncate">
+                        <span className="text-muted-foreground">{label}:</span>{' '}
+                        {summary}
+                    </span>
+                    <ChevronsUpDown aria-hidden="true" className="opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-0" align="start">
+                <Command>
+                    <CommandInput placeholder={t('reports.filters.search')} />
+                    <CommandList>
+                        <CommandEmpty>
+                            {t('reports.filters.none_found')}
+                        </CommandEmpty>
+                        <CommandGroup>
+                            {options.map((option) => {
+                                const checked = value.includes(option.id);
+
+                                return (
+                                    <CommandItem
+                                        key={option.id}
+                                        value={`${option.name} ${option.id}`}
+                                        onSelect={() => toggle(option.id)}
+                                        aria-selected={checked}
+                                    >
+                                        <Check
+                                            aria-hidden="true"
+                                            className={cn(
+                                                'size-4',
+                                                checked
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0',
+                                            )}
+                                        />
+                                        <span
+                                            className={cn(
+                                                'truncate',
+                                                option.muted &&
+                                                    'text-muted-foreground',
+                                            )}
+                                        >
+                                            {option.name}
+                                        </span>
+                                    </CommandItem>
+                                );
+                            })}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}

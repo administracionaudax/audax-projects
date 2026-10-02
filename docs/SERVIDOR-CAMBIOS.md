@@ -50,6 +50,24 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 | 27/09 02:05 | Prueba de subida de 50 MB **desde el Mac** (`curl -F files[]=@…` de 1 MB y de 50 MB contra `/tareas/1/adjuntos` sin sesión) | Plan de la Fase 1: comprobar que nginx, ModSecurity, Apache y PHP admiten adjuntos de 50 MB | Las dos llegan a Laravel (419 por falta de token CSRF, no 413 del proxy ni de PHP): los límites del dominio bastan y **no hace falta tocar nada**. 50 MB tardan unos 70 s con la subida de la oficina | No aplica (nada guardado) |
 | 27/09 02:13 | Despliegue de la corrección de aislamiento (`desplegar-dev.sh --sin-build`): `active`, `internal` y `portal` se ejecutan antes que la búsqueda de modelos de la URL | Un cliente distinguía un id existente (redirección) de uno inexistente (404) | `/proyectos/999999` sin sesión → 302 a `/login`; `/health` ok. **35/35 webs iguales** | Volver a desplegar el commit anterior |
 
+### Fase 2 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 27/09 17:33–17:58 | Despliegue de la Fase 2 integrada y corregida (`scripts/desplegar-dev.sh --tests` desde `fase-2`, 89a4664, usuario `audaxprojects`, sin root): informes, exportaciones, PDF de bolsa y caché de informes; `composer install` por las dependencias nuevas; sin migraciones | Cierre de la Fase 2 | **1717/1717 tests en PostgreSQL 18** (incluidos los de rendimiento de los dashboards, < 1 s). `/login` 200 y `/health` ok. Batería V (T0 17:32:52): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. **35/35 webs iguales** | Volver a desplegar `fase-1-cerrada` |
+
+### Fase 3 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 02/10 20:35–21:22 | Despliegue de la Fase 3 (`scripts/desplegar-dev.sh --tests` desde `fase-3`, usuario `audaxprojects`, sin root): festivos, ausencias, capacidad real y vista Carga; migraciones `holidays` y `absences`. Los tests se cortaron a los 20 min (límite del script) y se repitieron con `heavy.sh timeout 45m` | Cierre de la Fase 3 | Migraciones correctas. **1996/1996 tests en PostgreSQL 18** (21 min). `/login` 200 y `/health` ok. Batería V (T0 20:35:24): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. Webs: **33/35 iguales**; las 2 distintas (`beevo.endesarrollo.pro` y `staging.vitatrendy.com`) están **suspendidas en Plesk** (por el administrador y por el cliente, respectivamente) y sirven el certificado genérico del servidor: ajeno a la app, no se toca | Volver a desplegar `fase-2-cerrada` y `migrate:rollback --step=2` |
+
+### Fase 4 (modo autónomo, D-027)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 02/10 21:18–21:45 | Despliegue de la Fase 4 (`scripts/desplegar-dev.sh --tests` desde `fase-4`, usuario `audaxprojects`, sin root): dependencias, Gantt, calendario, plantillas y tareas recurrentes; migraciones `task_dependencies`, `project_templates` y `recurring_task_rules` | Cierre de la Fase 4 | **2321/2321 tests en PostgreSQL 18** (25 min). `/login` 200 y `/health` ok. Batería V (T0 21:18:21): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. Webs: **33/35 iguales**; las 2 distintas siguen siendo las suspendidas en Plesk (ver la Fase 3) | Volver a desplegar `fase-3-cerrada` y `migrate:rollback --step=3` |
+
 ### Fase 6 (modo autónomo, D-027)
 
 | Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
@@ -59,6 +77,5 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 | 27/09 06:53–07:40 | `systemd-run --unit=audax-whisper-bench-medium …` (mismo contenedor efímero con 3 GB) | Medir también `medium` (SPEC §12) | 808 s para 59 s de audio y 3.072 MB (en el límite): descartado | La unidad es transitoria |
 | 27/09 ~07:45 | Contenedor efímero `audax-whisper-prueba` (`whisper-server --convert`, modelo `small`, `127.0.0.1:18091`) y una petición con el webm/opus de prueba; parado después | Probar el camino real: navegador → webm → ffmpeg → whisper-server | 211 s, 906 MB y 1,1 % de WER con ruido. El puerto vuelve a quedar libre | No aplica (`--rm`) |
 | 27/09 ~07:50 | Batería V (T0 03:10:04) y comparación de webs | Salvaguarda tras la medición | Servicios activos, sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. **35/35 webs iguales.** Swap al 91 % (889 de 974 MB; RAM disponible 9,7 GB): se vigila, sin actuar sobre servicios compartidos | No aplica |
-
 | 27/09 14:24–14:26 | Copia previa en `/root/audax-backup/2026-09-27-1424-whisper-servicio` (`compose.yml`, unidades `failed`, contenedores, redes y disco). Servicio `whisper` añadido a `/opt/audax/compose.yml` (desde `deploy/whisper/compose-service.yml`; `config -q` válida) y `docker compose up -d --no-deps whisper` | D-070: motor de transcripción permanente para la Fase 6 | `audax-whisper` en marcha en `127.0.0.1:18091` (GET / → 200): usuario `whisper`, raíz de solo lectura, 1,5 GiB, 2 CPU en los núcleos 6-7, `cpu-shares` 64, 64 procesos y OOM 1000. Modelo `small` cargado (561 MiB en reposo). `pg` y `valkey` sin tocar. Batería V (T0 14:24:10): sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, **sin recargas de servicios compartidos**. **35/35 webs iguales.** Carga 1,5; RAM disponible 9,2 GB; swap al 93 %, como antes | `docker compose -f /opt/audax/compose.yml rm -sf whisper` y restaurar `compose.yml` desde la copia |
 | 27/09 16:52 | Prueba corta del servicio permanente: 8 s del audio de prueba en español (WAV) enviados a `audax-whisper` por `127.0.0.1:18091/inference` | Comprobar el contenedor recién creado | Transcripción correcta en 44 s (incluido el primer uso tras arrancar), 635 MiB durante la prueba y carga del servidor hasta 4,7 durante unos segundos; después vuelve a reposo. Fichero temporal borrado | No aplica |

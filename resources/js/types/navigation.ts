@@ -13,4 +13,6 @@ export type NavItem = {
     isActive?: boolean;
     /** Contador junto a la entrada (p. ej. mensajes sin leer del chat) y su texto accesible. */
     badge?: { count: number; label: string };
+    /** Subpáginas de la sección (p. ej. «Ausencias del equipo» bajo «Ausencias»). */
+    items?: NavItem[];
 };

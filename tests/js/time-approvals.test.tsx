@@ -25,6 +25,11 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
     ),
 }));
 
+// El aviso de ausencias pendientes (Fase 3) pide su número con fetch: aquí no interviene.
+vi.mock('@/components/absences/pending-absences-notice', () => ({
+    PendingAbsencesNotice: () => null,
+}));
+
 const DAYS = [
     '2026-09-21',
     '2026-09-22',

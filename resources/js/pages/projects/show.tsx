@@ -1,10 +1,10 @@
 import { Head, Link, setLayoutProps } from '@inertiajs/react';
 import {
     CalendarDays,
+    ChartColumn,
     Clock,
     Crown,
     ListChecks,
-    Milestone,
     ShieldCheck,
     Target,
     TriangleAlert,
@@ -16,20 +16,24 @@ import { ProjectStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
 import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { HourBankCard } from '@/components/hour-banks/hour-bank-card';
+import { ProjectMilestonesCard } from '@/components/planning/milestone-list';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ProjectActivity } from '@/components/projects-list/project-activity';
+import { Button } from '@/components/ui/button';
+import { hasRole, useUser } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { index, show } from '@/routes/projects';
+import { project as projectReport } from '@/routes/reports';
 import type { ProjectShowProps } from '@/types';
 
 /**
  * Resumen del proyecto (SPEC §6): estado, fechas, horas estimadas frente a reales, presupuesto,
- * bolsas con su consumo y comprometidas, equipo, actividad reciente y próximos hitos (Fase 4).
+ * bolsas con su consumo y comprometidas, equipo, actividad reciente y próximos hitos (D-062).
  */
 export default function ProjectShow({
     project,
@@ -39,6 +43,7 @@ export default function ProjectShow({
     membersCount,
     hourBanks,
     activity,
+    milestones,
 }: ProjectShowProps) {
     setLayoutProps({
         breadcrumbs: [
@@ -54,6 +59,12 @@ export default function ProjectShow({
     const coManagers = managers.filter(
         (manager) => manager.id !== project.owner_user_id,
     );
+    // Informe del proyecto (Fase 2, R2): los que ven todas sus horas (ProjectPolicy::viewAllTime).
+    const user = useUser();
+    const canViewReport =
+        hasRole(user, 'admin') ||
+        hasRole(user, 'department_manager') ||
+        managers.some((manager) => manager.id === user?.id);
 
     return (
         <>
@@ -62,6 +73,16 @@ export default function ProjectShow({
             <ProjectShell project={project} tab="resumen" canManage={canManage}>
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="grid content-start gap-6 lg:col-span-2">
+                        {canViewReport ? (
+                            <div className="flex flex-wrap justify-end">
+                                <Button variant="outline" asChild>
+                                    <Link href={projectReport.url(project.id)}>
+                                        <ChartColumn aria-hidden="true" />
+                                        {t('reports_r2.link.project_report')}
+                                    </Link>
+                                </Button>
+                            </div>
+                        ) : null}
                         <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                             <Figure
                                 icon={Target}
@@ -243,13 +264,9 @@ export default function ProjectShow({
                         </PageSection>
 
                         <PageSection title={t('projects.show.milestones')}>
-                            <EmptyState
-                                icon={Milestone}
-                                title={t('projects.show.milestones_soon')}
-                                description={t(
-                                    'projects.show.milestones_description',
-                                )}
-                                phase={4}
+                            <ProjectMilestonesCard
+                                projectId={project.id}
+                                milestones={milestones}
                             />
                         </PageSection>
                     </div>

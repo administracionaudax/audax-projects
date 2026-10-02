@@ -14,6 +14,7 @@ import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { TaskDependencies } from '@/components/planning/task-dependencies';
 import { MoveTaskDialog } from '@/components/tasks/move-task-dialog';
 import { TaskActivity } from '@/components/tasks/task-activity';
 import {
@@ -295,6 +296,12 @@ function PanelBody({
                     })}
                 >
                     <TaskSubtasks panel={panel} onOpen={onOpen} />
+                </Section>
+            ) : null}
+
+            {panel.dependencies ? (
+                <Section title={t('planning.dependencies.title')}>
+                    <TaskDependencies panel={panel} onOpen={onOpen} />
                 </Section>
             ) : null}
 

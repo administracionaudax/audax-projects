@@ -4,7 +4,9 @@ namespace App\Http\Middleware;
 
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Portal\Projects\PortalShell;
 use App\Http\Resources\FinancialResource;
+use App\Models\Absence;
 use App\Models\ActiveTimer;
 use App\Models\Client;
 use App\Models\Project;
@@ -59,6 +61,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => fn (): array => $this->auth($request, $user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             ...($user !== null && $user->isInternal() ? $this->internalProps($user) : []),
+            // Portal (Fase 5, D-067): identidad de la empresa y proyectos abiertos al portal.
+            ...($user !== null && $user->isClient() ? ['portal' => fn (): array => app(PortalShell::class)->for($user)] : []),
         ];
     }
 
@@ -90,6 +94,8 @@ class HandleInertiaRequests extends Middleware
                 'lockTime' => $user ? Gate::forUser($user)->allows('lock-time') : false,
                 'manageUsers' => $user ? Gate::forUser($user)->allows('manage-users') : false,
                 'manageSettings' => $user ? Gate::forUser($user)->allows('manage-settings') : false,
+                // «Ausencias del equipo» (aprobar y registrar): responsables y admins (D-049).
+                'viewTeamAbsences' => $user ? Gate::forUser($user)->allows('viewTeam', Absence::class) : false,
             ],
         ];
     }

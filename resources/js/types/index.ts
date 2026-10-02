@@ -10,3 +10,4 @@ export type * from './hour-banks';
 export type * from './tasks';
 export type * from './time';
 export type * from './notifications';
+export type * from './reports';

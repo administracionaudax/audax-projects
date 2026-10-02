@@ -19,9 +19,11 @@ import {
 } from '@/components/charts/chart-config';
 import { DEPARTMENT_HOURS_SERIES } from '@/components/charts/department-hours-chart';
 import {
+    formatLoadPercent,
     hourBankFigures,
     hourBankLevel,
     loadLevel,
+    loadPercent,
 } from '@/components/charts/thresholds';
 import { WEEKLY_HOURS_SERIES } from '@/components/charts/weekly-hours-chart';
 
@@ -306,18 +308,45 @@ describe('calendario (semanas de lunes a domingo)', () => {
 });
 
 describe('semáforo de carga (SPEC §9)', () => {
+    // El nivel sale del porcentaje redondeado que se enseña: la cifra y el color no se contradicen.
     it.each([
         [480, 0, 'none'],
         [0, -60, 'none'],
         [0, 480, 'under'],
-        [335, 480, 'under'],
-        [336, 480, 'balanced'],
+        [333, 480, 'under'], // 69,4 % → «69 %»
+        [334, 480, 'balanced'], // 69,6 % → «70 %»
+        [335, 480, 'balanced'], // 69,8 % → «70 %»: verde, como dice la leyenda (del 70 %)
         [480, 480, 'balanced'],
-        [481, 480, 'high'],
-        [576, 480, 'high'],
-        [577, 480, 'over'],
+        [481, 480, 'balanced'], // 100,2 % → «100 %»: verde, no ámbar
+        [482, 480, 'balanced'], // 100,4 % → «100 %»
+        [483, 480, 'high'], // 100,6 % → «101 %»
+        [576, 480, 'high'], // «120 %»
+        [577, 480, 'high'], // 120,2 % → «120 %»: ámbar, no rojo
+        [578, 480, 'high'], // 120,4 % → «120 %»
+        [579, 480, 'over'], // 120,6 % → «121 %»
     ])('%i / %i min → %s', (planned, capacity, level) => {
         expect(loadLevel(planned, capacity)).toBe(level);
+    });
+
+    it.each([
+        [481, 480, 100],
+        [480, 480, 100],
+        [335, 480, 70],
+        [576, 480, 120],
+        [577, 480, 120],
+    ])('%i / %i min se enseña como el %i %%', (planned, capacity, percent) => {
+        expect(loadPercent(planned, capacity)).toBe(percent);
+        expect(
+            formatLoadPercent(planned, capacity).replace(
+                /[\u00a0\u202f]/g,
+                ' ',
+            ),
+        ).toBe(`${percent} %`);
+    });
+
+    it('sin capacidad no hay porcentaje', () => {
+        expect(loadPercent(120, 0)).toBeNull();
+        expect(formatLoadPercent(120, 0)).toBe('');
     });
 });
 

@@ -38,6 +38,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $fixed_price_amount
  * @property string|null $hourly_rate
  * @property int $owner_user_id
+ * @property bool $portal_project_visible
+ * @property bool $portal_show_task_hours
+ * @property bool $portal_gantt_visible
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
@@ -63,6 +66,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'fixed_price_amount',
     'hourly_rate',
     'owner_user_id',
+    'portal_project_visible',
+    'portal_show_task_hours',
+    'portal_gantt_visible',
 ])]
 class Project extends Model
 {
@@ -83,6 +89,9 @@ class Project extends Model
      */
     protected $attributes = [
         'status' => 'active',
+        'portal_project_visible' => false,
+        'portal_show_task_hours' => false,
+        'portal_gantt_visible' => false,
     ];
 
     /**
@@ -98,6 +107,9 @@ class Project extends Model
             'budget_minutes' => 'integer',
             'fixed_price_amount' => 'decimal:2',
             'hourly_rate' => 'decimal:2',
+            'portal_project_visible' => 'boolean',
+            'portal_show_task_hours' => 'boolean',
+            'portal_gantt_visible' => 'boolean',
         ];
     }
 

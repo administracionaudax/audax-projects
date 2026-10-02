@@ -42,7 +42,13 @@ const ROLE_LABEL: Record<Role, string> = {
     employee: 'empleada',
 };
 
-type Ids = { project: string; hourBank: string; client: string; user: string };
+type Ids = {
+    project: string;
+    hourBank: string;
+    client: string;
+    user: string;
+    department: string;
+};
 
 type PageDef = {
     id: string;
@@ -191,6 +197,72 @@ const PAGES: readonly PageDef[] = [
             await page.waitForLoadState('networkidle');
         },
     },
+    // Fase 2: informes (D-044: cada rol ve los suyos).
+    { id: 'informes-indice', roles: ALL, path: () => '/informes' },
+    {
+        id: 'informes-direccion',
+        roles: STAFF,
+        path: () => '/informes/direccion?comparar=1',
+    },
+    {
+        id: 'informes-departamento',
+        roles: STAFF,
+        path: (i) => `/informes/departamentos/${i.department}`,
+    },
+    {
+        id: 'informes-persona',
+        roles: ALL,
+        path: (i) => `/informes/personas/${i.user}?periodo=trimestre`,
+    },
+    {
+        id: 'informes-cliente',
+        roles: STAFF,
+        path: (i) => `/informes/clientes/${i.client}`,
+    },
+    {
+        id: 'informes-proyecto',
+        roles: STAFF,
+        path: (i) => `/informes/proyectos/${i.project}`,
+    },
+    { id: 'informes-detalle', roles: ALL, path: () => '/informes/detalle' },
+    {
+        id: 'informes-facturacion',
+        roles: ADMIN,
+        path: (i) => `/informes/facturacion?cliente[]=${i.client}`,
+    },
+    // Fase 3: ausencias, festivos y carga.
+    { id: 'ausencias', roles: ALL, path: () => '/ausencias' },
+    {
+        id: 'ausencias-solicitar',
+        roles: ALL,
+        path: () => '/ausencias?solicitar=1',
+    },
+    { id: 'ausencias-equipo', roles: STAFF, path: () => '/ausencias/equipo' },
+    { id: 'admin-festivos', roles: ADMIN, path: () => '/admin/festivos' },
+    { id: 'carga', roles: ALL, path: () => '/carga' },
+    {
+        id: 'carga-4-semanas',
+        roles: STAFF,
+        path: () => '/carga?horizonte=4-semanas',
+    },
+    // Fase 4: Gantt, calendario, plantillas y tareas recurrentes.
+    { id: 'gantt', roles: ALL, path: () => '/gantt' },
+    {
+        id: 'proyecto-gantt',
+        roles: ALL,
+        path: (i) => `/proyectos/${i.project}/gantt`,
+    },
+    {
+        id: 'proyecto-calendario',
+        roles: ALL,
+        path: (i) => `/proyectos/${i.project}/tareas?vista=calendario`,
+    },
+    { id: 'admin-plantillas', roles: ADMIN, path: () => '/admin/plantillas' },
+    {
+        id: 'admin-tareas-recurrentes',
+        roles: ADMIN,
+        path: () => '/admin/tareas-recurrentes',
+    },
     {
         id: 'admin-invitar-dialogo',
         roles: ADMIN,
@@ -331,7 +403,19 @@ async function resolveIds(page: Page): Promise<Ids> {
         )![1];
     });
 
-    cachedIds = { project, hourBank, client, user };
+    const department = await page.goto('/informes').then(async () => {
+        await page.waitForLoadState('networkidle');
+        const href = await page
+            .getByRole('link', { name: /Diseño/ })
+            .first()
+            .getAttribute('href');
+
+        return new URL(href ?? '', 'http://x').pathname.match(
+            /\/informes\/departamentos\/(\d+)$/,
+        )![1];
+    });
+
+    cachedIds = { project, hourBank, client, user, department };
 
     return cachedIds;
 }
@@ -445,6 +529,10 @@ async function expectNoHorizontalScroll(
                 rect.height === 0 ||
                 style.visibility === 'hidden' ||
                 style.position === 'fixed' ||
+                // Campos ocultos que Radix crea para los formularios (interruptores y radios):
+                // invisibles, sin foco y desplazados fuera a propósito.
+                (el.getAttribute('aria-hidden') === 'true' &&
+                    style.opacity === '0') ||
                 el.closest('[data-radix-popper-content-wrapper]') !== null
             ) {
                 continue;

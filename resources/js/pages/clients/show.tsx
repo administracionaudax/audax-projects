@@ -1,5 +1,6 @@
 import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/react';
 import {
+    ChartColumn,
     Clock,
     FolderKanban,
     Globe,
@@ -7,6 +8,7 @@ import {
     Pencil,
     Power,
     PowerOff,
+    Receipt,
     Wallet,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -20,7 +22,9 @@ import {
     HourBankStatusBadge,
     ProjectStatusBadge,
 } from '@/components/domain/badges';
-import { EmptyState, PhaseBadge } from '@/components/empty-state';
+import { EmptyState } from '@/components/empty-state';
+import { ClientPortalSection } from '@/components/portal/access/client-portal-section';
+import type { ClientPortalAccess } from '@/components/portal/access/types';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -41,6 +45,7 @@ import {
     reactivate,
     show,
 } from '@/routes/clients';
+import { billing, client as clientReport } from '@/routes/reports';
 import type { ClientShowProps } from '@/types';
 
 const MONTHS = new Intl.DateTimeFormat('es-ES', {
@@ -110,7 +115,11 @@ export default function ClientShow({
     hourBankHistory,
     hours,
     can,
-}: ClientShowProps) {
+    portal,
+}: ClientShowProps & {
+    /** Acceso al portal (Fase 5, D-063): null para quien no lo gestiona. */
+    portal?: ClientPortalAccess | null;
+}) {
     const page = usePage();
     const showFinancials = page.props.auth?.can?.viewFinancials === true;
     const thresholds = page.props.config?.hour_bank_thresholds;
@@ -164,51 +173,82 @@ export default function ClientShow({
                             ) : null}
                         </div>
                     </div>
-                    {can.update ? (
+                    {can.update || can.viewReport || can.viewBilling ? (
                         <div className="flex flex-wrap gap-2">
-                            <ClientDialog
-                                client={client}
-                                showFinancials={showFinancials}
-                                trigger={
-                                    <Button variant="outline">
-                                        <Pencil aria-hidden="true" />
-                                        {t('clients.edit')}
-                                    </Button>
-                                }
-                            />
-                            {client.is_active ? (
-                                <ConfirmDialog
-                                    open={confirmOpen}
-                                    onOpenChange={setConfirmOpen}
-                                    trigger={
-                                        <Button variant="outline">
-                                            <PowerOff aria-hidden="true" />
-                                            {t('clients.deactivate')}
-                                        </Button>
-                                    }
-                                    title={t('clients.deactivate_title', {
-                                        name: client.name,
-                                    })}
-                                    description={t(
-                                        'clients.deactivate_description',
-                                    )}
-                                    confirmLabel={t('clients.deactivate')}
-                                    processing={processing}
-                                    onConfirm={toggleActive}
-                                />
-                            ) : (
-                                <Button
-                                    onClick={toggleActive}
-                                    disabled={processing}
-                                >
-                                    {processing ? (
-                                        <Spinner />
-                                    ) : (
-                                        <Power aria-hidden="true" />
-                                    )}
-                                    {t('clients.reactivate')}
+                            {/* Informe del cliente (Fase 2, R2): admins, responsables y sus gestores. */}
+                            {can.viewReport ? (
+                                <Button variant="outline" asChild>
+                                    <Link href={clientReport.url(client.id)}>
+                                        <ChartColumn aria-hidden="true" />
+                                        {t('reports_r2.link.client_report')}
+                                    </Link>
                                 </Button>
-                            )}
+                            ) : null}
+                            {/* Horas para facturar (Fase 2, R2): admins y quien tenga view-financials. */}
+                            {can.viewBilling ? (
+                                <Button variant="outline" asChild>
+                                    <Link
+                                        href={billing.url({
+                                            query: { cliente: [client.id] },
+                                        })}
+                                    >
+                                        <Receipt aria-hidden="true" />
+                                        {t('reports_r2.link.billing')}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {can.update ? (
+                                <>
+                                    <ClientDialog
+                                        client={client}
+                                        showFinancials={showFinancials}
+                                        trigger={
+                                            <Button variant="outline">
+                                                <Pencil aria-hidden="true" />
+                                                {t('clients.edit')}
+                                            </Button>
+                                        }
+                                    />
+                                    {client.is_active ? (
+                                        <ConfirmDialog
+                                            open={confirmOpen}
+                                            onOpenChange={setConfirmOpen}
+                                            trigger={
+                                                <Button variant="outline">
+                                                    <PowerOff aria-hidden="true" />
+                                                    {t('clients.deactivate')}
+                                                </Button>
+                                            }
+                                            title={t(
+                                                'clients.deactivate_title',
+                                                {
+                                                    name: client.name,
+                                                },
+                                            )}
+                                            description={t(
+                                                'clients.deactivate_description',
+                                            )}
+                                            confirmLabel={t(
+                                                'clients.deactivate',
+                                            )}
+                                            processing={processing}
+                                            onConfirm={toggleActive}
+                                        />
+                                    ) : (
+                                        <Button
+                                            onClick={toggleActive}
+                                            disabled={processing}
+                                        >
+                                            {processing ? (
+                                                <Spinner />
+                                            ) : (
+                                                <Power aria-hidden="true" />
+                                            )}
+                                            {t('clients.reactivate')}
+                                        </Button>
+                                    )}
+                                </>
+                            ) : null}
                         </div>
                     ) : null}
                 </header>
@@ -360,7 +400,11 @@ export default function ClientShow({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <PhaseBadge phase={5} />
+                            <ClientPortalSection
+                                clientId={client.id}
+                                clientName={client.name}
+                                portal={portal}
+                            />
                         </CardContent>
                     </Card>
                 </div>

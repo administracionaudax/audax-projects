@@ -4,7 +4,8 @@
  * - Fuentes:
  *   · `lang/es.json`: textos de la Fase 0 y claves del backend (`__()` de Laravel lo lee),
  *   · `lang/ui/*.json`: textos del frontend por área desde la Fase 1 (shared, admin, clients,
- *     projects, hour-banks, tasks, time y notifications) y el chat de la Fase 6. Laravel no los lee.
+ *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
+ *     la Fase 6, el chat). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -16,17 +17,28 @@
  *   `:NAME` → todo en mayúsculas.
  */
 import base from '../../../lang/es.json';
+import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import chatMedia from '../../../lang/ui/chat-media.json';
 import chat from '../../../lang/ui/chat.json';
 import clients from '../../../lang/ui/clients.json';
+import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notifications from '../../../lang/ui/notifications.json';
+import planning from '../../../lang/ui/planning.json';
+import portalBanks from '../../../lang/ui/portal-banks.json';
+import portalAccess from '../../../lang/ui/portal-access.json';
 import projects from '../../../lang/ui/projects.json';
 import realtime from '../../../lang/ui/realtime.json';
+import reports from '../../../lang/ui/reports.json';
+import reportsR2 from '../../../lang/ui/reports-r2.json';
+import reportsR1 from '../../../lang/ui/reports-r1.json';
+import reportsR3 from '../../../lang/ui/reports-r3.json';
 import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
+import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
+import workload from '../../../lang/ui/workload.json';
 
 const messages = {
     ...base,
@@ -41,6 +53,17 @@ const messages = {
     ...realtime,
     ...chatMedia,
     ...chat,
+    ...reports,
+    ...reportsR2,
+    ...reportsR1,
+    ...reportsR3,
+    ...absences,
+    ...workload,
+    ...gantt,
+    ...planning,
+    ...templates,
+    ...portalBanks,
+    ...portalAccess,
 };
 
 export type TranslationKey = keyof typeof messages;

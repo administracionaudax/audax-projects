@@ -11,6 +11,7 @@ import type {
     TimesheetStatus,
     UserSummary,
 } from './domain';
+import type { HomeMilestone } from './planning';
 
 /** App\Http\Resources\Time\TimesheetPeriodResource. Una semana sin fila llega con id null. */
 export type TimesheetPeriodData = {
@@ -272,4 +273,6 @@ export type HomePageProps = {
     unlogged_days: UnloggedDay[];
     /** Fase 6: menciones y conversaciones sin leer (prop diferida: llega tras pintar; `chat` es la compartida del total). */
     chat_summary?: HomeChatSummary;
+    /** Mis próximos hitos (D-062): vencidos y de los próximos 30 días, como mucho 8. */
+    milestones: HomeMilestone[];
 };

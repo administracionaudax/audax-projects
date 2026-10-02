@@ -24,6 +24,10 @@ beforeEach(function () {
         'time_entry_description_required' => false,
         'max_attachment_mb' => 50,
         'default_work_minutes' => [480, 480, 480, 480, 480, 0, 0],
+        // Resumen semanal (Fase 2, D-047): obligatorios en el formulario de ajustes.
+        'weekly_digest_enabled' => true,
+        'occupancy_low_threshold' => 70,
+        'occupancy_high_threshold' => 110,
     ];
 });
 

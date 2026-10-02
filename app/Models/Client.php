@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\PortalEntryVisibility;
+use App\Enums\PortalPersonDisplay;
 use App\Models\Concerns\HasFinancialAttributes;
 use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
@@ -28,6 +30,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $notes
  * @property bool $is_active
  * @property string|null $default_hourly_rate
+ * @property PortalPersonDisplay $portal_person_display
+ * @property PortalEntryVisibility $portal_entry_visibility
+ * @property bool $portal_notify_thresholds
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
@@ -43,6 +48,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'notes',
     'is_active',
     'default_hourly_rate',
+    'portal_person_display',
+    'portal_entry_visibility',
+    'portal_notify_thresholds',
 ])]
 class Client extends Model
 {
@@ -56,6 +64,9 @@ class Client extends Model
      */
     protected $attributes = [
         'is_active' => true,
+        'portal_person_display' => 'name',
+        'portal_entry_visibility' => 'approved',
+        'portal_notify_thresholds' => false,
     ];
 
     /**
@@ -66,6 +77,9 @@ class Client extends Model
         return [
             'is_active' => 'boolean',
             'default_hourly_rate' => 'decimal:2',
+            'portal_person_display' => PortalPersonDisplay::class,
+            'portal_entry_visibility' => PortalEntryVisibility::class,
+            'portal_notify_thresholds' => 'boolean',
         ];
     }
 

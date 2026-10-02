@@ -61,11 +61,17 @@ const PERF_GROWTH_TOLERANCE = 2;
  * @var array<string, int>
  */
 const PERF_BUDGETS = [
-    'home' => 12,
+    // Inicio suma «Mis próximos hitos» (F4): una consulta más. Con las Fases 2 y 3 juntas, la capacidad
+    // descuenta festivos y ausencias y la clave de la caché de informes lleva el alcance de quien mira
+    // (SEC-03): 2 consultas más, fijas, no por fila.
+    // Al unir la Fase 6 con las 2 a 5, Inicio, Ajustes del proyecto y la ficha del cliente ya no
+    // tienen margen para la consulta fija del chat: el total de mensajes sin leer de la prop
+    // compartida `chat.unread` (una por página, no por fila).
+    'home' => 16,
     'projects.index' => 13,
     'projects.create' => 9,
     'projects.show' => 23,
-    'projects.settings' => 14,
+    'projects.settings' => 15,
     'projects.tasks' => 23,
     'projects.tasks.kanban' => 23,
     'projects.tasks.completed' => 22,
@@ -77,7 +83,7 @@ const PERF_BUDGETS = [
     'projects.hour-banks.show' => 34,
     'hour-banks.index' => 16,
     'clients.index' => 8,
-    'clients.show' => 15,
+    'clients.show' => 16,
     'clients.options' => 7,
     'my-tasks.index' => 10,
     'time.index' => 22,
@@ -508,7 +514,8 @@ test('aprobaciones responde en menos de 1 s y sin el detalle de las entradas con
             ->missing('pending.0.entries'));
 
         // Holgura sobre lo medido (~150 ms y ~150 KB): el objetivo del SPEC es menos de 1 s.
-        expect($ms)->toBeLessThan(1000)
+        $limit = perfTimeLimit(1000);
+        expect($limit === null || $ms < $limit)->toBeTrue("{$ms} ms (límite {$limit} ms)")
             ->and($bytes)->toBeLessThan(300_000);
     }
 });

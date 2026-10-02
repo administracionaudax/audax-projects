@@ -16,6 +16,7 @@ import { HourBankWeeklyChart } from '@/components/hour-banks/hour-bank-weekly-ch
 import { ProjectShell } from '@/components/projects/project-shell';
 import { ListPagination } from '@/components/projects-list/list-pagination';
 import { PageSection } from '@/components/projects-list/page-section';
+import { R2BankPdfMenu } from '@/components/reports/r2-bank-pdf-menu';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
@@ -110,7 +111,21 @@ export default function HourBankShow({
                                     {bankDates(bank)}
                                 </p>
                             </div>
-                            <HourBankStatusBadge status={bank.status} />
+                            <div className="flex flex-wrap items-center gap-2">
+                                <HourBankStatusBadge status={bank.status} />
+                                {/*
+                                 * PDF de consumo para el cliente (Fase 2, R2; D-045): lleva las
+                                 * entradas con la persona, así que solo con el detalle por persona.
+                                 */}
+                                {byPerson !== null ? (
+                                    <R2BankPdfMenu
+                                        projectId={project.id}
+                                        bankId={bank.id}
+                                        bankName={bank.name}
+                                        size="sm"
+                                    />
+                                ) : null}
+                            </div>
                         </header>
 
                         <HourBankMeter

@@ -3,6 +3,7 @@
 namespace App\Domain\Time;
 
 use App\Domain\HourBanks\HourBankLedger;
+use App\Enums\AbsenceType;
 use App\Enums\OveragePolicy;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -130,7 +131,7 @@ final class TimeEntryRules
             $this->ledger->assertFits($bank, $minutes, $existing);
         }
 
-        return $this->warnings($target, $task, $bank, $date, $minutes, $dayTotal, $existing);
+        return $this->warnings($actor, $target, $task, $bank, $date, $minutes, $dayTotal, $existing);
     }
 
     /**
@@ -262,21 +263,33 @@ final class TimeEntryRules
     }
 
     /**
+     * Los avisos hablan de la persona por la que se imputa: si imputa otra (D-036), la nombran.
+     *
      * @return list<TimeEntryWarning>
      */
-    private function warnings(User $target, Task $task, ?HourBank $bank, CarbonImmutable $date, int $minutes, int $dayTotal, ?TimeEntry $existing): array
+    private function warnings(User $actor, User $target, Task $task, ?HourBank $bank, CarbonImmutable $date, int $minutes, int $dayTotal, ?TimeEntry $existing): array
     {
         $warnings = [];
+        $forOther = $actor->id !== $target->id;
 
         if ($task->isCompleted()) {
             $warnings[] = new TimeEntryWarning(TimeEntryWarning::TASK_COMPLETED, $this->message('time.warnings.task_completed'));
         }
 
-        $capacity = $this->capacity->onDate($target, $date);
+        // Una sola lectura de la capacidad del día: sus minutos y, si la hay, la ausencia aprobada.
+        $day = $this->capacity->details($target, $date, $date)[$date->toDateString()] ?? null;
+        $capacity = $day['minutes'] ?? 0;
+
+        // Día con una ausencia aprobada (SPEC §7, D-049): aviso sin bloqueo. Añadido por la Fase 3.
+        if ($day !== null && $day['absence'] !== null) {
+            $warnings[] = $this->absenceWarning($actor, $target, $day['absence']);
+        }
+
         if ($dayTotal > $capacity * 1.25) {
-            $warnings[] = new TimeEntryWarning(TimeEntryWarning::OVER_CAPACITY, $capacity > 0
-                ? $this->message('time.warnings.over_capacity', ['total' => Duration::format($dayTotal), 'capacity' => Duration::format($capacity)])
-                : $this->message('time.warnings.no_capacity', ['total' => Duration::format($dayTotal)]));
+            $replace = ['name' => $target->name, 'total' => Duration::format($dayTotal), 'capacity' => Duration::format($capacity)];
+            $key = $capacity > 0 ? 'time.warnings.over_capacity' : 'time.warnings.no_capacity';
+
+            $warnings[] = new TimeEntryWarning(TimeEntryWarning::OVER_CAPACITY, $this->message($forOther ? $key.'_other' : $key, $replace));
         }
 
         $growing = $existing === null
@@ -294,6 +307,34 @@ final class TimeEntryRules
         }
 
         return $warnings;
+    }
+
+    /**
+     * El tipo de la ausencia (una baja es un dato de salud) solo lo ven la propia persona, un admin o
+     * quien la supervisa (D-088). A los demás que pueden imputar por ella (un gestor, en su
+     * proyecto) solo se les dice que ese día no está disponible, sin tipo ni horas.
+     *
+     * @param  array{type: string, partial_minutes: int|null}  $absence
+     */
+    private function absenceWarning(User $actor, User $target, array $absence): TimeEntryWarning
+    {
+        $partial = $absence['partial_minutes'] !== null;
+
+        if (! $actor->canSeeAbsencesOf($target)) {
+            return new TimeEntryWarning(TimeEntryWarning::ABSENCE, $this->message(
+                $partial ? 'absences.warnings.time_entry_unavailable_partial' : 'absences.warnings.time_entry_unavailable',
+                ['name' => $target->name],
+            ));
+        }
+
+        $key = $partial ? 'absences.warnings.time_entry_partial' : 'absences.warnings.time_entry';
+        $replace = [
+            'name' => $target->name,
+            'type' => AbsenceType::tryFrom($absence['type'])?->label() ?? $absence['type'],
+            'minutes' => Duration::format((int) $absence['partial_minutes']),
+        ];
+
+        return new TimeEntryWarning(TimeEntryWarning::ABSENCE, $this->message($actor->id === $target->id ? $key : $key.'_other', $replace));
     }
 
     /**

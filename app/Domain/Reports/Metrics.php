@@ -1,0 +1,549 @@
+<?php
+
+namespace App\Domain\Reports;
+
+use App\Domain\Time\Capacity;
+use App\Domain\Time\CapacityPlan;
+use App\Models\Client;
+use App\Models\Department;
+use App\Models\HourBank;
+use App\Models\Project;
+use App\Models\Task;
+use App\Models\TaskType;
+use App\Models\TimeEntry;
+use App\Models\User;
+use App\Models\WorkSchedule;
+use App\Support\LocalTime;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonPeriod;
+use Illuminate\Database\Eloquent\Builder;
+
+/**
+ * Métricas de los informes (SPEC §10). Definiciones (se muestran también en la interfaz):
+ * - capacidad: suma de la capacidad diaria de las personas del alcance (Capacity; F3 añadirá
+ *   festivos y ausencias). Cuenta desde el alta de cada persona y, si está desactivada, hasta su
+ *   última entrada del periodo,
+ * - imputadas: suma de minutes; facturables: las de is_billable,
+ * - ocupación = imputadas / capacidad; facturabilidad = facturables / imputadas;
+ *   productividad facturable = facturables / capacidad,
+ * - precisión de estimación = estimadas / reales en las tareas hoja completadas en el periodo, con
+ *   la desviación (reales − estimadas) / estimadas,
+ * - ingreso, coste y rentabilidad: RevenueCalculator (D-043), solo con view-financials.
+ */
+final class Metrics
+{
+    /**
+     * Capacidades ya calculadas en esta instancia (el resumen y la serie de un mismo alcance piden
+     * la misma), por persona que mira y filtros, como tramos (CapacityPlan: se suman con
+     * aritmética, PERF-05). Metrics se resuelve por petición o por tarea: la memoria no sobrevive
+     * a otra escritura. Con un tope para no crecer sin límite.
+     *
+     * @var array<string, array<int, CapacityPlan>>
+     */
+    private array $capacityMemo = [];
+
+    private const int CAPACITY_MEMO_SIZE = 8;
+
+    public function __construct(
+        private readonly RevenueCalculator $revenue,
+        private readonly Capacity $capacity,
+    ) {}
+
+    /**
+     * Sin capacidad ($withCapacity = false: informes de cliente y de proyecto, que no la muestran;
+     * se ahorra el cálculo de la capacidad de todas las personas del alcance), capacity_minutes es
+     * 0 y la ocupación y la productividad facturable son null. El resto es igual.
+     * $everyAssignee: ver estimation().
+     *
+     * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
+     *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
+     */
+    public function summary(ReportScope $scope, bool $withCapacity = true, bool $everyAssignee = false): array
+    {
+        return $this->summaryAgainst($scope, $withCapacity ? $this->capacityTotal($scope) : null, $everyAssignee);
+    }
+
+    /**
+     * Resumen de los primeros $days días del periodo frente a la capacidad del periodo COMPLETO
+     * (añadido por R1). Es el periodo de comparación «al mismo punto»: si el periodo en curso va por
+     * su día 10, el anterior se mide con sus horas, facturables, ingreso, coste y tareas completadas
+     * de sus 10 primeros días, y la capacidad de todo el periodo, igual que el periodo en curso
+     * (cuyas horas llegan hasta hoy y cuya capacidad es la del periodo entero). Así la variación de
+     * cada métrica compara lo mismo. Las definiciones son las de summary() (SPEC §10). Con $days
+     * igual o mayor que los días del periodo es summary(); con $days < 1, sin horas.
+     *
+     * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
+     *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
+     */
+    public function summaryFirstDays(ReportScope $scope, int $days, bool $withCapacity = true, bool $everyAssignee = false): array
+    {
+        $filters = $scope->filters;
+
+        if ($days >= $filters->days()) {
+            return $this->summary($scope, $withCapacity, $everyAssignee);
+        }
+
+        // Con $days < 1 el tramo acaba el día antes de empezar: ninguna entrada ni tarea cae en él.
+        $partial = $scope->withFilters($filters->withDates($filters->from, $filters->from->addDays(max($days, 0) - 1)));
+        if (! $scope->canSeeFinancials()) {
+            $partial = $partial->withoutFinancials();
+        }
+
+        return $this->summaryAgainst($partial, $withCapacity ? $this->capacityTotal($scope) : null, $everyAssignee);
+    }
+
+    /**
+     * Las cifras de summary() de las horas del alcance frente a una capacidad dada (null: sin
+     * capacidad, como summary() con $withCapacity = false).
+     *
+     * @return array{capacity_minutes: int, logged_minutes: int, billable_minutes: int, in_bank_minutes: int,
+     *     overage_minutes: int, occupancy: float|null, billability: float|null, billable_productivity: float|null,
+     *     estimation: array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null},
+     *     income: string|null, cost: string|null, margin: string|null, margin_pct: float|null}
+     */
+    private function summaryAgainst(ReportScope $scope, ?int $capacity, bool $everyAssignee = false): array
+    {
+        $totals = (clone $scope->entries())->toBase()->selectRaw(
+            'COALESCE(SUM(time_entries.minutes), 0) as logged,
+             COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
+             COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
+        )->first();
+
+        $logged = (int) ($totals->logged ?? 0);
+        $billable = (int) ($totals->billable ?? 0);
+        $overage = (int) ($totals->overage ?? 0);
+        $withCapacity = $capacity !== null;
+        $capacity ??= 0;
+
+        $summary = [
+            'capacity_minutes' => $capacity,
+            'logged_minutes' => $logged,
+            'billable_minutes' => $billable,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
+            'overage_minutes' => $overage,
+            'occupancy' => $withCapacity ? self::ratio($logged, $capacity) : null,
+            'billability' => self::ratio($billable, $logged),
+            'billable_productivity' => $withCapacity ? self::ratio($billable, $capacity) : null,
+            'estimation' => $this->estimation($scope, $everyAssignee),
+            'income' => null,
+            'cost' => null,
+            'margin' => null,
+            'margin_pct' => null,
+        ];
+
+        if ($scope->canSeeFinancials()) {
+            $money = $this->revenue->compute($scope->entries())['all'] ?? ['income' => '0.00', 'cost' => '0.00'];
+            $margin = Money::round(Money::sub($money['income'], $money['cost']));
+            $summary['income'] = $money['income'];
+            $summary['cost'] = $money['cost'];
+            $summary['margin'] = $margin;
+            $summary['margin_pct'] = Money::isZero($money['income']) ? null : round((float) Money::div($margin, $money['income']), 4);
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Solo los totales de horas del alcance, con una sola consulta: imputadas, facturables, dentro
+     * de bolsa, exceso y facturabilidad. Para los informes que no muestran capacidad, estimación ni
+     * importes (el detallado), que así no los calculan: la capacidad de un año de toda la agencia es
+     * lo más caro de summary(). Añadido por R3.
+     *
+     * Las mismas definiciones que summary() y breakdown(): in_bank_minutes son solo los minutos de
+     * las entradas con bolsa sin su exceso (PivotReport::IN_BANK_SQL, D-078).
+     *
+     * @return array{logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, billability: float|null}
+     */
+    public function hours(ReportScope $scope): array
+    {
+        $totals = (clone $scope->entries())->toBase()->selectRaw(
+            'COALESCE(SUM(time_entries.minutes), 0) as logged,
+             COALESCE(SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END), 0) as billable,
+             COALESCE('.PivotReport::IN_BANK_SQL.', 0) as in_bank,
+             COALESCE(SUM(time_entries.overage_minutes), 0) as overage'
+        )->first();
+
+        $logged = (int) ($totals->logged ?? 0);
+        $billable = (int) ($totals->billable ?? 0);
+
+        return [
+            'logged_minutes' => $logged,
+            'billable_minutes' => $billable,
+            'in_bank_minutes' => (int) ($totals->in_bank ?? 0),
+            'overage_minutes' => (int) ($totals->overage ?? 0),
+            'billability' => self::ratio($billable, $logged),
+        ];
+    }
+
+    /**
+     * Capacidad por fecha (Y-m-d) del alcance, con una sola consulta de horarios.
+     *
+     * @return array<string, int>
+     */
+    public function capacityByDate(ReportScope $scope): array
+    {
+        $byDate = [];
+        foreach ($this->capacityPlans($scope) as $plan) {
+            foreach ($plan->byDate() as $date => $minutes) {
+                $byDate[$date] = ($byDate[$date] ?? 0) + $minutes;
+            }
+        }
+
+        ksort($byDate);
+
+        return $byDate;
+    }
+
+    /**
+     * Capacidad total del alcance en el periodo (la suma de capacityByDate), con aritmética por
+     * tramos: sin recorrer los días (PERF-05).
+     */
+    public function capacityTotal(ReportScope $scope): int
+    {
+        return array_sum($this->capacityTotalsByPerson($scope));
+    }
+
+    /**
+     * Capacidad total de cada persona del alcance en el periodo (id → minutos; la suma de su
+     * capacityByPerson), con aritmética por tramos.
+     *
+     * @return array<int, int>
+     */
+    public function capacityTotalsByPerson(ReportScope $scope): array
+    {
+        return array_map(fn (CapacityPlan $plan): int => $plan->total(), $this->capacityPlans($scope));
+    }
+
+    /**
+     * Capacidad de cada persona del alcance por fecha (id → Y-m-d → minutos), con las mismas reglas
+     * que capacityByDate (que es su suma): desde el alta o el primer horario y, si está
+     * desactivada, hasta su última entrada del periodo. Las personas sin capacidad en el periodo no
+     * salen. Añadido por R1 (miembros del departamento).
+     *
+     * @return array<int, array<string, int>>
+     */
+    public function capacityByPerson(ReportScope $scope): array
+    {
+        return array_map(fn (CapacityPlan $plan): array => $plan->byDate(), $this->capacityPlans($scope));
+    }
+
+    /**
+     * La capacidad de cada persona del alcance como tramos (id → CapacityPlan), en memoria por
+     * quien mira y filtros.
+     *
+     * @return array<int, CapacityPlan>
+     */
+    public function capacityPlans(ReportScope $scope): array
+    {
+        $key = $scope->viewer->id.':'.$scope->filters->cacheKey();
+
+        if (! array_key_exists($key, $this->capacityMemo)) {
+            if (count($this->capacityMemo) >= self::CAPACITY_MEMO_SIZE) {
+                array_shift($this->capacityMemo);
+            }
+
+            $this->capacityMemo[$key] = $this->computeCapacityPlans($scope);
+        }
+
+        return $this->capacityMemo[$key];
+    }
+
+    /**
+     * Capacidad transcurrida de cada persona del alcance (id → minutos): la de los días del periodo
+     * anteriores a hoy en Madrid (hasta ayer, como los días sin imputar: hoy aún se está
+     * imputando). En un periodo cerrado es su capacidad; en uno que empieza hoy o más adelante, 0.
+     * Sale de los tramos de capacityPlans (sin más consultas). Añadido por R1 como dato informativo
+     * de un periodo en curso: la ocupación y la productividad facturable son siempre las de
+     * summary(), contra la capacidad del periodo completo (SPEC §10).
+     *
+     * @return array<int, int>
+     */
+    public function elapsedCapacityByPerson(ReportScope $scope, ?CarbonImmutable $today = null): array
+    {
+        $yesterday = CapacityPlan::date(CapacityPlan::day($today !== null ? $today->toDateString() : LocalTime::todayString()) - 1);
+
+        return array_map(fn (CapacityPlan $plan): int => $plan->total(null, $yesterday), $this->capacityPlans($scope));
+    }
+
+    /**
+     * Capacidad transcurrida del alcance (la suma de elapsedCapacityByPerson). Añadido por R1.
+     */
+    public function elapsedCapacity(ReportScope $scope, ?CarbonImmutable $today = null): int
+    {
+        return array_sum($this->elapsedCapacityByPerson($scope, $today));
+    }
+
+    /**
+     * @return array<int, CapacityPlan>
+     */
+    private function computeCapacityPlans(ReportScope $scope): array
+    {
+        $f = $scope->filters;
+        $people = $scope->people();
+
+        if ($people->isEmpty()) {
+            return [];
+        }
+
+        $firstSchedule = WorkSchedule::query()->whereIn('user_id', $people->modelKeys())
+            ->groupBy('user_id')->selectRaw('user_id, MIN(valid_from) as first')->toBase()->pluck('first', 'user_id');
+        $lastEntry = TimeEntry::query()->whereIn('user_id', $people->where('is_active', false)->modelKeys())
+            ->whereBetween('date', [$f->from->toDateString(), $f->to->toDateString()])
+            ->groupBy('user_id')->selectRaw('user_id, MAX(date) as last')->toBase()->pluck('last', 'user_id');
+
+        $ranges = [];
+        foreach ($people as $person) {
+            $joined = $person->created_at !== null ? LocalTime::dateOf($person->created_at) : $f->from->toDateString();
+            $first = $firstSchedule[$person->id] ?? null;
+            $start = max($f->from->toDateString(), $first !== null ? min($joined, substr((string) $first, 0, 10)) : $joined);
+            $end = $person->is_active ? $f->to->toDateString() : (isset($lastEntry[$person->id]) ? substr((string) $lastEntry[$person->id], 0, 10) : null);
+
+            if ($end === null || $start > $end) {
+                continue;
+            }
+
+            $ranges[] = ['user_id' => $person->id, 'from' => CarbonImmutable::parse($start), 'to' => CarbonImmutable::parse($end)];
+        }
+
+        $plans = [];
+        foreach ($this->capacity->plansForRanges($ranges) as $index => $plan) {
+            $plans[$ranges[$index]['user_id']] = $plan;
+        }
+
+        return $plans;
+    }
+
+    /**
+     * Evolución por día, semana o mes: imputadas, facturables, capacidad y (con permiso) ingreso.
+     *
+     * @return list<array{bucket: string, logged_minutes: int, billable_minutes: int, capacity_minutes: int, income: string|null}>
+     */
+    public function series(ReportScope $scope, Dimension $bucket): array
+    {
+        if (! $bucket->isTime()) {
+            throw new \InvalidArgumentException('La serie necesita una dimensión de tiempo.');
+        }
+
+        $f = $scope->filters;
+        $expression = $bucket->expression();
+        $rows = (clone $scope->entries())->toBase()
+            ->selectRaw($expression.' as bucket, SUM(time_entries.minutes) as logged,
+                SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable')
+            ->groupByRaw($expression)
+            ->get()
+            ->keyBy(fn (object $row): string => substr((string) $row->bucket, 0, 10));
+
+        $income = $scope->canSeeFinancials() ? $this->revenue->compute($scope->entries(), $bucket) : [];
+
+        // La capacidad de cada día (del plan de cada persona) o, por semanas y meses, la de cada
+        // tramo del periodo con aritmética (PERF-05).
+        $plans = $this->capacityPlans($scope);
+        $byDay = $bucket === Dimension::Day ? $this->capacityByDate($scope) : [];
+
+        $series = [];
+        foreach (CarbonPeriod::create($f->from, $f->to) as $day) {
+            $key = self::bucketOf($bucket, $day->toDateString());
+            if (isset($series[$key])) {
+                continue;
+            }
+            $row = $rows->get($key);
+            $series[$key] = [
+                'bucket' => $key,
+                'logged_minutes' => (int) ($row->logged ?? 0),
+                'billable_minutes' => (int) ($row->billable ?? 0),
+                'capacity_minutes' => $bucket === Dimension::Day
+                    ? ($byDay[$key] ?? 0)
+                    : self::bucketCapacity($plans, $bucket, $key, $f),
+                'income' => $scope->canSeeFinancials() ? ($income[$key]['income'] ?? '0.00') : null,
+            ];
+        }
+
+        return array_values($series);
+    }
+
+    /**
+     * Desglose por una dimensión, ordenado por horas imputadas (desc).
+     *
+     * @return list<array{key: string|null, name: string, color: string|null, logged_minutes: int, billable_minutes: int,
+     *     in_bank_minutes: int, overage_minutes: int, income: string|null, cost: string|null}>
+     */
+    public function breakdown(ReportScope $scope, Dimension $dimension, ?int $limit = null): array
+    {
+        $query = clone $scope->entries();
+        $dimension->join($query);
+        $expression = $dimension->expression();
+
+        $rows = $query->toBase()
+            ->selectRaw($expression.' as group_key, SUM(time_entries.minutes) as logged,
+                SUM(CASE WHEN time_entries.is_billable THEN time_entries.minutes ELSE 0 END) as billable,
+                '.PivotReport::IN_BANK_SQL.' as in_bank,
+                SUM(time_entries.overage_minutes) as overage')
+            ->groupByRaw($expression)
+            ->orderByDesc('logged')
+            ->when($limit !== null, fn ($q) => $q->limit((int) $limit))
+            ->get();
+
+        $money = $scope->canSeeFinancials() ? $this->revenue->compute($scope->entries(), $dimension) : [];
+        $labels = $this->labels($dimension, array_values($rows->pluck('group_key')->filter(fn ($key): bool => $key !== null)->all()));
+
+        return array_values($rows->map(function (object $row) use ($dimension, $money, $labels, $scope): array {
+            $key = $row->group_key === null ? null : (string) $row->group_key;
+            $label = $key === null ? ['name' => self::emptyLabel($dimension), 'color' => null] : ($labels[$key] ?? ['name' => $key, 'color' => null]);
+            $logged = (int) $row->logged;
+
+            return [
+                'key' => $key,
+                'name' => $label['name'],
+                'color' => $label['color'],
+                'logged_minutes' => $logged,
+                'billable_minutes' => (int) $row->billable,
+                'in_bank_minutes' => (int) $row->in_bank,
+                'overage_minutes' => (int) $row->overage,
+                'income' => $scope->canSeeFinancials() ? ($money[$key ?? '']['income'] ?? '0.00') : null,
+                'cost' => $scope->canSeeFinancials() ? ($money[$key ?? '']['cost'] ?? '0.00') : null,
+            ];
+        })->all());
+    }
+
+    /**
+     * Precisión de estimación (SPEC §10) de las tareas completadas en el periodo, con la regla de
+     * subtareas del SPEC §6 (la de EstimateComparison y RevenueCalculator::fixedPriceBases, BIZ-03),
+     * de los proyectos y personas del alcance. Unidades, sin contar nada dos veces:
+     * - las hojas con estimación (subtareas y tareas sin subtareas),
+     * - las tareas raíz con subtareas de las que ninguna está estimada, con su propia estimación.
+     *   Una raíz con alguna subtarea estimada se estima con ellas: cuentan sus subtareas.
+     * Reales = las horas de la tarea y las de sus subtareas (de cualquier fecha).
+     *
+     * $everyAssignee (informes de un proyecto o de los proyectos que gestiona quien mira, que ve
+     * todas sus horas, D-021): cuentan las tareas de cualquier responsable, acotadas solo por los
+     * filtros de persona y departamento de la URL. Sin él (por defecto), las de las personas del
+     * alcance (people()), como hasta ahora.
+     *
+     * @return array{tasks: int, estimated_minutes: int, actual_minutes: int, accuracy: float|null, deviation: float|null}
+     */
+    public function estimation(ReportScope $scope, bool $everyAssignee = false): array
+    {
+        $f = $scope->filters;
+        $zone = LocalTime::timezone();
+        $start = CarbonImmutable::parse($f->from->toDateString(), $zone)->startOfDay()->utc();
+        $end = CarbonImmutable::parse($f->to->toDateString(), $zone)->endOfDay()->utc();
+
+        $tasks = Task::query()
+            ->whereBetween('completed_at', [$start, $end])
+            ->where('is_milestone', false)
+            ->where('estimated_minutes', '>', 0)
+            ->where(fn (Builder $unit) => $unit
+                // Hojas: sin subtareas.
+                ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                    ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at'))
+                // Raíces cuyas subtareas no están estimadas: su estimación es la suya (SPEC §6).
+                ->orWhere(fn (Builder $root) => $root->whereNull('tasks.parent_task_id')
+                    ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('tasks as children')
+                        ->whereColumn('children.parent_task_id', 'tasks.id')->whereNull('children.deleted_at')
+                        ->where('children.is_milestone', false)->whereNotNull('children.estimated_minutes'))))
+            ->when($f->projectIds !== [], fn (Builder $q) => $q->whereIn('project_id', $f->projectIds))
+            ->when($f->clientIds !== [], fn (Builder $q) => $q->whereIn('project_id', Project::query()->withTrashed()->select('id')->whereIn('client_id', $f->clientIds)))
+            ->when($f->bankIds !== [], fn (Builder $q) => $q->whereIn('hour_bank_id', $f->bankIds))
+            ->when($f->taskTypeIds !== [], fn (Builder $q) => $q->whereIn('task_type_id', $f->taskTypeIds))
+            ->when($everyAssignee && $f->userIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', $f->userIds))
+            ->when($everyAssignee && $f->departmentIds !== [], fn (Builder $q) => $q->whereIn('assignee_user_id', User::query()->select('id')->whereIn('department_id', $f->departmentIds)))
+            ->when(! $everyAssignee && (! $scope->viewer->isAdmin() || $f->userIds !== [] || $f->departmentIds !== []),
+                fn (Builder $q) => $q->whereIn('assignee_user_id', $scope->people()->modelKeys()));
+
+        $estimated = (int) (clone $tasks)->sum('estimated_minutes');
+        $count = (clone $tasks)->count();
+        // Las horas de una subtarea suman en su tarea padre (SPEC §6), también si está borrada.
+        $actual = (int) TimeEntry::query()->where(fn ($units) => $units
+            ->whereIn('task_id', (clone $tasks)->select('tasks.id'))
+            ->orWhereIn('task_id', Task::query()->withTrashed()->select('id')->whereIn('parent_task_id', (clone $tasks)->select('tasks.id'))))
+            ->sum('minutes');
+
+        return [
+            'tasks' => $count,
+            'estimated_minutes' => $estimated,
+            'actual_minutes' => $actual,
+            'accuracy' => self::ratio($estimated, $actual),
+            'deviation' => $estimated > 0 ? round(($actual - $estimated) / $estimated, 4) : null,
+        ];
+    }
+
+    /**
+     * Capacidad de una semana o un mes de la serie, recortado al periodo: la suma de los planes.
+     *
+     * @param  array<int, CapacityPlan>  $plans
+     */
+    private static function bucketCapacity(array $plans, Dimension $bucket, string $key, ReportFilters $filters): int
+    {
+        $start = CarbonImmutable::parse($key);
+        $end = $bucket === Dimension::Week ? $start->addDays(6) : $start->endOfMonth();
+        $from = max($start->toDateString(), $filters->from->toDateString());
+        $to = min($end->toDateString(), $filters->to->toDateString());
+
+        return array_sum(array_map(fn (CapacityPlan $plan): int => $plan->total($from, $to), $plans));
+    }
+
+    public static function ratio(int $numerator, int $denominator): ?float
+    {
+        return $denominator > 0 ? round($numerator / $denominator, 4) : null;
+    }
+
+    public static function bucketOf(Dimension $bucket, string $date): string
+    {
+        $day = CarbonImmutable::parse($date);
+
+        return match ($bucket) {
+            Dimension::Week => $day->startOfWeek()->toDateString(),
+            Dimension::Month => $day->startOfMonth()->toDateString(),
+            default => $day->toDateString(),
+        };
+    }
+
+    public static function emptyLabel(Dimension $dimension): string
+    {
+        return match ($dimension) {
+            Dimension::Department => 'Sin departamento',
+            Dimension::Client => 'Interno (sin cliente)',
+            Dimension::HourBank => 'Sin bolsa',
+            Dimension::TaskType => 'Sin tipo',
+            default => '—',
+        };
+    }
+
+    /**
+     * Nombres (y colores) de las claves de un desglose, con una consulta.
+     *
+     * @param  list<mixed>  $keys
+     * @return array<string, array{name: string, color: string|null}>
+     */
+    public function labels(Dimension $dimension, array $keys): array
+    {
+        if ($keys === []) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $keys)));
+
+        $rows = match ($dimension) {
+            Dimension::Person => User::query()->whereIn('id', $ids)->get(['id', 'name'])->map(fn (User $u) => [$u->id, $u->name, null]),
+            Dimension::Department => Department::withTrashed()->whereIn('id', $ids)->get(['id', 'name', 'color'])->map(fn (Department $d) => [$d->id, $d->name, $d->color]),
+            Dimension::Client => Client::withTrashed()->whereIn('id', $ids)->get(['id', 'name'])->map(fn (Client $c) => [$c->id, $c->name, null]),
+            Dimension::Project => Project::withTrashed()->whereIn('id', $ids)->get(['id', 'code', 'name', 'color'])->map(fn (Project $p) => [$p->id, $p->code.' · '.$p->name, $p->color]),
+            Dimension::HourBank => HourBank::withTrashed()->with(['project' => fn ($q) => $q->withTrashed()->select(['id', 'code'])])->whereIn('id', $ids)->get(['id', 'name', 'project_id'])->map(fn (HourBank $b) => [$b->id, $b->project->code.' · '.$b->name, null]),
+            Dimension::TaskType => TaskType::withTrashed()->whereIn('id', $ids)->get(['id', 'name', 'color'])->map(fn (TaskType $t) => [$t->id, $t->name, $t->color]),
+            Dimension::Task => Task::withTrashed()->whereIn('id', $ids)->get(['id', 'title'])->map(fn (Task $t) => [$t->id, $t->title, null]),
+            default => collect($keys)->map(fn ($key) => [$key, (string) $key, null]),
+        };
+
+        $labels = [];
+        foreach ($rows as [$id, $name, $color]) {
+            $labels[(string) $id] = ['name' => (string) $name, 'color' => $color];
+        }
+
+        return $labels;
+    }
+}

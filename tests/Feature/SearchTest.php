@@ -83,6 +83,33 @@ test('el admin ve Bolsas y Administración, sin importar acentos ni mayúsculas'
         ->and(searchTitles('administracion', $admin))->toContain('Administración');
 });
 
+test('las ausencias salen para todos; las del equipo, para quien las aprueba; los festivos, con manage-settings', function (string $role, array $visible, array $hidden) {
+    $user = userWithRole($role);
+    $titles = [...searchTitles('ausencias', $user), ...searchTitles('festivos', $user)];
+
+    expect($titles)->toContain(...$visible);
+
+    foreach ($hidden as $title) {
+        expect($titles)->not->toContain($title);
+    }
+})->with([
+    'empleado' => ['employee', ['Ausencias'], ['Ausencias del equipo', 'Festivos']],
+    'responsable' => ['department_manager', ['Ausencias', 'Ausencias del equipo'], ['Festivos']],
+    'admin' => ['admin', ['Ausencias', 'Ausencias del equipo', 'Festivos'], []],
+]);
+
+test('cada sección lleva a su página y «ausencias» ya no es una palabra clave de Carga', function () {
+    $response = $this->actingAs(userWithRole('admin'))
+        ->getJson('/buscar?q=ausencias')
+        ->assertOk();
+
+    $pages = collect($response->json('results'))->where('type', 'page')->pluck('url', 'title')->all();
+
+    expect($pages)->toBe(['Ausencias' => '/ausencias', 'Ausencias del equipo' => '/ausencias/equipo'])
+        ->and(searchTitles('vacaciones'))->toContain('Ausencias')
+        ->and(collect($this->actingAs(userWithRole('admin'))->getJson('/buscar?q=festivos')->json('results'))->firstWhere('title', 'Festivos')['url'])->toBe('/admin/festivos');
+});
+
 test('devuelve personas internas activas por nombre o correo', function () {
     $design = Department::factory()->create(['name' => 'Diseño']);
     User::factory()->employee()->inDepartment($design)->create(['name' => 'Lucía Martín', 'email' => 'lucia@audaxstudio.com']);
@@ -111,7 +138,7 @@ test('los textos de las secciones salen de lang/es/search.php', function () {
         }
     })->all();
 
-    expect($pages)->toHaveCount(14);
+    expect($pages)->toHaveCount(17);
 
     foreach ($pages as $page) {
         foreach (['title', 'subtitle', 'keywords'] as $field) {

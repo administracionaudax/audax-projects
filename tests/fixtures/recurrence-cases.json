@@ -1,0 +1,173 @@
+{
+    "_comment": "Casos compartidos por App\\Models\\RecurringTaskRule::occurrencesBetween() (tests/Feature/Recurring/RecurrenceDatesTest.php) y occurrencesBetween() de resources/js/components/recurring/recurrence.ts (tests/js/recurring-dates.test.ts): regla, ventana (from y to, incluidas) y fechas de las tareas. Las fechas van de 2000 a 2100 (RecurringTaskRule::MIN_DATE y MAX_DATE); las reglas antiguas (año 1) conservan su ritmo sin recorrerse desde el principio.",
+    "cases": [
+        {
+            "name": "semanal cada 2 semanas desde la semana de inicio",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 2,
+                "weekday": 1,
+                "month_day": null,
+                "starts_on": "2026-10-01",
+                "ends_on": null
+            },
+            "from": "2026-10-01",
+            "to": "2026-11-10",
+            "expected": ["2026-10-12", "2026-10-26", "2026-11-09"]
+        },
+        {
+            "name": "semanal que empezó hace décadas: salta a la ventana sin perder el ritmo",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 3,
+                "weekday": 5,
+                "month_day": null,
+                "starts_on": "2000-01-03",
+                "ends_on": null
+            },
+            "from": "2026-10-01",
+            "to": "2026-11-30",
+            "expected": ["2026-10-02", "2026-10-23", "2026-11-13"]
+        },
+        {
+            "name": "semanal del año 1 (dato antiguo): el mismo ritmo, sin recorrerlo",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 2,
+                "weekday": 1,
+                "month_day": null,
+                "starts_on": "0001-01-01",
+                "ends_on": null
+            },
+            "from": "2026-10-01",
+            "to": "2026-11-10",
+            "expected": ["2026-10-12", "2026-10-26", "2026-11-09"]
+        },
+        {
+            "name": "semanal: nada antes del 01/01/2000",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 1,
+                "weekday": 1,
+                "month_day": null,
+                "starts_on": "1999-12-01",
+                "ends_on": null
+            },
+            "from": "1999-12-01",
+            "to": "2000-01-15",
+            "expected": ["2000-01-03", "2000-01-10"]
+        },
+        {
+            "name": "semanal: nada después del 31/12/2100",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 1,
+                "weekday": 5,
+                "month_day": null,
+                "starts_on": "2100-12-01",
+                "ends_on": null
+            },
+            "from": "2100-12-20",
+            "to": "2101-01-31",
+            "expected": ["2100-12-24", "2100-12-31"]
+        },
+        {
+            "name": "semanal que terminó antes de la ventana",
+            "rule": {
+                "frequency": "weekly",
+                "interval": 1,
+                "weekday": 1,
+                "month_day": null,
+                "starts_on": "2026-09-07",
+                "ends_on": "2026-09-30"
+            },
+            "from": "2026-10-01",
+            "to": "2026-12-31",
+            "expected": []
+        },
+        {
+            "name": "mensual el 31: el último día de los meses cortos, hasta la fecha final",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 1,
+                "weekday": null,
+                "month_day": 31,
+                "starts_on": "2026-01-15",
+                "ends_on": "2026-04-30"
+            },
+            "from": "2026-01-01",
+            "to": "2026-12-31",
+            "expected": ["2026-01-31", "2026-02-28", "2026-03-31", "2026-04-30"]
+        },
+        {
+            "name": "mensual el 30: en un año bisiesto, febrero tiene 29",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 1,
+                "weekday": null,
+                "month_day": 30,
+                "starts_on": "2028-01-01",
+                "ends_on": null
+            },
+            "from": "2028-02-01",
+            "to": "2028-03-31",
+            "expected": ["2028-02-29", "2028-03-30"]
+        },
+        {
+            "name": "mensual cada 12 meses desde marzo",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 12,
+                "weekday": null,
+                "month_day": 10,
+                "starts_on": "2026-03-10",
+                "ends_on": null
+            },
+            "from": "2026-10-05",
+            "to": "2027-11-05",
+            "expected": ["2027-03-10"]
+        },
+        {
+            "name": "mensual: el día del mes de inicio anterior a starts_on no cuenta",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 1,
+                "weekday": null,
+                "month_day": 5,
+                "starts_on": "2026-10-20",
+                "ends_on": null
+            },
+            "from": "2026-10-01",
+            "to": "2026-12-31",
+            "expected": ["2026-11-05", "2026-12-05"]
+        },
+        {
+            "name": "mensual el 31 cada 5 meses desde el año 1 (dato antiguo)",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 5,
+                "weekday": null,
+                "month_day": 31,
+                "starts_on": "0001-01-31",
+                "ends_on": null
+            },
+            "from": "2026-10-01",
+            "to": "2027-12-31",
+            "expected": ["2026-11-30", "2027-04-30", "2027-09-30"]
+        },
+        {
+            "name": "mensual: nada después del 31/12/2100",
+            "rule": {
+                "frequency": "monthly",
+                "interval": 1,
+                "weekday": null,
+                "month_day": 15,
+                "starts_on": "2100-10-01",
+                "ends_on": null
+            },
+            "from": "2100-10-01",
+            "to": "2101-03-31",
+            "expected": ["2100-10-15", "2100-11-15", "2100-12-15"]
+        }
+    ]
+}

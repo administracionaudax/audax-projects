@@ -10,8 +10,13 @@ import type { TaskFilters, TaskView } from '@/types';
  * recargan las props que cambian (recarga parcial de Inertia).
  */
 
-/** Props que se recargan tras editar una tarea desde la lista, el kanban o el panel. */
-export const TASK_RELOAD = ['tasks', 'panel', 'hiddenCompletedCount'];
+/** Props que se recargan tras editar una tarea desde la lista, el kanban, el calendario o el panel. */
+export const TASK_RELOAD = [
+    'tasks',
+    'panel',
+    'hiddenCompletedCount',
+    'calendar',
+];
 
 type Errors = Record<string, string>;
 
@@ -91,6 +96,8 @@ export function filtersToQuery(
 
     if (view === 'kanban') {
         query.vista = 'kanban';
+    } else if (view === 'calendar') {
+        query.vista = 'calendario';
     }
 
     if (filters.assignee !== null) {

@@ -72,6 +72,7 @@ const ALL: Abilities = {
     lockTime: true,
     manageUsers: true,
     manageSettings: true,
+    viewTeamAbsences: true,
 };
 
 function withAbilities(can: Partial<Abilities>) {
@@ -104,7 +105,19 @@ describe('panel de administración', () => {
                 .getByRole('link', { name: 'Abrir los ajustes' })
                 .getAttribute('href'),
         ).toBe('/admin/ajustes');
-        expect(screen.getByText('Llega en la Fase 3')).toBeTruthy();
+        // Fase 3: los festivos ya tienen su página (/admin/festivos).
+        expect(
+            screen
+                .getByRole('link', { name: 'Gestionar los festivos' })
+                .getAttribute('href'),
+        ).toBe('/admin/festivos');
+        // … y la tarjeta «Festivos y ausencias» lleva también a las del equipo.
+        expect(
+            screen
+                .getByRole('link', { name: 'Ver las ausencias del equipo' })
+                .getAttribute('href'),
+        ).toBe('/ausencias/equipo');
+        expect(screen.queryByText('Llega en la Fase 3')).toBeNull();
         expect(screen.getByText('Llega en la Fase 7')).toBeTruthy();
     });
 
@@ -413,6 +426,9 @@ const settingsProps: AdminSettingsProps = {
         max_attachment_mb: 50,
         default_work_minutes: [480, 480, 480, 480, 480, 0, 0],
         max_audio_seconds: 300,
+        weekly_digest_enabled: true,
+        occupancy_low_threshold: 70,
+        occupancy_high_threshold: 110,
     },
     roundings: [1, 5, 10, 15, 30],
     serverUploadLimitMb: 20,

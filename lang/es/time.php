@@ -45,6 +45,9 @@ return [
         'task_completed' => 'La tarea ya está completada.',
         'over_capacity' => 'Ese día sumas :total, más de un 25 % por encima de tu jornada (:capacity).',
         'no_capacity' => 'Ese día no tienes jornada y sumas :total.',
+        // Al imputar por otra persona (D-036), los avisos la nombran a ella.
+        'over_capacity_other' => 'Ese día :name suma :total, más de un 25 % por encima de su jornada (:capacity).',
+        'no_capacity_other' => 'Ese día :name no tiene jornada y suma :total.',
         'overage_all' => 'Esta bolsa está agotada: estas horas se registrarán como exceso.',
         'overage_partial' => ':minutes de esta entrada se registrarán como exceso: la bolsa se agota.',
         'timer_too_short' => 'El temporizador ha durado menos de lo que se redondea: no se ha imputado nada.',

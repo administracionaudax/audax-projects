@@ -5,6 +5,9 @@ import {
     SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { t } from '@/lib/i18n';
@@ -31,6 +34,10 @@ export function NavMain({ items }: { items: NavItem[] }) {
                 <SidebarMenu>
                     {items.map((item) => {
                         const active = isActive(item);
+                        const children = item.items ?? [];
+                        // En una subpágina, la sección queda resaltada, pero la página actual es
+                        // la subpágina (un solo aria-current="page").
+                        const childActive = children.some(isActive);
 
                         return (
                             <SidebarMenuItem key={toUrl(item.href)}>
@@ -47,7 +54,9 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                         href={item.href}
                                         prefetch
                                         aria-current={
-                                            active ? 'page' : undefined
+                                            active && !childActive
+                                                ? 'page'
+                                                : undefined
                                         }
                                         aria-describedby={
                                             item.badge
@@ -79,6 +88,38 @@ export function NavMain({ items }: { items: NavItem[] }) {
                                             {item.badge.label}
                                         </span>
                                     </SidebarMenuBadge>
+                                ) : null}
+                                {children.length > 0 ? (
+                                    <SidebarMenuSub>
+                                        {children.map((child) => {
+                                            const current = isActive(child);
+
+                                            return (
+                                                <SidebarMenuSubItem
+                                                    key={toUrl(child.href)}
+                                                >
+                                                    <SidebarMenuSubButton
+                                                        asChild
+                                                        isActive={current}
+                                                    >
+                                                        <Link
+                                                            href={child.href}
+                                                            prefetch
+                                                            aria-current={
+                                                                current
+                                                                    ? 'page'
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            <span>
+                                                                {child.title}
+                                                            </span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            );
+                                        })}
+                                    </SidebarMenuSub>
                                 ) : null}
                             </SidebarMenuItem>
                         );

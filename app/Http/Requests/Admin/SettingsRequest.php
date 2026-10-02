@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Ajustes globales (SPEC §7, §8 y §14; Setting::DEFAULTS). Los umbrales de alerta de las bolsas se
- * guardan ordenados de menor a mayor y sin repetir.
+ * guardan ordenados de menor a mayor y sin repetir. Los de ocupación del resumen semanal (D-047)
+ * exigen que el bajo sea menor que el alto.
  */
 class SettingsRequest extends FormRequest
 {
@@ -27,6 +28,13 @@ class SettingsRequest extends FormRequest
     public const int MIN_AUDIO_SECONDS = 30;
 
     public const int MAX_AUDIO_SECONDS = 600;
+
+    /**
+     * Límites de los umbrales de ocupación del resumen semanal (%, D-047).
+     */
+    public const int OCCUPANCY_MIN = 1;
+
+    public const int OCCUPANCY_MAX = 300;
 
     public function authorize(): bool
     {
@@ -59,6 +67,9 @@ class SettingsRequest extends FormRequest
             'max_audio_seconds' => ['sometimes', 'required', 'integer', 'between:'.self::MIN_AUDIO_SECONDS.','.self::MAX_AUDIO_SECONDS],
             'default_work_minutes' => ['required', 'array', 'list', 'size:7'],
             'default_work_minutes.*' => ['required', 'integer', 'between:0,1440'],
+            'weekly_digest_enabled' => ['required', 'boolean'],
+            'occupancy_low_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX, 'lt:occupancy_high_threshold'],
+            'occupancy_high_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX],
         ];
     }
 
@@ -78,6 +89,11 @@ class SettingsRequest extends FormRequest
             'default_work_minutes.*.between' => __('admin.schedules.day_range'),
             'default_work_minutes.*.integer' => __('admin.schedules.day_range'),
             'default_work_minutes.*.required' => __('admin.schedules.day_range'),
+            'occupancy_low_threshold.lt' => __('reports.r3.settings.low_below_high'),
+            'occupancy_low_threshold.between' => __('reports.r3.settings.range', ['min' => self::OCCUPANCY_MIN, 'max' => self::OCCUPANCY_MAX]),
+            'occupancy_low_threshold.integer' => __('reports.r3.settings.range', ['min' => self::OCCUPANCY_MIN, 'max' => self::OCCUPANCY_MAX]),
+            'occupancy_high_threshold.between' => __('reports.r3.settings.range', ['min' => self::OCCUPANCY_MIN, 'max' => self::OCCUPANCY_MAX]),
+            'occupancy_high_threshold.integer' => __('reports.r3.settings.range', ['min' => self::OCCUPANCY_MIN, 'max' => self::OCCUPANCY_MAX]),
         ];
     }
 
@@ -93,6 +109,8 @@ class SettingsRequest extends FormRequest
             'max_attachment_mb' => __('admin.attributes.max_attachment_mb'),
             'max_audio_seconds' => __('chat_media.attributes.max_audio_seconds'),
             'default_work_minutes' => __('admin.attributes.default_work_minutes'),
+            'occupancy_low_threshold' => __('reports.r3.settings.attributes.low'),
+            'occupancy_high_threshold' => __('reports.r3.settings.attributes.high'),
         ];
     }
 
@@ -124,6 +142,9 @@ class SettingsRequest extends FormRequest
             'max_attachment_mb' => $this->integer('max_attachment_mb'),
             'default_work_minutes' => array_map('intval', array_values($week)),
             ...($this->has('max_audio_seconds') ? ['max_audio_seconds' => $this->integer('max_audio_seconds')] : []),
+            'weekly_digest_enabled' => $this->boolean('weekly_digest_enabled'),
+            'occupancy_low_threshold' => $this->integer('occupancy_low_threshold'),
+            'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
         ];
     }
 }

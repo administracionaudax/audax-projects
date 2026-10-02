@@ -28,6 +28,8 @@ export type Abilities = {
     lockTime: boolean;
     manageUsers: boolean;
     manageSettings: boolean;
+    /** «Ausencias del equipo»: aprobar y registrar las de su equipo (D-049). */
+    viewTeamAbsences: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */

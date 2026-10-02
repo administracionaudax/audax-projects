@@ -22,6 +22,7 @@ export const SIDEBAR_PATHS = [
     '/bolsas',
     '/horas',
     '/carga',
+    '/ausencias',
     '/informes',
     '/chat',
 ] as const;

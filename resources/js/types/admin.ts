@@ -175,6 +175,10 @@ export type AdminSettings = {
     default_work_minutes: number[];
     /** Duración máxima de los audios del chat en segundos (Fase 6; entre 30 y 600). */
     max_audio_seconds: number;
+    /** Resumen semanal de productividad (D-047) y sus umbrales de ocupación en %. */
+    weekly_digest_enabled: boolean;
+    occupancy_low_threshold: number;
+    occupancy_high_threshold: number;
 };
 
 export type AdminSettingsProps = {

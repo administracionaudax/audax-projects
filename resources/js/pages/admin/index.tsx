@@ -26,19 +26,27 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
 import { index as departmentsIndex } from '@/routes/admin/departments';
+import { index as holidaysIndex } from '@/routes/admin/holidays';
+import { edit as identityEdit } from '@/routes/admin/identity';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
 import { index as transcriptionsIndex } from '@/routes/admin/transcriptions';
 import { index as usersIndex } from '@/routes/admin/users';
+import { index as recurringIndex } from '@/routes/recurring';
+import { index as templatesIndex } from '@/routes/templates';
 import type { Abilities } from '@/types';
 
 type AreaLink = {
     label: TranslationKey;
     href: string;
-    ability: keyof Pick<Abilities, 'manageUsers' | 'manageSettings'>;
+    ability: keyof Pick<
+        Abilities,
+        'manageUsers' | 'manageSettings' | 'viewTeamAbsences'
+    >;
 };
 
 type AdminArea = {
@@ -134,6 +142,18 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.holidays.title',
         description: 'admin.areas.holidays.description',
         phase: 3,
+        links: [
+            {
+                label: 'holidays.admin_link',
+                href: holidaysIndex.url(),
+                ability: 'manageSettings',
+            },
+            {
+                label: 'holidays.admin_team_link',
+                href: teamAbsencesIndex.url(),
+                ability: 'viewTeamAbsences',
+            },
+        ],
     },
     {
         id: 'templates',
@@ -141,6 +161,18 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.templates.title',
         description: 'admin.areas.templates.description',
         phase: 4,
+        links: [
+            {
+                label: 'templates.admin.open_templates',
+                href: templatesIndex.url(),
+                ability: 'manageSettings',
+            },
+            {
+                label: 'templates.admin.open_recurring',
+                href: recurringIndex.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'identity',
@@ -148,6 +180,13 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.identity.title',
         description: 'admin.areas.identity.description',
         phase: 5,
+        links: [
+            {
+                label: 'identity.admin_link',
+                href: identityEdit.url(),
+                ability: 'manageSettings',
+            },
+        ],
     },
     {
         id: 'audit',

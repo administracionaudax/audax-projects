@@ -296,6 +296,7 @@ jobs:
           APP_FALLBACK_LOCALE=es
           APP_FAKER_LOCALE=es_ES
           APP_STYLEGUIDE_PUBLIC=true
+          LOGIN_RATE_LIMIT=60
           LOG_CHANNEL=single
           LOG_LEVEL=debug
           DB_CONNECTION=pgsql

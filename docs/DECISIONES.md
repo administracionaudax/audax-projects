@@ -356,6 +356,343 @@ _Numeradas D-053 a D-055 porque la Fase 2 ya había reservado D-043 a D-048 y la
 - **Aprobaciones:** la página carga los totales de cada semana; las entradas se piden al desplegar su detalle.
 - **Páginas de error:** 403, 404, 419, 429, 500 y 503 con una página propia en español y con el tema de la app en las visitas de página completa. Las acciones dentro de una página tratan sus errores sin salir de ella.
 
+## 26/09/2026: Decisiones tomadas en autonomía (Fase 2)
+
+_Detalle y contexto en `docs/PLAN-FASE-2.md`. Las que surjan al implementar se añaden al cerrar la fase._
+
+### D-043 · Ingreso estimado **[concreta el SPEC §10]**
+- **Qué cuenta:** solo las horas facturables (`is_billable`). Los proyectos internos dan 0.
+- **Tarifa de cada entrada:** la instantánea si está aprobada o bloqueada. Si no, la vigente según la prioridad bolsa > proyecto > cliente > persona (la misma de la aprobación, D-034).
+- **Bolsas con `price_amount`:** los minutos dentro de la bolsa valen `price_amount × minutos dentro / total de la bolsa`; el exceso se valora a la tarifa de la bolsa (o la siguiente en la prioridad). Una bolsa sin `price_amount` se valora entera a tarifa.
+- **Precio cerrado:** el importe se reparte según el avance.
+  - La base es el mayor de: el presupuesto de horas, la suma de las estimaciones de las tareas raíz y lo imputado hasta hoy.
+  - El ingreso de un periodo es `importe × minutos facturables del periodo / base`, y lo acumulado nunca supera el importe.
+- **Por horas sin bolsa:** minutos facturables × tarifa.
+- **Coste:** minutos × la instantánea de coste si existe; si no, el coste por hora actual de la persona.
+- **Rentabilidad:** ingreso − coste, y el margen en %. Solo con `view-financials`.
+
+### D-044 · Quién ve cada informe **[concreta D-021 para la F2]**
+| Informe | Admin | Responsable | Gestor de proyecto | Empleado |
+|---|---|---|---|---|
+| Dirección | ✅ todo | ✅ limitado a su departamento | ❌ | ❌ |
+| Departamento | ✅ | ✅ los suyos | ❌ | ❌ |
+| Cliente | ✅ | ✅ | ✅ solo sus proyectos | ❌ |
+| Proyecto | ✅ | ✅ | ✅ los suyos | ❌ |
+| Persona | ✅ | ✅ su equipo | ❌ | ✅ solo la suya |
+| Detallado | ✅ | ✅ con `TimeEntry::visibleTo` | ✅ con `visibleTo` | ✅ solo lo suyo |
+
+- **Datos económicos** (ingreso, coste, margen, tarifas): solo con `view-financials`.
+- **Agregados sin datos por persona** (horas por proyecto, bolsa o tipo): se ven en las fichas a las que ya se tiene acceso.
+
+### D-045 · Exportación
+- **XLSX y CSV:** con **OpenSpout 5.12** (MIT), en streaming y sin cola hasta 20.000 filas. La exportación respeta los filtros y los permisos del informe.
+- **PDF de consumo de bolsa:** con **FPDF 1.9** (MIT). Usa las fuentes estándar del PDF (Helvetica), porque incrustar DM Sans exigiría convertirla con herramientas externas; la marca va en el logotipo (dibujado en vectorial o como PNG) y en los colores. Incluye:
+  - logo y nombre de la empresa,
+  - cliente, proyecto y bolsa,
+  - barra de consumo, dentro y exceso por separado,
+  - consumo por mes y listado de entradas aprobadas con fecha, persona, tarea, horas y descripción.
+  Pensado para enviárselo al cliente: solo lleva las horas aprobadas o bloqueadas, como hará el portal de la F5.
+- **Exportación para facturar:** por cliente y periodo, con el detalle de cada entrada (dentro de bolsa y exceso por separado) y sus tarifas si hay `view-financials`.
+
+### D-046 · Rendimiento
+- **Cálculo:** agregados SQL sobre `time_entries` con sus índices (fecha y persona; proyecto y fecha; bolsa y fecha), sin cargar modelos, y la capacidad con `Capacity::forRanges`.
+- **Caché:** por combinación de filtros y persona que consulta, con una versión global que se incrementa al escribir entradas, tareas, bolsas o jornadas. Así se invalida al momento sin etiquetas.
+- **Presupuesto:**
+  - menos de 1 s en el servidor con los datos de 12 meses (medido en el despliegue),
+  - un test de presupuesto de consultas por dashboard, como `Phase1PagesPerformanceTest`.
+
+### D-047 · Resumen semanal de productividad
+- **Cuándo y a quién:** los lunes a las 08:00 de Madrid, por email (cola `mail`) a cada responsable, sobre su equipo y la semana anterior. Los admins lo reciben de toda la agencia.
+- **Contenido:**
+  - días sin imputar por persona,
+  - ocupación por encima o por debajo de los umbrales,
+  - bolsas en riesgo (≥ primer umbral),
+  - tareas vencidas.
+- **Nuevos ajustes:** `occupancy_low_threshold` (70 %), `occupancy_high_threshold` (110 %) y `weekly_digest_enabled` (sí).
+
+### D-048 · Capacidad en la F2
+En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la F3 añada festivos y ausencias a `Capacity`, todos los informes los tendrán en cuenta sin más cambios.
+
+### D-078 · «Dentro de bolsa» **[concreta D-019 y D-044 para los informes]**
+- **Qué cuenta:** en todas las cifras (resúmenes, desgloses, tabla dinámica, exportaciones, PDF y la pestaña Horas del proyecto), solo los minutos de las entradas **con bolsa**, menos su exceso (`PivotReport::IN_BANK_SQL`). Las horas de proyectos sin bolsa nunca cuentan como «dentro de bolsa».
+- **Qué se corrige:** el contrato de la F2 lo calculaba como imputadas − exceso, incluyendo horas sin bolsa; se alinearon `Metrics::summary()` y `breakdown()` y el total de la pestaña Horas de la F1.
+
+### D-079 · Ocupación y comparación de un periodo en curso **[concreta el SPEC §10]**
+- **Ocupación y productividad facturable:** siempre contra la capacidad del **periodo completo**, como define el SPEC. Los dashboards muestran además la capacidad transcurrida hasta hoy, para leer el ritmo a mitad de periodo.
+- **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
+- **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
+
+
+### D-080 · Nivel de ocupación de un periodo en curso **[concreta D-047 y D-079]**
+- **Qué se enseña:** la ocupación de cada miembro sigue siendo la del SPEC §10 (imputadas / capacidad del periodo completo, D-079).
+- **Nivel (baja, en rango, alta; umbrales 70 % y 110 % de D-047):** en un periodo en curso (le quedan días con jornada) se mide con el **ritmo**: imputadas / capacidad transcurrida hasta ayer (`pace`). Contra el periodo entero, a mitad de mes todo el mundo salía «baja». Si esa capacidad es 0 (el primer día o un periodo futuro), sin nivel: «Aún sin datos». En un periodo cerrado, el nivel es el de la ocupación.
+- **Dónde:** tabla de miembros del departamento (el ritmo va debajo de la ocupación) y su exportación («Ritmo (%)»).
+
+### D-081 · Minutos en las exportaciones con totales **[concreta D-045]**
+- Las horas en decimal (redondeadas a 2) no siempre suman su total: tres entradas de 20 min son 0,33 + 0,33 + 0,33 = 0,99 h frente a 1,00 h.
+- Las exportaciones con fila de totales (horas para facturar, resumen por proyecto del cliente, estimado frente a real del proyecto y tabla dinámica del detallado) llevan **al final** una columna de **minutos enteros** por cada columna de horas que se suma; en la tabla dinámica, una columna y una fila «Total (minutos)». Las horas decimales siguen para leer; los minutos suman exacto. Al final, para no mover las columnas de siempre.
+
+### D-082 · Tope del precio de una bolsa **[concreta D-043]**
+- La parte de lo que va dentro de una bolsa con precio vale `precio × minutos dentro / máx(total de la bolsa, lo que va dentro de la bolsa entera)`.
+- Normalmente es `precio × dentro / total`. Pero si lo de dentro supera el total (entradas bloqueadas que no cambian al reducir el total, D-019 y D-054), el precio se reparte entre todo lo de dentro: la bolsa nunca vale más que su precio, sume el periodo que se sume. «Lo que va dentro de la bolsa entera» es el de `HourBankLedger` (consumo − exceso).
+- El exceso de una bolsa con precio, como dice D-043: a la instantánea de tarifa de cada entrada si está aprobada o bloqueada y, si no, a la tarifa vigente (antes se valoraba siempre a la vigente).
+
+### D-083 · Un solo total de ingreso y coste, con los mismos céntimos en todas partes **[concreta D-043]**
+- **Total:** el de un conjunto de entradas es el de sus unidades (proyecto · bolsa · persona · facturable; el precio cerrado, por proyecto), redondeado **una sola vez**, se agrupe como se agrupe (`RevenueCalculator`, con las fórmulas en `App\Domain\Reports\Valuation`).
+- **Repartos y series** (por cliente, proyecto, persona, semana…): cada fila recibe su parte de ese total en céntimos por resto mayor (`Cents::largestRemainder`): las filas suman exactamente el resumen. Las tablas enseñan los totales del servidor, nunca sumados en el navegador.
+- **Exportaciones por entrada** (horas y horas para facturar): cada entrada suma su parte exacta del total de su unidad (`EntryValuation::next`) y los céntimos se reparten en orden (`RunningCents`): la columna suma el ingreso del informe y ninguna línea se aleja más de un céntimo de su importe. El total del fichero sale de las mismas filas que exporta (nunca del resumen en caché).
+
+### D-084 · Subtareas en los informes **[concreta el SPEC §6 y §10]**
+- **Precisión de estimación:** las unidades son las hojas con estimación (subtareas y tareas sin subtareas) y las tareas raíz cuyas subtareas no están estimadas (con su propia estimación y las horas de sus subtareas), completadas en el periodo. Una tarea con alguna subtarea estimada cuenta por sus subtareas estimadas (su estimación es su suma); sus horas propias y las de sus subtareas sin estimar no entran en la precisión. Es la regla de la tabla «Estimado frente a real» y de la base del precio cerrado.
+- **Detallado por tarea:** las horas de una subtarea suman en su tarea padre (se agrupa por la tarea raíz).
+
+### D-085 · Límite de las exportaciones de los informes
+- 30 exportaciones por minuto y usuario, comunes a todos los dashboards y al detallado (limitador `report-exports`). Solo cuentan las peticiones con `formato`: ver las páginas no gasta el cupo. La exportación de horas y el PDF de bolsa mantienen su límite propio.
+
+### D-086 · Caché de los informes **[concreta D-046]**
+- **Cuándo se invalida:** siempre **tras el commit** de la transacción (y nunca si se deshace), con un incremento atómico de la versión. Además de entradas, tareas, bolsas, proyectos, clientes, jornadas, ajustes y personas: estados y tipos de tarea, departamentos, semanas de horas, bloqueos, miembros y gestores de proyecto y responsables de departamento, y los servicios con actualizaciones masivas (bloquear y desbloquear horas, pasar un estado a «done», mover tareas y reordenar catálogos).
+- **Clave:** además de quien mira, su permiso económico y los filtros, su **alcance**: roles, departamentos que dirige y proyectos que gestiona. Quien deja de dirigir un departamento no ve nunca lo que vio cacheado, aunque nada haya invalidado la caché.
+
+### D-087 · Resumen semanal con el alcance de dirección **[concreta D-047]**
+- Las bolsas en riesgo y las tareas vencidas del resumen semanal son las del dashboard de dirección de quien lo recibe (`HourBanksAtRisk` y `OverdueTasks`): a un responsable, también las bolsas de los proyectos donde imputa su equipo y las tareas de las personas de su equipo que imputaron esa semana aunque ya estén de baja. El email cuenta lo mismo que el dashboard.
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 3)
+
+_Detalle y contexto en `docs/PLAN-FASE-3.md`._
+
+### D-049 · Ausencias
+- **Solicitar:** cada persona solicita las suyas (tipo, fechas, día completo o parte del día con `partial_minutes`, y notas).
+- **Aprobar o rechazar:** un responsable de su departamento o un admin (como las horas, D-020). El rechazo lleva un comentario.
+  - Las de responsables y admins **se aprueban solas**.
+  - Un admin o un responsable puede registrar una ausencia **ya aprobada** para alguien de su ámbito (una baja, por ejemplo).
+- **Cancelar:**
+  - la persona cancela las suyas solicitadas, o las aprobadas que aún no han empezado,
+  - quien aprueba puede anular una aprobada; queda en la auditoría.
+- **Validaciones:** sin solaparse con otra ausencia solicitada o aprobada de la misma persona. `partial_minutes` solo en ausencias de un día. Máximo un año por ausencia.
+- **Notificaciones** (SPEC §13), en la app y por email por la cola `mail`:
+  - «solicitada», a quien puede aprobar,
+  - «aprobada» y «rechazada», a la persona.
+- **Al imputar un día con ausencia aprobada** sale un aviso sin bloqueo (SPEC §7): nuevo aviso en `TimeEntryRules`.
+
+### D-050 · Festivos
+- **Administración:** en `/admin/festivos` (`manage-settings`) se crean, editan y borran por año.
+- **Importación:**
+  - **festivos nacionales de España del año**, calculados en local sin servicios externos (SPEC §15: nada a terceros): 1 y 6 de enero, Viernes Santo, 1 de mayo, 15 de agosto, 12 de octubre, 1 de noviembre y 6, 8 y 25 de diciembre;
+  - los autonómicos y locales se añaden a mano o importando un fichero `.ics` o un CSV (`AAAA-MM-DD;Nombre`).
+- **Alcance:** afectan a todas las personas; `scope` queda en `company`.
+
+### D-051 · Reparto de la carga (lo que hace `WorkloadPlanner`, ya probado)
+- **Qué se reparte:** el restante (estimación − imputado), a partes iguales entre los días con capacidad > 0 desde max(hoy, inicio) hasta la entrega; los minutos que sobran van a los primeros días.
+- **Casos especiales:**
+  - una tarea vencida lleva todo su restante a hoy y se marca,
+  - sin ningún día con capacidad en el rango, todo va al primer día,
+  - la capacidad día a día se calcula, y se pinta, como mucho un año hacia delante. Una entrega posterior reparte igualmente entre **todos** sus días laborables: los que pasan del año se cuentan con la jornada semanal vigente al final de ese año, sin festivos ni ausencias, para no amontonar el restante en el primer año (revisión global).
+- **Qué no cuenta:** los hitos, las tareas completadas y los proyectos archivados. Con subtareas, cuentan las subtareas y no el padre.
+- **Bandejas:**
+  - «Sin planificar»: tareas con responsable pero sin estimación o sin entrega,
+  - «Sin asignar»: tareas por departamento, el de la bolsa o, si no, el del tipo.
+
+### D-052 · Vista «Carga» y quién la ve (D-021)
+- **Quién ve qué:**
+  - admin: todo,
+  - responsable: su departamento (y él mismo), y puede reasignar carga,
+  - el resto: solo su propia fila.
+  - Los gestores ven y reasignan las tareas de sus proyectos desde el panel, pero no ven la carga de personas de otros departamentos.
+- **Matriz personas × días (o semanas en el horizonte de 3 meses):**
+  - horizontes: semana actual, **semana que viene (por defecto)**, próximas 4 semanas y próximos 3 meses,
+  - agrupada por departamento, con totales,
+  - filtros: departamento, persona, cliente y proyecto.
+- **Semáforo de cada celda** (horas planificadas / capacidad), el de `components/charts/thresholds.ts`, siempre con icono y texto:
+  - gris: sin capacidad, con su motivo (festivo o ausencia),
+  - azul: menos del 70 %,
+  - verde: del 70 % al 100 %,
+  - ámbar: del 100 % al 120 %,
+  - rojo: más del 120 %.
+  - El nivel se decide con el porcentaje redondeado que se enseña, para que la cifra y el color no se contradigan: 481 de 480 min se lee «100 %» y es verde; 335 de 480, «70 %», también verde (revisión global).
+- **Panel de una celda:** las tareas que forman esa carga, con los minutos de ese día, y se reasignan ahí mismo (responsable y fechas) con las reglas de Tareas (`TaskPolicy::update`, `TaskWriter`). La matriz se recalcula al momento.
+  - La celda de alguien fuera de su alcance en la URL (`?celda=`) se ignora en una visita completa, como cualquier otro filtro que no vale; solo la recarga parcial que abre el panel responde 403 (revisión global).
+- **Bandejas «Sin planificar» y «Sin asignar»:** en la misma página, con acciones rápidas para poner la estimación, las fechas o el responsable.
+
+### D-088 · Ausencias de otra persona al imputar por ella **[concreta D-036 y D-049; RGPD]**
+- **Quién ve el tipo de una ausencia** (vacaciones, baja, permiso…; una baja es un dato de salud): la propia persona, un admin o quien la supervisa (`User::canSeeAbsencesOf`, que es `supervises` para los responsables).
+- **Aviso al imputar por otra persona en un día con ausencia aprobada** (SPEC §7):
+  - un admin o su responsable ven el tipo, con el nombre de la persona («Ese día Pedro Pérez tiene una ausencia aprobada (Baja)…»),
+  - cualquier otro que pueda imputar por ella (un gestor, en su proyecto) solo ve «Ese día Pedro Pérez no está disponible», sin tipo ni horas (o «no está disponible una parte de la jornada»).
+- **Por qué:** antes el aviso decía el tipo («Baja») a cualquiera que pudiera imputar por la persona, y probando fechas se podía reconstruir su calendario de bajas. Ahora solo sabe que ese día no está disponible, que es lo que necesita para imputar bien.
+- **Avisos de jornada:** al imputar por otra persona hablan de ella y la nombran («Ese día Pedro Pérez no tiene jornada y suma 1:00», «… más de un 25 % por encima de su jornada»), no de quien imputa.
+
+### D-091 · Navegación de ausencias y festivos **[cambia el SPEC §3]**
+- **Barra lateral:** «Ausencias» para todos los internos, tras «Carga». Quien aprueba ausencias (responsables y admins, `auth.can.viewTeamAbsences`) tiene dentro «Ausencias del equipo». Las pestañas «Mis ausencias» y «Ausencias del equipo» de la página siguen igual.
+- **Búsqueda global:** «Ausencias», «Ausencias del equipo» (quien las aprueba) y «Festivos» (`manage-settings`) son secciones propias; «ausencias» deja de ser una palabra clave de «Carga».
+- **Administración:** la tarjeta «Festivos y ausencias» lleva a los festivos y a las ausencias del equipo.
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 4)
+
+_Detalle y contexto en `docs/PLAN-FASE-4.md`._
+
+### D-056 · Dependencias **[concreta el SPEC §4.3 y §6.1]**
+- **Tipo:** solo fin-inicio (`finish_to_start`), y solo entre tareas **del mismo proyecto**. Los hitos participan como cualquier tarea.
+- **Reglas:**
+  - una tarea no puede depender de sí misma,
+  - no se pueden crear ciclos, ni directos ni indirectos (búsqueda en anchura sobre las dependencias del proyecto),
+  - enlazar dos veces lo mismo no duplica.
+- **Quién:** quien puede editar **las dos** tareas (`TaskPolicy::update`).
+- **Tareas borradas:** una tarea en la papelera no cuenta en las dependencias. Al borrarla del todo, sus dependencias se borran en cascada.
+- **Contrato:** `App\Domain\Schedule\DependencyService` y las rutas `schedule.dependencies.*`.
+
+### D-057 · Conflictos al mover **[concreta el SPEC §6.1]**
+- **Cuándo hay conflicto:** una sucesora está en conflicto si empieza (o, si no tiene inicio, vence) el mismo día o antes de que acabe su predecesora.
+- **Propuesta:** llevar cada sucesora en conflicto al día siguiente del fin de su predecesora.
+  - Conserva su duración en **días naturales**, que es sencillo y predecible.
+  - Sigue **en cascada** por las sucesoras de las sucesoras.
+  - Mover una tarea **antes** no propone nada: las sucesoras nunca se adelantan solas.
+- **Nunca se aplica sola:** `POST /tareas/{task}/reprogramar/propuesta` devuelve la propuesta sin cambiar nada. `POST /tareas/{task}/reprogramar` guarda las fechas nuevas y solo desplaza las sucesoras si se confirma (`shift_successors`).
+  - La propuesta se **recalcula en el servidor** al confirmar: nunca se aceptan fechas del cliente para las sucesoras.
+  - Cada sucesora exige `TaskPolicy::update`. O se aplica todo o nada.
+- **Las dependencias son una ayuda:** se puede guardar una fecha en conflicto sin desplazar nada. El Gantt marca el conflicto (enlace en rojo, con icono y texto).
+
+### D-058 · Plantillas de proyecto **[concreta el SPEC §4.3, §6 y §14]**
+- **Estructura** (JSON en `project_templates.structure`):
+  - tareas con `ref`, `parent_ref` (un nivel), título, tipo, prioridad, estimación, hito, `start_offset_days` y `duration_days`,
+  - dependencias `from_ref → to_ref`.
+  - Todo se valida con `ProjectTemplateService::normalize`: referencias únicas, subtareas de un solo nivel, dependencias existentes, sin ciclos y un máximo de 500 tareas.
+- **Aplicar:**
+  - al **crear un proyecto** («desde plantilla», SPEC §6) lo puede hacer quien crea proyectos: admin y responsables (D-022),
+  - también en un proyecto existente, desde **Ajustes**, quien lo gestiona: se añaden las tareas y no se toca nada de lo que ya hay.
+  - Las fechas se calculan desde el inicio que se elija (por defecto, el del proyecto). Si el proyecto es de bolsas, todas las tareas van a la bolsa que se elija.
+- **Guardar como plantilla:** desde Ajustes del proyecto, quien lo gestiona. Solo se guardan títulos, tipos, estimaciones, fechas relativas y dependencias; nunca personas, horas ni estados.
+- **Gestión** en `/admin/plantillas`: el admin crea, edita la estructura, desactiva y borra (papelera). Los responsables las ven y las aplican.
+
+### D-059 · Tareas recurrentes **[concreta el SPEC §4.3 y §14]**
+- **Regla:**
+  - **semanal:** cada N semanas, en un día (lunes = 1),
+  - **mensual:** un día del mes; si el mes no lo tiene, el último día (31 → 28/29 en febrero, 30 en abril),
+  - desde `starts_on` y, opcionalmente, hasta `ends_on`,
+  - con la plantilla de la tarea: título, descripción, tipo, responsable, bolsa, estimación, prioridad y vencimiento `due_offset_days` días después de la fecha de cada instancia.
+- **Generación:**
+  - el comando `tasks:generate-recurring`, diario a las 06:00 de Madrid (`withoutOverlapping`),
+  - cada instancia se crea con `TaskWriter`; no se duplica gracias a la clave única (regla, fecha),
+  - recupera como máximo 31 días atrasados,
+  - se salta los proyectos archivados, las bolsas cerradas o renovadas y a los responsables desactivados (la tarea queda sin responsable).
+  - Al crear o reactivar una regla, se genera ya la instancia de hoy si toca.
+- **Quién:** las reglas de un proyecto las gestiona quien gestiona el proyecto, desde su pestaña **Ajustes**. El admin tiene la vista global en `/admin/tareas-recurrentes`.
+
+### D-060 · Gantt: componente propio **[concreta el SPEC §2 y §6.1]**
+- **Por qué propio:** se evaluaron SVAR React Gantt (MIT, pero parte de sus funciones son de pago) y frappe-gantt (MIT, sin React ni accesibilidad de teclado). Se hace un **componente propio** (React y SVG/HTML con pointer events, sin librerías nuevas) porque:
+  - pedimos control total del teclado y de la accesibilidad AA,
+  - usa los tokens del tema claro y oscuro,
+  - está en español,
+  - sin reprogramación automática.
+  - Sirve también para el Gantt de solo lectura del portal (F5), con `readOnly`.
+- **Funciones:**
+  - **Marcas:** barras para las tareas y rombos para los hitos. Subtareas sangradas bajo su padre, con la barra del padre como resumen.
+  - **Escalas:** día, semana y mes, con una marca de **hoy**.
+  - **Arrastrar para mover y redimensionar** (con el ratón y con el teclado: flechas mueven un día; Mayús + flechas cambian la entrega). Al soltar, se pide la propuesta (D-057) y, si hay conflicto, un diálogo ofrece «Mover también las sucesoras», «Solo esta tarea» o «Cancelar».
+  - **Crear dependencias** arrastrando desde el conector del final de una barra hasta otra. Alternativa con teclado: «Añadir dependencia» en el menú de la barra. Las flechas de las dependencias van en rojo, con icono, si hay conflicto.
+  - **Colores:**
+    - por **estado:** color de su categoría,
+    - o por **responsable:** `--chart-1..6` en orden fijo de aparición; el resto en gris «Otros». Siempre con leyenda, y el nombre en la barra o el tooltip.
+  - **Tareas sin fechas:** en una lista aparte, con «Asignar fechas».
+  - **Crear una tarea** desde el Gantt con sus fechas (el alta rápida de la F1 con fechas).
+  - **Tabla accesible alternativa:** título, responsable, inicio, entrega, dependencias.
+- **Multiproyecto:** en `/gantt`, con filtros por cliente, departamento, responsable y estado del proyecto. Proyectos agrupados y plegables, con un máximo de 60 proyectos o 1.500 tareas por vista; si hay más, se avisa y se pide filtrar.
+- **Quién:** lo ve cualquier interno (D-021). Mueve y enlaza quien puede editar las tareas; al resto, en solo lectura.
+
+### D-061 · Calendario de tareas **[concreta el SPEC §6 y D-037]**
+- **Dónde:** tercera vista de la pestaña **Tareas**, junto a Lista y Kanban.
+- **Qué muestra:**
+  - un mes, con la semana empezando en lunes,
+  - cada tarea el día de su **entrega**; las tareas con inicio también como franja del inicio a la entrega,
+  - los hitos con su rombo.
+- **Cambiar fechas:** arrastrando o con el teclado, pasando por reprogramar (D-057). Pulsar una tarea abre su panel.
+- **Tareas sin fecha:** en una lista lateral.
+
+### D-062 · Hitos **[concreta el SPEC §5.1 y §6]**
+- **En el panel de la tarea:**
+  - una casilla «Hito»: sin horas y con la entrega como única fecha, como hasta ahora,
+  - la sección **Dependencias**, con las predecesoras y sucesoras, para añadir y quitar (D-056).
+- **Resumen del proyecto:** «Próximos hitos», los 5 siguientes sin completar, más los vencidos destacados con icono y texto.
+- **Inicio, «Mis próximos hitos»:** los de los proyectos donde soy miembro, vencidos y de los próximos 30 días, máximo 8, con enlace a su tarea.
+- **Chat del proyecto:** el mensaje de sistema «hito completado» llega con el chat (F6).
+
+### D-089 · Fechas de las tareas recurrentes **[concreta D-059]**
+- **Desde y hasta:** entre el 01/01/2000 y el 31/12/2100, como el calendario de tareas (`CalendarPeriod`). El formulario lo valida con su mensaje y no se calcula ninguna tarea fuera de ese rango (`RecurringTaskRule::MIN_DATE` y `MAX_DATE`).
+- **Cálculo:** las fechas de una regla saltan directamente a la ventana pedida, sin recorrer la serie desde su inicio (una regla antigua conserva su ritmo). La vista previa del formulario y el servidor comparten los casos de prueba (`tests/fixtures/recurrence-cases.json`).
+
+### D-090 · Dependencias: enlaces de uno en uno y propuesta a prueba de ciclos **[concreta D-056 y D-057]**
+- **Enlazar:** los enlaces de un mismo proyecto se hacen de uno en uno (la fila del proyecto queda bloqueada mientras se busca el ciclo y se guarda el enlace): dos enlaces a la vez no pueden cerrar un ciclo.
+- **Proponer:** mover una tarea antes **o sin cambiar su entrega** no propone nada, aunque ya hubiera un conflicto: no lo causa ese cambio y el Gantt lo sigue marcando.
+  - La cascada solo sigue desde lo que se desplaza, y cada sucesora se revisa una vez, con sus fechas definitivas.
+  - Si la base tuviera un ciclo (datos antiguos o dañados), nunca se propone mover la tarea movida ni se vuelve a una tarea del propio camino.
+
+## 27/09/2026: Decisiones tomadas en autonomía (Fase 5)
+
+_Concretan D-063 a D-067 (`docs/PLAN-FASE-5.md`): las de P1 (bolsas), las de P2 (acceso, proyectos e identidad, antes «P2-a» a «P2-d») y las de la revisión global. Numeradas desde D-092 porque las fases en curso ya habían reservado hasta D-091._
+
+### D-092 · Dentro y exceso en el portal **[concreta D-019, D-053 y D-064]**
+- **Problema:** el exceso guardado en cada entrada (`overage_minutes`) lo reparte `HourBankLedger` entre **todas** las horas de la bolsa, también los borradores y las enviadas. Con horas ocultas de fecha anterior que llenan la bolsa, horas que el cliente ve salían como exceso aunque le quedara saldo (bolsa de 600, borrador de 480 el 01/09 y aprobada de 300 el 15/09: el portal enseñaba 120 dentro, 180 de exceso, 480 restantes y «Activa»; y el email del 100 % podía llegar con la bolsa activa).
+- **Regla:** en el portal, dentro y exceso se reparten **solo entre las horas que ve el cliente**, contra el total de la bolsa y con la regla del libro:
+  - las **bloqueadas** conservan su exceso fijo (D-019, D-053) y reservan lo que llevan dentro,
+  - el resto del total se reparte entre las demás en orden cronológico (fecha, `created_at`, id); la que cruza el límite queda con la parte que no cabe como exceso.
+- **Dónde:** `PortalBankFigures` (`allocation`, `many`, `byMonth`, `between` y `entries`), que usan las cifras y el estado de las bolsas, el consumo por mes, el listado de horas, las «horas de este mes» del inicio, los avisos al cliente y el PDF. Así todo cuadra siempre. Por dentro la bolsa sigue con sus cifras de siempre (la nota del portal lo explica).
+- **Cómo:** en SQL, con una suma acumulada (`SUM(...) OVER (PARTITION BY bolsa ORDER BY fecha, created_at, id)`), que funciona en PostgreSQL y en SQLite ≥ 3.25, en una consulta por pantalla y sin N+1.
+
+### D-093 · Estado de la bolsa para el cliente **[concreta D-064]**
+- Sale de `PortalBankFigures::status`: las bolsas **cerradas y renovadas**, tal cual; una **abierta** sale **agotada** cuando lo que el cliente ve dentro de la bolsa llega al total (la regla de `HourBankLedger` con sus horas visibles, D-092) y, si no, activa.
+- Así el estado cuadra con la barra, el listado y el PDF, aunque por dentro la bolsa vaya más avanzada (borradores y semanas sin aprobar).
+
+### D-094 · Inicio del portal **[concreta D-064]**
+- **Bolsas activas:** las activas o agotadas de un proyecto **no archivado** (como la vista global de bolsas, D-054). El resto (cerradas, renovadas y las de proyectos archivados) va a **«Bolsas anteriores»**, de la más reciente a la más antigua.
+- **«Horas de este mes»:** solo las horas **visibles** de sus bolsas (nunca las de proyectos sin bolsa), en el mes en curso de `Europe/Madrid`, con su exceso tal como lo ve el cliente (D-092).
+- **«Cerca del límite»:** las bolsas activas desde el primer umbral configurado (D-035).
+
+### D-095 · PDF del portal **[concreta D-066]**
+- Sus cifras, su consumo por mes y su listado son los de `PortalBankFigures` (D-092), así que **no lleva el bloque «sin aprobar»** del PDF interno (D-045): lo que el cliente no ve no aparece, ni siquiera como total aparte. La nota del PDF explica qué horas ve.
+
+### D-096 · Personas y acceso en el portal **[concreta D-063 y D-064]**
+- **Con «Equipo»**, los nombres de las personas **ni se cargan ni viajan** al navegador ni al PDF (no se pide la relación con la persona); con las iniciales, solo viajan las iniciales.
+- **Internos en `/portal/*`:** reciben **403** (middleware `portal`) antes de buscar nada. Un cliente con un id de otro cliente recibe **404**, como con uno que no existe (`PortalRoutesIsolationTest` recorre todas las rutas del portal).
+
+### D-097 · Quién gestiona el portal **[concreta D-063 y D-064]**
+- **Usuarios del portal** (invitar, reenviar, revocar y reactivar): `ClientPolicy::managePortal`, es decir, admin, responsables (rol) y gestores de algún proyecto sin borrar del cliente.
+- **Ajustes del portal del cliente** (personas, horas visibles y avisos por email): `ClientPolicy::update` (admin y responsables). Afectan a todas las bolsas y proyectos del cliente, así que no los cambia el gestor de uno solo, que los ve en solo lectura.
+- **Portal de cada proyecto** (vista, horas por tarea y Gantt): quien gestiona el proyecto (`ProjectPolicy::update`), desde sus ajustes. El SPEC §11 decía «el admin».
+- Quien no gestiona el portal no recibe la lista de usuarios: la ficha le dice quién lo gestiona.
+- En la ficha, la sección es una **prop diferida** (`portal`, como las secciones de la F4 en los ajustes del proyecto): no pesa en la carga ni en el presupuesto de consultas de la F1, y sus acciones recargan solo esa prop.
+
+### D-098 · Invitaciones y estado de los usuarios del portal **[concreta D-063]**
+- **Alta:** rol `client` y `client_id`, sin departamento ni jornada (no es plantilla). La invitación reutiliza `UserInviter::send` (broker `invitations`, 7 días, cola `mail`) con el asunto y la presentación del portal.
+- **Correo único**, sin distinguir mayúsculas. Si es de una persona del equipo, se explica; si es de otro cliente, el mensaje genérico (no se revela de quién es).
+- **Estado en la ficha:**
+  - aceptada, si fijó su contraseña con la invitación (correo verificado) o ha entrado alguna vez,
+  - pendiente, mientras el enlace esté vigente (con su fecha de caducidad),
+  - caducada, en otro caso.
+  - Último acceso = último inicio de sesión correcto.
+- **Reenviar:** solo a personas activas de un cliente activo; la interfaz lo ofrece a quien todavía no ha entrado (el resto tiene «¿Has olvidado la contraseña?»).
+- **Revocar:** desactiva (User::booted cierra todas sus sesiones y su «Recordarme» con `SessionTerminator`) y anula la invitación pendiente, para que un enlace viejo no sirva si se reactiva. **Reactivar** no reenvía la invitación.
+- Con el cliente desactivado no se invita, no se reenvía ni se reactiva; revocar, sí.
+- **Auditoría:** `activity_log` del cliente (`clients`): `portal_user_invited`, `portal_invitation_resent`, `portal_user_revoked` y `portal_user_reactivated`, con la persona.
+
+### D-099 · Proyectos en el portal **[concreta D-064]**
+- **Abrir:** las horas por tarea solo cuentan con la vista abierta (al cerrarla, se apagan). El Gantt se abre aparte y no exige la vista. Un proyecto sin cliente no se abre.
+- **Qué se ve de cada tarea:** título, estado, inicio y entrega, si es hito y sus subtareas. Nunca descripciones (pueden llevar notas internas), comentarios, adjuntos, responsables, estimaciones, prioridad ni importes.
+- **Horas por tarea:** solo las visibles para el cliente (`PortalScope::entries`). La de una tarea con subtareas suma las suyas; el total no cuenta dos veces.
+- **Páginas:** `/portal/proyectos` (los abiertos, con su avance), `/portal/proyectos/{proyecto}` y `…/gantt`. Un proyecto archivado que siga abierto se ve (histórico); uno en la papelera, no.
+- **Gantt:** el componente de la Fase 4 con `readOnly` y la nueva prop aditiva `hideAssignees` (sin columna de responsable, sin colores por responsable ni su nombre en las barras). Los datos ya llegan sin responsables, estimaciones ni horas y con `can.update = false`. Colores siempre por estado. Una tarea se abre en un diálogo de solo lectura.
+- **Navegación:** la cabecera del portal lleva «Inicio» y, si hay algún proyecto abierto, «Proyectos». Salen de la prop compartida `portal` (identidad y proyectos abiertos), que solo reciben los usuarios del portal. Para el Inicio queda la tarjeta `PortalProjectsCard`.
+
+### D-100 · Identidad de la empresa **[concreta D-067]**
+- **Logo:** se comprueba el tipo real con fileinfo y se vuelve a codificar con GD en un PNG con transparencia que cabe en 960 × 240 px (sin ampliar). No queda nada del fichero original. El original admite hasta 3.000 px por lado. Se procesa en la petición: es un fichero de 1 MB como mucho y solo lo sube el admin.
+- **Dónde se guarda y cómo se sirve:** se guarda en el disco privado y se sirve en `/marca/logo/{versión}`, una ruta pública y fuera del grupo web (sin sesión ni cookies), porque la cargan los emails. La versión actual se guarda en caché un año. `ClientIsolationTest` admite esa ruta.
+- **Emails:** se sobrescribe solo `resources/views/vendor/mail/html/header.blade.php`: el logo (como mucho 240 × 56 px) si lo hay; si no, el texto de siempre.
+- **PDF:** `AudaxPdf::logo` dibuja el PNG en una caja de 45 × 8 mm; sin logo, el vectorial.
+- **Cabecera del portal:** el logo va sobre una placa blanca, porque la cabecera va sobre el degradado.
+- `company_name` es el mismo ajuste que ya se editaba en `/admin/ajustes`: queda en los dos sitios hasta que se decida quitarlo de allí.
+
+### D-101 · Avisos al cliente tras la revisión global **[concreta D-065]**
+- Solo de un cliente **activo** y de una bolsa **abierta** (activa o agotada): nunca de una cerrada o renovada, aunque se aprueben sus horas (D-053).
+- Un cambio que cruza el 90 % y el 100 % a la vez manda **un solo email**, el del umbral más alto; los dos quedan registrados y no se repiten (como los avisos internos).
+- Se comprueban con la escritura interna ya confirmada y **nunca la rompen**: el alcance sale del cliente (`PortalScope::forClient`), cada bolsa se comprueba por separado y un fallo solo se registra (`report()`). Una transacción que se deshace no deja nada pendiente.
 ## 27/09/2026: Decisiones tomadas en autonomía (Fase 6)
 
 ### D-070 · Transcripción de audios: motor y modelo medidos en el servidor **[concreta el SPEC §12]**
