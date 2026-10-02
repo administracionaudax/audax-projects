@@ -41,6 +41,45 @@ export async function login(
     await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 }
 
+/** Props de la primera visita (Inertia las deja en <script data-page="app">). */
+export async function pageProps(page: Page): Promise<Record<string, unknown>> {
+    const json = await page
+        .locator('script[data-page="app"]')
+        .first()
+        .textContent();
+    const data = JSON.parse(json ?? '{}') as {
+        props?: Record<string, unknown>;
+    };
+
+    return data.props ?? {};
+}
+
+/**
+ * ¿Hay tiempo real (prop `realtime` de Reverb)? En la CI TIENE que haberlo (Reverb local, ci.yml):
+ * si falta, el test falla. Fuera de la CI, sin Reverb, el test que lo necesita se salta con su
+ * motivo (la interfaz funciona con consultas periódicas, pero eso no demuestra el tiempo real).
+ */
+export async function requireRealtime(
+    page: Page,
+    skip: (condition: boolean, reason: string) => void,
+): Promise<void> {
+    const realtime = (await pageProps(page)).realtime ?? null;
+
+    if (process.env.CI) {
+        expect(
+            realtime,
+            'En la CI tiene que haber tiempo real: Reverb local y BROADCAST_CONNECTION=reverb (ci.yml).',
+        ).not.toBeNull();
+
+        return;
+    }
+
+    skip(
+        realtime === null,
+        'Sin Reverb (prop realtime null): este test demuestra el tiempo real y lo necesita.',
+    );
+}
+
 export type Theme = 'light' | 'dark';
 
 /**

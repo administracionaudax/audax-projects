@@ -325,8 +325,11 @@ jobs:
           REVERB_CLIENT_HOST=127.0.0.1
           REVERB_CLIENT_PORT=8080
           REVERB_CLIENT_SCHEME=http
+          REVERB_ALLOWED_ORIGINS=127.0.0.1
           TRANSCRIPTION_DRIVER=fake
           TRANSCRIPTION_QUEUE_CONNECTION=sync
+          # Sin conexiones a Internet desde los E2E (D-110: apagada en los tests).
+          LINK_PREVIEWS_ENABLED=false
           EOF
           php artisan key:generate --ansi
 

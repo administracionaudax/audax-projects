@@ -45,6 +45,17 @@ async function openProjectChat(page: Page): Promise<void> {
     await expect(page.locator('[data-test="chat-dropzone"]')).toBeVisible();
 }
 
+/**
+ * Graba hasta que el contador marca 2 segundos (los audios de menos de 1 s no se envían): se
+ * espera a lo que se ve, no un tiempo fijo.
+ */
+async function recordTwoSeconds(page: Page): Promise<void> {
+    await page.getByRole('button', { name: 'Grabar un audio' }).click();
+    await expect(page.getByRole('timer')).toHaveText(/^0:0[2-9] \//, {
+        timeout: 10_000,
+    });
+}
+
 async function asUser(browser: Browser, email: string): Promise<Page> {
     const context = await browser.newContext({
         locale: 'es-ES',
@@ -100,10 +111,7 @@ test('grabar un audio y encontrar una palabra de su transcripción', async ({
     await login(page, USERS.employee);
     await openProjectChat(page);
 
-    await page.getByRole('button', { name: 'Grabar un audio' }).click();
-    await expect(page.getByRole('timer')).toBeVisible();
-    // Más de un segundo: los audios más cortos no se envían.
-    await page.waitForTimeout(1_600);
+    await recordTwoSeconds(page);
     await page.getByRole('button', { name: 'Enviar audio' }).click();
 
     const audio = page.locator('[data-test="chat-audio-message"]').last();
@@ -134,8 +142,7 @@ test('la búsqueda global (Ctrl+K) también encuentra lo dicho en los audios', a
 }) => {
     await login(page, USERS.employee);
     await openProjectChat(page);
-    await page.getByRole('button', { name: 'Grabar un audio' }).click();
-    await page.waitForTimeout(1_600);
+    await recordTwoSeconds(page);
     await page.getByRole('button', { name: 'Enviar audio' }).click();
     await expect(
         page.locator('[data-test="chat-audio-message"]').last(),

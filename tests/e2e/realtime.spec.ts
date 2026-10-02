@@ -1,11 +1,12 @@
 import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { login, USERS } from './support';
+import { login, requireRealtime, USERS } from './support';
 
 /**
  * Tiempo real (Fase 6, área C2) con dos navegadores. Necesita Reverb en marcha y
- * BROADCAST_CONNECTION=reverb (en la CI, Reverb local): si la página no trae la prop `realtime`,
- * el test se salta (sin Reverb, la campana consulta cada 60 s).
+ * BROADCAST_CONNECTION=reverb: en la CI (Reverb local) es obligatorio y, si la página no trae la
+ * prop `realtime`, el test FALLA; fuera de la CI, sin Reverb, se salta con su motivo (la campana
+ * consultaría cada 60 s, lo que no demuestra nada). Ver requireRealtime (support.ts).
  * El chat en vivo con todas sus funciones (mensaje, escribiendo, leído, reacción, hilo, adjunto)
  * está en tests/e2e/chat.spec.ts.
  */
@@ -53,9 +54,8 @@ test('la campana de otra persona se actualiza al momento, sin recargar, cuando l
     const elena = await asUser(browser, USERS.employee);
     await elena.goto('/');
     const data = await pageData(elena);
-    test.skip(
-        !data.props.realtime,
-        'Sin Reverb (prop realtime null): la campana consulta cada 60 s.',
+    await requireRealtime(elena, (condition, reason) =>
+        test.skip(condition, reason),
     );
 
     const elenaId = data.props.auth.user?.id;
