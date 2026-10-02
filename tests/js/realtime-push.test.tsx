@@ -244,6 +244,23 @@ describe('Avisos del navegador (Web Push)', () => {
         expect(pushManager.subscribe).not.toHaveBeenCalled();
     });
 
+    it('si falla, lo dice con texto de contraste AA y un icono (no solo con color)', async () => {
+        pushManager.subscribe.mockRejectedValueOnce(new Error('sin red'));
+        const user = userEvent.setup();
+        render(<PushNotificationsToggle />);
+        await screen.findByText('Desactivados en este navegador.');
+
+        await user.click(screen.getByRole('switch'));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert.getAttribute('data-test')).toBe('push-error');
+        // El token de texto de error con AA verificado, nunca text-destructive (fondo).
+        expect(alert.className).toContain('text-destructive-foreground');
+        expect(alert.className).not.toMatch(/(^|\s)text-destructive(\s|$)/);
+        expect(alert.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+        expect(alert.textContent?.trim().length).toBeGreaterThan(0);
+    });
+
     it('ya activados, se pueden desactivar: baja en el servidor y en el navegador', async () => {
         permission = 'granted';
         current = fakeSubscription();

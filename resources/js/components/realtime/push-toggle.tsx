@@ -3,6 +3,7 @@ import {
     Ban,
     BellOff,
     BellRing,
+    CircleAlert,
     LoaderCircle,
     ShieldAlert,
 } from 'lucide-react';
@@ -147,7 +148,15 @@ export function PushNotificationsToggle({ className }: { className?: string }) {
                     {t(`realtime.push.state.${status}`)}
                 </p>
                 {failed ? (
-                    <p role="alert" className="text-xs text-destructive">
+                    <p
+                        role="alert"
+                        className="flex items-center gap-1.5 text-xs text-destructive-foreground"
+                        data-test="push-error"
+                    >
+                        <CircleAlert
+                            aria-hidden="true"
+                            className="size-3.5 shrink-0"
+                        />
                         {t('realtime.push.error')}
                     </p>
                 ) : null}
