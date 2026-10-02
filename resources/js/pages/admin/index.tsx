@@ -8,6 +8,7 @@ import {
     LayoutTemplate,
     ListTodo,
     Palette,
+    ShieldCheck,
     SlidersHorizontal,
     Users,
 } from 'lucide-react';
@@ -26,8 +27,10 @@ import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
+import { index as auditIndex } from '@/routes/admin/audit';
 import { index as departmentsIndex } from '@/routes/admin/departments';
 import { index as holidaysIndex } from '@/routes/admin/holidays';
+import { edit as privacyEdit } from '@/routes/admin/privacy';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as statusesIndex } from '@/routes/admin/statuses';
 import { index as taskTypesIndex } from '@/routes/admin/task-types';
@@ -39,7 +42,10 @@ import type { Abilities } from '@/types';
 type AreaLink = {
     label: TranslationKey;
     href: string;
-    ability: keyof Pick<Abilities, 'manageUsers' | 'manageSettings'>;
+    ability: keyof Pick<
+        Abilities,
+        'manageUsers' | 'manageSettings' | 'viewAdmin'
+    >;
 };
 
 type AdminArea = {
@@ -161,6 +167,27 @@ const AREAS: AdminArea[] = [
         title: 'admin.areas.audit.title',
         description: 'admin.areas.audit.description',
         phase: 7,
+        links: [
+            {
+                label: 'audit.admin_link',
+                href: auditIndex.url(),
+                ability: 'viewAdmin',
+            },
+        ],
+    },
+    {
+        id: 'privacy',
+        icon: ShieldCheck,
+        title: 'privacy.admin.area_title',
+        description: 'privacy.admin.area_description',
+        phase: 7,
+        links: [
+            {
+                label: 'privacy.admin.area_link',
+                href: privacyEdit.url(),
+                ability: 'viewAdmin',
+            },
+        ],
     },
 ];
 

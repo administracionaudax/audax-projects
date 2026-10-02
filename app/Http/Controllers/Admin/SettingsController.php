@@ -36,10 +36,24 @@ class SettingsController extends Controller
     public function update(SettingsRequest $request): RedirectResponse
     {
         DB::transaction(function () use ($request): void {
+            $old = [];
+            $new = [];
+
             foreach ($request->settings() as $key => $value) {
                 if (Setting::get($key) !== $value) {
+                    $old[$key] = Setting::get($key);
+                    $new[$key] = $value;
                     Setting::set($key, $value);
                 }
+            }
+
+            // Auditoría visible (D-074): los cambios de los ajustes, con el antes y el después.
+            if ($new !== []) {
+                activity('settings')
+                    ->causedBy($request->user())
+                    ->event('updated')
+                    ->withProperties(['old' => $old, 'attributes' => $new])
+                    ->log('settings.updated');
             }
         });
 

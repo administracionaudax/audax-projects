@@ -111,7 +111,8 @@ test('los textos de las secciones salen de lang/es/search.php', function () {
         }
     })->all();
 
-    expect($pages)->toHaveCount(15);
+    // 14 de las Fases 1 a 6 y 5 de la Fase 7 (preferencias de notificación, auditoría, privacidad del admin, privacidad y mis datos).
+    expect($pages)->toHaveCount(19);
 
     foreach ($pages as $page) {
         foreach (['title', 'subtitle', 'keywords'] as $field) {

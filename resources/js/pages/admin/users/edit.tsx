@@ -21,6 +21,7 @@ import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { WEEK_DAYS_SHORT } from '@/components/admin/week-minutes-input';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
+import { AdminPersonalDataExports } from '@/components/privacy/admin-personal-data-exports';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -44,6 +45,7 @@ import {
 } from '@/routes/admin/users';
 import { destroy as destroySchedule } from '@/routes/admin/users/schedules';
 import type { AdminUserEditProps, AdminWorkSchedule } from '@/types';
+import type { PersonalDataExportRow } from '@/types/privacy';
 
 /** Día siguiente a una fecha "YYYY-MM-DD" (sin zonas horarias). */
 function nextDay(date: string): string {
@@ -62,7 +64,11 @@ export default function AdminUserEdit({
     openTasksCount,
     hasActiveTimer,
     can,
-}: AdminUserEditProps) {
+    personalDataExports = null,
+}: AdminUserEditProps & {
+    /** Exportaciones de sus datos personales (D-075): solo para el admin. */
+    personalDataExports?: PersonalDataExportRow[] | null;
+}) {
     const form = useForm<UserFormData>({
         name: user.name,
         email: user.email,
@@ -522,6 +528,14 @@ export default function AdminUserEdit({
                         </CardContent>
                     </Card>
                 </div>
+
+                {personalDataExports !== null ? (
+                    <AdminPersonalDataExports
+                        userId={user.id}
+                        userName={user.name}
+                        rows={personalDataExports}
+                    />
+                ) : null}
             </div>
         </>
     );

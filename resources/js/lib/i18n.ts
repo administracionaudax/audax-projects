@@ -18,12 +18,14 @@
 import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
+import audit from '../../../lang/ui/audit.json';
 import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
 import planning from '../../../lang/ui/planning.json';
+import privacy from '../../../lang/ui/privacy.json';
 import projects from '../../../lang/ui/projects.json';
 import reports from '../../../lang/ui/reports.json';
 import reportsR2 from '../../../lang/ui/reports-r2.json';
@@ -39,6 +41,8 @@ const messages = {
     ...base,
     ...shared,
     ...admin,
+    ...audit,
+    ...privacy,
     ...clients,
     ...projects,
     ...hourBanks,

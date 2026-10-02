@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     Bell,
+    FileArchive,
     MonitorSmartphone,
     Palette,
     ShieldCheck,
@@ -15,12 +16,13 @@ import { t } from '@/lib/i18n';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editNotificationSettings } from '@/routes/notification-settings';
+import { index as myDataIndex } from '@/routes/privacy/exports';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import { index as sessionsIndex } from '@/routes/sessions';
 import type { NavItem } from '@/types';
 
-/** Con `isClient`, sin las páginas solo para internos (preferencias de notificación). */
+/** Con `isClient`, sin las páginas solo para internos (preferencias de notificación y mis datos). */
 export function settingsNavItems(isClient = false): NavItem[] {
     return [
         {
@@ -52,6 +54,16 @@ export function settingsNavItems(isClient = false): NavItem[] {
             href: sessionsIndex(),
             icon: MonitorSmartphone,
         },
+        // Exportación de los datos personales (D-075): solo la plantilla.
+        ...(isClient
+            ? []
+            : [
+                  {
+                      title: t('privacy.my_data.nav'),
+                      href: myDataIndex(),
+                      icon: FileArchive,
+                  },
+              ]),
     ];
 }
 
@@ -61,7 +73,7 @@ export function settingsNavItems(isClient = false): NavItem[] {
  */
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
-    const isClient = usePage().props.auth?.user?.is_client ?? false;
+    const isClient = usePage().props.auth?.user?.is_client === true;
 
     return (
         <div className="px-4 py-6">

@@ -32,5 +32,9 @@ return [
         'appearance' => ['title' => 'Apariencia', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes tema claro oscuro'],
         'notification_settings' => ['title' => 'Preferencias de notificación', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes notificaciones avisos email correo resumen diario campana navegador'],
         'sessions' => ['title' => 'Sesiones activas', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes dispositivos cerrar sesion'],
+        'audit' => ['title' => 'Auditoría', 'subtitle' => 'Registro de cambios: quién, qué y cuándo', 'keywords' => 'auditoria registro actividad cambios historial'],
+        'privacy_admin' => ['title' => 'Privacidad (administración)', 'subtitle' => 'Texto informativo, conservación de datos y avisos', 'keywords' => 'rgpd retencion conservacion texto informativo disco copias'],
+        'privacy' => ['title' => 'Privacidad', 'subtitle' => 'Cómo se tratan tus datos', 'keywords' => 'rgpd proteccion de datos personales aviso'],
+        'my_data' => ['title' => 'Mis datos', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes exportar descargar datos personales rgpd copia'],
     ],
 ];

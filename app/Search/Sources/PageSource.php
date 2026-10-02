@@ -67,6 +67,11 @@ class PageSource implements SearchSource
             ['route' => 'reports.index', 'key' => 'reports', 'allowed' => $always],
             ['route' => 'chat.index', 'key' => 'chat', 'allowed' => $always],
             ['route' => 'admin.index', 'key' => 'admin', 'allowed' => fn (User $user): bool => $user->isAdmin()],
+            // Fase 7 (D-074 y D-075): auditoría y privacidad.
+            ['route' => 'admin.audit.index', 'key' => 'audit', 'allowed' => fn (User $user): bool => $user->isAdmin()],
+            ['route' => 'admin.privacy.edit', 'key' => 'privacy_admin', 'allowed' => fn (User $user): bool => $user->isAdmin()],
+            ['route' => 'privacy.show', 'key' => 'privacy', 'allowed' => $always],
+            ['route' => 'privacy.exports.index', 'key' => 'my_data', 'allowed' => $always],
             ['route' => 'profile.edit', 'key' => 'profile', 'allowed' => $always],
             ['route' => 'security.edit', 'key' => 'security', 'allowed' => $always],
             ['route' => 'appearance.edit', 'key' => 'appearance', 'allowed' => $always],
