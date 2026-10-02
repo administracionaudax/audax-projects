@@ -35,6 +35,8 @@ final class ConversationView
                 ...(new MessagePresenter($viewer, $can))->present($messages),
                 'has_older' => $hasOlder,
                 'has_newer' => $hasNewer,
+                // Desde cuándo pedirá cambios la primera consulta periódica.
+                'server_time' => now()->toIso8601ZuluString(),
             ],
             'pinned' => PinnedPresenter::list($this->window->pinned($conversation, $can->moderate)),
             'focus' => $focus,

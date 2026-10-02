@@ -66,6 +66,7 @@ class MessageController extends Controller
             ...(new MessagePresenter($user, ConversationAbilities::for($user, $conversation)))->present($messages),
             'has_older' => $hasOlder,
             'has_newer' => $hasNewer,
+            'server_time' => now()->toIso8601ZuluString(),
         ]);
     }
 

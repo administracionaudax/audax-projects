@@ -65,6 +65,10 @@ export default defineConfig({
         ignorePatterns: [
             // Documentación en prosa: no se reformatea con el formateador de código.
             '**/*.md',
+            // Ficheros estáticos (p. ej. los datos de emojis autoalojados, minificados) y el
+            // fragmento de compose que se pega sangrado bajo `services:` (D-070).
+            'public/**',
+            'deploy/whisper/compose-service.yml',
             'playwright-report/**',
             'test-results/**',
             '.github/**',
