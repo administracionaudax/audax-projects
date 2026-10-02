@@ -281,9 +281,11 @@ test('el informe del departamento enseña la carga futura del equipo y enlaza co
     ).toBeVisible();
 
     await page.getByRole('link', { name: 'Ver en Carga' }).click();
-    await expect(page).toHaveURL(
-        /\/carga\?horizonte=4-semanas&departamento=\d+/,
-    );
+    // /carga ordena los filtros de la URL a su manera: se comprueban sin depender del orden.
+    await expect(page).toHaveURL(/\/carga\?/);
+    const url = new URL(page.url());
+    expect(url.searchParams.get('horizonte')).toBe('4-semanas');
+    expect(url.searchParams.get('departamento')).toMatch(/^\d+$/);
     await expect(
         page.getByRole('heading', { level: 1, name: 'Carga' }),
     ).toBeVisible();
