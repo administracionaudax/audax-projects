@@ -18,6 +18,11 @@ import { presence as presenceRoute } from '@/routes/realtime';
  *   los demás.
  *
  * La arranca <RealtimeRoot /> (en el layout de la app) una sola vez; usePresence() la lee.
+ *
+ * Los whispers los puede mandar cualquiera conectado al canal con el user_id que quiera: solo se
+ * hace caso a los de quien ESTÁ en el canal según el servidor (here/joining, que firma Reverb) y,
+ * si Reverb indica quién lo envía (en los canales presence añade el user_id autenticado), solo si
+ * coincide (D-120). isPresenceMember() lo usa también «escribiendo…».
  */
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
@@ -185,13 +190,22 @@ function startLive(presenceChannel: RealtimePresenceChannel): () => void {
         setStatuses(statuses, true);
     });
 
-    const onStatus = (data: { user_id?: unknown; status?: unknown }) => {
+    const onStatus = (
+        data: { user_id?: unknown; status?: unknown },
+        metadata?: { user_id?: unknown },
+    ) => {
         const id = Number(data.user_id);
+        const signed = metadata?.user_id;
 
         if (
             !Number.isInteger(id) ||
             id === myId ||
-            (data.status !== 'online' && data.status !== 'away')
+            (data.status !== 'online' && data.status !== 'away') ||
+            // Quien lo envía, según Reverb, tiene que ser quien dice ser…
+            ((typeof signed === 'string' || typeof signed === 'number') &&
+                Number(signed) !== id) ||
+            // …y estar en el canal según el servidor.
+            !(id in state.statuses)
         ) {
             return;
         }
@@ -335,6 +349,14 @@ export function usePresence(): Presence {
         }),
         [current],
     );
+}
+
+/**
+ * ¿Está en el canal de presencia según el servidor? Sin canal en vivo (o antes de saber quién
+ * está) no se puede comprobar y se da por bueno.
+ */
+export function isPresenceMember(userId: number): boolean {
+    return !state.live || !state.started || userId in state.statuses;
 }
 
 /** Solo para los tests: vuelve al estado inicial. */

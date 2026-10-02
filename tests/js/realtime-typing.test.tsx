@@ -21,6 +21,8 @@ import {
     TypingIndicator,
     typingText,
 } from '@/components/realtime/typing-indicator';
+import { RealtimeRoot } from '@/components/realtime/realtime-root';
+import { resetPresenceForTests } from '@/hooks/use-presence';
 import { resetRealtimeConnectionForTests } from '@/hooks/use-realtime-connection';
 import {
     TYPING_THROTTLE_MS,
@@ -28,8 +30,17 @@ import {
     useTyping,
 } from '@/hooks/use-realtime-typing';
 
-function Composer({ id }: { id: number }) {
-    const { typers, notifyTyping, stopTyping, live } = useTyping(id);
+function Composer({
+    id,
+    participants,
+}: {
+    id: number;
+    participants?: Array<{ id: number; name: string }>;
+}) {
+    const { typers, notifyTyping, stopTyping, live } = useTyping(
+        id,
+        participants,
+    );
 
     return (
         <div>
@@ -53,6 +64,7 @@ describe('useTyping', () => {
     });
 
     afterEach(() => {
+        resetPresenceForTests();
         resetRealtimeConnectionForTests();
         vi.useRealTimers();
     });
@@ -152,6 +164,56 @@ describe('useTyping', () => {
         });
 
         expect(screen.queryByText(/escribiendo/)).toBeNull();
+    });
+
+    it('solo cuenta a los participantes (según el servidor) conectados (según la presencia), con su nombre (D-120)', async () => {
+        render(
+            <>
+                <RealtimeRoot />
+                <Composer
+                    id={5}
+                    participants={[
+                        { id: 1, name: 'Ana' },
+                        { id: 2, name: 'Luis Gil' },
+                        { id: 4, name: 'Sara' },
+                    ]}
+                />
+            </>,
+        );
+        const presence = mocks.echo?.presence('online');
+        const channel = mocks.echo?.channel('private-conversation.5');
+
+        await act(async () => {
+            presence?.hereCallback?.([
+                { id: 1, name: 'Ana', avatar: null },
+                { id: 2, name: 'Luis Gil', avatar: null },
+                { id: 3, name: 'Eva', avatar: null },
+            ]);
+        });
+
+        await act(async () => {
+            // Eva está conectada, pero no participa en esta conversación.
+            channel?.whisperFrom('typing', {
+                user_id: 3,
+                name: 'Eva',
+                typing: true,
+            });
+            // Sara participa, pero no está conectada: alguien se hace pasar por ella.
+            channel?.whisperFrom('typing', {
+                user_id: 4,
+                name: 'Sara',
+                typing: true,
+            });
+            // Luis, con un nombre falso en el whisper: se enseña el del servidor.
+            channel?.whisperFrom('typing', {
+                user_id: 2,
+                name: 'Administrador',
+                typing: true,
+            });
+        });
+
+        expect(screen.getByText('Luis Gil está escribiendo…')).toBeTruthy();
+        expect(screen.queryByText(/Eva|Sara|Administrador/)).toBeNull();
     });
 
     it('la región del indicador existe siempre para los lectores de pantalla', () => {

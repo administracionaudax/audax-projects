@@ -44,18 +44,24 @@ export class FakeChannel {
         return this;
     }
 
-    /** Evento del servidor (p. ej. '.message.posted'). */
-    emit(event: string, payload: unknown): void {
+    /** Evento del servidor (p. ej. '.message.posted'), con los metadatos de pusher-js si los hay. */
+    emit(event: string, payload: unknown, metadata?: unknown): void {
         this.listeners
             .get(event)
             ?.forEach((callback) =>
-                (callback as (value: unknown) => void)(payload),
+                (callback as (value: unknown, meta?: unknown) => void)(
+                    payload,
+                    metadata,
+                ),
             );
     }
 
-    /** Whisper de otro navegador (p. ej. 'typing'). */
-    whisperFrom(event: string, payload: unknown): void {
-        this.emit(`.client-${event}`, payload);
+    /**
+     * Whisper de otro navegador (p. ej. 'typing'). En los canales presence, Reverb añade quién lo
+     * envía de verdad: `{ user_id }` en los metadatos.
+     */
+    whisperFrom(event: string, payload: unknown, metadata?: unknown): void {
+        this.emit(`.client-${event}`, payload, metadata);
     }
 
     listenerCount(event: string): number {

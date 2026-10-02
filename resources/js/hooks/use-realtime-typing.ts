@@ -5,12 +5,18 @@ import {
     releaseChannel,
 } from '@/hooks/use-realtime-connection';
 import type { RealtimeChannel } from '@/hooks/use-realtime-connection';
+import { isPresenceMember } from '@/hooks/use-presence';
 import { realtimeEnabled } from '@/lib/realtime';
 
 /**
  * «Escribiendo…» (SPEC §12): por whisper de Echo entre navegadores, sin pasar por el servidor.
  * Se avisa como mucho cada 3 s mientras se escribe y el indicador se apaga solo a los 6 s sin
  * noticias (o al enviar: stopTyping). Sin tiempo real no hace nada.
+ *
+ * Un whisper lo puede mandar cualquiera suscrito con el user_id que quiera (el canal privado no
+ * dice quién lo envía): solo cuentan los de los participantes de la conversación según el servidor
+ * (`participants`) que estén conectados según el canal de presencia (que firma Reverb), y el
+ * nombre que se enseña es el del servidor, no el del whisper (D-120).
  */
 
 export const TYPING_THROTTLE_MS = 3_000;
@@ -34,7 +40,12 @@ export type Typing = {
     live: boolean;
 };
 
-export function useTyping(conversationId: number | null | undefined): Typing {
+export type TypingParticipant = { id: number; name: string };
+
+export function useTyping(
+    conversationId: number | null | undefined,
+    participants?: readonly TypingParticipant[],
+): Typing {
     const me = usePage().props.auth?.user ?? null;
     const myId = me?.id ?? null;
     const myName = me?.name ?? '';
@@ -45,6 +56,13 @@ export function useTyping(conversationId: number | null | undefined): Typing {
     const channelRef = useRef<RealtimeChannel | null>(null);
     const lastSent = useRef(0);
     const live = realtimeEnabled();
+    const known = useRef<Map<number, string> | null>(null);
+
+    useEffect(() => {
+        known.current = participants
+            ? new Map(participants.map((person) => [person.id, person.name]))
+            : null;
+    }, [participants]);
 
     useEffect(() => {
         if (conversationId === null || conversationId === undefined || !live) {
@@ -82,6 +100,16 @@ export function useTyping(conversationId: number | null | undefined): Typing {
                 return;
             }
 
+            // Solo participantes (según el servidor) conectados (según la presencia firmada).
+            const participantsById = known.current;
+
+            if (
+                (participantsById !== null && !participantsById.has(userId)) ||
+                !isPresenceMember(userId)
+            ) {
+                return;
+            }
+
             if (data.typing !== true) {
                 remove(userId);
 
@@ -89,7 +117,8 @@ export function useTyping(conversationId: number | null | undefined): Typing {
             }
 
             const typerName =
-                typeof data.name === 'string' ? data.name.slice(0, 80) : '';
+                participantsById?.get(userId) ??
+                (typeof data.name === 'string' ? data.name.slice(0, 80) : '');
             const previous = timers.get(userId);
 
             if (previous !== undefined) {

@@ -144,6 +144,47 @@ describe('presencia', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('ignora los whispers de quien no está en el canal según el servidor o se hace pasar por otro (D-120)', async () => {
+        mocks.realtime = true;
+        render(
+            <>
+                <RealtimeRoot />
+                <People />
+            </>,
+        );
+        const channel = mocks.echo?.presence('online');
+
+        await act(async () => {
+            channel?.hereCallback?.([
+                { id: 1, name: 'Ana', avatar: null },
+                { id: 2, name: 'Luis', avatar: null },
+            ]);
+        });
+
+        await act(async () => {
+            // Eva (3) no está conectada según el servidor: su «en línea» no cuenta.
+            channel?.whisperFrom('status', { user_id: 3, status: 'online' });
+            // Alguien (Reverb dice que es el 3) dice ser Luis: tampoco.
+            channel?.whisperFrom(
+                'status',
+                { user_id: 2, status: 'away' },
+                { user_id: '3' },
+            );
+        });
+        expect(status(3)).toBe('Desconectado');
+        expect(status(2)).toBe('En línea');
+
+        // Luis de verdad (Reverb firma su user_id).
+        await act(async () => {
+            channel?.whisperFrom(
+                'status',
+                { user_id: 2, status: 'away' },
+                { user_id: '2' },
+            );
+        });
+        expect(status(2)).toBe('Ausente');
+    });
+
     it('tras 5 minutos sin actividad pasa a ausente, lo avisa y vuelve con la actividad', async () => {
         mocks.realtime = true;
         render(
