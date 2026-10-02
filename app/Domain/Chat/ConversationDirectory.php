@@ -259,9 +259,11 @@ final class ConversationDirectory
      * sistema, posteriores a lo leído y ni borrados ni ocultados, en las que participa.
      *
      * @param  list<int>|null  $conversationIds  null = todas
+     * @param  int|null  $upTo  solo hasta este mensaje (los contadores en vivo saben así qué
+     *                          mensajes nuevos no estaban aún en el recuento)
      * @return array<int, int> id de la conversación => sin leer (solo las que tienen alguno)
      */
-    public function unreadCounts(User $user, ?array $conversationIds = null): array
+    public function unreadCounts(User $user, ?array $conversationIds = null, ?int $upTo = null): array
     {
         if ($conversationIds === []) {
             return [];
@@ -269,6 +271,7 @@ final class ConversationDirectory
 
         return $this->unread($user)
             ->when($conversationIds !== null, fn (QueryBuilder $query) => $query->whereIn('messages.conversation_id', $conversationIds))
+            ->when($upTo !== null, fn (QueryBuilder $query) => $query->where('messages.id', '<=', $upTo))
             ->groupBy('messages.conversation_id')
             ->select('messages.conversation_id')
             ->selectRaw('count(*) as unread')

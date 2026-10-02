@@ -61,6 +61,7 @@ describe('useUnreadCounter', () => {
         total: number;
         conversations: Record<string, number>;
         muted: number[];
+        latest_message_id?: number | null;
     };
 
     beforeEach(() => {
@@ -187,6 +188,80 @@ describe('useUnreadCounter', () => {
 
         expect(screen.getByText('total 1')).toBeTruthy();
         expect(screen.getByText('conversación 5: 0')).toBeTruthy();
+    });
+
+    it('un recuento pedido antes de un +1 en vivo no lo pisa (y no lo cuenta dos veces)', async () => {
+        mocks.realtime = true;
+        let release: (value: Response) => void = () => {};
+        response = {
+            total: 3,
+            conversations: { '5': 2, '7': 1 },
+            muted: [9],
+            latest_message_id: 19,
+        };
+        render(<Counter />);
+        await screen.findByText('total 3');
+        const channel = mocks.echo?.channel('private-App.Models.User.1');
+
+        // Un recuento empieza (p. ej. al volver a la pestaña) y tarda en responder…
+        fetchMock.mockImplementationOnce(
+            () =>
+                new Promise<Response>((resolve) => {
+                    release = resolve;
+                }),
+        );
+        await act(async () => {
+            mocks.echo?.setStatus('disconnected');
+            mocks.echo?.setStatus('connected');
+        });
+
+        // …mientras llega en vivo un mensaje nuevo (el 20) y otro que ya contaba (el 18).
+        await act(async () => {
+            channel?.emit('.chat.activity', {
+                conversation_id: 7,
+                message_id: 20,
+                user_id: 2,
+            });
+        });
+        expect(screen.getByText('total 4')).toBeTruthy();
+
+        // El servidor respondió con lo que había hasta el mensaje 19: el 20 se vuelve a sumar.
+        await act(async () => {
+            release(
+                jsonResponse({
+                    total: 3,
+                    conversations: { '5': 2, '7': 1 },
+                    muted: [9],
+                    latest_message_id: 19,
+                }),
+            );
+        });
+        expect(await screen.findByText('total 4')).toBeTruthy();
+        expect(screen.getByText('conversación 7: 2')).toBeTruthy();
+
+        // Uno que ya incluye el 20 no lo suma otra vez.
+        response = {
+            total: 4,
+            conversations: { '5': 2, '7': 2 },
+            muted: [9],
+            latest_message_id: 20,
+        };
+        await act(async () => {
+            mocks.echo?.setStatus('disconnected');
+            mocks.echo?.setStatus('connected');
+        });
+        expect(await screen.findByText('total 4')).toBeTruthy();
+        expect(screen.getByText('conversación 7: 2')).toBeTruthy();
+
+        // El mismo aviso repetido no suma dos veces.
+        await act(async () => {
+            channel?.emit('.chat.activity', {
+                conversation_id: 7,
+                message_id: 20,
+                user_id: 2,
+            });
+        });
+        expect(screen.getByText('total 4')).toBeTruthy();
     });
 
     it('al reconectar se ponen al día', async () => {

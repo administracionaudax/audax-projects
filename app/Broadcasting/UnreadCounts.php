@@ -4,6 +4,7 @@ namespace App\Broadcasting;
 
 use App\Domain\Chat\ConversationDirectory;
 use App\Models\ConversationParticipant;
+use App\Models\Message;
 use App\Models\User;
 
 /**
@@ -13,6 +14,9 @@ use App\Models\User;
  * borrados ni ocultados, en las conversaciones en las que participa hoy). Las silenciadas tienen su
  * número, pero no suman al total de la navegación; se devuelven todas (tengan o no mensajes
  * pendientes) para que el contador en vivo sepa cuáles no suman. Dos consultas.
+ * live() (los contadores en vivo) cuenta hasta el último mensaje que había al empezar
+ * (`latest_message_id`): los avisos en vivo de mensajes posteriores que el navegador recibió
+ * mientras tanto los vuelve a sumar él, sin contarlos dos veces ni perderlos (D-121).
  */
 final class UnreadCounts
 {
@@ -23,7 +27,26 @@ final class UnreadCounts
      */
     public function for(User $user): array
     {
-        $conversations = $this->directory->unreadCounts($user);
+        return $this->count($user, null);
+    }
+
+    /**
+     * @return array{total: int, conversations: array<int, int>, muted: list<int>, latest_message_id: int|null}
+     */
+    public function live(User $user): array
+    {
+        $latest = Message::withTrashed()->max('id');
+        $latest = $latest === null ? null : (int) $latest;
+
+        return [...$this->count($user, $latest ?? 0), 'latest_message_id' => $latest];
+    }
+
+    /**
+     * @return array{total: int, conversations: array<int, int>, muted: list<int>}
+     */
+    private function count(User $user, ?int $upTo): array
+    {
+        $conversations = $upTo === 0 ? [] : $this->directory->unreadCounts($user, null, $upTo);
 
         /** @var list<int> $muted */
         $muted = array_values(ConversationParticipant::query()

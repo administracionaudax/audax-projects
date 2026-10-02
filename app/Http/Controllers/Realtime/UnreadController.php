@@ -19,13 +19,15 @@ class UnreadController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $unread = $counts->for($user);
+        $unread = $counts->live($user);
 
         return response()->json([
             'total' => $unread['total'],
             // Objeto aunque esté vacío ({} y no []): el cliente lo trata como diccionario.
             'conversations' => (object) $unread['conversations'],
             'muted' => $unread['muted'],
+            // Hasta qué mensaje llega el recuento (los avisos en vivo posteriores los suma el navegador).
+            'latest_message_id' => $unread['latest_message_id'],
         ]);
     }
 }

@@ -21,6 +21,9 @@ import { unread as unreadRoute } from '@/routes/realtime';
  *   pedir; y cada 5 minutos, por si algo se ha quedado atrás (mensajes borrados…).
  * - Sin tiempo real: se pide cada 30 s mientras la pestaña está visible.
  * - Las silenciadas tienen su número, pero no suman al total.
+ * - Un recuento que se pidió ANTES de un +1 en vivo no lo pisa: el servidor dice hasta qué mensaje
+ *   ha contado (`latest_message_id`) y los avisos en vivo de mensajes posteriores se vuelven a
+ *   sumar sobre él (D-121).
  */
 
 export const UNREAD_POLL_MS = 30_000;
@@ -33,7 +36,12 @@ export type UnreadResponse = {
     total: number;
     conversations: Record<string, number>;
     muted: number[];
+    /** Último mensaje que entra en el recuento (null si aún no hay ninguno). */
+    latest_message_id?: number | null;
 };
+
+/** Cuántos avisos en vivo recientes se guardan para volver a sumarlos sobre un recuento. */
+const RECENT_ACTIVITY = 200;
 
 export type UnreadState = {
     /** Total para la navegación (sin las conversaciones silenciadas). */
@@ -75,6 +83,10 @@ let teardown: (() => void) | null = null;
 
 const listeners = new Set<() => void>();
 const openConversations = new Map<number, number>();
+/** Avisos en vivo ya sumados que quizá no estén en el próximo recuento del servidor. */
+let recentActivity: ActivityEvent[] = [];
+/** Mensajes cuyo aviso en vivo ya se ha sumado (el mismo aviso dos veces no suma dos veces). */
+let seenActivity: number[] = [];
 
 function emit(next: UnreadState): void {
     state = next;
@@ -90,8 +102,31 @@ function fromResponse(data: UnreadResponse): UnreadState {
         }
     }
 
+    let total = data.total;
+    const upTo = data.latest_message_id;
+
+    // Los avisos en vivo de mensajes que el recuento aún no incluía se vuelven a sumar.
+    if (upTo !== undefined) {
+        recentActivity = recentActivity.filter(
+            (event) => upTo === null || event.message_id > upTo,
+        );
+
+        for (const event of recentActivity) {
+            if (openConversations.has(event.conversation_id)) {
+                continue;
+            }
+
+            conversations[event.conversation_id] =
+                (conversations[event.conversation_id] ?? 0) + 1;
+
+            if (!data.muted.includes(event.conversation_id)) {
+                total += 1;
+            }
+        }
+    }
+
     return {
-        total: data.total,
+        total,
         conversations,
         muted: data.muted,
         ready: true,
@@ -130,6 +165,10 @@ export function refreshUnread(): Promise<void> {
  */
 export function markConversationRead(conversationId: number): void {
     const count = state.conversations[conversationId] ?? 0;
+    // Lo leído ya no se vuelve a sumar sobre un recuento que llegue tarde.
+    recentActivity = recentActivity.filter(
+        (event) => event.conversation_id !== conversationId,
+    );
 
     if (count === 0) {
         return;
@@ -177,6 +216,14 @@ function onActivity(event: ActivityEvent): void {
     }
 
     const muted = state.muted.includes(event.conversation_id);
+
+    // El mismo aviso dos veces (p. ej. al reconectar) no suma dos veces.
+    if (seenActivity.includes(event.message_id)) {
+        return;
+    }
+
+    seenActivity = [...seenActivity, event.message_id].slice(-RECENT_ACTIVITY);
+    recentActivity = [...recentActivity, event].slice(-RECENT_ACTIVITY);
 
     emit({
         ...state,
@@ -278,6 +325,8 @@ export function startUnreadCounter(currentUserId: number): () => void {
             teardown?.();
             teardown = null;
             userId = null;
+            recentActivity = [];
+            seenActivity = [];
             emit(EMPTY);
         }
     };
@@ -347,5 +396,7 @@ export function resetUnreadForTests(): void {
     lastRefresh = 0;
     openConversations.clear();
     listeners.clear();
+    recentActivity = [];
+    seenActivity = [];
     state = EMPTY;
 }

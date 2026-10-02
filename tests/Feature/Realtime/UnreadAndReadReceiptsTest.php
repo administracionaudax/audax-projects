@@ -3,6 +3,7 @@
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Models\ConversationParticipant;
+use App\Models\Message;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
@@ -52,12 +53,13 @@ it('cuenta los mensajes sin leer de otros, por conversación y en total', functi
             'total' => 4,
             'conversations' => [(string) $this->chat->id => 3, (string) $this->dm->id => 1],
             'muted' => [],
+            'latest_message_id' => Message::withTrashed()->max('id'),
         ]);
 
     // A Ana solo le queda el mensaje de sistema, posterior a lo último que escribió.
     $this->actingAs($this->ana)->getJson('/tiempo-real/no-leidos')
         ->assertOk()
-        ->assertExactJson(['total' => 1, 'conversations' => [(string) $this->chat->id => 1], 'muted' => []]);
+        ->assertExactJson(['total' => 1, 'conversations' => [(string) $this->chat->id => 1], 'muted' => [], 'latest_message_id' => Message::withTrashed()->max('id')]);
 });
 
 it('leer, borrar u ocultar un mensaje lo quita del recuento; las silenciadas no suman al total', function () {
@@ -74,20 +76,20 @@ it('leer, borrar u ocultar un mensaje lo quita del recuento; las silenciadas no 
 
     $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')
         ->assertOk()
-        ->assertExactJson(['total' => 0, 'conversations' => [(string) $this->dm->id => 1], 'muted' => [$this->dm->id]]);
+        ->assertExactJson(['total' => 0, 'conversations' => [(string) $this->dm->id => 1], 'muted' => [$this->dm->id], 'latest_message_id' => Message::withTrashed()->max('id')]);
 });
 
 it('sin nada pendiente devuelve un objeto vacío, no una lista', function () {
     $response = $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')->assertOk();
 
-    expect($response->getContent())->toBe('{"total":0,"conversations":{},"muted":[]}');
+    expect($response->getContent())->toBe('{"total":0,"conversations":{},"muted":[],"latest_message_id":null}');
 });
 
 it('devuelve todas las conversaciones silenciadas, tengan o no mensajes pendientes', function () {
     ConversationParticipant::query()->where('user_id', $this->luis->id)->update(['muted' => true]);
 
     $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')
-        ->assertExactJson(['total' => 0, 'conversations' => [], 'muted' => collect([$this->chat->id, $this->dm->id])->sort()->values()->all()]);
+        ->assertExactJson(['total' => 0, 'conversations' => [], 'muted' => collect([$this->chat->id, $this->dm->id])->sort()->values()->all(), 'latest_message_id' => null]);
 });
 
 it('no cuenta las conversaciones de las que ya no participa', function () {
@@ -95,6 +97,20 @@ it('no cuenta las conversaciones de las que ya no participa', function () {
     $this->project->members()->detach($this->luis->id);
 
     $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')->assertJson(['total' => 0]);
+});
+
+it('el recuento dice hasta qué mensaje ha contado y no cuenta los posteriores (D-121)', function () {
+    $first = $this->writer->post($this->ana, $this->chat, 'Uno');
+    $second = $this->writer->post($this->ana, $this->chat, 'Dos');
+
+    // Lo que llegó después del mensaje «Uno» no entra en un recuento hecho hasta él: el navegador
+    // suma por su cuenta los avisos en vivo de los mensajes posteriores.
+    expect($this->directory->unreadCounts($this->luis, null, $first->id))->toBe([$this->chat->id => 1])
+        ->and($this->directory->unreadCounts($this->luis, null, $second->id))->toBe([$this->chat->id => 2]);
+
+    $this->actingAs($this->luis)->getJson('/tiempo-real/no-leidos')
+        ->assertJsonPath('latest_message_id', $second->id)
+        ->assertJsonPath('total', 2);
 });
 
 it('el recuento es una sola consulta, crezcan lo que crezcan las conversaciones y los mensajes', function () {
