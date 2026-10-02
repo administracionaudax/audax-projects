@@ -80,6 +80,19 @@ describe('búsqueda global', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
+    it('el campo se anuncia como «Buscar en la aplicación»', async () => {
+        renderSearch();
+        fireEvent.keyDown(document, { key: 'k', ctrlKey: true });
+
+        const input = await screen.findByRole('combobox', {
+            name: 'Buscar en la aplicación',
+        });
+        expect(input.getAttribute('aria-label')).toBeNull();
+        expect(
+            screen.getByRole('dialog', { name: 'Búsqueda global' }),
+        ).toBeTruthy();
+    });
+
     it('no reacciona a K sin modificador', () => {
         renderSearch();
         fireEvent.keyDown(document, { key: 'k' });

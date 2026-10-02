@@ -164,14 +164,14 @@ export function SearchPalette({
             commandProps={{
                 shouldFilter: false,
                 loop: true,
-                label: t('search.title'),
+                // cmdk nombra el campo con esta etiqueta (aria-labelledby gana a un aria-label).
+                label: t('search.input_label'),
             }}
         >
             <CommandInput
                 value={query}
                 onValueChange={setQuery}
                 placeholder={t('search.placeholder')}
-                aria-label={t('search.input_label')}
             />
             <CommandList label={t('search.results_label')}>
                 <div aria-live="polite" className="empty:hidden">
