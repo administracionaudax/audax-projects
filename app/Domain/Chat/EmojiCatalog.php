@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Cache;
  * Emojis que se pueden usar como reacción (SPEC §12): exactamente los del selector (Emojibase 16,
  * autoalojado en public/emojibase/es/data.json), con sus tonos de piel. Así se admiten los que
  * llevan cifras o letras (0️⃣, ℹ️, 🅰️) sin abrir la puerta a texto arbitrario (D-117).
- * La lista se guarda en caché por la fecha del fichero: cambiar los datos la renueva sola.
+ * Se comparan sin el selector de variación U+FE0F (Emojibase guarda «👍️» y los atajos de la
+ * interfaz envían «👍»). La lista se guarda en caché por la fecha del fichero: cambiar los datos
+ * la renueva sola.
  */
 final class EmojiCatalog
 {
@@ -17,7 +19,7 @@ final class EmojiCatalog
 
     public static function contains(string $emoji): bool
     {
-        return isset(self::all()[$emoji]);
+        return isset(self::all()[self::normalize($emoji)]);
     }
 
     /**
@@ -33,9 +35,14 @@ final class EmojiCatalog
         $version = is_file($path) ? (string) filemtime($path) : 'missing';
 
         /** @var array<string, true> $emojis */
-        $emojis = Cache::rememberForever('chat.emoji-catalog.'.$version, fn (): array => self::load($path));
+        $emojis = Cache::rememberForever('chat.emoji-catalog.v2.'.$version, fn (): array => self::load($path));
 
         return self::$emojis = $emojis;
+    }
+
+    private static function normalize(string $emoji): string
+    {
+        return str_replace("\u{FE0F}", '', $emoji);
     }
 
     /**
@@ -52,12 +59,12 @@ final class EmojiCatalog
             }
 
             if (is_string($entry['emoji'] ?? null)) {
-                $emojis[$entry['emoji']] = true;
+                $emojis[self::normalize($entry['emoji'])] = true;
             }
 
             foreach (is_array($entry['skins'] ?? null) ? $entry['skins'] : [] as $skin) {
                 if (is_array($skin) && is_string($skin['emoji'] ?? null)) {
-                    $emojis[$skin['emoji']] = true;
+                    $emojis[self::normalize($skin['emoji'])] = true;
                 }
             }
         }

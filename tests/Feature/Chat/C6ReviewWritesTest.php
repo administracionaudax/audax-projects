@@ -114,7 +114,8 @@ it('la auditoría de la moderación guarda el texto que tenía el mensaje', func
 it('admite como reacción cualquier emoji del selector, también los que llevan cifras o letras', function () {
     $message = $this->writer->post($this->luis, $this->chat, 'Hola');
 
-    foreach (['0️⃣', '9️⃣', 'ℹ️', '🅰️', '👍🏽', '❤️'] as $emoji) {
+    // Los del selector y los atajos de la interfaz (QUICK_REACTIONS), con o sin U+FE0F.
+    foreach (['0️⃣', '9️⃣', 'ℹ️', '🅰️', '👍🏽', '❤️', '👍', '👍️', '😂', '🎉', '👀', '🙏', '✅'] as $emoji) {
         expect($this->writer->toggleReaction($this->ana, $message, $emoji))->toBeTrue();
     }
 
@@ -122,7 +123,7 @@ it('admite como reacción cualquier emoji del selector, también los que llevan 
         ->postJson("/chat/mensajes/{$message->id}/reacciones", ['emoji' => '#️⃣'])
         ->assertOk();
 
-    expect($message->reactions()->count())->toBe(7);
+    expect($message->reactions()->count())->toBe(14);
 });
 
 it('rechaza como reacción el texto, las etiquetas y los símbolos que no son emojis', function () {
