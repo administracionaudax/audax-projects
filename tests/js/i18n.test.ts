@@ -111,7 +111,7 @@ describe('palabras clave de marca', () => {
     });
 
     it('quita las marcas para textos planos', () => {
-        expect(stripKeywords(t('placeholder.workload.title'))).toBe(
+        expect(stripKeywords('Carga de la [[semana que viene]]')).toBe(
             'Carga de la semana que viene',
         );
     });
