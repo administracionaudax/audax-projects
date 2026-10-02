@@ -3,12 +3,20 @@
 namespace App\Providers;
 
 use App\Domain\Chat\ConversationDirectory;
+use App\Domain\Chat\Links\DnsHostResolver;
+use App\Domain\Chat\Links\HostResolver;
+use App\Domain\Chat\Links\LinkPreviews;
+use App\Domain\Chat\Notices\ProjectChatNotices;
 use App\Domain\Chat\Transcription\FakeTranscriber;
 use App\Domain\Chat\Transcription\TranscriptionService;
 use App\Domain\Chat\Transcription\WhisperServerTranscriber;
+use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Events\Chat\MessagePosted;
 use App\Models\Conversation;
 use App\Models\ProjectMember;
+use App\Models\Task;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -16,12 +24,16 @@ use Illuminate\Support\ServiceProvider;
  * - el motor de transcripción según services.transcription.driver (whisper en el servidor; fake
  *   en local y en los tests),
  * - el chat de un proyecto sigue a sus miembros: entrar o salir del proyecto es entrar o salir de
- *   su conversación (si ya existe; si no, se crea con todos al primer uso).
+ *   su conversación (si ya existe; si no, se crea con todos al primer uso),
+ * - previsualización de enlaces y mensajes de sistema del chat del proyecto (área C1).
  */
 class ChatServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Previsualización de enlaces (C1): DNS del sistema (en los tests, resoluciones simuladas).
+        $this->app->bind(HostResolver::class, DnsHostResolver::class);
+
         $this->app->singleton(TranscriptionService::class, function (): TranscriptionService {
             return match (config('services.transcription.driver')) {
                 'fake' => new FakeTranscriber,
@@ -50,5 +62,11 @@ class ChatServiceProvider extends ServiceProvider
 
         ProjectMember::saved(fn (ProjectMember $member) => $sync($member, true));
         ProjectMember::deleted(fn (ProjectMember $member) => $sync($member, false));
+
+        // C1: previsualización del primer enlace de cada mensaje nuevo (D-069) y mensajes de
+        // sistema en el chat del proyecto (bolsa al 90 % y al 100 %, hito completado).
+        Event::listen(MessagePosted::class, [LinkPreviews::class, 'messagePosted']);
+        Event::listen(HourBankThresholdReached::class, [ProjectChatNotices::class, 'hourBankThreshold']);
+        Task::updated(fn (Task $task) => $this->app->make(ProjectChatNotices::class)->taskUpdated($task));
     }
 }

@@ -29,6 +29,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="TRANSCRIPTION_DRIVER" value="fake"/>
         <env name="TRANSCRIPTION_QUEUE_CONNECTION" value="sync"/>
+        <!-- Previsualización de enlaces del chat: sin red en los tests (los suyos la activan con Http::fake). -->
+        <env name="LINK_PREVIEWS_ENABLED" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

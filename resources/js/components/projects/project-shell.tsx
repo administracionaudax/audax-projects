@@ -11,10 +11,10 @@ import { cn } from '@/lib/utils';
 import type { Project } from '@/types';
 
 type Tab = {
-    id: ProjectTab | 'gantt' | 'chat';
+    id: ProjectTab | 'gantt';
     label: TranslationKey;
     /** Pestañas que llegan en otra fase: se ven, pero desactivadas. */
-    phase?: 4 | 6;
+    phase?: 4;
 };
 
 const TABS: Tab[] = [
@@ -23,7 +23,7 @@ const TABS: Tab[] = [
     { id: 'gantt', label: 'project_tabs.gantt', phase: 4 },
     { id: 'bolsas', label: 'project_tabs.hour_banks' },
     { id: 'horas', label: 'project_tabs.time' },
-    { id: 'chat', label: 'project_tabs.chat', phase: 6 },
+    { id: 'chat', label: 'project_tabs.chat' },
     { id: 'archivos', label: 'project_tabs.files' },
     { id: 'ajustes', label: 'project_tabs.settings' },
 ];

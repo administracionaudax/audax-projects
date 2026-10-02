@@ -163,6 +163,8 @@ export type TaskPanelData = {
     activity: TaskActivityItem[];
     reaction_emojis: string[];
     delete_blocked: TaskDeleteBlocked | null;
+    /** Mensaje del chat desde el que se creó (Fase 6), si quien mira ve esa conversación. */
+    source_message?: { conversation_id: number; message_id: number } | null;
     can: {
         update: boolean;
         delete: boolean;

@@ -8,10 +8,12 @@ use App\Http\Resources\TimeEntryResource;
 use App\Http\Resources\UserSummaryResource;
 use App\Models\ActiveTimer;
 use App\Models\CommentReaction;
+use App\Models\Message;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -89,6 +91,7 @@ final class TaskPanel
             'activity' => $this->activity->for($task),
             'reaction_emojis' => CommentReaction::EMOJIS,
             'delete_blocked' => $blocked,
+            'source_message' => $this->sourceMessage($task, $viewer),
             'can' => [
                 'update' => $canUpdate,
                 'delete' => $canUpdate && $blocked === null,
@@ -97,6 +100,25 @@ final class TaskPanel
                 'log_time' => ! $task->is_milestone && (Gate::forUser($viewer)->allows('logTime', $project) || $canManage),
             ],
         ];
+    }
+
+    /**
+     * Mensaje del chat desde el que se creó la tarea (SPEC §12, Fase 6): el enlace «Ver mensaje»,
+     * solo si quien mira ve esa conversación (sus participantes y el admin, D-071). Una consulta.
+     *
+     * @return array{conversation_id: int, message_id: int}|null
+     */
+    private function sourceMessage(Task $task, User $viewer): ?array
+    {
+        $message = Message::query()
+            ->where('task_id', $task->id)
+            ->unless($viewer->isAdmin(), fn (Builder $query) => $query->whereHas('conversation.participants', fn (Builder $participants) => $participants
+                ->where('user_id', $viewer->id)
+                ->whereNull('left_at')))
+            ->oldest('id')
+            ->first(['id', 'conversation_id']);
+
+        return $message === null ? null : ['conversation_id' => $message->conversation_id, 'message_id' => $message->id];
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Http\Resources\FinancialResource;
 use App\Models\ActiveTimer;
@@ -94,8 +95,9 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Temporizador activo, notificaciones sin leer y configuración (Fase 1), en closures: dos
-     * consultas ligeras solo al pintar una página; la configuración sale de la caché de ajustes.
+     * Temporizador activo, notificaciones sin leer y configuración (Fase 1), tiempo real y no leídos
+     * del chat (Fase 6), en closures: tres consultas ligeras solo al pintar una página; la
+     * configuración sale de la caché de ajustes.
      *
      * @return array<string, Closure>
      */
@@ -114,6 +116,8 @@ class HandleInertiaRequests extends Middleware
                 'max_audio_seconds' => (int) Setting::get('max_audio_seconds', 300),
             ],
             'realtime' => fn (): ?array => $this->realtime(),
+            // Chat (Fase 6, C1): total sin leer de la entrada Chat de la navegación (una consulta).
+            'chat' => fn (): array => ['unread' => app(ConversationDirectory::class)->unreadTotal($user)],
         ];
     }
 
