@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
+    FileArchive,
     MonitorSmartphone,
     Palette,
     ShieldCheck,
@@ -13,12 +14,13 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { t } from '@/lib/i18n';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { index as myDataIndex } from '@/routes/privacy/exports';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import { index as sessionsIndex } from '@/routes/sessions';
 import type { NavItem } from '@/types';
 
-export function settingsNavItems(): NavItem[] {
+export function settingsNavItems(isClient = false): NavItem[] {
     return [
         {
             title: t('settings.nav.profile'),
@@ -40,6 +42,16 @@ export function settingsNavItems(): NavItem[] {
             href: sessionsIndex(),
             icon: MonitorSmartphone,
         },
+        // Exportación de los datos personales (D-075): solo la plantilla.
+        ...(isClient
+            ? []
+            : [
+                  {
+                      title: t('privacy.my_data.nav'),
+                      href: myDataIndex(),
+                      icon: FileArchive,
+                  },
+              ]),
     ];
 }
 
@@ -49,6 +61,7 @@ export function settingsNavItems(): NavItem[] {
  */
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const isClient = usePage().props.auth?.user?.is_client === true;
 
     return (
         <div className="px-4 py-6">
@@ -65,7 +78,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         className="flex flex-col space-y-1 space-x-0"
                         aria-label={t('settings.nav.label')}
                     >
-                        {settingsNavItems().map((item) => {
+                        {settingsNavItems(isClient).map((item) => {
                             const active = isCurrentOrParentUrl(item.href);
 
                             return (

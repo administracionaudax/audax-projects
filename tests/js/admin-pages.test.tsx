@@ -111,7 +111,19 @@ describe('panel de administración', () => {
                 .getAttribute('href'),
         ).toBe('/admin/festivos');
         expect(screen.queryByText('Llega en la Fase 3')).toBeNull();
-        expect(screen.getByText('Llega en la Fase 7')).toBeTruthy();
+        // Fase 7: auditoría y privacidad (D-074 y D-075).
+        expect(
+            screen
+                .getByRole('link', { name: 'Abrir la auditoría' })
+                .getAttribute('href'),
+        ).toBe('/admin/auditoria');
+        expect(
+            screen
+                .getByRole('link', { name: 'Abrir privacidad y datos' })
+                .getAttribute('href'),
+        ).toBe('/admin/privacidad');
+        expect(screen.queryByText('Llega en la Fase 7')).toBeNull();
+        expect(screen.getByText('Llega en la Fase 5')).toBeTruthy();
     });
 
     it('sin el permiso, el enlace no aparece', () => {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Admin\TextSearch;
 use App\Domain\Admin\UserGuard;
 use App\Domain\Admin\UserInviter;
+use App\Domain\Privacy\PersonalDataExportList;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
@@ -137,6 +138,8 @@ class UserController extends Controller
                     && (! $user->isAdmin() || ($actor->isAdmin() && ! $this->guard->isLastActiveAdmin($user))),
                 'viewFinancials' => Gate::allows('view-financials'),
             ],
+            // Exportaciones de sus datos personales (D-075): solo el admin las pide y las descarga.
+            'personalDataExports' => $actor->isAdmin() ? app(PersonalDataExportList::class)->for($user) : null,
         ]);
     }
 
