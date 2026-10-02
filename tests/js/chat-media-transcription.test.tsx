@@ -12,20 +12,18 @@ vi.mock('@/lib/realtime', () => ({
     realtimeEnabled: () => realtime.enabled,
 }));
 
-vi.mock('@laravel/echo-react', () => ({
-    echoIsConfigured: () => realtime.enabled,
-    echo: () => ({
-        private: (name: string) => {
-            channel.name = name;
+// El canal de la conversación, con el contador de suscripciones de C2.
+vi.mock('@/hooks/use-realtime-connection', () => ({
+    acquireChannel: (name: string) => {
+        channel.name = name;
 
-            return {
-                listen: (event: string, handler: (payload: unknown) => void) =>
-                    channel.handlers.set(event, handler),
-                stopListening: (event: string) =>
-                    channel.handlers.delete(event),
-            };
-        },
-    }),
+        return {
+            listen: (event: string, handler: (payload: unknown) => void) =>
+                channel.handlers.set(event, handler),
+            stopListening: (event: string) => channel.handlers.delete(event),
+        };
+    },
+    releaseChannel: () => undefined,
 }));
 
 import {
@@ -40,7 +38,7 @@ import {
     AUDIO_TRANSCRIBED_EVENT,
     POLL_MS,
     POLL_MS_WITH_REALTIME,
-    transcriptionFromEvent,
+    isTranscriptionEventFor,
 } from '@/components/chat/media/use-live-transcription';
 
 function transcription(
@@ -238,33 +236,41 @@ describe('AudioMessage', () => {
         );
     });
 
-    it('con tiempo real, el evento AudioTranscribed trae el texto sin esperar', async () => {
+    it('con tiempo real, el evento AudioTranscribed (solo ids) pide el texto sin esperar', async () => {
         realtime.enabled = true;
         const fetchMock = vi
             .spyOn(globalThis, 'fetch')
-            .mockResolvedValue(new Response(JSON.stringify({ messages: [] })));
+            .mockResolvedValue(pollResponse('done', 'Llego tarde'));
         render(<AudioMessage message={message()} />);
 
         expect(channel.name).toBe('conversation.3');
         expect(channel.handlers.has(AUDIO_TRANSCRIBED_EVENT)).toBe(true);
 
-        act(() => {
+        // Carga de C2: solo ids, nunca el texto.
+        await act(async () => {
             channel.handlers.get(AUDIO_TRANSCRIBED_EVENT)?.({
+                conversation_id: 3,
                 message_id: 41,
-                transcription: transcription({ text: 'Llego tarde' }),
+                transcription_id: 7,
+                status: 'done',
             });
+            await vi.advanceTimersByTimeAsync(0);
         });
 
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe(
+            '/chat/transcripciones?mensajes=41',
+        );
         expect(
             screen.getByRole('button', { name: /Ver la transcripción/ })
                 .textContent,
         ).toContain('Llego tarde');
-        // Ya hecha: deja de escuchar y no consulta.
+        // Ya hecha: deja de escuchar y no consulta más.
         expect(channel.handlers.has(AUDIO_TRANSCRIBED_EVENT)).toBe(false);
         await act(async () => {
             await vi.advanceTimersByTimeAsync(POLL_MS_WITH_REALTIME);
         });
-        expect(fetchMock).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('con tiempo real, si se pierde el evento, consulta cada minuto', async () => {
@@ -325,19 +331,19 @@ describe('AudioMessage', () => {
         ).toBeTruthy();
     });
 
-    it('solo acepta eventos de su mensaje', () => {
+    it('solo atiende los eventos de su mensaje', () => {
         expect(
-            transcriptionFromEvent(
-                { message_id: 9, transcription: transcription() },
+            isTranscriptionEventFor(
+                { conversation_id: 3, message_id: 9, status: 'done' },
                 41,
             ),
-        ).toBeNull();
-        expect(transcriptionFromEvent(null, 41)).toBeNull();
+        ).toBe(false);
+        expect(isTranscriptionEventFor(null, 41)).toBe(false);
         expect(
-            transcriptionFromEvent(
-                { transcription: { ...transcription(), message_id: 41 } },
+            isTranscriptionEventFor(
+                { conversation_id: 3, message_id: 41, status: 'done' },
                 41,
-            )?.transcription.text,
-        ).toBe('Mañana entregamos el presupuesto');
+            ),
+        ).toBe(true);
     });
 });

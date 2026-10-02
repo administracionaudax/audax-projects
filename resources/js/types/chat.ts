@@ -3,6 +3,11 @@
  * ConversationPresenter, MessagePresenter, PinnedPresenter) y los controladores de
  * app/Http/Controllers/Chat. Instantes en ISO 8601 (UTC).
  */
+import type {
+    ChatAttachment,
+    ChatAudio,
+    ChatTranscription,
+} from '@/components/chat/media/types';
 import type { Project } from '@/types/domain';
 
 export type ChatConversationType = 'project' | 'direct' | 'group';
@@ -105,34 +110,16 @@ export type ChatParent = {
     system: ChatSystemData | null;
 };
 
-export type ChatAttachment = {
-    id: number;
-    original_name: string;
-    mime: string;
-    size: number;
-    is_image: boolean;
-    url: string;
-    thumbnail_url: string | null;
-};
-
-export type ChatTranscriptionStatus =
-    | 'pending'
-    | 'processing'
-    | 'done'
-    | 'failed';
-
-export type ChatAudio = {
-    id: number;
-    url: string;
-    mime: string;
-    size: number;
-    duration_ms: number | null;
-    transcription: {
-        status: ChatTranscriptionStatus;
-        text: string | null;
-        language: string | null;
-    } | null;
-};
+/**
+ * Lo multimedia de cada mensaje es el contrato de C3 (MediaPayload::of en el servidor):
+ * adjuntos con su tipo, el audio servido con Range y su transcripción obligatoria (D-070).
+ */
+export type {
+    ChatAttachment,
+    ChatAudio,
+    ChatTranscription,
+    TranscriptionStatus as ChatTranscriptionStatus,
+} from '@/components/chat/media/types';
 
 export type ChatLinkPreview = {
     url: string;
@@ -168,8 +155,10 @@ export type ChatMessage = {
     pinned_by: string | null;
     parent: ChatParent | null;
     reactions: ChatReaction[];
+    /** Adjuntos, audio y transcripción (MediaPayload, C3); vacíos si está borrado u ocultado. */
     attachments: ChatAttachment[];
     audio: ChatAudio | null;
+    transcription: ChatTranscription | null;
     task: { id: number; title: string } | null;
     link_preview: ChatLinkPreview | null;
     system: ChatSystemData | null;

@@ -1,4 +1,3 @@
-import { echo, echoIsConfigured } from '@laravel/echo-react';
 import { useEffect, useState } from 'react';
 import type {
     AudioMessageData,
@@ -6,14 +5,20 @@ import type {
     ChatTranscription,
     TranscriptionUpdate,
 } from '@/components/chat/media/types';
+import {
+    acquireChannel,
+    releaseChannel,
+} from '@/hooks/use-realtime-connection';
 import { realtimeEnabled } from '@/lib/realtime';
 import { transcriptions as transcriptionsRoute } from '@/routes/chat/media';
 
 /**
  * Transcripción que se actualiza sola (SPEC §12: «Transcribiendo…» → texto):
  * - con tiempo real, al llegar el evento AUDIO_TRANSCRIBED_EVENT por el canal de la conversación
- *   (lo emite C2 a partir de App\Events\Chat\AudioTranscribed) y, por si se pierde, una consulta
- *   cada minuto;
+ *   (lo emite C2 a partir de App\Events\Chat\AudioTranscribed) se pide el estado a la ruta de C3
+ *   (el evento solo lleva ids: {conversation_id, message_id, transcription_id, status}; el texto de
+ *   un audio largo no cabe en un aviso y la ruta comprueba los permisos) y, por si se pierde, una
+ *   consulta cada minuto;
  * - sin tiempo real (prop `realtime` null), una consulta ligera cada 15 s: UNA petición para todos
  *   los audios pendientes a la vista (GET /chat/transcripciones?mensajes=…), que se salta si la
  *   pestaña no está visible.
@@ -145,41 +150,20 @@ export function watchTranscription(
 }
 
 /**
- * Carga útil del evento de tiempo real: {message_id, transcription, audio?}. Se admiten también
- * {transcription: {message_id, …}} por si el emisor la anida.
+ * ¿El evento de tiempo real (solo ids) es de este mensaje? Carga de C2:
+ * {conversation_id, message_id, transcription_id, status}.
  */
-export function transcriptionFromEvent(
+export function isTranscriptionEventFor(
     payload: unknown,
     messageId: number,
-): { transcription: ChatTranscription; audio: ChatAudio | null } | null {
+): boolean {
     if (payload === null || typeof payload !== 'object') {
-        return null;
+        return false;
     }
 
-    const data = payload as {
-        message_id?: unknown;
-        transcription?: unknown;
-        audio?: unknown;
-    };
-    const transcription =
-        data.transcription !== null && typeof data.transcription === 'object'
-            ? (data.transcription as ChatTranscription & {
-                  message_id?: unknown;
-              })
-            : null;
-    const id = Number(data.message_id ?? transcription?.message_id);
-
-    if (transcription === null || id !== messageId) {
-        return null;
-    }
-
-    return {
-        transcription,
-        audio:
-            data.audio !== null && typeof data.audio === 'object'
-                ? (data.audio as ChatAudio)
-                : null,
-    };
+    return (
+        Number((payload as { message_id?: unknown }).message_id) === messageId
+    );
 }
 
 /**
@@ -239,29 +223,51 @@ export function useLiveTranscription(message: AudioMessageData): {
     }, [message.id, pending, realtime]);
 
     useEffect(() => {
-        if (!pending || !realtime || !echoIsConfigured()) {
+        if (!pending || !realtime) {
             return;
         }
 
-        const channel = echo().private(
-            `conversation.${message.conversation_id}`,
-        );
-        const onTranscribed = (payload: unknown) => {
-            const update = transcriptionFromEvent(payload, message.id);
+        // El mismo canal que usa la conversación (C2 cuenta las suscripciones y lo deja al final).
+        const name = `conversation.${message.conversation_id}`;
+        const channel = acquireChannel(name, 'private');
 
-            if (update) {
-                setState((current) => ({
-                    audio: update.audio ?? current.audio,
-                    transcription: update.transcription,
-                    gone: false,
-                }));
+        if (!channel) {
+            return;
+        }
+
+        let cancelled = false;
+        const onTranscribed = (payload: unknown) => {
+            if (!isTranscriptionEventFor(payload, message.id)) {
+                return;
             }
+
+            fetchTranscriptionUpdates([message.id])
+                .then(([update]) => {
+                    if (cancelled) {
+                        return;
+                    }
+
+                    setState((current) =>
+                        update === undefined
+                            ? { ...current, gone: true }
+                            : {
+                                  audio: update.audio ?? current.audio,
+                                  transcription: update.transcription,
+                                  gone: false,
+                              },
+                    );
+                })
+                .catch(() => {
+                    // La consulta periódica lo recogerá.
+                });
         };
 
         channel.listen(AUDIO_TRANSCRIBED_EVENT, onTranscribed);
 
         return () => {
+            cancelled = true;
             channel.stopListening(AUDIO_TRANSCRIBED_EVENT, onTranscribed);
+            releaseChannel(name, 'private');
         };
     }, [message.id, message.conversation_id, pending, realtime]);
 

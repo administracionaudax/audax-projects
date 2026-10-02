@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { chatApi } from '@/components/chat/chat-api';
 import type { ConversationActivity } from '@/components/chat/conversation-view';
-import { publishUnreadTotal } from '@/components/chat/use-chat-unread';
 import type { ChatConversationItem } from '@/types/chat';
 
 /** Sin tiempo real, la lista se actualiza cada 30 s con la pestaña visible (y al volver a ella). */
@@ -28,7 +27,6 @@ export function useConversationList(initial: ChatConversationItem[]) {
             const data = await chatApi.conversations(signal);
             setItems(data.conversations);
             setFailed(false);
-            publishUnreadTotal(data.unread_total);
         } catch (error) {
             if (
                 !(error instanceof DOMException && error.name === 'AbortError')

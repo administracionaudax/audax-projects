@@ -23,7 +23,6 @@ use Illuminate\Support\Facades\Route;
 // Páginas: lista de conversaciones y conversación abierta (?mensaje={id} va a ese mensaje).
 Route::get('chat', [ChatController::class, 'index'])->name('chat.index');
 Route::get('chat/conversaciones', [ChatController::class, 'conversations'])->name('chat.conversations');
-Route::get('chat/no-leidos', [ChatController::class, 'unread'])->name('chat.unread');
 Route::get('chat/personas', [ChatController::class, 'people'])->name('chat.people');
 
 // Directas y grupos.

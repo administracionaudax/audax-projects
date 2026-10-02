@@ -74,17 +74,6 @@ class ChatController extends Controller
     }
 
     /**
-     * Total de no leídos para la entrada Chat de la navegación (conversaciones no silenciadas).
-     */
-    public function unread(Request $request): JsonResponse
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return response()->json(['total' => $this->directory->unreadTotal($user)]);
-    }
-
-    /**
      * Personas con las que se puede abrir una directa o crear un grupo: internas y activas.
      */
     public function people(Request $request): JsonResponse

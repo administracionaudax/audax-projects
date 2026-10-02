@@ -5,7 +5,6 @@ import {
     people as peopleRoute,
     pinned as pinnedRoute,
     read as readRoute,
-    unread as unreadRoute,
 } from '@/routes/chat';
 import {
     destroy as destroyRoute,
@@ -162,14 +161,6 @@ export const chatApi = {
             conversations: ChatConversationItem[];
             unread_total: number;
         }>('GET', conversationsRoute.url(), undefined, signal),
-
-    unread: (signal?: AbortSignal) =>
-        chatRequest<{ total: number }>(
-            'GET',
-            unreadRoute.url(),
-            undefined,
-            signal,
-        ),
 
     people: () =>
         chatRequest<{ people: ChatPerson[] }>('GET', peopleRoute.url()),

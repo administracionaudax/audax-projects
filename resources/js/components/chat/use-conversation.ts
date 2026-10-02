@@ -8,8 +8,10 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { ChatApiError, chatApi } from '@/components/chat/chat-api';
-import { useConversationChannel } from '@/components/chat/realtime-bridge';
-import { publishUnreadTotal } from '@/components/chat/use-chat-unread';
+import {
+    useConversationChannel,
+    useUnreadCounter,
+} from '@/components/chat/realtime-bridge';
 import { t } from '@/lib/i18n';
 import type {
     ChatConversation,
@@ -22,12 +24,14 @@ import type {
 
 /**
  * Estado de una conversación abierta (SPEC §12): la ventana de mensajes cargada (paginación por
- * cursor hacia atrás y, tras saltar a un mensaje, hacia delante), los fijados, hasta dónde ha leído
- * cada participante y las acciones, que devuelven el mensaje actualizado.
+ * cursor hacia atrás y, tras saltar a un mensaje, hacia delante), los fijados y las acciones, que
+ * devuelven el mensaje actualizado. «Leído por» lo lleva useReadReceipts (C2).
  *
  * Tiempo real: con Echo (C2) llegan avisos con ids y aquí se piden los datos a las rutas del
  * chat; sin él (prop `realtime` null), la consulta periódica cada 10 s (60 s con tiempo real,
  * como red de seguridad) trae los nuevos y los cambiados. Solo con la pestaña visible.
+ * Los avisos llegan también a la pestaña que hizo el cambio: todo se mezcla por id, y el aviso de
+ * un mensaje propio que aún se está enviando se ignora (llega con la respuesta del envío).
  */
 
 export const POLL_MS = 10_000;
@@ -111,7 +115,6 @@ export function useConversation({
     onActivity?: (event: {
         lastMessage?: ChatMessage;
         unread?: number;
-        unreadTotal?: number;
     }) => void;
 }) {
     const [messages, setMessages] = useState<ChatMessage[]>(initial.messages);
@@ -124,15 +127,6 @@ export function useConversation({
                 [...conversation.participants, ...initial.users].map((user) => [
                     user.id,
                     user,
-                ]),
-            ),
-    );
-    const [readState, setReadState] = useState<Map<number, number | null>>(
-        () =>
-            new Map(
-                conversation.participants.map((participant) => [
-                    participant.id,
-                    participant.last_read_message_id,
                 ]),
             ),
     );
@@ -213,14 +207,6 @@ export function useConversation({
             setPollFailed(false);
             rememberUsers(data.users);
             setPinned(data.pinned);
-            setReadState(
-                new Map(
-                    data.read_state.map((row) => [
-                        row.user_id,
-                        row.last_read_message_id,
-                    ]),
-                ),
-            );
 
             // Tras saltar a un mensaje antiguo, lo nuevo no es contiguo: se carga al bajar.
             const fresh = hasNewer ? [] : data.messages;
@@ -273,14 +259,28 @@ export function useConversation({
         [apply, poll],
     );
 
+    // Funciones estables del almacén de C2 (no cambian con cada recuento).
+    const { markRead: markCounterRead, refresh: refreshCounters } =
+        useUnreadCounter();
+
     const { live: connected } = useConversationChannel(conversation.id, {
-        onMessagePosted: () => void poll(),
+        onMessagePosted: (event) => {
+            const loaded = latest.current.messages;
+
+            // Ya está (lo trajo la consulta o la respuesta del envío) o es uno propio que se está
+            // enviando: su respuesta lo sustituirá. Así no se duplica ni se pide dos veces.
+            if (
+                loaded.some((message) => message.id === event.message_id) ||
+                (event.user_id === currentUser.id &&
+                    loaded.some((message) => message.pending === 'sending'))
+            ) {
+                return;
+            }
+
+            void poll();
+        },
         onMessageUpdated: (event) => void refreshMessage(event.message_id),
         onAudioTranscribed: (event) => void refreshMessage(event.message_id),
-        onRead: (event) =>
-            setReadState((current) =>
-                new Map(current).set(event.user_id, event.last_read_message_id),
-            ),
         onReconnect: () => void poll(),
     });
 
@@ -475,6 +475,7 @@ export function useConversation({
                 reactions: [],
                 attachments: [],
                 audio: null,
+                transcription: null,
                 task: null,
                 link_preview: null,
                 system: null,
@@ -625,14 +626,15 @@ export function useConversation({
 
         try {
             const result = await chatApi.read(conversation.id, newest);
-            publishUnreadTotal(result.unread_total);
-            onActivity?.({
-                unread: result.unread,
-                unreadTotal: result.unread_total,
-            });
-            setReadState((current) =>
-                new Map(current).set(currentUser.id, newest),
-            );
+
+            // Contadores de C2: a cero al momento o, si han llegado más mientras, a pedirlos.
+            if (result.unread === 0) {
+                markCounterRead(conversation.id);
+            } else {
+                void refreshCounters();
+            }
+
+            onActivity?.({ unread: result.unread });
         } catch {
             // Se volverá a marcar al ver el siguiente mensaje.
             lastMarked.current = 0;
@@ -640,10 +642,11 @@ export function useConversation({
     }, [
         conversation.id,
         conversation.is_participant,
-        currentUser.id,
         hasNewer,
         messages,
+        markCounterRead,
         onActivity,
+        refreshCounters,
     ]);
 
     return {
@@ -655,7 +658,6 @@ export function useConversation({
         loadingOlder,
         loadingNewer,
         pinned,
-        readState,
         pollFailed,
         connected,
         loadOlder,

@@ -153,7 +153,53 @@ function pageOf(
 
 type Route = (url: URL, init: RequestInit) => unknown;
 
-function mockFetch(routes: Record<string, Route>) {
+/** Lo que piden los hooks de tiempo real de C2 (sin Reverb: consultas a sus rutas). */
+const REALTIME_ROUTES: Record<string, Route> = {
+    'GET /tiempo-real/no-leidos': () => ({
+        total: 0,
+        conversations: {},
+        muted: [],
+    }),
+    'POST /tiempo-real/conversaciones/1/viendo': () => ({}),
+    'DELETE /tiempo-real/conversaciones/1/viendo': () => ({}),
+    'GET /tiempo-real/conversaciones/1/leidos': () => ({
+        participants: [
+            { ...ana, last_read_message_id: 3 },
+            { ...luis, last_read_message_id: 10 },
+            {
+                id: 4,
+                name: 'Sara Molina',
+                avatar: null,
+                is_active: true,
+                last_read_message_id: 3,
+            },
+        ],
+    }),
+};
+
+function urlOf(input: unknown): URL {
+    return new URL(
+        typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : (input as Request).url,
+        'http://localhost',
+    );
+}
+
+/** Peticiones del chat (sin las del tiempo real de C2). */
+function chatCalls(
+    mock: ReturnType<typeof mockFetch>,
+): Parameters<typeof fetch>[] {
+    return mock.mock.calls.filter(
+        ([input]) => !urlOf(input).pathname.startsWith('/tiempo-real/'),
+    );
+}
+
+function mockFetch(chatRoutes: Record<string, Route>) {
+    const routes = { ...REALTIME_ROUTES, ...chatRoutes };
+
     return vi
         .spyOn(globalThis, 'fetch')
         .mockImplementation(async (input, init = {}) => {
@@ -397,8 +443,8 @@ describe('ConversationView', () => {
             'Respuesta{Enter}',
         );
 
-        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-        const [, init] = fetchMock.mock.calls[0];
+        await waitFor(() => expect(chatCalls(fetchMock)).toHaveLength(1));
+        const [, init] = chatCalls(fetchMock)[0];
         expect(JSON.parse(init?.body as string)).toEqual({
             body: 'Respuesta',
             parent_id: 5,
@@ -469,8 +515,8 @@ describe('ConversationView', () => {
         expect(
             screen.getByRole('button', { name: /Quitar tu reacción 🎉/ }),
         ).toBeTruthy();
-        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-        expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({
+        await waitFor(() => expect(chatCalls(fetchMock)).toHaveLength(1));
+        expect(JSON.parse(chatCalls(fetchMock)[0][1]?.body as string)).toEqual({
             emoji: '🎉',
         });
     });
@@ -509,7 +555,7 @@ describe('ConversationView', () => {
             expect.stringContaining('Reciente'),
         ]);
         expect(screen.getByText('Aquí empieza la conversación.')).toBeTruthy();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(chatCalls(fetchMock)).toHaveLength(1);
     });
 
     it('borra un mensaje propio tras confirmarlo', async () => {
@@ -615,10 +661,7 @@ describe('ConversationView', () => {
         });
 
         await waitFor(() => expect(items()).toHaveLength(2));
-        const url = new URL(
-            fetchMock.mock.calls[0][0] as string,
-            'http://localhost',
-        );
+        const url = urlOf(chatCalls(fetchMock)[0][0]);
         expect(url.searchParams.get('despues')).toBe('10');
         expect(url.searchParams.get('desde')).toBe('10');
         expect(url.searchParams.get('cambios')).toBeTruthy();
@@ -627,11 +670,62 @@ describe('ConversationView', () => {
         ).toBeTruthy();
     });
 
-    it('enseña quién ha leído el último mensaje propio', () => {
+    it('enseña quién ha leído el último mensaje propio (ReadBy de C2)', async () => {
         renderView([message(10, { author: ana, body: 'Listo' })]);
 
-        expect(screen.getByTestId('chat-read-receipt').textContent).toBe(
-            'Visto por Luis Gil',
+        expect(
+            (await screen.findByTestId('chat-read-receipt')).textContent,
+        ).toContain('Leído por Luis Gil');
+    });
+
+    it('un mensaje propio que llega también por el tiempo real no se duplica', async () => {
+        const user = userEvent.setup();
+        const fetchMock = mockFetch({
+            'POST /chat/1/mensajes': () => ({
+                message: message(20, {
+                    author: ana,
+                    body: 'Solo una vez',
+                    created_at: new Date().toISOString(),
+                }),
+                users: [],
+            }),
+            'GET /chat/1/novedades': () => ({
+                messages: [
+                    message(20, {
+                        author: ana,
+                        body: 'Solo una vez',
+                        created_at: new Date().toISOString(),
+                    }),
+                ],
+                updated: [],
+                users: [],
+                has_more: false,
+                pinned: [],
+                read_state: [],
+                server_time: new Date().toISOString(),
+            }),
+        });
+        renderView([message(10)]);
+
+        await user.type(
+            screen.getByRole('textbox', { name: 'Escribe un mensaje' }),
+            'Solo una vez{Enter}',
         );
+        await waitFor(() => expect(items()).toHaveLength(2));
+
+        // La consulta periódica (o el aviso del tiempo real) trae el mismo mensaje: se mezcla por id.
+        act(() => {
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitFor(() =>
+            expect(
+                chatCalls(fetchMock).some(([input]) =>
+                    urlOf(input).pathname.endsWith('/novedades'),
+                ),
+            ).toBe(true),
+        );
+
+        expect(items()).toHaveLength(2);
+        expect(screen.getAllByText('Solo una vez')).toHaveLength(1);
     });
 });

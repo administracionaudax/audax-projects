@@ -38,10 +38,8 @@ import {
     ConversationList,
     previewText,
 } from '@/components/chat/conversation-list';
-import {
-    publishUnreadTotal,
-    useChatUnreadTotal,
-} from '@/components/chat/use-chat-unread';
+import { useChatUnreadTotal } from '@/components/chat/use-chat-unread';
+import { resetUnreadForTests } from '@/hooks/use-realtime-unread';
 
 configure({ testIdAttribute: 'data-test' });
 
@@ -163,6 +161,55 @@ describe('ConversationList', () => {
 
         expect(links[2].textContent).toContain('Marta: Audio');
         expect(links[3].textContent).toContain('Tú: Voy');
+    });
+
+    it('con los contadores de C2, cada fila lleva su no leídos en vivo', async () => {
+        page.props.auth = { user: { id: 1, name: 'Ana' } };
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    total: 5,
+                    conversations: { 1: 5, 2: 1 },
+                    muted: [2],
+                }),
+                { headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+
+        try {
+            render(<ConversationList items={items} activeId={null} />);
+            const nav = screen.getByRole('navigation', {
+                name: 'Conversaciones',
+            });
+
+            expect(
+                await within(nav).findByText('5 mensajes sin leer'),
+            ).toBeTruthy();
+            expect(
+                within(nav).getByText(
+                    '1 mensaje sin leer (conversación silenciada)',
+                ),
+            ).toBeTruthy();
+            expect(within(nav).queryByText('99+')).toBeNull();
+        } finally {
+            resetUnreadForTests();
+            delete page.props.auth;
+        }
+    });
+
+    it('lleva a la búsqueda del chat y a los avisos de este navegador', () => {
+        render(<ConversationList items={items} activeId={null} />);
+
+        expect(
+            screen
+                .getByRole('link', { name: 'Buscar en el chat' })
+                .getAttribute('href'),
+        ).toBe('/chat/buscar');
+        expect(
+            screen.getByRole('button', {
+                name: 'Activar avisos en este navegador',
+            }),
+        ).toBeTruthy();
     });
 
     it('busca por nombre sin tildes ni mayúsculas', async () => {
@@ -325,12 +372,35 @@ describe('total sin leer de la navegación', () => {
         return <span data-test="total">{useChatUnreadTotal()}</span>;
     }
 
-    it('parte de las props compartidas y se actualiza cuando el chat lo publica', () => {
+    afterEach(() => {
+        resetUnreadForTests();
+        delete page.props.auth;
+    });
+
+    it('parte de las props compartidas y, en cuanto llega, manda el contador de C2', async () => {
+        page.props.auth = { user: { id: 1, name: 'Ana' } };
+        let resolve: (response: Response) => void = () => undefined;
+        const fetchMock = vi.spyOn(globalThis, 'fetch').mockReturnValue(
+            new Promise<Response>((done) => {
+                resolve = done;
+            }),
+        );
+
         render(<Badge />);
         expect(screen.getByTestId('total').textContent).toBe('4');
+        expect(fetchMock.mock.calls[0][0]).toBe('/tiempo-real/no-leidos');
 
-        act(() => {
-            publishUnreadTotal(1);
+        await act(async () => {
+            resolve(
+                new Response(
+                    JSON.stringify({
+                        total: 1,
+                        conversations: { 3: 1 },
+                        muted: [],
+                    }),
+                    { headers: { 'Content-Type': 'application/json' } },
+                ),
+            );
         });
         expect(screen.getByTestId('total').textContent).toBe('1');
     });

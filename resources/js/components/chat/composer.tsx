@@ -85,6 +85,8 @@ export function Composer({
     autoFocus = false,
     disabled = false,
     mediaSlot,
+    recorderSlot,
+    pendingFiles = 0,
 }: {
     conversationId: number;
     /** Personas mencionables (participantes activos, sin quien escribe). */
@@ -102,8 +104,15 @@ export function Composer({
     placeholder?: string;
     autoFocus?: boolean;
     disabled?: boolean;
-    /** Botones de adjuntar y grabar audio (área C3). */
+    /** Botón de adjuntar archivos (área C3), a la izquierda del cuadro. */
     mediaSlot?: ReactNode;
+    /** Grabador de audios (área C3): mientras graba ocupa su propia línea, sobre el cuadro. */
+    recorderSlot?: ReactNode;
+    /**
+     * Archivos esperando a enviarse (área C3): «Enviar» los publica con el texto, que puede ir
+     * vacío; el texto solo se borra cuando se han enviado.
+     */
+    pendingFiles?: number;
 }) {
     const [draft, setDraft] = useState<Draft>(
         () =>
@@ -227,8 +236,9 @@ export function Composer({
 
     const submit = async () => {
         const text = draft.text.trim();
+        const withFiles = mode === 'new' && pendingFiles > 0;
 
-        if (text === '') {
+        if (text === '' && !withFiles) {
             if (mode === 'edit') {
                 setError(t('chat.composer.edit_empty'));
             }
@@ -240,9 +250,9 @@ export function Composer({
             return;
         }
 
-        const body = editableToBody(text, draft.mentions);
+        const body = text === '' ? '' : editableToBody(text, draft.mentions);
 
-        if (mode === 'new') {
+        if (mode === 'new' && !withFiles) {
             // Al momento: el mensaje aparece «Enviando…» y, si falla, se puede reintentar.
             reset();
             void onSubmit(body);
@@ -434,7 +444,7 @@ export function Composer({
 
                 <div
                     className={cn(
-                        'flex items-end gap-1 rounded-[3px] border border-input bg-background p-1 focus-within:border-ring',
+                        'flex flex-wrap items-end gap-1 rounded-[3px] border border-input bg-background p-1 focus-within:border-ring',
                         (tooLong || error) && 'border-destructive',
                     )}
                 >
@@ -472,7 +482,7 @@ export function Composer({
                         }
                         onKeyDown={onKeyDown}
                         onBlur={() => setQuery(null)}
-                        className="max-h-48 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                        className="max-h-48 min-h-9 min-w-0 flex-1 basis-40 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
                         data-test="chat-composer-input"
                     />
                     <EmojiPopover
@@ -491,13 +501,23 @@ export function Composer({
                             </Button>
                         }
                     />
+                    {recorderSlot ? (
+                        <div className="contents has-[[role=group]]:order-first has-[[role=group]]:block has-[[role=group]]:basis-full">
+                            {recorderSlot}
+                        </div>
+                    ) : null}
                     {mode === 'new' ? (
                         <Button
                             type="button"
                             size="icon"
                             className="size-9"
                             onClick={() => void submit()}
-                            disabled={disabled || length === 0 || tooLong}
+                            disabled={
+                                disabled ||
+                                submitting ||
+                                (length === 0 && pendingFiles === 0) ||
+                                tooLong
+                            }
                             aria-label={t('chat.composer.send')}
                             data-test="chat-send"
                         >

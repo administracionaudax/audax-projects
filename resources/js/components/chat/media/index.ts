@@ -34,8 +34,9 @@
  *
  * ── Tiempo real (C2) ───────────────────────────────────────────────────────────────────────────
  *   AudioMessage escucha en `conversation.{id}` el evento AUDIO_TRANSCRIBED_EVENT
- *   ('.audio.transcribed', broadcastAs 'audio.transcribed') con la carga
- *   { message_id, transcription: MediaPayload::transcription($t), audio?: MediaPayload::audio(…) }.
+ *   ('.audio.transcribed', broadcastAs 'audio.transcribed'). Como todos los de C2, solo lleva ids
+ *   ({ conversation_id, message_id, transcription_id, status }): el estado y el texto se piden a
+ *   GET /chat/transcripciones?mensajes={id} (chat.media.transcriptions), que comprueba los permisos.
  *
  * ── Búsqueda ───────────────────────────────────────────────────────────────────────────────────
  *   /chat/buscar?q=&conversacion=&tipo=mensajes|archivos|audios (chat.search). Cada resultado
@@ -86,6 +87,7 @@ export type * from '@/components/chat/media/types';
 export { useAudioRecorder } from '@/components/chat/media/use-audio-recorder';
 export {
     AUDIO_TRANSCRIBED_EVENT,
+    isTranscriptionEventFor,
     useLiveTranscription,
     watchTranscription,
 } from '@/components/chat/media/use-live-transcription';

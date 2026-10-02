@@ -1,26 +1,31 @@
 import { FolderKanban, Users } from 'lucide-react';
-import type { PresenceStatus } from '@/components/chat/realtime-bridge';
+import { usePresence } from '@/components/chat/realtime-bridge';
+import { PresenceDot } from '@/components/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
-import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { ChatConversationItem, ChatUser } from '@/types/chat';
 
-const PRESENCE_CLASSES: Record<PresenceStatus, string> = {
-    online: 'bg-success',
-    away: 'bg-warning',
-    offline: 'bg-muted-foreground',
-};
+/**
+ * Punto de presencia de C2 (en línea, ausente o desconectado, con forma y texto), solo cuando ya
+ * se conoce (con o sin tiempo real, tras el primer dato).
+ */
+function Presence({ userId }: { userId: number | null | undefined }) {
+    const { ready } = usePresence();
 
-/** Avatar de una persona con sus iniciales y, si se sabe (tiempo real), su presencia. */
+    return userId != null && ready ? <PresenceDot userId={userId} /> : null;
+}
+
+/** Avatar de una persona con sus iniciales y, si se pide, su presencia (C2). */
 export function ChatAvatar({
     user,
-    presence = null,
+    presenceOf = null,
     small = false,
     className,
 }: {
     user: Pick<ChatUser, 'name' | 'avatar' | 'is_active'>;
-    presence?: PresenceStatus | null;
+    /** Id de la persona cuya presencia se pinta en la esquina. */
+    presenceOf?: number | null;
     small?: boolean;
     className?: string;
 }) {
@@ -39,36 +44,26 @@ export function ChatAvatar({
                     {initials(user.name)}
                 </AvatarFallback>
             </Avatar>
-            {presence ? (
-                <span
-                    className={cn(
-                        'absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background',
-                        PRESENCE_CLASSES[presence],
-                    )}
-                >
-                    <span className="sr-only">
-                        {t(`chat.presence.${presence}`)}
-                    </span>
-                </span>
-            ) : null}
+            <Presence userId={presenceOf} />
         </span>
     );
 }
 
-/** Icono de una conversación: la persona (directa), el color del proyecto o un grupo. */
+/** Icono de una conversación: la persona (directa, con su presencia), el color del proyecto o un grupo. */
 export function ConversationAvatar({
     conversation,
-    presence = null,
 }: {
     conversation: Pick<
         ChatConversationItem,
         'type' | 'other_user' | 'project' | 'title'
     >;
-    presence?: PresenceStatus | null;
 }) {
     if (conversation.type === 'direct' && conversation.other_user) {
         return (
-            <ChatAvatar user={conversation.other_user} presence={presence} />
+            <ChatAvatar
+                user={conversation.other_user}
+                presenceOf={conversation.other_user.id}
+            />
         );
     }
 

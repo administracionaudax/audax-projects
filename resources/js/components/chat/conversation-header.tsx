@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ChatAvatar, ConversationAvatar } from '@/components/chat/chat-avatar';
 import { usePresence } from '@/components/chat/realtime-bridge';
+import { PresenceLabel } from '@/components/realtime';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
@@ -21,7 +22,7 @@ import type { ChatConversation } from '@/types/chat';
 
 /**
  * Cabecera de una conversación: nombre (proyecto, persona o grupo), a qué corresponde, los
- * participantes (inactivos marcados; presencia si hay tiempo real) y silenciar/activar avisos.
+ * participantes (inactivos marcados; presencia de C2) y silenciar/activar avisos.
  * En el móvil, un botón vuelve a la lista (pantallas separadas).
  */
 export function ConversationHeader({
@@ -38,22 +39,21 @@ export function ConversationHeader({
     backHref?: string;
     showProjectLink?: boolean;
 }) {
-    const presenceState = usePresence();
-    // Sin tiempo real (o antes del primer dato) no se pinta la presencia.
-    const statusOf = (userId: number) =>
-        presenceState.ready ? presenceState.statusOf(userId) : null;
+    // Antes del primer dato de presencia, la directa dice solo que lo es.
+    const { ready: presenceReady } = usePresence();
     const other = conversation.other_user;
-    const otherPresence = other ? statusOf(other.id) : null;
     const subtitle =
-        conversation.type === 'project'
-            ? conversation.subtitle
-            : conversation.type === 'group'
-              ? t('chat.header.members', {
-                    count: conversation.participants.length,
-                })
-              : otherPresence
-                ? t(`chat.presence.${otherPresence}`)
-                : t('chat.list.type.direct');
+        conversation.type === 'project' ? (
+            conversation.subtitle
+        ) : conversation.type === 'group' ? (
+            t('chat.header.members', {
+                count: conversation.participants.length,
+            })
+        ) : other && presenceReady ? (
+            <PresenceLabel userId={other.id} />
+        ) : (
+            t('chat.list.type.direct')
+        );
 
     return (
         <header className="flex items-center gap-2 border-b px-3 py-2 md:px-4">
@@ -69,10 +69,7 @@ export function ConversationHeader({
                     </Link>
                 </Button>
             ) : null}
-            <ConversationAvatar
-                conversation={conversation}
-                presence={otherPresence}
-            />
+            <ConversationAvatar conversation={conversation} />
             <div className="min-w-0 flex-1">
                 <h2
                     className="truncate text-base text-foreground"
@@ -136,8 +133,6 @@ export function ConversationHeader({
                         </p>
                         <ul className="max-h-72 overflow-y-auto p-1">
                             {conversation.participants.map((person) => {
-                                const presence = statusOf(person.id);
-
                                 return (
                                     <li
                                         key={person.id}
@@ -146,7 +141,7 @@ export function ConversationHeader({
                                         <ChatAvatar
                                             small
                                             user={person}
-                                            presence={presence}
+                                            presenceOf={person.id}
                                         />
                                         <span className="min-w-0 flex-1 truncate">
                                             {person.name}

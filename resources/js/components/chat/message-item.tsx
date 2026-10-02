@@ -288,7 +288,10 @@ export function MessageItem({
 
                     {message.audio ? (
                         <div className="py-1">
-                            <AudioMessage message={message} />
+                            <AudioMessage
+                                message={message}
+                                defaultTranscriptOpen={highlighted}
+                            />
                         </div>
                     ) : null}
 

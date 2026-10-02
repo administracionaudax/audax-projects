@@ -8,17 +8,21 @@ import { ConversationHeader } from '@/components/chat/conversation-header';
 import { CreateTaskDialog } from '@/components/chat/create-task-dialog';
 import { markdownToPlainText } from '@/components/chat/markdown';
 import {
+    AttachFilesButton,
     AttachmentDropzone,
     AudioRecorder,
-    sendWithMedia,
+    MediaComposerTray,
+    useChatMediaComposer,
 } from '@/components/chat/media-bridge';
-import type { MediaPayload } from '@/components/chat/media-bridge';
 import { MessageList } from '@/components/chat/message-list';
 import { PinnedBar } from '@/components/chat/pinned-bar';
-import { useTyping, useUnreadCounter } from '@/components/chat/realtime-bridge';
-import type { TypingUser } from '@/components/chat/realtime-bridge';
-import { publishUnreadTotal } from '@/components/chat/use-chat-unread';
+import {
+    useReadReceipts,
+    useTyping,
+    useUnreadCounter,
+} from '@/components/chat/realtime-bridge';
 import { useConversation } from '@/components/chat/use-conversation';
+import { ReadBy, TypingIndicator } from '@/components/realtime';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -47,31 +51,16 @@ export type ConversationActivity = {
     conversationId: number;
     last?: ChatLastMessage;
     unread?: number;
-    unreadTotal?: number;
     muted?: boolean;
 };
-
-function typingText(typing: TypingUser[]): string {
-    if (typing.length === 1) {
-        return t('chat.typing.one', { name: typing[0].name });
-    }
-
-    if (typing.length === 2) {
-        return t('chat.typing.two', {
-            first: typing[0].name,
-            second: typing[1].name,
-        });
-    }
-
-    return t('chat.typing.many');
-}
 
 /**
  * Una conversación abierta (SPEC §12): cabecera, fijados, mensajes y editor, con todas las
  * acciones (responder en hilo, reaccionar, editar, borrar, fijar, copiar enlace, crear tarea y
  * moderar). Se usa en /chat/{id} y en la pestaña Chat del proyecto. Los mensajes nuevos de otras
- * personas se anuncian en una región aria-live; «escribiendo…» y la presencia llegan con el tiempo
- * real (C2); los audios y adjuntos, con C3 (media-bridge).
+ * personas se anuncian en una región aria-live; «escribiendo…», «leído por» y los contadores, con
+ * el tiempo real de C2 (realtime-bridge); los audios y adjuntos (soltar, pegar, adjuntar y grabar),
+ * con C3 (media-bridge).
  */
 export function ConversationView({
     conversation,
@@ -114,7 +103,7 @@ export function ConversationView({
     const namesRef = useRef<ReadonlyMap<number, string>>(new Map());
     const [, copy] = useClipboard();
 
-    const unreadCounter = useUnreadCounter();
+    const { refresh: refreshCounters } = useUnreadCounter();
     const reportActivity = useCallback(
         ({
             lastMessage,
@@ -122,10 +111,6 @@ export function ConversationView({
         }: Omit<ConversationActivity, 'conversationId' | 'last'> & {
             lastMessage?: ChatMessage;
         }) => {
-            if (activity.unread === 0) {
-                unreadCounter.markRead(conversation.id);
-            }
-
             onActivity?.({
                 conversationId: conversation.id,
                 ...activity,
@@ -151,7 +136,7 @@ export function ConversationView({
                     : {}),
             });
         },
-        [conversation.id, onActivity, unreadCounter, user.id],
+        [conversation.id, onActivity, user.id],
     );
 
     const controller = useConversation({
@@ -183,6 +168,11 @@ export function ConversationView({
         notifyTyping,
         stopTyping,
     } = useTyping(conversation.id);
+    const receipts = useReadReceipts(conversation.id);
+    // Audios y adjuntos (C3): llegan a la lista con las novedades, que deduplican por id.
+    const media = useChatMediaComposer(conversation.id, {
+        onSent: () => void controller.poll(),
+    });
 
     useEffect(() => {
         namesRef.current = controller.names;
@@ -200,12 +190,9 @@ export function ConversationView({
         try {
             const result = await chatApi.mute(conversation.id, !muted);
             setMuted(result.muted);
-            publishUnreadTotal(result.unread_total);
-            void unreadCounter.refresh();
-            reportActivity({
-                muted: result.muted,
-                unreadTotal: result.unread_total,
-            });
+            // Una silenciada deja de sumar en el total: los contadores de C2 se vuelven a pedir.
+            void refreshCounters();
+            reportActivity({ muted: result.muted });
             toast.success(
                 result.muted
                     ? t('chat.header.muted_done')
@@ -296,32 +283,30 @@ export function ConversationView({
     const send = async (body: string) => {
         const parent = replyTo;
         stopTyping();
+
+        // Con archivos pendientes (C3), el texto va con ellos en un solo mensaje.
+        if (media.files.length > 0) {
+            const sent = await media.send({
+                body: body === '' ? null : body,
+                parentId: parent?.id ?? null,
+            });
+
+            if (sent !== null) {
+                setReplyTo(null);
+            }
+
+            return sent !== null;
+        }
+
         setReplyTo(null);
 
         return controller.send(body, parent);
     };
 
-    /** Audios y adjuntos (C3): se publican por su ruta y llegan con las novedades. */
-    const sendMedia = async (payload: Partial<MediaPayload>) => {
+    const sendAudio = (file: File, durationMs: number) => {
         const parent = replyTo;
         setReplyTo(null);
-
-        try {
-            await sendWithMedia(conversation.id, {
-                body: null,
-                files: [],
-                audio: null,
-                parentId: parent?.id ?? null,
-                ...payload,
-            });
-            await controller.poll();
-        } catch (error) {
-            toast.error(
-                error instanceof Error
-                    ? error.message
-                    : t('chat.errors.server'),
-            );
-        }
+        void media.sendAudio(file, durationMs, parent?.id ?? null);
     };
 
     const confirmDelete = async () => {
@@ -335,28 +320,10 @@ export function ConversationView({
         setDeleting(null);
     };
 
-    // «Visto por»: quién ha leído el último mensaje propio (si es el último de la conversación).
+    // «Leído por» (C2): quién ha leído el último mensaje propio, si es el último de la conversación.
     const last = controller.messages.at(-1);
-    const readers =
-        last && last.id > 0 && last.author?.id === user.id
-            ? conversation.participants.filter(
-                  (participant) =>
-                      participant.id !== user.id &&
-                      (controller.readState.get(participant.id) ?? 0) >=
-                          last.id,
-              )
-            : [];
-    const others = conversation.participants.length - 1;
-    const readText =
-        readers.length === 0
-            ? null
-            : readers.length === others && others > 1
-              ? t('chat.read.all')
-              : readers.length <= 3
-                ? t('chat.read.by', {
-                      names: readers.map((reader) => reader.name).join(', '),
-                  })
-                : t('chat.read.by_count', { count: readers.length });
+    const ownLast =
+        last && last.id > 0 && last.author?.id === user.id ? last : null;
 
     const readOnly = conversation.read_only_reason;
     const placeholder =
@@ -396,86 +363,105 @@ export function ConversationView({
                 </p>
             ) : null}
 
-            <MessageList
-                controller={controller}
-                currentUserId={user.id}
-                people={people}
-                initialLastRead={conversation.last_read_message_id}
-                focusId={focus}
-                editingId={editingId}
-                title={conversation.title}
-                handlersFor={handlersFor}
-                jumpRef={jumpTo}
-            />
+            <AttachmentDropzone
+                onFiles={media.addFiles}
+                disabled={readOnly !== null || media.sending}
+                className="flex min-h-0 flex-1 flex-col"
+            >
+                <MessageList
+                    controller={controller}
+                    currentUserId={user.id}
+                    people={people}
+                    initialLastRead={conversation.last_read_message_id}
+                    focusId={focus}
+                    editingId={editingId}
+                    title={conversation.title}
+                    handlersFor={handlersFor}
+                    jumpRef={jumpTo}
+                />
 
-            <div aria-live="polite" aria-atomic="true" className="sr-only">
-                {announcement}
-            </div>
+                <div aria-live="polite" aria-atomic="true" className="sr-only">
+                    {announcement}
+                </div>
 
-            <div className="min-h-5 px-4 text-xs text-muted-foreground">
-                {typing.length > 0 ? (
-                    <span aria-live="polite">{typingText(typing)}</span>
-                ) : readText ? (
-                    <span
-                        className="block text-right"
-                        data-test="chat-read-receipt"
-                    >
-                        {readText}
-                    </span>
-                ) : null}
-            </div>
+                <div className="flex min-h-5 items-center gap-2 px-4">
+                    <TypingIndicator
+                        typers={typing}
+                        className="min-w-0 flex-1"
+                    />
+                    {ownLast && typing.length === 0 && receipts.ready ? (
+                        <span data-test="chat-read-receipt">
+                            <ReadBy
+                                readers={receipts.readersOf(
+                                    ownLast.id,
+                                    user.id,
+                                )}
+                                recipients={receipts.recipientsOf(user.id)}
+                                direct={conversation.type === 'direct'}
+                            />
+                        </span>
+                    ) : null}
+                </div>
 
-            <footer className="border-t px-3 pt-2 pb-3 md:px-4">
-                {readOnly ? (
-                    <p className="flex items-center gap-2 rounded-[3px] bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        <Lock aria-hidden="true" className="size-4 shrink-0" />
-                        {t(`chat.composer.read_only.${readOnly}`)}
-                    </p>
-                ) : (
-                    <AttachmentDropzone
-                        onFiles={(files) => void sendMedia({ files })}
-                    >
-                        <Composer
-                            key={composerKey}
-                            conversationId={conversation.id}
-                            people={people}
-                            onSubmit={send}
-                            replyTo={
-                                replyTo
-                                    ? {
-                                          id: replyTo.id,
-                                          author:
-                                              replyTo.author?.name ??
-                                              t('chat.system.generic'),
-                                          excerpt: replyTo.body
-                                              ? markdownToPlainText(
-                                                    replyTo.body,
-                                                    controller.names,
-                                                )
-                                              : replyTo.system
-                                                ? t('chat.system.generic')
-                                                : t('chat.live.attachment'),
-                                      }
-                                    : null
-                            }
-                            onCancelReply={() => setReplyTo(null)}
-                            onEditLast={editLast}
-                            onTyping={notifyTyping}
-                            placeholder={placeholder}
-                            autoFocus={composerKey > 0}
-                            mediaSlot={
-                                <AudioRecorder
-                                    onRecorded={(file, durationMs) =>
-                                        void sendMedia({
-                                            audio: { file, durationMs },
-                                        })
-                                    }
-                                />
-                            }
-                        />
-                    </AttachmentDropzone>
-                )}
-            </footer>
+                <footer className="border-t px-3 pt-2 pb-3 md:px-4">
+                    {readOnly ? (
+                        <p className="flex items-center gap-2 rounded-[3px] bg-muted px-3 py-2 text-sm text-muted-foreground">
+                            <Lock
+                                aria-hidden="true"
+                                className="size-4 shrink-0"
+                            />
+                            {t(`chat.composer.read_only.${readOnly}`)}
+                        </p>
+                    ) : (
+                        <div className="grid gap-2">
+                            <MediaComposerTray composer={media} />
+                            <Composer
+                                key={composerKey}
+                                conversationId={conversation.id}
+                                people={people}
+                                onSubmit={send}
+                                pendingFiles={media.files.length}
+                                replyTo={
+                                    replyTo
+                                        ? {
+                                              id: replyTo.id,
+                                              author:
+                                                  replyTo.author?.name ??
+                                                  t('chat.system.generic'),
+                                              excerpt: replyTo.body
+                                                  ? markdownToPlainText(
+                                                        replyTo.body,
+                                                        controller.names,
+                                                    )
+                                                  : replyTo.system
+                                                    ? t('chat.system.generic')
+                                                    : t('chat.live.attachment'),
+                                          }
+                                        : null
+                                }
+                                onCancelReply={() => setReplyTo(null)}
+                                onEditLast={editLast}
+                                onTyping={notifyTyping}
+                                placeholder={placeholder}
+                                autoFocus={composerKey > 0}
+                                mediaSlot={
+                                    <AttachFilesButton
+                                        onFiles={media.addFiles}
+                                        disabled={media.sending}
+                                        className="size-9"
+                                    />
+                                }
+                                recorderSlot={
+                                    <AudioRecorder
+                                        onRecorded={sendAudio}
+                                        disabled={media.sending}
+                                    />
+                                }
+                            />
+                        </div>
+                    )}
+                </footer>
+            </AttachmentDropzone>
 
             <Dialog
                 open={deleting !== null}

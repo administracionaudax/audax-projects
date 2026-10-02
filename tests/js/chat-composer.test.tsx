@@ -115,6 +115,23 @@ describe('Composer', () => {
         );
     });
 
+    it('con archivos pendientes (C3), «Enviar» publica aunque no haya texto y no lo borra si falla', async () => {
+        const user = userEvent.setup();
+        const onSubmit = vi.fn<(body: string) => boolean>(() => false);
+        const { input } = renderComposer({ pendingFiles: 1, onSubmit });
+        const send = screen.getByRole('button', { name: 'Enviar' });
+
+        expect(send).toHaveProperty('disabled', false);
+        await user.click(send);
+        expect(onSubmit).toHaveBeenCalledWith('');
+
+        await user.type(input, 'Con el acta');
+        await user.click(send);
+        expect(onSubmit).toHaveBeenLastCalledWith('Con el acta');
+        // Falló (devuelve false): el texto sigue ahí para reintentar.
+        expect((input as HTMLTextAreaElement).value).toBe('Con el acta');
+    });
+
     it('autocompleta menciones con el teclado y las envía como <@ID>', async () => {
         const user = userEvent.setup();
         const { input, onSubmit } = renderComposer();

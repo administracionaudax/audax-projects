@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     Archive,
     BellOff,
+    BellRing,
     MessageSquarePlus,
     MessagesSquare,
     Plus,
@@ -16,9 +17,13 @@ import {
     NewDirectDialog,
     NewGroupDialog,
 } from '@/components/chat/new-conversation-dialogs';
-import { usePresence } from '@/components/chat/realtime-bridge';
+import { useUnreadCounter } from '@/components/chat/realtime-bridge';
 import { systemText } from '@/components/chat/system-notice';
 import { EmptyState } from '@/components/empty-state';
+import {
+    ConversationUnreadBadge,
+    PushNotificationsToggle,
+} from '@/components/realtime';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -27,10 +32,16 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
+import { search as chatSearch } from '@/routes/chat';
 import type { ChatConversationItem } from '@/types/chat';
 
 /** Props que cambian al pasar de una conversación a otra (la lista no se vuelve a pedir). */
@@ -83,8 +94,10 @@ function matches(item: ChatConversationItem, needle: string): boolean {
 
 /**
  * Lista de conversaciones de /chat (SPEC §12): nombre, vista previa sin markdown, hora, no leídos
- * (con número y texto), silenciadas y proyectos archivados marcados (icono y texto), búsqueda y
- * «Nuevo» (mensaje directo o grupo). Estados vacío, sin resultados y de error.
+ * (con número y texto; en vivo con los contadores de C2), presencia en las directas, silenciadas y
+ * proyectos archivados marcados (icono y texto), filtro, «Buscar en el chat» (C3), «Avisos en este
+ * navegador» (Web Push, C2) y «Nuevo» (mensaje directo o grupo). Estados vacío, sin resultados y
+ * de error.
  */
 export function ConversationList({
     items,
@@ -103,10 +116,8 @@ export function ConversationList({
     const [direct, setDirect] = useState(false);
     const [group, setGroup] = useState(false);
     const searchId = useId();
-    const presenceState = usePresence();
-    // Sin tiempo real (o antes del primer dato) no se pinta la presencia.
-    const statusOf = (userId: number) =>
-        presenceState.ready ? presenceState.statusOf(userId) : null;
+    // Los no leídos de cada fila: los de C2 en cuanto llega su primer recuento; antes, los de la lista.
+    const counter = useUnreadCounter();
     const needle = normalizeSearch(query.trim());
     const visible =
         needle === '' ? items : items.filter((item) => matches(item, needle));
@@ -117,6 +128,34 @@ export function ConversationList({
                 <h1 className="flex-1 text-xl font-normal text-foreground">
                     {t('chat.title')}
                 </h1>
+                <Button asChild variant="ghost" size="icon" className="size-9">
+                    <Link
+                        href={chatSearch()}
+                        aria-label={t('chat_media.search.title')}
+                        title={t('chat_media.search.title')}
+                        data-test="chat-search-link"
+                    >
+                        <Search aria-hidden="true" />
+                    </Link>
+                </Button>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-9"
+                            aria-label={t('realtime.push.label')}
+                            title={t('realtime.push.label')}
+                            data-test="chat-push"
+                        >
+                            <BellRing aria-hidden="true" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-80">
+                        <PushNotificationsToggle />
+                    </PopoverContent>
+                </Popover>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -228,10 +267,9 @@ export function ConversationList({
                     <ul className="grid gap-px p-1">
                         {visible.map((item) => {
                             const active = item.id === activeId;
-                            const unread = item.unread;
-                            const presence = item.other_user
-                                ? statusOf(item.other_user.id)
-                                : null;
+                            const unread = counter.ready
+                                ? counter.count(item.id)
+                                : item.unread;
 
                             return (
                                 <li key={item.id}>
@@ -254,7 +292,6 @@ export function ConversationList({
                                     >
                                         <ConversationAvatar
                                             conversation={item}
-                                            presence={presence}
                                         />
                                         <span className="grid min-w-0 flex-1 gap-0.5">
                                             <span className="flex items-baseline gap-1.5">
@@ -303,7 +340,12 @@ export function ConversationList({
                                                 <span className="truncate text-xs text-muted-foreground">
                                                     {previewText(item)}
                                                 </span>
-                                                {unread > 0 ? (
+                                                {counter.ready ? (
+                                                    <ConversationUnreadBadge
+                                                        conversationId={item.id}
+                                                        className="ml-auto shrink-0"
+                                                    />
+                                                ) : unread > 0 ? (
                                                     <span
                                                         aria-hidden="true"
                                                         className={cn(
@@ -324,7 +366,8 @@ export function ConversationList({
                                                     t(
                                                         `chat.list.type.${item.type}`,
                                                     ),
-                                                    unread > 0
+                                                    // Con C2, el número lo dice su propio contador.
+                                                    !counter.ready && unread > 0
                                                         ? t(
                                                               'chat.list.unread',
                                                               {

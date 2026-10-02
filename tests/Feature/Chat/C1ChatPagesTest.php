@@ -77,7 +77,7 @@ it('los mensajes propios, los borrados y los ocultados no cuentan como no leído
     $this->writer->setHidden($this->admin, $hidden, true);
     $this->writer->post($this->luis, $this->projectChat, 'Este sí');
 
-    $this->actingAs($this->ana)->getJson('/chat/no-leidos')->assertOk()->assertJsonPath('total', 1);
+    $this->actingAs($this->ana)->getJson('/tiempo-real/no-leidos')->assertOk()->assertJsonPath('total', 1);
     expect($this->directory->unreadCounts($this->ana))->toBe([$this->projectChat->id => 1]);
 });
 
