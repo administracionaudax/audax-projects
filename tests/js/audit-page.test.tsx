@@ -71,7 +71,12 @@ const entry = (overrides: Partial<AuditEntry> = {}): AuditEntry => ({
     event_label: 'Cambio',
     changes: [
         { field: 'status_id', label: 'Estado', from: 'Por hacer', to: 'Hecha' },
-        { field: 'hourly_rate', label: 'Tarifa por hora', from: '60,00 €', to: null },
+        {
+            field: 'hourly_rate',
+            label: 'Tarifa por hora',
+            from: '60,00 €',
+            to: null,
+        },
     ],
     ...overrides,
 });
@@ -88,13 +93,29 @@ const props = (overrides: Partial<AuditPageProps> = {}): AuditPageProps => ({
             event_label: 'Borrado',
             changes: [
                 { field: 'date', label: 'Fecha', from: null, to: '09/11/2026' },
-                { field: 'name', label: 'Nombre', from: null, to: 'Fiesta local' },
+                {
+                    field: 'name',
+                    label: 'Nombre',
+                    from: null,
+                    to: 'Fiesta local',
+                },
             ],
         }),
-        entry({ id: 8, changes: [], event: 'restored', event_label: 'Restauración' }),
+        entry({
+            id: 8,
+            changes: [],
+            event: 'restored',
+            event_label: 'Restauración',
+        }),
     ],
     pagination: { next: '/admin/auditoria?cursor=abc', prev: null },
-    filters: { entidad: null, persona: null, accion: null, desde: null, hasta: null },
+    filters: {
+        entidad: null,
+        persona: null,
+        accion: null,
+        desde: null,
+        hasta: null,
+    },
     options: {
         entities: [
             { value: 'project', label: 'Proyecto' },
@@ -118,17 +139,32 @@ describe('filtros de la auditoría', () => {
     it('cada filtro se aplica al momento en la URL, sin llenar el historial', async () => {
         render(<AdminAudit {...props()} />);
 
-        const search = screen.getByRole('search', { name: 'Filtros de la auditoría' });
-        await userEvent.selectOptions(within(search).getByLabelText('Entidad'), 'task');
+        const search = screen.getByRole('search', {
+            name: 'Filtros de la auditoría',
+        });
+        await userEvent.selectOptions(
+            within(search).getByLabelText('Entidad'),
+            'task',
+        );
 
         expect(inertia.get).toHaveBeenLastCalledWith(
             '/admin/auditoria',
             { entidad: 'task' },
-            expect.objectContaining({ preserveState: true, replace: true, only: ['entries', 'pagination', 'filters', 'exportUrl'] }),
+            expect.objectContaining({
+                preserveState: true,
+                replace: true,
+                only: ['entries', 'pagination', 'filters', 'exportUrl'],
+            }),
         );
 
-        await userEvent.selectOptions(within(search).getByLabelText('Persona'), 'sistema');
-        await userEvent.selectOptions(within(search).getByLabelText('Acción'), 'submitted');
+        await userEvent.selectOptions(
+            within(search).getByLabelText('Persona'),
+            'sistema',
+        );
+        await userEvent.selectOptions(
+            within(search).getByLabelText('Acción'),
+            'submitted',
+        );
 
         expect(inertia.get).toHaveBeenLastCalledWith(
             '/admin/auditoria',
@@ -141,34 +177,81 @@ describe('filtros de la auditoría', () => {
 
         expect(inertia.get).toHaveBeenLastCalledWith(
             '/admin/auditoria',
-            { entidad: 'task', persona: 'sistema', accion: 'submitted', desde: '2026-09-01' },
+            {
+                entidad: 'task',
+                persona: 'sistema',
+                accion: 'submitted',
+                desde: '2026-09-01',
+            },
             expect.anything(),
         );
-        expect((within(search).getByLabelText('Hasta') as HTMLInputElement).min).toBe('2026-09-01');
+        expect(
+            (within(search).getByLabelText('Hasta') as HTMLInputElement).min,
+        ).toBe('2026-09-01');
 
-        await userEvent.click(screen.getByRole('button', { name: 'Quitar los filtros' }));
-        expect(inertia.get).toHaveBeenLastCalledWith('/admin/auditoria', {}, expect.anything());
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Quitar los filtros' }),
+        );
+        expect(inertia.get).toHaveBeenLastCalledWith(
+            '/admin/auditoria',
+            {},
+            expect.anything(),
+        );
     });
 
     it('las opciones: sistema, personas desactivadas y los eventos propios aparte', () => {
-        render(<AdminAudit {...props({ filters: { entidad: 'task', persona: '2', accion: null, desde: null, hasta: null } })} />);
+        render(
+            <AdminAudit
+                {...props({
+                    filters: {
+                        entidad: 'task',
+                        persona: '2',
+                        accion: null,
+                        desde: null,
+                        hasta: null,
+                    },
+                })}
+            />,
+        );
 
         const person = screen.getByLabelText('Persona') as HTMLSelectElement;
         expect(person.value).toBe('2');
-        expect(within(person).getByRole('option', { name: 'Bruno Baja (desactivada)' })).toBeTruthy();
-        expect(within(person).getByRole('option', { name: 'Sistema (sin persona)' })).toBeTruthy();
+        expect(
+            within(person).getByRole('option', {
+                name: 'Bruno Baja (desactivada)',
+            }),
+        ).toBeTruthy();
+        expect(
+            within(person).getByRole('option', {
+                name: 'Sistema (sin persona)',
+            }),
+        ).toBeTruthy();
 
         const action = screen.getByLabelText('Acción');
-        const group = within(action).getByRole('group', { name: 'Otros eventos' });
-        expect(within(group).getByRole('option', { name: 'Semanas enviadas' })).toBeTruthy();
-        expect(within(group).queryByRole('option', { name: 'Altas' })).toBeNull();
+        const group = within(action).getByRole('group', {
+            name: 'Otros eventos',
+        });
+        expect(
+            within(group).getByRole('option', { name: 'Semanas enviadas' }),
+        ).toBeTruthy();
+        expect(
+            within(group).queryByRole('option', { name: 'Altas' }),
+        ).toBeNull();
     });
 
     it('el CSV se descarga con los filtros de la página', () => {
-        render(<AdminAudit {...props({ exportUrl: '/admin/auditoria/exportar?entidad=task' })} />);
+        render(
+            <AdminAudit
+                {...props({
+                    exportUrl: '/admin/auditoria/exportar?entidad=task',
+                })}
+            />,
+        );
 
         const link = screen.getByRole('link', { name: 'Exportar CSV' });
-        expect(link.getAttribute('href')).toBe('/admin/auditoria/exportar?entidad=task');
+        expect(link.getAttribute('href')).toBe(
+            '/admin/auditoria/exportar?entidad=task',
+        );
         expect(link.hasAttribute('download')).toBe(true);
     });
 });
@@ -177,18 +260,24 @@ describe('tabla y detalle de la auditoría', () => {
     it('una tabla con cabeceras: cuándo y quién, qué elemento (con enlace si existe) y qué acción', () => {
         render(<AdminAudit {...props()} />);
 
-        const table = screen.getByRole('table', { name: 'Cambios registrados, de lo más reciente a lo más antiguo' });
-        expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual([
-            'Fecha y persona',
-            'Elemento',
-            'Acción',
-        ]);
+        const table = screen.getByRole('table', {
+            name: 'Cambios registrados, de lo más reciente a lo más antiguo',
+        });
+        expect(
+            within(table)
+                .getAllByRole('columnheader')
+                .map((th) => th.textContent),
+        ).toEqual(['Fecha y persona', 'Elemento', 'Acción']);
 
         const rows = within(table).getAllByRole('row').slice(1);
         expect(rows).toHaveLength(3);
         expect(rows[0].textContent).toContain('05/10/2026 10:30');
         expect(rows[0].textContent).toContain('Ana Admin');
-        expect(within(rows[0]).getByRole('link', { name: 'Maquetar la portada' }).getAttribute('href')).toBe('/tareas/5');
+        expect(
+            within(rows[0])
+                .getByRole('link', { name: 'Maquetar la portada' })
+                .getAttribute('href'),
+        ).toBe('/tareas/5');
 
         // Sin persona: el sistema. Lo borrado no enlaza y lo dice.
         expect(rows[1].textContent).toContain('Sistema');
@@ -202,7 +291,9 @@ describe('tabla y detalle de la auditoría', () => {
     it('el detalle se despliega con el teclado y muestra el antes y el después de cada campo', async () => {
         render(<AdminAudit {...props()} />);
 
-        const toggle = screen.getAllByRole('button', { name: 'Ver cambios (2)' })[0];
+        const toggle = screen.getAllByRole('button', {
+            name: 'Ver cambios (2)',
+        })[0];
         expect(toggle.getAttribute('aria-expanded')).toBe('false');
 
         toggle.focus();
@@ -211,12 +302,22 @@ describe('tabla y detalle de la auditoría', () => {
         expect(toggle.getAttribute('aria-expanded')).toBe('true');
         expect(toggle.textContent).toContain('Ocultar cambios (2)');
 
-        const detail = screen.getByRole('table', { name: 'Cambios de Maquetar la portada' });
-        expect(toggle.getAttribute('aria-controls')).toBe(detail.parentElement?.id);
-        expect(within(detail).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Campo', 'Antes', 'Después']);
+        const detail = screen.getByRole('table', {
+            name: 'Cambios de Maquetar la portada',
+        });
+        expect(toggle.getAttribute('aria-controls')).toBe(
+            detail.parentElement?.id,
+        );
+        expect(
+            within(detail)
+                .getAllByRole('columnheader')
+                .map((th) => th.textContent),
+        ).toEqual(['Campo', 'Antes', 'Después']);
 
         const [status, rate] = within(detail).getAllByRole('row').slice(1);
-        expect(within(status).getByRole('rowheader').textContent).toBe('Estado');
+        expect(within(status).getByRole('rowheader').textContent).toBe(
+            'Estado',
+        );
         expect(status.textContent).toContain('Por hacer');
         expect(status.textContent).toContain('Hecha');
         expect(rate.textContent).toContain('60,00 €');
@@ -224,31 +325,71 @@ describe('tabla y detalle de la auditoría', () => {
 
         await userEvent.keyboard('{Enter}');
         expect(toggle.getAttribute('aria-expanded')).toBe('false');
-        expect(screen.queryByRole('table', { name: 'Cambios de Maquetar la portada' })).toBeNull();
+        expect(
+            screen.queryByRole('table', {
+                name: 'Cambios de Maquetar la portada',
+            }),
+        ).toBeNull();
     });
 
     it('al crear o borrar, el detalle solo lleva el valor', async () => {
         render(<AdminAudit {...props()} />);
 
-        await userEvent.click(screen.getAllByRole('button', { name: 'Ver cambios (2)' })[1]);
+        await userEvent.click(
+            screen.getAllByRole('button', { name: 'Ver cambios (2)' })[1],
+        );
 
-        const detail = screen.getByRole('table', { name: 'Cambios de Fiesta local' });
-        expect(within(detail).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Campo', 'Valor']);
+        const detail = screen.getByRole('table', {
+            name: 'Cambios de Fiesta local',
+        });
+        expect(
+            within(detail)
+                .getAllByRole('columnheader')
+                .map((th) => th.textContent),
+        ).toEqual(['Campo', 'Valor']);
         expect(detail.textContent).toContain('09/11/2026');
     });
 
     it('pagina por cursor: más antiguos y más recientes', () => {
-        render(<AdminAudit {...props({ pagination: { next: '/admin/auditoria?cursor=abc', prev: null } })} />);
+        render(
+            <AdminAudit
+                {...props({
+                    pagination: {
+                        next: '/admin/auditoria?cursor=abc',
+                        prev: null,
+                    },
+                })}
+            />,
+        );
 
-        const nav = screen.getByRole('navigation', { name: 'Páginas de la auditoría' });
-        expect(within(nav).getByRole('link', { name: 'Más antiguos' }).getAttribute('href')).toBe('/admin/auditoria?cursor=abc');
-        expect((within(nav).getByRole('button', { name: 'Más recientes' }) as HTMLButtonElement).disabled).toBe(true);
+        const nav = screen.getByRole('navigation', {
+            name: 'Páginas de la auditoría',
+        });
+        expect(
+            within(nav)
+                .getByRole('link', { name: 'Más antiguos' })
+                .getAttribute('href'),
+        ).toBe('/admin/auditoria?cursor=abc');
+        expect(
+            (
+                within(nav).getByRole('button', {
+                    name: 'Más recientes',
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(true);
     });
 });
 
 describe('estados de la auditoría', () => {
     it('vacía, sin filtros y con filtros', () => {
-        const { rerender } = render(<AdminAudit {...props({ entries: [], pagination: { next: null, prev: null } })} />);
+        const { rerender } = render(
+            <AdminAudit
+                {...props({
+                    entries: [],
+                    pagination: { next: null, prev: null },
+                })}
+            />,
+        );
         expect(screen.getByText('Aún no hay cambios registrados')).toBeTruthy();
         expect(screen.queryByRole('table')).toBeNull();
 
@@ -257,27 +398,45 @@ describe('estados de la auditoría', () => {
                 {...props({
                     entries: [],
                     pagination: { next: null, prev: null },
-                    filters: { entidad: 'task', persona: null, accion: null, desde: null, hasta: null },
+                    filters: {
+                        entidad: 'task',
+                        persona: null,
+                        accion: null,
+                        desde: null,
+                        hasta: null,
+                    },
                 })}
             />,
         );
-        expect(screen.getByText('No hay cambios con estos filtros')).toBeTruthy();
+        expect(
+            screen.getByText('No hay cambios con estos filtros'),
+        ).toBeTruthy();
     });
 
     it('cargando y con error, con «Reintentar»', async () => {
         render(<AdminAudit {...props()} />);
 
         inertia.listeners.start?.();
-        expect((await screen.findByRole('status')).textContent).toContain('Cargando…');
-        expect(screen.getByRole('region', { name: 'Entradas de la auditoría' }).getAttribute('aria-busy')).toBe('true');
+        expect((await screen.findByRole('status')).textContent).toContain(
+            'Cargando…',
+        );
+        expect(
+            screen
+                .getByRole('region', { name: 'Entradas de la auditoría' })
+                .getAttribute('aria-busy'),
+        ).toBe('true');
 
         inertia.listeners.networkError?.();
         inertia.listeners.finish?.();
 
         const alert = await screen.findByRole('alert');
-        expect(alert.textContent).toContain('No se ha podido cargar la auditoría.');
+        expect(alert.textContent).toContain(
+            'No se ha podido cargar la auditoría.',
+        );
 
-        await userEvent.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+        await userEvent.click(
+            within(alert).getByRole('button', { name: 'Reintentar' }),
+        );
         expect(inertia.reload).toHaveBeenCalledTimes(1);
     });
 });

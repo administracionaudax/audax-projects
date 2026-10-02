@@ -6,10 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrivacyNoticeBanner } from '@/components/privacy/privacy-notice-banner';
 import MyData from '@/pages/settings/my-data';
 import PrivacyShow from '@/pages/privacy/show';
-import type {
-    PersonalDataExportRow,
-    PrivacyShowProps,
-} from '@/types/privacy';
+import type { PersonalDataExportRow, PrivacyShowProps } from '@/types/privacy';
 
 /**
  * Aviso de lectura del texto de privacidad (D-075), la página /privacidad con su «He leído la
@@ -120,13 +117,21 @@ describe('/privacidad', () => {
         const { container } = render(<PrivacyShow {...showProps()} />);
 
         expect(container.querySelectorAll('h1')).toHaveLength(1);
-        expect(screen.getByRole('heading', { level: 2, name: 'Tus datos' })).toBeTruthy();
-        expect(screen.getByText('Versión 3 del texto informativo')).toBeTruthy();
+        expect(
+            screen.getByRole('heading', { level: 2, name: 'Tus datos' }),
+        ).toBeTruthy();
+        expect(
+            screen.getByText('Versión 3 del texto informativo'),
+        ).toBeTruthy();
         expect(screen.getByText('Borrador pendiente de asesor')).toBeTruthy();
         expect(screen.getByText('Pendiente de leer')).toBeTruthy();
 
-        const terms = [...container.querySelectorAll('dt')].map((dt) => dt.textContent);
-        const values = [...container.querySelectorAll('dd')].map((dd) => dd.textContent);
+        const terms = [...container.querySelectorAll('dt')].map(
+            (dt) => dt.textContent,
+        );
+        const values = [...container.querySelectorAll('dd')].map(
+            (dd) => dd.textContent,
+        );
         expect(terms).toEqual([
             'Registros de acceso',
             'Notificaciones leídas',
@@ -135,7 +140,9 @@ describe('/privacidad', () => {
         ]);
         expect(values).toEqual(['1 año', '6 meses', '5 años', 'Sin límite']);
         expect(
-            screen.getByRole('link', { name: 'Ir a Mis datos' }).getAttribute('href'),
+            screen
+                .getByRole('link', { name: 'Ir a Mis datos' })
+                .getAttribute('href'),
         ).toBe('/ajustes/mis-datos');
     });
 
@@ -164,8 +171,12 @@ describe('/privacidad', () => {
             />,
         );
 
-        expect(screen.queryByRole('button', { name: 'He leído la información' })).toBeNull();
-        expect(screen.getByText('Leíste la versión 3 el 05/10/2026 10:30.')).toBeTruthy();
+        expect(
+            screen.queryByRole('button', { name: 'He leído la información' }),
+        ).toBeNull();
+        expect(
+            screen.getByText('Leíste la versión 3 el 05/10/2026 10:30.'),
+        ).toBeTruthy();
         expect(screen.getByText('Leída')).toBeTruthy();
         expect(screen.queryByText('Borrador pendiente de asesor')).toBeNull();
     });
@@ -208,7 +219,12 @@ describe('/ajustes/mis-datos', () => {
             />,
         );
 
-        const items = screen.getAllByRole('listitem').filter((item) => item.getAttribute('data-test') === 'personal-data-export');
+        const items = screen
+            .getAllByRole('listitem')
+            .filter(
+                (item) =>
+                    item.getAttribute('data-test') === 'personal-data-export',
+            );
         expect(items).toHaveLength(2);
 
         const download = within(items[0]).getByRole('link', {
@@ -218,7 +234,9 @@ describe('/ajustes/mis-datos', () => {
             '/datos-personales/1/descargar?expires=1&signature=abc',
         );
         expect(items[0].textContent).toContain('Lista para descargar');
-        expect(items[0].textContent).toContain('Se puede descargar hasta el 12/10/2026 10:01');
+        expect(items[0].textContent).toContain(
+            'Se puede descargar hasta el 12/10/2026 10:01',
+        );
         expect(items[0].querySelector('svg')).not.toBeNull();
 
         expect(items[1].textContent).toContain('Ha fallado');
@@ -235,9 +253,13 @@ describe('/ajustes/mis-datos', () => {
             <MyData exports={[]} canRequest exportDays={7} />,
         );
 
-        expect(screen.getByText('Aún no has pedido ninguna exportación')).toBeTruthy();
+        expect(
+            screen.getByText('Aún no has pedido ninguna exportación'),
+        ).toBeTruthy();
 
-        await userEvent.click(screen.getByRole('button', { name: 'Preparar mis datos' }));
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Preparar mis datos' }),
+        );
         expect(inertia.post).toHaveBeenCalledTimes(1);
         expect(inertia.post.mock.calls[0][0]).toBe('/ajustes/mis-datos');
 
@@ -255,13 +277,21 @@ describe('/ajustes/mis-datos', () => {
             />,
         );
 
-        const button = screen.getByRole('button', { name: 'Preparar mis datos' }) as HTMLButtonElement;
+        const button = screen.getByRole('button', {
+            name: 'Preparar mis datos',
+        }) as HTMLButtonElement;
         expect(button.disabled).toBe(true);
         expect(button.getAttribute('aria-describedby')).toBeTruthy();
-        expect(screen.getByText('Ya hay una exportación en curso: podrás pedir otra cuando termine.')).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Ya hay una exportación en curso: podrás pedir otra cuando termine.',
+            ),
+        ).toBeTruthy();
 
         vi.advanceTimersByTime(5000);
-        expect(inertia.reload).toHaveBeenCalledWith({ only: ['exports', 'canRequest'] });
+        expect(inertia.reload).toHaveBeenCalledWith({
+            only: ['exports', 'canRequest'],
+        });
 
         vi.useRealTimers();
     });

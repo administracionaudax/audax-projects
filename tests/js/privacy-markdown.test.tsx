@@ -2,7 +2,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { SafeMarkdown } from '@/components/privacy/safe-markdown';
-import { inlineText, parseInline, parseMarkdown, safeHref } from '@/lib/markdown';
+import {
+    inlineText,
+    parseInline,
+    parseMarkdown,
+    safeHref,
+} from '@/lib/markdown';
 import fixture from '../fixtures/privacy-draft.json';
 
 /**
@@ -84,13 +89,15 @@ describe('parseMarkdown', () => {
         expect(ordered.type === 'list' && ordered.start).toBe(3);
 
         const heading = blocks[6];
-        expect(
-            heading.type === 'heading' && inlineText(heading.children),
-        ).toBe('C#');
+        expect(heading.type === 'heading' && inlineText(heading.children)).toBe(
+            'C#',
+        );
     });
 
     it('énfasis, código, enlaces y saltos de línea en el texto', () => {
-        expect(parseInline('**negrita** y *cursiva* y _otra_ y `código`')).toEqual([
+        expect(
+            parseInline('**negrita** y *cursiva* y _otra_ y `código`'),
+        ).toEqual([
             { type: 'strong', children: [{ type: 'text', text: 'negrita' }] },
             { type: 'text', text: ' y ' },
             { type: 'emphasis', children: [{ type: 'text', text: 'cursiva' }] },
@@ -158,7 +165,9 @@ describe('SafeMarkdown', () => {
         expect(container.querySelector('blockquote')?.textContent).toContain(
             'Borrador pendiente de revisión por el asesor.',
         );
-        expect(container.querySelectorAll('ul').length).toBeGreaterThanOrEqual(5);
+        expect(container.querySelectorAll('ul').length).toBeGreaterThanOrEqual(
+            5,
+        );
         expect(screen.getByText('Responsable:').tagName).toBe('STRONG');
         expectNoActiveContent(container);
     });
@@ -169,15 +178,23 @@ describe('SafeMarkdown', () => {
         const strong = container.querySelector('strong');
         expect(strong?.className).toContain('font-medium');
         expect(container.querySelector('em')?.className).toContain('italic');
-        expect(container.innerHTML).not.toMatch(/font-(bold|semibold|extrabold|black)/);
+        expect(container.innerHTML).not.toMatch(
+            /font-(bold|semibold|extrabold|black)/,
+        );
     });
 
     it('los encabezados empiezan en el nivel indicado y no se saltan niveles', () => {
         renderMarkdown('### Uno\n\n#### Dos\n\n### Tres', 3);
 
-        expect(screen.getByRole('heading', { level: 3, name: 'Uno' })).toBeTruthy();
-        expect(screen.getByRole('heading', { level: 4, name: 'Dos' })).toBeTruthy();
-        expect(screen.getByRole('heading', { level: 3, name: 'Tres' })).toBeTruthy();
+        expect(
+            screen.getByRole('heading', { level: 3, name: 'Uno' }),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('heading', { level: 4, name: 'Dos' }),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('heading', { level: 3, name: 'Tres' }),
+        ).toBeTruthy();
     });
 
     it('los enlaces llevan rel="noopener noreferrer"; los externos se abren aparte y lo dicen', () => {
@@ -194,7 +211,9 @@ describe('SafeMarkdown', () => {
         const mail = screen.getByRole('link', {
             name: 'privacidad@audaxstudio.com',
         });
-        expect(mail.getAttribute('href')).toBe('mailto:privacidad@audaxstudio.com');
+        expect(mail.getAttribute('href')).toBe(
+            'mailto:privacidad@audaxstudio.com',
+        );
         expect(mail.getAttribute('target')).toBeNull();
 
         const own = screen.getByRole('link', { name: 'tus datos' });
@@ -219,7 +238,9 @@ describe('SafeMarkdown', () => {
         );
 
         expectNoActiveContent(container);
-        expect(container.textContent).toContain('<script>alert("xss")</script>');
+        expect(container.textContent).toContain(
+            '<script>alert("xss")</script>',
+        );
         expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
         // Lo único que se enlaza es la dirección https suelta que había en el texto.
         expect(
