@@ -20,7 +20,6 @@ const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 const MOBILE = { width: 375, height: 812 };
 
 /** Píxeles de un día en la escala por defecto (semana, geometry.ts DAY_WIDTH). */
-const WEEK_DAY_WIDTH = 16;
 
 /** Mes en curso en Madrid: el que abre el calendario del selector de fechas. */
 function currentMonth(): { year: string; month: string } {
@@ -255,17 +254,27 @@ test('mover una tarea con sucesora: aviso, confirmar y la sucesora se desplaza t
     });
 
     await test.step('arrastrar con el ratón pide la propuesta; «Cancelar» la deja en su sitio', async () => {
+        // Que el Gantt haya terminado de recargarse tras enlazar: si no, la barra se vuelve a montar
+        // a mitad del arrastre y no llega a pedir la propuesta.
+        await page.waitForLoadState('networkidle');
         const predecessor = bar(page, first);
         await bringIntoView(page, predecessor);
+        // hover() espera a que la barra sea accionable y deja el puntero encima: las coordenadas
+        // se toman después, ya con la vista quieta.
+        await predecessor.hover();
         const box = await predecessor.boundingBox();
         expect(box).not.toBeNull();
 
         if (box) {
             const x = box.x + box.width / 2;
             const y = box.y + box.height / 2;
+            // El ancho de un día sale de la propia barra (3 días: del 10 al 12): no depende de la
+            // escala con la que se abra el Gantt (semana o mes, según el día en que se ejecute).
+            const dayWidth = box.width / 3;
             await page.mouse.move(x, y);
             await page.mouse.down();
-            await page.mouse.move(x + WEEK_DAY_WIDTH * 3, y, { steps: 8 });
+            await page.mouse.move(x + 5, y, { steps: 2 });
+            await page.mouse.move(x + dayWidth * 3, y, { steps: 12 });
             await page.mouse.up();
         }
 
