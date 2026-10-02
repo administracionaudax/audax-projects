@@ -12,6 +12,12 @@ import { cn } from '@/lib/utils';
  * (que escapan todo); NUNCA se inserta HTML. Los enlaces solo admiten http, https y mailto, y se
  * abren en otra pestaña con rel="noopener noreferrer nofollow". Lo que no es un enlace válido se
  * queda como texto. Mismo criterio de enlaces que el servidor (App\Domain\Chat\Links\FirstLink).
+ *
+ * COSTE ACOTADO (D-121): buscar el cierre de cada * o _ recorre el resto del texto, así que un
+ * mensaje lleno de marcas sin cerrar sería cuadrático (10.000 caracteres de «*a » tardaban
+ * ~1,5 s). Cada análisis tiene un presupuesto de pasos proporcional a su longitud: agotado, las
+ * marcas que quedan se pintan como texto. Los trozos que se miran de una vez (enlaces y URLs)
+ * tienen un tope de longitud. Los mensajes se analizan una sola vez (MessageItem lo memoriza).
  */
 
 export type MarkdownNode =
@@ -28,6 +34,16 @@ export type MarkdownNode =
 export type MentionNames = ReadonlyMap<number, string>;
 
 const MAX_DEPTH = 4;
+
+/** Lo más largo que se mira de una vez para un enlace o una URL suelta. */
+const MAX_URL = 2_100;
+
+/** Pasos para buscar cierres de énfasis: lineal en la longitud del mensaje. */
+type Budget = { steps: number };
+
+function budgetFor(src: string): Budget {
+    return { steps: 20_000 + src.length * 8 };
+}
 
 const WORD = /[\p{L}\p{N}]/u;
 
@@ -91,7 +107,7 @@ function urlAt(src: string, i: number): number {
         return 0;
     }
 
-    const match = /^https?:\/\/[^\s<>"'`]+/i.exec(src.slice(i));
+    const match = /^https?:\/\/[^\s<>"'`]+/i.exec(src.slice(i, i + MAX_URL));
 
     return match ? trimUrl(match[0]).length : 0;
 }
@@ -117,8 +133,14 @@ function findClose(
     src: string,
     contentStart: number,
     delimiter: string,
+    budget: Budget,
 ): number {
     for (let j = contentStart + 1; j < src.length; j++) {
+        // Presupuesto agotado: como si no hubiera cierre (la marca queda como texto).
+        if (--budget.steps < 0) {
+            return -1;
+        }
+
         const char = src[j];
 
         if (char === '`') {
@@ -151,7 +173,11 @@ function findClose(
     return -1;
 }
 
-function parseInline(src: string, depth: number): MarkdownNode[] {
+function parseInline(
+    src: string,
+    depth: number,
+    budget: Budget,
+): MarkdownNode[] {
     const nodes: MarkdownNode[] = [];
     let text = '';
     let i = 0;
@@ -189,8 +215,8 @@ function parseInline(src: string, depth: number): MarkdownNode[] {
         }
 
         if (char === '[') {
-            const link = /^\[([^\]\n]{1,500})\]\(([^\s)]+)\)/.exec(
-                src.slice(i),
+            const link = /^\[([^\]\n]{1,500})\]\(([^\s)]{1,2048})\)/.exec(
+                src.slice(i, i + 500 + 2048 + 4),
             );
             const href = link ? safeHref(link[2]) : null;
 
@@ -230,7 +256,12 @@ function parseInline(src: string, depth: number): MarkdownNode[] {
             const delimiter = src[i + 1] === char ? char + char : char;
 
             if (canOpen(src, i, delimiter)) {
-                const close = findClose(src, i + delimiter.length, delimiter);
+                const close = findClose(
+                    src,
+                    i + delimiter.length,
+                    delimiter,
+                    budget,
+                );
 
                 if (close !== -1) {
                     flush();
@@ -239,6 +270,7 @@ function parseInline(src: string, depth: number): MarkdownNode[] {
                         children: parseInline(
                             src.slice(i + delimiter.length, close),
                             depth + 1,
+                            budget,
                         ),
                     });
                     i = close + delimiter.length;
@@ -264,6 +296,7 @@ function parseInline(src: string, depth: number): MarkdownNode[] {
 /** Nodos del cuerpo de un mensaje. */
 export function parseMarkdown(src: string): MarkdownNode[] {
     const nodes: MarkdownNode[] = [];
+    const budget = budgetFor(src);
     let i = 0;
 
     while (i < src.length) {
@@ -271,12 +304,12 @@ export function parseMarkdown(src: string): MarkdownNode[] {
         const end = start === -1 ? -1 : src.indexOf('```', start + 3);
 
         if (start === -1 || end === -1) {
-            nodes.push(...parseInline(src.slice(i), 0));
+            nodes.push(...parseInline(src.slice(i), 0, budget));
             break;
         }
 
         if (start > i) {
-            nodes.push(...parseInline(src.slice(i, start), 0));
+            nodes.push(...parseInline(src.slice(i, start), 0, budget));
         }
 
         let code = src.slice(start + 3, end);
@@ -320,7 +353,7 @@ export function markdownToPlainText(src: string, names: MentionNames): string {
                     case 'mention':
                         return `@${mentionName(names, node.id)}`;
                     case 'everyone':
-                        return '@todos';
+                        return `@${t('chat.mention.everyone')}`;
                 }
             })
             .join('');
@@ -407,7 +440,7 @@ function renderNodes(
                         data-mention="everyone"
                         className="rounded-[3px] bg-warning-soft px-0.5 text-warning"
                     >
-                        @todos
+                        @{t('chat.mention.everyone')}
                     </span>
                 );
         }
@@ -417,11 +450,14 @@ function renderNodes(
 /** Cuerpo de un mensaje pintado (saneado: solo elementos de React). */
 export function MarkdownText({
     body,
+    nodes,
     names,
     currentUserId = null,
     className,
 }: {
     body: string;
+    /** Ya analizado (MessageItem lo memoriza): así no se analiza dos veces. */
+    nodes?: MarkdownNode[];
     names: MentionNames;
     currentUserId?: number | null;
     className?: string;
@@ -433,13 +469,21 @@ export function MarkdownText({
                 className,
             )}
         >
-            {renderNodes(parseMarkdown(body), names, currentUserId, 'md')}
+            {renderNodes(
+                nodes ?? parseMarkdown(body),
+                names,
+                currentUserId,
+                'md',
+            )}
         </div>
     );
 }
 
-/** ¿El cuerpo menciona a esta persona (o a todos)? */
-export function mentionsUser(body: string | null, userId: number): boolean {
+/** ¿El cuerpo (o sus nodos ya analizados) menciona a esta persona (o a todos)? */
+export function mentionsUser(
+    body: string | MarkdownNode[] | null,
+    userId: number,
+): boolean {
     if (!body) {
         return false;
     }
@@ -459,5 +503,5 @@ export function mentionsUser(body: string | null, userId: number): boolean {
                 : false;
         });
 
-    return visit(parseMarkdown(body));
+    return visit(typeof body === 'string' ? parseMarkdown(body) : body);
 }

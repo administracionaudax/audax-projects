@@ -8,6 +8,7 @@ import {
     Reply,
     Trash2,
 } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import { ChatAvatar } from '@/components/chat/chat-avatar';
 import {
     formatFullDateTime,
@@ -16,7 +17,11 @@ import {
 import { Composer } from '@/components/chat/composer';
 import type { MentionPerson } from '@/components/chat/composer';
 import { LinkPreviewCard } from '@/components/chat/link-preview-card';
-import { MarkdownText, mentionsUser } from '@/components/chat/markdown';
+import {
+    MarkdownText,
+    mentionsUser,
+    parseMarkdown,
+} from '@/components/chat/markdown';
 import type { MentionNames } from '@/components/chat/markdown';
 import { AttachmentList, AudioMessage } from '@/components/chat/media-bridge';
 import { bodyToEditable } from '@/components/chat/mentions';
@@ -104,8 +109,10 @@ function ParentQuote({
  * hilo; cuerpo en markdown ligero saneado; audio y adjuntos (C3); previsualización del enlace;
  * tarea creada; reacciones; fijado; y sus acciones. Borrado: «Mensaje eliminado»; ocultado por
  * un admin: el aviso (quien modera lo ve con el contenido). Los de sistema, con icono y texto.
+ * Memorizado: solo se vuelve a pintar si cambian sus datos (MessageList le da manejadores estables)
+ * y el markdown se analiza una vez por cuerpo.
  */
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
     message,
     showHeader,
     currentUserId,
@@ -128,6 +135,10 @@ export function MessageItem({
 }) {
     const name = authorName(message);
     const time = formatMessageTime(message.created_at);
+    const nodes = useMemo(
+        () => (message.body ? parseMarkdown(message.body) : []),
+        [message.body],
+    );
     const pending = message.pending;
     const hasActions = !pending && !message.deleted;
 
@@ -145,7 +156,12 @@ export function MessageItem({
             >
                 <article
                     aria-label={t('chat.system.label', { time })}
-                    className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-[3px] bg-muted px-3 py-1.5 text-center text-xs"
+                    tabIndex={-1}
+                    data-message-focus=""
+                    className={cn(
+                        'flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-[3px] bg-muted px-3 py-1.5 text-center text-xs',
+                        FOCUS_RING,
+                    )}
                     data-test="chat-system-message"
                 >
                     <Icon
@@ -176,7 +192,7 @@ export function MessageItem({
 
     const mentionsMe =
         message.author?.id !== currentUserId &&
-        mentionsUser(message.body, currentUserId);
+        mentionsUser(nodes, currentUserId);
     const visibleBody = !message.deleted && message.body !== null;
 
     return (
@@ -194,7 +210,15 @@ export function MessageItem({
         >
             <article
                 aria-label={t('chat.messages.from', { name, time })}
-                className="flex gap-3"
+                // Enfocable desde el código (saltar a un fijado o a una cita, tras editar o
+                // borrar), pero fuera del orden del tabulador.
+                tabIndex={-1}
+                data-message-focus=""
+                className={cn(
+                    'flex gap-3 rounded-[3px]',
+                    FOCUS_RING,
+                    'focus-visible:ring-offset-0',
+                )}
             >
                 <div className="w-8 shrink-0 pt-0.5">
                     {showHeader ? (
@@ -275,6 +299,7 @@ export function MessageItem({
                     ) : visibleBody && message.body ? (
                         <MarkdownText
                             body={message.body}
+                            nodes={nodes}
                             names={names}
                             currentUserId={currentUserId}
                         />
@@ -402,4 +427,4 @@ export function MessageItem({
             ) : null}
         </li>
     );
-}
+});

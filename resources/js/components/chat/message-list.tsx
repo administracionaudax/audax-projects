@@ -30,6 +30,46 @@ const HIGHLIGHT_MS = 3_000;
 
 type ItemHandlers = Omit<MessageItemHandlers, 'onJump'>;
 
+type Latest = {
+    messages: ChatMessage[];
+    handlersFor: (message: ChatMessage) => ItemHandlers;
+    onJump: (messageId: number) => void;
+};
+
+/**
+ * Manejadores ESTABLES por mensaje (MessageItem está memorizado): cada uno llama a los de ahora
+ * mismo con el mensaje tal como esté ahora, así que nunca usan datos viejos.
+ */
+function stableHandlers(
+    id: number,
+    fallback: ChatMessage,
+    latest: { current: Latest },
+): MessageItemHandlers {
+    const current = (): ItemHandlers => {
+        const message =
+            latest.current.messages.find((item) => item.id === id) ?? fallback;
+
+        return latest.current.handlersFor(message);
+    };
+
+    return {
+        onReply: () => current().onReply(),
+        onReact: (emoji) => current().onReact(emoji),
+        onEdit: () => current().onEdit(),
+        onDelete: () => current().onDelete(),
+        onPin: (pinned) => current().onPin(pinned),
+        onCopyLink: () => current().onCopyLink(),
+        onCopyText: () => current().onCopyText(),
+        onCreateTask: () => current().onCreateTask(),
+        onModerate: (hidden) => current().onModerate(hidden),
+        onRetry: () => current().onRetry(),
+        onDiscard: () => current().onDiscard(),
+        onEditSubmit: (body) => current().onEditSubmit(body),
+        onEditCancel: () => current().onEditCancel(),
+        onJump: (messageId) => latest.current.onJump(messageId),
+    };
+}
+
 /** ¿Empieza un grupo nuevo (avatar y nombre)? Otro autor, otro día, más de 5 min o sistema. */
 function startsGroup(previous: ChatMessage | undefined, message: ChatMessage) {
     return (
@@ -81,6 +121,7 @@ export function MessageList({
     const stickToBottom = useRef(true);
     const previousLast = useRef<number>(0);
     const pendingJump = useRef<number | null>(focusId);
+    const focusOnArrival = useRef(false);
     const [atBottom, setAtBottom] = useState(true);
     const [newBelow, setNewBelow] = useState(0);
     const [highlighted, setHighlighted] = useState<number | null>(null);
@@ -114,7 +155,7 @@ export function MessageList({
         setNewBelow(0);
     }, []);
 
-    const reveal = useCallback((messageId: number) => {
+    const reveal = useCallback((messageId: number, focus = false) => {
         const element = document.getElementById(`mensaje-${messageId}`);
 
         if (!element) {
@@ -122,6 +163,15 @@ export function MessageList({
         }
 
         element.scrollIntoView({ block: 'center' });
+
+        // Al saltar (fijados, citas), el foco va al mensaje: el lector de pantalla lo lee y el
+        // tabulador sigue desde ahí.
+        if (focus) {
+            element
+                .querySelector<HTMLElement>('[data-message-focus]')
+                ?.focus({ preventScroll: true });
+        }
+
         setHighlighted(messageId);
         window.setTimeout(
             () =>
@@ -136,19 +186,47 @@ export function MessageList({
 
     const onJump = useCallback(
         async (messageId: number) => {
-            if (reveal(messageId)) {
+            if (reveal(messageId, true)) {
                 return;
             }
 
             pendingJump.current = messageId;
+            focusOnArrival.current = true;
             stickToBottom.current = false;
 
             if (!(await controller.loadAround(messageId))) {
                 pendingJump.current = null;
+                focusOnArrival.current = false;
             }
         },
         [controller, reveal],
     );
+
+    const latest = useRef<Latest>({
+        messages,
+        handlersFor,
+        onJump: (id) => void onJump(id),
+    });
+    const proxies = useRef(new Map<number, MessageItemHandlers>());
+
+    useLayoutEffect(() => {
+        latest.current = {
+            messages,
+            handlersFor,
+            onJump: (id) => void onJump(id),
+        };
+    });
+
+    const handlersOf = (message: ChatMessage): MessageItemHandlers => {
+        let handlers = proxies.current.get(message.id);
+
+        if (!handlers) {
+            handlers = stableHandlers(message.id, message, latest);
+            proxies.current.set(message.id, handlers);
+        }
+
+        return handlers;
+    };
 
     useEffect(() => {
         if (!jumpRef) {
@@ -214,8 +292,9 @@ export function MessageList({
                 anchor.current.top;
             anchor.current = null;
         } else if (pendingJump.current !== null) {
-            if (reveal(pendingJump.current)) {
+            if (reveal(pendingJump.current, focusOnArrival.current)) {
                 pendingJump.current = null;
+                focusOnArrival.current = false;
             }
         } else if (
             lastId !== previousLast.current &&
@@ -424,10 +503,7 @@ export function MessageList({
                                         people={people}
                                         highlighted={highlighted === message.id}
                                         editing={editingId === message.id}
-                                        handlers={{
-                                            ...handlersFor(message),
-                                            onJump: (id) => void onJump(id),
-                                        }}
+                                        handlers={handlersOf(message)}
                                     />
                                 </Fragment>
                             );

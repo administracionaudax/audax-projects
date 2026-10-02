@@ -228,3 +228,47 @@ describe('texto plano y menciones', () => {
         expect(mentionsUser(null, 7)).toBe(false);
     });
 });
+
+describe('coste acotado (D-121)', () => {
+    const worst = [
+        '*a '.repeat(3333),
+        '_a '.repeat(3333),
+        '**a '.repeat(2500),
+        `${'*x http://a.b/' + '_'.repeat(20) + ' '}`.repeat(250),
+        '['.repeat(10_000),
+        `${'[a](' + 'h'.repeat(40)}`.repeat(200),
+        'http://x.es/'.repeat(800),
+    ];
+
+    it('10.000 caracteres llenos de marcas sin cerrar se analizan en poco tiempo', () => {
+        for (const src of worst) {
+            const started = performance.now();
+            const nodes = parseMarkdown(src);
+            const elapsed = performance.now() - started;
+
+            expect(nodes.length).toBeGreaterThan(0);
+            // Antes, ~1,5 s con «*a »; con el presupuesto lineal, unas decenas de ms (con margen
+            // para máquinas lentas y la CI).
+            expect(elapsed, src.slice(0, 12)).toBeLessThan(250);
+        }
+    });
+
+    it('el texto no se pierde aunque se agote el presupuesto', () => {
+        const src = '*a '.repeat(3333);
+
+        expect(markdownToPlainText(src, names)).toBe(src.trim());
+    });
+
+    it('lo normal sigue igual dentro de un mensaje largo', () => {
+        const src = `${'texto normal '.repeat(500)}**negrita** y *cursiva*`;
+        const nodes = parseMarkdown(src);
+
+        expect(nodes.some((node) => node.type === 'strong')).toBe(true);
+        expect(nodes.some((node) => node.type === 'em')).toBe(true);
+    });
+
+    it('@todos sale del fichero de textos', () => {
+        expect(markdownToPlainText('Aviso @todos', names)).toBe('Aviso @todos');
+        expect(html('Aviso @todos').textContent).toBe('Aviso @todos');
+    });
+});
