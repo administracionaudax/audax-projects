@@ -4,10 +4,14 @@ import {
     Bell,
     BellOff,
     ExternalLink,
+    Settings2,
     ShieldCheck,
     Users,
 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { ChatAvatar, ConversationAvatar } from '@/components/chat/chat-avatar';
+import { GroupSettingsDialog } from '@/components/chat/group-settings-dialog';
 import { usePresence } from '@/components/chat/realtime-bridge';
 import { PresenceLabel } from '@/components/realtime';
 import { Button } from '@/components/ui/button';
@@ -16,14 +20,16 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import type { ChatConversation } from '@/types/chat';
 
 /**
  * Cabecera de una conversación: nombre (proyecto, persona o grupo), a qué corresponde, los
- * participantes (inactivos marcados; presencia de C2) y silenciar/activar avisos.
- * En el móvil, un botón vuelve a la lista (pantallas separadas).
+ * participantes (inactivos marcados; presencia de C2), gestionar el grupo (D-119) y
+ * silenciar/activar avisos. En el móvil, un botón vuelve a la lista (pantallas separadas).
+ * El título es enfocable: al abrir una conversación en el móvil el foco va a él.
  */
 export function ConversationHeader({
     conversation,
@@ -31,6 +37,7 @@ export function ConversationHeader({
     onToggleMute,
     backHref,
     showProjectLink = true,
+    titleRef,
 }: {
     conversation: ChatConversation;
     muted: boolean;
@@ -38,7 +45,11 @@ export function ConversationHeader({
     /** Solo en /chat: vuelve a la lista en el móvil. */
     backHref?: string;
     showProjectLink?: boolean;
+    titleRef?: RefObject<HTMLHeadingElement | null>;
 }) {
+    const user = useRequiredUser();
+    const [settings, setSettings] = useState(false);
+    const settingsButton = useRef<HTMLButtonElement>(null);
     // Antes del primer dato de presencia, la directa dice solo que lo es.
     const { ready: presenceReady } = usePresence();
     const other = conversation.other_user;
@@ -72,7 +83,9 @@ export function ConversationHeader({
             <ConversationAvatar conversation={conversation} />
             <div className="min-w-0 flex-1">
                 <h2
-                    className="truncate text-base text-foreground"
+                    ref={titleRef}
+                    tabIndex={-1}
+                    className="truncate rounded-[3px] text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     data-test="chat-conversation-title"
                 >
                     {conversation.title}
@@ -157,6 +170,32 @@ export function ConversationHeader({
                         </ul>
                     </PopoverContent>
                 </Popover>
+            ) : null}
+
+            {conversation.type === 'group' &&
+            (conversation.can.manage || conversation.can.leave) ? (
+                <>
+                    <Button
+                        ref={settingsButton}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-9"
+                        onClick={() => setSettings(true)}
+                        aria-label={t('chat.group_settings.open')}
+                        title={t('chat.group_settings.open')}
+                        data-test="chat-group-settings-open"
+                    >
+                        <Settings2 aria-hidden="true" />
+                    </Button>
+                    <GroupSettingsDialog
+                        conversation={conversation}
+                        open={settings}
+                        onOpenChange={setSettings}
+                        currentUserId={user.id}
+                        returnFocus={settingsButton}
+                    />
+                </>
             ) : null}
 
             {conversation.can.mute ? (

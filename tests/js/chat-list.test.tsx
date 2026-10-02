@@ -277,7 +277,9 @@ describe('ConversationList', () => {
         render(<ConversationList items={items} activeId={null} />);
 
         await user.click(
-            screen.getByRole('button', { name: 'Nueva conversación' }),
+            screen.getByRole('button', {
+                name: 'Nuevo: mensaje directo o grupo',
+            }),
         );
         await user.click(
             await screen.findByRole('menuitem', { name: 'Mensaje directo' }),

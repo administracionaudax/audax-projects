@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Archive,
     BellOff,
@@ -7,12 +7,14 @@ import {
     MessagesSquare,
     Plus,
     Search,
+    ShieldCheck,
     Users,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { ConversationAvatar } from '@/components/chat/chat-avatar';
 import { formatListTime } from '@/components/chat/chat-format';
 import { normalizeSearch } from '@/components/chat/mentions';
+import { ModerationDialog } from '@/components/chat/moderation-dialog';
 import {
     NewDirectDialog,
     NewGroupDialog,
@@ -95,9 +97,10 @@ function matches(item: ChatConversationItem, needle: string): boolean {
 /**
  * Lista de conversaciones de /chat (SPEC §12): nombre, vista previa sin markdown, hora, no leídos
  * (con número y texto; en vivo con los contadores de C2), presencia en las directas, silenciadas y
- * proyectos archivados marcados (icono y texto), filtro, «Buscar en el chat» (C3), «Avisos en este
- * navegador» (Web Push, C2) y «Nuevo» (mensaje directo o grupo). Estados vacío, sin resultados y
- * de error.
+ * proyectos archivados marcados (icono y texto visible), filtro, «Buscar en el chat» (C3), «Avisos
+ * en este navegador» (Web Push, C2), «Nuevo» (mensaje directo o grupo) y, para el admin,
+ * «Moderar» (D-119). Estados vacío, sin resultados y de error. Los diálogos que se abren desde el
+ * menú «Nuevo» devuelven el foco a ese botón al cerrarse.
  */
 export function ConversationList({
     items,
@@ -115,6 +118,12 @@ export function ConversationList({
     const [query, setQuery] = useState('');
     const [direct, setDirect] = useState(false);
     const [group, setGroup] = useState(false);
+    const [moderation, setModeration] = useState(false);
+    const newButton = useRef<HTMLButtonElement>(null);
+    const moderationButton = useRef<HTMLButtonElement>(null);
+    // El admin modera chats ajenos (D-119). (Sin sesión en la prop, como en algún test, no.)
+    const isAdmin =
+        usePage().props.auth?.user?.roles?.includes('admin') ?? false;
     const searchId = useId();
     // Los no leídos de cada fila: los de C2 en cuanto llega su primer recuento; antes, los de la lista.
     const counter = useUnreadCounter();
@@ -156,9 +165,25 @@ export function ConversationList({
                         <PushNotificationsToggle />
                     </PopoverContent>
                 </Popover>
+                {isAdmin ? (
+                    <Button
+                        ref={moderationButton}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-9"
+                        onClick={() => setModeration(true)}
+                        aria-label={t('chat.moderation.open')}
+                        title={t('chat.moderation.open')}
+                        data-test="chat-moderation"
+                    >
+                        <ShieldCheck aria-hidden="true" />
+                    </Button>
+                ) : null}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
+                            ref={newButton}
                             type="button"
                             size="sm"
                             aria-label={t('chat.list.new_menu')}
@@ -306,28 +331,28 @@ export function ConversationList({
                                                 </span>
                                                 {item.muted ? (
                                                     <span
-                                                        title={t(
-                                                            'chat.list.muted',
-                                                        )}
-                                                        className="shrink-0 self-center"
+                                                        className="inline-flex shrink-0 items-center gap-0.5 self-center text-[11px] text-muted-foreground"
+                                                        data-test="chat-item-muted"
                                                     >
                                                         <BellOff
                                                             aria-hidden="true"
-                                                            className="size-3.5 text-muted-foreground"
+                                                            className="size-3.5"
                                                         />
+                                                        {t('chat.list.muted')}
                                                     </span>
                                                 ) : null}
                                                 {item.read_only ? (
                                                     <span
-                                                        title={t(
-                                                            'chat.list.read_only',
-                                                        )}
-                                                        className="shrink-0 self-center"
+                                                        className="inline-flex shrink-0 items-center gap-0.5 self-center text-[11px] text-muted-foreground"
+                                                        data-test="chat-item-read-only"
                                                     >
                                                         <Archive
                                                             aria-hidden="true"
-                                                            className="size-3.5 text-muted-foreground"
+                                                            className="size-3.5"
                                                         />
+                                                        {t(
+                                                            'chat.list.read_only_short',
+                                                        )}
                                                     </span>
                                                 ) : null}
                                                 <span className="tabular ml-auto shrink-0 text-xs text-muted-foreground">
@@ -375,9 +400,8 @@ export function ConversationList({
                                                               },
                                                           )
                                                         : null,
-                                                    item.muted
-                                                        ? t('chat.list.muted')
-                                                        : null,
+                                                    // «Silenciada» y «Solo lectura» ya se leen
+                                                    // en su texto visible; aquí, el porqué.
                                                     item.read_only
                                                         ? t(
                                                               'chat.list.read_only',
@@ -396,8 +420,23 @@ export function ConversationList({
                 )}
             </nav>
 
-            <NewDirectDialog open={direct} onOpenChange={setDirect} />
-            <NewGroupDialog open={group} onOpenChange={setGroup} />
+            <NewDirectDialog
+                open={direct}
+                onOpenChange={setDirect}
+                returnFocus={newButton}
+            />
+            <NewGroupDialog
+                open={group}
+                onOpenChange={setGroup}
+                returnFocus={newButton}
+            />
+            {isAdmin ? (
+                <ModerationDialog
+                    open={moderation}
+                    onOpenChange={setModeration}
+                    returnFocus={moderationButton}
+                />
+            ) : null}
         </div>
     );
 }

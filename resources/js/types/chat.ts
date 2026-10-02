@@ -88,8 +88,23 @@ export type ChatConversation = {
         moderate: boolean;
         create_task: boolean;
         mute: boolean;
+        /** Grupos (D-119): renombrar y añadir o quitar personas (quien lo creó o el admin). */
+        manage: boolean;
+        /** Grupos: salir (quien participa). */
+        leave: boolean;
     };
     read_only_reason: ChatReadOnlyReason | null;
+};
+
+/** Conversación que el admin modera sin participar (D-071, D-119): proyectos y grupos. */
+export type ChatModerationItem = {
+    id: number;
+    type: Exclude<ChatConversationType, 'direct'>;
+    title: string;
+    subtitle: string | null;
+    members_count: number;
+    read_only: boolean;
+    last_activity_at: string | null;
 };
 
 export type ChatReaction = {

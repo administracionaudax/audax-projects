@@ -1,10 +1,12 @@
 import { router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
+import type { RefObject } from 'react';
 import { toast } from 'sonner';
 import { ChatAvatar } from '@/components/chat/chat-avatar';
 import { chatApi } from '@/components/chat/chat-api';
 import { normalizeSearch } from '@/components/chat/mentions';
+import { returnFocusTo } from '@/components/chat/return-focus';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,7 +36,7 @@ import { store as storeGroup } from '@/routes/chat/groups';
 import type { ChatPerson } from '@/types/chat';
 
 /** Personas internas activas (sin quien mira), cargadas al abrir un diálogo. */
-function usePeople(open: boolean): {
+export function usePeople(open: boolean): {
     people: ChatPerson[] | null;
     failed: boolean;
 } {
@@ -70,7 +72,7 @@ function usePeople(open: boolean): {
     return { people, failed };
 }
 
-function Loading() {
+export function PeopleLoading() {
     return (
         <div className="grid gap-2 p-3" aria-busy="true">
             <span className="sr-only">{t('chat.direct.loading')}</span>
@@ -88,9 +90,12 @@ function Loading() {
 export function NewDirectDialog({
     open,
     onOpenChange,
+    returnFocus,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** Al cerrar, el foco vuelve aquí (el botón «Nuevo», cuyo menú ya no existe). */
+    returnFocus?: RefObject<HTMLElement | null>;
 }) {
     const { people, failed } = usePeople(open);
     const [processing, setProcessing] = useState(false);
@@ -117,6 +122,9 @@ export function NewDirectDialog({
             onOpenChange={onOpenChange}
             title={t('chat.direct.title')}
             description={t('chat.direct.description')}
+            onCloseAutoFocus={
+                returnFocus ? returnFocusTo(returnFocus) : undefined
+            }
         >
             <CommandInput
                 placeholder={t('chat.direct.search')}
@@ -128,7 +136,7 @@ export function NewDirectDialog({
                         {t('chat.errors.people')}
                     </p>
                 ) : people === null ? (
-                    <Loading />
+                    <PeopleLoading />
                 ) : (
                     <>
                         <CommandEmpty>{t('chat.direct.empty')}</CommandEmpty>
@@ -164,9 +172,11 @@ export function NewDirectDialog({
 export function NewGroupDialog({
     open,
     onOpenChange,
+    returnFocus,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    returnFocus?: RefObject<HTMLElement | null>;
 }) {
     const { people, failed } = usePeople(open);
     const [name, setName] = useState('');
@@ -228,7 +238,12 @@ export function NewGroupDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent
+                className="sm:max-w-md"
+                onCloseAutoFocus={
+                    returnFocus ? returnFocusTo(returnFocus) : undefined
+                }
+            >
                 <DialogTitle>{t('chat.group.title')}</DialogTitle>
                 <DialogDescription>
                     {t('chat.group.description')}
@@ -284,7 +299,7 @@ export function NewGroupDialog({
                                 {t('chat.errors.people')}
                             </p>
                         ) : people === null ? (
-                            <Loading />
+                            <PeopleLoading />
                         ) : (
                             <ul
                                 id={peopleId}

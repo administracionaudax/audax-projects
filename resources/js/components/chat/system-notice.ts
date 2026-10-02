@@ -1,11 +1,21 @@
 import type { LucideIcon } from 'lucide-react';
-import { Flag, Gauge, Info, TriangleAlert } from 'lucide-react';
+import {
+    Flag,
+    Gauge,
+    Info,
+    LogOut,
+    PencilLine,
+    TriangleAlert,
+    UserMinus,
+    UserPlus,
+} from 'lucide-react';
 import { t } from '@/lib/i18n';
 import type { ChatSystemData } from '@/types/chat';
 
 /**
- * Mensajes de sistema del chat del proyecto (App\Domain\Chat\Notices\ProjectChatNotices): el
- * servidor manda la clave y los datos y aquí se escriben el texto y el icono (siempre los dos).
+ * Mensajes de sistema del chat: los del proyecto (App\Domain\Chat\Notices\ProjectChatNotices) y
+ * los cambios de un grupo (ConversationDirectory, D-119). El servidor manda la clave y los datos y
+ * aquí se escriben el texto y el icono (siempre los dos).
  */
 
 function text(value: unknown, fallback = ''): string {
@@ -30,6 +40,27 @@ export function systemText(system: ChatSystemData): string {
             return t('chat.system.milestone_completed', {
                 task: text(payload.task, t('chat.system.a_milestone')),
             });
+        case 'group.renamed':
+            return t('chat.system.group_renamed', {
+                by: text(payload.by, t('chat.system.someone')),
+                name: text(payload.name),
+            });
+        case 'group.added':
+            return t('chat.system.group_added', {
+                by: text(payload.by, t('chat.system.someone')),
+                users: Array.isArray(payload.users)
+                    ? payload.users.map((name) => text(name)).join(', ')
+                    : '',
+            });
+        case 'group.removed':
+            return t('chat.system.group_removed', {
+                by: text(payload.by, t('chat.system.someone')),
+                user: text(payload.user, t('chat.system.someone')),
+            });
+        case 'group.left':
+            return t('chat.system.group_left', {
+                user: text(payload.user, t('chat.system.someone')),
+            });
         default:
             return t('chat.system.generic');
     }
@@ -43,6 +74,14 @@ export function systemIcon(system: ChatSystemData): LucideIcon {
                 : Gauge;
         case 'milestone.completed':
             return Flag;
+        case 'group.renamed':
+            return PencilLine;
+        case 'group.added':
+            return UserPlus;
+        case 'group.removed':
+            return UserMinus;
+        case 'group.left':
+            return LogOut;
         default:
             return Info;
     }

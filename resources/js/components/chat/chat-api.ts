@@ -1,6 +1,7 @@
 import { t } from '@/lib/i18n';
 import {
     conversations as conversationsRoute,
+    moderation as moderationRoute,
     mute as muteRoute,
     people as peopleRoute,
     pinned as pinnedRoute,
@@ -18,13 +19,23 @@ import {
     update as updateRoute,
 } from '@/routes/chat/messages';
 import {
+    leave as leaveGroupRoute,
+    update as updateGroupRoute,
+} from '@/routes/chat/groups';
+import {
+    destroy as removeMemberRoute,
+    store as addMembersRoute,
+} from '@/routes/chat/groups/members';
+import {
     options as taskOptionsRoute,
     store as taskStoreRoute,
 } from '@/routes/chat/messages/task';
 import type {
+    ChatConversation,
     ChatConversationItem,
     ChatMessageResponse,
     ChatMessagesPage,
+    ChatModerationItem,
     ChatPerson,
     ChatPinnedMessage,
     ChatPollResponse,
@@ -245,6 +256,41 @@ export const chatApi = {
         chatRequest<{ pinned: ChatPinnedMessage[] }>(
             'GET',
             pinnedRoute.url(conversationId),
+        ),
+
+    moderation: () =>
+        chatRequest<{ conversations: ChatModerationItem[] }>(
+            'GET',
+            moderationRoute.url(),
+        ),
+
+    renameGroup: (conversationId: number, name: string) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'PATCH',
+            updateGroupRoute.url(conversationId),
+            { name },
+        ),
+
+    addToGroup: (conversationId: number, userIds: number[]) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'POST',
+            addMembersRoute.url(conversationId),
+            { user_ids: userIds },
+        ),
+
+    removeFromGroup: (conversationId: number, userId: number) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'DELETE',
+            removeMemberRoute.url({
+                conversation: conversationId,
+                member: userId,
+            }),
+        ),
+
+    leaveGroup: (conversationId: number) =>
+        chatRequest<{ left: boolean; url: string }>(
+            'POST',
+            leaveGroupRoute.url(conversationId),
         ),
 
     taskOptions: (messageId: number) =>
