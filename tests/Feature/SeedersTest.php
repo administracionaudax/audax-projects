@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
@@ -44,6 +45,14 @@ test('el seeder de desarrollo crea las cuentas de los E2E, el responsable de Dis
 
     expect(Department::query()->where('name', 'Diseño')->sole()->managers->pluck('id')->all())->toBe([$manager->id])
         ->and(Setting::query()->count())->toBe(count(Setting::DEFAULTS));
+
+    // Texto de privacidad (D-075): la plantilla de ejemplo ya lo ha leído, salvo Daniel, que
+    // conserva el aviso para el E2E de privacidad; los clientes no lo leen.
+    $notice = app(PrivacyNotice::class);
+    $pending = User::query()->internal()->get()->filter(fn (User $user): bool => $notice->needsAcknowledgement($user));
+
+    expect($pending->pluck('email')->all())->toBe(['daniel.ortega@example.com'])
+        ->and(User::query()->where('email', 'empleado@example.com')->sole()->privacy_acknowledged_version)->toBe($notice->version());
 });
 
 test('los datos de ejemplo cubren el SPEC §15 y son coherentes con el motor de bolsas', function () {

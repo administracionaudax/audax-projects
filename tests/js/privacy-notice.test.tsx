@@ -90,6 +90,21 @@ describe('aviso de privacidad', () => {
         rerender(<PrivacyNoticeBanner />);
         expect(container.innerHTML).toBe('');
     });
+
+    it('deja su espacio en --privacy-banner-space (el chat lo resta) y lo quita al irse', () => {
+        const root = document.documentElement;
+        page.props = { privacy: { needs_acknowledgement: true } };
+        const { unmount } = render(<PrivacyNoticeBanner />);
+
+        // jsdom no maqueta (offsetHeight 0): queda el margen superior medido, en px.
+        expect(root.style.getPropertyValue('--privacy-banner-space')).toMatch(
+            /^\d+(\.\d+)?px$/,
+        );
+
+        unmount();
+
+        expect(root.style.getPropertyValue('--privacy-banner-space')).toBe('');
+    });
 });
 
 const showProps = (

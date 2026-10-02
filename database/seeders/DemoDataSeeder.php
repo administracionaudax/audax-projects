@@ -6,6 +6,7 @@ use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
@@ -125,6 +126,9 @@ class DemoDataSeeder extends Seeder
         'renewed' => 1.03,
         'renewal' => 0.5,
     ];
+
+    /** Persona de ejemplo que aún no ha leído el texto de privacidad (aviso en la app). */
+    public const string PRIVACY_PENDING = 'daniel';
 
     public function run(): void
     {
@@ -337,6 +341,12 @@ class DemoDataSeeder extends Seeder
 
             if ($role === Role::DepartmentManager) {
                 $this->departments[$department]->managers()->syncWithoutDetaching([$user->id]);
+            }
+
+            // Texto de privacidad (D-075): la plantilla de ejemplo ya lo ha leído, salvo Daniel, que
+            // sigue con el aviso pendiente para verlo en la app (y en el E2E de privacidad).
+            if ($key !== self::PRIVACY_PENDING) {
+                app(PrivacyNotice::class)->acknowledge($user);
             }
 
             $this->people[$key] = $user;

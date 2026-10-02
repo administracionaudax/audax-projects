@@ -3,12 +3,19 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import type { Theme } from './support';
-import { expectTheme, login, saveUserTheme, USERS } from './support';
+import {
+    expectTheme,
+    login,
+    PRIVACY_PENDING_USER,
+    saveUserTheme,
+    USERS,
+} from './support';
 
 /**
  * Privacidad (SPEC §15, D-075) con los datos del DatabaseSeeder de desarrollo (la cola es «sync»
  * en la CI, así que la exportación queda lista al momento). Nunca contra el servidor.
- * - La empleada ve el aviso de lectura, lee el texto y lo acepta: el aviso desaparece.
+ * - Daniel (el único de los datos de ejemplo que no lo ha leído) ve el aviso en las páginas
+ *   internas, lee el texto y lo acepta: el aviso desaparece.
  * - Pide sus datos en /ajustes/mis-datos y descarga el ZIP.
  * - Sin violaciones AA graves de axe en las páginas nuevas, en claro y en oscuro.
  */
@@ -36,17 +43,60 @@ async function expectNoSeriousViolations(
     expect(serious, `${label}\n${report}`).toEqual([]);
 }
 
-test('una empleada lee el texto de privacidad, lo acepta y descarga sus datos', async ({
+test('a 375 px el aviso de privacidad cabe, no deja scroll horizontal y no saca el chat de la pantalla', async ({
     page,
-}) => {
-    await login(page, USERS.employee);
+}, testInfo) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await login(page, PRIVACY_PENDING_USER);
+
+    const banner = page.getByRole('region', {
+        name: 'Información sobre tus datos',
+    });
+
+    for (const path of ['/', '/mis-tareas', '/chat']) {
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+
+        // En un reintento la lectura ya puede estar registrada (el test siguiente la acepta).
+        if (testInfo.retry === 0) {
+            await expect(banner, path).toBeVisible();
+            await expect(
+                banner.getByRole('link', { name: 'Leer la información' }),
+                path,
+            ).toBeInViewport();
+        }
+
+        const overflow = await page.evaluate(
+            () =>
+                document.documentElement.scrollWidth -
+                document.documentElement.clientWidth,
+        );
+        expect(overflow, path).toBeLessThanOrEqual(0);
+    }
+
+    // El chat ocupa la pantalla justa (resta el aviso): la página no crece por debajo.
+    const extra = await page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+    );
+    expect(extra).toBeLessThanOrEqual(1);
+});
+
+test('un empleado ve el aviso de privacidad, lee el texto, lo acepta y descarga sus datos', async ({
+    page,
+}, testInfo) => {
+    await login(page, PRIVACY_PENDING_USER);
     await page.goto('/');
 
     const banner = page.getByRole('region', {
         name: 'Información sobre tus datos',
     });
 
-    // En un reintento la lectura ya puede estar registrada: entonces no hay aviso.
+    // En el primer intento el aviso está (DemoDataSeeder); en un reintento la lectura ya puede
+    // estar registrada: entonces no hay aviso.
+    if (testInfo.retry === 0) {
+        await expect(banner).toBeVisible();
+    }
+
     if (await banner.isVisible()) {
         await banner.getByRole('link', { name: 'Leer la información' }).click();
         await expect(page).toHaveURL(/\/privacidad$/);
@@ -102,7 +152,7 @@ test('una empleada lee el texto de privacidad, lo acepta y descarga sus datos', 
     const file = await download.path();
 
     expect(download.suggestedFilename()).toMatch(
-        /^datos-personales-elena-empleada-\d{4}-\d{2}-\d{2}\.zip$/,
+        /^datos-personales-daniel-ortega-\d{4}-\d{2}-\d{2}\.zip$/,
     );
     // Un ZIP empieza por «PK».
     expect(fs.readFileSync(file).subarray(0, 2).toString()).toBe('PK');

@@ -14,6 +14,14 @@ export const USERS = {
     client: process.env.E2E_CLIENT_EMAIL ?? 'cliente@example.com',
 } as const;
 
+/**
+ * Aviso de privacidad (D-075): el DemoDataSeeder deja leído el texto a toda la plantilla de
+ * ejemplo (los E2E no dependen del aviso) salvo a esta persona, que lo tiene pendiente para el E2E
+ * de privacidad (privacy.spec.ts). Ningún otro E2E inicia sesión con ella.
+ */
+export const PRIVACY_PENDING_USER =
+    process.env.E2E_PRIVACY_PENDING_EMAIL ?? 'daniel.ortega@example.com';
+
 /** Rutas de la barra lateral (URLs en español, contrato de routes/web.php). */
 export const SIDEBAR_PATHS = [
     '/mis-tareas',
