@@ -19,7 +19,10 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Queue\Connectors\ConnectorInterface;
+use Illuminate\Queue\NullQueue;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -89,6 +92,32 @@ it('los eventos de tiempo real van por la cola, nunca al instante, y un fallo al
 
     Queue::assertPushed(BroadcastEvent::class, fn (BroadcastEvent $job): bool => $job->event instanceof BroadcastMessagePosted && $job->afterCommit === true);
     Queue::assertPushed(BroadcastEvent::class, fn (BroadcastEvent $job): bool => $job->event instanceof BroadcastConversationActivity);
+});
+
+it('si la cola falla al encolar un evento de tiempo real, el mensaje se guarda igual y el fallo se registra', function () {
+    Exceptions::fake();
+    // Una cola que siempre falla al encolar (Valkey caído, por ejemplo).
+    app('queue')->extend('failing', fn () => new class implements ConnectorInterface
+    {
+        public function connect(array $config): NullQueue
+        {
+            return new class extends NullQueue
+            {
+                public function push($job, $data = '', $queue = null)
+                {
+                    throw new RuntimeException('La cola no responde');
+                }
+            };
+        }
+    });
+    config(['queue.default' => 'failing', 'queue.connections.failing' => ['driver' => 'failing']]);
+
+    $message = $this->writer->post($this->ana, $this->chat, 'Hola');
+    $this->writer->edit($this->ana, $message, 'Hola, equipo');
+
+    expect($message->fresh()->body)->toBe('Hola, equipo')
+        ->and($this->sent->count())->toBe(0);
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'La cola no responde');
 });
 
 it('un mensaje nuevo sale a su conversación con ids y tipo, sin el texto', function () {
