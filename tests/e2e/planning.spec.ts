@@ -179,10 +179,17 @@ test('mover una tarea en el calendario (teclado y arrastre) y verla en la lista 
         await page.mouse.up();
 
         await expect(chipOn(`${month}-15`)).toBeVisible();
+        // Que termine de guardarse antes de cambiar de vista.
+        await page.waitForLoadState('networkidle');
     });
 
     await test.step('la lista enseña las fechas nuevas (la duración se conserva)', async () => {
-        await page.getByRole('radio', { name: 'Lista' }).click();
+        // Mientras el calendario termina de guardar, el cambio de vista se ignora: se reintenta.
+        const list = page.getByRole('radio', { name: 'Lista' });
+        await expect(async () => {
+            await list.click();
+            await expect(list).toBeChecked({ timeout: 2_000 });
+        }).toPass({ timeout: 20_000 });
         const row = page
             .locator('[data-test="task-row"]')
             .filter({ hasText: title });

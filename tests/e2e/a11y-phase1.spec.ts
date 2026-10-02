@@ -529,6 +529,10 @@ async function expectNoHorizontalScroll(
                 rect.height === 0 ||
                 style.visibility === 'hidden' ||
                 style.position === 'fixed' ||
+                // Campos ocultos que Radix crea para los formularios (interruptores y radios):
+                // invisibles, sin foco y desplazados fuera a propósito.
+                (el.getAttribute('aria-hidden') === 'true' &&
+                    style.opacity === '0') ||
                 el.closest('[data-radix-popper-content-wrapper]') !== null
             ) {
                 continue;
