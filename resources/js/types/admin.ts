@@ -179,6 +179,8 @@ export type AdminSettings = {
     weekly_digest_enabled: boolean;
     occupancy_low_threshold: number;
     occupancy_high_threshold: number;
+    /** Recordatorio de los viernes para enviar la semana (time:remind-week, D-073). */
+    week_reminder_enabled: boolean;
 };
 
 export type AdminSettingsProps = {

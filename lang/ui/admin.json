@@ -308,6 +308,8 @@
     "admin.settings.time.allow_future_help": "Normalmente solo se imputa hasta hoy.",
     "admin.settings.time.description_required": "Descripción obligatoria",
     "admin.settings.time.description_required_help": "Cada entrada de horas tendrá que explicar qué se ha hecho.",
+    "admin.settings.time.week_reminder": "Recordatorio de los viernes",
+    "admin.settings.time.week_reminder_help": "Los viernes a las 13:00, aviso a quien aún no ha enviado su semana.",
     "admin.settings.time.default_week": "Jornada por defecto",
     "admin.settings.time.default_week_help": "La reciben las personas nuevas desde su alta y la usan quienes no tienen jornada propia.",
     "admin.settings.attachments.title": "Adjuntos",

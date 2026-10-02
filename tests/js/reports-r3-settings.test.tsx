@@ -48,6 +48,7 @@ const props: AdminSettingsProps = {
         weekly_digest_enabled: true,
         occupancy_low_threshold: 70,
         occupancy_high_threshold: 110,
+        week_reminder_enabled: true,
     },
     roundings: [1, 5, 10, 15, 30],
     serverUploadLimitMb: null,

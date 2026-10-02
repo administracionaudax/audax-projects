@@ -62,6 +62,7 @@ type SettingsForm = {
     occupancy_low_threshold: string;
     occupancy_high_threshold: string;
     max_audio_seconds: string;
+    week_reminder_enabled: boolean;
 };
 
 function Section({
@@ -191,6 +192,7 @@ export default function AdminSettings({
         occupancy_low_threshold: String(settings.occupancy_low_threshold),
         occupancy_high_threshold: String(settings.occupancy_high_threshold),
         max_audio_seconds: String(settings.max_audio_seconds),
+        week_reminder_enabled: settings.week_reminder_enabled ?? true,
     });
     const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)
         ? AUDIO_DURATIONS
@@ -567,6 +569,16 @@ export default function AdminSettings({
                                 )
                             }
                             error={errors.time_entry_description_required}
+                        />
+                        <Toggle
+                            id={`${id}-week-reminder`}
+                            label={t('admin.settings.time.week_reminder')}
+                            help={t('admin.settings.time.week_reminder_help')}
+                            checked={form.data.week_reminder_enabled}
+                            onChange={(checked) =>
+                                form.setData('week_reminder_enabled', checked)
+                            }
+                            error={errors.week_reminder_enabled}
                         />
                         <WeekMinutesInput
                             value={form.data.default_work_minutes}

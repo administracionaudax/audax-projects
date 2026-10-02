@@ -441,6 +441,7 @@ const settingsProps: AdminSettingsProps = {
         weekly_digest_enabled: true,
         occupancy_low_threshold: 70,
         occupancy_high_threshold: 110,
+        week_reminder_enabled: true,
     },
     roundings: [1, 5, 10, 15, 30],
     serverUploadLimitMb: 20,
@@ -479,6 +480,19 @@ describe('ajustes', () => {
         });
         expect(overage.getAttribute('aria-checked')).toBe('true');
         expect(overage.getAttribute('aria-describedby')).toBeTruthy();
+    });
+
+    it('el recordatorio de los viernes se puede desactivar (Fase 7)', async () => {
+        render(<AdminSettings {...settingsProps} />);
+
+        const reminder = screen.getByRole('switch', {
+            name: 'Recordatorio de los viernes',
+        });
+        expect(reminder.getAttribute('aria-checked')).toBe('true');
+
+        await userEvent.click(reminder);
+
+        expect(reminder.getAttribute('aria-checked')).toBe('false');
     });
 });
 

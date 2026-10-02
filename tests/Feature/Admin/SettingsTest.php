@@ -97,3 +97,23 @@ test('valida cada ajuste', function (array $changes, array $errors) {
     'día de más de 24 h' => [['default_work_minutes' => [480, 480, 1500, 480, 480, 0, 0]], ['default_work_minutes.2']],
     'interruptor no booleano' => [['require_2fa' => 'quizá'], ['require_2fa']],
 ]);
+
+test('el recordatorio de los viernes se activa y desactiva desde los ajustes; sin enviarlo, se conserva', function () {
+    expect(Setting::get('week_reminder_enabled'))->toBeTrue();
+    // Sin exigir el doble factor: el admin del test no lo tiene.
+    $valid = [...$this->valid, 'require_2fa' => false];
+
+    $this->actingAs($this->admin)
+        ->put('/admin/ajustes', [...$valid, 'week_reminder_enabled' => false])
+        ->assertSessionHasNoErrors();
+
+    expect(Setting::get('week_reminder_enabled'))->toBeFalse();
+
+    $this->actingAs($this->admin)->put('/admin/ajustes', $valid)->assertSessionHasNoErrors();
+
+    expect(Setting::get('week_reminder_enabled'))->toBeFalse();
+
+    $this->actingAs($this->admin)
+        ->put('/admin/ajustes', [...$valid, 'week_reminder_enabled' => 'quizá'])
+        ->assertSessionHasErrors('week_reminder_enabled');
+});

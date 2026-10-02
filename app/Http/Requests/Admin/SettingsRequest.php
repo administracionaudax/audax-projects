@@ -70,6 +70,8 @@ class SettingsRequest extends FormRequest
             'weekly_digest_enabled' => ['required', 'boolean'],
             'occupancy_low_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX, 'lt:occupancy_high_threshold'],
             'occupancy_high_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX],
+            // Opcional en la petición: quien no lo envía conserva el valor guardado (Fase 7, D-073).
+            'week_reminder_enabled' => ['sometimes', 'required', 'boolean'],
         ];
     }
 
@@ -145,6 +147,7 @@ class SettingsRequest extends FormRequest
             'weekly_digest_enabled' => $this->boolean('weekly_digest_enabled'),
             'occupancy_low_threshold' => $this->integer('occupancy_low_threshold'),
             'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
+            ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
         ];
     }
 }
