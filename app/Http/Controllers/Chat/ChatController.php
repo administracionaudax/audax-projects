@@ -6,6 +6,7 @@ use App\Domain\Chat\ConversationDirectory;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Chat\ChatUsers;
 use App\Http\Resources\Chat\ConversationList;
+use App\Http\Resources\Chat\ConversationPresenter;
 use App\Http\Resources\Chat\ConversationView;
 use App\Models\Conversation;
 use App\Models\User;
@@ -70,6 +71,34 @@ class ChatController extends Controller
         return response()->json([
             'conversations' => $this->list->for($user),
             'unread_total' => $this->directory->unreadTotal($user),
+        ]);
+    }
+
+    /**
+     * Conversaciones que el admin modera sin participar en ellas (D-071, D-119): las de proyecto y
+     * las de grupo, nunca las directas. Solo lo necesario para abrirlas (la ruta exige el rol).
+     */
+    public function moderation(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $conversations = $this->directory->moderatable($user)
+            ->with(['project' => fn (Relation $query) => $query->select(['id', 'code', 'name', 'color', 'status'])])
+            ->withCount('activeParticipants')
+            ->limit(ConversationList::MAX)
+            ->get();
+
+        return response()->json([
+            'conversations' => array_values($conversations->map(fn (Conversation $conversation): array => [
+                'id' => $conversation->id,
+                'type' => $conversation->type->value,
+                'title' => ConversationPresenter::title($conversation, $conversation->project, null),
+                'subtitle' => $conversation->project?->code,
+                'members_count' => (int) ($conversation->getAttribute('active_participants_count') ?? 0),
+                'read_only' => $conversation->project !== null && ! $conversation->project->acceptsTime(),
+                'last_activity_at' => ($conversation->last_message_at ?? $conversation->created_at)?->toIso8601ZuluString(),
+            ])->all()),
         ]);
     }
 

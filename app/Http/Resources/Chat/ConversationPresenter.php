@@ -59,6 +59,8 @@ final class ConversationPresenter
                 'moderate' => $can->moderate,
                 'create_task' => $can->createTask,
                 'mute' => $can->participant !== null,
+                'manage' => $can->manage,
+                'leave' => $can->leave,
             ],
             'read_only_reason' => $can->readOnlyReason($conversation),
         ];

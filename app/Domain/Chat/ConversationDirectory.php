@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,10 +20,14 @@ use Illuminate\Validation\ValidationException;
  * - de proyecto: una por proyecto, creada al primer uso, con sus miembros como participantes;
  *   quien sale del proyecto deja de participar (left_at) pero su histórico se conserva,
  * - directas: una por pareja de personas internas activas,
- * - de grupo: con nombre, creadas por cualquier interno.
+ * - de grupo: con nombre, creadas por cualquier interno; las gestiona (renombrar, añadir y quitar
+ *   personas) quien la creó o el admin, y cualquiera puede salir. Cada cambio deja un mensaje de
+ *   sistema en el grupo (D-119).
  */
 final class ConversationDirectory
 {
+    public function __construct(private readonly MessageWriter $writer) {}
+
     public function forProject(Project $project): Conversation
     {
         $conversation = Conversation::query()->firstOrCreate(
@@ -139,6 +144,89 @@ final class ConversationDirectory
 
             return $conversation;
         });
+    }
+
+    public function renameGroup(User $actor, Conversation $group, string $name): void
+    {
+        Gate::forUser($actor)->authorize('manage', $group);
+
+        $name = mb_substr(trim($name), 0, 120);
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => __('chat.errors.group_name')]);
+        }
+
+        if ($name === $group->name) {
+            return;
+        }
+
+        $group->forceFill(['name' => $name])->save();
+        $this->writer->system($group, 'group.renamed', ['by' => $actor->name, 'name' => $name]);
+    }
+
+    /**
+     * Añade personas internas y activas que aún no están en el grupo.
+     *
+     * @param  list<int>  $userIds
+     * @return list<int> las que se han añadido
+     */
+    public function addToGroup(User $actor, Conversation $group, array $userIds): array
+    {
+        Gate::forUser($actor)->authorize('manage', $group);
+
+        $current = $group->activeParticipants()->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $people = User::query()->whereKey($userIds)->whereKeyNot($current)->active()->internal()->orderBy('name')->get(['id', 'name']);
+
+        if ($people->isEmpty()) {
+            throw ValidationException::withMessages(['user_ids' => __('chat.errors.group_add')]);
+        }
+
+        DB::transaction(function () use ($group, $people): void {
+            foreach ($people as $person) {
+                $this->join($group, $person->id);
+            }
+        });
+
+        $this->writer->system($group, 'group.added', [
+            'by' => $actor->name,
+            'users' => array_values($people->pluck('name')->all()),
+        ]);
+
+        return array_values($people->modelKeys());
+    }
+
+    public function removeFromGroup(User $actor, Conversation $group, User $member): void
+    {
+        Gate::forUser($actor)->authorize('manage', $group);
+
+        if ($member->id === $actor->id || ! $group->hasParticipant($member)) {
+            throw ValidationException::withMessages(['user' => __('chat.errors.group_remove')]);
+        }
+
+        $this->leave($group, $member->id);
+        $this->writer->system($group, 'group.removed', ['by' => $actor->name, 'user' => $member->name]);
+    }
+
+    public function leaveGroup(User $user, Conversation $group): void
+    {
+        Gate::forUser($user)->authorize('leave', $group);
+
+        $this->leave($group, $user->id);
+        $this->writer->system($group, 'group.left', ['user' => $user->name]);
+    }
+
+    /**
+     * Conversaciones que el admin puede moderar sin participar en ellas (D-071): las de proyecto y
+     * las de grupo; las directas, nunca. Las más recientes primero.
+     *
+     * @return Builder<Conversation>
+     */
+    public function moderatable(User $admin): Builder
+    {
+        return Conversation::query()
+            ->whereIn('type', [ConversationType::Project, ConversationType::Group])
+            ->whereDoesntHave('participants', fn (Builder $query) => $query->where('user_id', $admin->id)->whereNull('left_at'))
+            ->orderByRaw('coalesce(last_message_at, created_at) desc')
+            ->orderByDesc('id');
     }
 
     /**

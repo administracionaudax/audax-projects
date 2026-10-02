@@ -23,6 +23,8 @@ final readonly class ConversationAbilities
         public bool $moderate,
         public bool $createTask,
         public ?ConversationParticipant $participant,
+        public bool $manage = false,
+        public bool $leave = false,
     ) {}
 
     public static function for(User $user, Conversation $conversation): self
@@ -35,6 +37,7 @@ final readonly class ConversationAbilities
 
         $gate = Gate::forUser($user);
         $project = $conversation->type === ConversationType::Project ? $conversation->project : null;
+        $group = $conversation->type === ConversationType::Group;
 
         return new self(
             view: $gate->allows('view', $conversation),
@@ -42,6 +45,9 @@ final readonly class ConversationAbilities
             moderate: $gate->allows('moderate', $conversation),
             createTask: $project !== null && $gate->allows('create', [Task::class, $project]),
             participant: $participant,
+            // Grupos (D-119): lo gestiona quien lo creó (si sigue en él) o el admin; sale quien participa.
+            manage: $group && $gate->allows('manage', $conversation),
+            leave: $group && $participant !== null,
         );
     }
 

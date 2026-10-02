@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Chat\ConversationController;
+use App\Http\Controllers\Chat\GroupController;
 use App\Http\Controllers\Chat\MessageActionController;
 use App\Http\Controllers\Chat\MessageController;
 use App\Http\Controllers\Chat\MessageTaskController;
@@ -32,6 +33,30 @@ Route::post('chat/directas', [ConversationController::class, 'storeDirect'])
 Route::post('chat/grupos', [ConversationController::class, 'storeGroup'])
     ->middleware('throttle:30,1,chat-conversations')
     ->name('chat.groups.store');
+
+// Conversaciones que el admin modera sin participar (proyectos y grupos; nunca directas, D-071).
+Route::get('chat/moderar', [ChatController::class, 'moderation'])
+    ->middleware('role:admin')
+    ->name('chat.moderation');
+
+// Gestión de los grupos (D-119): renombrar, añadir y quitar personas, y salir.
+Route::patch('chat/{conversation}/grupo', [GroupController::class, 'update'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-groups')
+    ->name('chat.groups.update');
+Route::post('chat/{conversation}/participantes', [GroupController::class, 'addMembers'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-groups')
+    ->name('chat.groups.members.store');
+Route::delete('chat/{conversation}/participantes/{member}', [GroupController::class, 'removeMember'])
+    ->whereNumber('conversation')
+    ->whereNumber('member')
+    ->middleware('throttle:30,1,chat-groups')
+    ->name('chat.groups.members.destroy');
+Route::post('chat/{conversation}/salir', [GroupController::class, 'leave'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-groups')
+    ->name('chat.groups.leave');
 
 // Mensajes sueltos (editar, borrar, reaccionar, fijar, moderar y crear tarea).
 Route::get('chat/mensajes/{message}', [MessageController::class, 'show'])
