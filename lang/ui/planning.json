@@ -1,5 +1,6 @@
 {
     "planning.view.calendar": "Calendario",
+    "planning.view.locked": "Guardando el cambio de fechas: podrás cambiar de vista en cuanto termine.",
     "planning.calendar.caption": "Calendario de tareas: :period",
     "planning.calendar.today": "Hoy",
     "planning.calendar.today_label": ":date (hoy)",

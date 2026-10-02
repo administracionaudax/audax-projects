@@ -37,6 +37,8 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
     const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
     const [closedTaskId, setClosedTaskId] = useState<number | null>(null);
     const [navigating, setNavigating] = useState(false);
+    // Un movimiento del calendario en curso bloquea el cambio de vista (con su motivo).
+    const [calendarBusy, setCalendarBusy] = useState(false);
     const calendar = props.calendar ?? null;
 
     // Cuando el servidor confirma el cierre (panel vacío), se olvida: así «Atrás» en el navegador
@@ -166,6 +168,7 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
                         view={view}
                         filters={filters}
                         onChange={changeFilters}
+                        viewLocked={view === 'calendar' && calendarBusy}
                     />
 
                     {view !== 'calendar' && tasks.length === 0 ? (
@@ -195,6 +198,7 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
                                 loading={navigating}
                                 onOpen={openTask}
                                 onNavigate={navigateCalendar}
+                                onBusyChange={setCalendarBusy}
                             />
                         ) : null
                     ) : view === 'kanban' ? (

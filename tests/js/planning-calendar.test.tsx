@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TaskCalendar } from '@/components/planning/task-calendar';
+import { EMPTY_FILTERS, TaskToolbar } from '@/components/tasks/task-filters';
 import {
     buildTaskLookups,
     TaskLookupsProvider,
@@ -1003,5 +1004,95 @@ describe('vista semana y tareas sin fecha', () => {
                 name: 'Asignar fecha a «Sin fecha»',
             }),
         ).toBeTruthy();
+    });
+});
+
+describe('cambio de vista mientras se guarda un movimiento', () => {
+    it('el calendario avisa de que hay un movimiento en curso y de cuándo termina', async () => {
+        mocks.preview.mockResolvedValue([]);
+        const onBusyChange = vi.fn();
+        const calendar = data();
+
+        render(
+            <TaskLookupsProvider value={lookups(true)}>
+                <TaskCalendar
+                    calendar={calendar}
+                    onOpen={vi.fn()}
+                    onNavigate={vi.fn()}
+                    onBusyChange={onBusyChange}
+                />
+            </TaskLookupsProvider>,
+        );
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
+
+        await act(async () => {
+            mocks.dragEnd?.({
+                active: {
+                    id: 'grid:10',
+                    data: { current: { task: calendar.tasks[0] } },
+                },
+                over: { id: 'day:2026-10-20' },
+            });
+        });
+
+        await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+        expect(onBusyChange).toHaveBeenLastCalledWith(true);
+
+        act(() => mocks.save.mock.calls[0][2].onFinish?.());
+
+        expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it('la barra de la pestaña desactiva Lista, Kanban y Calendario y dice por qué', () => {
+        const onChange = vi.fn();
+        const { rerender } = render(
+            <TaskLookupsProvider value={lookups(true)}>
+                <TaskToolbar
+                    view="calendar"
+                    filters={{
+                        ...EMPTY_FILTERS,
+                        completed: false,
+                        group: 'status',
+                    }}
+                    onChange={onChange}
+                    viewLocked
+                />
+            </TaskLookupsProvider>,
+        );
+
+        for (const name of ['Lista', 'Kanban', 'Calendario']) {
+            const item = screen.getByRole('radio', { name });
+            expect((item as HTMLButtonElement).disabled).toBe(true);
+        }
+        const status = screen.getByText(
+            'Guardando el cambio de fechas: podrás cambiar de vista en cuanto termine.',
+        );
+        expect(status.closest('[role="status"]')).toBeTruthy();
+        expect(
+            screen
+                .getByRole('radio', { name: 'Lista' })
+                .closest('[aria-labelledby]')
+                ?.getAttribute('aria-describedby'),
+        ).toBe(status.closest('[role="status"]')?.id);
+
+        rerender(
+            <TaskLookupsProvider value={lookups(true)}>
+                <TaskToolbar
+                    view="calendar"
+                    filters={{
+                        ...EMPTY_FILTERS,
+                        completed: false,
+                        group: 'status',
+                    }}
+                    onChange={onChange}
+                />
+            </TaskLookupsProvider>,
+        );
+
+        expect(
+            (screen.getByRole('radio', { name: 'Lista' }) as HTMLButtonElement)
+                .disabled,
+        ).toBe(false);
+        expect(screen.queryByText(/podrás cambiar de vista/)).toBeNull();
     });
 });

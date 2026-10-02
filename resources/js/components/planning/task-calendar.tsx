@@ -779,12 +779,15 @@ export function TaskCalendar({
     loading = false,
     onOpen,
     onNavigate,
+    onBusyChange,
 }: {
     calendar: TaskCalendarData;
     loading?: boolean;
     onOpen: (taskId: number) => void;
     /** Cambia de periodo o de escala (la página lo lleva a la URL: ?mes= o ?semana=). */
     onNavigate: (mode: CalendarMode, period: string) => void;
+    /** Avisa de que hay (o ya no hay) un movimiento en curso: la página bloquea el cambio de vista. */
+    onBusyChange?: (busy: boolean) => void;
 }) {
     const lookups = useTaskLookups();
     const helpId = useId();
@@ -793,6 +796,15 @@ export function TaskCalendar({
     const [dragging, setDragging] = useState<CalendarTask | null>(null);
     const reschedule = useReschedule();
     const canEdit = lookups.can.update;
+    const busy = reschedule.busy;
+
+    // Mientras se pide la propuesta, se pregunta o se guarda un movimiento, la página no deja
+    // cambiar de vista (se perdería sin aviso); al desmontarse, queda libre.
+    useEffect(() => {
+        onBusyChange?.(busy);
+    }, [busy, onBusyChange]);
+
+    useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
 
     // Mientras se mueve una tarea se enseña ya en su día nuevo (vuelve si se cancela o falla).
     const moving = reschedule.moving;

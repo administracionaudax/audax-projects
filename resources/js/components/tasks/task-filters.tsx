@@ -1,4 +1,11 @@
-import { CalendarDays, Kanban, List, SlidersHorizontal, X } from 'lucide-react';
+import {
+    CalendarDays,
+    Kanban,
+    List,
+    LoaderCircle,
+    SlidersHorizontal,
+    X,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 import { NONE, PRIORITIES } from '@/components/tasks/task-fields';
 import { useTaskLookups } from '@/components/tasks/task-lookups';
@@ -75,16 +82,20 @@ export function TaskToolbar({
     view,
     filters,
     onChange,
+    viewLocked = false,
 }: {
     view: TaskView;
     filters: TaskFilters;
     onChange: (view: TaskView, filters: TaskFilters) => void;
+    /** Hay un movimiento del calendario en curso: la vista no se puede cambiar hasta que acabe. */
+    viewLocked?: boolean;
 }) {
     const lookups = useTaskLookups();
     const mineId = useId();
     const completedId = useId();
     const groupId = useId();
     const viewLabelId = useId();
+    const viewLockedId = useId();
     const filtersId = useId();
     // En el móvil los filtros se pliegan para no ocupar media pantalla; en escritorio, siempre a la vista.
     const [showFilters, setShowFilters] = useState(false);
@@ -110,7 +121,7 @@ export function TaskToolbar({
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <span id={viewLabelId} className="sr-only">
                         {t('task_filters.view')}
                     </span>
@@ -118,6 +129,8 @@ export function TaskToolbar({
                         type="single"
                         variant="outline"
                         value={view}
+                        disabled={viewLocked}
+                        aria-describedby={viewLocked ? viewLockedId : undefined}
                         onValueChange={(next) => {
                             if (
                                 next === 'list' ||
@@ -154,6 +167,22 @@ export function TaskToolbar({
                             {t('planning.view.calendar')}
                         </ToggleGroupItem>
                     </ToggleGroup>
+                    <p
+                        id={viewLockedId}
+                        role="status"
+                        className="flex items-center gap-1.5 text-sm text-muted-foreground empty:hidden"
+                        data-test="view-locked"
+                    >
+                        {viewLocked ? (
+                            <>
+                                <LoaderCircle
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 motion-safe:animate-spin"
+                                />
+                                {t('planning.view.locked')}
+                            </>
+                        ) : null}
+                    </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
