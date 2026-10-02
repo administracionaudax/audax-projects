@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 | Lo que se lee lo autoriza ConversationPolicy::view (D-071); lo que se escribe pasa por
 | App\Domain\Chat\MessageWriter (D-069). Las acciones responden JSON (la conversación la gestiona
 | el navegador: paginación por cursor y consulta periódica sin tiempo real).
+| Las rutas chat/{conversation}… solo aceptan números (whereNumber) para no tapar /chat/buscar ni
+| /chat/transcripciones (C3). Cada límite (throttle) lleva su prefijo, como en C2 y C3.
 */
 
 // Páginas: lista de conversaciones y conversación abierta (?mensaje={id} va a ese mensaje).
@@ -26,10 +28,10 @@ Route::get('chat/personas', [ChatController::class, 'people'])->name('chat.peopl
 
 // Directas y grupos.
 Route::post('chat/directas', [ConversationController::class, 'storeDirect'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,chat-conversations')
     ->name('chat.direct.store');
 Route::post('chat/grupos', [ConversationController::class, 'storeGroup'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,chat-conversations')
     ->name('chat.groups.store');
 
 // Mensajes sueltos (editar, borrar, reaccionar, fijar, moderar y crear tarea).
@@ -41,14 +43,14 @@ Route::patch('chat/mensajes/{message}', [MessageController::class, 'update'])->w
 Route::delete('chat/mensajes/{message}', [MessageController::class, 'destroy'])->whereNumber('message')->name('chat.messages.destroy');
 Route::post('chat/mensajes/{message}/reacciones', [MessageActionController::class, 'react'])
     ->whereNumber('message')
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,chat-react')
     ->name('chat.messages.react');
 Route::patch('chat/mensajes/{message}/fijado', [MessageActionController::class, 'pin'])->whereNumber('message')->name('chat.messages.pin');
 Route::patch('chat/mensajes/{message}/moderacion', [MessageActionController::class, 'moderate'])->whereNumber('message')->name('chat.messages.moderate');
 Route::get('chat/mensajes/{message}/tarea', [MessageTaskController::class, 'options'])->whereNumber('message')->name('chat.messages.task.options');
 Route::post('chat/mensajes/{message}/tarea', [MessageTaskController::class, 'store'])
     ->whereNumber('message')
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,chat-task')
     ->name('chat.messages.task.store');
 
 // Una conversación.
@@ -57,7 +59,7 @@ Route::get('chat/{conversation}/mensajes', [MessageController::class, 'index'])-
 Route::get('chat/{conversation}/novedades', [MessageController::class, 'poll'])->whereNumber('conversation')->name('chat.messages.poll');
 Route::post('chat/{conversation}/mensajes', [MessageController::class, 'store'])
     ->whereNumber('conversation')
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,chat-post')
     ->name('chat.messages.store');
 Route::post('chat/{conversation}/leido', [ConversationController::class, 'read'])->whereNumber('conversation')->name('chat.read');
 Route::patch('chat/{conversation}/silencio', [ConversationController::class, 'mute'])->whereNumber('conversation')->name('chat.mute');

@@ -268,5 +268,6 @@ it('apagado (como en el resto de tests) no pide nada', function () {
 
     $this->writer->post($this->ana, $this->chat, 'https://audaxstudio.com');
 
-    Queue::assertNothingPushed();
+    // Lo de otras áreas (avisos del chat, C2) puede encolarse; la previsualización, no.
+    Queue::assertNotPushed(FetchLinkPreview::class);
 });

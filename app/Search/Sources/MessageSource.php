@@ -303,7 +303,7 @@ class MessageSource implements SearchSource
             'excerpt' => $excerpt,
             'file_name' => $file,
             'is_audio' => $row->type === MessageType::Audio,
-            'url' => '/chat/'.$row->conversation_id.'?mensaje='.$row->id,
+            'url' => route('chat.show', ['conversation' => $row->conversation_id, 'mensaje' => $row->id], false),
         ];
     }
 

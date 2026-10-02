@@ -2,9 +2,9 @@
 
 use App\Broadcasting\ConversationViewers;
 use App\Domain\Chat\ConversationDirectory;
+use App\Http\Controllers\Realtime\ConversationLinkController;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Support\Facades\Route;
 
 /*
 | Presencia sin tiempo real (latidos cada minuto), «tengo la conversación abierta» (no avisar a
@@ -80,19 +80,12 @@ it('cerrar la conversación retira la marca al momento', function () {
     expect($viewers->viewing($this->chat->id, [$this->ana->id]))->toBe([]);
 });
 
-it('el enlace de los avisos lleva a la conversación y al mensaje en el chat', function () {
+it('el enlace de los avisos lleva a la conversación y al mensaje en el chat (chat.show)', function () {
     $this->actingAs($this->luis)->get("/tiempo-real/conversaciones/{$this->dm->id}/abrir?mensaje=15")
-        ->assertRedirect("/chat?conversacion={$this->dm->id}&mensaje=15");
+        ->assertRedirect("/chat/{$this->dm->id}?mensaje=15");
     $this->actingAs($this->luis)->get("/tiempo-real/conversaciones/{$this->dm->id}/abrir")
-        ->assertRedirect("/chat?conversacion={$this->dm->id}");
-});
-
-it('si el chat define la ruta de la conversación (chat.show), el enlace la usa', function () {
-    Route::middleware('web')->get('chat/conversaciones/{conversation}', fn () => 'ok')->name('chat.show');
-    Route::getRoutes()->refreshNameLookups();
-
-    $this->actingAs($this->ana)->get("/tiempo-real/conversaciones/{$this->chat->id}/abrir?mensaje=3")
-        ->assertRedirect("/chat/conversaciones/{$this->chat->id}?mensaje=3");
+        ->assertRedirect("/chat/{$this->dm->id}");
+    expect(ConversationLinkController::target($this->chat, 3))->toBe(route('chat.show', ['conversation' => $this->chat->id, 'mensaje' => 3], false));
 });
 
 it('el enlace comprueba que aún puedes ver la conversación (D-071)', function () {

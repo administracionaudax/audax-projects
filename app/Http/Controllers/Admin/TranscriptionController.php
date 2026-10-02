@@ -208,7 +208,7 @@ class TranscriptionController extends Controller
             'message_hidden' => $message->hidden_at !== null,
             'over_limit' => $transcription->audio_duration_ms !== null && $transcription->audio_duration_ms > $limitMs,
             'can_retry' => self::canRetry($transcription, $now),
-            'url' => $visible ? '/chat/'.$conversation->id.'?mensaje='.$message->id : null,
+            'url' => $visible ? route('chat.show', ['conversation' => $conversation->id, 'mensaje' => $message->id], false) : null,
         ];
     }
 
