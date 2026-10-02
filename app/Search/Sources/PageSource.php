@@ -70,6 +70,8 @@ class PageSource implements SearchSource
             ['route' => 'profile.edit', 'key' => 'profile', 'allowed' => $always],
             ['route' => 'security.edit', 'key' => 'security', 'allowed' => $always],
             ['route' => 'appearance.edit', 'key' => 'appearance', 'allowed' => $always],
+            // Solo internos, como toda la búsqueda (D-073).
+            ['route' => 'notification-settings.edit', 'key' => 'notification_settings', 'allowed' => fn (User $user): bool => $user->isInternal()],
             ['route' => 'sessions.index', 'key' => 'sessions', 'allowed' => $always],
         ];
 

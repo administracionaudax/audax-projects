@@ -111,7 +111,7 @@ test('los textos de las secciones salen de lang/es/search.php', function () {
         }
     })->all();
 
-    expect($pages)->toHaveCount(14);
+    expect($pages)->toHaveCount(15);
 
     foreach ($pages as $page) {
         foreach (['title', 'subtitle', 'keywords'] as $field) {

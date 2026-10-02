@@ -30,6 +30,7 @@ return [
         'profile' => ['title' => 'Perfil', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes nombre correo'],
         'security' => ['title' => 'Seguridad', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes contrasena 2fa doble factor'],
         'appearance' => ['title' => 'Apariencia', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes tema claro oscuro'],
+        'notification_settings' => ['title' => 'Preferencias de notificación', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes notificaciones avisos email correo resumen diario campana navegador'],
         'sessions' => ['title' => 'Sesiones activas', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes dispositivos cerrar sesion'],
     ],
 ];

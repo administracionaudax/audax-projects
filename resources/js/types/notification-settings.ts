@@ -42,3 +42,8 @@ export type NotificationSettingsForm = {
     events: Record<string, Partial<Record<NotificationChannel, boolean>>>;
     daily_digest: boolean;
 };
+
+/** Props de la página /ajustes/notificaciones (NotificationSettingsController::edit). */
+export type NotificationSettingsPageProps = {
+    settings: NotificationSettings;
+};

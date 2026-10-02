@@ -1,11 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { BellOff, CheckCheck } from 'lucide-react';
+import { BellOff, CheckCheck, SlidersHorizontal } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { t } from '@/lib/i18n';
+import { edit as editNotificationSettings } from '@/routes/notification-settings';
 import { index as notificationsIndex, readAll } from '@/routes/notifications';
 import type { NotificationsPageProps } from '@/types';
 
@@ -26,21 +27,34 @@ export default function Notifications({
                         title={t('notifications.title')}
                         description={t('notifications.description')}
                     />
-                    {unread > 0 ? (
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                router.post(
-                                    readAll.url(),
-                                    {},
-                                    { preserveScroll: true },
-                                )
-                            }
-                        >
-                            <CheckCheck aria-hidden="true" />
-                            {t('notifications.mark_all_read')}
+                    <div className="flex flex-wrap gap-2">
+                        {unread > 0 ? (
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    router.post(
+                                        readAll.url(),
+                                        {},
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                <CheckCheck aria-hidden="true" />
+                                {t('notifications.mark_all_read')}
+                            </Button>
+                        ) : null}
+                        <Button asChild variant="outline">
+                            <Link
+                                href={editNotificationSettings()}
+                                aria-label={t(
+                                    'notification_settings.link_label',
+                                )}
+                            >
+                                <SlidersHorizontal aria-hidden="true" />
+                                {t('notification_settings.link')}
+                            </Link>
                         </Button>
-                    ) : null}
+                    </div>
                 </div>
 
                 <ToggleGroup
