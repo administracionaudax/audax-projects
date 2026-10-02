@@ -91,5 +91,6 @@
     "privacy.admin_user.description": "Prepara una copia de los datos personales de :name (ZIP con JSON y CSV) para atender una petición de acceso o de portabilidad.",
     "privacy.admin_user.request": "Preparar sus datos",
     "privacy.admin_user.in_progress": "Ya hay una exportación en curso.",
-    "privacy.admin_user.empty": "Aún no se ha exportado ningún dato de esta persona"
+    "privacy.admin_user.empty": "Aún no se ha exportado ningún dato de esta persona",
+    "privacy.admin.chat_messages_help": "Con un plazo, cada mensaje más antiguo se borra con sus adjuntos, sus audios y sus transcripciones. Las tareas creadas desde un mensaje se conservan."
 }

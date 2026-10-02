@@ -18,8 +18,8 @@ use InvalidArgumentException;
  * Plazos de retención (SPEC §15, D-075), cada día a las 03:10 de Madrid (routes/console.php), antes
  * de la copia nocturna:
  * - borra por lotes lo anterior al plazo de cada tipo de RetentionPolicy con su RetentionPruner
- *   (config/privacy.php: registros de acceso, notificaciones leídas y auditoría; el chat se añade al
- *   integrar la Fase 6). Un plazo «sin límite» no borra nada,
+ *   (config/privacy.php: registros de acceso, notificaciones leídas, auditoría y mensajes del chat
+ *   con sus adjuntos y transcripciones). Un plazo «sin límite» no borra nada,
  * - caduca las exportaciones de datos personales vencidas (borra el fichero) y da por fallidas las
  *   que llevan más de un día sin terminar,
  * - deja un resumen en el log.
@@ -28,7 +28,7 @@ use InvalidArgumentException;
  * personal_data_exports (tests/Feature/Privacy/PruneDataTest).
  */
 #[Signature('app:prune-data')]
-#[Description('Aplica los plazos de retención (registros de acceso, notificaciones leídas, auditoría y exportaciones de datos caducadas). Nunca borra horas, bolsas, tareas ni proyectos.')]
+#[Description('Aplica los plazos de retención (registros de acceso, notificaciones leídas, auditoría, mensajes del chat y exportaciones de datos caducadas). Nunca borra horas, bolsas, tareas ni proyectos.')]
 class PruneData extends Command
 {
     public function handle(RetentionPolicy $policy): int

@@ -25,7 +25,7 @@ use Spatie\Activitylog\Models\Activity;
 
 /*
 | Retención (SPEC §15, D-075): app:prune-data borra por lotes lo anterior a cada plazo (registros de
-| acceso, notificaciones LEÍDAS y auditoría), caduca las exportaciones vencidas y da por fallidas
+| acceso, notificaciones LEÍDAS, auditoría y mensajes del chat, en ChatRetentionTest), caduca las exportaciones vencidas y da por fallidas
 | las atascadas. NUNCA borra horas, bolsas, tareas, proyectos ni clientes.
 */
 
@@ -172,7 +172,7 @@ test('caduca las exportaciones vencidas (borra el fichero) y da por fallidas las
         ->and(Storage::disk('local')->allFiles('exports/personal-data'))->toBe([(string) $valid->path]);
 });
 
-test('deja un resumen en el log; el chat no se borra hasta que tenga su pruner', function () {
+test('deja un resumen en el log con lo borrado de cada tipo', function () {
     Setting::set('retention_chat_messages_months', 12);
     ($this->login)('2020-01-01 00:00:00');
     Log::spy();
@@ -183,7 +183,7 @@ test('deja un resumen en el log; el chat no se borra hasta que tenga su pruner',
         && $context['login_events'] === 1
         && $context['read_notifications'] === 0
         && $context['activity_log'] === 0
-        && $context['chat_messages'] === 'sin borrado configurado'
+        && $context['chat_messages'] === 0
         && $context['expired_exports'] === 0
         && $context['stuck_exports'] === 0);
 });

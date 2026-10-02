@@ -107,6 +107,9 @@ export function RetentionFields({
                                 min: field.min,
                                 max: field.max,
                             })}
+                            {field.type === 'chat_messages'
+                                ? ` ${t('privacy.admin.chat_messages_help')}`
+                                : null}
                         </p>
                         <InputError id={errorId} message={error} />
                     </div>

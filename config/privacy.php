@@ -8,6 +8,7 @@ use App\Domain\Privacy\Export\Sections\TaskCommentsSection;
 use App\Domain\Privacy\Export\Sections\TimeEntriesSection;
 use App\Domain\Privacy\Export\Sections\WorkSchedulesSection;
 use App\Domain\Privacy\Retention\ActivityLogPruner;
+use App\Domain\Privacy\Retention\ChatMessagesPruner;
 use App\Domain\Privacy\Retention\LoginEventsPruner;
 use App\Domain\Privacy\Retention\ReadNotificationsPruner;
 use App\Domain\Privacy\RetentionPolicy;
@@ -16,9 +17,11 @@ use App\Domain\Privacy\RetentionPolicy;
 |--------------------------------------------------------------------------
 | Privacidad y RGPD (SPEC §15, D-075): puntos de extensión
 |--------------------------------------------------------------------------
-| Al integrar la Fase 6 (chat) se añaden aquí, sin tocar nada más:
-| - la sección de los mensajes propios al ZIP de datos personales (export_sections),
-| - el borrado de los mensajes antiguos para RetentionPolicy::CHAT_MESSAGES (pruners).
+| Con la Fase 6 (chat) integrada:
+| - el ZIP de datos personales lleva los mensajes propios y las transcripciones de los audios
+|   propios (ChatMessagesSection),
+| - RetentionPolicy::CHAT_MESSAGES borra los mensajes antiguos con sus adjuntos, audios y
+|   transcripciones (ChatMessagesPruner); sin límite por defecto.
 */
 
 return [
@@ -40,6 +43,7 @@ return [
         RetentionPolicy::LOGIN_EVENTS => LoginEventsPruner::class,
         RetentionPolicy::READ_NOTIFICATIONS => ReadNotificationsPruner::class,
         RetentionPolicy::ACTIVITY_LOG => ActivityLogPruner::class,
+        RetentionPolicy::CHAT_MESSAGES => ChatMessagesPruner::class,
     ],
 
     // Filas por lote al borrar: cada lote es una sentencia corta, sin bloqueos largos.
