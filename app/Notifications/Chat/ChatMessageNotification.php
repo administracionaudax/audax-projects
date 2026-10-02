@@ -7,6 +7,7 @@ use App\Broadcasting\WebPushChannel;
 use App\Broadcasting\WebPushMessage;
 use App\Models\Message;
 use App\Notifications\AppNotification;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Aviso de un mensaje del chat (SPEC §12 y §13): en la campana y, si la persona lo ha activado en
@@ -44,11 +45,14 @@ abstract class ChatMessageNotification extends AppNotification implements SendsW
     }
 
     /**
-     * Solo si el mensaje sigue vivo y visible cuando la cola envía el aviso (una consulta).
+     * No, si cuando la cola envía el aviso el mensaje ya se ha borrado u ocultado (una consulta).
      */
     public function shouldSend(object $notifiable, string $channel): bool
     {
-        return Message::query()->whereKey($this->messageId)->whereNull('hidden_at')->exists();
+        return ! Message::withTrashed()
+            ->whereKey($this->messageId)
+            ->where(fn (Builder $query) => $query->whereNotNull('deleted_at')->orWhereNotNull('hidden_at'))
+            ->exists();
     }
 
     public function body(object $notifiable): ?string
