@@ -9,7 +9,11 @@ import { login, USERS } from './support';
  *   (TRANSCRIPTION_DRIVER=fake y TRANSCRIPTION_QUEUE_CONNECTION=sync en su .env, ci.yml): el audio
  *   sale transcrito con el texto del FakeTranscriber («Transcripción de prueba»). Los datos de
  *   ejemplo del chat no dicen «prueba» en ningún mensaje.
- * - Chromium graba del micrófono falso (--use-fake-device-for-media-stream) sin pedir permiso.
+ * - Chromium graba del micrófono falso (--use-fake-device-for-media-stream) sin pedir permiso. En
+ *   macOS, Chromium consulta además el permiso del sistema para el micrófono (TCC) y, sin ventana en
+ *   la que preguntarlo, getUserMedia({ audio }) se queda esperando para siempre (el vídeo falso sí
+ *   arranca): allí el micrófono es un tono de Web Audio (syntheticMicrophone). El grabador, el
+ *   MediaRecorder, la subida y la transcripción son los de verdad en las dos plataformas.
  * - El editor y el botón «Enviar» son de C1 (chat; con archivos pendientes los publica aunque no
  *   haya texto); el clip, el grabador y la bandeja, de C3.
  * Nunca contra el servidor (playwright.config.ts).
@@ -26,6 +30,37 @@ test.use({
 });
 
 const MARKETING = 'irene.castro@example.com';
+
+/**
+ * Micrófono sintético para macOS (ver arriba): getUserMedia({ audio }) devuelve un tono de 440 Hz
+ * de un AudioContext. Solo sustituye las peticiones de audio sin vídeo.
+ */
+function syntheticMicrophone(): void {
+    const devices = navigator.mediaDevices;
+    const original = devices.getUserMedia.bind(devices);
+
+    devices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
+        if (!constraints?.audio || constraints.video) {
+            return original(constraints);
+        }
+
+        const context = new AudioContext();
+        await context.resume();
+        const oscillator = context.createOscillator();
+        const destination = context.createMediaStreamDestination();
+        oscillator.frequency.value = 440;
+        oscillator.connect(destination);
+        oscillator.start();
+
+        return destination.stream;
+    };
+}
+
+test.beforeEach(async ({ page }) => {
+    if (process.platform === 'darwin') {
+        await page.addInitScript(syntheticMicrophone);
+    }
+});
 
 /** PDF mínimo que fileinfo reconoce como application/pdf. */
 const PDF = Buffer.from(
@@ -149,8 +184,10 @@ test('la búsqueda global (Ctrl+K) también encuentra lo dicho en los audios', a
     ).toContainText('Transcripción de prueba');
 
     await page.keyboard.press('Control+k');
+    // cmdk nombra el campo con la etiqueta de la paleta (aria-labelledby gana a aria-label).
     await page
-        .getByRole('combobox', { name: 'Buscar en la aplicación' })
+        .getByRole('dialog', { name: 'Búsqueda global' })
+        .getByRole('combobox')
         .fill('prueba');
     const option = page
         .getByRole('group', { name: 'Mensajes' })
