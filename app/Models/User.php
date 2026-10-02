@@ -226,6 +226,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Navegadores suscritos a los avisos Web Push (Fase 6, D-072).
+     *
+     * @return HasMany<PushSubscription, $this>
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
      * Rol de responsable de departamento (qué departamentos dirige lo marca el pivote, D-024).
      */
     public function isDepartmentManager(): bool
