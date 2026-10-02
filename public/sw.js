@@ -176,18 +176,29 @@ async function trim(cache) {
 const PUSH_DEFAULT_URL = '/chat';
 const PUSH_SUBSCRIPTIONS_URL = '/avisos-navegador/suscripciones';
 
-/** Solo rutas relativas de la propia app (nunca otra web: redirección abierta). */
+/**
+ * Solo rutas relativas de la propia app (nunca otra web: redirección abierta). Se resuelve como lo
+ * haría el navegador (que quita tabuladores y saltos de línea y trata «\\» como «/»: «/\t/x.com» o
+ * «/\\x.com» acabarían en otra web) y se exige el mismo origen; se devuelve la ruta ya resuelta.
+ */
 function pushAppUrl(value) {
-    if (
-        typeof value !== 'string' ||
-        !value.startsWith('/') ||
-        value.startsWith('//') ||
-        value.includes('\\')
-    ) {
+    if (typeof value !== 'string' || !value.startsWith('/')) {
         return PUSH_DEFAULT_URL;
     }
 
-    return value;
+    let url;
+
+    try {
+        url = new URL(value, self.location.origin);
+    } catch {
+        return PUSH_DEFAULT_URL;
+    }
+
+    if (url.origin !== self.location.origin) {
+        return PUSH_DEFAULT_URL;
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function pushText(value, max) {

@@ -141,6 +141,50 @@ describe('service worker: avisos del navegador', () => {
         expect(calls[5][1].body).toBe('texto suelto');
     });
 
+    it('rechaza las rutas que el navegador resolvería fuera del origen (tabuladores, saltos, barras invertidas)', async () => {
+        const evil = [
+            '/\t/evil.example/x',
+            '/\n/evil.example',
+            '/\r\n/evil.example',
+            '//',
+            '/\\',
+            '/\\evil.example',
+            '/\t\\evil.example',
+            '/%2F%2Fevil.example',
+        ];
+
+        for (const url of evil) {
+            await sw.dispatch('push', pushEvent({ title: 'T', url }));
+        }
+
+        const calls = sw.showNotification.mock.calls as unknown as Array<
+            [string, { data: { url: string } }]
+        >;
+        const urls = calls.map(([, options]) => options.data.url);
+
+        // Ninguna lleva a otra web: todas se quedan en la app (/chat o una ruta propia ya resuelta).
+        for (const url of urls) {
+            expect(url.startsWith('/') && !url.startsWith('//')).toBe(true);
+            expect(new URL(url, ORIGIN).origin).toBe(ORIGIN);
+        }
+
+        expect(urls.slice(0, 7)).toEqual(Array(7).fill('/chat'));
+        // «%2F%2F» no es una barra para el navegador: sigue siendo una ruta de la app.
+        expect(urls[7]).toBe('/%2F%2Fevil.example');
+    });
+
+    it('una ruta propia se conserva con su consulta', async () => {
+        await sw.dispatch(
+            'push',
+            pushEvent({ title: 'T', url: '/chat/5?mensaje=9#fin' }),
+        );
+
+        const calls = sw.showNotification.mock.calls as unknown as Array<
+            [string, { data: { url: string } }]
+        >;
+        expect(calls[0][1].data.url).toBe('/chat/5?mensaje=9#fin');
+    });
+
     it('al pulsar el aviso, abre la conversación en una pestaña de la app si la hay', async () => {
         const navigate = vi.fn(async () => ({}));
         const client = {
