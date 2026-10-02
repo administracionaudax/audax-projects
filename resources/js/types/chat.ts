@@ -247,7 +247,7 @@ export type ChatSharedProps = {
     unread: number;
 };
 
-/** Tarjeta «Menciones» de Inicio (HomeChatSummary, prop diferida `chat`). */
+/** Tarjeta «Menciones» de Inicio (HomeChatSummary, prop diferida `chat_summary`). */
 export type HomeChatSummary = {
     /** Total de la navegación (sin las silenciadas). */
     unread_total: number;

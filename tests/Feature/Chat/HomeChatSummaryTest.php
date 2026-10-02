@@ -31,11 +31,12 @@ it('la tarjeta llega en una prop diferida', function () {
     $this->actingAs($this->ana)->get('/')->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('home', false)
-            ->missing('chat')
+            ->missing('chat_summary')
+            ->has('chat.unread')
             ->loadDeferredProps(fn (Assert $reload) => $reload
-                ->where('chat.unread_total', 0)
-                ->where('chat.conversations', [])
-                ->where('chat.mentions', [])));
+                ->where('chat_summary.unread_total', 0)
+                ->where('chat_summary.conversations', [])
+                ->where('chat_summary.mentions', [])));
 });
 
 it('enseña las menciones recientes (personales y @todos) y las conversaciones sin leer', function () {

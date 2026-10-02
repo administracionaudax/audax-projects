@@ -129,6 +129,7 @@ final class HomeChatSummary
             ->where('messages.user_id', '!=', $user->id)
             ->whereNull('messages.hidden_at')
             ->where('messages.created_at', '>=', now()->subDays(self::MENTION_DAYS))
+            ->orderByDesc('messages.created_at')
             ->orderByDesc('messages.id')
             ->limit(self::MENTIONS)
             ->get();

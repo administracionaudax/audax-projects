@@ -143,14 +143,14 @@ function PanelCard({
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
  * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
- * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat`).
+ * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat_summary`).
  */
 export default function Home({
     tasks,
     hours,
     week,
     unlogged_days: unloggedDays,
-    chat,
+    chat_summary: chatSummary,
 }: HomePageProps) {
     const user = useRequiredUser();
     const timer = usePage().props.timer ?? null;
@@ -378,8 +378,13 @@ export default function Home({
                         title={t('home.cards.mentions.title')}
                         description={t('home.cards.mentions.description')}
                     >
-                        <Deferred data="chat" fallback={<HomeChatSkeleton />}>
-                            {chat ? <HomeChatCard summary={chat} /> : null}
+                        <Deferred
+                            data="chat_summary"
+                            fallback={<HomeChatSkeleton />}
+                        >
+                            {chatSummary ? (
+                                <HomeChatCard summary={chatSummary} />
+                            ) : null}
                         </Deferred>
                     </PanelCard>
 

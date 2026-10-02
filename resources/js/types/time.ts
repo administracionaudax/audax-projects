@@ -270,6 +270,6 @@ export type HomePageProps = {
     };
     week: { iso: string; period: TimesheetPeriodData };
     unlogged_days: UnloggedDay[];
-    /** Fase 6: menciones y conversaciones sin leer (prop diferida: llega tras pintar). */
-    chat?: HomeChatSummary;
+    /** Fase 6: menciones y conversaciones sin leer (prop diferida: llega tras pintar; `chat` es la compartida del total). */
+    chat_summary?: HomeChatSummary;
 };

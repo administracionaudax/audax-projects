@@ -64,7 +64,7 @@ class HomeController extends Controller
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
             // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
-            'chat' => Inertia::defer(fn (): array => $this->chat->for($user)),
+            'chat_summary' => Inertia::defer(fn (): array => $this->chat->for($user)),
         ]);
     }
 

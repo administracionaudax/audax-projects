@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { index as chatIndex } from '@/routes/chat';
 import type { HomeChatSummary } from '@/types/chat';
 
-/** Mientras llega la prop diferida `chat` de Inicio. */
+/** Mientras llega la prop diferida `chat_summary` de Inicio. */
 export function HomeChatSkeleton() {
     return (
         <div className="grid gap-2" aria-hidden="true">
