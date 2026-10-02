@@ -145,6 +145,7 @@
     "chat_media.tray.remove": "Quitar «:name»",
     "chat_media.tray.sending_files": "Subiendo archivos… :progress",
     "chat_media.tray.sending_audio": "Enviando el audio… :progress",
+    "chat_media.tray.audio_queued": "Audios esperando a que termine esta subida: :count. No se pierden.",
     "chat_media.tray.progress": "Progreso de la subida",
     "chat_media.tray.cancel": "Cancelar",
     "chat_media.tray.audio_failed": "No se ha podido enviar el audio (:duration): :error",
@@ -156,5 +157,6 @@
     "chat_media.viewer.previous": "Imagen anterior",
     "chat_media.viewer.next": "Imagen siguiente",
     "chat_media.viewer.position": "Imagen :current de :total",
-    "chat_media.viewer.download": "Descargar"
+    "chat_media.viewer.download": "Descargar",
+    "chat_media.paste.file_prefix": "captura"
 }

@@ -255,3 +255,75 @@ describe('AudioPlayer', () => {
         ).toHaveLength(1);
     });
 });
+
+describe('AudioPlayer con una URL firmada nueva (H6)', () => {
+    it('sin empezar a escuchar, adopta la URL nueva', () => {
+        const { container, rerender } = render(
+            <AudioPlayer src="/a.webm?signature=1" durationMs={10_000} />,
+        );
+
+        rerender(<AudioPlayer src="/a.webm?signature=2" durationMs={10_000} />);
+
+        expect(audioElement(container).getAttribute('src')).toBe(
+            '/a.webm?signature=2',
+        );
+    });
+
+    it('mientras suena no cambia el src (no corta la reproducción) y usa la nueva si la actual falla', async () => {
+        const user = userEvent.setup();
+        const { container, rerender } = render(
+            <AudioPlayer src="/a.webm?signature=1" durationMs={10_000} />,
+        );
+        const element = audioElement(container);
+
+        await user.click(
+            screen.getByRole('button', { name: 'Reproducir el audio' }),
+        );
+        expect(play).toHaveBeenCalledTimes(1);
+
+        rerender(<AudioPlayer src="/a.webm?signature=2" durationMs={10_000} />);
+        expect(element.getAttribute('src')).toBe('/a.webm?signature=1');
+        expect(pause).not.toHaveBeenCalled();
+
+        // Pausado a mitad: tampoco (se perdería la posición).
+        await user.click(
+            screen.getByRole('button', { name: 'Pausar el audio' }),
+        );
+        act(() => {
+            element.currentTime = 4;
+            fireEvent.timeUpdate(element);
+        });
+        rerender(<AudioPlayer src="/a.webm?signature=3" durationMs={10_000} />);
+        expect(element.getAttribute('src')).toBe('/a.webm?signature=1');
+
+        // Si la actual falla (caducada), se usa la más reciente sin pedir otra.
+        const onSourceExpired = vi.fn(async () => '/a.webm?signature=9');
+        rerender(
+            <AudioPlayer
+                src="/a.webm?signature=3"
+                durationMs={10_000}
+                onSourceExpired={onSourceExpired}
+            />,
+        );
+        await act(async () => {
+            fireEvent.error(element);
+        });
+
+        expect(element.getAttribute('src')).toBe('/a.webm?signature=3');
+        expect(onSourceExpired).not.toHaveBeenCalled();
+    });
+
+    it('con un error, adopta la URL nueva que llegue', async () => {
+        const { container, rerender } = render(
+            <AudioPlayer src="/a.webm?signature=1" durationMs={10_000} />,
+        );
+        const element = audioElement(container);
+
+        await act(async () => {
+            fireEvent.error(element);
+        });
+        rerender(<AudioPlayer src="/a.webm?signature=2" durationMs={10_000} />);
+
+        expect(element.getAttribute('src')).toBe('/a.webm?signature=2');
+    });
+});

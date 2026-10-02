@@ -392,4 +392,55 @@ describe('useChatMediaComposer y MediaComposerTray', () => {
         expect(composer.failedAudio).toBeNull();
         expect(screen.queryByRole('alert')).toBeNull();
     });
+    it('un audio grabado mientras otra subida está en curso no se pierde: espera su turno', async () => {
+        let composer!: MediaComposer;
+        render(<Harness onReady={(value) => (composer = value)} />);
+        act(() => {
+            composer.addFiles([
+                new File(['a'], 'plano.pdf', { type: 'application/pdf' }),
+            ]);
+        });
+
+        let files: Promise<unknown> = Promise.resolve();
+        act(() => {
+            files = composer.send({ body: 'Plano' });
+        });
+        const first = xhr();
+
+        const audio = new File(['voz'], 'audio-20260927-100000.webm', {
+            type: 'audio/webm',
+        });
+        let audioResult: Promise<unknown> = Promise.resolve();
+        act(() => {
+            audioResult = composer.sendAudio(audio, 3_000, null);
+        });
+
+        // Todavía no se envía (una subida a la vez), pero se avisa de que espera.
+        expect(xhr()).toBe(first);
+        expect(
+            document.querySelector('[data-test="chat-media-queued"]')
+                ?.textContent,
+        ).toContain('Audios esperando a que termine esta subida: 1');
+
+        await act(async () => {
+            first.respond(201, { message: sent });
+            await files;
+        });
+
+        // Al terminar la primera, sale el audio.
+        const second = xhr();
+        expect(second).not.toBe(first);
+        expect(fileField(second.body, 'audio').name).toBe(
+            'audio-20260927-100000.webm',
+        );
+        expect(second.body?.get('duration_ms')).toBe('3000');
+
+        await act(async () => {
+            second.respond(201, { message: { ...sent, type: 'audio' } });
+            await audioResult;
+        });
+
+        await expect(audioResult).resolves.toMatchObject({ type: 'audio' });
+        expect(composer.queued).toBe(0);
+    });
 });

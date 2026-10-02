@@ -288,4 +288,59 @@ describe('ChatSearchPage', () => {
             screen.getByRole('button', { name: 'Ver más resultados' }),
         ).toBeTruthy();
     });
+    it('un «Ver más» de una búsqueda anterior que responde tarde se descarta', async () => {
+        let resolve: (response: Response) => void = () => {};
+        let aborted = false;
+        vi.spyOn(globalThis, 'fetch').mockImplementation(
+            (_input, init) =>
+                new Promise<Response>((done) => {
+                    resolve = done;
+                    init?.signal?.addEventListener('abort', () => {
+                        aborted = true;
+                    });
+                }),
+        );
+        const { rerender } = render(<ChatSearchPage {...props({ next: 8 })} />);
+
+        act(() => {
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Ver más resultados' }),
+            );
+        });
+
+        // Mientras tanto, otra búsqueda (visita de Inertia) con sus propios resultados.
+        rerender(
+            <ChatSearchPage
+                {...props({
+                    query: 'otoño',
+                    results: [result({ id: 50, excerpt: 'Campaña de otoño' })],
+                    next: null,
+                })}
+            />,
+        );
+        expect(aborted).toBe(true);
+
+        await act(async () => {
+            resolve(
+                new Response(
+                    JSON.stringify({
+                        results: [
+                            result({ id: 4, excerpt: 'De la búsqueda vieja' }),
+                        ],
+                        next: 2,
+                    }),
+                    { status: 200 },
+                ),
+            );
+        });
+
+        const links = within(
+            screen.getByRole('region', { name: 'Resultados' }),
+        ).getAllByRole('link');
+        expect(links).toHaveLength(1);
+        expect(screen.queryByText('De la búsqueda vieja')).toBeNull();
+        expect(
+            screen.queryByRole('button', { name: 'Ver más resultados' }),
+        ).toBeNull();
+    });
 });

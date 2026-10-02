@@ -160,11 +160,24 @@ export function AudioPlayer({
     // Si quien escucha le ha dado a reproducir (para retomar tras renovar la URL, y solo entonces).
     const wantsToPlay = useRef(false);
     const [previousSrc, setPreviousSrc] = useState(src);
+    // URL firmada más reciente que llegó mientras se escuchaba: se usa si la actual falla.
+    const [newerSrc, setNewerSrc] = useState<string | null>(null);
 
-    // Una URL nueva desde fuera (p. ej. al recargar el mensaje) sustituye a la actual.
+    // Una URL nueva desde fuera (p. ej. la consulta periódica trae el mensaje con otra firma) solo
+    // sustituye a la actual si el audio no se ha empezado a escuchar (ni se está cargando para
+    // reproducirlo) o si la actual ha fallado: cambiar el src corta la reproducción y la posición.
     if (previousSrc !== src) {
         setPreviousSrc(src);
-        setSource(src);
+
+        if (
+            load === 'error' ||
+            (!playing && load !== 'loading' && current === 0)
+        ) {
+            setSource(src);
+            setNewerSrc(null);
+        } else {
+            setNewerSrc(src);
+        }
     }
 
     const known =
@@ -241,6 +254,15 @@ export function AudioPlayer({
 
     const onError = async () => {
         setPlaying(false);
+
+        // Si ya llegó una URL más reciente, primero esa (sin pedir otra al servidor).
+        if (newerSrc !== null && newerSrc !== source) {
+            resumeAfterRefresh.current = wantsToPlay.current;
+            setSource(newerSrc);
+            setNewerSrc(null);
+
+            return;
+        }
 
         if (onSourceExpired && !refreshed.current) {
             refreshed.current = true;

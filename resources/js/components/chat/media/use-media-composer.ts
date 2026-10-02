@@ -46,6 +46,8 @@ export type MediaComposer = {
     progress: number;
     /** Qué se está subiendo ahora. */
     uploading: 'files' | 'audio' | null;
+    /** Audios esperando a que termine la subida en curso. */
+    queued: number;
     error: string | null;
     dismissError: () => void;
 };
@@ -67,16 +69,36 @@ export function useChatMediaComposer(
     const [error, setError] = useState<string | null>(null);
     const [failedAudio, setFailedAudio] = useState<FailedAudio | null>(null);
     const controller = useRef<AbortController | null>(null);
+    // Audios grabados mientras otra subida estaba en curso: esperan su turno (no se pierden).
+    const queue = useRef<Array<() => void>>([]);
+    const [queued, setQueued] = useState(0);
 
     // Al salir de la conversación se cancela lo que se estuviera subiendo.
-    useEffect(() => () => controller.current?.abort(), []);
+    useEffect(
+        () => () => {
+            queue.current = [];
+            controller.current?.abort();
+        },
+        [],
+    );
 
     const run = async (
         kind: 'files' | 'audio',
         payload: Parameters<typeof sendWithMedia>[1],
     ): Promise<SentMediaMessage | null> => {
         if (controller.current !== null) {
-            return null;
+            if (kind === 'files') {
+                return null;
+            }
+
+            // Un audio no se puede volver a grabar: se envía en cuanto termine la subida actual.
+            return new Promise((resolve) => {
+                queue.current.push(() => {
+                    setQueued((count) => Math.max(0, count - 1));
+                    void run(kind, payload).then(resolve);
+                });
+                setQueued((count) => count + 1);
+            });
         }
 
         const abort = new AbortController();
@@ -132,6 +154,7 @@ export function useChatMediaComposer(
             controller.current = null;
             setUploading(null);
             setProgress(0);
+            queue.current.shift()?.();
         }
     };
 
@@ -185,6 +208,7 @@ export function useChatMediaComposer(
         sending: status === 'sending',
         progress,
         uploading,
+        queued,
         error,
         dismissError: () => {
             setError(null);

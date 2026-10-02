@@ -55,6 +55,7 @@ export function MediaComposerTray({
         sending,
         progress,
         uploading,
+        queued,
         cancel,
         error,
         failedAudio,
@@ -127,6 +128,16 @@ export function MediaComposerTray({
                             value={Math.round(progress * 100)}
                             aria-label={t('chat_media.tray.progress')}
                         />
+                        {queued > 0 ? (
+                            <span
+                                className="text-xs text-muted-foreground"
+                                data-test="chat-media-queued"
+                            >
+                                {t('chat_media.tray.audio_queued', {
+                                    count: queued,
+                                })}
+                            </span>
+                        ) : null}
                     </div>
                     <Button
                         type="button"

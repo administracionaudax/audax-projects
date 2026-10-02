@@ -142,10 +142,14 @@ export function namePastedFile(file: File, date = new Date()): File {
         return file;
     }
 
-    return new File([file], `captura-${stamp(date)}.${extension}`, {
-        type: file.type,
-        lastModified: file.lastModified,
-    });
+    return new File(
+        [file],
+        `${t('chat_media.paste.file_prefix')}-${stamp(date)}.${extension}`,
+        {
+            type: file.type,
+            lastModified: file.lastModified,
+        },
+    );
 }
 
 const ACCEPTED = ACCEPTED_EXTENSIONS.split(',').map((extension) =>

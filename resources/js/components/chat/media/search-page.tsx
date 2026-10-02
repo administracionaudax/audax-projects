@@ -12,7 +12,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { HighlightedText } from '@/components/chat/media/text-match';
 import type {
@@ -165,6 +165,10 @@ export default function ChatSearchPage({
     const [loadingMore, setLoadingMore] = useState(false);
     const [moreError, setMoreError] = useState(false);
     const [previous, setPrevious] = useState(initialResults);
+    // Cada búsqueda (visita de Inertia) tiene su número: un «Ver más» de una búsqueda anterior que
+    // responde tarde se descarta en lugar de mezclarse con los resultados nuevos.
+    const generation = useRef(0);
+    const pendingMore = useRef<AbortController | null>(null);
 
     // Una búsqueda nueva (visita de Inertia) sustituye a lo que se hubiera cargado con «Ver más».
     if (previous !== initialResults) {
@@ -172,7 +176,16 @@ export default function ChatSearchPage({
         setResults(initialResults);
         setNext(initialNext);
         setMoreError(false);
+        setLoadingMore(false);
     }
+
+    useEffect(() => {
+        generation.current += 1;
+        pendingMore.current?.abort();
+        pendingMore.current = null;
+    }, [initialResults]);
+
+    useEffect(() => () => pendingMore.current?.abort(), []);
 
     const tooShort = query.trim().length < minLength;
 
@@ -194,10 +207,13 @@ export default function ChatSearchPage({
     };
 
     const loadMore = async () => {
-        if (next === null) {
+        if (next === null || pendingMore.current !== null) {
             return;
         }
 
+        const mine = generation.current;
+        const abort = new AbortController();
+        pendingMore.current = abort;
         setLoadingMore(true);
         setMoreError(false);
 
@@ -217,6 +233,7 @@ export default function ChatSearchPage({
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     credentials: 'same-origin',
+                    signal: abort.signal,
                 },
             );
 
@@ -228,12 +245,25 @@ export default function ChatSearchPage({
                 results: ChatSearchResult[];
                 next: number | null;
             };
+
+            if (mine !== generation.current) {
+                return;
+            }
+
             setResults((current) => [...current, ...data.results]);
             setNext(data.next);
         } catch {
-            setMoreError(true);
+            if (mine === generation.current) {
+                setMoreError(true);
+            }
         } finally {
-            setLoadingMore(false);
+            if (pendingMore.current === abort) {
+                pendingMore.current = null;
+            }
+
+            if (mine === generation.current) {
+                setLoadingMore(false);
+            }
         }
     };
 
