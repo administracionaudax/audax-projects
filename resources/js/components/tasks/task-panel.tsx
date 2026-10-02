@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import {
     ArrowRightLeft,
     Bell,
@@ -7,6 +7,7 @@ import {
     Diamond,
     EllipsisVertical,
     Link2,
+    MessageSquare,
     Trash2,
 } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -52,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { destroy as destroyTask, unwatch, watch } from '@/routes/tasks';
 import type { TaskPanelData } from '@/types';
@@ -503,6 +505,26 @@ export function TaskPanel({
                                     {panel.task.title}
                                 </p>
                             )}
+                            {panel.source_message ? (
+                                <Link
+                                    href={urls.chatMessage(
+                                        panel.source_message.conversation_id,
+                                        panel.source_message.message_id,
+                                    )}
+                                    className={cn(
+                                        'inline-flex w-fit items-center gap-1 rounded-[3px] text-xs text-primary-text hover:underline',
+                                        FOCUS_RING,
+                                    )}
+                                    data-test="task-source-message"
+                                >
+                                    <MessageSquare
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                    />
+                                    {t('chat.task.from_message')} ·{' '}
+                                    {t('chat.task.view_message')}
+                                </Link>
+                            ) : null}
                         </>
                     ) : (
                         <>

@@ -12,6 +12,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
+import { useChatUnreadTotal } from '@/components/chat/use-chat-unread';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -40,8 +41,14 @@ import type { Abilities, NavItem } from '@/types';
 /**
  * Navegación principal (SPEC §3), en este orden. Bolsas y Administración dependen de
  * `auth.can` (gates view-hour-banks y rol admin); el servidor vuelve a comprobarlo en la ruta.
+ * Chat lleva el total de mensajes sin leer (Fase 6).
  */
-export function mainNavItems(can: Abilities): NavItem[] {
+export function mainNavItems(
+    can: Abilities,
+    counters: { chatUnread?: number } = {},
+): NavItem[] {
+    const chatUnread = counters.chatUnread ?? 0;
+
     const items: (NavItem | false)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
@@ -59,7 +66,18 @@ export function mainNavItems(can: Abilities): NavItem[] {
             icon: CalendarRange,
         },
         { title: t('nav.reports'), href: reportsIndex(), icon: BarChart3 },
-        { title: t('nav.chat'), href: chatIndex(), icon: MessagesSquare },
+        {
+            title: t('nav.chat'),
+            href: chatIndex(),
+            icon: MessagesSquare,
+            badge:
+                chatUnread > 0
+                    ? {
+                          count: chatUnread,
+                          label: t('chat.nav.unread', { count: chatUnread }),
+                      }
+                    : undefined,
+        },
         can.viewAdmin && {
             title: t('nav.admin'),
             href: adminIndex(),
@@ -72,6 +90,7 @@ export function mainNavItems(can: Abilities): NavItem[] {
 
 export function AppSidebar() {
     const can = useAbilities();
+    const chatUnread = useChatUnreadTotal();
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -92,7 +111,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems(can)} />
+                <NavMain items={mainNavItems(can, { chatUnread })} />
             </SidebarContent>
 
             <SidebarFooter>
