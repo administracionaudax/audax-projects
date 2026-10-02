@@ -53,6 +53,46 @@ async function openDirect(page: Page, name: string): Promise<void> {
     ).toHaveText(new RegExp(name));
 }
 
+/**
+ * ¿Reverb ha confirmado ya la suscripción de la página a esos canales? Se registra antes de navegar
+ * (escucha los websockets nuevos). El «escribiendo…» es un whisper efímero que Reverb solo reparte
+ * a quien ya está suscrito a la conversación y que la interfaz solo acepta de quien está en la
+ * presencia (D-120): si Ana escribe antes de que Elena termine de suscribirse, ese aviso se pierde
+ * (y el siguiente no sale hasta 3 s después de la siguiente pulsación).
+ */
+function watchSubscriptions(page: Page, channels: RegExp[]): () => boolean {
+    const pending = [...channels];
+
+    page.on('websocket', (socket) => {
+        socket.on('framereceived', ({ payload }) => {
+            let frame: { event?: unknown; channel?: unknown };
+
+            try {
+                frame = JSON.parse(String(payload)) as typeof frame;
+            } catch {
+                return;
+            }
+
+            const name = frame.channel;
+
+            if (
+                frame.event !== 'pusher_internal:subscription_succeeded' ||
+                typeof name !== 'string'
+            ) {
+                return;
+            }
+
+            const index = pending.findIndex((channel) => channel.test(name));
+
+            if (index >= 0) {
+                pending.splice(index, 1);
+            }
+        });
+    });
+
+    return () => pending.length === 0;
+}
+
 /** El editor de mensajes (un combobox: sugiere menciones). */
 function composer(page: Page) {
     return page.getByRole('combobox', { name: 'Escribe un mensaje' });
@@ -86,7 +126,13 @@ test('dos personas chatean en tiempo real: escribiendo, mensaje, leído, hilo, r
     const elena = await asUser(browser, USERS.employee);
 
     await test.step('las dos abren la misma directa', async () => {
+        const conversationChannels = [
+            /^presence-online$/,
+            /^private-conversation\.\d+$/,
+        ];
+        const anaListening = watchSubscriptions(ana, conversationChannels);
         await openDirect(ana, 'Elena');
+        const elenaListening = watchSubscriptions(elena, conversationChannels);
         await elena.goto(new URL(ana.url()).pathname);
         await requireRealtime(elena, (condition, reason) =>
             test.skip(condition, reason),
@@ -94,6 +140,14 @@ test('dos personas chatean en tiempo real: escribiendo, mensaje, leído, hilo, r
         await expect(
             elena.locator('[data-test="chat-conversation-title"]'),
         ).toHaveText(/Ana Administración/);
+        // Las dos escuchan ya la conversación (y se ven en la presencia) antes de que Ana escriba.
+        await expect
+            .poll(() => anaListening() && elenaListening(), {
+                ...LIVE,
+                message:
+                    'Ana y Elena suscritas a la presencia y a la conversación',
+            })
+            .toBe(true);
     });
 
     await test.step('Elena ve «escribiendo…» mientras Ana escribe', async () => {
