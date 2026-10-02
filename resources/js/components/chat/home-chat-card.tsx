@@ -24,7 +24,9 @@ export function HomeChatSkeleton() {
 /**
  * Tarjeta «Menciones» de Inicio (SPEC §5.1 y §12): las menciones recientes (personales y @todos),
  * las conversaciones con mensajes sin leer y el enlace al chat con el total, que va en vivo con
- * los contadores de C2 en cuanto llegan.
+ * los contadores de C2 en cuanto llegan. Las rejillas van con grid-cols-1 (minmax(0, 1fr)): con la
+ * columna implícita (auto), el texto truncado de una mención larga imponía su ancho completo a la
+ * tarjeta y, con ella, a toda la columna de Inicio en el móvil.
  */
 export function HomeChatCard({ summary }: { summary: HomeChatSummary }) {
     const counter = useUnreadCounter();
@@ -33,7 +35,10 @@ export function HomeChatCard({ summary }: { summary: HomeChatSummary }) {
         summary.mentions.length === 0 && summary.conversations.length === 0;
 
     return (
-        <div className="flex flex-1 flex-col gap-3" data-test="home-chat">
+        <div
+            className="flex min-w-0 flex-1 flex-col gap-3"
+            data-test="home-chat"
+        >
             {empty ? (
                 <EmptyState
                     className="flex-1"
@@ -43,7 +48,7 @@ export function HomeChatCard({ summary }: { summary: HomeChatSummary }) {
             ) : null}
 
             {summary.mentions.length > 0 ? (
-                <section className="grid gap-1">
+                <section className="grid grid-cols-1 gap-1">
                     <h3 className="text-sm font-medium">
                         {t('chat.home.mentions')}
                     </h3>
@@ -53,7 +58,7 @@ export function HomeChatCard({ summary }: { summary: HomeChatSummary }) {
                                 <Link
                                     href={mention.url}
                                     className={cn(
-                                        'grid gap-0.5 px-2 py-1.5 text-sm hover:bg-muted',
+                                        'grid grid-cols-1 gap-0.5 px-2 py-1.5 text-sm hover:bg-muted',
                                         FOCUS_RING,
                                     )}
                                 >
@@ -97,11 +102,11 @@ export function HomeChatCard({ summary }: { summary: HomeChatSummary }) {
             ) : null}
 
             {summary.conversations.length > 0 ? (
-                <section className="grid gap-1">
+                <section className="grid grid-cols-1 gap-1">
                     <h3 className="text-sm font-medium">
                         {t('chat.home.unread')}
                     </h3>
-                    <ul className="grid gap-1 text-sm">
+                    <ul className="grid grid-cols-1 gap-1 text-sm">
                         {summary.conversations.map((conversation) => (
                             <li
                                 key={conversation.id}
