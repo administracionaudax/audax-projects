@@ -47,6 +47,9 @@ return [
         'acknowledged' => 'Lecturas del texto de privacidad',
         'export_requested' => 'Exportaciones de datos pedidas',
         'export_downloaded' => 'Exportaciones de datos descargadas',
+        'message_hidden' => 'Mensajes del chat ocultados',
+        'message_unhidden' => 'Mensajes del chat visibles de nuevo',
+        'group_changed' => 'Cambios en los grupos del chat',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -77,6 +80,13 @@ return [
         'acknowledged' => 'Texto de privacidad leído',
         'export_requested' => 'Exportación de datos pedida',
         'export_downloaded' => 'Exportación de datos descargada',
+        'hidden' => 'Mensaje ocultado',
+        'unhidden' => 'Mensaje visible de nuevo',
+        'group_created' => 'Grupo creado',
+        'group_renamed' => 'Grupo renombrado',
+        'group_members_added' => 'Personas añadidas al grupo',
+        'group_member_removed' => 'Persona quitada del grupo',
+        'group_left' => 'Salida del grupo',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).
@@ -88,6 +98,8 @@ return [
         'absence' => ':type del :from al :to de :person',
         'holiday' => ':name (:date)',
         'export' => 'Datos personales de :person',
+        'message' => 'Mensaje de :person en :conversation',
+        'group' => 'Grupo «:name»',
         'privacy_notice' => 'Texto informativo de privacidad',
         'retention' => 'Plazos de conservación',
         'settings' => 'Ajustes generales',
@@ -210,6 +222,10 @@ return [
         'subject_user_id' => 'Datos de',
         'requested_by' => 'Pedida por',
         'export_id' => 'Exportación',
+        // Chat (moderación y grupos de la Fase 6).
+        'conversation_id' => 'Conversación',
+        'body' => 'Texto',
+        'participants' => 'Personas',
         // Ajustes generales (/admin/ajustes) y de privacidad (/admin/privacidad).
         'company_name' => 'Nombre de la empresa',
         'require_2fa' => 'Doble factor obligatorio',
@@ -253,6 +269,8 @@ return [
         'missing' => 'n.º :id (ya no existe)',
         'missing_person' => 'Persona n.º :id',
         'and_more' => 'y :count más',
+        'project_conversation' => 'Chat de :project',
+        'direct_conversation' => 'Conversación directa',
         'weekdays' => [
             1 => 'Lunes',
             2 => 'Martes',

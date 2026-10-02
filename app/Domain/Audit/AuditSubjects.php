@@ -3,10 +3,13 @@
 namespace App\Domain\Audit;
 
 use App\Domain\Time\Week;
+use App\Enums\ConversationType;
 use App\Models\Absence;
 use App\Models\Client;
+use App\Models\Conversation;
 use App\Models\Holiday;
 use App\Models\HourBank;
+use App\Models\Message;
 use App\Models\PersonalDataExport;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
@@ -169,12 +172,56 @@ final class AuditSubjects
                     personId: $export->subject_user_id,
                 ),
             ),
+            // Chat (Fase 6): el mensaje moderado, con su autor y su conversación, y el grupo.
+            Message::class => $this->messages($ids),
+            Conversation::class => $this->conversations($ids),
             User::class => $this->map(
                 User::query()->whereKey($ids)->get(['id', 'name', 'client_id']),
                 fn (User $user): AuditSubject => AuditSubject::named($user->name, $user->client_id === null ? route('admin.users.edit', ['user' => $user->id], false) : null),
             ),
             default => [],
         };
+    }
+
+    /**
+     * Grupos del chat (los cambios de D-119), con enlace a la conversación.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, AuditSubject>
+     */
+    private function conversations(array $ids): array
+    {
+        $names = AuditValues::conversationNames($ids);
+
+        return $this->map(
+            Conversation::query()->whereKey($ids)->get(['id', 'type']),
+            fn (Conversation $conversation): AuditSubject => new AuditSubject(
+                $conversation->type === ConversationType::Group ? 'audit.subjects.group' : 'audit.subjects.named',
+                ['name' => $names[$conversation->id] ?? '—'],
+                route('chat.show', ['conversation' => $conversation->id], false),
+            ),
+        );
+    }
+
+    /**
+     * Mensajes del chat (también los borrados por su autor): «Mensaje de Ana en Chat de …», con
+     * enlace al mensaje en su conversación (el admin la abre en modo moderación, D-119).
+     *
+     * @param  list<int>  $ids
+     * @return array<int, AuditSubject>
+     */
+    private function messages(array $ids): array
+    {
+        $messages = Message::query()->withTrashed()->whereKey($ids)->get(['id', 'conversation_id', 'user_id', 'deleted_at']);
+        $conversations = AuditValues::conversationNames(array_values(array_unique(array_map('intval', $messages->pluck('conversation_id')->all()))));
+
+        return $this->map($messages, fn (Message $message): AuditSubject => new AuditSubject(
+            'audit.subjects.message',
+            ['conversation' => $conversations[$message->conversation_id] ?? '—'],
+            $message->trashed() ? null : route('chat.show', ['conversation' => $message->conversation_id, 'mensaje' => $message->id], false),
+            $message->trashed(),
+            personId: $message->user_id,
+        ));
     }
 
     /**

@@ -8,9 +8,8 @@ namespace App\Domain\Audit;
  * lang/es/audit.php; todo lo que no esté aquí se ignora.
  *
  * - log_name: el nombre de la tabla en los modelos con LogsDomainActivity; los registros propios
- *   usan holidays, task_statuses, timesheet_periods, time_entry_locks, settings y privacy.
- * - Al integrar la Fase 6, el chat se añade a ENTITIES ('chat' => [...]) con su texto en
- *   audit.entities.chat.
+ *   usan holidays, task_statuses, timesheet_periods, time_entry_locks, settings, privacy y chat
+ *   (moderación de mensajes y cambios en los grupos de la Fase 6).
  */
 final class AuditCatalog
 {
@@ -34,6 +33,7 @@ final class AuditCatalog
         'task_status' => ['task_statuses'],
         'settings' => ['settings'],
         'privacy' => ['privacy'],
+        'chat' => ['chat'],
     ];
 
     /**
@@ -61,6 +61,9 @@ final class AuditCatalog
         'acknowledged' => ['acknowledged'],
         'export_requested' => ['export_requested'],
         'export_downloaded' => ['export_downloaded'],
+        'message_hidden' => ['hidden'],
+        'message_unhidden' => ['unhidden'],
+        'group_changed' => ['group_created', 'group_renamed', 'group_members_added', 'group_member_removed', 'group_left'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */

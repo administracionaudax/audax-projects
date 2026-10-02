@@ -5,6 +5,7 @@ namespace App\Domain\Audit;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BillingType;
+use App\Enums\ConversationType;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
 use App\Enums\ProjectStatus;
@@ -13,6 +14,7 @@ use App\Enums\TaskStatusCategory;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
+use App\Models\Conversation;
 use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -67,6 +69,7 @@ final class AuditValues
         'status_id' => 'task_statuses',
         'department_id' => 'departments',
         'recurring_task_rule_id' => 'recurring_rules',
+        'conversation_id' => 'conversations',
     ];
 
     /** Duraciones en minutos (h:mm). */
@@ -312,8 +315,46 @@ final class AuditValues
             'task_statuses' => $this->pluck(TaskStatus::query(), $ids, 'name'),
             'departments' => $this->pluck(Department::query(), $ids, 'name'),
             'recurring_rules' => $this->pluck(RecurringTaskRule::query(), $ids, 'title'),
+            'conversations' => self::conversationNames($ids),
             default => [],
         };
+    }
+
+    /**
+     * Nombre de cada conversación del chat: el grupo por su nombre, la de un proyecto como «Chat
+     * de CÓDIGO · Nombre» y las directas sin nombrar a nadie.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, string>
+     */
+    public static function conversationNames(array $ids): array
+    {
+        $names = [];
+        $conversations = Conversation::query()->whereKey($ids)
+            ->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])])
+            ->get(['id', 'type', 'name', 'project_id']);
+
+        foreach ($conversations as $conversation) {
+            $project = $conversation->project;
+
+            $names[$conversation->id] = match ($conversation->type) {
+                ConversationType::Group => (string) $conversation->name,
+                ConversationType::Project => self::line('audit.values.project_conversation', ['project' => $project !== null ? "{$project->code} · {$project->name}" : '—']),
+                ConversationType::Direct => self::line('audit.values.direct_conversation'),
+            };
+        }
+
+        return $names;
+    }
+
+    /**
+     * @param  array<string, string>  $replace
+     */
+    private static function line(string $key, array $replace = []): string
+    {
+        $line = __($key, $replace);
+
+        return is_string($line) ? $line : $key;
     }
 
     /**

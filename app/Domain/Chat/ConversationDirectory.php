@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  * - directas: una por pareja de personas internas activas,
  * - de grupo: con nombre, creadas por cualquier interno; las gestiona (renombrar, añadir y quitar
  *   personas) quien la creó o el admin, y cualquiera puede salir. Cada cambio deja un mensaje de
- *   sistema en el grupo (D-119).
+ *   sistema en el grupo (D-119) y una entrada en la auditoría (activity('chat'), D-074).
  */
 final class ConversationDirectory
 {
@@ -142,6 +142,10 @@ final class ConversationDirectory
                 $this->join($conversation, (int) $id);
             }
 
+            $this->audit($creator, $conversation, 'group_created', [
+                'attributes' => ['name' => $conversation->name, 'participants' => self::names($ids)],
+            ]);
+
             return $conversation;
         });
     }
@@ -159,8 +163,10 @@ final class ConversationDirectory
             return;
         }
 
+        $previous = $group->name;
         $group->forceFill(['name' => $name])->save();
         $this->writer->system($group, 'group.renamed', ['by' => $actor->name, 'name' => $name]);
+        $this->audit($actor, $group, 'group_renamed', ['old' => ['name' => $previous], 'attributes' => ['name' => $name]]);
     }
 
     /**
@@ -190,6 +196,9 @@ final class ConversationDirectory
             'by' => $actor->name,
             'users' => array_values($people->pluck('name')->all()),
         ]);
+        $this->audit($actor, $group, 'group_members_added', [
+            'attributes' => ['participants' => array_values($people->pluck('name')->all())],
+        ]);
 
         return array_values($people->modelKeys());
     }
@@ -204,6 +213,7 @@ final class ConversationDirectory
 
         $this->leave($group, $member->id);
         $this->writer->system($group, 'group.removed', ['by' => $actor->name, 'user' => $member->name]);
+        $this->audit($actor, $group, 'group_member_removed', ['old' => ['participants' => [$member->name]]]);
     }
 
     public function leaveGroup(User $user, Conversation $group): void
@@ -212,6 +222,32 @@ final class ConversationDirectory
 
         $this->leave($group, $user->id);
         $this->writer->system($group, 'group.left', ['user' => $user->name]);
+        $this->audit($user, $group, 'group_left', ['old' => ['participants' => [$user->name]]]);
+    }
+
+    /**
+     * Entrada de la auditoría de un cambio en un grupo (log «chat», como la moderación).
+     *
+     * @param  array<string, mixed>  $properties
+     */
+    private function audit(User $actor, Conversation $group, string $event, array $properties): void
+    {
+        activity('chat')->causedBy($actor)->performedOn($group)
+            ->event($event)
+            ->withProperties($properties)
+            ->log("chat.{$event}");
+    }
+
+    /**
+     * Nombres de las personas, por orden alfabético.
+     *
+     * @param  array<int, int|string>  $ids
+     * @return list<string>
+     */
+    private static function names(array $ids): array
+    {
+        /** @var list<string> */
+        return User::query()->whereKey($ids)->orderBy('name')->pluck('name')->all();
     }
 
     /**
