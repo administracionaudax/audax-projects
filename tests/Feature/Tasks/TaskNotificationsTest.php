@@ -11,6 +11,7 @@ use App\Notifications\Tasks\TaskMentionedNotification;
 use App\Notifications\Tasks\TasksDueNotification;
 use App\Notifications\Tasks\TaskStatusChangedNotification;
 use Carbon\CarbonImmutable;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -201,17 +202,19 @@ describe('app:notify-due-tasks', function () {
         expect($this->colleague->notifications()->where('type', TasksDueNotification::class)->count())->toBe(2);
     });
 
-    it('escribe el aviso al momento, sin cola: dos ejecuciones antes de que corra Horizon no lo repiten', function () {
+    it('va por la cola (campana en default y email en mail): dos ejecuciones antes de que corra Horizon solo lo encolan una vez', function () {
         Queue::fake();
         ($this->task)($this->colleague, 'Mañana', '2026-09-23');
 
         $this->artisan('app:notify-due-tasks')->assertSuccessful();
         $this->artisan('app:notify-due-tasks')->assertSuccessful();
 
-        Queue::assertNothingPushed();
-        $notifications = $this->colleague->notifications()->where('type', TasksDueNotification::class)->get();
-        expect($notifications)->toHaveCount(1)
-            ->and($notifications->first()->created_at->equalTo(now()))->toBeTrue();
+        $pushed = Queue::pushed(SendQueuedNotifications::class);
+
+        expect($pushed)->toHaveCount(2)
+            ->and($pushed->map(fn (SendQueuedNotifications $job): string => $job->channels[0].'@'.$job->queue)->sort()->values()->all())->toBe(['database@default', 'mail@mail'])
+            ->and($pushed->every(fn (SendQueuedNotifications $job): bool => $job->notification instanceof TasksDueNotification))->toBeTrue()
+            ->and($this->colleague->notifications()->count())->toBe(0);
     });
 
     it('no avisa si otra ejecución ya lo ha reclamado hoy, y la base de datos lo evita aunque se vacíe la caché', function () {

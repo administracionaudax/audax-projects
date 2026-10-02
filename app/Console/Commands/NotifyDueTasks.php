@@ -20,10 +20,10 @@ use Throwable;
  * Solo tareas abiertas, con responsable interno y activo, de proyectos no archivados. «Hoy» y
  * «mañana» son los de Europe/Madrid.
  *
- * Para no repetir, el propio comando deja constancia antes de avisar, sin depender de la cola:
- * - reclama cada aviso con Cache::add (atómico) hasta pasado el día en Madrid,
- * - y lo escribe al momento (notifyNow), así la fila de notifications ya existe si se vuelve a
- *   ejecutar antes de que Horizon procese nada, y su fecha es la de hoy aunque la cola vaya tarde.
+ * Para no repetir, el propio comando reclama cada aviso con Cache::add (atómico) hasta pasado el
+ * día en Madrid, antes de mandarlo a la cola; si la caché se vaciara, el aviso ya guardado en la
+ * campana hoy también lo evita. El aviso va por la cola (notify, D-073): la campana por `default`
+ * y el email de task.due por `mail`, como el resto de las notificaciones, sin esperar al SMTP.
  *
  * Se programa una vez al día en routes/console.php (lo hace el área de Horas), con
  * withoutOverlapping() y onOneServer().
@@ -113,7 +113,7 @@ class NotifyDueTasks extends Command
             }
 
             try {
-                $user->notifyNow(new TasksDueNotification($dueTomorrow, $overdue));
+                $user->notify(new TasksDueNotification($dueTomorrow, $overdue));
             } catch (Throwable $exception) {
                 Cache::forget($claim);
 
