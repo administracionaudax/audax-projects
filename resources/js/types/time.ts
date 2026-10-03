@@ -12,6 +12,7 @@ import type {
     UserSummary,
 } from './domain';
 import type { HomeMilestone } from './planning';
+import type { ReportRequestData } from './reports';
 
 /** App\Http\Resources\Time\TimesheetPeriodResource. Una semana sin fila llega con id null. */
 export type TimesheetPeriodData = {
@@ -216,6 +217,8 @@ export type ProjectTimeFilters = {
 /** /proyectos/{project}/horas (ProjectTimeController). */
 export type ProjectTimePageProps = {
     project: Project;
+    /** Las horas de la pestaña con sus filtros, para el menú «Exportar ▾» (Fase 9, D-139). */
+    report_request: ReportRequestData;
     canManage: boolean;
     /** Qué entradas ve: todas, las de su equipo o solo las suyas (D-021). */
     scope: 'all' | 'team' | 'mine';

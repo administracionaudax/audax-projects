@@ -8,6 +8,7 @@ import type {
     ReportFilterKey,
     ReportFiltersProps,
     ReportQuery,
+    ReportRequestData,
 } from '@/types';
 
 /** Medidas de la URL (medida=): imputadas, facturables, dentro de bolsa y exceso. */
@@ -32,6 +33,8 @@ export type DetailSummary = {
 };
 
 export type DetailPageProps = {
+    /** El informe con sus filtros y su tabla, para el menú «Exportar ▾» (Fase 9, D-139). */
+    report_request: ReportRequestData;
     filters: ReportFiltersProps & {
         query: DetailQuery;
         previous: DetailQuery;

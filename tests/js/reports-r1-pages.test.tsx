@@ -253,6 +253,11 @@ const direction = (
     overrides: Partial<DirectionReportProps> = {},
 ): DirectionReportProps => ({
     filters: filters(),
+    report_request: {
+        kind: 'direction',
+        route_params: {},
+        query: { periodo: 'semana', fecha: '2026-09-21' },
+    },
     summary,
     comparison: null,
     comparison_partial: false,
@@ -309,16 +314,15 @@ describe('dashboard de dirección', () => {
         ).toBeTruthy();
         expect(screen.getByText('No hay tareas vencidas.')).toBeTruthy();
 
-        // Departamentos, top de clientes y de proyectos, bolsas en riesgo y tareas vencidas (BIZ-05).
+        // El informe entero (Fase 9: con PDF) y, en cada sección, su tabla: departamentos, top de
+        // clientes y de proyectos, bolsas en riesgo y tareas vencidas (BIZ-05).
         const exports = screen.getAllByRole('button', { name: 'Exportar' });
-        expect(exports).toHaveLength(5);
-        await user.click(exports[2]);
+        expect(exports).toHaveLength(6);
+        await user.click(exports[0]);
         expect(
-            screen
-                .getByRole('menuitem', { name: 'CSV (.csv)' })
-                .getAttribute('href'),
+            screen.getByRole('menuitem', { name: 'PDF' }).getAttribute('href'),
         ).toBe(
-            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=proyectos&formato=csv',
+            '/informes/direccion?periodo=semana&fecha=2026-09-21&formato=pdf',
         );
         await user.keyboard('{Escape}');
         await user.click(exports[3]);
@@ -327,10 +331,19 @@ describe('dashboard de dirección', () => {
                 .getByRole('menuitem', { name: 'CSV (.csv)' })
                 .getAttribute('href'),
         ).toBe(
-            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=bolsas-en-riesgo&formato=csv',
+            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=proyectos&formato=csv',
         );
         await user.keyboard('{Escape}');
         await user.click(exports[4]);
+        expect(
+            screen
+                .getByRole('menuitem', { name: 'CSV (.csv)' })
+                .getAttribute('href'),
+        ).toBe(
+            '/informes/direccion?periodo=semana&fecha=2026-09-21&tabla=bolsas-en-riesgo&formato=csv',
+        );
+        await user.keyboard('{Escape}');
+        await user.click(exports[5]);
         expect(
             screen
                 .getByRole('menuitem', { name: 'Excel (.xlsx)' })
@@ -519,6 +532,11 @@ describe('dashboard de departamento', () => {
     const props: DepartmentReportProps = {
         department: { id: 2, name: 'Diseño', color: '#0171FF' },
         filters: filters({ can_see_financials: false }),
+        report_request: {
+            kind: 'department',
+            route_params: { department: 2 },
+            query: { periodo: 'semana', fecha: '2026-09-21' },
+        },
         summary: noMoney,
         comparison: null,
         comparison_partial: false,
@@ -574,10 +592,10 @@ describe('dashboard de departamento', () => {
             screen.getByText('Calculando la carga de las próximas semanas…'),
         ).toBeTruthy();
 
-        // Los miembros y el reparto por cliente (BIZ-05).
+        // El informe entero y, en cada sección, su tabla: miembros y reparto por cliente (BIZ-05).
         const exports = screen.getAllByRole('button', { name: 'Exportar' });
-        expect(exports).toHaveLength(2);
-        await user.click(exports[0]);
+        expect(exports).toHaveLength(3);
+        await user.click(exports[1]);
         expect(
             screen
                 .getByRole('menuitem', { name: 'Excel (.xlsx)' })
@@ -586,7 +604,7 @@ describe('dashboard de departamento', () => {
             '/informes/departamentos/2?periodo=semana&fecha=2026-09-21&formato=xlsx',
         );
         await user.keyboard('{Escape}');
-        await user.click(exports[1]);
+        await user.click(exports[2]);
         expect(
             screen
                 .getByRole('menuitem', { name: 'CSV (.csv)' })
@@ -639,6 +657,11 @@ describe('dashboard de una persona', () => {
         },
         is_self: false,
         filters: filters({ can_see_financials: false }),
+        report_request: {
+            kind: 'person',
+            route_params: { user: 6 },
+            query: { periodo: 'semana', fecha: '2026-09-21' },
+        },
         summary: noMoney,
         comparison: null,
         comparison_partial: false,
@@ -691,9 +714,9 @@ describe('dashboard de una persona', () => {
             screen.getByRole('button', { name: 'Exportar detalle diario' }),
         ).toBeTruthy();
 
-        // Días sin imputar, por cliente, por proyecto y por tipo.
+        // El informe entero y las tablas: días sin imputar, por cliente, por proyecto y por tipo.
         const exports = screen.getAllByRole('button', { name: 'Exportar' });
-        expect(exports).toHaveLength(4);
+        expect(exports).toHaveLength(5);
 
         const hrefs: string[] = [];
         for (const button of exports) {
@@ -708,6 +731,7 @@ describe('dashboard de una persona', () => {
 
         const base = '/informes/personas/6?periodo=semana&fecha=2026-09-21';
         expect(hrefs).toEqual([
+            `${base}&formato=csv`,
             `${base}&tabla=dias-sin-imputar&formato=csv`,
             `${base}&tabla=clientes&formato=csv`,
             `${base}&tabla=proyectos&formato=csv`,

@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import { withTable } from '@/components/reports/report-request';
 import { R1BarChart } from '@/components/reports/r1-bar-chart';
 import { breakdownBars } from '@/components/reports/r1-breakdown-table';
 import { R1KpiGrid } from '@/components/reports/r1-kpi-grid';
@@ -23,6 +24,7 @@ import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
+import type { ReportRequestData } from '@/types';
 import { urls } from '@/lib/urls';
 import { index, person as personRoute } from '@/routes/reports';
 
@@ -34,18 +36,25 @@ function Breakdown({
     title,
     categoryLabel,
     top,
-    exportHref,
+    request,
+    reportTitle,
 }: {
     title: string;
     categoryLabel: string;
     top: R1TopRows;
     /** Exportación del reparto completo (?tabla=…). */
-    exportHref: string;
+    request: ReportRequestData;
+    reportTitle: string;
 }) {
     return (
         <div className="grid min-w-0 content-start gap-3 rounded-md border bg-card p-4">
             <div className="flex justify-end">
-                <ExportMenu href={exportHref} label={t('reports_r1.export')} />
+                <ExportMenu
+                    request={request}
+                    title={reportTitle}
+                    label={t('reports_r1.export')}
+                    scope="table"
+                />
             </div>
             {top.rows.length === 0 ? (
                 <div className="grid gap-3">
@@ -86,13 +95,13 @@ export default function PersonReport({
     types,
     days,
     unlogged,
+    report_request: reportRequest,
 }: PersonReportProps) {
     const state = useReportVisit();
     const period = periodQuery(filters.query);
     const url = personRoute.url(person.id);
     // Cualquier tabla se exporta (SPEC §10): los repartos completos y los días sin imputar.
-    const tableHref = (tabla: string) =>
-        reportUrls.person(person.id, { ...filters.query, tabla });
+    const tableRequest = (tabla: string) => withTable(reportRequest, tabla);
     const title = isSelf
         ? t('reports_r1.person.mine')
         : t('reports_r1.person.title', { name: person.name });
@@ -123,6 +132,7 @@ export default function PersonReport({
                     }
                     actions={
                         <>
+                            <ExportMenu request={reportRequest} title={title} />
                             {person.department?.can_view ? (
                                 <Button asChild variant="outline">
                                     <Link
@@ -198,11 +208,10 @@ export default function PersonReport({
                             title={t('reports_r1.person.calendar')}
                             action={
                                 <ExportMenu
-                                    href={reportUrls.person(
-                                        person.id,
-                                        filters.query,
-                                    )}
+                                    request={reportRequest}
+                                    title={title}
                                     label={t('reports_r1.person.export')}
+                                    scope="table"
                                 />
                             }
                         >
@@ -223,8 +232,10 @@ export default function PersonReport({
                             )}
                             action={
                                 <ExportMenu
-                                    href={tableHref('dias-sin-imputar')}
+                                    request={tableRequest('dias-sin-imputar')}
+                                    title={title}
                                     label={t('reports_r1.export')}
+                                    scope="table"
                                 />
                             }
                         >
@@ -245,19 +256,22 @@ export default function PersonReport({
                                 title={t('reports_r1.person.by_client')}
                                 categoryLabel={t('reports_r1.columns.client')}
                                 top={clients}
-                                exportHref={tableHref('clientes')}
+                                request={tableRequest('clientes')}
+                                reportTitle={title}
                             />
                             <Breakdown
                                 title={t('reports_r1.person.by_project')}
                                 categoryLabel={t('reports_r1.columns.project')}
                                 top={projects}
-                                exportHref={tableHref('proyectos')}
+                                request={tableRequest('proyectos')}
+                                reportTitle={title}
                             />
                             <Breakdown
                                 title={t('reports_r1.person.by_type')}
                                 categoryLabel={t('reports_r1.columns.type')}
                                 top={types}
-                                exportHref={tableHref('tipos')}
+                                request={tableRequest('tipos')}
+                                reportTitle={title}
                             />
                         </div>
                     </PageSection>

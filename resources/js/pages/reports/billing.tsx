@@ -56,6 +56,7 @@ export default function BillingReport({
     scope,
     export_limit: exportLimit,
     can,
+    report_request: reportRequest,
 }: R2BillingProps) {
     const id = useId();
     const url = billing.url();
@@ -104,14 +105,11 @@ export default function BillingReport({
                                         </Link>
                                     </Button>
                                 ) : null}
-                                {tooManyRows ? null : (
+                                {tooManyRows ||
+                                reportRequest === null ? null : (
                                     <ExportMenu
-                                        href={billing.url({
-                                            query: {
-                                                ...filters.query,
-                                                cliente: [client.id],
-                                            },
-                                        })}
+                                        request={reportRequest}
+                                        title={`${t('reports_r2.billing.heading')} · ${client.name}`}
                                         label={t('reports_r2.billing.export')}
                                     />
                                 )}

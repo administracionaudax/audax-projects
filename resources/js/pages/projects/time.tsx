@@ -23,7 +23,6 @@ import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { time as projectTime } from '@/routes/projects';
-import { exportMethod as exportProjectTime } from '@/routes/projects/time';
 import type {
     ProjectTimeEntry,
     ProjectTimeFilters,
@@ -53,8 +52,8 @@ const STATUSES: TimeEntryStatus[] = [
 
 /**
  * Pestaña Horas del proyecto (SPEC §6, D-021): entradas con filtros, totales (dentro de bolsa,
- * exceso y facturable) y paginación. Un empleado ve solo las suyas. Se exportan a XLSX o CSV con
- * los mismos filtros (y el mismo alcance) en /proyectos/{id}/horas/exportar (Fase 2, R3).
+ * exceso y facturable) y paginación. Un empleado ve solo las suyas. Se exportan (Excel, CSV y PDF)
+ * e imprimen con los mismos filtros (y el mismo alcance) desde el menú «Exportar ▾» (Fase 9).
  */
 export default function ProjectTime({
     project,
@@ -64,6 +63,7 @@ export default function ProjectTime({
     totals,
     filters,
     options,
+    report_request: reportRequest,
 }: ProjectTimePageProps) {
     const id = useId();
 
@@ -112,8 +112,9 @@ export default function ProjectTime({
                             {t('hours.header.log_time')}
                         </Button>
                         <ExportMenu
-                            href={exportProjectTime.url(project.id, {
-                                query: activeFilters(filters),
+                            request={reportRequest}
+                            title={t('hours.project.title', {
+                                project: project.name,
                             })}
                             label={t('hours.project.export')}
                         />

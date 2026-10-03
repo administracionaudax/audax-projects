@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import { withTable } from '@/components/reports/report-request';
 import { R2BreakdownTable } from '@/components/reports/r2-breakdown-table';
 import {
     R2EstimateByType,
@@ -58,13 +59,14 @@ export default function ProjectReport({
     estimates,
     tasks,
     milestones,
+    report_request: reportRequest,
 }: R2ProjectReportProps) {
     const financials = filters.can_see_financials;
     const url = projectReport.url(project.id);
-    const exportHref = (table: string) =>
-        projectReport.url(project.id, {
-            query: { ...filters.query, tabla: table },
-        });
+    const title = t('reports_r2.project.heading', {
+        code: project.code,
+        project: project.name,
+    });
     const hasBanks = project.billing_type === 'hour_bank';
     const noHours = summary.logged_minutes === 0;
 
@@ -86,16 +88,14 @@ export default function ProjectReport({
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
                 <PageHeader
-                    title={t('reports_r2.project.heading', {
-                        code: project.code,
-                        project: project.name,
-                    })}
+                    title={title}
                     description={t('reports_r2.project.description', {
                         from: formatDate(filters.from),
                         to: formatDate(filters.to),
                     })}
                     actions={
                         <>
+                            <ExportMenu request={reportRequest} title={title} />
                             <Button variant="outline" asChild>
                                 <Link href={urls.project(project.id)}>
                                     <FolderKanban aria-hidden="true" />
@@ -165,7 +165,9 @@ export default function ProjectReport({
                         )}
                         action={
                             <ExportMenu
-                                href={exportHref('tareas')}
+                                request={withTable(reportRequest, 'tareas')}
+                                title={title}
+                                scope="table"
                                 label={t('reports_r2.project.export_estimates')}
                             />
                         }
@@ -191,7 +193,12 @@ export default function ProjectReport({
                             title={t('reports_r2.project.estimates_by_type')}
                             action={
                                 <ExportMenu
-                                    href={exportHref('estimado-por-tipo')}
+                                    request={withTable(
+                                        reportRequest,
+                                        'estimado-por-tipo',
+                                    )}
+                                    title={title}
+                                    scope="table"
                                     label={t(
                                         'reports_r2.project.export_estimates_by_type',
                                     )}
@@ -209,7 +216,9 @@ export default function ProjectReport({
                         )}
                         action={
                             <ExportMenu
-                                href={exportHref('personas')}
+                                request={withTable(reportRequest, 'personas')}
+                                title={title}
+                                scope="table"
                                 label={t('reports_r2.project.export_people')}
                             />
                         }
@@ -245,7 +254,9 @@ export default function ProjectReport({
                         title={t('reports_r2.project.by_type')}
                         action={
                             <ExportMenu
-                                href={exportHref('tipos')}
+                                request={withTable(reportRequest, 'tipos')}
+                                title={title}
+                                scope="table"
                                 label={t('reports_r2.project.export_types')}
                             />
                         }
@@ -281,7 +292,9 @@ export default function ProjectReport({
                         title={t('reports_r2.project.weekly')}
                         action={
                             <ExportMenu
-                                href={exportHref('semanas')}
+                                request={withTable(reportRequest, 'semanas')}
+                                title={title}
+                                scope="table"
                                 label={t('reports_r2.project.export_weeks')}
                             />
                         }

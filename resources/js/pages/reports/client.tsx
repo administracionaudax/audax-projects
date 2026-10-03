@@ -5,6 +5,7 @@ import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import { withTable } from '@/components/reports/report-request';
 import { R2BreakdownTable } from '@/components/reports/r2-breakdown-table';
 import {
     R2BankList,
@@ -56,16 +57,14 @@ export default function ClientReport({
     timeline,
     banks,
     history,
+    report_request: reportRequest,
 }: R2ClientReportProps) {
     const user = useRequiredUser();
     const can = useAbilities();
     const thresholds = useHourBankThresholds();
     const financials = filters.can_see_financials;
     const url = clientReport.url(client.id);
-    const exportHref = (table: string) =>
-        clientReport.url(client.id, {
-            query: { ...filters.query, tabla: table },
-        });
+    const title = t('reports_r2.client.heading', { client: client.name });
     const canBill = user.roles.includes('admin') || can.viewFinancials;
 
     setLayoutProps({
@@ -87,15 +86,14 @@ export default function ClientReport({
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
                 <PageHeader
-                    title={t('reports_r2.client.heading', {
-                        client: client.name,
-                    })}
+                    title={title}
                     description={t('reports_r2.client.description', {
                         from: formatDate(filters.from),
                         to: formatDate(filters.to),
                     })}
                     actions={
                         <>
+                            <ExportMenu request={reportRequest} title={title} />
                             <Button variant="outline" asChild>
                                 <Link href={urls.client(client.id)}>
                                     <Building2 aria-hidden="true" />
@@ -151,8 +149,10 @@ export default function ClientReport({
                         )}
                         action={
                             <ExportMenu
-                                href={exportHref('meses')}
+                                request={withTable(reportRequest, 'meses')}
+                                title={title}
                                 label={t('reports_r2.client.export_timeline')}
+                                scope="table"
                             />
                         }
                     >
@@ -199,8 +199,10 @@ export default function ClientReport({
                         )}
                         action={
                             <ExportMenu
-                                href={exportHref('proyectos')}
+                                request={withTable(reportRequest, 'proyectos')}
+                                title={title}
                                 label={t('reports_r2.client.export_projects')}
+                                scope="table"
                             />
                         }
                     >
@@ -244,8 +246,10 @@ export default function ClientReport({
                         description={t('reports_r2.client.banks_description')}
                         action={
                             <ExportMenu
-                                href={exportHref('bolsas')}
+                                request={withTable(reportRequest, 'bolsas')}
+                                title={title}
                                 label={t('reports_r2.client.export_banks')}
+                                scope="table"
                             />
                         }
                     >

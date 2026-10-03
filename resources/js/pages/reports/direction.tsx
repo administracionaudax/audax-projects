@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import { withTable } from '@/components/reports/report-request';
 import { R1AtRiskBanks } from '@/components/reports/r1-at-risk-banks';
 import { R1BarChart } from '@/components/reports/r1-bar-chart';
 import {
@@ -51,12 +52,20 @@ export default function DirectionReport({
     projects,
     at_risk: atRisk,
     overdue,
+    report_request: reportRequest,
 }: DirectionReportProps) {
     const state = useReportVisit();
     const financials = filters.can_see_financials;
     const period = periodQuery(filters.query);
-    const exportHref = (tabla: string) =>
-        reportUrls.direction({ ...filters.query, tabla });
+    const title = t('reports_r1.direction.heading');
+    const tableMenu = (tabla: string) => (
+        <ExportMenu
+            request={withTable(reportRequest, tabla)}
+            title={title}
+            label={t('reports_r1.export')}
+            scope="table"
+        />
+    );
     const departmentBars = departments.map((row) => ({
         id: row.key ?? 'none',
         label: row.name,
@@ -76,8 +85,11 @@ export default function DirectionReport({
 
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
                 <PageHeader
-                    title={t('reports_r1.direction.heading')}
+                    title={title}
                     description={t('reports_r1.direction.description')}
+                    actions={
+                        <ExportMenu request={reportRequest} title={title} />
+                    }
                 />
 
                 {limitedTo !== null ? (
@@ -147,12 +159,7 @@ export default function DirectionReport({
                     <div className="grid gap-8 xl:grid-cols-2">
                         <PageSection
                             title={t('reports_r1.direction.by_department')}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('departamentos')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
+                            action={tableMenu('departamentos')}
                         >
                             {departments.length === 0 ? (
                                 <EmptyState
@@ -209,12 +216,7 @@ export default function DirectionReport({
                     <div className="grid gap-8 xl:grid-cols-2">
                         <PageSection
                             title={t('reports_r1.direction.top_clients')}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('clientes')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
+                            action={tableMenu('clientes')}
                         >
                             <R1BreakdownTable
                                 caption={t('reports_r1.direction.top_clients')}
@@ -236,12 +238,7 @@ export default function DirectionReport({
 
                         <PageSection
                             title={t('reports_r1.direction.top_projects')}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('proyectos')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
+                            action={tableMenu('proyectos')}
                         >
                             <R1BreakdownTable
                                 caption={t('reports_r1.direction.top_projects')}
@@ -268,12 +265,7 @@ export default function DirectionReport({
                             description={t('reports_r1.at_risk.description', {
                                 threshold: atRisk.threshold,
                             })}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('bolsas-en-riesgo')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
+                            action={tableMenu('bolsas-en-riesgo')}
                         >
                             <R1AtRiskBanks atRisk={atRisk} />
                         </PageSection>
@@ -281,12 +273,7 @@ export default function DirectionReport({
                         <PageSection
                             title={t('reports_r1.overdue.title')}
                             description={t('reports_r1.overdue.description')}
-                            action={
-                                <ExportMenu
-                                    href={exportHref('tareas-vencidas')}
-                                    label={t('reports_r1.export')}
-                                />
-                            }
+                            action={tableMenu('tareas-vencidas')}
                         >
                             <R1OverdueTasks overdue={overdue} />
                         </PageSection>

@@ -308,6 +308,18 @@ describe('PivotControls', () => {
 const pageProps = (
     overrides: Partial<DetailPageProps> = {},
 ): DetailPageProps => ({
+    report_request: {
+        kind: 'detail',
+        route_params: {},
+        query: {
+            periodo: 'semana',
+            fecha: '2026-09-21',
+            proyecto: [4],
+            filas: 'persona',
+            columnas: 'semana',
+            medida: 'imputadas',
+        },
+    },
     filters: {
         query: {
             periodo: 'semana',
