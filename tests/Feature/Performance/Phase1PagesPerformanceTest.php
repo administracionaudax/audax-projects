@@ -85,7 +85,9 @@ const PERF_BUDGETS = [
     'clients.index' => 8,
     'clients.show' => 16,
     'clients.options' => 7,
-    'my-tasks.index' => 10,
+    // Mis tareas con filtros (D-143): + la tarea responsable, las opciones (proyectos con su cliente y
+    // tipos) y los estados ya no en la caché del listado; fijas, no por fila (12 medidas + 3).
+    'my-tasks.index' => 15,
     'time.index' => 22,
     'time.index.person' => 25,
     'time.approvals.index' => 18,

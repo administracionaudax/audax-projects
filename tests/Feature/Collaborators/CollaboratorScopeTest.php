@@ -95,8 +95,8 @@ it('en Inicio y Mis tareas solo aparecen las tareas de sus proyectos y las tarje
     $titles = collect([...$home['tasks']['overdue'], ...$home['tasks']['today'], ...$home['tasks']['week']])->pluck('title')->all();
     expect($titles)->toBe(['Tarea Faro']);
 
-    $sections = ($this->props)('/mis-tareas')['sections'];
-    expect(collect($sections)->flatMap(fn (array $section): array => $section['tasks'])->pluck('title')->all())->toBe(['Tarea Faro']);
+    $tasks = ($this->props)('/mis-tareas')['tasks'];
+    expect(collect($tasks)->pluck('title')->all())->toBe(['Tarea Faro']);
 });
 
 it('la navegación compartida le quita clientes, bolsas, carga, ausencias, informes y datos económicos', function () {
