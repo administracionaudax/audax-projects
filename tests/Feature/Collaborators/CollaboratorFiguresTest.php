@@ -124,3 +124,25 @@ describe('horas de todos y presupuesto', function () {
         expect(collect(($this->props)($this->ana, "/proyectos/{$this->project->id}/gantt")['tasks'])->firstWhere('id', $this->task->id)['logged_minutes'])->toBe(195);
     });
 });
+
+it('tras salir del proyecto ya no edita ni borra sus comentarios de allí', function () {
+    $project = Project::factory()->withMembers([$this->sara, $this->ana])->create();
+    $task = Task::factory()->create(['project_id' => $project->id]);
+    $this->actingAs($this->sara)->post("/tareas/{$task->id}/comentarios", ['body' => '<p>Primero</p>'])->assertSessionHasNoErrors();
+    $comment = TaskComment::query()->sole();
+
+    $this->actingAs($this->sara)->patch("/comentarios/{$comment->id}", ['body' => '<p>Editado</p>'])->assertSessionHasNoErrors();
+
+    $project->members()->detach($this->sara->id);
+    $this->sara->refresh();
+
+    $this->actingAs($this->sara)->patch("/comentarios/{$comment->id}", ['body' => '<p>Otra vez</p>'])->assertForbidden();
+    $this->actingAs($this->sara)->delete("/comentarios/{$comment->id}")->assertForbidden();
+
+    expect($comment->fresh()->body)->toBe('<p>Editado</p>')
+        ->and($comment->fresh()->trashed())->toBeFalse();
+
+    // Un admin sigue pudiendo borrarlo.
+    $this->actingAs(User::factory()->admin()->create())->delete("/comentarios/{$comment->id}")->assertRedirect();
+    expect(TaskComment::query()->count())->toBe(0);
+});
