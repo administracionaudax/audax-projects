@@ -37,6 +37,7 @@ import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as myTasksIndex } from '@/routes/my-tasks';
 import { index as projectsIndex } from '@/routes/projects';
 import { index as reportsIndex } from '@/routes/reports';
+import { index as reportSchedulesIndex } from '@/routes/reports/schedules';
 import { index as timeIndex } from '@/routes/time';
 import { index as workloadIndex } from '@/routes/workload';
 import type { Abilities, NavItem } from '@/types';
@@ -86,6 +87,13 @@ export function mainNavItems(
             title: t('nav.reports'),
             href: reportsIndex(),
             icon: BarChart3,
+            // Envíos programados (D-141), dentro de Informes.
+            items: [
+                {
+                    title: t('deliveries.nav.schedules'),
+                    href: reportSchedulesIndex(),
+                },
+            ],
         },
         {
             title: t('nav.chat'),

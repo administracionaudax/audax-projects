@@ -137,3 +137,14 @@ export type PivotResult = {
     total: number;
     truncated: boolean;
 };
+
+/**
+ * Informe y filtros para exportar, enviar o programar (Fase 9, D-139):
+ * App\Domain\Reports\Delivery\ReportRequest::toArray(). `kind` es un ReportKind; `route_params`,
+ * los parámetros de la ruta del informe; `query`, sus filtros de la URL.
+ */
+export type ReportRequestData = {
+    kind: string;
+    route_params: Record<string, number | string>;
+    query: Record<string, unknown>;
+};

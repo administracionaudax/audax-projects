@@ -20,7 +20,8 @@ import { cn } from '@/lib/utils';
 export type FilterOption = { id: number; name: string; muted?: boolean };
 
 /**
- * Selector múltiple accesible (combobox con búsqueda) para la barra de filtros de los informes.
+ * Selector múltiple accesible (combobox con búsqueda) para la barra de filtros de los informes. Lo
+ * reutilizan los destinatarios de los envíos por correo (D-141).
  */
 export function MultiSelectFilter({
     label,
@@ -28,18 +29,21 @@ export function MultiSelectFilter({
     value,
     onChange,
     disabled,
+    emptyLabel,
 }: {
     label: string;
     options: FilterOption[];
     value: number[];
     onChange: (ids: number[]) => void;
     disabled?: boolean;
+    /** Resumen sin nada elegido (por defecto, «Todos», como en los filtros). */
+    emptyLabel?: string;
 }) {
     const [open, setOpen] = useState(false);
     const selected = options.filter((option) => value.includes(option.id));
     const summary =
         selected.length === 0
-            ? t('reports.filters.all')
+            ? (emptyLabel ?? t('reports.filters.all'))
             : selected.length === 1
               ? selected[0].name
               : t('reports.filters.selected', { count: selected.length });
