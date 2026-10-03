@@ -956,6 +956,17 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - en esas rutas, las políticas y las consultas usan `User::visibleProjectIds()` / `canSeeProject()`,
   - un test recorre **todas** las rutas internas con un colaborador.
 - **Aprobación de horas (D-020):** las aprueba el responsable de su departamento si tiene uno (Amparo, en Diseño, por Aga) y, si no, un admin.
+- **Concreción al implementarlo (agente A, 03/10):**
+  - **Rutas:** la lista está en `config/collaborators.php` y la aplica el middleware `collaborator` (`RestrictCollaborators`) antes de buscar los modelos de la URL. Abiertas: Inicio, Mis tareas, Proyectos (listado y pestañas Resumen, Tareas, Gantt del proyecto, Chat y Archivos), tareas y sus subrecursos, horas propias y temporizador, notificaciones, chat de proyecto, tiempo real, búsqueda, privacidad propia y ajustes personales. También quedan cerradas sus **propias ausencias** (`/ausencias`): no es plantilla.
+  - **Pestañas del proyecto:** Bolsas, Horas (las de todos) y Ajustes, ocultas y cerradas; el resumen no enseña las bolsas y la actividad omite la de las bolsas.
+  - **Inicio:** sin «Mis indicadores» (son informes), «Mi carga» ni «Mis ausencias».
+  - **Consumo de bolsas:** en los selectores de bolsa le llega `consumed_pct: null` y solo ve el nombre; en el listado de proyectos, `hour_banks: null`.
+  - **Permisos globales:** `Gate::before` le niega siempre `view-financials`, `view-hour-banks`, `approve-time`, `lock-time`, `manage-users`, `manage-settings` y Horizon, aunque se le diera el permiso por error.
+  - **Personas:** solo es responsable de una tarea o mencionado en los proyectos de los que es miembro (lo valida el servidor para todos); él solo asigna y menciona a miembros. Nadie le abre directas ni le añade a grupos, y no sale en la lista de personas del chat.
+  - **Presencia:** no entra en el canal «online» de la plantilla; con latidos solo ve a las personas de sus proyectos.
+  - **Proyecto interno:** aunque alguien le añada como miembro, no imputa en él (`time.errors.collaborator_internal`).
+  - **Cambio de rol:** al pasar a colaborador deja de ser responsable de departamento y co-gestor de sus proyectos; si es gestor principal de alguno, el cambio se rechaza hasta elegir otro.
+  - **Listado de proyectos:** los filtros solo ofrecen los clientes y gestores de sus proyectos, sin departamentos.
 
 ### D-135 · Importación de ClickUp: alcance y correspondencias
 - **Alcance:** todo el espacio «Audax Studio» y su historial (desde marzo de 2024).
