@@ -1,7 +1,6 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
-import { useUser } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
@@ -46,7 +45,7 @@ export function ProjectShell({
     actions?: ReactNode;
     children: ReactNode;
 }) {
-    const collaborator = useUser()?.is_collaborator ?? false;
+    const collaborator = usePage().props.auth?.user?.is_collaborator ?? false;
     const tabs = TABS.filter(
         (item) =>
             (item.id !== 'bolsas' ||

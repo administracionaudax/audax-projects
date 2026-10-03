@@ -54,7 +54,7 @@ export function mainNavItems(
 ): NavItem[] {
     const chatUnread = counters.chatUnread ?? 0;
 
-    const items: (NavItem | false)[] = [
+    const items: (NavItem | false | undefined)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
@@ -106,7 +106,8 @@ export function mainNavItems(
         },
     ];
 
-    return items.filter((item): item is NavItem => item !== false);
+    // Sin la habilidad (false o, en props antiguas, undefined), la entrada no se pinta.
+    return items.filter((item): item is NavItem => Boolean(item));
 }
 
 export function AppSidebar() {
