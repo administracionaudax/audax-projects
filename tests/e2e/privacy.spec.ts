@@ -177,6 +177,9 @@ for (const theme of ['light', 'dark'] as const satisfies readonly Theme[]) {
             await expectNoSeriousViolations(page, `${path} (${theme})`);
         }
 
+        // Cambio de persona en la misma página: sin cerrar la sesión de la empleada, /login
+        // redirige (middleware guest) y no hay formulario que rellenar.
+        await page.context().clearCookies();
         await login(page, USERS.admin);
         await saveUserTheme(page, theme);
         await page.goto('/admin/privacidad');
