@@ -123,7 +123,8 @@ final class DepartmentDocument extends BaseDocument
                 'kpis' => self::kpis($summary, self::KPIS, $financials),
                 'members' => $this->membersPdf($members, $financials),
                 'clients' => self::breakdownPdf(Dimension::Client->label(), $clients['rows'], $clients['others'], $total, $financials),
-                'definitions' => self::definitions([...self::KPIS, 'pace'], $financials),
+                // El ritmo solo sale (y se explica) con el periodo en curso, como en la página.
+                'definitions' => self::definitions([...self::KPIS, ...(self::inProgress($members) ? ['pace'] : [])], $financials),
             ],
         );
     }
@@ -150,7 +151,7 @@ final class DepartmentDocument extends BaseDocument
      */
     private function membersPdf(array $members, bool $financials): array
     {
-        $inProgress = array_sum(array_column($members, 'capacity_to_date_minutes')) < array_sum(array_column($members, 'capacity_minutes'));
+        $inProgress = self::inProgress($members);
         $columns = [[self::t('report_pdf.columns.person')], [self::t('report_pdf.columns.capacity'), true], [self::t('report_pdf.columns.logged'), true],
             [self::t('report_pdf.columns.billable'), true], [self::t('report_pdf.columns.occupancy'), true],
             ...($inProgress ? [[self::t('report_pdf.columns.pace'), true]] : []),
@@ -171,6 +172,16 @@ final class DepartmentDocument extends BaseDocument
         ], $members);
 
         return PdfTable::make($columns, $rows, empty: self::t('report_pdf.department.no_members'));
+    }
+
+    /**
+     * Si al periodo aún le quedan días con jornada (hay ritmo, D-080).
+     *
+     * @param  list<Member>  $members
+     */
+    private static function inProgress(array $members): bool
+    {
+        return array_sum(array_column($members, 'capacity_to_date_minutes')) < array_sum(array_column($members, 'capacity_minutes'));
     }
 
     /**

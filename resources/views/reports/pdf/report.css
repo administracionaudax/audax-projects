@@ -9,7 +9,7 @@
     margin-top: 4pt;
 }
 .facts dd {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
 }
 h2:first-child {
     margin-top: 0;
@@ -51,7 +51,7 @@ h2:first-child {
     margin: 0;
 }
 td {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
 }
 th.num,
 td.num {
@@ -192,4 +192,8 @@ table.compact td {
     .report--landscape {
         max-width: 297mm;
     }
+}
+/* La primera columna (el nombre) no se estrecha por las cifras: sin cortes a mitad de palabra. */
+table:not(.compact) td:first-child {
+    min-width: 34mm;
 }

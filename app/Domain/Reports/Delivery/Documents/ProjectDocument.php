@@ -7,6 +7,7 @@ use App\Domain\Reports\Dimension;
 use App\Domain\Reports\EstimateComparison;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
+use App\Domain\Reports\Money;
 use App\Domain\Reports\Pdf\PdfFormat;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
@@ -269,7 +270,14 @@ final class ProjectDocument extends BaseDocument
             ...($banks ? [PdfFormat::minutes($week['in_bank_minutes'])] : []),
             $week['overage_minutes'] > 0 ? PdfTable::cell(PdfFormat::overage($week['overage_minutes']), 'overage') : PdfFormat::overage(0),
             ...($financials ? [PdfFormat::money($week['income'] ?? '0.00')] : []),
-        ], $weeks), compact: count($weeks) > 20);
+        ], $weeks), $weeks === [] ? null : [
+            self::t('report_pdf.total'),
+            PdfFormat::minutes(array_sum(array_column($weeks, 'logged_minutes'))),
+            PdfFormat::minutes(array_sum(array_column($weeks, 'billable_minutes'))),
+            ...($banks ? [PdfFormat::minutes(array_sum(array_column($weeks, 'in_bank_minutes')))] : []),
+            PdfFormat::overage(array_sum(array_column($weeks, 'overage_minutes'))),
+            ...($financials ? [PdfFormat::money(Money::round(Money::add('0', ...array_map(fn (array $week): string => (string) ($week['income'] ?? '0'), $weeks))))] : []),
+        ], compact: count($weeks) > 20);
     }
 
     /**
