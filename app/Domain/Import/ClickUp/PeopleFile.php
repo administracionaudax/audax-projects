@@ -23,7 +23,9 @@ use RuntimeException;
  *       "role": "admin" | "department_manager" | "employee" | "collaborator",
  *       "department": "Diseño" | null,            // se crea si no existe
  *       "is_department_manager": false,           // responsable de su departamento (pivote)
- *       "import": true                            // false: ni cuenta, ni tareas, ni horas
+ *       "import": true,                           // false: ni cuenta, ni tareas, ni horas
+ *       "active": true,                           // false: antiguo empleado, cuenta desactivada
+ *       "lists": ["901234567"]                    // listas de ClickUp a las que tenía acceso
  *     }
  *   ]
  * }
@@ -68,7 +70,7 @@ final readonly class PeopleFile
     {
         $roles = [Role::Admin->value, Role::DepartmentManager->value, Role::Employee->value, Role::Collaborator->value];
 
-        /** @var array{default_manager?: string|null, people: list<array{clickup_email: string, email: string, name: string, role: string, department?: string|null, is_department_manager?: bool, import?: bool}>} $valid */
+        /** @var array{default_manager?: string|null, people: list<array{clickup_email: string, email: string, name: string, role: string, department?: string|null, is_department_manager?: bool, import?: bool, active?: bool, lists?: list<string>}>} $valid */
         $valid = Validator::make($data, [
             'default_manager' => ['nullable', 'string', 'email'],
             'people' => ['required', 'array', 'min:1'],
@@ -79,6 +81,9 @@ final readonly class PeopleFile
             'people.*.department' => ['nullable', 'string', 'max:255'],
             'people.*.is_department_manager' => ['sometimes', 'boolean'],
             'people.*.import' => ['sometimes', 'boolean'],
+            'people.*.active' => ['sometimes', 'boolean'],
+            'people.*.lists' => ['sometimes', 'array'],
+            'people.*.lists.*' => ['string', 'max:64'],
         ])->validate();
 
         $people = [];
@@ -93,6 +98,8 @@ final readonly class PeopleFile
                 department: $department !== '' ? $department : null,
                 isDepartmentManager: (bool) ($person['is_department_manager'] ?? false),
                 import: (bool) ($person['import'] ?? true),
+                active: (bool) ($person['active'] ?? true),
+                lists: array_map('strval', $person['lists'] ?? []),
             );
         }
 

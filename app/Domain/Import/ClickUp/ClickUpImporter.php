@@ -142,6 +142,9 @@ final class ClickUpImporter
     /** @var array<string, PersonMatch> correo de ClickUp => persona */
     private array $people = [];
 
+    /** @var list<int> cuentas desactivadas del fichero de personas (antiguos empleados) */
+    private array $inactiveUserIds = [];
+
     private User $defaultManager;
 
     /** @var array<string, array{project: int, bank: int|null, internal: bool}> lista => destino de sus tareas */
@@ -210,6 +213,11 @@ final class ClickUpImporter
                 DB::transaction(function () use ($peopleFile): void {
                     $this->output->stage('Personas, tipos y estados');
                     $this->people = $this->peopleImporter->import($peopleFile, $this->report);
+                    foreach ($this->people as $match) {
+                        if ($match->user !== null && ! $match->user->is_active) {
+                            $this->inactiveUserIds[] = $match->user->id;
+                        }
+                    }
                     $this->defaultManager = $this->defaultManager($peopleFile);
                     $this->loadStatuses();
 
@@ -285,6 +293,7 @@ final class ClickUpImporter
         $this->taskTotal = 0;
         $this->entryTotal = 0;
         $this->people = [];
+        $this->inactiveUserIds = [];
         $this->targets = [];
         $this->statusCache = [];
         $this->typeCache = [];
@@ -937,6 +946,16 @@ final class ClickUpImporter
         /** @var array<int, array{minutes: int, tasks: int, user: User}> $stats */
         $stats = [];
 
+        // Acceso explícito a la lista en ClickUp (campo «lists» del fichero de personas): miembro
+        // aunque no tenga tareas ni horas, p. ej. los colaboradores invitados (D-136).
+        foreach ($this->people as $email => $match) {
+            if (array_intersect($listIds, $match->spec->lists) !== []) {
+                foreach ($listIds as $listId) {
+                    $this->activity[$listId][$email] ??= ['tasks' => 0, 'minutes' => 0];
+                }
+            }
+        }
+
         foreach ($listIds as $listId) {
             foreach ($this->activity[$listId] ?? [] as $email => $activity) {
                 $user = $this->person($email)?->user;
@@ -1075,6 +1094,7 @@ final class ClickUpImporter
 
             $status = self::arr($task['status'] ?? null);
             $assignees = $this->assignees(self::arr($task['assignees'] ?? null));
+            $activeAssignees = array_values(array_filter($assignees, fn (int $userId): bool => ! in_array($userId, $this->inactiveUserIds, true)));
             $creator = $this->userFor(self::email(self::arr($task['creator'] ?? null)['email'] ?? null));
             $statusMatch = $this->status(self::str($status['status'] ?? null), self::str($status['type'] ?? null));
             $done = $statusMatch['category'] === TaskStatusCategory::Done;
@@ -1088,7 +1108,9 @@ final class ClickUpImporter
                 'task_type_id' => $this->taskType(self::str(self::field($task, 'Área'))),
                 'status_id' => $statusMatch['status'],
                 'priority' => self::priority(self::str(self::arr($task['priority'] ?? null)['priority'] ?? null)),
-                'assignee_user_id' => $assignees[0] ?? null,
+                // Antiguos empleados (cuentas desactivadas): siguen como responsables de lo que
+                // hicieron (tareas hechas); las abiertas quedan sin ellos para repartirlas.
+                'assignee_user_id' => ($done ? $assignees : $activeAssignees)[0] ?? null,
                 'start_date' => self::localDate($task['start_date'] ?? null),
                 'due_date' => self::localDate($task['due_date'] ?? null),
                 'estimated_minutes' => self::minutes($task['time_estimate'] ?? null),
@@ -1113,7 +1135,7 @@ final class ClickUpImporter
                 unset($attributes['parent_task_id']);
             }
 
-            $model = $this->saveTask($model, $attributes, $completedAt, self::instant($task['date_created'] ?? null), array_slice($assignees, 1));
+            $model = $this->saveTask($model, $attributes, $completedAt, self::instant($task['date_created'] ?? null), array_values(array_diff(array_slice($done ? $assignees : $activeAssignees, 1), $this->inactiveUserIds)));
             $this->refs->put('task', $id, 'task', $model->id);
 
             if ($waitsForRoot) {

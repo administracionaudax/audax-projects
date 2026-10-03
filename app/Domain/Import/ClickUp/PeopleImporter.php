@@ -66,7 +66,7 @@ final class PeopleImporter
             'email' => $spec->email,
             'password' => Str::password(40),
             'department_id' => $department?->id,
-            'is_active' => true,
+            'is_active' => $spec->active,
         ])->save();
 
         $user->syncRoles([$spec->role->value]);
@@ -91,6 +91,16 @@ final class PeopleImporter
 
             if ($role === Role::Employee || $role === Role::Collaborator) {
                 $user->managedDepartments()->detach();
+            }
+        }
+
+        if (! $spec->active && $user->is_active) {
+            if ($user->isAdmin() && $this->isLastActiveAdmin($user)) {
+                $report->warn("No se desactiva la última cuenta de administración ({$user->name}).");
+            } else {
+                $user->is_active = false;
+                $user->save();
+                $changed = true;
             }
         }
 

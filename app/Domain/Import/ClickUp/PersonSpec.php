@@ -17,6 +17,10 @@ final readonly class PersonSpec
         public ?string $department,
         public bool $isDepartmentManager,
         public bool $import,
+        /** false: antiguo empleado; cuenta desactivada para conservar quién hizo qué (D-136). */
+        public bool $active = true,
+        /** @var list<string> listas de ClickUp a las que tenía acceso: es miembro de sus proyectos */
+        public array $lists = [],
     ) {}
 
     /**

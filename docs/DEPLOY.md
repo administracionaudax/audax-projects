@@ -156,7 +156,7 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
           "role": "admin | department_manager | employee | collaborator",
           "department": "Diseño",
           "is_department_manager": false,
-          "import": true
+          "import": true, "active": true, "lists": ["901234567"]
         }
       ]
     }

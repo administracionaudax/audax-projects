@@ -1030,6 +1030,13 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **Cuentas existentes:** si ya hay una cuenta con ese correo, se le actualizan el rol y el departamento.
   - **Invitaciones:** el importador **no** envía invitaciones. Se envían después, con el visto bueno del propietario, desde la administración o con `--invitar`.
 - **Simulación:** `--dry-run` hace todo dentro de una transacción que se deshace y muestra el informe de recuentos.
+- **Antiguos empleados (propietario, 03/10):**
+  - se crean como cuentas **desactivadas** (`"active": false` en `personas.json`) para saber quién hizo qué,
+  - siguen como responsables de las tareas hechas; las abiertas quedan sin ellos, para repartirlas,
+  - nunca son miembros, seguidores ni gestores.
+  - Sus correos en la app son marcadores `…@antiguos.audaxstudio.invalid`: varios usaban buzones compartidos (copy@, marketing@, ux@) que pueden volver a asignarse.
+- **Acceso a listas:** el campo `"lists"` de `personas.json` (ids de listas de ClickUp) hace a la persona miembro de los proyectos de esas listas, aunque no tenga tareas ni horas.
+  - Así entran los colaboradores invitados en las listas a las que tenían acceso en ClickUp (consultadas con `GET /list/{id}/member`): Daniel (Abordo Congelados EC1 y BEOS GE1), Raúl (Mvoca WE1) y Pablo (Melodía WE1 y BH2).
 - **Concreciones del importador** (`app:import-clickup`):
   - **Exceso antes del bloqueo:** las horas de semanas anteriores se escriben aprobadas y se bloquean después de recalcular las bolsas, para que `HourBankLedger` reparta el exceso (las bloqueadas conservan el suyo, D-019). No se crea un `TimeEntryLock`: el admin las corrige como cualquier bloqueada.
   - **Registros de más de 24 h** (cinco en el export, temporizadores olvidados): se parten en los cambios de día de Madrid, como el temporizador, sin cambiar el total. En el modo de importación no se valida el total del día.

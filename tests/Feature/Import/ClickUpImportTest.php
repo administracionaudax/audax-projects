@@ -385,6 +385,56 @@ test('personas: crea las cuentas, actualiza las existentes y respeta a las colab
         ->and($report->get('people', ImportReport::SKIPPED))->toBe(1);
 });
 
+test('antiguos empleados: cuenta desactivada, conservan sus tareas hechas y las abiertas quedan sin ellos', function () {
+    $directory = editedClickUpExport(function (string $file, array $data): array {
+        if ($file === 'personas.json') {
+            $data['people'][] = ['clickup_email' => 'gina@clickup.test', 'email' => 'gina@empresa.test', 'name' => 'Gina Antigua', 'role' => 'employee', 'department' => 'Diseño', 'active' => false];
+        }
+
+        if ($file === 'tasks.json') {
+            foreach ($data as &$task) {
+                if (in_array($task['id'], ['T1', 'T3'], true)) {
+                    $task['assignees'] = [['id' => 99, 'username' => 'Gina Antigua', 'email' => 'gina@clickup.test']];
+                }
+            }
+        }
+
+        return $data;
+    });
+
+    runClickUpImport($directory);
+
+    $gina = importedUser('gina@empresa.test');
+    expect($gina->is_active)->toBeFalse()
+        ->and($gina->projects()->exists())->toBeFalse()
+        ->and(importedTask('T1')->assignee_user_id)->toBe($gina->id)
+        ->and(importedTask('T3')->assignee_user_id)->toBeNull()
+        ->and(importedTask('T3')->watchers->pluck('id')->all())->not->toContain($gina->id);
+    expect(DB::table('invitation_tokens')->count())->toBe(0);
+});
+
+test('el acceso a listas del fichero de personas hace miembro aunque no tenga tareas ni horas', function () {
+    $directory = editedClickUpExport(function (string $file, array $data): array {
+        if ($file === 'personas.json') {
+            $data['people'][] = ['clickup_email' => 'hugo@clickup.test', 'email' => 'hugo@externa.test', 'name' => 'Hugo Invitado', 'role' => 'collaborator', 'department' => null, 'lists' => ['L5']];
+        }
+
+        return $data;
+    });
+
+    runClickUpImport($directory);
+
+    $hugo = importedUser('hugo@externa.test');
+    $projects = $hugo->projects()->get();
+    expect($projects)->toHaveCount(1)
+        ->and($projects->first()?->id)->toBe(importedTask('T10')->project_id)
+        ->and($hugo->isManagerOf($projects->first()))->toBeFalse();
+
+    // Idempotente: una segunda ejecución no cambia la pertenencia.
+    runClickUpImport($directory);
+    expect($hugo->projects()->count())->toBe(1);
+});
+
 test('es idempotente: dos ejecuciones dan los mismos datos y una tarea cambiada se actualiza', function () {
     runClickUpImport();
     $before = [Client::count(), Project::count(), HourBank::count(), Task::withTrashed()->count(), TimeEntry::count(), User::count(), TimesheetPeriod::count()];
