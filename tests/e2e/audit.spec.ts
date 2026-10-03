@@ -34,6 +34,39 @@ async function expectNoSeriousViolations(
     expect(serious, `${label}\n${report}`).toEqual([]);
 }
 
+/** Campos de una línea de CSV con «;» y comillas dobles (con "" como comilla escapada). */
+function csvFields(line: string): string[] {
+    const fields: string[] = [];
+    let field = '';
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (quoted) {
+            if (char === '"' && line[i + 1] === '"') {
+                field += '"';
+                i++;
+            } else if (char === '"') {
+                quoted = false;
+            } else {
+                field += char;
+            }
+        } else if (char === '"') {
+            quoted = true;
+        } else if (char === ';') {
+            fields.push(field);
+            field = '';
+        } else if (char !== '\r') {
+            field += char;
+        }
+    }
+
+    fields.push(field);
+
+    return fields;
+}
+
 test('el admin filtra la auditoría, ve el detalle y descarga el CSV', async ({
     page,
 }) => {
@@ -84,9 +117,17 @@ test('el admin filtra la auditoría, ve el detalle y descarga el CSV', async ({
     expect(download.suggestedFilename()).toMatch(
         /^auditoria-\d{4}-\d{2}-\d{2}\.csv$/,
     );
-    expect(
-        csv.startsWith('﻿Fecha y hora;Persona;Entidad;Elemento;Acción;Cambios'),
-    ).toBe(true);
+    // CSV para Excel en español: BOM UTF-8 y «;». El escritor (fputcsv) entrecomilla los campos
+    // con espacios («"Fecha y hora"»), así que la cabecera se compara campo a campo.
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csvFields(csv.slice(1).split('\n')[0])).toEqual([
+        'Fecha y hora',
+        'Persona',
+        'Entidad',
+        'Elemento',
+        'Acción',
+        'Cambios',
+    ]);
     expect(csv).toContain('Ajustes generales');
     expect(csv).not.toContain(';Tarea;');
 
