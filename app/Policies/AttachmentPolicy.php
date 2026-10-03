@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
  * cualquier proyecto (D-021); el portal de cliente (Fase 5) añadirá su propia regla. Los del chat
  * (Fase 6, D-071), solo quien puede ver su conversación.
  * Los borra quien los subió, quien gestiona el proyecto o un admin; los del chat, nunca sueltos.
+ * Un colaborador externo (D-134), solo los de sus proyectos.
  */
 class AttachmentPolicy
 {
@@ -32,6 +33,10 @@ class AttachmentPolicy
             return $this->viewInChat($user, $attachment);
         }
 
+        if (! $this->inVisibleProject($user, $attachment)) {
+            return false;
+        }
+
         $attachable = $attachment->attachable;
 
         if ($attachable instanceof TaskComment) {
@@ -49,11 +54,28 @@ class AttachmentPolicy
             return false;
         }
 
+        if (! $this->inVisibleProject($user, $attachment)) {
+            return false;
+        }
+
         if ($attachment->user_id === $user->id || $user->isAdmin()) {
             return true;
         }
 
         return $attachment->project !== null && $user->canManageProject($attachment->project);
+    }
+
+    /**
+     * Un colaborador externo solo toca los adjuntos de los proyectos que ve (D-134); el resto de
+     * internos, los de cualquiera (D-021).
+     */
+    private function inVisibleProject(User $user, Attachment $attachment): bool
+    {
+        if (! $user->isCollaborator()) {
+            return true;
+        }
+
+        return $attachment->project_id !== null && $user->canSeeProject($attachment->project_id);
     }
 
     /**

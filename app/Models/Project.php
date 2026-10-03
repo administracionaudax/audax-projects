@@ -253,6 +253,22 @@ class Project extends Model
     }
 
     /**
+     * Proyectos que $viewer puede ver (D-134): todos, salvo para un colaborador externo, que solo
+     * ve aquellos de los que es miembro.
+     *
+     * @param  Builder<Project>  $query
+     */
+    #[Scope]
+    protected function visibleTo(Builder $query, User $viewer): void
+    {
+        $ids = $viewer->visibleProjectIds();
+
+        if ($ids !== null) {
+            $query->whereIn('projects.id', $ids);
+        }
+    }
+
+    /**
      * Proyectos donde el usuario es miembro.
      *
      * @param  Builder<Project>  $query

@@ -10,7 +10,7 @@ use App\Search\SearchResult;
 use App\Search\SearchSource;
 
 /**
- * Proyectos por nombre o código (todos los internos los ven, D-021). Los archivados, al final.
+ * Proyectos por nombre o código (todos los internos los ven, D-021; un colaborador externo, solo los de sus proyectos, D-134). Los archivados, al final.
  */
 class ProjectSource implements SearchSource
 {
@@ -22,7 +22,7 @@ class ProjectSource implements SearchSource
             return [];
         }
 
-        $projects = Project::query()->with('client:id,name');
+        $projects = Project::query()->visibleTo($user)->with('client:id,name');
         $this->whereMatches($projects, ['projects.name', 'projects.code'], $query);
 
         return array_values($projects

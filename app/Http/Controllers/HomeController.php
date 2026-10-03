@@ -40,6 +40,9 @@ use Inertia\Response;
  * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062),
  * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
+ * Un colaborador externo (D-134) solo recibe las tarjetas que le afectan: sus tareas (de sus
+ * proyectos), el temporizador, sus horas, su semana, sus días sin imputar, sus hitos y su chat; sin
+ * indicadores (son informes), carga ni ausencias.
  */
 class HomeController extends Controller
 {
@@ -73,7 +76,7 @@ class HomeController extends Controller
             ['status' => TimesheetStatus::Open],
         );
 
-        return Inertia::render('home', [
+        $props = [
             'tasks' => $this->tasks($user, $today, $week),
             'hours' => $this->hours($user, $today, $week),
             'week' => [
@@ -81,14 +84,22 @@ class HomeController extends Controller
                 'period' => Plain::of(new TimesheetPeriodResource($period)),
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
+            'milestones' => $this->milestones->forUser($user, $today),
+            // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
+            'chat_summary' => Inertia::defer(fn (): array => $this->chat->for($user)),
+        ];
+
+        if ($user->isCollaborator()) {
+            return Inertia::render('home', $props);
+        }
+
+        return Inertia::render('home', [
+            ...$props,
             'indicators' => $this->indicators($user, $metrics, $cache),
             // Fase 3: tarjeta «Mis ausencias» (próximas aprobadas y solicitudes pendientes).
             'absences' => app(MyAbsencesSummary::class)->for($user),
             // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio.
             'workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today)),
-            'milestones' => $this->milestones->forUser($user, $today),
-            // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
-            'chat_summary' => Inertia::defer(fn (): array => $this->chat->for($user)),
         ]);
     }
 
@@ -151,6 +162,7 @@ class HomeController extends Controller
         $tasks = Task::query()
             ->open()
             ->assignedTo($user)
+            ->visibleTo($user)
             ->whereHas('project', fn (Builder $project) => $project->notArchived())
             ->where(fn (Builder $when) => $when
                 ->where('due_date', '<=', $week->endString())

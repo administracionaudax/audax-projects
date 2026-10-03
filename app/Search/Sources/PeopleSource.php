@@ -17,6 +17,11 @@ class PeopleSource implements SearchSource
 
     public function search(User $user, string $query, int $limit): array
     {
+        // Un colaborador externo no busca personas (D-134).
+        if ($user->isCollaborator()) {
+            return [];
+        }
+
         $people = User::query()
             ->active()
             ->internal()

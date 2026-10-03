@@ -50,7 +50,7 @@ final class TaskWriter
             : $this->assertBank($project, $this->intOrNull($data['hour_bank_id'] ?? null));
         $type = $this->type($this->intOrNull($data['task_type_id'] ?? null));
         $statusId = $this->statusId($this->intOrNull($data['status_id'] ?? null));
-        $assigneeId = $this->assigneeId($this->intOrNull($data['assignee_user_id'] ?? null));
+        $assigneeId = $this->assigneeId($this->intOrNull($data['assignee_user_id'] ?? null), $project, $actor);
         $isMilestone = (bool) ($data['is_milestone'] ?? false);
         $startDate = $this->dateOrNull($data['start_date'] ?? null);
         $dueDate = $this->dateOrNull($data['due_date'] ?? null);
@@ -133,7 +133,7 @@ final class TaskWriter
 
         if (array_key_exists('assignee_user_id', $data)) {
             $assigneeId = $this->intOrNull($data['assignee_user_id']);
-            $task->assignee_user_id = $assigneeId === $previousAssigneeId ? $assigneeId : $this->assigneeId($assigneeId);
+            $task->assignee_user_id = $assigneeId === $previousAssigneeId ? $assigneeId : $this->assigneeId($assigneeId, $project, $actor);
         }
 
         if (array_key_exists('task_type_id', $data)) {
@@ -396,17 +396,24 @@ final class TaskWriter
     }
 
     /**
-     * El responsable es siempre una persona interna y activa.
+     * El responsable es siempre una persona interna y activa. Colaboradores externos (D-134): uno
+     * solo es responsable en los proyectos de los que es miembro, y uno que asigna solo elige
+     * entre los miembros del proyecto (no ve a nadie más).
      *
      * @throws ValidationException
      */
-    private function assigneeId(?int $userId): ?int
+    private function assigneeId(?int $userId, Project $project, User $actor): ?int
     {
         if ($userId === null) {
             return null;
         }
 
-        if (! User::query()->whereKey($userId)->active()->internal()->exists()) {
+        $assignee = User::query()->whereKey($userId)->active()->internal()->first();
+        $outsider = $assignee !== null
+            && ($assignee->isCollaborator() || $actor->isCollaborator())
+            && ! $project->members()->whereKey($assignee->id)->exists();
+
+        if ($assignee === null || $outsider) {
             throw ValidationException::withMessages(['assignee_user_id' => __('tasks.errors.assignee_invalid')]);
         }
 

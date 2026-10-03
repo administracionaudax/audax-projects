@@ -109,6 +109,14 @@ class UserFactory extends Factory
         return $this->withRole(Role::Employee);
     }
 
+    /**
+     * Colaborador externo (Fase 8, D-134).
+     */
+    public function collaborator(): static
+    {
+        return $this->withRole(Role::Collaborator);
+    }
+
     public function client(): static
     {
         return $this->withRole(Role::Client);

@@ -99,7 +99,8 @@ final class ConversationDirectory
 
     public function direct(User $from, User $to): Conversation
     {
-        if ($from->id === $to->id || ! $to->is_active || ! $to->isInternal() || ! $from->isInternal()) {
+        // Un colaborador externo no tiene directas (D-134): ni las abre ni se le abren.
+        if ($from->id === $to->id || ! $to->is_active || ! $to->isInternal() || ! $from->isInternal() || $from->isCollaborator() || $to->isCollaborator()) {
             throw ValidationException::withMessages(['user_id' => __('chat.errors.direct_invalid')]);
         }
 
@@ -122,12 +123,13 @@ final class ConversationDirectory
     public function group(User $creator, string $name, array $userIds): Conversation
     {
         $name = trim($name);
+        // Un colaborador externo no está en grupos (D-134): ni los crea ni se le añade.
         $ids = User::query()->whereKey(array_unique([...$userIds, $creator->id]))
             ->where('is_active', true)->get()
-            ->filter(fn (User $user): bool => $user->isInternal())
+            ->filter(fn (User $user): bool => $user->isInternal() && ! $user->isCollaborator())
             ->modelKeys();
 
-        if ($name === '' || count($ids) < 2) {
+        if ($name === '' || count($ids) < 2 || $creator->isCollaborator()) {
             throw ValidationException::withMessages(['name' => __('chat.errors.group_invalid')]);
         }
 
@@ -180,7 +182,7 @@ final class ConversationDirectory
         Gate::forUser($actor)->authorize('manage', $group);
 
         $current = $group->activeParticipants()->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->all();
-        $people = User::query()->whereKey($userIds)->whereKeyNot($current)->active()->internal()->orderBy('name')->get(['id', 'name']);
+        $people = User::query()->whereKey($userIds)->whereKeyNot($current)->active()->internal()->withoutCollaborators()->orderBy('name')->get(['id', 'name']);
 
         if ($people->isEmpty()) {
             throw ValidationException::withMessages(['user_ids' => __('chat.errors.group_add')]);
@@ -326,12 +328,19 @@ final class ConversationDirectory
 
     private function unread(User $user): QueryBuilder
     {
+        $projectIds = $user->visibleProjectIds();
+
         return DB::table('messages')
             ->join('conversation_participants as p', function (JoinClause $join) use ($user): void {
                 $join->on('p.conversation_id', '=', 'messages.conversation_id')
                     ->where('p.user_id', '=', $user->id)
                     ->whereNull('p.left_at');
             })
+            // Un colaborador externo solo cuenta las de sus proyectos (D-134).
+            ->when($projectIds !== null, fn (QueryBuilder $query) => $query->whereIn('messages.conversation_id', DB::table('conversations')
+                ->select('id')
+                ->where('type', ConversationType::Project->value)
+                ->whereIn('project_id', $projectIds ?? [])))
             ->whereRaw('messages.id > coalesce(p.last_read_message_id, 0)')
             ->where(fn (QueryBuilder $query) => $query->whereNull('messages.user_id')->orWhere('messages.user_id', '!=', $user->id))
             ->whereNull('messages.deleted_at')
@@ -339,14 +348,18 @@ final class ConversationDirectory
     }
 
     /**
-     * Conversaciones en las que participa (activas), las más recientes primero.
+     * Conversaciones en las que participa (activas), las más recientes primero. Un colaborador
+     * externo, solo las de los proyectos que ve (D-134).
      *
      * @return Builder<Conversation>
      */
     public function forUser(User $user): Builder
     {
+        $projectIds = $user->visibleProjectIds();
+
         return Conversation::query()
             ->whereHas('participants', fn (Builder $query) => $query->where('user_id', $user->id)->whereNull('left_at'))
+            ->when($projectIds !== null, fn (Builder $query) => $query->where('type', ConversationType::Project->value)->whereIn('project_id', $projectIds ?? []))
             ->orderByDesc('last_message_at')
             ->orderByDesc('id');
     }

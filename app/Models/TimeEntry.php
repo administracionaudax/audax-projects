@@ -247,6 +247,13 @@ class TimeEntry extends Model
             return;
         }
 
+        // Un colaborador externo solo ve sus horas (D-134).
+        if ($viewer->isCollaborator()) {
+            $query->where('time_entries.user_id', $viewer->id);
+
+            return;
+        }
+
         $departmentIds = $viewer->managedDepartmentIds();
         $projectIds = $viewer->managedProjectIds();
 

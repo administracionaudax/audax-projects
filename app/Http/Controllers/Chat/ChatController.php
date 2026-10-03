@@ -103,7 +103,8 @@ class ChatController extends Controller
     }
 
     /**
-     * Personas con las que se puede abrir una directa o crear un grupo: internas y activas.
+     * Personas con las que se puede abrir una directa o crear un grupo: internas y activas, sin
+     * colaboradores externos (D-134: no tienen directas ni grupos).
      */
     public function people(Request $request): JsonResponse
     {
@@ -113,6 +114,7 @@ class ChatController extends Controller
         $people = User::query()
             ->active()
             ->internal()
+            ->withoutCollaborators()
             ->whereKeyNot($user->id)
             ->with(['department' => fn (Relation $query) => $query->select(['id', 'name'])])
             ->orderBy('name')

@@ -19,6 +19,7 @@ return [
         'bank_department' => 'La bolsa «:bank» es solo para el departamento :department.',
         'bank_blocked' => 'La bolsa «:bank» no admite exceso. Saldo disponible: :available.',
         'not_member' => 'Solo los miembros del proyecto pueden imputar horas.',
+        'collaborator_internal' => 'Los colaboradores externos no imputan horas en los proyectos internos.',
         'future_date' => 'No se pueden imputar horas en fechas futuras.',
         'week_closed' => 'La semana del :week está :status. Hay que reabrirla para cambiar sus horas.',
         'minutes_range' => 'La duración debe estar entre 0:01 y 24:00.',

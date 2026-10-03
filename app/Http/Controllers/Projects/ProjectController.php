@@ -82,6 +82,8 @@ class ProjectController extends Controller
             ->withSum(['hourBanks as open_banks_overage' => $openBanks], 'overage_minutes');
 
         $filters->apply($query, $values, $user);
+        // Un colaborador externo solo ve sus proyectos (D-134).
+        $query->visibleTo($user);
 
         $paginator = $query
             ->orderBy('projects.name')
@@ -94,18 +96,23 @@ class ProjectController extends Controller
             $items[] = ResourceData::of(ProjectListResource::make($project), $request);
         }
 
+        // Filtros: un colaborador solo ve los clientes y gestores de sus proyectos (D-134).
+        $visible = Project::query()->visibleTo($user);
+
         return Inertia::render('projects/index', [
             'projects' => Paginated::props($paginator, $items),
             'filters' => $values,
             'options' => [
-                'clients' => Client::query()->orderBy('name')->get(['id', 'name'])
+                'clients' => Client::query()
+                    ->when($user->isCollaborator(), fn (Builder $clients) => $clients->whereIn('id', (clone $visible)->whereNotNull('client_id')->select('client_id')))
+                    ->orderBy('name')->get(['id', 'name'])
                     ->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->all(),
                 'owners' => User::query()
-                    ->whereIn('id', Project::query()->select('owner_user_id'))
+                    ->whereIn('id', (clone $visible)->select('owner_user_id'))
                     ->orderBy('name')
                     ->get(['id', 'name'])
                     ->map(fn (User $owner): array => ['id' => $owner->id, 'name' => $owner->name])->all(),
-                'departments' => $this->departmentOptions(),
+                'departments' => $user->isCollaborator() ? [] : $this->departmentOptions(),
             ],
         ]);
     }
@@ -178,8 +185,9 @@ class ProjectController extends Controller
             ->orderBy('name')
             ->get(array_map(fn (string $column): string => "users.{$column}", self::USER_SUMMARY_COLUMNS));
 
+        // Las bolsas y su consumo no son para un colaborador externo (D-134).
         $banks = [];
-        if ($project->usesHourBanks()) {
+        if ($project->usesHourBanks() && ! $user->isCollaborator()) {
             $open = HourBank::query()
                 ->where('project_id', $project->id)
                 ->open()

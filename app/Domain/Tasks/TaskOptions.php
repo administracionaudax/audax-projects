@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tasks;
 
+use App\Enums\Role;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TaskStatus;
@@ -14,7 +15,9 @@ use Illuminate\Database\Eloquent\Collection;
  * pide el SPEC:
  * - bolsas (SPEC §8.3): primero las abiertas del departamento del usuario, luego las demás
  *   abiertas (sin departamento o de otros) y al final las cerradas o renovadas (solo para leer),
- * - responsables: internos activos, primero los miembros del proyecto.
+ * - responsables: internos activos, primero los miembros del proyecto. Un colaborador externo
+ *   (D-134) solo aparece en los proyectos de los que es miembro y, si es quien mira, solo ve a
+ *   los miembros del proyecto.
  */
 final class TaskOptions
 {
@@ -68,13 +71,18 @@ final class TaskOptions
      *
      * @return array{users: Collection<int, User>, memberIds: list<int>}
      */
-    public function assignableUsers(Project $project): array
+    public function assignableUsers(Project $project, ?User $viewer = null): array
     {
         $memberIds = array_values($project->members()->pluck('users.id')->map(fn ($id): int => (int) $id)->all());
 
         $users = User::query()
             ->active()
             ->internal()
+            ->when(
+                $viewer?->isCollaborator() ?? false,
+                fn ($query) => $query->whereKey($memberIds),
+                fn ($query) => $query->where(fn ($scope) => $scope->whereKey($memberIds)->orWhereDoesntHave('roles', fn ($roles) => $roles->where('name', Role::Collaborator->value))),
+            )
             ->orderBy('name')
             ->get(['id', 'name', 'avatar_path', 'department_id', 'is_active']);
 

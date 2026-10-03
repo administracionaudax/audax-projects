@@ -9,7 +9,7 @@ use App\Search\SearchResult;
 use App\Search\SearchSource;
 
 /**
- * Tareas por título (todos los internos las ven, D-021). Primero las abiertas y las asignadas a quien
+ * Tareas por título (todos los internos las ven, D-021; un colaborador externo, solo las de sus proyectos, D-134). Primero las abiertas y las asignadas a quien
  * busca; se abren en el panel lateral de su proyecto.
  */
 class TaskSource implements SearchSource
@@ -22,7 +22,7 @@ class TaskSource implements SearchSource
             return [];
         }
 
-        $tasks = Task::query()->with('project:id,name,code');
+        $tasks = Task::query()->visibleTo($user)->with('project:id,name,code');
         $this->whereMatches($tasks, ['tasks.title'], $query);
 
         return array_values($tasks

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
  * - un admin, para cualquier interno activo,
  * - un responsable, para las personas de sus departamentos,
  * - un gestor, para los miembros de sus proyectos (de ese proyecto, si se indica).
+ * Un colaborador externo (D-134), solo para sí mismo.
  * La última palabra la tienen TimeEntryPolicy::logTimeFor y TimeEntryRules al guardar.
  */
 final class LoggablePeople
@@ -44,6 +45,10 @@ final class LoggablePeople
      */
     private function othersQuery(User $actor, ?Project $project): ?Builder
     {
+        if ($actor->isCollaborator()) {
+            return null;
+        }
+
         $query = User::query()->active()->internal()->whereKeyNot($actor->id);
 
         if ($actor->isAdmin()) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tasks;
 
 use App\Domain\Tasks\AttachmentStorage;
 use App\Domain\Tasks\TaskNotifier;
+use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\StoreCommentRequest;
 use App\Http\Requests\Tasks\UpdateCommentRequest;
@@ -13,6 +14,7 @@ use App\Models\TaskComment;
 use App\Models\User;
 use App\Notifications\Tasks\TaskMentionedNotification;
 use App\Support\RichText;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -40,7 +42,7 @@ class TaskCommentController extends Controller
         /** @var User $user */
         $user = $request->user();
         $body = RichText::sanitize($request->string('body')->toString());
-        $mentioned = $this->mentionable(RichText::mentionedUserIds($body));
+        $mentioned = $this->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
         /** @var list<UploadedFile> $files */
         $files = array_values(array_filter((array) $request->file('files', []), fn ($file): bool => $file instanceof UploadedFile));
         $stored = [];
@@ -81,10 +83,10 @@ class TaskCommentController extends Controller
         /** @var User $user */
         $user = $request->user();
         $body = RichText::sanitize($request->string('body')->toString()) ?? '';
-        $mentioned = $this->mentionable(RichText::mentionedUserIds($body));
         $previous = array_map('intval', $comment->mentioned_user_ids ?? []);
         // Un comentario de una tarea borrada ya no se edita (404).
         $task = $comment->task()->with('project')->firstOrFail();
+        $mentioned = $this->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
 
         $comment->forceFill([
             'body' => $body,
@@ -115,18 +117,29 @@ class TaskCommentController extends Controller
     }
 
     /**
-     * Solo se guardan (y avisan) las menciones a internos activos.
+     * Solo se guardan (y avisan) las menciones a internos activos. Colaboradores externos (D-134):
+     * a uno solo se le menciona en las tareas de sus proyectos, y uno solo menciona a los miembros
+     * del proyecto.
      *
      * @param  list<int>  $ids
      * @return list<int>
      */
-    private function mentionable(array $ids): array
+    private function mentionable(array $ids, int $projectId, User $author): array
     {
         if ($ids === []) {
             return [];
         }
 
-        return array_values(User::query()->whereKey($ids)->active()->internal()->pluck('id')
+        $members = DB::table('project_members')->select('user_id')->where('project_id', $projectId);
+
+        return array_values(User::query()->whereKey($ids)->active()->internal()
+            ->when(
+                $author->isCollaborator(),
+                fn (Builder $query) => $query->whereIn('id', $members),
+                fn (Builder $query) => $query->where(fn (Builder $scope) => $scope->whereIn('id', $members)
+                    ->orWhereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value))),
+            )
+            ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->sort()
             ->all());
