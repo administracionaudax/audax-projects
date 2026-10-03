@@ -90,13 +90,38 @@ _Última actualización: 03/10/2026_
 - **Tests:** 2450 en PostgreSQL 18 en el servidor; 391 E2E con Playwright y axe; CI en verde.
 - ✅ **FASE 5 CERRADA el 02/10/2026** (etiqueta `fase-5-cerrada`).
 
-## En curso (modo autónomo, D-027)
-- **Fase 6 (chat):** desplegada el 03/10 (2839 tests en PostgreSQL 18 en el servidor, 398 E2E con Reverb local, CI en verde). Reverb y el transcriptor activos en el servidor. Falta que el propietario pegue en Plesk la directiva de nginx `/app/` (RUNBOOK A1) y cerrar la fase.
-- **Fase 7 (pulido):** contrato (D-073 a D-077), preferencias de notificación, resumen diario, recordatorio de los viernes, auditoría, privacidad, retención, exportación de datos y avisos de almacenamiento hechos; integrada con el chat de la Fase 6 en la rama `fase-7` (Web Push en las preferencias, chat en la auditoría, la retención y la exportación; D-122 a D-133). Falta: E2E, revisión, despliegue y cierre.
+### Fase 6: chat (rama `fase-6`, desplegada el 03/10)
+- **Chat:**
+  - conversaciones de proyecto, directas y grupos,
+  - menciones, hilos, reacciones, fijados, moderación del admin y tareas creadas desde un mensaje,
+  - adjuntos, audios con transcripción en el propio servidor (whisper.cpp `small`) y búsqueda en mensajes, archivos y transcripciones (D-068 a D-072 y D-110 a D-121).
+- **Tiempo real y avisos:** Reverb, presencia, «escribiendo…», leídos y avisos del navegador (Web Push).
+- **En el servidor:** el contenedor `audax-whisper` y las unidades `audax-reverb` y `audax-transcriber`.
+- **Revisión global:** 19 hallazgos corregidos, entre ellos borrar en proyectos archivados, la campana con texto ocultado, la duración falseada de los audios y la accesibilidad del foco.
+- **Tests:** 2839 en PostgreSQL 18 en el servidor; 398 E2E con Reverb de verdad.
+- **Pendiente del propietario:** pegar en Plesk la directiva de nginx `/app/` (texto en `docs/DEPLOY.md` y en RUNBOOK A1) para que el tiempo real llegue al instante. Mientras tanto, el chat funciona con consultas periódicas.
+- ✅ **FASE 6 CERRADA el 03/10/2026** (etiqueta `fase-6-cerrada`).
 
-## Siguiente
-1. Cerrar la Fase 6 cuando esté la directiva de nginx `/app/`.
-2. Fase 7: E2E, revisión, despliegue, copia externa y prueba de restauración en el servidor, `DEPLOY.md` y cierre.
+### Fase 7: pulido (rama `fase-7`, desplegada el 03/10)
+- **Notificaciones:** preferencias por evento y canal (en la app, email y navegador), resumen diario y recordatorio de los viernes (D-073).
+- **Auditoría visible:** con filtros, detalle y CSV (D-074).
+- **RGPD:** texto informativo con su lectura (borrador pendiente de asesor), retención configurable y exportación de los datos personales (D-075).
+- **Copias:** estado para la app, prueba mensual de restauración y copia externa preparada (D-076).
+- **Observabilidad y documentación:** registros en JSON y `docs/DEPLOY.md` (D-077).
+- **Integración:** todo lo anterior conectado con el chat (D-122 a D-133).
+- **Tests:** 3019 en PostgreSQL 18 en el servidor; 1316 de Vitest; 410 E2E con Playwright, axe y Reverb; CI en verde.
+- ✅ **FASE 7 CERRADA el 03/10/2026** (etiqueta `fase-7-cerrada`).
+
+## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
+1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
+2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.
+3. **Revisión del texto RGPD** por el asesor, en `/admin/privacidad`.
+4. **Destino de la copia externa:** S3 compatible o SFTP. Pasos en `docs/DEPLOY.md` §5.
+5. **Directiva de nginx `/app/` en Plesk:** tiempo real al instante.
+6. **Recomendaciones del servidor:**
+   - tipo de CPU «host» en la máquina virtual (AVX2: transcripción mucho más rápida),
+   - revisar el swap, casi lleno,
+   - dos webs ajenas suspendidas en Plesk (beevo.endesarrollo.pro y staging.vitatrendy.com).
 
 ## Bloqueos: necesitamos del usuario
 - [x] Aprobar `/styleguide` (26/09).
