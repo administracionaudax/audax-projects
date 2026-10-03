@@ -1120,6 +1120,21 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
   - si ya no puede ver el informe, o su cuenta está desactivada, el envío se pausa y se le avisa a él y a los admins,
   - las personas de la app que hayan dejado de estar activas se quitan de los destinatarios.
 - **Historial por envío:** fecha, destinatarios, estado y error. Desde el historial se puede «Enviar ahora», pausar o reanudar.
+- **Implementación (entrega 9.3):**
+  - **Correo:** uno por destinatario (nadie ve las direcciones de los demás), con «Responder» a quien lo envía. Se envían PDF y Excel; CSV no.
+  - **Adjuntos grandes:** caben adjuntos hasta 10 MB en total, de menor a mayor; el resto va como enlace firmado a `/informes/descargas/{uuid}`. Es una ruta sin sesión, porque la abre también un externo, y solo funciona con la firma, que caduca a los 7 días. `reports:prune-downloads` borra los ficheros caducados a las 03:20, y cada descarga queda en la auditoría.
+  - **Destinatarios de la app:** personas activas de la plantilla, sin clientes ni colaboradores externos (D-134). Como mucho 20 en total, contando los correos externos.
+  - **Acceso:** `ReportAccess` repite las políticas de la ruta de cada informe. Un parámetro que no existe cuenta como «sin acceso» (403), y el generador vuelve a comprobarlo al generar.
+  - **Estados del envío:**
+    - «omitido» si, al generarlo, quien lo envía ya no puede verlo o no quedan destinatarios,
+    - «fallido» con su error si falla el generador o el correo. La cola no lo repite, para no duplicar correos; se reintenta con «Enviar ahora».
+  - **Pausa automática:** también si no quedan destinatarios. El aviso `reports.schedule_paused` llega por la app y por email, se ofrece a cualquiera y no es obligatorio. Lo recibe el propietario, si sigue activo, y los admins.
+  - **«Una vez»:** tras enviarse queda como «Enviado», inactivo y sin motivo de pausa. No se puede reanudar si su fecha ya ha pasado: hay que editarlo.
+  - **Programador:** cada ejecución se reclama de forma atómica sobre `next_run_at`, así que dos ejecuciones no envían dos veces.
+  - **Borrar una programación:** su historial se conserva sin la programación (`schedule_id` nulo), y queda en la auditoría.
+  - **Programar desde `/informes/envios`:** se pueden programar el informe personal, el detallado y el de dirección (si lo ves). El resto, desde «Exportar ▾» de cada informe.
+  - **Editar:** cambia la frecuencia, el periodo relativo, los destinatarios, el formato, el asunto y el mensaje, pero no el informe ni sus filtros. Se comprueba que el propietario puede verlo.
+  - **Títulos:** el de la lista es el que se veía al programar; el correo usa `ReportFileGenerator::title()` del día del envío.
 
 ### D-142 · Google Sheets
 - **Conexión:** cada persona conecta su cuenta de Google de Workspace en *Ajustes → Integraciones* (OAuth, tipo «Interno»), con el alcance mínimo **`drive.file`**: la app solo puede tocar los archivos que ella misma crea.
