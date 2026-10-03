@@ -6,8 +6,10 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use App\Notifications\Tasks\TaskCommentedNotification;
 use App\Notifications\Tasks\TaskMentionedNotification;
+use App\Notifications\Tasks\TasksDueNotification;
 use App\Notifications\Tasks\TaskStatusChangedNotification;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 
 /*
@@ -81,4 +83,18 @@ it('red de seguridad: aunque siga como seguidor de una tarea ajena, no recibe su
     Notification::assertNotSentTo($this->sara, TaskStatusChangedNotification::class);
     Notification::assertSentTo($other, TaskCommentedNotification::class);
     Notification::assertSentTo($other, TaskStatusChangedNotification::class);
+});
+
+it('el aviso de tareas que vencen solo incluye las de sus proyectos', function () {
+    Cache::flush();
+    Task::factory()->create(['project_id' => $this->own->id, 'title' => 'Faro mañana', 'assignee_user_id' => $this->sara->id, 'due_date' => '2026-09-26']);
+    Task::factory()->create(['project_id' => $this->foreign->id, 'title' => 'Niebla vencida', 'assignee_user_id' => $this->sara->id, 'due_date' => '2026-09-20']);
+    Task::factory()->create(['project_id' => $this->foreign->id, 'title' => 'Niebla mañana', 'assignee_user_id' => $this->sara->id, 'due_date' => '2026-09-26']);
+    Task::factory()->create(['project_id' => $this->foreign->id, 'title' => 'De Ana', 'assignee_user_id' => $this->ana->id, 'due_date' => '2026-09-20']);
+
+    $this->artisan('app:notify-due-tasks')->assertSuccessful();
+
+    Notification::assertSentTo($this->sara, TasksDueNotification::class, fn (TasksDueNotification $notification): bool => $notification->dueTomorrow === ['Faro mañana'] && $notification->overdue === []);
+    Notification::assertSentTo($this->ana, TasksDueNotification::class, fn (TasksDueNotification $notification): bool => $notification->overdue === ['De Ana']);
+
 });
