@@ -178,7 +178,7 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
      scripts/heavy.sh /opt/plesk/php/8.4/bin/php artisan app:import-clickup /ruta/al/export --dry-run
      ```
 
-  3. Si los recuentos cuadran con ClickUp, la importación de verdad, con el mismo comando sin `--dry-run`. En el ensayo local con el export completo tardó entre 1,5 y 5 minutos y no pasó de 82 MB de memoria.
+  3. Si los recuentos cuadran con ClickUp, la importación de verdad, con el mismo comando sin `--dry-run`. En el ensayo local (SQLite) con el export completo tardó entre 1 min 20 s y 5 min 20 s, según la carga del Mac, no pasó de 82 MB de memoria y dejó una base de 19 MB.
   4. Las invitaciones, solo con el visto bueno del propietario: `--invitar`, que invita a las personas importadas que aún no han entrado nunca. También se pueden enviar desde la administración.
 - **Repetir:** el comando es idempotente (`import_refs`). El día del cambio se vuelve a descargar el export y se ejecuta otra vez: actualiza lo que cambió, añade lo nuevo y nunca toca las horas bloqueadas. Las horas de la semana anterior que llegaron en borrador pasan a aprobadas y bloqueadas.
 - **El informe:**
