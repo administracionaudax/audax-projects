@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 /**
  * ÚNICA vía para crear, editar y borrar entradas de horas (entrada manual, hoja semanal,
@@ -19,6 +20,9 @@ use Illuminate\Validation\ValidationException;
  *   2. aplica TimeEntryRules (SPEC §7 y §8),
  *   3. copia proyecto y bolsa de la tarea (SPEC §4.4) y guarda,
  *   4. el modelo TimeEntry recalcula las bolsas con HourBankLedger (D-019).
+ *
+ * Modo de importación (import(), D-136): sin las validaciones de quien imputa a mano, pero con
+ * las invariantes de la entrada.
  */
 final class TimeEntryWriter
 {
@@ -135,6 +139,62 @@ final class TimeEntryWriter
 
             $current->delete();
         });
+    }
+
+    /**
+     * Modo de importación (D-136): escribe una entrada que llega de otra herramienta.
+     *
+     * - **Sin** las validaciones de quien imputa a mano (SPEC §7): semana enviada, fecha futura,
+     *   pertenencia al proyecto, total del día y saldo con política `block`.
+     * - **Con** las invariantes: de 1 min a 24 h por entrada, proyecto y bolsa copiados de la tarea,
+     *   nunca facturable en un proyecto interno y una entrada bloqueada nunca se modifica (se
+     *   devuelve tal cual).
+     * - Se guarda sin eventos del modelo (saveQuietly): ni auditoría por entrada ni recálculo de la
+     *   bolsa en cada una. Quien importa llama a HourBankLedger::recalculate una vez por bolsa al
+     *   final, sin avisos.
+     *
+     * @throws InvalidArgumentException si la entrada rompe una invariante
+     */
+    public function import(TimeEntryImport $data, ?TimeEntry $existing = null): TimeEntry
+    {
+        if ($existing?->isLocked()) {
+            return $existing;
+        }
+
+        if ($data->minutes < 1 || $data->minutes > TimeEntry::MAX_MINUTES_PER_DAY) {
+            throw new InvalidArgumentException("Duración fuera de rango: {$data->minutes} min.");
+        }
+
+        $task = $data->task;
+        $project = $task->project;
+
+        $entry = $existing ?? new TimeEntry;
+        $entry->fill([
+            'user_id' => $data->userId,
+            'task_id' => $task->id,
+            'project_id' => $project->id,
+            'hour_bank_id' => $task->hour_bank_id,
+            'date' => $data->date->toDateString(),
+            'minutes' => $data->minutes,
+            'started_at' => $data->startedAt,
+            'ended_at' => $data->endedAt,
+            'description' => $this->description($data->description),
+            'is_billable' => $this->billable($task, $project, $data->isBillable),
+            'status' => $data->status,
+            'approved_at' => $data->approvedAt,
+            'locked_at' => $data->lockedAt,
+            'created_by' => $existing === null ? $data->userId : $existing->created_by,
+        ]);
+
+        if ($existing === null && $data->createdAt !== null) {
+            $entry->created_at = $data->createdAt;
+        }
+
+        if (! $entry->exists || $entry->isDirty()) {
+            $entry->saveQuietly();
+        }
+
+        return $entry;
     }
 
     private function task(int $taskId): Task

@@ -136,3 +136,53 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
 - **Colas:** Horizon en `/horizon` (solo admin). Las transcripciones, en `/admin/transcripciones`.
 - **Copias:** `cat /var/backups/audax/ULTIMA-CORRECTA` y el estado que lee la app en `shared/storage/app/backup-status.json`. Si algo falla, `app:check-storage` avisa al admin cada día.
 - **Tiempo real desde fuera:** abrir el chat en dos navegadores; el aviso «escribiendo…» llega al instante.
+
+## 8. Importar ClickUp
+
+`php artisan app:import-clickup {ruta} {--personas=} {--dry-run} {--invitar}` trae de ClickUp clientes, proyectos, bolsas, tareas y horas (D-135 y D-136).
+
+- **Qué necesita:**
+  - **el export** de la API v2 de ClickUp en una carpeta fuera de Git y fuera del webspace público: `tree.json` (espacios, carpetas y listas), `tasks.json` (tareas con `include_closed` y `subtasks`) y `time_entries.json` (registros de horas). `team.json` y `fields.json` no se usan,
+  - **el fichero de personas**, `personas.json` en la misma carpeta o donde diga `--personas`. Tampoco entra en Git, porque lleva correos reales:
+
+    ```json
+    {
+      "default_manager": "correo-en-la-app@…",
+      "people": [
+        {
+          "clickup_email": "correo-en-clickup@…",
+          "email": "correo-en-la-app@…",
+          "name": "Nombre Apellido",
+          "role": "admin | department_manager | employee | collaborator",
+          "department": "Diseño",
+          "is_department_manager": false,
+          "import": true
+        }
+      ]
+    }
+    ```
+
+    - `department` se crea si no existe y puede ser `null`,
+    - `is_department_manager` solo vale con `admin` o `department_manager`,
+    - `import: false` deja fuera a la persona: ni cuenta, ni tareas, ni horas,
+    - `default_manager` es el gestor principal de los proyectos donde ningún admin ni responsable tiene horas.
+- **Cómo se ejecuta en el servidor:**
+  1. Copia de la base antes de nada, con el formato de la copia nocturna, para poder volver atrás con la sección 4:
+
+     ```bash
+     docker exec audax-pg pg_dump -U audax_admin -Fc audax_projects > /var/backups/audax/antes-de-clickup.dump
+     ```
+  2. Simulación, que no guarda nada y muestra el informe:
+
+     ```bash
+     scripts/heavy.sh /opt/plesk/php/8.4/bin/php artisan app:import-clickup /ruta/al/export --dry-run
+     ```
+
+  3. Si los recuentos cuadran con ClickUp, la importación de verdad, con el mismo comando sin `--dry-run`. En el ensayo local (SQLite) con el export completo tardó entre 1 min 20 s y 5 min 20 s, según la carga del Mac, no pasó de 82 MB de memoria y dejó una base de 19 MB.
+  4. Las invitaciones, solo con el visto bueno del propietario: `--invitar`, que invita a las personas importadas que aún no han entrado nunca. También se pueden enviar desde la administración.
+- **Repetir:** el comando es idempotente (`import_refs`). El día del cambio se vuelve a descargar el export y se ejecuta otra vez: actualiza lo que cambió, añade lo nuevo y nunca toca las horas bloqueadas. Las horas de la semana anterior que llegaron en borrador pasan a aprobadas y bloqueadas.
+- **El informe:**
+  - recuentos por tipo (creados, actualizados, sin cambios y omitidos), horas por persona y registros descartados con su motivo,
+  - avisos: personas sin mapear, listas sin el patrón `TIPO+N - Hh - …`, subtareas aplanadas, registros de más de 24 h partidos por días…,
+  - queda una sola entrada en la auditoría, «Importación de ClickUp», con los recuentos.
+- **No se importan:** comentarios, adjuntos ni etiquetas (D-135), ni los espacios personales y «Recursos».

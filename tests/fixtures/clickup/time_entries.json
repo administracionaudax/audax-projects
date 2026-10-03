@@ -1,0 +1,429 @@
+[
+    {
+        "id": "E1",
+        "task": {
+            "id": "T1",
+            "name": "T1",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "billable": true,
+        "start": "1788246000000",
+        "end": "1788274800000",
+        "duration": "28800000",
+        "description": "Diseño",
+        "tags": [],
+        "at": "1788274800000",
+        "task_location": {
+            "list_id": "L1",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E2",
+        "task": {
+            "id": "T2",
+            "name": "T2",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 591,
+            "username": "Bea",
+            "email": "bea@clickup.test"
+        },
+        "billable": true,
+        "start": "1788325200000",
+        "end": "1788382800000",
+        "duration": "57600000",
+        "description": "",
+        "tags": [],
+        "at": "1788382800000",
+        "task_location": {
+            "list_id": "L2",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E3",
+        "task": {
+            "id": "T1",
+            "name": "T1",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 591,
+            "username": "Bea",
+            "email": "bea@clickup.test"
+        },
+        "billable": true,
+        "start": "1788418800000",
+        "end": "1788433200000",
+        "duration": "14400000",
+        "description": "",
+        "tags": [],
+        "at": "1788433200000",
+        "task_location": {
+            "list_id": "L1",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E4",
+        "task": {
+            "id": "T10",
+            "name": "T10",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 1044,
+            "username": "Dani",
+            "email": "dani@clickup.test"
+        },
+        "billable": true,
+        "start": "1791270000000",
+        "end": "1791280800000",
+        "duration": "10800000",
+        "description": "",
+        "tags": [],
+        "at": "1791280800000",
+        "task_location": {
+            "list_id": "L5",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E5",
+        "task": null,
+        "user": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "billable": true,
+        "start": "1789023600000",
+        "end": "1789027200000",
+        "duration": "3600000",
+        "description": "Sin tarea",
+        "tags": [],
+        "at": "1789027200000",
+        "task_location": {
+            "list_id": null,
+            "folder_id": null,
+            "space_id": null,
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E6",
+        "task": {
+            "id": "T10",
+            "name": "T10",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 3804,
+            "username": "Fantasma",
+            "email": "fantasma@clickup.test"
+        },
+        "billable": true,
+        "start": "1789110000000",
+        "end": "1789117200000",
+        "duration": "7200000",
+        "description": "",
+        "tags": [],
+        "at": "1789117200000",
+        "task_location": {
+            "list_id": "L5",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E7",
+        "task": {
+            "id": "T1",
+            "name": "T1",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "billable": true,
+        "start": "1789196400000",
+        "end": "1789196420000",
+        "duration": "20000",
+        "description": "",
+        "tags": [],
+        "at": "1789196420000",
+        "task_location": {
+            "list_id": "L1",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E8",
+        "task": {
+            "id": "T8",
+            "name": "T8",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "billable": true,
+        "start": "1789196400000",
+        "end": "1789200000000",
+        "duration": "3600000",
+        "description": "",
+        "tags": [],
+        "at": "1789200000000",
+        "task_location": {
+            "list_id": "LP",
+            "folder_id": null,
+            "space_id": "S2",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E9",
+        "task": {
+            "id": "T10",
+            "name": "T10",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 1552,
+            "username": "Carla",
+            "email": "carla@clickup.test"
+        },
+        "billable": true,
+        "start": "1789455600000",
+        "end": "1789462800000",
+        "duration": "7200000",
+        "description": "",
+        "tags": [],
+        "at": "1789462800000",
+        "task_location": {
+            "list_id": "L5",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E10",
+        "task": {
+            "id": "T99",
+            "name": "Tarea de una lista archivada",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 591,
+            "username": "Bea",
+            "email": "bea@clickup.test"
+        },
+        "billable": true,
+        "start": "1781506800000",
+        "end": "1781512200000",
+        "duration": "5400000",
+        "description": "",
+        "tags": [],
+        "at": "1781512200000",
+        "task_location": {
+            "list_id": "L9",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": "🍎 WE0 - 40h [Manzanas Pérez]",
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E11",
+        "task": {
+            "id": "T5",
+            "name": "T5",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 591,
+            "username": "Bea",
+            "email": "bea@clickup.test"
+        },
+        "billable": true,
+        "start": "1789934400000",
+        "end": "1790042400000",
+        "duration": "108000000",
+        "description": "",
+        "tags": [],
+        "at": "1790042400000",
+        "task_location": {
+            "list_id": "L3",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E12",
+        "task": {
+            "id": "T9",
+            "name": "T9",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "billable": true,
+        "start": "1782889200000",
+        "end": "1782900000000",
+        "duration": "10800000",
+        "description": "",
+        "tags": [],
+        "at": "1782900000000",
+        "task_location": {
+            "list_id": "L7",
+            "folder_id": "F2",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E13",
+        "task": {
+            "id": "T1",
+            "name": "T1",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 1061,
+            "username": "Fran",
+            "email": "fran@clickup.test"
+        },
+        "billable": true,
+        "start": "1788505200000",
+        "end": "1788508800000",
+        "duration": "3600000",
+        "description": "",
+        "tags": [],
+        "at": "1788508800000",
+        "task_location": {
+            "list_id": "L1",
+            "folder_id": "F1",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    },
+    {
+        "id": "E14",
+        "task": {
+            "id": "T6",
+            "name": "T6",
+            "status": {
+                "status": "terminada",
+                "type": "done"
+            }
+        },
+        "user": {
+            "id": 1552,
+            "username": "Carla",
+            "email": "carla@clickup.test"
+        },
+        "billable": true,
+        "start": "1789542000000",
+        "end": "1789545600000",
+        "duration": "3600000",
+        "description": "",
+        "tags": [],
+        "at": "1789545600000",
+        "task_location": {
+            "list_id": "L0",
+            "folder_id": "F0",
+            "space_id": "S1",
+            "list_name": null,
+            "folder_name": null,
+            "space_name": null
+        }
+    }
+]

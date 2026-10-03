@@ -1,0 +1,119 @@
+[
+    {
+        "space": {
+            "id": "S1",
+            "name": "Audax Studio",
+            "archived": false
+        },
+        "lists": [],
+        "folders": [
+            {
+                "id": "F0",
+                "name": "🔷 Audax Interno",
+                "_archived": false,
+                "lists": [
+                    {
+                        "id": "L0",
+                        "name": "🔵 General",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    },
+                    {
+                        "id": "L0B",
+                        "name": "🟠 Marketing",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    }
+                ]
+            },
+            {
+                "id": "F1",
+                "name": "🍎  Manzanas   Pérez ",
+                "_archived": false,
+                "lists": [
+                    {
+                        "id": "L1",
+                        "name": "🍎 BH1 - 10h - F250001 [Manzanas Pérez]",
+                        "start_date": "1785567600000",
+                        "due_date": null,
+                        "archived": false
+                    },
+                    {
+                        "id": "L2",
+                        "name": "🍎 BH2 - 20h - Mantenimiento - F250002 [Manzanas Pérez]",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    },
+                    {
+                        "id": "L3",
+                        "name": "🍎 FE1 - 15h [Manzanas Pérez]",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    },
+                    {
+                        "id": "L4",
+                        "name": "🍎 FE2 - ??h - Podcast [Manzanas Pérez]",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    },
+                    {
+                        "id": "L5",
+                        "name": "🍎 WE1 - 100h - Web corporativa [Manzanas Pérez]",
+                        "start_date": "1785567600000",
+                        "due_date": "1798704000000",
+                        "archived": false
+                    },
+                    {
+                        "id": "L6",
+                        "name": "🍎 Auditoría UX",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    }
+                ]
+            },
+            {
+                "id": "F2",
+                "name": "🍐 Peras Gómez",
+                "_archived": true,
+                "lists": [
+                    {
+                        "id": "L7",
+                        "name": "🍐 BH1 - 5h [Peras Gómez]",
+                        "start_date": null,
+                        "due_date": null,
+                        "archived": false
+                    }
+                ]
+            },
+            {
+                "id": "F3",
+                "name": "🫐 Arándanos Vacía",
+                "_archived": false,
+                "lists": []
+            }
+        ]
+    },
+    {
+        "space": {
+            "id": "S2",
+            "name": "Personal",
+            "archived": false
+        },
+        "folders": [],
+        "lists": [
+            {
+                "id": "LP",
+                "name": "Ideas",
+                "start_date": null,
+                "due_date": null,
+                "archived": false
+            }
+        ]
+    }
+]
