@@ -441,6 +441,11 @@ async function expectNoAxeViolations(
     label: string,
     testInfo: TestInfo,
 ): Promise<void> {
+    // Las zonas que se están recargando van atenuadas (aria-busy + opacity-60, p. ej. los informes
+    // con props diferidas): se analiza la página ya cargada, no el estado intermedio.
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, {
+        timeout: 15_000,
+    });
     const results = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze();
     const report = results.violations
         .map(
