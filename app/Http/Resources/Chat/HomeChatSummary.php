@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -120,6 +121,7 @@ final class HomeChatSummary
      */
     private function mentions(User $user): EloquentCollection
     {
+        $projectIds = $user->visibleProjectIds();
         $mentioned = fn (QueryBuilder $query) => $query->from('message_mentions as mm')
             ->whereColumn('mm.message_id', 'messages.id')
             ->where(fn (QueryBuilder $who) => $who->where('mm.user_id', $user->id)->orWhere('mm.everyone', true));
@@ -133,6 +135,12 @@ final class HomeChatSummary
                     ->where('p.user_id', '=', $user->id)
                     ->whereNull('p.left_at');
             })
+            // Un colaborador externo, solo en las conversaciones de sus proyectos (D-134), aunque
+            // siga como participante de otra.
+            ->when($projectIds !== null, fn (Builder $query) => $query->whereIn('messages.conversation_id', Conversation::query()
+                ->select('id')
+                ->where('type', ConversationType::Project->value)
+                ->whereIn('project_id', $projectIds ?? [])))
             ->whereExists($mentioned)
             ->whereNotNull('messages.user_id')
             ->where('messages.user_id', '!=', $user->id)
