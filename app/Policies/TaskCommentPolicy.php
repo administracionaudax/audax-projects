@@ -29,9 +29,8 @@ class TaskCommentPolicy
             return true;
         }
 
-        $projectId = $comment->relationLoaded('task')
-            ? $comment->task?->project_id
-            : Task::query()->withTrashed()->whereKey($comment->task_id)->value('project_id');
+        // Con la tarea borrada también (sus comentarios siguen siendo de ese proyecto).
+        $projectId = Task::query()->withTrashed()->whereKey($comment->task_id)->value('project_id');
 
         return $projectId !== null && $user->canSeeProject((int) $projectId);
     }
