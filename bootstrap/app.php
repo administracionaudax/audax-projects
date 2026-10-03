@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireTwoFactor;
+use App\Http\Middleware\RestrictCollaborators;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\ErrorPage;
 use Illuminate\Foundation\Application;
@@ -33,8 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     // Tiempo real (Fase 6): /broadcasting/auth solo para internos activos y, si el 2FA es
-    // obligatorio, con él ya configurado (como el resto de rutas internas; D-120).
-    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['middleware' => ['web', 'auth', 'active', 'internal', '2fa']])
+    // obligatorio, con él ya configurado (como el resto de rutas internas; D-120). Un colaborador
+    // externo (D-134) entra, pero cada canal filtra lo que ve (routes/channels.php).
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['middleware' => ['web', 'auth', 'active', 'internal', 'collaborator', '2fa']])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
@@ -58,6 +60,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'internal' => EnsureInternalUser::class,
             'portal' => EnsureClientUser::class,
             '2fa' => RequireTwoFactor::class,
+            // Colaboradores externos (D-134): rutas internas cerradas salvo config/collaborators.php.
+            'collaborator' => RestrictCollaborators::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
@@ -69,7 +73,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Van justo antes de los límites de peticiones (throttle), que en la lista de Laravel ya
         // preceden a SubstituteBindings: así un cliente va a su portal sin gastar el cupo de rutas
         // internas. Laravel guarda una sola posición por middleware.
-        foreach ([EnsureUserIsActive::class, EnsureInternalUser::class, EnsureClientUser::class] as $gate) {
+        // El de los colaboradores externos (D-134), igual: 403 antes de saber si el id existe.
+        foreach ([EnsureUserIsActive::class, EnsureInternalUser::class, EnsureClientUser::class, RestrictCollaborators::class] as $gate) {
             $middleware->prependToPriorityList(before: ThrottleRequests::class, prepend: $gate);
         }
     })

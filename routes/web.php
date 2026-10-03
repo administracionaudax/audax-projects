@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 |   active   → cierra la sesión de usuarios desactivados
 |   internal → solo usuarios internos (un cliente va a /portal)
 |   portal   → solo usuarios con rol "client"
+|   collaborator → un colaborador externo solo entra en las rutas de config/collaborators.php (D-134)
 |   2fa      → exige 2FA si el ajuste require_2fa está activo
 */
 
@@ -39,7 +40,7 @@ Route::get('marca/logo/{version}', BrandLogoController::class)
     ->withoutMiddleware('web')
     ->name('brand.logo');
 
-Route::middleware(['auth', 'active', 'internal', '2fa'])->group(function () {
+Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
     Route::redirect('dashboard', '/')->name('dashboard');
 

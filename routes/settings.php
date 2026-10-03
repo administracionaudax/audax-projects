@@ -7,8 +7,9 @@ use App\Http\Controllers\Settings\SessionsController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
-// Ajustes personales: disponibles para internos y clientes (el layout lo decide el frontend).
-Route::middleware(['auth', 'active'])->group(function () {
+// Ajustes personales: disponibles para internos y clientes (el layout lo decide el frontend). Un
+// colaborador externo (D-134) también, por la lista de config/collaborators.php.
+Route::middleware(['auth', 'active', 'collaborator'])->group(function () {
     Route::redirect('ajustes', '/ajustes/perfil');
 
     Route::get('ajustes/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
