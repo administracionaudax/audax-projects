@@ -1,713 +1,713 @@
 [
- {
-  "id": "T4",
-  "name": "Sub-subtarea de fichas",
-  "status": {
-   "status": "por hacer",
-   "type": "custom"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 591,
-    "username": "Bea",
-    "email": "bea@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": "T3",
-  "top_level_parent": "T2",
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L2"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [],
-  "tags": []
- },
- {
-  "id": "T1",
-  "name": "🍎 Diseño de la home",
-  "status": {
-   "status": "terminada",
-   "type": "done"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": "1788278400000",
-  "date_done": "1788278400000",
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 608,
-    "username": "Ana",
-    "email": "ana@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "urgent"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L1"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [
-   {
-    "id": "area",
-    "name": "Área",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "o0",
-       "name": "Gestión",
-       "orderindex": 0
-      },
-      {
-       "id": "o1",
-       "name": "UI",
-       "orderindex": 1
-      },
-      {
-       "id": "o2",
-       "name": "Maquetación",
-       "orderindex": 2
-      },
-      {
-       "id": "o3",
-       "name": "Definción",
-       "orderindex": 3
-      },
-      {
-       "id": "o4",
-       "name": "Desarrollo",
-       "orderindex": 4
-      }
-     ]
+    {
+        "id": "T4",
+        "name": "Sub-subtarea de fichas",
+        "status": {
+            "status": "por hacer",
+            "type": "custom"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 591,
+                "username": "Bea",
+                "email": "bea@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": "T3",
+        "top_level_parent": "T2",
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L2"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [],
+        "tags": []
     },
-    "value": 1
-   },
-   {
-    "id": "fac",
-    "name": "Facturable",
-    "type": "checkbox",
-    "value": true
-   }
-  ],
-  "tags": []
- },
- {
-  "id": "T2",
-  "name": "🍎 Maquetación de fichas",
-  "status": {
-   "status": "en progreso",
-   "type": "custom"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 591,
-    "username": "Bea",
-    "email": "bea@clickup.test"
-   },
-   {
-    "id": 608,
-    "username": "Ana",
-    "email": "ana@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": "1790751600000",
-  "start_date": "1789023600000",
-  "time_estimate": 5400000,
-  "list": {
-   "id": "L2"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "Primera línea\nsegunda línea\n\nOtro párrafo <script>alert(1)</script>",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [
-   {
-    "id": "area",
-    "name": "Área",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "o0",
-       "name": "Gestión",
-       "orderindex": 0
-      },
-      {
-       "id": "o1",
-       "name": "UI",
-       "orderindex": 1
-      },
-      {
-       "id": "o2",
-       "name": "Maquetación",
-       "orderindex": 2
-      },
-      {
-       "id": "o3",
-       "name": "Definción",
-       "orderindex": 3
-      },
-      {
-       "id": "o4",
-       "name": "Desarrollo",
-       "orderindex": 4
-      }
-     ]
+    {
+        "id": "T1",
+        "name": "🍎 Diseño de la home",
+        "status": {
+            "status": "terminada",
+            "type": "done"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": "1788278400000",
+        "date_done": "1788278400000",
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 608,
+                "username": "Ana",
+                "email": "ana@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "urgent"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L1"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [
+            {
+                "id": "area",
+                "name": "Área",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "o0",
+                            "name": "Gestión",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "o1",
+                            "name": "UI",
+                            "orderindex": 1
+                        },
+                        {
+                            "id": "o2",
+                            "name": "Maquetación",
+                            "orderindex": 2
+                        },
+                        {
+                            "id": "o3",
+                            "name": "Definción",
+                            "orderindex": 3
+                        },
+                        {
+                            "id": "o4",
+                            "name": "Desarrollo",
+                            "orderindex": 4
+                        }
+                    ]
+                },
+                "value": 1
+            },
+            {
+                "id": "fac",
+                "name": "Facturable",
+                "type": "checkbox",
+                "value": true
+            }
+        ],
+        "tags": []
     },
-    "value": 2
-   },
-   {
-    "id": "fff",
-    "name": "Factor facturable",
-    "type": "number",
-    "value": "1"
-   }
-  ],
-  "tags": []
- },
- {
-  "id": "T3",
-  "name": "Subtarea de fichas",
-  "status": {
-   "status": "backlog",
-   "type": "open"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 591,
-    "username": "Bea",
-    "email": "bea@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": "T2",
-  "top_level_parent": "T2",
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L2"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [],
-  "tags": []
- },
- {
-  "id": "T5",
-  "name": "Informe mensual",
-  "status": {
-   "status": "archivada",
-   "type": "closed"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": "1788602400000",
-  "date_done": "1788602400000",
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 591,
-    "username": "Bea",
-    "email": "bea@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L3"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [
-   {
-    "id": "area",
-    "name": "Área",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "o0",
-       "name": "Gestión",
-       "orderindex": 0
-      },
-      {
-       "id": "o1",
-       "name": "UI",
-       "orderindex": 1
-      },
-      {
-       "id": "o2",
-       "name": "Maquetación",
-       "orderindex": 2
-      },
-      {
-       "id": "o3",
-       "name": "Definción",
-       "orderindex": 3
-      },
-      {
-       "id": "o4",
-       "name": "Desarrollo",
-       "orderindex": 4
-      }
-     ]
+    {
+        "id": "T2",
+        "name": "🍎 Maquetación de fichas",
+        "status": {
+            "status": "en progreso",
+            "type": "custom"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 591,
+                "username": "Bea",
+                "email": "bea@clickup.test"
+            },
+            {
+                "id": 608,
+                "username": "Ana",
+                "email": "ana@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": "1790751600000",
+        "start_date": "1789023600000",
+        "time_estimate": 5400000,
+        "list": {
+            "id": "L2"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "Primera línea\nsegunda línea\n\nOtro párrafo <script>alert(1)</script>",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [
+            {
+                "id": "area",
+                "name": "Área",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "o0",
+                            "name": "Gestión",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "o1",
+                            "name": "UI",
+                            "orderindex": 1
+                        },
+                        {
+                            "id": "o2",
+                            "name": "Maquetación",
+                            "orderindex": 2
+                        },
+                        {
+                            "id": "o3",
+                            "name": "Definción",
+                            "orderindex": 3
+                        },
+                        {
+                            "id": "o4",
+                            "name": "Desarrollo",
+                            "orderindex": 4
+                        }
+                    ]
+                },
+                "value": 2
+            },
+            {
+                "id": "fff",
+                "name": "Factor facturable",
+                "type": "number",
+                "value": "1"
+            }
+        ],
+        "tags": []
     },
-    "value": 3
-   },
-   {
-    "id": "nat",
-    "name": "Naturaleza",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "n0",
-       "name": "Productiva",
-       "orderindex": 0
-      },
-      {
-       "id": "n1",
-       "name": "No productiva",
-       "orderindex": 1
-      }
-     ]
+    {
+        "id": "T3",
+        "name": "Subtarea de fichas",
+        "status": {
+            "status": "backlog",
+            "type": "open"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 591,
+                "username": "Bea",
+                "email": "bea@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": "T2",
+        "top_level_parent": "T2",
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L2"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [],
+        "tags": []
     },
-    "value": 1
-   },
-   {
-    "id": "fac",
-    "name": "Facturable",
-    "type": "checkbox",
-    "value": true
-   }
-  ],
-  "tags": []
- },
- {
-  "id": "T6",
-  "name": "Reunión de equipo",
-  "status": {
-   "status": "gestión",
-   "type": "custom"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 1552,
-    "username": "Carla",
-    "email": "carla@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L0"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": "**Orden del día**\n\n- Punto uno",
-  "custom_fields": [
-   {
-    "id": "area",
-    "name": "Área",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "o0",
-       "name": "Gestión",
-       "orderindex": 0
-      },
-      {
-       "id": "o1",
-       "name": "UI",
-       "orderindex": 1
-      },
-      {
-       "id": "o2",
-       "name": "Maquetación",
-       "orderindex": 2
-      },
-      {
-       "id": "o3",
-       "name": "Definción",
-       "orderindex": 3
-      },
-      {
-       "id": "o4",
-       "name": "Desarrollo",
-       "orderindex": 4
-      }
-     ]
+    {
+        "id": "T5",
+        "name": "Informe mensual",
+        "status": {
+            "status": "archivada",
+            "type": "closed"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": "1788602400000",
+        "date_done": "1788602400000",
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 591,
+                "username": "Bea",
+                "email": "bea@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L3"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [
+            {
+                "id": "area",
+                "name": "Área",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "o0",
+                            "name": "Gestión",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "o1",
+                            "name": "UI",
+                            "orderindex": 1
+                        },
+                        {
+                            "id": "o2",
+                            "name": "Maquetación",
+                            "orderindex": 2
+                        },
+                        {
+                            "id": "o3",
+                            "name": "Definción",
+                            "orderindex": 3
+                        },
+                        {
+                            "id": "o4",
+                            "name": "Desarrollo",
+                            "orderindex": 4
+                        }
+                    ]
+                },
+                "value": 3
+            },
+            {
+                "id": "nat",
+                "name": "Naturaleza",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "n0",
+                            "name": "Productiva",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "n1",
+                            "name": "No productiva",
+                            "orderindex": 1
+                        }
+                    ]
+                },
+                "value": 1
+            },
+            {
+                "id": "fac",
+                "name": "Facturable",
+                "type": "checkbox",
+                "value": true
+            }
+        ],
+        "tags": []
     },
-    "value": 0
-   }
-  ],
-  "tags": []
- },
- {
-  "id": "T7",
-  "name": "Revisión heurística",
-  "status": {
-   "status": "en revisión",
-   "type": "custom"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 3804,
-   "username": "Fantasma",
-   "email": "fantasma@clickup.test"
-  },
-  "assignees": [],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": null,
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L6"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [],
-  "tags": []
- },
- {
-  "id": "T8",
-  "name": "Idea personal",
-  "status": {
-   "status": "to do",
-   "type": "open"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 608,
-    "username": "Ana",
-    "email": "ana@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "LP"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S2"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [],
-  "tags": []
- },
- {
-  "id": "T9",
-  "name": "Ajustes finales",
-  "status": {
-   "status": "terminada",
-   "type": "done"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": "1782900000000",
-  "date_done": "1782900000000",
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 608,
-    "username": "Ana",
-    "email": "ana@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L7"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [],
-  "tags": []
- },
- {
-  "id": "T10",
-  "name": "Desarrollo del tema",
-  "status": {
-   "status": "en progreso",
-   "type": "custom"
-  },
-  "date_created": "1785657600000",
-  "date_updated": "1785657600000",
-  "date_closed": null,
-  "date_done": null,
-  "archived": false,
-  "creator": {
-   "id": 608,
-   "username": "Ana",
-   "email": "ana@clickup.test"
-  },
-  "assignees": [
-   {
-    "id": 1044,
-    "username": "Dani",
-    "email": "dani@clickup.test"
-   },
-   {
-    "id": 1552,
-    "username": "Carla",
-    "email": "carla@clickup.test"
-   },
-   {
-    "id": 3804,
-    "username": "Fantasma",
-    "email": "fantasma@clickup.test"
-   }
-  ],
-  "watchers": [],
-  "parent": null,
-  "top_level_parent": null,
-  "priority": {
-   "priority": "normal"
-  },
-  "due_date": null,
-  "start_date": null,
-  "time_estimate": null,
-  "list": {
-   "id": "L5"
-  },
-  "folder": {
-   "id": "F?"
-  },
-  "space": {
-   "id": "S1"
-  },
-  "text_content": "",
-  "description": "",
-  "markdown_description": null,
-  "custom_fields": [
-   {
-    "id": "area",
-    "name": "Área",
-    "type": "drop_down",
-    "type_config": {
-     "options": [
-      {
-       "id": "o0",
-       "name": "Gestión",
-       "orderindex": 0
-      },
-      {
-       "id": "o1",
-       "name": "UI",
-       "orderindex": 1
-      },
-      {
-       "id": "o2",
-       "name": "Maquetación",
-       "orderindex": 2
-      },
-      {
-       "id": "o3",
-       "name": "Definción",
-       "orderindex": 3
-      },
-      {
-       "id": "o4",
-       "name": "Desarrollo",
-       "orderindex": 4
-      }
-     ]
+    {
+        "id": "T6",
+        "name": "Reunión de equipo",
+        "status": {
+            "status": "gestión",
+            "type": "custom"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 1552,
+                "username": "Carla",
+                "email": "carla@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L0"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": "**Orden del día**\n\n- Punto uno",
+        "custom_fields": [
+            {
+                "id": "area",
+                "name": "Área",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "o0",
+                            "name": "Gestión",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "o1",
+                            "name": "UI",
+                            "orderindex": 1
+                        },
+                        {
+                            "id": "o2",
+                            "name": "Maquetación",
+                            "orderindex": 2
+                        },
+                        {
+                            "id": "o3",
+                            "name": "Definción",
+                            "orderindex": 3
+                        },
+                        {
+                            "id": "o4",
+                            "name": "Desarrollo",
+                            "orderindex": 4
+                        }
+                    ]
+                },
+                "value": 0
+            }
+        ],
+        "tags": []
     },
-    "value": 4
-   },
-   {
-    "id": "fac",
-    "name": "Facturable",
-    "type": "checkbox",
-    "value": true
-   }
-  ],
-  "tags": []
- }
+    {
+        "id": "T7",
+        "name": "Revisión heurística",
+        "status": {
+            "status": "en revisión",
+            "type": "custom"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 3804,
+            "username": "Fantasma",
+            "email": "fantasma@clickup.test"
+        },
+        "assignees": [],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": null,
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L6"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [],
+        "tags": []
+    },
+    {
+        "id": "T8",
+        "name": "Idea personal",
+        "status": {
+            "status": "to do",
+            "type": "open"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 608,
+                "username": "Ana",
+                "email": "ana@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "LP"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S2"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [],
+        "tags": []
+    },
+    {
+        "id": "T9",
+        "name": "Ajustes finales",
+        "status": {
+            "status": "terminada",
+            "type": "done"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": "1782900000000",
+        "date_done": "1782900000000",
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 608,
+                "username": "Ana",
+                "email": "ana@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L7"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [],
+        "tags": []
+    },
+    {
+        "id": "T10",
+        "name": "Desarrollo del tema",
+        "status": {
+            "status": "en progreso",
+            "type": "custom"
+        },
+        "date_created": "1785657600000",
+        "date_updated": "1785657600000",
+        "date_closed": null,
+        "date_done": null,
+        "archived": false,
+        "creator": {
+            "id": 608,
+            "username": "Ana",
+            "email": "ana@clickup.test"
+        },
+        "assignees": [
+            {
+                "id": 1044,
+                "username": "Dani",
+                "email": "dani@clickup.test"
+            },
+            {
+                "id": 1552,
+                "username": "Carla",
+                "email": "carla@clickup.test"
+            },
+            {
+                "id": 3804,
+                "username": "Fantasma",
+                "email": "fantasma@clickup.test"
+            }
+        ],
+        "watchers": [],
+        "parent": null,
+        "top_level_parent": null,
+        "priority": {
+            "priority": "normal"
+        },
+        "due_date": null,
+        "start_date": null,
+        "time_estimate": null,
+        "list": {
+            "id": "L5"
+        },
+        "folder": {
+            "id": "F?"
+        },
+        "space": {
+            "id": "S1"
+        },
+        "text_content": "",
+        "description": "",
+        "markdown_description": null,
+        "custom_fields": [
+            {
+                "id": "area",
+                "name": "Área",
+                "type": "drop_down",
+                "type_config": {
+                    "options": [
+                        {
+                            "id": "o0",
+                            "name": "Gestión",
+                            "orderindex": 0
+                        },
+                        {
+                            "id": "o1",
+                            "name": "UI",
+                            "orderindex": 1
+                        },
+                        {
+                            "id": "o2",
+                            "name": "Maquetación",
+                            "orderindex": 2
+                        },
+                        {
+                            "id": "o3",
+                            "name": "Definción",
+                            "orderindex": 3
+                        },
+                        {
+                            "id": "o4",
+                            "name": "Desarrollo",
+                            "orderindex": 4
+                        }
+                    ]
+                },
+                "value": 4
+            },
+            {
+                "id": "fac",
+                "name": "Facturable",
+                "type": "checkbox",
+                "value": true
+            }
+        ],
+        "tags": []
+    }
 ]

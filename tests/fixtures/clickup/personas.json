@@ -1,59 +1,59 @@
 {
- "default_manager": "eva@empresa.test",
- "people": [
-  {
-   "clickup_email": "ana@clickup.test",
-   "email": "ana@empresa.test",
-   "name": "Ana Admin",
-   "role": "admin",
-   "department": null,
-   "is_department_manager": false,
-   "import": true
-  },
-  {
-   "clickup_email": "bea@clickup.test",
-   "email": "bea@empresa.test",
-   "name": "Bea Diseño",
-   "role": "employee",
-   "department": "Diseño",
-   "is_department_manager": false,
-   "import": true
-  },
-  {
-   "clickup_email": "carla@clickup.test",
-   "email": "carla@externa.test",
-   "name": "Carla Colaboradora",
-   "role": "collaborator",
-   "department": "Diseño",
-   "is_department_manager": false,
-   "import": true
-  },
-  {
-   "clickup_email": "dani@clickup.test",
-   "email": "dani@empresa.test",
-   "name": "Dani Desarrollo",
-   "role": "department_manager",
-   "department": "Desarrollo",
-   "is_department_manager": true,
-   "import": true
-  },
-  {
-   "clickup_email": "eva@clickup.test",
-   "email": "eva@empresa.test",
-   "name": "Eva Dirección",
-   "role": "admin",
-   "department": null,
-   "is_department_manager": false,
-   "import": true
-  },
-  {
-   "clickup_email": "fran@clickup.test",
-   "email": "fran@empresa.test",
-   "name": "Fran Fuera",
-   "role": "employee",
-   "department": null,
-   "is_department_manager": false,
-   "import": false
-  }
- ]
+    "default_manager": "eva@empresa.test",
+    "people": [
+        {
+            "clickup_email": "ana@clickup.test",
+            "email": "ana@empresa.test",
+            "name": "Ana Admin",
+            "role": "admin",
+            "department": null,
+            "is_department_manager": false,
+            "import": true
+        },
+        {
+            "clickup_email": "bea@clickup.test",
+            "email": "bea@empresa.test",
+            "name": "Bea Diseño",
+            "role": "employee",
+            "department": "Diseño",
+            "is_department_manager": false,
+            "import": true
+        },
+        {
+            "clickup_email": "carla@clickup.test",
+            "email": "carla@externa.test",
+            "name": "Carla Colaboradora",
+            "role": "collaborator",
+            "department": "Diseño",
+            "is_department_manager": false,
+            "import": true
+        },
+        {
+            "clickup_email": "dani@clickup.test",
+            "email": "dani@empresa.test",
+            "name": "Dani Desarrollo",
+            "role": "department_manager",
+            "department": "Desarrollo",
+            "is_department_manager": true,
+            "import": true
+        },
+        {
+            "clickup_email": "eva@clickup.test",
+            "email": "eva@empresa.test",
+            "name": "Eva Dirección",
+            "role": "admin",
+            "department": null,
+            "is_department_manager": false,
+            "import": true
+        },
+        {
+            "clickup_email": "fran@clickup.test",
+            "email": "fran@empresa.test",
+            "name": "Fran Fuera",
+            "role": "employee",
+            "department": null,
+            "is_department_manager": false,
+            "import": false
+        }
+    ]
 }
