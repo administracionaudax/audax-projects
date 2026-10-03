@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -78,6 +79,17 @@ class DeactivateUserRequest extends FormRequest
                 foreach ($candidates as $key => $id) {
                     if (! in_array($id, $eligible, true)) {
                         $validator->errors()->add($key, __('admin.users.errors.assignee'));
+                    }
+                }
+
+                // El nuevo gestor principal nunca es un colaborador externo (D-134).
+                $owners = array_filter($candidates, fn (int $id, string $key): bool => str_starts_with($key, 'owners.'), ARRAY_FILTER_USE_BOTH);
+                $collaborators = $owners === [] ? [] : User::query()->whereKey(array_values($owners))->role(Role::Collaborator->value)
+                    ->pluck('id')->map(fn ($id): int => (int) $id)->all();
+
+                foreach ($owners as $key => $id) {
+                    if (in_array($id, $collaborators, true)) {
+                        $validator->errors()->add($key, __('projects.errors.collaborator_cannot_manage'));
                     }
                 }
             },

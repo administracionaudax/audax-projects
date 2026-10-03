@@ -119,12 +119,12 @@ class UserRequest extends FormRequest
     }
 
     /**
-     * Roles que se asignan desde aquí (todos los internos).
+     * Roles que se asignan desde aquí (todos los internos, también el colaborador externo, D-134).
      *
      * @return list<string>
      */
     public static function assignableRoles(): array
     {
-        return [Role::Admin->value, Role::DepartmentManager->value, Role::Employee->value];
+        return [Role::Admin->value, Role::DepartmentManager->value, Role::Employee->value, Role::Collaborator->value];
     }
 }

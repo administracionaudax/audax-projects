@@ -26,6 +26,7 @@ return [
         'internal_without_client' => 'Un proyecto interno no tiene cliente.',
         'client_inactive' => 'Ese cliente está desactivado. Elige un cliente activo.',
         'user_not_available' => 'Elige a una persona de la agencia que esté activa.',
+        'collaborator_cannot_manage' => 'Un colaborador externo no puede ser gestor de un proyecto.',
         'owner_cannot_be_removed' => 'No puedes quitar al gestor principal. Elige antes otro gestor principal.',
         'owner_always_manager' => 'El gestor principal siempre es gestor del proyecto.',
         'already_owner' => ':name ya es el gestor principal.',

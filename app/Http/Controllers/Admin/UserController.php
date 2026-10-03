@@ -16,6 +16,7 @@ use App\Http\Resources\DepartmentResource;
 use App\Models\ActiveTimer;
 use App\Models\Department;
 use App\Models\LoginEvent;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -156,11 +158,23 @@ class UserController extends Controller
             $user->forceFill($request->userData())->save();
 
             if (! $user->hasRole($role->value)) {
+                // Un colaborador externo nunca es gestor de un proyecto (D-134): si es gestor
+                // principal de alguno, antes hay que elegir otro.
+                if ($role === Role::Collaborator && Project::query()->withTrashed()->where('owner_user_id', $user->id)->exists()) {
+                    throw ValidationException::withMessages(['role' => __('admin.users.errors.collaborator_owner')]);
+                }
+
                 $user->syncRoles([$role->value]);
 
                 // Solo responsables y admins pueden figurar como responsables de un departamento.
-                if ($role === Role::Employee) {
+                if ($role === Role::Employee || $role === Role::Collaborator) {
                     $user->managedDepartments()->detach();
+                    User::forgetMemberships();
+                }
+
+                // Y deja de ser co-gestor de sus proyectos.
+                if ($role === Role::Collaborator) {
+                    DB::table('project_members')->where('user_id', $user->id)->where('is_manager', true)->update(['is_manager' => false]);
                     User::forgetMemberships();
                 }
             }
