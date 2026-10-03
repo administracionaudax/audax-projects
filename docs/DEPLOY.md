@@ -118,7 +118,7 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
 - **Base de datos y Valkey:**
   - `DB_*` apuntan a `127.0.0.1:15432`; `REDIS_*` a `127.0.0.1:16379` con contraseña,
   - `REDIS_QUEUE_RETRY_AFTER=660`, por encima del tiempo máximo de la exportación de datos personales.
-- **Correo:** `MAIL_*`. **Pendiente:** los datos SMTP del propietario; hasta entonces, `MAIL_MAILER=log`.
+- **Correo:** `MAIL_*`, por el relé SMTP de Google Workspace (`smtp-relay.gmail.com:587`, STARTTLS, sin usuario ni contraseña). Google solo lo acepta desde la IP del servidor (`185.33.65.98`) y con remitentes del dominio; la regla se llama «Audax Proyectos (servidor)» (consola de Google → Gmail → Enrutamiento). Remitente: `administracion@audaxstudio.com`. Si cambia la IP del servidor, hay que cambiarla también en esa regla.
 - **Tiempo real:**
   - `BROADCAST_CONNECTION=reverb`,
   - `REVERB_*`: servidor en `127.0.0.1:18080`; navegador en `projects.audaxstudio.com:443` https,
