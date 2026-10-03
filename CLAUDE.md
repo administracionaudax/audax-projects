@@ -21,6 +21,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 6. Chat | ✅ **Cerrada el 03/10/2026** (etiqueta `fase-6-cerrada`) |
 | 7. Pulido | ✅ **Cerrada el 03/10/2026** (etiqueta `fase-7-cerrada`) |
 | 8. Puesta en marcha | En curso: `docs/PLAN-FASE-8.md` (colaboradores externos, importación de ClickUp y hoja de estilos) |
+| 9. Exportar y enviar | En curso: `docs/PLAN-FASE-9.md` (PDF, imprimir, Google Sheets, correo y envíos programados) |
 
 ## Modo autónomo (D-027)
 Desde la Fase 1 se trabaja fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md` y las decisiones de producto se registran en `docs/DECISIONES.md`. Solo se contacta al propietario para SMTP, lista de empleados y texto RGPD (al final), o por un imprevisto del servidor que no se pueda revertir.

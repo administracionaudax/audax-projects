@@ -1085,6 +1085,48 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
   - la paleta de gráficas de D-012: varios tonos para distinguir series; la hoja tiene un único azul porque no tiene gráficas de varias series,
   - el tema oscuro, que la hoja no define.
 
+### D-139 · Exportación unificada de informes (Fase 9)
+- Los 10 informes exportables (`ReportKind`) se generan con un único servicio, `ReportFileGenerator`, siempre **con los permisos de quien lo pide**: el mismo contenido que vería en pantalla con esos filtros.
+- Lo usan la descarga, el envío por correo, los envíos programados y Google Sheets.
+- Cada informe tiene un menú **«Exportar ▾»** con estas opciones:
+  - Excel, CSV y PDF,
+  - Google Sheets,
+  - Imprimir,
+  - «Enviar por correo…» y «Programar envío…».
+- Todas las descargas, envíos y subidas quedan en la auditoría (`report-delivery`).
+
+### D-140 · PDF e impresión con el estilo de Audax
+- **Maquetación:** el PDF se maqueta en HTML con la hoja de documentos A4 de Audax (`audax-doc.css`, D-137) y DM Sans incrustada:
+  - portada con el título, el periodo y los filtros,
+  - cifras clave,
+  - tablas con cabecera gris y totales,
+  - cabecera y pie con «Audax Studio», `audaxstudio.com` y el número de página.
+- **Conversión:** con **Gotenberg** (Chromium en Docker, licencia MIT), solo en `127.0.0.1`, con límite de memoria, núcleos 6-7 y tiempo máximo por documento.
+- **Imprimir:** abre el mismo HTML en una pestaña y lanza el diálogo de impresión del navegador.
+- **El PDF de bolsa (FPDF, D-045 y D-095)** pasa al nuevo motor si el resultado es equivalente. Si no, se mantiene y queda anotado.
+
+### D-141 · Envío por correo y envíos programados
+- **Quién puede enviar:** quien puede ver el informe.
+- **Destinatarios:** personas activas de la app y **correos externos**, por ejemplo un cliente. Los externos quedan en la auditoría y la interfaz avisa de que el informe sale de la empresa.
+- **Cómo sale:**
+  - con el tema de correo de Audax, desde «Audax Proyectos <administracion@audaxstudio.com>» y con el informe adjunto,
+  - si el adjunto pasa de 10 MB, lleva un enlace firmado a la descarga, que caduca a los 7 días.
+- **Envíos programados (`/informes/envios`):**
+  - **Qué guardan:** el informe y sus filtros, el formato (PDF o Excel, uno o los dos), los destinatarios, un asunto y un mensaje opcionales, y el periodo relativo: fijo, en curso o anterior.
+  - **Frecuencia:** una vez (fecha y hora), semanal (día y hora) o mensual (día 1-28 o último día, y hora), en Europe/Madrid.
+  - **Ejecución:** cada 5 minutos, desde el programador.
+- **Seguridad al generar:**
+  - cada envío se genera con los permisos **actuales** de quien lo programó,
+  - si ya no puede ver el informe, o su cuenta está desactivada, el envío se pausa y se le avisa a él y a los admins,
+  - las personas de la app que hayan dejado de estar activas se quitan de los destinatarios.
+- **Historial por envío:** fecha, destinatarios, estado y error. Desde el historial se puede «Enviar ahora», pausar o reanudar.
+
+### D-142 · Google Sheets
+- **Conexión:** cada persona conecta su cuenta de Google de Workspace en *Ajustes → Integraciones* (OAuth, tipo «Interno»), con el alcance mínimo **`drive.file`**: la app solo puede tocar los archivos que ella misma crea.
+- **Exportar:** sube el XLSX del informe a su Drive convertido a hoja de cálculo nativa y abre el enlace.
+- **Seguridad del token:** el token de refresco se guarda cifrado (`encrypted`) y se borra al desconectar o si Google lo revoca.
+- **Credenciales:** el ID y el secreto del cliente OAuth los pone el propietario en el `.env` del servidor, nunca en Git. Sin ellos, la opción no se ofrece.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1092,6 +1134,7 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
 - Fase 5: D-092 a D-109.
 - Fase 6: D-110 a D-121.
 - Fase 7: D-122 a D-133.
-- Fase 8: D-134 a D-137.
+- Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
+- Fase 9: D-139 a D-142.
 
-La siguiente libre es **D-138**.
+La siguiente libre es **D-143**.
