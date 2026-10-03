@@ -44,7 +44,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $theme_preference
  * @property string $locale
  * @property array<string, mixed>|null $notification_preferences
- * @property list<string>|null $home_layout
+ * @property array<array-key, mixed>|null $home_layout Orden de Inicio (D-138); lo filtra HomeLayout::for()
  * @property int|null $privacy_acknowledged_version
  * @property Carbon|null $privacy_acknowledged_at
  * @property string|null $avatar_path
