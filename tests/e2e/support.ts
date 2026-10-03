@@ -57,6 +57,19 @@ export async function login(
     await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 }
 
+/**
+ * El «PDF» de un informe (D-140): en la CI y en local no hay Gotenberg (REPORTS_PDF_DRIVER=html) y
+ * la descarga es el HTML que convertiría; con Gotenberg, un PDF de verdad.
+ */
+export function expectReportPdf(file: { name: string; bytes: Buffer }): void {
+    if (file.name.endsWith('.pdf')) {
+        expect(file.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+    } else {
+        expect(file.name).toMatch(/\.html$/);
+        expect(file.bytes.subarray(0, 15).toString()).toBe('<!doctype html>');
+    }
+}
+
 /** Props de la primera visita (Inertia las deja en <script data-page="app">). */
 export async function pageProps(page: Page): Promise<Record<string, unknown>> {
     const json = await page

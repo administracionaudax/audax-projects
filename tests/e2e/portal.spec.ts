@@ -3,7 +3,13 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import type { Theme } from './support';
-import { expectTheme, login, saveUserTheme, USERS } from './support';
+import {
+    expectReportPdf,
+    expectTheme,
+    login,
+    saveUserTheme,
+    USERS,
+} from './support';
 
 /**
  * Portal de cliente · bolsas (P1, Fase 5; SPEC §11 y aceptación de la §17), sobre el
@@ -121,8 +127,8 @@ test('el cliente ve su bolsa, abre el detalle, descarga el PDF y no entra en la 
         const pdf = await download(page, () =>
             page.getByRole('link', { name: /Descargar PDF/ }).click(),
         );
-        expect(pdf.name).toMatch(/^ARR-WEB-consumo-bolsa-diseno-.*\.pdf$/);
-        expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+        expect(pdf.name).toMatch(/^ARR-WEB-consumo-bolsa-diseno-.*\.(pdf|html)$/);
+        expectReportPdf(pdf);
     });
 
     await test.step('la app interna le devuelve a su portal', async () => {
