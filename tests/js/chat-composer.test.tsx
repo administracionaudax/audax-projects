@@ -162,7 +162,10 @@ describe('Composer', () => {
         await user.keyboard('{Enter}');
         await user.keyboard('{Enter}');
 
-        expect(onSubmit).toHaveBeenCalledWith('Hola <@9> y <@7> y @todos');
+        // El envío es asíncrono (cierra la lista de menciones y luego publica): en la CI tarda más.
+        await waitFor(() =>
+            expect(onSubmit).toHaveBeenCalledWith('Hola <@9> y <@7> y @todos'),
+        );
     });
 
     it('Esc cierra las sugerencias sin enviar', async () => {
