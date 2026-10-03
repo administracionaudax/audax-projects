@@ -1,0 +1,74 @@
+/* Copia literal de «Hoja de estilos/audax-doc.css» (kit de maquetación de Audax v1.2, D-137 y D-140).
+   No se edita aquí: los ajustes propios de los informes van en report.css. */
+/* =====================================================================
+   AUDAX STUDIO · audax-doc.css · Documentos A4 (presupuestos, contratos, informes)
+   Versión 1.0 · 2026. Mismos colores, tipografía (DM Sans) y criterio plano que
+   audax-deck.css, con tamaños en puntos para impresión.
+   Estructura: section.cover (portada) · h1.part (parte, empieza página) ·
+   h2 (apartado azul) · h3 (subapartado) · h4 (epígrafe) · p · ul/ol · table
+   (con span.st--ok/--warn/--info para Incluido/Excluido/Pendiente) · .total ·
+   .note · .sign (firma) · .legal (letra pequeña).
+   ===================================================================== */
+
+:root{--blue:#0171FF;--blue-bg:#E6F0FF;--ink:#0B1B33;--muted:#5B6B82;--faint:#8C99AC;--table-head:#E9ECEF;--line:#E2E6EC;--line-soft:#EEF1F5;
+  --green:#1E9C6B;--green-bg:#E9F5F0;--amber-ink:#9A5A1A;--amber-bg:#FBEEE2;
+  --font:"DM Sans",-apple-system,"Segoe UI",sans-serif;}
+@page{size:A4; margin:26mm 20mm 22mm;}
+/* Cabecera y pie en cada página (Chrome 131 o posterior) */
+@page{
+  @top-right{content:"Audax Studio"; font-family:"DM Sans",sans-serif; font-size:6.5pt; letter-spacing:.12em; text-transform:uppercase; color:#8C99AC; vertical-align:bottom; padding-bottom:4mm;}
+  @bottom-right{content:"Página " counter(page) " de " counter(pages); font-family:"DM Sans",sans-serif; font-size:7pt; color:#8C99AC; vertical-align:top; padding-top:4mm;}
+  @bottom-left{content:"audaxstudio.com"; font-family:"DM Sans",sans-serif; font-size:7pt; color:#8C99AC; vertical-align:top; padding-top:4mm;}
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html{font-family:var(--font); font-size:9.5pt; line-height:1.55; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+body{background:#fff;}
+b,strong{font-weight:600;}
+.page-head{position:fixed; top:-16mm; left:0; right:0; display:flex; justify-content:space-between; align-items:center; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; color:var(--faint);}
+.page-head .logo{height:11px; width:auto;}
+.logo{display:block;}
+/* Portada */
+.cover{height:236mm; display:flex; flex-direction:column; justify-content:space-between; break-after:page;}
+.cover>.logo{height:22px; width:134px;}
+.cover__body{display:grid; gap:14pt;}
+.kicker{font-size:8pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--blue);}
+.cover__title{font-size:26pt; font-weight:400; line-height:1.2; letter-spacing:-.02em; max-width:150mm;}
+.cover__sub{font-size:13pt; color:var(--muted);}
+.facts{margin-top:10pt; border-top:1px solid var(--line);}
+.facts div{display:grid; grid-template-columns:42mm 1fr; gap:6mm; padding:8pt 0; border-bottom:1px solid var(--line);}
+.facts dt{font-size:7.5pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); padding-top:2pt;}
+.note{font-size:8.5pt; color:var(--muted); padding:10pt 12pt; background:var(--blue-bg); border-left:3px solid var(--blue);}
+/* Títulos */
+h1.part{font-size:20pt; font-weight:400; letter-spacing:-.02em; line-height:1.2; padding-bottom:8pt; margin-bottom:12pt; border-bottom:2px solid var(--blue); break-before:page;}
+h2{font-size:14pt; font-weight:400; letter-spacing:-.02em; line-height:1.25; color:var(--blue); margin:20pt 0 8pt; break-after:avoid;}
+h3{font-size:11pt; font-weight:600; line-height:1.3; margin:14pt 0 6pt; break-after:avoid;}
+h4{font-size:9.5pt; font-weight:600; margin:12pt 0 4pt; break-after:avoid;}
+h2+h3{margin-top:8pt;}
+p{margin:0 0 6pt; text-align:left; hyphens:auto; orphans:3; widows:3;}
+p b{color:var(--ink);}
+ul,ol{margin:2pt 0 8pt 0; padding-left:14pt;}
+li{margin-bottom:3pt; padding-left:2pt;}
+ul li::marker{color:var(--blue);}
+ol li::marker{color:var(--blue); font-weight:600;}
+/* Tablas */
+table{width:100%; border-collapse:collapse; margin:6pt 0 12pt; font-size:8.5pt; line-height:1.4;}
+thead{display:table-header-group;}
+tr{break-inside:avoid;}
+th{background:var(--table-head); text-align:left; font-size:7pt; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:6pt 8pt;}
+td{padding:6pt 8pt; border-bottom:1px solid var(--line); vertical-align:top;}
+td:first-child{font-weight:500;}
+.st{display:inline-block; padding:1pt 6pt; font-size:7.5pt; font-weight:500; white-space:nowrap;}
+.st--ok{background:var(--green-bg); color:var(--green);} .st--warn{background:var(--amber-bg); color:var(--amber-ink);} .st--info{background:var(--blue-bg); color:var(--blue);}
+.total{display:flex; justify-content:space-between; align-items:baseline; padding:10pt 12pt; background:var(--table-head); margin:4pt 0 12pt; break-inside:avoid;}
+.total span{font-size:8pt; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);}
+.total strong{font-size:14pt; font-weight:600;}
+/* Firma */
+.sign{display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin:14pt 0; break-inside:avoid;}
+.sign>div{display:grid; gap:3pt; padding:10pt 12pt; border:1px solid var(--line);}
+.sign .k{font-size:7pt; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--faint);}
+.sign__box{height:28mm; border-bottom:1px solid var(--ink); margin:8pt 0 4pt;}
+.legal p{font-size:7.5pt; color:var(--muted);}
+.check{display:flex; gap:6pt; align-items:flex-start;}
+.box{flex:none; width:9pt; height:9pt; border:1px solid var(--muted); margin-top:1pt;}
+@media screen{body{max-width:210mm; margin:0 auto; padding:20mm;} .page-head{position:static; margin-bottom:10mm;} .cover{height:auto; min-height:240mm;}}
