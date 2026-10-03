@@ -20,6 +20,7 @@ use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DefaultSettingsSeeder;
+use Database\Seeders\DemoDataSeeder;
 use Database\Seeders\DepartmentsSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 
@@ -29,7 +30,14 @@ test('el seeder de desarrollo crea las cuentas de los E2E, el responsable de Dis
     expect(User::role(Role::Admin->value)->count())->toBe(1)
         ->and(User::role(Role::DepartmentManager->value)->count())->toBe(3)
         ->and(User::role(Role::Employee->value)->count())->toBe(6)
-        ->and(User::role(Role::Client->value)->count())->toBe(2);
+        ->and(User::role(Role::Client->value)->count())->toBe(2)
+        ->and(User::role(Role::Collaborator->value)->count())->toBe(1);
+
+    // Colaboradora externa del E2E (D-134): solo en MIR-WEB y FAR-SHOP, sin gestionar ninguno.
+    $sara = User::query()->where('email', DemoDataSeeder::COLLABORATOR_EMAIL)->sole();
+    expect($sara->projects()->orderBy('code')->pluck('code')->all())->toBe(['FAR-SHOP', 'MIR-WEB'])
+        ->and($sara->managedProjectIds())->toBe([])
+        ->and($sara->assignedTasks()->count())->toBe(2);
 
     foreach (['admin@example.com', 'responsable@example.com', 'empleado@example.com', 'cliente@example.com', 'cliente.lamas@example.com'] as $email) {
         expect(User::query()->where('email', $email)->exists())->toBeTrue();
@@ -149,7 +157,7 @@ test('el seeder de desarrollo es repetible', function () {
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
-    expect(User::query()->count())->toBe(12)
+    expect(User::query()->count())->toBe(13)
         ->and(Department::query()->count())->toBe(3)
         ->and(Project::query()->count())->toBe(15);
 });
