@@ -216,24 +216,27 @@
 }
 
 .dark {
-    --background: #000f20;
-    --foreground: #e6e7e9;
-    --card: #001b39;
-    --card-foreground: #e6e8eb;
-    --popover: #001b39;
-    --popover-foreground: #e6e8eb;
+    /* Tema oscuro según las pantallas oscuras de la hoja de Audax (D-137): base #0B1526 (la de la
+       imagen de portada), superficies algo más claras y poco saturadas, texto #F5F6F7, secundario
+       blanco al 70 % y separadores blanco al 14 %. El navy de marca #001B39 queda para la marca. */
+    --background: #0b1526;
+    --foreground: #f5f6f7;
+    --card: #121c30;
+    --card-foreground: #f5f6f7;
+    --popover: #121c30;
+    --popover-foreground: #f5f6f7;
     --primary: #0068eb;
     --primary-foreground: #ffffff;
-    --primary-text: #4a93ff;
+    --primary-text: #519aff;
     --secondary: rgb(255 255 255 / 0.06);
-    --secondary-foreground: #e6e8eb;
+    --secondary-foreground: #f5f6f7;
     --muted: rgb(255 255 255 / 0.06);
-    --muted-foreground: rgb(255 255 255 / 0.6);
-    --accent: rgb(1 113 255 / 0.18);
-    --accent-foreground: #e6e8eb;
+    --muted-foreground: rgb(255 255 255 / 0.7);
+    --accent: rgb(1 113 255 / 0.2);
+    --accent-foreground: #f5f6f7;
     --destructive: #b43a36;
     --destructive-foreground: #f2837b;
-    --border: rgb(255 255 255 / 0.12);
+    --border: rgb(255 255 255 / 0.14);
     --input: rgb(255 255 255 / 0.4);
     --ring: #4a93ff;
 
@@ -244,23 +247,23 @@
     --danger: #f2837b;
     --danger-soft: #36283d;
     --info: #4a93ff;
-    --info-soft: #00275a;
-    --neutral-soft: #0f2945;
+    --info-soft: #12284a;
+    --neutral-soft: #1a2538;
 
-    --chart-1: #0260d9;
+    --chart-1: #0868e0;
     --chart-2: #0d9298;
     --chart-3: #9d74f8;
     --chart-4: #b53087;
     --chart-5: #7685f8;
     --chart-6: #04729b;
 
-    --sidebar: #001b39;
-    --sidebar-foreground: #e6e8eb;
+    --sidebar: #121c30;
+    --sidebar-foreground: #f5f6f7;
     --sidebar-primary: #0068eb;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: rgb(1 113 255 / 0.18);
-    --sidebar-accent-foreground: #e6e8eb;
-    --sidebar-border: rgb(255 255 255 / 0.12);
+    --sidebar-accent: rgb(1 113 255 / 0.2);
+    --sidebar-accent-foreground: #f5f6f7;
+    --sidebar-border: rgb(255 255 255 / 0.14);
     --sidebar-ring: #4a93ff;
 }
 

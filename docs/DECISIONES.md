@@ -1081,9 +1081,9 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
   - cabeceras de tabla en mayúsculas pequeñas, sobre gris y con texto secundario, en todas las tablas.
 - **Logo:** el negro oficial #1D1D1B en tema claro y blanco en oscuro.
 - **Fondo de marca:** la imagen original de la portada del kit (`public/brand/fondo-marca.jpg`, 33 KB) sustituye al degradado CSS en el login, la cabecera del portal y los estados vacíos grandes, siempre con el velo navy. El contraste se comprueba sobre la propia imagen, en los recortes de `cover` (apaisado, 16:9 y vertical), con `tests/fixtures/brand-cover-grid.json`.
+- **Tema oscuro (revisado el 03/10 a petición del propietario):** sigue las pantallas oscuras de la hoja: base **#0B1526** (la de la imagen de portada), superficies #121C30, texto #F5F6F7, secundario blanco al 70 %, separadores blanco al 14 % y azul de selección #0171FF al 20 %. Antes era un navy saturado al 100 % (#000F20 y #001B39), más «azul eléctrico» que la hoja. Ajustes para mantener AA: el texto azul en oscuro pasa a #519AFF y la serie 1 de las gráficas a #0868E0.
 - **Se mantiene:**
   - la paleta de gráficas de D-012: varios tonos para distinguir series; la hoja tiene un único azul porque no tiene gráficas de varias series,
-  - el tema oscuro, que la hoja no define.
 
 ### D-139 · Exportación unificada de informes (Fase 9)
 - Los 10 informes exportables (`ReportKind`) se generan con un único servicio, `ReportFileGenerator`, siempre **con los permisos de quien lo pide**: el mismo contenido que vería en pantalla con esos filtros.
