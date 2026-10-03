@@ -256,12 +256,7 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * Un día sobrecargado seguro, para el E2E de la vista Carga (reasignar desde la celda de una
-     * persona sobrecargada): Lucía tiene en «MIR-WEB · Rediseño web» una tarea de 16 h que empieza
-     * y se entrega el primer día laborable de la semana que viene (sin festivo), además de la carga
-     * que le toque al azar. Se crea después de las horas, así que no tiene nada imputado.
-     *
-     * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
+     * Colaboradora externa de ejemplo (Fase 8, D-134), para su E2E (collaborator.spec.ts).
      */
     private function collaborator(): void
     {
@@ -317,6 +312,14 @@ class DemoDataSeeder extends Seeder
         $this->people['sara'] = $sara;
     }
 
+    /**
+     * Un día sobrecargado seguro, para el E2E de la vista Carga (reasignar desde la celda de una
+     * persona sobrecargada): Lucía tiene en «MIR-WEB · Rediseño web» una tarea de 16 h que empieza
+     * y se entrega el primer día laborable de la semana que viene (sin festivo), además de la carga
+     * que le toque al azar. Se crea después de las horas, así que no tiene nada imputado.
+     *
+     * @param  list<array{project: Project, banks: list<array{bank: HourBank, state: string, from: CarbonImmutable, to: CarbonImmutable}>, tasks: list<Task>, from: CarbonImmutable, to: CarbonImmutable, members: list<User>}>  $projects
+     */
     private function overloadedDay(array $projects): void
     {
         $data = null;
