@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
  * Miembros, gestores y alertas de un proyecto (SPEC §4.2, D-005, D-023, D-032):
  * - el gestor principal (owner) es siempre miembro gestor: no se le quita ni se le desmarca,
  * - al cambiar de gestor principal, el nuevo pasa a gestor y el anterior sigue como gestor,
- * - cada gestor tiene sus alertas (por defecto, todas activadas).
+ * - cada gestor tiene sus alertas (por defecto, todas activadas),
+ * - un colaborador externo nunca es gestor (D-134).
  * Los cambios de miembros quedan en la auditoría del proyecto (el pivote no la tiene propia).
  */
 final class ProjectMembership
@@ -28,6 +29,10 @@ final class ProjectMembership
 
     public function add(Project $project, User $member, bool $isManager, User $actor): void
     {
+        if ($isManager) {
+            $this->assertCanManage($member, 'is_manager');
+        }
+
         if ($project->hasMember($member)) {
             throw ValidationException::withMessages([
                 'user_id' => __('projects.errors.already_member', ['name' => $member->name]),
@@ -47,6 +52,10 @@ final class ProjectMembership
     public function setManager(Project $project, User $member, bool $isManager, User $actor): void
     {
         $membership = $this->membership($project, $member);
+
+        if ($isManager) {
+            $this->assertCanManage($member, 'is_manager');
+        }
 
         if (! $isManager && $member->id === $project->owner_user_id) {
             throw ValidationException::withMessages([
@@ -86,6 +95,8 @@ final class ProjectMembership
      */
     public function changeOwner(Project $project, User $newOwner, User $actor): void
     {
+        $this->assertCanManage($newOwner, 'owner_user_id');
+
         if ($newOwner->id === $project->owner_user_id) {
             throw ValidationException::withMessages([
                 'owner_user_id' => __('projects.errors.already_owner', ['name' => $newOwner->name]),
@@ -112,6 +123,18 @@ final class ProjectMembership
                 $this->log($project, $actor, self::EVENT_MANAGER_ADDED, $newOwner);
             }
         });
+    }
+
+    /**
+     * Un colaborador externo nunca es gestor de un proyecto (D-134).
+     *
+     * @throws ValidationException
+     */
+    private function assertCanManage(User $member, string $field): void
+    {
+        if ($member->isCollaborator()) {
+            throw ValidationException::withMessages([$field => __('projects.errors.collaborator_cannot_manage')]);
+        }
     }
 
     /**

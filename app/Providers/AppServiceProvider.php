@@ -18,6 +18,20 @@ use RuntimeException;
 class AppServiceProvider extends ServiceProvider
 {
     /**
+     * Gates globales que un colaborador externo nunca tiene (D-134): los permisos de
+     * Permission::cases() y las de bolsas, aprobaciones, bloqueo y Horizon.
+     */
+    public const array COLLABORATOR_DENIED = [
+        'manage-users',
+        'manage-settings',
+        'view-financials',
+        'view-hour-banks',
+        'approve-time',
+        'lock-time',
+        'viewHorizon',
+    ];
+
+    /**
      * Register any application services.
      */
     public function register(): void
@@ -45,6 +59,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // Un usuario desactivado no puede nada, aunque conserve sus roles (SPEC §14).
         Gate::before(fn (User $user): ?bool => $user->isActive() ? null : false);
+
+        // Un colaborador externo (D-134) nunca ve datos económicos ni bolsas, no aprueba ni bloquea
+        // horas y no administra nada, aunque alguien le diera el permiso por error.
+        Gate::before(fn (User $user, string $ability): ?bool => in_array($ability, self::COLLABORATOR_DENIED, true) && $user->isCollaborator() ? false : null);
 
         // Una gate por permiso global (config permission.register_permission_check_method = false).
         foreach (Permission::cases() as $permission) {

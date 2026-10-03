@@ -9,18 +9,18 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Clientes (D-021, D-022): los ven todos los internos; los crean y editan admins y responsables.
- * No se borran: se desactivan (D-037).
+ * No se borran: se desactivan (D-037). Un colaborador externo no ve clientes (D-134).
  */
 class ClientPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isInternal();
+        return $user->isInternal() && ! $user->isCollaborator();
     }
 
     public function view(User $user, Client $client): bool
     {
-        return $user->isInternal();
+        return $this->viewAny($user);
     }
 
     public function create(User $user): bool

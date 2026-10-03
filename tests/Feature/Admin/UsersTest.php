@@ -48,7 +48,7 @@ describe('listado', function () {
                 ->where('users.meta.total', 4)
                 ->where('filters.estado', 'activos')
                 ->has('departments', 1)
-                ->where('roles', ['admin', 'department_manager', 'employee'])
+                ->where('roles', ['admin', 'department_manager', 'employee', 'collaborator'])
                 ->where('canGrantAdmin', true));
     });
 

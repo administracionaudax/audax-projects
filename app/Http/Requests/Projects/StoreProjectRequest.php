@@ -40,7 +40,7 @@ class StoreProjectRequest extends FormRequest
     {
         return [
             ...$this->projectRules(null),
-            'owner_user_id' => ['nullable', 'integer', new ActiveInternalUser],
+            'owner_user_id' => ['nullable', 'integer', new ActiveInternalUser(manager: true)],
             'member_ids' => ['nullable', 'array', 'max:100'],
             'member_ids.*' => ['integer', 'distinct', new ActiveInternalUser],
             ...$this->templateRules(),

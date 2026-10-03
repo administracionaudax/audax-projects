@@ -12,13 +12,15 @@ use App\Models\User;
  * - el admin ve y modera las de proyecto y de grupo aunque no participe; las directas, nunca,
  * - en el chat de un proyecto archivado ya no se escribe: se conserva para consultarlo,
  * - un grupo lo gestiona (nombre y personas) quien lo creó, mientras siga en él, o el admin; y
- *   cualquiera de sus participantes puede salir de él (D-119).
+ *   cualquiera de sus participantes puede salir de él (D-119),
+ * - un colaborador externo (D-134) solo ve y escribe en las conversaciones de los proyectos que ve:
+ *   ni directas ni grupos, aunque figure en ellos.
  */
 class ConversationPolicy
 {
     public function view(User $user, Conversation $conversation): bool
     {
-        if (! $user->isInternal() || ! $user->is_active) {
+        if (! $user->isInternal() || ! $user->is_active || ! $this->withinScope($user, $conversation)) {
             return false;
         }
 
@@ -28,7 +30,7 @@ class ConversationPolicy
 
     public function post(User $user, Conversation $conversation): bool
     {
-        if (! $user->isInternal() || ! $user->is_active || ! $conversation->hasParticipant($user)) {
+        if (! $user->isInternal() || ! $user->is_active || ! $this->withinScope($user, $conversation) || ! $conversation->hasParticipant($user)) {
             return false;
         }
 
@@ -54,5 +56,19 @@ class ConversationPolicy
     public function leave(User $user, Conversation $conversation): bool
     {
         return $conversation->type === ConversationType::Group && $conversation->hasParticipant($user);
+    }
+
+    /**
+     * Colaborador externo (D-134): solo conversaciones de proyecto de los proyectos que ve.
+     */
+    private function withinScope(User $user, Conversation $conversation): bool
+    {
+        if (! $user->isCollaborator()) {
+            return true;
+        }
+
+        return $conversation->type === ConversationType::Project
+            && $conversation->project_id !== null
+            && $user->canSeeProject($conversation->project_id);
     }
 }

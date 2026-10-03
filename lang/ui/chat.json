@@ -42,6 +42,7 @@
     "chat.list.new_group": "Grupo",
     "chat.list.empty.title": "Aún no tienes conversaciones",
     "chat.list.empty.description": "Escribe a una persona o crea un grupo. El chat de cada proyecto aparece aquí en cuanto se usa.",
+    "chat.list.empty.description_collaborator": "Aquí aparece el chat de cada uno de tus proyectos en cuanto se usa. Ábrelo desde la pestaña «Chat» del proyecto.",
     "chat.list.no_results": "No hay conversaciones que coincidan con «:query».",
     "chat.list.you": "Tú",
     "chat.list.unread": ":count sin leer",

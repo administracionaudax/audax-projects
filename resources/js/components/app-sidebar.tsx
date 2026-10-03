@@ -45,7 +45,8 @@ import type { Abilities, NavItem } from '@/types';
  * Navegación principal (SPEC §3), en este orden, con «Ausencias» tras «Carga» (D-091). Bolsas,
  * «Ausencias del equipo» y Administración dependen de `auth.can` (gate view-hour-banks, quien
  * aprueba ausencias y rol admin); el servidor vuelve a comprobarlo en la ruta. Chat lleva el
- * total de mensajes sin leer (Fase 6).
+ * total de mensajes sin leer (Fase 6). Clientes, Carga, Ausencias e Informes no aparecen a un
+ * colaborador externo (D-134), que solo tiene Inicio, Mis tareas, Proyectos, Horas y Chat.
  */
 export function mainNavItems(
     can: Abilities,
@@ -53,23 +54,27 @@ export function mainNavItems(
 ): NavItem[] {
     const chatUnread = counters.chatUnread ?? 0;
 
-    const items: (NavItem | false)[] = [
+    const items: (NavItem | false | undefined)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
-        { title: t('nav.clients'), href: clientsIndex(), icon: Building2 },
+        can.viewClients && {
+            title: t('nav.clients'),
+            href: clientsIndex(),
+            icon: Building2,
+        },
         can.viewHourBanks && {
             title: t('nav.hour_banks'),
             href: hourBanksIndex(),
             icon: Wallet,
         },
         { title: t('nav.time'), href: timeIndex(), icon: Clock },
-        {
+        can.viewWorkload && {
             title: t('nav.workload'),
             href: workloadIndex(),
             icon: CalendarRange,
         },
-        {
+        can.viewAbsences && {
             title: t('nav.absences'),
             href: absencesIndex(),
             icon: CalendarOff,
@@ -77,7 +82,11 @@ export function mainNavItems(
                 ? [{ title: t('absences.nav.team'), href: teamAbsencesIndex() }]
                 : undefined,
         },
-        { title: t('nav.reports'), href: reportsIndex(), icon: BarChart3 },
+        can.viewReports && {
+            title: t('nav.reports'),
+            href: reportsIndex(),
+            icon: BarChart3,
+        },
         {
             title: t('nav.chat'),
             href: chatIndex(),
@@ -97,7 +106,8 @@ export function mainNavItems(
         },
     ];
 
-    return items.filter((item): item is NavItem => item !== false);
+    // Sin la habilidad (false o, en props antiguas, undefined), la entrada no se pinta.
+    return items.filter((item): item is NavItem => Boolean(item));
 }
 
 export function AppSidebar() {

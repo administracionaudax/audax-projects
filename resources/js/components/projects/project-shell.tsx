@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
 import { FOCUS_RING } from '@/lib/focus-ring';
@@ -28,7 +28,8 @@ const TABS: Tab[] = [
 /**
  * Cabecera y pestañas de la ficha de proyecto (SPEC §6). Cada pestaña es su propia página
  * Inertia (/proyectos/{id}/{pestaña}) y envuelve su contenido con este componente.
- * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes, si puede gestionarlo.
+ * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes, si puede gestionarlo. Un
+ * colaborador externo (D-134) no tiene Bolsas ni Horas (las de todos): el servidor las cierra.
  */
 export function ProjectShell({
     project,
@@ -44,9 +45,12 @@ export function ProjectShell({
     actions?: ReactNode;
     children: ReactNode;
 }) {
+    const collaborator = usePage().props.auth?.user?.is_collaborator ?? false;
     const tabs = TABS.filter(
         (item) =>
-            (item.id !== 'bolsas' || project.billing_type === 'hour_bank') &&
+            (item.id !== 'bolsas' ||
+                (project.billing_type === 'hour_bank' && !collaborator)) &&
+            (item.id !== 'horas' || !collaborator) &&
             (item.id !== 'ajustes' || canManage),
     );
 

@@ -20,7 +20,8 @@ use Inertia\Response;
 /**
  * Mis tareas (SPEC §6, D-037): tareas ABIERTAS asignadas a mí (también subtareas) de proyectos no
  * archivados, en las secciones Vencidas, Hoy, Esta semana, Próximas y Sin fecha, con «hoy» en
- * Europe/Madrid. Dentro de cada sección: por vencimiento, prioridad y título.
+ * Europe/Madrid. Dentro de cada sección: por vencimiento, prioridad y título. Un colaborador externo,
+ * solo las de sus proyectos (D-134).
  */
 class MyTasksController extends Controller
 {
@@ -38,6 +39,7 @@ class MyTasksController extends Controller
             ->select(ProjectTasksController::LIST_COLUMNS)
             ->open()
             ->assignedTo($user)
+            ->visibleTo($user)
             ->whereHas('project', fn (Builder $project) => $project->notArchived())
             ->with([
                 'project:id,code,name,color',

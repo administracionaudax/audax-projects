@@ -24,7 +24,7 @@ class UpdateProjectOwnerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'owner_user_id' => ['required', 'integer', new ActiveInternalUser],
+            'owner_user_id' => ['required', 'integer', new ActiveInternalUser(manager: true)],
         ];
     }
 

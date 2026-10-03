@@ -305,6 +305,22 @@ class Task extends Model
     }
 
     /**
+     * Tareas de los proyectos que $viewer puede ver (D-134: un colaborador externo, solo las de sus
+     * proyectos; el resto de internos, todas).
+     *
+     * @param  Builder<Task>  $query
+     */
+    #[Scope]
+    protected function visibleTo(Builder $query, User $viewer): void
+    {
+        $ids = $viewer->visibleProjectIds();
+
+        if ($ids !== null) {
+            $query->whereIn('tasks.project_id', $ids);
+        }
+    }
+
+    /**
      * Solo tareas de primer nivel.
      *
      * @param  Builder<Task>  $query

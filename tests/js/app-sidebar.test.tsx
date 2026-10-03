@@ -47,6 +47,7 @@ const user: User = {
     two_factor_enabled: false,
     roles: ['employee'],
     is_client: false,
+    is_collaborator: false,
 };
 
 function setAbilities(can: Abilities) {
@@ -67,11 +68,31 @@ function renderSidebar() {
     );
 }
 
+// Lo que tiene cualquier empleado (sin permisos extra).
 const none: Abilities = {
     viewHourBanks: false,
     viewAdmin: false,
     viewFinancials: false,
+    createClients: false,
+    createProjects: false,
+    approveTime: false,
+    lockTime: false,
+    manageUsers: false,
+    manageSettings: false,
     viewTeamAbsences: false,
+    viewClients: true,
+    viewWorkload: true,
+    viewAbsences: true,
+    viewReports: true,
+};
+
+// Colaborador externo (D-134): sin Clientes, Bolsas, Carga, Ausencias, Informes ni Administración.
+const collaborator: Abilities = {
+    ...none,
+    viewClients: false,
+    viewWorkload: false,
+    viewAbsences: false,
+    viewReports: false,
 };
 
 beforeEach(() => {
@@ -82,6 +103,7 @@ beforeEach(() => {
 describe('navegación principal', () => {
     it('sigue el orden del SPEC §3 con todos los permisos', () => {
         const titles = mainNavItems({
+            ...none,
             viewHourBanks: true,
             viewAdmin: true,
             viewFinancials: true,
@@ -197,5 +219,55 @@ describe('navegación principal', () => {
                     (link.getAttribute('href') ?? '').startsWith('http'),
                 ),
         ).toEqual([]);
+    });
+});
+
+describe('navegación de un colaborador externo (D-134)', () => {
+    it('solo tiene Inicio, Mis tareas, Proyectos, Horas y Chat', () => {
+        const titles = mainNavItems(collaborator).map((item) => item.title);
+
+        expect(titles).toEqual([
+            'Inicio',
+            'Mis tareas',
+            'Proyectos',
+            'Horas',
+            'Chat',
+        ]);
+    });
+
+    it('no pinta los enlaces a clientes, carga, ausencias ni informes', () => {
+        page.props = {
+            auth: {
+                user: {
+                    ...user,
+                    roles: ['collaborator'],
+                    is_collaborator: true,
+                },
+                can: collaborator,
+            },
+            sidebarOpen: true,
+            name: 'Audax',
+        };
+        const nav = renderSidebar();
+
+        expect(nav.getByRole('link', { name: 'Proyectos' })).toBeTruthy();
+        expect(nav.getByRole('link', { name: 'Chat' })).toBeTruthy();
+
+        for (const name of [
+            'Clientes',
+            'Bolsas',
+            'Carga',
+            'Ausencias',
+            'Informes',
+            'Administración',
+        ]) {
+            expect(nav.queryByRole('link', { name })).toBeNull();
+        }
+
+        const hrefs = nav
+            .getAllByRole('link')
+            .map((link) => link.getAttribute('href'));
+        expect(hrefs).not.toContain('/clientes');
+        expect(hrefs).not.toContain('/informes');
     });
 });

@@ -3,12 +3,14 @@
 namespace App\Http\Resources\Tasks;
 
 use App\Models\HourBank;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Bolsa en los selectores de tareas (contrato: resources/js/types/tasks.ts, TaskBankOption).
- * Sin datos económicos: el % de consumo lo ve cualquier interno (D-021). Cargar department antes.
+ * Sin datos económicos: el % de consumo lo ve cualquier interno (D-021), salvo un colaborador
+ * externo, que recibe null (D-134). Cargar department antes.
  *
  * @mixin HourBank
  */
@@ -30,7 +32,14 @@ class TaskBankOptionResource extends JsonResource
                 'name' => $this->department->name,
                 'color' => $this->department->color,
             ]),
-            'consumed_pct' => $this->consumed_pct,
+            'consumed_pct' => self::hidesConsumption($request) ? null : $this->consumed_pct,
         ];
+    }
+
+    public static function hidesConsumption(Request $request): bool
+    {
+        $viewer = $request->user();
+
+        return $viewer instanceof User && $viewer->isCollaborator();
     }
 }

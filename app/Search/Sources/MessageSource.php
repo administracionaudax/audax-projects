@@ -172,6 +172,10 @@ class MessageSource implements SearchSource
                     $query->orWhere('type', '!=', ConversationType::Direct->value);
                 }
             })
+            // Colaborador externo (D-134): solo las conversaciones de los proyectos que ve.
+            ->when($user->visibleProjectIds() !== null, fn (Builder $query) => $query
+                ->where('type', ConversationType::Project->value)
+                ->whereIn('project_id', $user->visibleProjectIds() ?? []))
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all());
@@ -255,6 +259,13 @@ class MessageSource implements SearchSource
 
         if ($user->hasRole('admin')) {
             $query->orWhere('conversations.type', '!=', ConversationType::Direct->value);
+        }
+
+        // Colaborador externo (D-134): solo las conversaciones de los proyectos que ve.
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
+            $query->where('conversations.type', ConversationType::Project->value)
+                ->whereIn('conversations.project_id', $projectIds);
         }
     }
 

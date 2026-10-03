@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Access\CollaboratorAccess;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Portal\Projects\PortalShell;
@@ -74,6 +75,9 @@ class HandleInertiaRequests extends Middleware
      */
     private function auth(Request $request, ?User $user): array
     {
+        // Áreas que un colaborador externo no ve (D-134): las mismas rutas que cierra el middleware.
+        $opens = fn (string $route): bool => $user !== null && (! $user->isCollaborator() || CollaboratorAccess::allowsRouteName($route));
+
         return [
             'user' => $user ? [
                 'id' => $user->id,
@@ -84,6 +88,8 @@ class HandleInertiaRequests extends Middleware
                 'two_factor_enabled' => ! is_null($user->two_factor_confirmed_at),
                 'roles' => $user->getRoleNames()->values()->all(),
                 'is_client' => $user->isClient(),
+                // Colaborador externo (D-134): solo sus proyectos, sus tareas y sus chats.
+                'is_collaborator' => $user->isCollaborator(),
             ] : null,
             'can' => [
                 'viewHourBanks' => $user ? Gate::forUser($user)->allows('view-hour-banks') : false,
@@ -97,6 +103,11 @@ class HandleInertiaRequests extends Middleware
                 'manageSettings' => $user ? Gate::forUser($user)->allows('manage-settings') : false,
                 // «Ausencias del equipo» (aprobar y registrar): responsables y admins (D-049).
                 'viewTeamAbsences' => $user ? Gate::forUser($user)->allows('viewTeam', Absence::class) : false,
+                // Entradas de la navegación que un colaborador externo no tiene (D-134).
+                'viewClients' => $user ? Gate::forUser($user)->allows('viewAny', Client::class) : false,
+                'viewWorkload' => $opens('workload.index'),
+                'viewAbsences' => $opens('absences.index'),
+                'viewReports' => $opens('reports.index'),
             ],
         ];
     }

@@ -122,8 +122,10 @@ export function ConversationList({
     const newButton = useRef<HTMLButtonElement>(null);
     const moderationButton = useRef<HTMLButtonElement>(null);
     // El admin modera chats ajenos (D-119). (Sin sesión en la prop, como en algún test, no.)
-    const isAdmin =
-        usePage().props.auth?.user?.roles?.includes('admin') ?? false;
+    const sessionUser = usePage().props.auth?.user;
+    const isAdmin = sessionUser?.roles?.includes('admin') ?? false;
+    // Un colaborador externo no tiene directas ni grupos (D-134): solo los chats de sus proyectos.
+    const canStart = !(sessionUser?.is_collaborator ?? false);
     const searchId = useId();
     // Los no leídos de cada fila: los de C2 en cuanto llega su primer recuento; antes, los de la lista.
     const counter = useUnreadCounter();
@@ -180,30 +182,32 @@ export function ConversationList({
                         <ShieldCheck aria-hidden="true" />
                     </Button>
                 ) : null}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            ref={newButton}
-                            type="button"
-                            size="sm"
-                            aria-label={t('chat.list.new_menu')}
-                            data-test="chat-new"
-                        >
-                            <Plus aria-hidden="true" />
-                            {t('chat.list.new')}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => setDirect(true)}>
-                            <MessageSquarePlus aria-hidden="true" />
-                            {t('chat.list.new_direct')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setGroup(true)}>
-                            <Users aria-hidden="true" />
-                            {t('chat.list.new_group')}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {canStart ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                ref={newButton}
+                                type="button"
+                                size="sm"
+                                aria-label={t('chat.list.new_menu')}
+                                data-test="chat-new"
+                            >
+                                <Plus aria-hidden="true" />
+                                {t('chat.list.new')}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setDirect(true)}>
+                                <MessageSquarePlus aria-hidden="true" />
+                                {t('chat.list.new_direct')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setGroup(true)}>
+                                <Users aria-hidden="true" />
+                                {t('chat.list.new_group')}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
             </div>
 
             {items.length > 0 ? (
@@ -257,28 +261,34 @@ export function ConversationList({
                         <EmptyState
                             icon={MessagesSquare}
                             title={t('chat.list.empty.title')}
-                            description={t('chat.list.empty.description')}
+                            description={t(
+                                canStart
+                                    ? 'chat.list.empty.description'
+                                    : 'chat.list.empty.description_collaborator',
+                            )}
                         >
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setDirect(true)}
-                                >
-                                    <MessageSquarePlus aria-hidden="true" />
-                                    {t('chat.list.new_direct')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setGroup(true)}
-                                >
-                                    <Users aria-hidden="true" />
-                                    {t('chat.list.new_group')}
-                                </Button>
-                            </div>
+                            {canStart ? (
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setDirect(true)}
+                                    >
+                                        <MessageSquarePlus aria-hidden="true" />
+                                        {t('chat.list.new_direct')}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setGroup(true)}
+                                    >
+                                        <Users aria-hidden="true" />
+                                        {t('chat.list.new_group')}
+                                    </Button>
+                                </div>
+                            ) : null}
                         </EmptyState>
                     </div>
                 ) : visible.length === 0 ? (

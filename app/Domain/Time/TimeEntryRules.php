@@ -207,6 +207,10 @@ final class TimeEntryRules
         if (! $project->isInternal() && ! $target->isMemberOf($project)) {
             $errors['task_id'][] = $this->message('time.errors.not_member');
         }
+        // Un colaborador externo nunca imputa en un proyecto interno (D-134).
+        if ($project->isInternal() && $target->isCollaborator()) {
+            $errors['task_id'][] = $this->message('time.errors.collaborator_internal');
+        }
 
         return $errors;
     }

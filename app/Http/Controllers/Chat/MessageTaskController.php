@@ -51,7 +51,7 @@ class MessageTaskController extends Controller
         $banks = $project->usesHourBanks()
             ? $options->banks($project, $user)->filter(fn (HourBank $bank): bool => $bank->acceptsTime())->values()
             : collect();
-        ['users' => $people, 'memberIds' => $memberIds] = $options->assignableUsers($project);
+        ['users' => $people, 'memberIds' => $memberIds] = $options->assignableUsers($project, $user);
 
         return response()->json([
             'title' => $this->suggestedTitle($message),

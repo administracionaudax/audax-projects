@@ -21,7 +21,8 @@ use Illuminate\Support\Str;
  * puede imputar (miembro del proyecto o proyecto interno, D-033), sin hitos ni proyectos
  * archivados. Sin texto, propone sus tareas abiertas, las que ha imputado hace poco y las del
  * proyecto interno. Si se imputa por otra persona, solo en los proyectos donde quien busca puede
- * hacerlo (LoggablePeople).
+ * hacerlo (LoggablePeople). Un colaborador externo (D-134) solo en las tareas de sus proyectos y
+ * nunca en el proyecto interno.
  */
 class LoggableTaskController extends TimeController
 {
@@ -49,11 +50,16 @@ class LoggableTaskController extends TimeController
             abort_unless($this->people->canActFor($actor, $target), 403);
         }
 
+        $restricted = $target->isCollaborator();
         $query = $this->sheets->loggableTasks(Task::query())
-            ->where(function (Builder $where) use ($target): void {
-                $where->whereIn('project_id', DB::table('project_members')->select('project_id')->where('user_id', $target->id))
-                    ->orWhereHas('project', fn (Builder $project) => $project->where('billing_type', BillingType::Internal->value));
-            });
+            ->where(function (Builder $where) use ($target, $restricted): void {
+                $where->whereIn('project_id', DB::table('project_members')->select('project_id')->where('user_id', $target->id));
+
+                if (! $restricted) {
+                    $where->orWhereHas('project', fn (Builder $project) => $project->where('billing_type', BillingType::Internal->value));
+                }
+            })
+            ->when($restricted, fn (Builder $tasks) => $tasks->whereHas('project', fn (Builder $project) => $project->where('billing_type', '!=', BillingType::Internal->value)));
 
         // Por otra persona: un gestor (que no es admin ni su responsable), solo en sus proyectos.
         if ($target->id !== $actor->id && ! $actor->isAdmin() && ! $actor->supervises($target)) {
@@ -63,7 +69,7 @@ class LoggableTaskController extends TimeController
         $search = trim($request->string('q')->toString());
 
         $tasks = $search === ''
-            ? $this->suggestions($query, $target)
+            ? $this->suggestions($query, $target, $restricted)
             : $this->search($query, $search);
 
         return response()->json(['tasks' => LoggableTaskResource::collection($tasks)->resolve($request)]);
@@ -96,15 +102,18 @@ class LoggableTaskController extends TimeController
      * @param  Builder<Task>  $query
      * @return Collection<int, Task>
      */
-    private function suggestions(Builder $query, User $target): Collection
+    private function suggestions(Builder $query, User $target, bool $restricted = false): Collection
     {
         $since = LocalTime::today()->subDays(14)->toDateString();
 
         return $query
-            ->where(function (Builder $where) use ($target, $since): void {
+            ->where(function (Builder $where) use ($target, $since, $restricted): void {
                 $where->where(fn (Builder $mine) => $mine->whereNull('completed_at')->where('assignee_user_id', $target->id))
-                    ->orWhereIn('id', DB::table('time_entries')->select('task_id')->where('user_id', $target->id)->where('date', '>=', $since))
-                    ->orWhereHas('project', fn (Builder $project) => $project->where('billing_type', BillingType::Internal->value));
+                    ->orWhereIn('id', DB::table('time_entries')->select('task_id')->where('user_id', $target->id)->where('date', '>=', $since));
+
+                if (! $restricted) {
+                    $where->orWhereHas('project', fn (Builder $project) => $project->where('billing_type', BillingType::Internal->value));
+                }
             })
             ->orderByRaw('CASE WHEN completed_at IS NULL THEN 0 ELSE 1 END')
             ->orderBy('project_id')

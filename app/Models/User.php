@@ -350,6 +350,11 @@ class User extends Authenticatable
      */
     public function canManageProject(Project $project): bool
     {
+        // Un colaborador externo nunca gestiona un proyecto (D-134).
+        if ($this->isCollaborator()) {
+            return false;
+        }
+
         return $this->isAdmin() || $this->isDepartmentManager() || $this->isManagerOf($project);
     }
 
@@ -476,6 +481,18 @@ class User extends Authenticatable
     protected function active(Builder $query): void
     {
         $query->where('is_active', true);
+    }
+
+    /**
+     * Sin colaboradores externos (D-134): para las directas, los grupos y los selectores de toda
+     * la plantilla.
+     *
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function withoutCollaborators(Builder $query): void
+    {
+        $query->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value));
     }
 
     /**

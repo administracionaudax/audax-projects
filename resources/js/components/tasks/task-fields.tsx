@@ -228,6 +228,11 @@ export function TypeSelect({
 }
 
 export function bankLabel(bank: TaskBankOption): string {
+    // Un colaborador externo no ve el consumo de las bolsas (D-134).
+    if (bank.consumed_pct === null) {
+        return bank.name;
+    }
+
     return t('task_fields.bank_option', {
         name: bank.name,
         pct: formatPercent(bank.consumed_pct / 100, 0),

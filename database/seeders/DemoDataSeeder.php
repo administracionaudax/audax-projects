@@ -130,6 +130,11 @@ class DemoDataSeeder extends Seeder
     /** Persona de ejemplo que aún no ha leído el texto de privacidad (aviso en la app). */
     public const string PRIVACY_PENDING = 'daniel';
 
+    /** Colaboradora externa de ejemplo (Fase 8, D-134) y los proyectos de los que es miembro. */
+    public const string COLLABORATOR_EMAIL = 'sara.colaboradora@example.com';
+
+    public const array COLLABORATOR_PROJECTS = ['MIR-WEB', 'FAR-SHOP'];
+
     public function run(): void
     {
         if (! app()->environment(['local', 'testing'])) {
@@ -184,6 +189,7 @@ class DemoDataSeeder extends Seeder
             }
             $this->comments($projects);
             $this->overloadedDay($projects);
+            $this->collaborator();
         });
 
         $this->chat();
@@ -247,6 +253,63 @@ class DemoDataSeeder extends Seeder
             }
             $absence->save();
         }
+    }
+
+    /**
+     * Colaboradora externa de ejemplo (Fase 8, D-134), para su E2E (collaborator.spec.ts).
+     */
+    private function collaborator(): void
+    {
+        // Colaboradora externa (D-134): en Diseño, miembro solo de MIR-WEB y FAR-SHOP, con una tarea
+        // en cada uno. Se añade al final y sin el generador aleatorio, para no cambiar el resto de
+        // datos de ejemplo (de los que dependen otros E2E). Sin horas pasadas: imputa en el E2E.
+        $sara = User::query()->firstOrCreate(['email' => self::COLLABORATOR_EMAIL], [
+            'name' => 'Sara Colaboradora',
+            'password' => 'password',
+            'email_verified_at' => now(),
+        ]);
+        $sara->forceFill(['department_id' => $this->departments['Diseño']->id])->save();
+        $sara->syncRoles([Role::Collaborator->value]);
+        // Ya ha leído el texto de privacidad, como el resto de la plantilla de ejemplo (D-133).
+        app(PrivacyNotice::class)->acknowledge($sara);
+
+        if (! $sara->workSchedules()->exists()) {
+            WorkSchedule::query()->create(['user_id' => $sara->id, 'valid_from' => $this->start->toDateString(), 'mon_minutes' => 480, 'tue_minutes' => 480, 'wed_minutes' => 480, 'thu_minutes' => 480, 'fri_minutes' => 480]);
+        }
+
+        $tasks = [
+            'MIR-WEB' => ['Retoque de las fotos de habitaciones', 'Diseño UI'],
+            'FAR-SHOP' => ['Banners de la tienda', 'Diseño UI'],
+        ];
+
+        foreach (self::COLLABORATOR_PROJECTS as $index => $code) {
+            $project = Project::query()->where('code', $code)->firstOrFail();
+            $project->addMember($sara);
+            $bank = $project->usesHourBanks()
+                ? HourBank::query()->where('project_id', $project->id)->open()->orderByDesc('start_date')->first()
+                : null;
+            [$title, $type] = $tasks[$code];
+
+            /** @var Task $task */
+            $task = Task::withoutEvents(fn () => Task::query()->forceCreate([
+                'project_id' => $project->id,
+                'hour_bank_id' => $bank?->id,
+                'title' => $title,
+                'task_type_id' => $this->types[$type]->id,
+                'status_id' => $this->statuses['todo'],
+                'priority' => TaskPriority::Normal->value,
+                'assignee_user_id' => $sara->id,
+                'start_date' => $this->today->toDateString(),
+                'due_date' => $this->today->addDays(3 + $index)->toDateString(),
+                'estimated_minutes' => 6 * 60,
+                'is_billable' => true,
+                'position' => 998,
+                'created_by' => $project->owner_user_id,
+            ]));
+            $task->watchers()->syncWithoutDetaching(array_unique([$sara->id, $project->owner_user_id]));
+        }
+
+        $this->people['sara'] = $sara;
     }
 
     /**

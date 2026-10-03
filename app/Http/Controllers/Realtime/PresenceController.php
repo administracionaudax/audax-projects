@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -25,7 +26,16 @@ class PresenceController extends Controller
         /** @var User $user */
         $user = $request->user();
         $board->beat($user->id, (string) $validated['status']);
+        $statuses = $board->statuses();
 
-        return response()->json(['users' => (object) $board->statuses()]);
+        // Un colaborador externo solo ve a las personas de sus proyectos (D-134).
+        $projectIds = $user->visibleProjectIds();
+        if ($projectIds !== null) {
+            $peers = DB::table('project_members')->whereIn('project_id', $projectIds)->distinct()->pluck('user_id')
+                ->map(fn (mixed $id): int => (int) $id)->all();
+            $statuses = array_intersect_key($statuses, array_flip($peers));
+        }
+
+        return response()->json(['users' => (object) $statuses]);
     }
 }

@@ -19,6 +19,13 @@ export const USERS = {
  * ejemplo (los E2E no dependen del aviso) salvo a esta persona, que lo tiene pendiente para el E2E
  * de privacidad (privacy.spec.ts). Ningún otro E2E inicia sesión con ella.
  */
+/**
+ * Colaboradora externa del DemoDataSeeder (D-134): solo es miembro de «Rediseño web» (MIR-WEB) y
+ * «Tienda online» (FAR-SHOP), con una tarea en cada uno. Solo la usa collaborator.spec.ts.
+ */
+export const COLLABORATOR_USER =
+    process.env.E2E_COLLABORATOR_EMAIL ?? 'sara.colaboradora@example.com';
+
 export const PRIVACY_PENDING_USER =
     process.env.E2E_PRIVACY_PENDING_EMAIL ?? 'daniel.ortega@example.com';
 

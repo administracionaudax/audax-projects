@@ -82,6 +82,7 @@ class ProjectTasksController extends Controller
 
     public function index(Request $request, Project $project): Response
     {
+        Gate::authorize('view', $project);
         Gate::authorize('viewAny', Task::class);
 
         /** @var User $user */
@@ -118,7 +119,7 @@ class ProjectTasksController extends Controller
             'statuses' => fn (): array => Plain::of(TaskStatusResource::collection($this->options->statuses())),
             'types' => fn (): array => Plain::of(TaskTypeOptionResource::collection($this->options->types($this->usedTypeIds($project)))),
             'banks' => fn (): array => Plain::of(TaskBankOptionResource::collection($this->options->banks($project, $user))),
-            'users' => fn (): array => $this->users($project),
+            'users' => fn (): array => $this->users($project, $user),
             'currentUser' => ['id' => $user->id, 'department_id' => $user->department_id],
             'maxAttachmentMb' => AttachmentStorage::maxMegabytes(),
             'panel' => fn (): ?array => $this->panelFor($taskId, $project, $user),
@@ -194,9 +195,9 @@ class ProjectTasksController extends Controller
      *
      * @return list<array<string, mixed>>
      */
-    private function users(Project $project): array
+    private function users(Project $project, User $viewer): array
     {
-        ['users' => $users, 'memberIds' => $memberIds] = $this->options->assignableUsers($project);
+        ['users' => $users, 'memberIds' => $memberIds] = $this->options->assignableUsers($project, $viewer);
 
         return array_values($users->map(fn (User $user): array => [
             ...Plain::of(UserSummaryResource::make($user)),

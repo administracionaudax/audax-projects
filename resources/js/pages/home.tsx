@@ -121,11 +121,14 @@ export default function Home({
     milestones,
     chat_summary: chatSummary,
 }: HomePageProps & {
-    indicators: MyIndicators;
-    absences: MyAbsencesSummary;
+    /** No llegan a un colaborador externo (D-134): son informes, carga y ausencias. */
+    indicators?: MyIndicators;
+    absences?: MyAbsencesSummary;
     workload?: MyWorkloadData;
 }) {
     const user = useRequiredUser();
+    // Un colaborador externo solo ve las tarjetas que le afectan (D-134).
+    const collaborator = user.is_collaborator;
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
     const taskCount =
@@ -293,20 +296,22 @@ export default function Home({
                         </Link>
                     </PanelCard>
 
-                    <PanelCard
-                        id="workload"
-                        icon={CalendarClock}
-                        title={t('home.cards.workload.title')}
-                        description={t('home.cards.workload.description')}
-                        wide
-                    >
-                        <Deferred
-                            data="workload"
-                            fallback={<MyWorkloadSkeleton />}
+                    {collaborator ? null : (
+                        <PanelCard
+                            id="workload"
+                            icon={CalendarClock}
+                            title={t('home.cards.workload.title')}
+                            description={t('home.cards.workload.description')}
+                            wide
                         >
-                            <MyWorkload workload={workload} />
-                        </Deferred>
-                    </PanelCard>
+                            <Deferred
+                                data="workload"
+                                fallback={<MyWorkloadSkeleton />}
+                            >
+                                <MyWorkload workload={workload} />
+                            </Deferred>
+                        </PanelCard>
+                    )}
 
                     <PanelCard
                         id="unlogged-days"
@@ -360,28 +365,32 @@ export default function Home({
                         )}
                     </PanelCard>
 
-                    <PanelCard
-                        id="indicators"
-                        icon={Gauge}
-                        title={t('home.cards.indicators.title')}
-                        description={t('home.cards.indicators.description')}
-                        wide
-                    >
-                        <R1MyIndicators
-                            indicators={indicators}
-                            userId={user.id}
-                        />
-                    </PanelCard>
+                    {indicators ? (
+                        <PanelCard
+                            id="indicators"
+                            icon={Gauge}
+                            title={t('home.cards.indicators.title')}
+                            description={t('home.cards.indicators.description')}
+                            wide
+                        >
+                            <R1MyIndicators
+                                indicators={indicators}
+                                userId={user.id}
+                            />
+                        </PanelCard>
+                    ) : null}
 
                     {/* Fase 3 (área de ausencias): «Mis ausencias», antes de las tarjetas de fases futuras. */}
-                    <PanelCard
-                        id="absences"
-                        icon={CalendarOff}
-                        title={t('home.cards.absences.title')}
-                        description={t('home.cards.absences.description')}
-                    >
-                        <MyAbsencesCard absences={absences} />
-                    </PanelCard>
+                    {absences ? (
+                        <PanelCard
+                            id="absences"
+                            icon={CalendarOff}
+                            title={t('home.cards.absences.title')}
+                            description={t('home.cards.absences.description')}
+                        >
+                            <MyAbsencesCard absences={absences} />
+                        </PanelCard>
+                    ) : null}
 
                     <PanelCard
                         id="milestones"

@@ -9,6 +9,7 @@ use App\Models\User;
 /**
  * Tareas (D-031): las crean, editan, mueven y borran los miembros del proyecto y quienes lo
  * gestionan; comenta cualquier interno. Una tarea con horas no se borra (D-037).
+ * Un colaborador externo (D-134) solo ve y comenta las tareas de sus proyectos (canSeeProject).
  */
 class TaskPolicy
 {
@@ -19,7 +20,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $user->isInternal();
+        return $user->isInternal() && $user->canSeeProject($task->project_id);
     }
 
     public function create(User $user, Project $project): bool
@@ -42,6 +43,6 @@ class TaskPolicy
 
     public function comment(User $user, Task $task): bool
     {
-        return $user->isInternal();
+        return $user->isInternal() && $user->canSeeProject($task->project_id);
     }
 }

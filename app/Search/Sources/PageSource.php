@@ -2,6 +2,7 @@
 
 namespace App\Search\Sources;
 
+use App\Domain\Access\CollaboratorAccess;
 use App\Models\Absence;
 use App\Models\User;
 use App\Search\SearchResult;
@@ -23,6 +24,11 @@ class PageSource implements SearchSource
 
         foreach ($this->pages() as $page) {
             if (! Route::has($page['route']) || ! ($page['allowed'])($user)) {
+                continue;
+            }
+
+            // Un colaborador externo solo ve las secciones abiertas para él (D-134).
+            if ($user->isCollaborator() && ! CollaboratorAccess::allowsRouteName($page['route'])) {
                 continue;
             }
 

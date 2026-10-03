@@ -10,6 +10,8 @@
 return [
     'account_inactive' => 'Tu cuenta está desactivada. Si crees que es un error, habla con la administración.',
     'forbidden' => 'No tienes permiso para acceder a esta sección.',
+    // Colaboradores externos (D-134): rutas internas cerradas por defecto.
+    'collaborator_forbidden' => 'Esta sección no está disponible para colaboradores externos.',
     'two_factor_required' => 'Para seguir usando la aplicación, activa la verificación en dos pasos.',
     'profile_updated' => 'Perfil actualizado.',
     'page_expired' => 'La página ha caducado. Vuelve a intentarlo.',

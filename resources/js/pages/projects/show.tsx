@@ -157,7 +157,9 @@ export default function ProjectShow({
                             </PageSection>
                         ) : null}
 
-                        {project.billing_type === 'hour_bank' ? (
+                        {/* Un colaborador externo no ve las bolsas ni su consumo (D-134). */}
+                        {project.billing_type === 'hour_bank' &&
+                        !user?.is_collaborator ? (
                             <PageSection
                                 title={t('projects.show.hour_banks')}
                                 action={

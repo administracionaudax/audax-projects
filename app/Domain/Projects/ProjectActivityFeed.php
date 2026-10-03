@@ -40,13 +40,16 @@ final class ProjectActivityFeed
         $bankType = (new HourBank)->getMorphClass();
         $taskType = (new Task)->getMorphClass();
 
+        // Un colaborador externo no ve las bolsas (D-134): tampoco su actividad.
+        $withBanks = ! $viewer->isCollaborator();
+
         $activities = Activity::query()
-            ->where(function (Builder $where) use ($project, $projectType, $bankType, $taskType): void {
+            ->where(function (Builder $where) use ($project, $projectType, $bankType, $taskType, $withBanks): void {
                 $where->where(fn (Builder $q) => $q->where('subject_type', $projectType)->where('subject_id', $project->id))
-                    ->orWhere(fn (Builder $q) => $q->where('subject_type', $bankType)->whereIn(
+                    ->when($withBanks, fn (Builder $banks) => $banks->orWhere(fn (Builder $q) => $q->where('subject_type', $bankType)->whereIn(
                         'subject_id',
                         HourBank::query()->withTrashed()->select('id')->where('project_id', $project->id),
-                    ))
+                    )))
                     ->orWhere(fn (Builder $q) => $q->where('subject_type', $taskType)->whereIn(
                         'subject_id',
                         Task::query()->withTrashed()->select('id')->where('project_id', $project->id),

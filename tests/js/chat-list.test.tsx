@@ -246,6 +246,38 @@ describe('ConversationList', () => {
         expect(screen.queryByRole('searchbox')).toBeNull();
     });
 
+    it('a un colaborador externo no le ofrece directas ni grupos (D-134)', () => {
+        const previous = page.props;
+        page.props = {
+            ...previous,
+            auth: {
+                user: {
+                    id: 30,
+                    roles: ['collaborator'],
+                    is_collaborator: true,
+                },
+            },
+        };
+
+        try {
+            render(<ConversationList items={[]} activeId={null} />);
+
+            expect(
+                screen.getByText('Aún no tienes conversaciones'),
+            ).toBeTruthy();
+            expect(
+                screen.getByText(/Ábrelo desde la pestaña «Chat» del proyecto/),
+            ).toBeTruthy();
+            expect(
+                screen.queryByRole('button', { name: 'Mensaje directo' }),
+            ).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Grupo' })).toBeNull();
+            expect(document.querySelector('[data-test="chat-new"]')).toBeNull();
+        } finally {
+            page.props = previous;
+        }
+    });
+
     it('«Nuevo mensaje directo» carga las personas y las deja buscar', async () => {
         const user = userEvent.setup();
         vi.spyOn(globalThis, 'fetch').mockResolvedValue(

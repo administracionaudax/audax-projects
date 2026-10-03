@@ -53,7 +53,8 @@ export type TaskBankOption = {
     is_open: boolean;
     department_id: number | null;
     department?: { id: number; name: string; color: string } | null;
-    consumed_pct: number;
+    /** null para un colaborador externo, que no ve el consumo de las bolsas (D-134). */
+    consumed_pct: number | null;
 };
 
 /** Persona interna activa que se puede asignar (los miembros del proyecto, primero). */

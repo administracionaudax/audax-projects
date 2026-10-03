@@ -211,6 +211,40 @@ describe('resumen del proyecto', () => {
         ).toBe('/proyectos/1/tareas?tarea=12');
         expect(screen.getByText('No hay bolsas abiertas')).toBeTruthy();
     });
+
+    it('a un colaborador externo no le enseña las bolsas ni las pestañas Bolsas, Horas y Ajustes (D-134)', () => {
+        inertia.props = {
+            ...inertia.props,
+            auth: {
+                user: {
+                    id: 30,
+                    name: 'Sara Colaboradora',
+                    email: 'sara@example.com',
+                    avatar: null,
+                    theme_preference: 'system',
+                    two_factor_enabled: false,
+                    roles: ['collaborator'],
+                    is_client: false,
+                    is_collaborator: true,
+                },
+                can: can({ viewHourBanks: false }),
+            },
+        };
+        render(<ProjectShow {...props} />);
+
+        const tabs = within(
+            screen.getByRole('navigation', { name: 'Secciones del proyecto' }),
+        );
+        expect(tabs.getByRole('link', { name: 'Tareas' })).toBeTruthy();
+        expect(tabs.getByRole('link', { name: 'Chat' })).toBeTruthy();
+        for (const name of ['Bolsas', 'Horas', 'Ajustes']) {
+            expect(tabs.queryByRole('link', { name })).toBeNull();
+        }
+        expect(
+            screen.queryByRole('heading', { name: 'Bolsas de horas' }),
+        ).toBeNull();
+        expect(screen.queryByText('No hay bolsas abiertas')).toBeNull();
+    });
 });
 
 describe('ajustes del proyecto', () => {

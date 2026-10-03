@@ -12,6 +12,8 @@ use App\Models\User;
  * - los gestionan (ajustes, miembros, gestores y alertas, bolsas, archivar) admins, responsables
  *   y sus gestores,
  * - no se borran: se archivan (D-037).
+ * Un colaborador externo (D-134) solo ve los proyectos de los que es miembro (canSeeProject), nunca
+ * los gestiona ni ve las horas de todos, y no imputa en los proyectos internos.
  */
 class ProjectPolicy
 {
@@ -22,7 +24,7 @@ class ProjectPolicy
 
     public function view(User $user, Project $project): bool
     {
-        return $user->isInternal();
+        return $user->isInternal() && $user->canSeeProject($project);
     }
 
     public function create(User $user): bool
@@ -65,6 +67,10 @@ class ProjectPolicy
      */
     public function viewAllTime(User $user, Project $project): bool
     {
+        if ($user->isCollaborator()) {
+            return false;
+        }
+
         return $user->isAdmin() || $user->isDepartmentManager() || $user->isManagerOf($project);
     }
 
@@ -82,6 +88,10 @@ class ProjectPolicy
      */
     public function logTime(User $user, Project $project): bool
     {
+        if ($user->isCollaborator()) {
+            return $project->acceptsTime() && ! $project->isInternal() && $user->isMemberOf($project);
+        }
+
         return $user->isInternal()
             && $project->acceptsTime()
             && ($project->isInternal() || $user->isMemberOf($project));
