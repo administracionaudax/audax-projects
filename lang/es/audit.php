@@ -26,6 +26,7 @@ return [
         'privacy' => 'Privacidad',
         'chat' => 'Chat',
         'import' => 'Importación',
+        'report_delivery' => 'Informes exportados',
         'other' => 'Otros',
     ],
 
@@ -52,6 +53,8 @@ return [
         'message_unhidden' => 'Mensajes del chat visibles de nuevo',
         'group_changed' => 'Cambios en los grupos del chat',
         'imported' => 'Importaciones',
+        'report_generated' => 'Informes generados',
+        'report_printed' => 'Informes impresos',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -90,6 +93,8 @@ return [
         'group_member_removed' => 'Persona quitada del grupo',
         'group_left' => 'Salida del grupo',
         'clickup_import' => 'Importación de ClickUp',
+        'generated' => 'Informe generado',
+        'printed' => 'Informe impreso',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).

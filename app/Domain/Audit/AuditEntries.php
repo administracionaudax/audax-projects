@@ -127,8 +127,8 @@ final class AuditEntries
     }
 
     /**
-     * Entradas sin elemento: el texto informativo, los plazos de conservación, los ajustes y las
-     * importaciones de festivos.
+     * Entradas sin elemento: el texto informativo, los plazos de conservación, los ajustes, las
+     * importaciones de festivos y los informes exportados.
      *
      * @return array{label: string, url: string|null, deleted: bool}|null
      */
@@ -145,6 +145,8 @@ final class AuditEntries
                 'url' => route('admin.holidays.index', is_numeric($year) ? ['anio' => (int) $year] : [], false),
                 'deleted' => false,
             ],
+            // Informes exportados (D-139): el título legible con el periodo y los filtros.
+            $activity->log_name === 'report-delivery' && is_string($activity->getProperty('title')) => ['label' => (string) $activity->getProperty('title'), 'url' => null, 'deleted' => false],
             default => null,
         };
     }

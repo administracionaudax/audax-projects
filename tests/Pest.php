@@ -81,3 +81,15 @@ function perfTimeLimit(int $localMs): ?int
         default => $localMs,
     };
 }
+
+/**
+ * Texto visible del HTML de un informe (PDF con el motor html o versión para imprimir, Fase 9):
+ * sin CSS, scripts ni el logotipo, con las entidades decodificadas y los espacios normalizados.
+ */
+function reportHtmlText(string $html): string
+{
+    $html = (string) preg_replace('#<(style|script|svg)\b.*?</\1>#s', ' ', $html);
+    $text = html_entity_decode(strip_tags((string) preg_replace('#<(td|th|dt|dd|p|h\d|li|span|div)\b#', ' $0', $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+    return trim((string) preg_replace('/\s+/u', ' ', $text));
+}

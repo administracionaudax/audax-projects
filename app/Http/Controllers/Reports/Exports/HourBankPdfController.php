@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers\Reports\Exports;
 
-use App\Domain\Reports\Pdf\HourBankStatement;
-use App\Domain\Reports\Pdf\HourBankStatementPdf;
+use App\Domain\Reports\Delivery\Documents\HourBankDocument;
+use App\Domain\Reports\Delivery\ExportFormat;
+use App\Domain\Reports\Delivery\ReportKind;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Reports\Concerns\ExportsReports;
 use App\Models\HourBank;
 use App\Models\Project;
-use App\Models\User;
-use App\Support\LocalTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * PDF de consumo de una bolsa (SPEC §10 «Exportación», D-045; R2):
@@ -23,39 +21,26 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
  *
  * Por defecto es el PDF para el cliente, sin importes. Con ?importes=1 y view-financials añade el
  * bloque «Datos económicos (uso interno)» y el fichero se marca como «interno», para no enviarlo
- * al cliente por error.
+ * al cliente por error. Desde la Fase 9 (D-140) sale del HTML con la hoja de documentos de Audax
+ * convertido por Gotenberg (HourBankDocument y ReportFileGenerator); ?formato=imprimir abre la
+ * versión para imprimir y ?formato=xlsx|csv, el detalle de las horas.
  */
 class HourBankPdfController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ExportsReports;
 
-    public function __invoke(Request $request, Project $project, HourBank $hourBank, HourBankStatement $statement, HourBankStatementPdf $pdf): Response
+    public function __invoke(Request $request, Project $project, HourBank $hourBank): Response
     {
         $this->authorize('downloadPdf', $hourBank);
 
-        /** @var User $user */
-        $user = $request->user();
-        $data = $statement->build($user, $hourBank, withFinancials: $request->boolean('importes'));
-        $content = $pdf->render($data);
-
-        return response($content, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, self::filename($project, $hourBank, $data['financials'] !== null)),
-            'Content-Length' => (string) strlen($content),
-            'Cache-Control' => 'no-store, private',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return $this->exportResponse($request, ReportKind::HourBank, ['project' => $project->id, 'hourBank' => $hourBank->id], ExportFormat::Pdf) ?? abort(404);
     }
 
     /**
-     * «ARR-WEB-consumo-bolsa-diseno-2026-09-27.pdf»: código del proyecto (en mayúsculas, como en la
-     * app), nombre de la bolsa y fecha, solo con caracteres ASCII seguros. El de uso interno (con
-     * importes) lleva «-interno» delante de la fecha.
+     * «ARR-WEB-consumo-bolsa-diseno-2026-09-27.pdf» (HourBankDocument::filenameFor).
      */
     public static function filename(Project $project, HourBank $bank, bool $internal = false): string
     {
-        $code = (string) preg_replace('/[^A-Z0-9-]+/', '-', Str::upper(Str::ascii($project->code)));
-
-        return trim($code, '-').'-consumo-'.Str::slug($bank->name, '-', 'es').($internal ? '-interno' : '').'-'.LocalTime::todayString().'.pdf';
+        return HourBankDocument::filenameFor($project, $bank, $internal).'.pdf';
     }
 }

@@ -1,11 +1,11 @@
 <?php
 
 use App\Domain\Reports\EntryValuation;
+use App\Domain\Reports\Export\EntryRows;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
 use App\Domain\Reports\RevenueCalculator;
 use App\Enums\TimeEntryStatus;
-use App\Http\Controllers\Reports\HoursExportController;
 use App\Models\Task;
 use App\Models\TaskType;
 use App\Models\TimeEntry;
@@ -186,15 +186,15 @@ it('por bloques: las mismas filas e importes con bloques de 2 entradas', functio
     $s = $this->s;
     $whole = ($this->table)(($this->export)($s->admin));
 
-    app()->when(HoursExportController::class)->needs('$chunkSize')->give(2);
+    app()->when(EntryRows::class)->needs('$chunkSize')->give(2);
     $chunked = ($this->table)(($this->export)($s->admin));
 
     expect($chunked)->toBe($whole)->and($chunked)->toHaveCount(6);
 });
 
 it('si hay más filas que el máximo, la última avisa en lugar de cortar en silencio', function () {
-    app()->when(HoursExportController::class)->needs('$maxRows')->give(4);
-    app()->when(HoursExportController::class)->needs('$chunkSize')->give(2);
+    app()->when(EntryRows::class)->needs('$maxRows')->give(4);
+    app()->when(EntryRows::class)->needs('$chunkSize')->give(2);
 
     $rows = ($this->readXlsx)(($this->export)($this->s->admin)->streamedContent());
 
@@ -203,8 +203,8 @@ it('si hay más filas que el máximo, la última avisa en lugar de cortar en sil
 });
 
 it('con justo las filas que caben, no hay aviso', function () {
-    app()->when(HoursExportController::class)->needs('$maxRows')->give(7);
-    app()->when(HoursExportController::class)->needs('$chunkSize')->give(4);
+    app()->when(EntryRows::class)->needs('$maxRows')->give(7);
+    app()->when(EntryRows::class)->needs('$chunkSize')->give(4);
 
     $rows = ($this->readXlsx)(($this->export)($this->s->admin)->streamedContent());
 
