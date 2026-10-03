@@ -37,7 +37,7 @@ export type TaskFilters = {
 /** TaskListItemResource: fila de la lista y tarjeta del kanban. */
 export type TaskListItem = Task & {
     assignee?: UserSummary | null;
-    logged_minutes?: number;
+    logged_minutes?: number | null;
     /** Solo en las tareas raíz. */
     subtasks?: TaskListItem[];
     estimate_from_subtasks: boolean;
@@ -144,7 +144,7 @@ export type TaskPanelData = {
     task: Task & {
         description: string | null;
         assignee?: UserSummary | null;
-        logged_minutes?: number;
+        logged_minutes?: number | null;
         creator: UserSummary | null;
         created_at: string | null;
         updated_at: string | null;
@@ -224,7 +224,7 @@ export type MyTaskSectionKey =
 
 /** MyTaskItemResource. */
 export type MyTaskItem = Task & {
-    logged_minutes?: number;
+    logged_minutes?: number | null;
     project: { id: number; code: string; name: string; color: string };
     hour_bank: { id: number; name: string } | null;
     parent: { id: number; title: string } | null;

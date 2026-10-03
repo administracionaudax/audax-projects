@@ -85,10 +85,10 @@ export type ProjectCreateProps = {
     overageDefault?: 'allow' | 'block';
 };
 
-/** App\Domain\Projects\ProjectSummary. */
+/** App\Domain\Projects\ProjectSummary (horas reales y presupuesto, null para un colaborador externo, D-134). */
 export type ProjectSummaryFigures = {
     estimated_minutes: number;
-    logged_minutes: number;
+    logged_minutes: number | null;
     budget_minutes: number | null;
     open_tasks: number;
     total_tasks: number;

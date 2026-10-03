@@ -230,6 +230,43 @@ describe('lista de tareas', () => {
         expect(screen.queryByText('Cabecera')).toBeNull();
     });
 
+    it('sin las horas de todos (null, colaborador externo) no hay columna «Imputadas» (D-134)', () => {
+        const hidden = (item: TaskListItem): TaskListItem => ({
+            ...item,
+            logged_minutes: null,
+            subtasks: (item.subtasks ?? []).map(hidden),
+        });
+
+        render(
+            <TaskLookupsProvider value={lookups}>
+                <TaskList
+                    tasks={tasks.map(hidden)}
+                    groupBy="status"
+                    showCompleted={false}
+                    selection={new Set()}
+                    onSelect={vi.fn()}
+                    onOpen={vi.fn()}
+                />
+            </TaskLookupsProvider>,
+        );
+
+        expect(
+            screen.queryByRole('columnheader', { name: 'Imputadas' }),
+        ).toBeNull();
+        expect(screen.queryByText('0:30')).toBeNull();
+        expect(screen.queryByText('1:15')).toBeNull();
+        expect(screen.queryByText('0:00')).toBeNull();
+        // Cada fila tiene tantas celdas como columnas la cabecera.
+        const [header, ...rows] = screen.getAllByRole('row');
+        const columns = within(header).getAllByRole('columnheader').length;
+        for (const row of rows) {
+            expect(
+                within(row).queryAllByRole('cell').length +
+                    within(row).queryAllByRole('rowheader').length,
+            ).toBe(columns);
+        }
+    });
+
     it('las acciones masivas cambian solo las tareas seleccionadas', async () => {
         const user = userEvent.setup();
         render(<ListWithBulk />);

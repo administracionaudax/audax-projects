@@ -146,16 +146,25 @@ function CardBody({
             </div>
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="tabular">
-                    {task.effective_estimated_minutes !== null
-                        ? t('task_board.logged_of_estimate', {
-                              logged: formatMinutes(logged),
-                              estimate: formatMinutes(
-                                  task.effective_estimated_minutes,
-                              ),
-                          })
-                        : t('task_board.logged', {
-                              logged: formatMinutes(logged),
-                          })}
+                    {/* Sin las horas de todos (colaborador externo, D-134), solo la estimación. */}
+                    {logged === null
+                        ? task.effective_estimated_minutes !== null
+                            ? t('task_board.estimate', {
+                                  estimate: formatMinutes(
+                                      task.effective_estimated_minutes,
+                                  ),
+                              })
+                            : null
+                        : task.effective_estimated_minutes !== null
+                          ? t('task_board.logged_of_estimate', {
+                                logged: formatMinutes(logged),
+                                estimate: formatMinutes(
+                                    task.effective_estimated_minutes,
+                                ),
+                            })
+                          : t('task_board.logged', {
+                                logged: formatMinutes(logged),
+                            })}
                 </span>
                 {!task.is_milestone ? <TimerButton task={task} /> : null}
             </div>

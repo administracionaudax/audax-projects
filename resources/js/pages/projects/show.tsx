@@ -118,15 +118,18 @@ export default function ProjectShow({
                                         : t('projects.show.no_due')}
                                 </span>
                             </Figure>
-                            <Figure
-                                icon={Clock}
-                                label={t('projects.show.hours')}
-                            >
-                                <HoursFigure
-                                    estimated={summary.estimated_minutes}
-                                    logged={summary.logged_minutes}
-                                />
-                            </Figure>
+                            {/* Las horas de todos no son para un colaborador externo (D-134). */}
+                            {summary.logged_minutes !== null ? (
+                                <Figure
+                                    icon={Clock}
+                                    label={t('projects.show.hours')}
+                                >
+                                    <HoursFigure
+                                        estimated={summary.estimated_minutes}
+                                        logged={summary.logged_minutes}
+                                    />
+                                </Figure>
+                            ) : null}
                             <Figure
                                 icon={ListChecks}
                                 label={t('projects.show.tasks')}
@@ -142,7 +145,8 @@ export default function ProjectShow({
                             </Figure>
                         </dl>
 
-                        {summary.budget_minutes !== null ? (
+                        {summary.budget_minutes !== null &&
+                        summary.logged_minutes !== null ? (
                             <BudgetFigure
                                 budget={summary.budget_minutes}
                                 logged={summary.logged_minutes}

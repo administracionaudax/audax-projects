@@ -77,8 +77,15 @@ export function TaskDates({
     );
 }
 
-/** Minutos imputados a la tarea y a sus subtareas (las horas de las subtareas suman en el padre). */
-export function totalLoggedMinutes(task: TaskListItem): number {
+/**
+ * Minutos imputados a la tarea y a sus subtareas (las horas de las subtareas suman en el padre);
+ * null si quien mira no ve las horas de todos (colaborador externo, D-134).
+ */
+export function totalLoggedMinutes(task: TaskListItem): number | null {
+    if (task.logged_minutes === null) {
+        return null;
+    }
+
     return (
         (task.logged_minutes ?? 0) +
         (task.subtasks ?? []).reduce(

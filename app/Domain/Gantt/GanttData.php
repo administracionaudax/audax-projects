@@ -66,13 +66,14 @@ final class GanttData
      * de su tarea en el cliente (parent_task_id).
      *
      * - estimated_minutes: la efectiva (SPEC §6): con subtareas estimadas, su suma.
-     * - logged_minutes: horas de la tarea y, en las tareas con subtareas, también las de estas.
+     * - logged_minutes: horas de la tarea y, en las tareas con subtareas, también las de estas;
+     *   null sin $withLogged (un colaborador externo no ve las horas de todos, D-134).
      *
      * @param  list<int>  $projectIds
      * @param  array<int, bool>  $editable  id del proyecto → puede editar sus tareas
      * @return list<array<string, mixed>>
      */
-    public function tasks(array $projectIds, array $editable): array
+    public function tasks(array $projectIds, array $editable, bool $withLogged = true): array
     {
         if ($projectIds === []) {
             return [];
@@ -139,7 +140,7 @@ final class GanttData
                     'avatar' => $avatars[$assignee->id],
                 ],
                 'estimated_minutes' => $task->is_milestone ? null : $estimated,
-                'logged_minutes' => $logged,
+                'logged_minutes' => $withLogged ? $logged : null,
                 'subtasks_count' => count($subtasks),
                 'can' => ['update' => $editable[$task->project_id] ?? false],
             ];

@@ -18,9 +18,13 @@ import { cn } from '@/lib/utils';
 
 export type BarVariant = 'bar' | 'milestone' | 'summary';
 
-/** Porcentaje de horas imputadas sobre la estimación (null sin estimación). */
+/** Porcentaje de horas imputadas sobre la estimación (null sin estimación o sin horas visibles). */
 export function progressPercent(task: GanttTask): number | null {
-    if (!task.estimated_minutes || task.estimated_minutes <= 0) {
+    if (
+        task.logged_minutes === null ||
+        !task.estimated_minutes ||
+        task.estimated_minutes <= 0
+    ) {
         return null;
     }
 

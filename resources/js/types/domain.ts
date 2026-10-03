@@ -168,7 +168,8 @@ export type Task = {
     is_completed: boolean;
     position: number;
     completed_at: string | null;
-    logged_minutes?: number;
+    /** null para un colaborador externo: no ve las horas de todos (D-134). */
+    logged_minutes?: number | null;
     subtasks_count?: number;
     comments_count?: number;
     attachments_count?: number;

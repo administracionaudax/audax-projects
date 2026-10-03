@@ -9,7 +9,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Contrato: resources/js/types/domain.ts (Task). Cargar assignee antes (N+1). Los campos
  * opcionales solo aparecen si el controlador los carga: description (si se selecciona la columna),
- * logged_minutes (withSum('timeEntries', 'minutes')) y *_count (withCount).
+ * logged_minutes (withSum('timeEntries', 'minutes'); null para un colaborador externo, D-134) y
+ * *_count (withCount).
  *
  * @mixin Task
  */
@@ -41,7 +42,8 @@ class TaskResource extends JsonResource
             'is_completed' => $this->isCompleted(),
             'position' => $this->position,
             'completed_at' => $this->completed_at?->toIso8601ZuluString(),
-            'logged_minutes' => $this->whenAggregated('timeEntries', 'minutes', 'sum', fn ($value) => (int) $value),
+            // Las horas de todos: a un colaborador externo no se le enseñan (D-134), solo las suyas.
+            'logged_minutes' => $this->whenAggregated('timeEntries', 'minutes', 'sum', fn ($value) => $request->user()?->isCollaborator() ? null : (int) $value),
             'subtasks_count' => $this->whenCounted('subtasks'),
             'comments_count' => $this->whenCounted('comments'),
             'attachments_count' => $this->whenCounted('attachments'),

@@ -56,8 +56,8 @@ class ProjectGanttController extends Controller
 
         // tasks y range salen de la misma consulta: se calcula una vez aunque se pidan las dos.
         $tasks = null;
-        $loadTasks = function () use (&$tasks, $project, $canUpdate): array {
-            return $tasks ??= $this->gantt->tasks([$project->id], [$project->id => $canUpdate]);
+        $loadTasks = function () use (&$tasks, $project, $canUpdate, $user): array {
+            return $tasks ??= $this->gantt->tasks([$project->id], [$project->id => $canUpdate], withLogged: ! $user->isCollaborator());
         };
 
         $projectData = ResourceData::of(ProjectResource::make($project), $request);

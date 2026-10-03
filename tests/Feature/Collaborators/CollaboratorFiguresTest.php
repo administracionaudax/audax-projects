@@ -78,3 +78,49 @@ describe('imputar en una bolsa', function () {
         expect($result->warningsArray()[0]['message'])->toContain('0:30');
     });
 });
+
+describe('horas de todos y presupuesto', function () {
+    beforeEach(function () {
+        $this->project = Project::factory()->withMembers([$this->sara, $this->ana])->create(['budget_minutes' => 600]);
+        $this->task = Task::factory()->create(['project_id' => $this->project->id]);
+        $this->subtask = Task::factory()->create(['project_id' => $this->project->id, 'parent_task_id' => $this->task->id]);
+        TimeEntry::factory()->forTask($this->task)->on('2026-09-24')->minutes(120)->create(['user_id' => $this->ana->id]);
+        TimeEntry::factory()->forTask($this->subtask)->on('2026-09-24')->minutes(30)->create(['user_id' => $this->ana->id]);
+        TimeEntry::factory()->forTask($this->task)->on('2026-09-23')->minutes(45)->create(['user_id' => $this->sara->id]);
+
+        $this->props = fn (User $user, string $uri): array => $this->actingAs($user)->get($uri)->assertOk()->viewData('page')['props'];
+    });
+
+    it('el resumen del proyecto no le enseña las horas reales ni el presupuesto', function () {
+        $sara = ($this->props)($this->sara, "/proyectos/{$this->project->id}");
+        $ana = ($this->props)($this->ana, "/proyectos/{$this->project->id}");
+
+        expect($sara['summary']['logged_minutes'])->toBeNull()
+            ->and($sara['summary']['budget_minutes'])->toBeNull()
+            ->and($sara['project']['budget_minutes'])->toBeNull()
+            ->and($sara['summary']['total_tasks'])->toBe(2)
+            ->and($ana['summary']['logged_minutes'])->toBe(195)
+            ->and($ana['summary']['budget_minutes'])->toBe(600);
+    });
+
+    it('la lista de tareas, el panel y el Gantt del proyecto no le enseñan las horas de todos', function () {
+        $list = ($this->props)($this->sara, "/proyectos/{$this->project->id}/tareas");
+        $row = collect($list['tasks'])->firstWhere('id', $this->task->id);
+        expect($row['logged_minutes'])->toBeNull()
+            ->and($row['subtasks'][0]['logged_minutes'])->toBeNull();
+
+        $panel = ($this->props)($this->sara, "/proyectos/{$this->project->id}/tareas?tarea={$this->task->id}")['panel'];
+        expect($panel['task']['logged_minutes'])->toBeNull()
+            ->and($panel['subtasks'][0]['logged_minutes'])->toBeNull()
+            // Las suyas, sí.
+            ->and($panel['time_visible_minutes'])->toBe(45);
+
+        $gantt = ($this->props)($this->sara, "/proyectos/{$this->project->id}/gantt");
+        expect(collect($gantt['tasks'])->pluck('logged_minutes')->unique()->all())->toBe([null]);
+
+        // La plantilla las ve.
+        $row = collect(($this->props)($this->ana, "/proyectos/{$this->project->id}/tareas")['tasks'])->firstWhere('id', $this->task->id);
+        expect($row['logged_minutes'])->toBe(165);
+        expect(collect(($this->props)($this->ana, "/proyectos/{$this->project->id}/gantt")['tasks'])->firstWhere('id', $this->task->id)['logged_minutes'])->toBe(195);
+    });
+});
