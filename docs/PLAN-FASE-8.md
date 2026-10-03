@@ -24,7 +24,7 @@ Pedida por el propietario el 03/10/2026, tras cerrar las fases 0 a 7. Rama `fase
 |---|---|---|
 | Diseño | Jero, Belén, Aga, Toni y Amparo (colaboradora) | Aga |
 | Desarrollo | Wendy y Jose Luis | Jose Luis |
-| Contenidos | Julieta, Mairena y Mireya | Mireya |
+| Marketing | Julieta, Mairena y Mireya | Mireya |
 | Sin departamento | Alfredo | |
 
 - **Administradores:** Alfredo, Toni y Jose Luis.

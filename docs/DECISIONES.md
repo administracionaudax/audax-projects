@@ -978,7 +978,7 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **«Área» = tipo de tarea, con su departamento:**
     - UI, UX, Maquetación, Branding, Design System e Investigación → Diseño,
     - Desarrollo → Desarrollo,
-    - Contenidos, Estrategia y SEO → Contenidos,
+    - Contenidos, Estrategia y SEO → Marketing,
     - Gestión y Definición, sin departamento.
   - **Facturable:** el campo «Facturable» o «Factor facturable» = 1. «Naturaleza: No productiva» no es facturable.
 - **Miembros de cada proyecto:** quien tiene tareas asignadas o horas en él. El gestor principal es el admin o responsable con más horas en el proyecto o, si no hay, Alfredo.
