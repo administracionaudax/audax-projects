@@ -109,14 +109,31 @@ it('«cerca del límite» cuenta desde el primer umbral configurado', function (
 
 it('nunca lleva importes, tarifas, costes, notas internas ni datos de otros clientes', function () {
     $s = $this->s;
-    $json = json_encode(($this->props)($this->actingAs($s->portal)->get('/portal')), JSON_UNESCAPED_UNICODE);
+    $props = ($this->props)($this->actingAs($s->portal)->get('/portal'));
+    $json = json_encode($props, JSON_UNESCAPED_UNICODE);
 
-    expect($json)
+    // Nombres de campo, no texto libre: los nombres aleatorios de las factorías pueden contener
+    // «cost» o «rate» (p. ej. «Costa») sin que sea una fuga.
+    $keys = [];
+    $walk = function (mixed $node) use (&$walk, &$keys): void {
+        if (is_array($node)) {
+            foreach ($node as $key => $child) {
+                $keys[] = (string) $key;
+                $walk($child);
+            }
+        }
+    };
+    $walk($props);
+    $fieldNames = implode(' ', array_unique($keys));
+
+    expect($fieldNames)
         ->not->toContain('price')
         ->not->toContain('rate')
         ->not->toContain('cost')
         ->not->toContain('invoice')
-        ->not->toContain('notes')
+        ->not->toContain('notes');
+
+    expect($json)
         ->not->toContain('1000.00')
         ->not->toContain('75.00')
         ->not->toContain('31.50')

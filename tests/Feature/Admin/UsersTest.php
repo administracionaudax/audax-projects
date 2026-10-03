@@ -92,10 +92,10 @@ describe('listado', function () {
     });
 
     test('los datos económicos solo llegan con view-financials', function () {
-        userWithRole('employee', ['name' => 'Zoe', 'hourly_cost' => '25.50', 'default_hourly_rate' => '60.00']);
+        userWithRole('employee', ['name' => 'Zoe Quintanilla-Test', 'hourly_cost' => '25.50', 'default_hourly_rate' => '60.00']);
 
         $this->actingAs($this->admin)
-            ->get('/admin/usuarios?q=zoe')
+            ->get('/admin/usuarios?q=quintanilla-test')
             ->assertInertia(fn (Assert $page) => $page
                 ->where('users.data.0.hourly_cost', '25.50')
                 ->where('users.data.0.default_hourly_rate', '60.00'));
@@ -104,7 +104,7 @@ describe('listado', function () {
         $manager->givePermissionTo(Permission::ManageUsers->value);
 
         $this->actingAs($manager)
-            ->get('/admin/usuarios?q=zoe')
+            ->get('/admin/usuarios?q=quintanilla-test')
             ->assertInertia(fn (Assert $page) => $page
                 ->has('users.data', 1)
                 ->missing('users.data.0.hourly_cost')
