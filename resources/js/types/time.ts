@@ -275,4 +275,6 @@ export type HomePageProps = {
     chat_summary?: HomeChatSummary;
     /** Mis próximos hitos (D-062): vencidos y de los próximos 30 días, como mucho 8. */
     milestones: HomeMilestone[];
+    /** Orden de las tarjetas guardado por quien mira (D-138); null = el orden por defecto. */
+    home_layout?: string[] | null;
 };

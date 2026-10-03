@@ -1,0 +1,15 @@
+{
+    "home_layout.handle": "Mover la tarjeta «:card»",
+    "home_layout.role_description": "tarjeta que se puede mover",
+    "home_layout.instructions": "Para mover una tarjeta, pulsa espacio o Intro en su asa. Usa las flechas para cambiarla de sitio, pulsa espacio o Intro para soltarla y Escape para cancelar.",
+    "home_layout.announce.start": "Has cogido la tarjeta «:card». Está en la posición :position de :total.",
+    "home_layout.announce.over": "La tarjeta «:card» está en la posición :position de :total.",
+    "home_layout.announce.outside": "La tarjeta «:card» no está sobre ninguna posición.",
+    "home_layout.announce.end": "Has soltado la tarjeta «:card» en la posición :position de :total.",
+    "home_layout.announce.cancel": "Movimiento cancelado. La tarjeta «:card» vuelve a su sitio.",
+    "home_layout.reset": "Restablecer orden",
+    "home_layout.reset_hint": "Vuelve a poner las tarjetas en su orden por defecto",
+    "home_layout.reset_done": "Las tarjetas vuelven a su orden por defecto.",
+    "home_layout.save_failed": "No se ha podido guardar el orden de las tarjetas. Vuelven a como estaban.",
+    "home_layout.reset_failed": "No se ha podido restablecer el orden de las tarjetas. Inténtalo de nuevo."
+}

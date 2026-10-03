@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Absences\MyAbsencesSummary;
+use App\Domain\Home\HomeLayout;
 use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\Metrics;
@@ -40,6 +41,8 @@ use Inertia\Response;
  * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062),
  * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
+ * Cada persona puede reordenar las tarjetas (D-138): su orden llega en `home_layout` (null = el
+ * orden por defecto), ya sin tarjetas que no existan o que no le correspondan.
  * Un colaborador externo (D-134) solo recibe las tarjetas que le afectan: sus tareas (de sus
  * proyectos), el temporizador, sus horas, su semana, sus días sin imputar, sus hitos y su chat; sin
  * indicadores (son informes), carga ni ausencias.
@@ -85,6 +88,7 @@ class HomeController extends Controller
             ],
             'unlogged_days' => $this->unloggedDays($user, $today),
             'milestones' => $this->milestones->forUser($user, $today),
+            'home_layout' => HomeLayout::for($user),
             // Fase 6: menciones y conversaciones sin leer, en una petición aparte al pintar.
             'chat_summary' => Inertia::defer(fn (): array => $this->chat->for($user)),
         ];

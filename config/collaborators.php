@@ -18,8 +18,10 @@
 
 return [
     'routes' => [
-        // Inicio y Mis tareas (solo de sus proyectos).
+        // Inicio (y el orden de sus tarjetas, D-138) y Mis tareas (solo de sus proyectos).
         'home',
+        'home.layout.update',
+        'home.layout.destroy',
         'dashboard',
         'my-tasks.index',
 

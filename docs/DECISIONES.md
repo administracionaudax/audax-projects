@@ -422,7 +422,6 @@ En la F2 la capacidad sale de `Capacity`, que solo usa `WorkSchedule`. Cuando la
 - **Comparación con el periodo anterior (`comparar=1`) en un periodo en curso:** «al mismo punto», con los mismos días transcurridos del periodo anterior (`App\Domain\Reports\ComparisonPeriod`, común a todos los dashboards). La barra de filtros enseña el tramo comparado.
 - **Variación:** por debajo de medio punto se muestra «Igual que en el periodo anterior» (no «0 % más»).
 
-
 ### D-080 · Nivel de ocupación de un periodo en curso **[concreta D-047 y D-079]**
 - **Qué se enseña:** la ocupación de cada miembro sigue siendo la del SPEC §10 (imputadas / capacidad del periodo completo, D-079).
 - **Nivel (baja, en rango, alta; umbrales 70 % y 110 % de D-047):** en un periodo en curso (le quedan días con jornada) se mide con el **ritmo**: imputadas / capacidad transcurrida hasta ayer (`pace`). Contra el periodo entero, a mitad de mes todo el mundo salía «baja». Si esa capacidad es 0 (el primer día o un periodo futuro), sin nivel: «Aún sin datos». En un periodo cerrado, el nivel es el de la ocupación.
@@ -727,7 +726,6 @@ Medido el 27/09/2026 en el servidor real (VM KVM, CPU genérica **solo SSE2/SSE3
 - **`medium`, descartado:** triplica el tiempo de `small` y necesita 3 GB, sin mejora medible.
 - **Si con audios reales la cola se acumula**, se puede cambiar a `base` con `WHISPER_MODEL` y el contenedor, sin tocar el código.
 - **Recomendación al propietario:** con el tipo de CPU «host» en el hipervisor (AVX2), el tiempo bajaría varias veces.
-
 
 ## 02/10/2026: Decisiones tomadas en autonomía durante la implementación y la integración de la Fase 6
 Resumen de lo que decidieron C1 (chat), C2 (tiempo real y avisos) y C3 (audios, adjuntos y búsqueda) y de lo que se decidió al integrarlas. Concretan D-068 a D-072.
@@ -1084,6 +1082,23 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
 - **Tema oscuro (revisado el 03/10 a petición del propietario):** sigue las pantallas oscuras de la hoja: base **#0B1526** (la de la imagen de portada), superficies #121C30, texto #F5F6F7, secundario blanco al 70 %, separadores blanco al 14 % y azul de selección #0171FF al 20 %. Antes era un navy saturado al 100 % (#000F20 y #001B39), más «azul eléctrico» que la hoja. Ajustes para mantener AA: el texto azul en oscuro pasa a #519AFF y la serie 1 de las gráficas a #0868E0.
 - **Se mantiene:**
   - la paleta de gráficas de D-012: varios tonos para distinguir series; la hoja tiene un único azul porque no tiene gráficas de varias series,
+
+### D-138 · Reordenar las tarjetas de Inicio **[amplía SPEC §5.1]**
+Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las tarjetas de Inicio arrastrándolas.
+- **Interfaz:**
+  - `@dnd-kit/sortable` con `rectSortingStrategy` sobre la rejilla de siempre: cada tarjeta conserva su ancho (las anchas ocupan dos columnas),
+  - se coge por un **asa** (`GripVertical`) en la cabecera, un botón «Mover la tarjeta «X»» que se ve al pasar el ratón o con el foco y siempre en pantallas táctiles,
+  - **teclado:** espacio o Intro para cogerla, flechas para moverla, espacio o Intro para soltarla y Escape para cancelar, con anuncios en español en la región viva,
+  - **ratón y lápiz:** el arrastre empieza al mover el asa 6 px; **táctil:** hay que mantener pulsada el asa 250 ms, para que deslizar el dedo siga desplazando la página,
+  - con «reducir movimiento» las tarjetas cambian de sitio sin animación,
+  - estilo plano (D-137): mientras se arrastra solo cambia el borde, al azul de marca (`--ring`),
+  - «Restablecer orden», junto al subtítulo, solo si hay un orden guardado; al pulsarlo el foco pasa al título.
+- **Persistencia:**
+  - `users.home_layout` (JSON): lista ordenada de ids de tarjeta; null es el orden por defecto,
+  - `PUT /inicio/orden` (`home.layout.update`) y `DELETE /inicio/orden` (`home.layout.destroy`), con un límite de 60 por minuto. Solo ids de la lista blanca (`App\Domain\Home\HomeLayout::CARDS`, la misma que `HOME_CARD_IDS` en TypeScript; `tests/fixtures/home-cards.json` las compara), sin repetir y como mucho tantas como tarjetas,
+  - guardado **optimista** al soltar, con una petición JSON que responde 204: con Inertia, la respuesta volvería a calcular todas las props de Inicio. Si falla, las tarjetas vuelven al último orden guardado con un aviso. Soltar en el orden por defecto borra el guardado.
+- **Al pintar:** primero las guardadas, en su orden; detrás, en su orden por defecto, las que falten (tarjetas nuevas o que dependen del rol). Se ignoran las guardadas que ya no existen o que no le corresponden: el servidor las quita de la prop `home_layout` y la interfaz solo ordena las que pinta.
+- **Colaboradores (D-134):** pueden reordenar sus tarjetas. Las dos rutas están en `config/collaborators.php` y las tarjetas que no ven (carga, indicadores y ausencias) nunca les llegan en la prop.
 
 ### D-139 · Exportación unificada de informes (Fase 9)
 - Los 10 informes exportables (`ReportKind`) se generan con un único servicio, `ReportFileGenerator`, siempre **con los permisos de quien lo pide**: el mismo contenido que vería en pantalla con esos filtros.

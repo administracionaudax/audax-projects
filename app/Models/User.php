@@ -44,6 +44,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $theme_preference
  * @property string $locale
  * @property array<string, mixed>|null $notification_preferences
+ * @property array<array-key, mixed>|null $home_layout Orden de Inicio (D-138); lo filtra HomeLayout::for()
  * @property int|null $privacy_acknowledged_version
  * @property Carbon|null $privacy_acknowledged_at
  * @property string|null $avatar_path
@@ -121,6 +122,8 @@ class User extends Authenticatable
             'default_hourly_rate' => 'decimal:2',
             'is_active' => 'boolean',
             'notification_preferences' => 'array',
+            // Orden de las tarjetas de Inicio (D-138): App\Domain\Home\HomeLayout.
+            'home_layout' => 'array',
             'privacy_acknowledged_version' => 'integer',
             'privacy_acknowledged_at' => 'datetime',
         ];
