@@ -145,6 +145,9 @@ final class ClickUpImporter
     /** @var list<int> cuentas desactivadas del fichero de personas (antiguos empleados) */
     private array $inactiveUserIds = [];
 
+    /** @var list<int> colaboradores del fichero de personas */
+    private array $collaboratorUserIds = [];
+
     private User $defaultManager;
 
     /** @var array<string, array{project: int, bank: int|null, internal: bool}> lista => destino de sus tareas */
@@ -216,6 +219,9 @@ final class ClickUpImporter
                     foreach ($this->people as $match) {
                         if ($match->user !== null && ! $match->user->is_active) {
                             $this->inactiveUserIds[] = $match->user->id;
+                        }
+                        if ($match->user !== null && $match->spec->role === Role::Collaborator) {
+                            $this->collaboratorUserIds[] = $match->user->id;
                         }
                     }
                     $this->defaultManager = $this->defaultManager($peopleFile);
@@ -294,6 +300,7 @@ final class ClickUpImporter
         $this->entryTotal = 0;
         $this->people = [];
         $this->inactiveUserIds = [];
+        $this->collaboratorUserIds = [];
         $this->targets = [];
         $this->statusCache = [];
         $this->typeCache = [];
@@ -1094,6 +1101,11 @@ final class ClickUpImporter
 
             $status = self::arr($task['status'] ?? null);
             $assignees = $this->assignees(self::arr($task['assignees'] ?? null));
+            if ($target['internal']) {
+                // Los colaboradores no son miembros de los proyectos internos (D-134, D-135): no
+                // pueden ser responsables ni seguidores de sus tareas.
+                $assignees = array_values(array_diff($assignees, $this->collaboratorUserIds));
+            }
             $activeAssignees = array_values(array_filter($assignees, fn (int $userId): bool => ! in_array($userId, $this->inactiveUserIds, true)));
             $creator = $this->userFor(self::email(self::arr($task['creator'] ?? null)['email'] ?? null));
             $statusMatch = $this->status(self::str($status['status'] ?? null), self::str($status['type'] ?? null));

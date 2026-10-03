@@ -413,6 +413,15 @@ test('antiguos empleados: cuenta desactivada, conservan sus tareas hechas y las 
     expect(DB::table('invitation_tokens')->count())->toBe(0);
 });
 
+test('un colaborador no queda como responsable de tareas de los proyectos internos', function () {
+    runClickUpImport();
+
+    // T6 (Audax Interno · General) estaba asignada a Carla, colaboradora: queda sin responsable.
+    $carla = importedUser('carla@externa.test');
+    expect(importedTask('T6')->assignee_user_id)->toBeNull()
+        ->and(importedTask('T6')->watchers->pluck('id')->all())->not->toContain($carla->id);
+});
+
 test('el acceso a listas del fichero de personas hace miembro aunque no tenga tareas ni horas', function () {
     $directory = editedClickUpExport(function (string $file, array $data): array {
         if ($file === 'personas.json') {
