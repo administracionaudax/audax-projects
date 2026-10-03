@@ -52,7 +52,7 @@ export function KpiCard({
                         type="button"
                         aria-label={t('reports.kpi.definition', { label })}
                         className={cn(
-                            '-m-1 rounded-[3px] p-1 text-muted-foreground hover:text-foreground',
+                            '-m-1 rounded-md p-1 text-muted-foreground hover:text-foreground',
                             FOCUS_RING,
                         )}
                     >

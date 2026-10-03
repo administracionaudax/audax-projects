@@ -59,7 +59,7 @@ function Stat({
                         type="button"
                         aria-label={t('reports.kpi.definition', { label })}
                         className={cn(
-                            'rounded-[3px] p-0.5 hover:text-foreground',
+                            'rounded-md p-0.5 hover:text-foreground',
                             FOCUS_RING,
                         )}
                     >
@@ -113,10 +113,10 @@ function ShareList({
                             </span>
                             <span
                                 aria-hidden="true"
-                                className="h-1.5 w-full rounded-[3px] bg-neutral-soft"
+                                className="h-1.5 w-full rounded-md bg-neutral-soft"
                             >
                                 <span
-                                    className="block h-full rounded-[3px]"
+                                    className="block h-full rounded-md"
                                     style={{
                                         width: `${Math.min(share, 1) * 100}%`,
                                         backgroundColor: CHART_COLORS[0],

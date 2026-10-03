@@ -15,8 +15,8 @@ export function LazyRichTextEditor(props: RichTextEditorProps) {
                     aria-label={t('rich_text.loading')}
                     className="grid gap-2"
                 >
-                    <Skeleton className="h-8 w-full rounded-[3px]" />
-                    <Skeleton className="h-24 w-full rounded-[3px]" />
+                    <Skeleton className="h-8 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
                 </div>
             }
         >

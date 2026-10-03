@@ -106,7 +106,7 @@ export function HighlightedText({
                 part.mark ? (
                     <mark
                         key={index}
-                        className="rounded-[3px] bg-warning-soft px-0.5 text-foreground"
+                        className="rounded-md bg-warning-soft px-0.5 text-foreground"
                     >
                         {part.text}
                     </mark>

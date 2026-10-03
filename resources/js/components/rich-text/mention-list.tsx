@@ -69,7 +69,7 @@ export function MentionList({ items, command, ref }: MentionListProps) {
 
     return (
         <div
-            className="w-64 overflow-hidden rounded-[3px] border bg-popover text-popover-foreground shadow-md"
+            className="w-64 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
             data-mention-popup
         >
             {items.length === 0 ? (
@@ -88,7 +88,7 @@ export function MentionList({ items, command, ref }: MentionListProps) {
                             role="option"
                             aria-selected={index === selected}
                             className={cn(
-                                'flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-sm',
+                                'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm',
                                 index === selected &&
                                     'bg-accent text-accent-foreground',
                             )}

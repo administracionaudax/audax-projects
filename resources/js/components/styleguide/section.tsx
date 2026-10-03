@@ -52,7 +52,7 @@ export function Specimen({
             </div>
             <div
                 className={cn(
-                    'min-w-0 rounded-[3px] border p-4 sm:p-6',
+                    'min-w-0 rounded-md border p-4 sm:p-6',
                     className,
                 )}
             >

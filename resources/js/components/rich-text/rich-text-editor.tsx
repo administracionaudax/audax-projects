@@ -155,7 +155,7 @@ function ToolbarButton({
             aria-pressed={active}
             title={label}
             className={cn(
-                'rounded-[3px] p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground',
+                'rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground',
                 active && 'bg-accent text-foreground',
                 FOCUS_RING,
             )}
@@ -209,7 +209,7 @@ function LinkButton({ editor }: { editor: Editor }) {
                     aria-pressed={active}
                     title={t('rich_text.link')}
                     className={cn(
-                        'rounded-[3px] p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground',
+                        'rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground',
                         active && 'bg-accent text-foreground',
                         FOCUS_RING,
                     )}
@@ -357,7 +357,7 @@ export default function RichTextEditor({
         <div
             data-rich-text
             className={cn(
-                'relative rounded-[3px] border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+                'relative rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
                 className,
             )}
         >

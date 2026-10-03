@@ -445,7 +445,7 @@ function SortButton({
             title={title}
             aria-label={`${label}. ${t('reports_r3.table.sort_by', { column: sortLabel })}`}
             className={cn(
-                'inline-flex items-center gap-1 rounded-[3px] font-medium whitespace-nowrap hover:text-foreground',
+                'inline-flex items-center gap-1 rounded-md font-medium whitespace-nowrap hover:text-foreground',
                 align === 'right' && 'flex-row-reverse',
                 FOCUS_RING,
             )}

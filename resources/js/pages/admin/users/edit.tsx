@@ -389,7 +389,7 @@ export default function AdminUserEdit({
                                                               },
                                                           )}
                                                     {schedule.is_current ? (
-                                                        <span className="ml-2 rounded-[3px] bg-success-soft px-1.5 py-0.5 text-xs font-medium">
+                                                        <span className="ml-2 rounded-md bg-success-soft px-1.5 py-0.5 text-xs font-medium">
                                                             {t(
                                                                 'admin.schedules.in_force',
                                                             )}
@@ -397,7 +397,7 @@ export default function AdminUserEdit({
                                                     ) : null}
                                                     {schedule.valid_from >
                                                     today ? (
-                                                        <span className="ml-2 rounded-[3px] bg-info-soft px-1.5 py-0.5 text-xs font-medium">
+                                                        <span className="ml-2 rounded-md bg-info-soft px-1.5 py-0.5 text-xs font-medium">
                                                             {t(
                                                                 'admin.schedules.upcoming',
                                                             )}

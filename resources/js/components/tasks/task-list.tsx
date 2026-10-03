@@ -96,7 +96,7 @@ function TaskRow({
                                 { task: task.title },
                             )}
                             className={cn(
-                                'rounded-[3px] p-0.5 text-muted-foreground hover:text-foreground',
+                                'rounded-md p-0.5 text-muted-foreground hover:text-foreground',
                                 FOCUS_RING,
                             )}
                         >
@@ -124,7 +124,7 @@ function TaskRow({
                         type="button"
                         onClick={() => onOpen(task.id)}
                         className={cn(
-                            'min-w-0 truncate rounded-[3px] text-left hover:underline',
+                            'min-w-0 truncate rounded-md text-left hover:underline',
                             task.is_completed && 'line-through',
                             FOCUS_RING,
                         )}
@@ -244,7 +244,7 @@ function GroupTable({
 
     return (
         <div
-            className={cn('overflow-x-auto rounded-[3px] border', FOCUS_RING)}
+            className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
             role="region"
             aria-labelledby={headingId}
             tabIndex={0}

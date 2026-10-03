@@ -35,7 +35,7 @@ export function LoadCell({
     return (
         <div
             className={cn(
-                'flex min-w-0 flex-col gap-0.5 rounded-[3px] px-2 py-1.5 text-foreground',
+                'flex min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-foreground',
                 meta.surface,
                 className,
             )}

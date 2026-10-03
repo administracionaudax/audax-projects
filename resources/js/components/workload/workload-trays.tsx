@@ -276,7 +276,7 @@ function TraySection({
                         strokeWidth={1.5}
                     />
                     {title}
-                    <span className="tabular rounded-[3px] bg-muted px-1.5 text-xs text-muted-foreground">
+                    <span className="tabular rounded-md bg-muted px-1.5 text-xs text-muted-foreground">
                         {count}
                     </span>
                 </h2>
@@ -306,7 +306,7 @@ function MissingBadges({ missing }: { missing: ('estimate' | 'due_date')[] }) {
             {missing.map((item) => (
                 <span
                     key={item}
-                    className="inline-flex items-center gap-1 rounded-[3px] bg-warning-soft px-1.5 py-0.5"
+                    className="inline-flex items-center gap-1 rounded-md bg-warning-soft px-1.5 py-0.5"
                 >
                     {item === 'estimate' ? (
                         <Hourglass
@@ -362,7 +362,7 @@ function ManagedItem({
                             {task.assignee.name}
                         </span>
                     ) : (
-                        <span className="inline-flex items-center gap-1 rounded-[3px] bg-muted px-1.5 py-0.5">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5">
                             <Inbox
                                 aria-hidden="true"
                                 className="size-3.5 text-muted-foreground"
@@ -451,7 +451,7 @@ function TrayItem({
             <Link
                 href={urls.task(task.project.id, task.id)}
                 className={cn(
-                    'inline-flex items-center gap-1 justify-self-start rounded-[3px] hover:underline',
+                    'inline-flex items-center gap-1 justify-self-start rounded-md hover:underline',
                     FOCUS_RING,
                 )}
             >

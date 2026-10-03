@@ -29,7 +29,7 @@ export function WorkloadLegend({ className }: { className?: string }) {
                         >
                             <span
                                 className={cn(
-                                    'inline-flex size-5 items-center justify-center rounded-[3px]',
+                                    'inline-flex size-5 items-center justify-center rounded-md',
                                     meta.surface,
                                 )}
                             >

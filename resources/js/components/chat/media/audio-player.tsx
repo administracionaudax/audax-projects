@@ -87,7 +87,7 @@ function SeekBar({
             })}
             aria-disabled={disabled || undefined}
             className={cn(
-                'relative flex h-6 min-w-16 flex-1 cursor-pointer touch-none items-center rounded-[3px]',
+                'relative flex h-6 min-w-16 flex-1 cursor-pointer touch-none items-center rounded-md',
                 disabled && 'cursor-default opacity-60',
                 FOCUS_RING,
             )}
@@ -114,13 +114,13 @@ function SeekBar({
                 dragging.current = false;
             }}
         >
-            <span className="absolute inset-x-0 h-1 rounded-[3px] bg-muted" />
+            <span className="absolute inset-x-0 h-1 rounded-md bg-muted" />
             <span
-                className="absolute left-0 h-1 rounded-[3px] bg-primary"
+                className="absolute left-0 h-1 rounded-md bg-primary"
                 style={{ width: `${percent}%` }}
             />
             <span
-                className="absolute size-3 -translate-x-1/2 rounded-[3px] border-2 border-background bg-primary"
+                className="absolute size-3 -translate-x-1/2 rounded-md border-2 border-background bg-primary"
                 style={{ left: `${percent}%` }}
             />
         </div>
@@ -292,7 +292,7 @@ export function AudioPlayer({
             role="group"
             aria-label={label ?? t('chat_media.player.label')}
             className={cn(
-                'flex min-w-0 items-center gap-1.5 rounded-[3px] border bg-card py-1 pr-2 pl-1',
+                'flex min-w-0 items-center gap-1.5 rounded-md border bg-card py-1 pr-2 pl-1',
                 className,
             )}
             data-test="chat-audio-player"
@@ -335,7 +335,7 @@ export function AudioPlayer({
             <button
                 type="button"
                 className={cn(
-                    'tabular shrink-0 rounded-[3px] border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent',
+                    'tabular shrink-0 rounded-md border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent',
                     FOCUS_RING,
                 )}
                 aria-label={t('chat_media.player.speed', {

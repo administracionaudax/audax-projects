@@ -71,7 +71,7 @@ export function MessageToolbar({
         <div
             className={cn(
                 'absolute top-1 right-1 z-10 flex items-center gap-0.5',
-                'md:-top-4 md:right-2 md:rounded-[3px] md:border md:bg-popover md:p-0.5 md:opacity-0 md:transition-opacity md:group-hover/message:opacity-100 md:focus-within:opacity-100 md:has-[[data-state=open]]:opacity-100',
+                'md:-top-4 md:right-2 md:rounded-md md:border md:bg-popover md:p-0.5 md:opacity-0 md:transition-opacity md:group-hover/message:opacity-100 md:focus-within:opacity-100 md:has-[[data-state=open]]:opacity-100',
             )}
         >
             {can.react ? (

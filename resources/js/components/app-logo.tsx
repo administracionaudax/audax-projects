@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 /**
  * Logotipo oficial de Audax Studio (SVG de audaxstudio.com, public/brand/audax-logo.svg).
  * Se pinta con currentColor, así que el tono lo decide el texto:
- * - tone="auto": navy en tema claro y blanco en oscuro.
+ * - tone="auto": negro oficial (#1D1D1B) en tema claro y blanco en oscuro.
  * - tone="inverse": siempre blanco (sobre el degradado de marca).
  * El alto se controla con className (h-*); el ancho es proporcional (500 × 83).
  */
@@ -31,7 +31,7 @@ export function AudaxWordmark({
                 'h-4 w-auto shrink-0 select-none',
                 tone === 'inverse'
                     ? 'text-white'
-                    : 'text-brand-navy dark:text-white',
+                    : 'text-logo-ink dark:text-white',
                 className,
             )}
         >

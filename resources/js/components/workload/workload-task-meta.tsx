@@ -95,7 +95,7 @@ export function WorkloadTaskMeta({
             )}
 
             {task.overdue ? (
-                <div className="inline-flex items-center gap-1 rounded-[3px] bg-danger-soft px-1.5 py-0.5 text-foreground">
+                <div className="inline-flex items-center gap-1 rounded-md bg-danger-soft px-1.5 py-0.5 text-foreground">
                     <dt className="sr-only">{t('workload_task.status')}</dt>
                     <dd className="inline-flex items-center gap-1">
                         <CalendarClock

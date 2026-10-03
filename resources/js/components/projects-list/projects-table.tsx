@@ -70,7 +70,7 @@ export function ProjectsTable({
                                 <Link
                                     href={urls.project(project.id)}
                                     className={cn(
-                                        'group inline-flex min-w-0 items-start gap-2 rounded-[3px]',
+                                        'group inline-flex min-w-0 items-start gap-2 rounded-md',
                                         FOCUS_RING,
                                     )}
                                 >

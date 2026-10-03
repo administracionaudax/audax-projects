@@ -230,7 +230,7 @@ function TaskRow({
                                     : undefined
                             }
                             className={cn(
-                                'rounded-[3px] break-words hover:underline',
+                                'rounded-md break-words hover:underline',
                                 FOCUS_RING,
                             )}
                         >

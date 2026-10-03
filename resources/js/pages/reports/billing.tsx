@@ -265,7 +265,7 @@ export default function BillingReport({
                             {tooManyRows ? (
                                 <p
                                     role="status"
-                                    className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground"
+                                    className="flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground"
                                 >
                                     <FileWarning
                                         aria-hidden="true"
@@ -281,7 +281,7 @@ export default function BillingReport({
                             ) : null}
 
                             {summary.totals.pending_minutes > 0 ? (
-                                <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">
+                                <p className="flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground">
                                     <Clock
                                         aria-hidden="true"
                                         className="mt-0.5 size-4 shrink-0 text-warning"

@@ -58,7 +58,7 @@ export function MilestoneList({
                         <Link
                             href={urls.task(item.project_id, item.id)}
                             className={cn(
-                                'block truncate rounded-[3px] text-sm hover:underline',
+                                'block truncate rounded-md text-sm hover:underline',
                                 FOCUS_RING,
                             )}
                         >
@@ -126,7 +126,7 @@ export function ProjectMilestonesCard({
         <Link
             href={urls.projectCalendar(projectId)}
             className={cn(
-                'inline-flex items-center gap-1 self-start rounded-[3px] text-sm text-primary-text hover:underline',
+                'inline-flex items-center gap-1 self-start rounded-md text-sm text-primary-text hover:underline',
                 FOCUS_RING,
             )}
         >

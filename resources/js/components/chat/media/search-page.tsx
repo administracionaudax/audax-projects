@@ -106,7 +106,7 @@ function ResultItem({
             <Link
                 href={result.url}
                 className={cn(
-                    'grid gap-1.5 rounded-[3px] border bg-card p-3 hover:bg-accent',
+                    'grid gap-1.5 rounded-md border bg-card p-3 hover:bg-accent',
                     FOCUS_RING,
                 )}
                 data-test="chat-search-result"
@@ -129,7 +129,7 @@ function ResultItem({
                             {formatDateTime(result.created_at)}
                         </time>
                     ) : null}
-                    <span className="inline-flex items-center gap-1 rounded-[3px] bg-neutral-soft px-1.5 py-0.5 text-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-neutral-soft px-1.5 py-0.5 text-foreground">
                         <match.icon
                             aria-hidden="true"
                             className="size-3 text-muted-foreground"
@@ -323,7 +323,7 @@ export default function ChatSearchPage({
                                     replace
                                     aria-current={active ? 'true' : undefined}
                                     className={cn(
-                                        'rounded-[3px] border px-2.5 py-1 text-sm',
+                                        'rounded-md border px-2.5 py-1 text-sm',
                                         active
                                             ? 'border-primary bg-accent text-foreground'
                                             : 'text-muted-foreground hover:bg-accent hover:text-foreground',
@@ -336,7 +336,7 @@ export default function ChatSearchPage({
                         })}
 
                         {conversation ? (
-                            <span className="inline-flex items-center gap-1 rounded-[3px] bg-info-soft py-0.5 pr-0.5 pl-2 text-sm text-foreground">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-info-soft py-0.5 pr-0.5 pl-2 text-sm text-foreground">
                                 {t('chat_media.search.in_conversation', {
                                     name: conversation.label,
                                 })}
@@ -353,7 +353,7 @@ export default function ChatSearchPage({
                                         'chat_media.search.all_conversations',
                                     )}
                                     className={cn(
-                                        'rounded-[3px] p-1 hover:bg-accent',
+                                        'rounded-md p-1 hover:bg-accent',
                                         FOCUS_RING,
                                     )}
                                 >

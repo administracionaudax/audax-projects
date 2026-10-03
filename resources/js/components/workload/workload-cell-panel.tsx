@@ -132,9 +132,9 @@ function PanelSkeleton() {
             role="status"
             aria-label={t('workload_panel.loading')}
         >
-            <Skeleton className="h-14 rounded-[3px]" />
+            <Skeleton className="h-14 rounded-md" />
             {[0, 1, 2].map((item) => (
-                <Skeleton key={item} className="h-28 rounded-[3px]" />
+                <Skeleton key={item} className="h-28 rounded-md" />
             ))}
         </div>
     );
@@ -352,7 +352,7 @@ function TaskCard({
                     <Link
                         href={urls.task(task.project.id, task.id)}
                         className={cn(
-                            'inline-flex items-center gap-1 rounded-[3px] hover:underline',
+                            'inline-flex items-center gap-1 rounded-md hover:underline',
                             FOCUS_RING,
                         )}
                     >
@@ -366,7 +366,7 @@ function TaskCard({
                         </span>
                     </Link>
                 </div>
-                <p className="tabular shrink-0 rounded-[3px] bg-muted px-1.5 py-0.5 text-sm">
+                <p className="tabular shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-sm">
                     {t(
                         week
                             ? 'workload_panel.minutes_week'

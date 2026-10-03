@@ -52,7 +52,7 @@ export function R2BankList({
                                         bank.id,
                                     )}
                                     className={cn(
-                                        'rounded-[3px] text-primary-text hover:underline',
+                                        'rounded-md text-primary-text hover:underline',
                                         FOCUS_RING,
                                     )}
                                 >
@@ -157,14 +157,14 @@ export function R2RenewalHistory({
                                         className="size-4 text-muted-foreground"
                                     />
                                 ) : null}
-                                <span className="grid gap-1 rounded-[3px] bg-muted px-2.5 py-1.5 text-sm">
+                                <span className="grid gap-1 rounded-md bg-muted px-2.5 py-1.5 text-sm">
                                     <Link
                                         href={urls.hourBank(
                                             bank.project.id,
                                             bank.id,
                                         )}
                                         className={cn(
-                                            'rounded-[3px] text-primary-text hover:underline',
+                                            'rounded-md text-primary-text hover:underline',
                                             FOCUS_RING,
                                         )}
                                     >

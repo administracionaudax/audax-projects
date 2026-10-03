@@ -18,7 +18,7 @@ const DAILY = dailyHours();
 
 function ChartCard({ children }: { children: ReactNode }) {
     return (
-        <div className="min-w-0 rounded-[3px] border bg-card p-4 sm:p-6">
+        <div className="min-w-0 rounded-md border bg-card p-4 sm:p-6">
             {children}
         </div>
     );

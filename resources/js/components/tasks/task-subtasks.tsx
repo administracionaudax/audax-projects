@@ -37,7 +37,7 @@ export function TaskSubtasks({
                 </p>
             ) : (
                 <ul
-                    className="divide-y rounded-[3px] border"
+                    className="divide-y rounded-md border"
                     data-test="subtask-list"
                 >
                     {panel.subtasks.map((subtask) => {
@@ -81,7 +81,7 @@ export function TaskSubtasks({
                                     type="button"
                                     onClick={() => onOpen(subtask.id)}
                                     className={cn(
-                                        'min-w-0 flex-1 truncate rounded-[3px] text-left hover:underline',
+                                        'min-w-0 flex-1 truncate rounded-md text-left hover:underline',
                                         done &&
                                             'text-muted-foreground line-through',
                                         FOCUS_RING,

@@ -22,7 +22,7 @@ export function ThemeSwitcher() {
         <div
             role="group"
             aria-label="Tema"
-            className="inline-flex gap-0.5 rounded-[3px] border bg-background p-0.5"
+            className="inline-flex gap-0.5 rounded-md border bg-background p-0.5"
         >
             {THEMES.map(({ value, label, icon: Icon }) => (
                 <button
@@ -31,7 +31,7 @@ export function ThemeSwitcher() {
                     aria-pressed={appearance === value}
                     onClick={() => updateAppearance(value)}
                     className={cn(
-                        'inline-flex h-8 items-center gap-1.5 rounded-[2px] px-2.5 text-sm transition-colors',
+                        'inline-flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-sm transition-colors',
                         FOCUS_RING,
                         appearance === value
                             ? 'bg-accent font-medium text-accent-foreground'
@@ -54,7 +54,7 @@ function SectionLinks({ className }: { className?: string }) {
                     <a
                         href={`#${section.id}`}
                         className={cn(
-                            'block rounded-[3px] px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground',
+                            'block rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground',
                             FOCUS_RING,
                         )}
                     >
@@ -76,7 +76,7 @@ export default function StyleguideLayout({
         <div className="min-h-svh bg-background text-foreground">
             <a
                 href="#contenido"
-                className="sr-only z-50 rounded-[3px] bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+                className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
             >
                 Saltar al contenido
             </a>
@@ -94,7 +94,7 @@ export default function StyleguideLayout({
             </header>
 
             <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10 lg:py-10">
-                <details className="group rounded-[3px] border lg:hidden">
+                <details className="group rounded-md border lg:hidden">
                     <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium">
                         Secciones
                         <ChevronDown

@@ -65,7 +65,7 @@ export function GanttHeader({
             ))}
             {showToday ? (
                 <span
-                    className="absolute z-10 -translate-x-1/2 rounded-[3px] bg-primary px-1 text-[10px] leading-4 text-primary-foreground"
+                    className="absolute z-10 -translate-x-1/2 rounded-md bg-primary px-1 text-[10px] leading-4 text-primary-foreground"
                     style={{ left: todayX, top: HEADER_TIER_HEIGHT + 4 }}
                 >
                     {t('gantt.today')}

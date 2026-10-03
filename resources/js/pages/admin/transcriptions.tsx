@@ -133,7 +133,7 @@ function Conversation({ row }: { row: AdminTranscriptionRow }) {
                     <Link
                         href={row.url}
                         className={cn(
-                            'rounded-[3px] text-primary-text hover:underline',
+                            'rounded-md text-primary-text hover:underline',
                             FOCUS_RING,
                         )}
                     >
@@ -299,7 +299,7 @@ export default function AdminTranscriptions({
                                             className="size-4"
                                         />
                                         {t(filter.label)}
-                                        <span className="tabular rounded-[3px] bg-muted px-1.5 text-xs text-muted-foreground">
+                                        <span className="tabular rounded-md bg-muted px-1.5 text-xs text-muted-foreground">
                                             {count}
                                         </span>
                                     </Link>
@@ -327,7 +327,7 @@ export default function AdminTranscriptions({
                 ) : (
                     <div
                         className={cn(
-                            'overflow-x-auto rounded-[3px] border',
+                            'overflow-x-auto rounded-md border',
                             FOCUS_RING,
                         )}
                         role="region"
@@ -445,7 +445,7 @@ export default function AdminTranscriptions({
                                                     <details>
                                                         <summary
                                                             className={cn(
-                                                                'cursor-pointer truncate rounded-[3px]',
+                                                                'cursor-pointer truncate rounded-md',
                                                                 FOCUS_RING,
                                                             )}
                                                         >
@@ -505,7 +505,7 @@ export default function AdminTranscriptions({
                                 href={pagination.prev_url}
                                 preserveScroll
                                 className={cn(
-                                    'rounded-[3px] text-primary-text underline',
+                                    'rounded-md text-primary-text underline',
                                     FOCUS_RING,
                                 )}
                             >
@@ -525,7 +525,7 @@ export default function AdminTranscriptions({
                                 href={pagination.next_url}
                                 preserveScroll
                                 className={cn(
-                                    'rounded-[3px] text-primary-text underline',
+                                    'rounded-md text-primary-text underline',
                                     FOCUS_RING,
                                 )}
                             >

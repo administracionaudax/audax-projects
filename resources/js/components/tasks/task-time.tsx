@@ -48,7 +48,7 @@ export function TaskTime({ panel }: { panel: TaskPanelData }) {
                 </p>
             ) : (
                 <ul
-                    className="divide-y rounded-[3px] border"
+                    className="divide-y rounded-md border"
                     aria-label={t('task_time.list')}
                 >
                     {panel.time_entries.map((entry) => (

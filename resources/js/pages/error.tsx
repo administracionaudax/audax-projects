@@ -56,7 +56,7 @@ export default function ErrorPage({ status }: { status: number }) {
                 <header className="px-6 py-5 sm:px-10">
                     <Link
                         href="/"
-                        className="inline-flex rounded-[3px]"
+                        className="inline-flex rounded-md"
                         aria-label={t('brand.home_link')}
                     >
                         <AudaxWordmark className="h-5" />

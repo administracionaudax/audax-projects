@@ -118,7 +118,7 @@ function CardBody({
                     type="button"
                     onClick={() => onOpen?.(task.id)}
                     className={cn(
-                        'min-w-0 flex-1 rounded-[3px] text-left text-sm break-words hover:underline',
+                        'min-w-0 flex-1 rounded-md text-left text-sm break-words hover:underline',
                         task.is_completed &&
                             'text-muted-foreground line-through',
                         FOCUS_RING,
@@ -204,7 +204,7 @@ function SortableCard({
                 transition,
             }}
             className={cn(
-                'rounded-[3px] border bg-card',
+                'rounded-md border bg-card',
                 isDragging && 'opacity-40',
             )}
             data-test="kanban-card"
@@ -226,7 +226,7 @@ function SortableCard({
                                 task: task.title,
                             })}
                             className={cn(
-                                '-ml-1 cursor-grab touch-none rounded-[3px] p-0.5 text-muted-foreground hover:text-foreground',
+                                '-ml-1 cursor-grab touch-none rounded-md p-0.5 text-muted-foreground hover:text-foreground',
                                 FOCUS_RING,
                             )}
                             data-test="kanban-handle"
@@ -341,7 +341,7 @@ function Column({
     return (
         <section
             aria-labelledby={headingId}
-            className="flex w-72 shrink-0 flex-col gap-3 rounded-[3px] border bg-muted p-3"
+            className="flex w-72 shrink-0 flex-col gap-3 rounded-md border bg-muted p-3"
             data-test="kanban-column"
             data-kanban-column={status.id}
         >
@@ -374,7 +374,7 @@ function Column({
                 <ul
                     ref={setNodeRef}
                     className={cn(
-                        'flex min-h-16 flex-col gap-2 rounded-[3px]',
+                        'flex min-h-16 flex-col gap-2 rounded-md',
                         isOver && 'bg-accent',
                     )}
                     aria-label={t('task_board.column_tasks', {
@@ -410,7 +410,7 @@ function Column({
                         type="button"
                         onClick={onShowCompleted}
                         className={cn(
-                            'rounded-[3px] text-primary-text underline',
+                            'rounded-md text-primary-text underline',
                             FOCUS_RING,
                         )}
                     >
@@ -734,7 +734,7 @@ export function TaskKanban({
             <DragOverlay>
                 {active ? (
                     <div
-                        className="w-72 rounded-[3px] border bg-card shadow-md"
+                        className="w-72 rounded-md border bg-card shadow-md"
                         data-kanban-overlay={active.id}
                     >
                         <CardBody task={active} />

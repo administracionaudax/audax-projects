@@ -158,7 +158,7 @@ function DayHeader({
             <span
                 aria-hidden="true"
                 className={cn(
-                    'tabular inline-flex size-6 items-center justify-center rounded-[3px]',
+                    'tabular inline-flex size-6 items-center justify-center rounded-md',
                     isToday && 'bg-primary font-medium text-primary-foreground',
                 )}
             >
@@ -196,7 +196,7 @@ function MoreTasks({
                 <button
                     type="button"
                     className={cn(
-                        'w-full rounded-[3px] px-1.5 py-0.5 text-left text-xs text-primary-text hover:underline',
+                        'w-full rounded-md px-1.5 py-0.5 text-left text-xs text-primary-text hover:underline',
                         FOCUS_RING,
                     )}
                     aria-label={t('planning.calendar.more_label', {
@@ -285,10 +285,10 @@ function SpanButton({
                 'flex min-w-0 items-center gap-1 border border-info bg-info-soft px-1.5 py-0.5 text-left text-xs text-foreground hover:underline',
                 span.continuesBefore
                     ? 'rounded-l-none border-l-0'
-                    : 'rounded-l-[3px]',
+                    : 'rounded-l-md',
                 span.continuesAfter
                     ? 'rounded-r-none border-r-0'
-                    : 'rounded-r-[3px]',
+                    : 'rounded-r-md',
                 FOCUS_RING,
                 className,
             )}
@@ -575,7 +575,7 @@ function WeekGrid({
                                 className={cn(
                                     'tabular',
                                     date === context.today &&
-                                        'rounded-[3px] bg-primary px-1 text-primary-foreground',
+                                        'rounded-md bg-primary px-1 text-primary-foreground',
                                 )}
                             >
                                 {formatDate(date).slice(0, 5)}
@@ -680,7 +680,7 @@ function UndatedList({
     return (
         <section
             aria-labelledby={headingId}
-            className="grid content-start gap-2 rounded-[3px] border bg-card p-3"
+            className="grid content-start gap-2 rounded-md border bg-card p-3"
             data-test="calendar-undated"
         >
             <h3 id={headingId} className="text-sm font-medium">
@@ -1106,7 +1106,7 @@ export function TaskCalendar({
                     <div
                         ref={regionRef}
                         className={cn(
-                            'min-w-0 overflow-x-auto rounded-[3px] transition-opacity',
+                            'min-w-0 overflow-x-auto rounded-md transition-opacity',
                             loading && 'opacity-60',
                             FOCUS_RING,
                         )}
@@ -1141,7 +1141,7 @@ export function TaskCalendar({
                 </div>
                 <DragOverlay>
                     {dragging ? (
-                        <div className="w-40 rounded-[3px] border bg-card px-1.5 py-0.5 text-xs shadow-md">
+                        <div className="w-40 rounded-md border bg-card px-1.5 py-0.5 text-xs shadow-md">
                             <span className="block truncate">
                                 {dragging.title}
                             </span>

@@ -141,7 +141,7 @@ function TaskList({
                             <button
                                 type="button"
                                 onClick={() => onOpen(task)}
-                                className="max-w-full truncate rounded-[3px] text-left text-sm text-foreground underline-offset-2 hover:underline"
+                                className="max-w-full truncate rounded-md text-left text-sm text-foreground underline-offset-2 hover:underline"
                                 data-gantt-focus={
                                     assignable ? undefined : task.id
                                 }

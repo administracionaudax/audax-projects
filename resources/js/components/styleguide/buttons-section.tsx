@@ -17,7 +17,7 @@ export function ButtonsSection() {
         <Section
             id="botones"
             title="Botones"
-            description="Radio de 3 px, sin sombra. Texto en infinitivo: «Guardar», «Imputar horas», «Iniciar sesión»."
+            description="Esquinas rectas y sin sombra (hoja de estilos de Audax). Texto en infinitivo: «Guardar», «Imputar horas», «Iniciar sesión»."
         >
             <Specimen title="Variantes">
                 <div className="flex flex-wrap items-center gap-3">

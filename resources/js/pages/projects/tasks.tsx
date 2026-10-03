@@ -240,7 +240,7 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
                                         completed: true,
                                     })
                                 }
-                                className="rounded-[3px] text-primary-text underline"
+                                className="rounded-md text-primary-text underline"
                             >
                                 {t('task_board.show_completed')}
                             </button>

@@ -359,7 +359,7 @@ export function Composer({
     return (
         <div className="grid gap-1.5" data-test="chat-composer">
             {replyTo ? (
-                <div className="flex items-start gap-2 rounded-[3px] border-l-2 border-primary bg-muted px-2 py-1.5 text-sm">
+                <div className="flex items-start gap-2 rounded-md border-l-2 border-primary bg-muted px-2 py-1.5 text-sm">
                     <Reply
                         aria-hidden="true"
                         className="mt-0.5 size-4 shrink-0 text-muted-foreground"
@@ -393,7 +393,7 @@ export function Composer({
                     role="listbox"
                     aria-label={t('chat.mention.list')}
                     hidden={!menuOpen}
-                    className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-72 max-w-full overflow-y-auto rounded-[3px] border bg-popover p-1 text-popover-foreground"
+                    className="absolute bottom-full left-0 z-20 mb-1 max-h-64 w-72 max-w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground"
                     data-test={menuOpen ? 'chat-mention-list' : undefined}
                 >
                     {candidates.map((candidate, index) => (
@@ -412,7 +412,7 @@ export function Composer({
                             }}
                             onMouseEnter={() => setActive(index)}
                             className={cn(
-                                'flex cursor-pointer items-center gap-2 rounded-[3px] px-2 py-1.5 text-sm',
+                                'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm',
                                 index === active && 'bg-accent',
                             )}
                         >
@@ -458,7 +458,7 @@ export function Composer({
 
                 <div
                     className={cn(
-                        'flex flex-wrap items-end gap-1 rounded-[3px] border border-input bg-background p-1 focus-within:border-ring',
+                        'flex flex-wrap items-end gap-1 rounded-md border border-input bg-background p-1 focus-within:border-ring',
                         (tooLong || error) && 'border-destructive',
                     )}
                 >

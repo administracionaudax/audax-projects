@@ -461,7 +461,7 @@ export function ConversationView({
 
                 <footer className="border-t px-3 pt-2 pb-3 md:px-4">
                     {readOnly ? (
-                        <p className="flex items-center gap-2 rounded-[3px] bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        <p className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
                             <Lock
                                 aria-hidden="true"
                                 className="size-4 shrink-0"

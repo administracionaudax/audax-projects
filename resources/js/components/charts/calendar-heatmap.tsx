@@ -339,7 +339,7 @@ export function CalendarHeatmap({
                                         key={cell.date}
                                         data-index={cell.index}
                                         className={cn(
-                                            'aspect-square rounded-[2px]',
+                                            'aspect-square rounded-sm',
                                             active?.index === cell.index &&
                                                 'ring-2 ring-foreground ring-offset-1 ring-offset-card',
                                         )}
@@ -390,7 +390,7 @@ export function CalendarHeatmap({
                     <li key={label} className="flex items-center gap-1.5">
                         <span
                             aria-hidden="true"
-                            className="size-3 rounded-[2px]"
+                            className="size-3 rounded-sm"
                             style={{ backgroundColor: sequentialColor(step) }}
                         />
                         {label}

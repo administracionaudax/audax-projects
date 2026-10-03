@@ -63,7 +63,7 @@ export function HourBanksSection() {
                     return (
                         <Card
                             key={bank.id}
-                            className="gap-4 rounded-[3px] py-5 shadow-none"
+                            className="gap-4 rounded-md py-5 shadow-none"
                         >
                             <CardHeader className="px-5">
                                 <CardTitle className="text-base font-medium">

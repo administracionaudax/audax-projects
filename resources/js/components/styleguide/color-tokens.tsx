@@ -366,7 +366,7 @@ function ThemePanel({
                             (step) => (
                                 <span
                                     key={step}
-                                    className="size-7 rounded-[3px] border"
+                                    className="size-7 rounded-md border"
                                     style={{
                                         backgroundColor: sequentialColor(step),
                                     }}
@@ -379,7 +379,7 @@ function ThemePanel({
                             ),
                         )}
                     </div>
-                    <div className="mt-3 flex h-14 items-center rounded-[3px] px-4 text-sm text-white bg-brand-gradient">
+                    <div className="mt-3 flex h-14 items-center rounded-md px-4 text-sm text-white bg-brand-gradient">
                         bg-brand-gradient · solo login, portal y estados vacíos
                         grandes
                     </div>
@@ -407,14 +407,14 @@ function TokenRow({
         <li className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]">
             <span
                 aria-hidden="true"
-                className="flex size-10 items-center justify-center rounded-[3px] border text-sm"
+                className="flex size-10 items-center justify-center rounded-md border text-sm"
                 style={{ backgroundColor: `var(--${surfaceName})` }}
             >
                 {spec.role === 'text' || spec.role === 'surface' ? (
                     <span style={{ color: `var(--${inkName})` }}>Aa</span>
                 ) : (
                     <span
-                        className="h-4 w-5 rounded-[2px]"
+                        className="h-4 w-5 rounded-sm"
                         style={{ backgroundColor: `var(--${spec.token})` }}
                     />
                 )}
@@ -443,7 +443,7 @@ function ContrastChip({ result }: { result: Result | null }) {
 
     if (result.threshold === null) {
         return (
-            <span className="inline-flex items-center gap-1 rounded-[3px] bg-neutral-soft px-1.5 py-0.5 text-xs text-foreground">
+            <span className="inline-flex items-center gap-1 rounded-md bg-neutral-soft px-1.5 py-0.5 text-xs text-foreground">
                 <Minus
                     aria-hidden="true"
                     className="size-3.5 text-muted-foreground"
@@ -461,7 +461,7 @@ function ContrastChip({ result }: { result: Result | null }) {
             data-contrast={pass ? 'pass' : 'fail'}
             title={`${ratio} ${result.over}; mínimo AA ${formatRatio(result.threshold)}`}
             className={cn(
-                'inline-flex items-center gap-1 rounded-[3px] px-1.5 py-0.5 text-xs text-foreground',
+                'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-foreground',
                 pass ? 'bg-success-soft' : 'bg-danger-soft',
             )}
         >

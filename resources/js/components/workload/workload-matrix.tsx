@@ -205,7 +205,7 @@ export function WorkloadMatrix({
                                     >
                                         {heading.bottom}
                                         {column.today ? (
-                                            <span className="rounded-[3px] bg-primary px-1 text-[0.65rem] leading-4 text-primary-foreground">
+                                            <span className="rounded-md bg-primary px-1 text-[0.65rem] leading-4 text-primary-foreground">
                                                 {t('workload_matrix.today')}
                                             </span>
                                         ) : null}
@@ -280,7 +280,7 @@ export function WorkloadMatrix({
                                                     {person.name}
                                                 </span>{' '}
                                                 {person.is_me ? (
-                                                    <span className="rounded-[3px] border px-1 text-[0.65rem] leading-4 text-muted-foreground">
+                                                    <span className="rounded-md border px-1 text-[0.65rem] leading-4 text-muted-foreground">
                                                         {t(
                                                             'workload_matrix.me',
                                                         )}
@@ -474,7 +474,7 @@ function CellButton({
             onKeyDown={(event) => onKeyDown(event, position)}
             onClick={onOpen}
             className={cn(
-                'relative block w-full rounded-[3px] text-left transition-shadow hover:ring-2 hover:ring-border',
+                'relative block w-full rounded-md text-left transition-shadow hover:ring-2 hover:ring-border',
                 FOCUS_RING,
                 open && 'ring-2 ring-ring',
             )}

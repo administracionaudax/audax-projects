@@ -94,7 +94,7 @@ export function HourBanksOverviewTable({
                                             bank.id,
                                         )}
                                         className={cn(
-                                            'rounded-[3px] text-primary-text hover:underline',
+                                            'rounded-md text-primary-text hover:underline',
                                             FOCUS_RING,
                                         )}
                                     >

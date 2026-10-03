@@ -105,10 +105,10 @@ function AttachmentItem({ attachment }: { attachment: TaskAttachment }) {
                     src={attachment.thumbnail_url}
                     alt=""
                     loading="lazy"
-                    className="size-10 shrink-0 rounded-[3px] border object-cover"
+                    className="size-10 shrink-0 rounded-md border object-cover"
                 />
             ) : (
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-[3px] border bg-muted">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
                     <Icon
                         aria-hidden="true"
                         className="size-5 text-muted-foreground"
@@ -121,7 +121,7 @@ function AttachmentItem({ attachment }: { attachment: TaskAttachment }) {
                     target={attachment.is_image ? '_blank' : undefined}
                     rel="noopener noreferrer"
                     className={cn(
-                        'block truncate rounded-[3px] text-sm text-primary-text hover:underline',
+                        'block truncate rounded-md text-sm text-primary-text hover:underline',
                         FOCUS_RING,
                     )}
                     download={

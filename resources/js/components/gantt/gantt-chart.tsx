@@ -1009,7 +1009,7 @@ export function GanttChart({
                                         type="button"
                                         tabIndex={-1}
                                         onClick={() => onOpen(row.task)}
-                                        className="min-w-0 flex-1 truncate rounded-[3px] text-left hover:underline"
+                                        className="min-w-0 flex-1 truncate rounded-md text-left hover:underline"
                                         title={row.task.title}
                                     >
                                         {row.task.title}
@@ -1301,7 +1301,7 @@ function ProjectSidebarRow({
                     <Link
                         href={href}
                         className={cn(
-                            'block truncate rounded-[3px] font-medium text-foreground hover:underline',
+                            'block truncate rounded-md font-medium text-foreground hover:underline',
                             FOCUS_RING,
                         )}
                         title={`${project.code} · ${project.name}`}

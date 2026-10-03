@@ -96,7 +96,7 @@ export function HourBankMeter({
                 </p>
                 <span
                     className={cn(
-                        'inline-flex items-center gap-1.5 rounded-[3px] px-2 py-0.5 text-xs font-medium text-foreground',
+                        'inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium text-foreground',
                         meta.surface,
                     )}
                 >
@@ -115,20 +115,19 @@ export function HourBankMeter({
                 aria-valuemax={f.total}
                 aria-valuenow={inside}
                 aria-valuetext={valueText}
-                className="relative h-2.5 w-full rounded-[3px] bg-neutral-soft"
+                className="relative h-2.5 w-full rounded-md bg-neutral-soft"
             >
                 <div
                     className={cn(
-                        'absolute inset-y-0 left-0 rounded-l-[3px]',
+                        'absolute inset-y-0 left-0 rounded-l-md',
                         meta.bar,
-                        (f.overage === 0 || inside < f.total) &&
-                            'rounded-r-[3px]',
+                        (f.overage === 0 || inside < f.total) && 'rounded-r-md',
                     )}
                     style={{ width: pct(inside) }}
                 />
                 {f.overage > 0 ? (
                     <div
-                        className="absolute inset-y-0 rounded-r-[3px] border-l-2 border-card bg-danger"
+                        className="absolute inset-y-0 rounded-r-md border-l-2 border-card bg-danger"
                         style={{ left: pct(f.total), width: pct(f.overage) }}
                     />
                 ) : null}
@@ -177,7 +176,7 @@ export function HourBankMeter({
             {showCommitted &&
             f.shortfall > 0 &&
             (f.overage === 0 || f.remaining > 0) ? (
-                <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">
+                <p className="flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground">
                     <TriangleAlert
                         aria-hidden="true"
                         className="mt-0.5 size-4 shrink-0 text-warning"

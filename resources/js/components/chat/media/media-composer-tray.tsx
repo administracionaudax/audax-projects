@@ -29,10 +29,10 @@ function Preview({ file }: { file: File }) {
         <img
             src={url}
             alt=""
-            className="size-10 shrink-0 rounded-[3px] border object-cover"
+            className="size-10 shrink-0 rounded-md border object-cover"
         />
     ) : (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[3px] border bg-muted">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
             <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
         </span>
     );
@@ -83,7 +83,7 @@ export function MediaComposerTray({
                     {files.map((file, index) => (
                         <li
                             key={`${file.name}-${file.size}-${index}`}
-                            className="flex max-w-full min-w-0 items-center gap-2 rounded-[3px] border bg-card py-1 pr-1 pl-1"
+                            className="flex max-w-full min-w-0 items-center gap-2 rounded-md border bg-card py-1 pr-1 pl-1"
                             data-test="chat-pending-file"
                         >
                             <Preview file={file} />
@@ -154,7 +154,7 @@ export function MediaComposerTray({
             {error !== null && !sending ? (
                 <div
                     role="alert"
-                    className="flex flex-wrap items-center gap-2 rounded-[3px] bg-danger-soft px-3 py-2 text-sm text-foreground"
+                    className="flex flex-wrap items-center gap-2 rounded-md bg-danger-soft px-3 py-2 text-sm text-foreground"
                 >
                     <CircleAlert
                         aria-hidden="true"

@@ -97,7 +97,7 @@ export function R2BillingTable({
                                 <Link
                                     href={urls.project(row.project.id)}
                                     className={cn(
-                                        'rounded-[3px] hover:underline',
+                                        'rounded-md hover:underline',
                                         FOCUS_RING,
                                     )}
                                 >
@@ -121,7 +121,7 @@ export function R2BillingTable({
                                                 row.bank.id,
                                             )}
                                             className={cn(
-                                                'rounded-[3px] text-primary-text hover:underline',
+                                                'rounded-md text-primary-text hover:underline',
                                                 FOCUS_RING,
                                             )}
                                         >

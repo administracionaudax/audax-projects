@@ -109,8 +109,8 @@ export function MoveTaskDialog({
                         aria-label={t('common.loading')}
                         className="grid gap-2"
                     >
-                        <Skeleton className="h-9 w-full rounded-[3px]" />
-                        <Skeleton className="h-9 w-full rounded-[3px]" />
+                        <Skeleton className="h-9 w-full rounded-md" />
+                        <Skeleton className="h-9 w-full rounded-md" />
                     </div>
                 ) : targets.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -186,7 +186,7 @@ export function MoveTaskDialog({
                                 )}
                             </div>
                         ) : null}
-                        <p className="flex items-start gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-sm text-foreground">
+                        <p className="flex items-start gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground">
                             <TriangleAlert
                                 aria-hidden="true"
                                 className="mt-0.5 size-4 shrink-0 text-warning"

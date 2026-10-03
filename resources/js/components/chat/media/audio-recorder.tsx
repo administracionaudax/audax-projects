@@ -168,7 +168,7 @@ export function AudioRecorder({
                 <div
                     role="group"
                     aria-label={t('chat_media.recorder.group')}
-                    className="flex min-w-0 flex-wrap items-center gap-2 rounded-[3px] border bg-card px-2 py-1"
+                    className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border bg-card px-2 py-1"
                     onKeyDown={(event) => {
                         if (event.key === 'Escape') {
                             event.preventDefault();
@@ -194,7 +194,7 @@ export function AudioRecorder({
                                 aria-hidden="true"
                             >
                                 {status === 'recording' ? (
-                                    <span className="size-2.5 animate-pulse rounded-[3px] bg-danger" />
+                                    <span className="size-2.5 animate-pulse rounded-md bg-danger" />
                                 ) : (
                                     <Square className="size-3 text-muted-foreground" />
                                 )}
@@ -269,7 +269,7 @@ export function AudioRecorder({
                     <button
                         type="button"
                         className={cn(
-                            'rounded-[3px] text-primary-text underline',
+                            'rounded-md text-primary-text underline',
                             FOCUS_RING,
                         )}
                         onClick={recorder.dismissError}

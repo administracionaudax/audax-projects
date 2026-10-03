@@ -31,7 +31,7 @@ function MyTaskRow({
                 <Link
                     href={urls.task(task.project.id, task.id)}
                     className={cn(
-                        'block truncate rounded-[3px] text-sm font-medium hover:underline',
+                        'block truncate rounded-md text-sm font-medium hover:underline',
                         FOCUS_RING,
                     )}
                 >

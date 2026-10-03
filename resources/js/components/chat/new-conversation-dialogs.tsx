@@ -303,7 +303,7 @@ export function NewGroupDialog({
                         ) : (
                             <ul
                                 id={peopleId}
-                                className="max-h-64 overflow-y-auto rounded-[3px] border"
+                                className="max-h-64 overflow-y-auto rounded-md border"
                             >
                                 {visible.length === 0 ? (
                                     <li className="p-3 text-sm text-muted-foreground">

@@ -249,9 +249,114 @@ describe('degradado de marca con velo', () => {
         expect(w.ratio, at(w)).toBeGreaterThanOrEqual(3);
     });
 
-    it('bg-brand-gradient pinta el velo encima del degradado', () => {
+    it('bg-brand-gradient pinta el velo encima de la imagen de marca y del degradado de respaldo', () => {
         expect(css).toMatch(
-            /@utility bg-brand-gradient\s*\{\s*background:\s*var\(--brand-veil\),\s*var\(--brand-gradient\);/,
+            /@utility bg-brand-gradient\s*\{\s*background:\s*var\(--brand-veil\),\s*url\('\/brand\/fondo-marca\.jpg'\)[^,;]*,\s*var\(--brand-gradient\);/,
         );
+    });
+});
+
+/**
+ * Imagen de marca (D-137): la portada original de la hoja de Audax, con background-size: cover.
+ * tests/fixtures/brand-cover-grid.json la guarda reducida a 96 × 54 píxeles (media de cada zona)
+ * junto con el SHA-256 del JPEG, así que si cambia la imagen hay que regenerar la rejilla. Se
+ * comprueban los recortes que hace `cover` en una caja apaisada (cabecera del portal), una de
+ * 16:9 y una vertical (login en el móvil), con el velo aplicado a la altura de cada caja.
+ */
+type Cover = {
+    sha256: string;
+    width: number;
+    height: number;
+    pixels: Rgb[];
+};
+
+const cover = JSON.parse(
+    readFileSync(
+        new URL('../fixtures/brand-cover-grid.json', import.meta.url),
+        'utf8',
+    ),
+) as Cover;
+
+/** Recorte central de `cover` para una caja de proporción `ratio` (ancho / alto). */
+function coverCrop(ratio: number): Rgb[][] {
+    const imageRatio = cover.width / cover.height;
+    const [w, h] =
+        ratio > imageRatio
+            ? [cover.width, Math.max(2, Math.round(cover.width / ratio))]
+            : [Math.max(2, Math.round(cover.height * ratio)), cover.height];
+    const [x0, y0] = [
+        Math.floor((cover.width - w) / 2),
+        Math.floor((cover.height - h) / 2),
+    ];
+    const rows: Rgb[][] = [];
+
+    for (let y = 0; y < h; y++) {
+        const row: Rgb[] = [];
+
+        for (let x = 0; x < w; x++) {
+            row.push(cover.pixels[(y0 + y) * cover.width + x0 + x]);
+        }
+
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+function worstOnCover(color: Rgba, ratio: number): number {
+    const rows = coverCrop(ratio);
+    let result = Infinity;
+
+    rows.forEach((row, j) => {
+        const y = (j + 0.5) / rows.length;
+        row.forEach((pixel) => {
+            const surface = over(veil(0, y), pixel);
+            result = Math.min(result, contrast(over(color, surface), surface));
+        });
+    });
+
+    return result;
+}
+
+describe('imagen de marca con velo', () => {
+    it('la rejilla corresponde a la imagen publicada', async () => {
+        const { createHash } = await import('node:crypto');
+        const jpeg = readFileSync(
+            new URL('../../public/brand/fondo-marca.jpg', import.meta.url),
+        );
+        expect(createHash('sha256').update(jpeg).digest('hex')).toBe(
+            cover.sha256,
+        );
+        expect(cover.pixels).toHaveLength(cover.width * cover.height);
+    });
+
+    const boxes: [string, number][] = [
+        ['apaisada (cabecera del portal, 6:1)', 6],
+        ['16:9', 16 / 9],
+        ['vertical (login en el móvil, 375 × 812)', 375 / 812],
+    ];
+
+    it.each(boxes)('texto blanco ≥ 4,5:1 en caja %s', (_label, ratio) => {
+        expect(worstOnCover([255, 255, 255, 1], ratio)).toBeGreaterThanOrEqual(
+            4.5,
+        );
+    });
+
+    it.each(boxes)(
+        'texto secundario y palabra clave ≥ 4,5:1 en caja %s',
+        (_label, ratio) => {
+            for (const name of ['on-gradient-muted', 'on-gradient-keyword']) {
+                expect(
+                    worstOnCover(parseColor(variable(':root', name)), ratio),
+                    name,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        },
+    );
+
+    it.each(boxes)('anillo de foco ≥ 3:1 en caja %s', (_label, ratio) => {
+        expect(
+            worstOnCover(parseColor(variable('.dark', 'ring')), ratio),
+        ).toBeGreaterThanOrEqual(3);
     });
 });

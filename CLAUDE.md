@@ -20,6 +20,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 5. Portal | ✅ **Cerrada el 02/10/2026** (etiqueta `fase-5-cerrada`) |
 | 6. Chat | ✅ **Cerrada el 03/10/2026** (etiqueta `fase-6-cerrada`) |
 | 7. Pulido | ✅ **Cerrada el 03/10/2026** (etiqueta `fase-7-cerrada`) |
+| 8. Puesta en marcha | En curso: `docs/PLAN-FASE-8.md` (colaboradores externos, importación de ClickUp y hoja de estilos) |
 
 ## Modo autónomo (D-027)
 Desde la Fase 1 se trabaja fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md` y las decisiones de producto se registran en `docs/DECISIONES.md`. Solo se contacta al propietario para SMTP, lista de empleados y texto RGPD (al final), o por un imprevisto del servidor que no se pueda revertir.
@@ -65,9 +66,9 @@ ssh audax "bash -s -- '<T0>' \"\$(cat /root/audax-backup/ULTIMO)\"" < scripts/se
   - el código, las tablas y las variables, en inglés,
   - las URLs visibles en español y los nombres de ruta en inglés.
 - **Datos:** horas en **minutos enteros**; importes en `decimal` (nunca float); instantes en UTC y mostrados en `Europe/Madrid` (`resources/js/lib/format.ts`); la semana empieza en lunes.
-- **Tema:**
-  - solo tokens de `resources/css/app.css` (AA verificado por test) y radio de 3 px,
-  - DM Sans 400/500, nunca negritas,
+- **Tema** (hoja de estilos de Audax v1.2, D-137):
+  - solo tokens de `resources/css/app.css` (AA verificado por test); estilo plano, sin esquinas redondeadas ni sombras, y nunca radios escritos a mano,
+  - DM Sans 400/500 y 600 solo para negritas y cifras, nunca 700,
   - degradado de marca solo en el login, la cabecera del portal y los estados vacíos grandes,
   - gráficas con `--chart-1..6` en orden fijo (D-012).
 - **Commits:** Conventional Commits en español, pequeños. Una rama por fase.

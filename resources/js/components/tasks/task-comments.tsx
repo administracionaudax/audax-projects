@@ -90,7 +90,7 @@ function Reactions({
                     )}
                     title={reaction.users.join(', ')}
                     className={cn(
-                        'inline-flex items-center gap-1 rounded-[3px] border px-1.5 py-0.5 text-xs',
+                        'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs',
                         reaction.reacted
                             ? 'border-primary bg-accent'
                             : 'bg-background hover:bg-accent',
@@ -128,7 +128,7 @@ function Reactions({
                                 emoji,
                             })}
                             className={cn(
-                                'rounded-[3px] p-1.5 text-lg leading-none hover:bg-accent',
+                                'rounded-md p-1.5 text-lg leading-none hover:bg-accent',
                                 FOCUS_RING,
                             )}
                         >
@@ -358,7 +358,7 @@ function CommentComposer({ panel }: { panel: TaskPanelData }) {
                 type="button"
                 onClick={() => setOpen(true)}
                 className={cn(
-                    'flex w-full items-center gap-2 rounded-[3px] border border-input px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent',
+                    'flex w-full items-center gap-2 rounded-md border border-input px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent',
                     FOCUS_RING,
                 )}
                 data-test="comment-composer-open"
@@ -389,7 +389,7 @@ function CommentComposer({ panel }: { panel: TaskPanelData }) {
                     {files.map((file, index) => (
                         <li
                             key={`${file.name}-${index}`}
-                            className="inline-flex items-center gap-1 rounded-[3px] border bg-muted px-2 py-0.5 text-xs"
+                            className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-xs"
                         >
                             {file.name} · {formatBytes(file.size)}
                             <button
@@ -403,7 +403,7 @@ function CommentComposer({ panel }: { panel: TaskPanelData }) {
                                     name: file.name,
                                 })}
                                 className={cn(
-                                    'rounded-[3px] p-0.5 hover:bg-accent',
+                                    'rounded-md p-0.5 hover:bg-accent',
                                     FOCUS_RING,
                                 )}
                             >

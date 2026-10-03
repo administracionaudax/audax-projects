@@ -39,7 +39,7 @@ function moveText(start: string | null, due: string): string {
 function ProposalItem({ proposal }: { proposal: ShiftProposal }) {
     return (
         <li
-            className="grid gap-1 rounded-[3px] border p-2 text-sm"
+            className="grid gap-1 rounded-md border p-2 text-sm"
             data-test="reschedule-proposal"
         >
             <span className="break-words">{proposal.title}</span>
@@ -117,7 +117,7 @@ export function RescheduleDialog({
                     <ul
                         // Con muchas sucesoras la lista se desplaza: se puede enfocar para hacerlo con el teclado.
                         className={cn(
-                            'grid max-h-64 gap-2 overflow-y-auto rounded-[3px]',
+                            'grid max-h-64 gap-2 overflow-y-auto rounded-md',
                             FOCUS_RING,
                         )}
                         aria-label={t('planning.reschedule.list')}

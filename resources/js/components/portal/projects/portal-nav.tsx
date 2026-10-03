@@ -82,7 +82,7 @@ export function PortalNav({
                             href={item.href}
                             aria-current={item.current ? 'page' : undefined}
                             className={cn(
-                                'flex items-center gap-2 rounded-[3px] border-b-2 px-3 py-2 text-sm text-foreground hover:bg-muted',
+                                'flex items-center gap-2 rounded-md border-b-2 px-3 py-2 text-sm text-foreground hover:bg-muted',
                                 item.current
                                     ? 'border-foreground font-medium'
                                     : 'border-transparent',

@@ -1003,6 +1003,29 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **Invitaciones:** el importador **no** envía invitaciones. Se envían después, con el visto bueno del propietario, desde la administración o con `--invitar`.
 - **Simulación:** `--dry-run` hace todo dentro de una transacción que se deshace y muestra el informe de recuentos.
 
+### D-137 · Hoja de estilos de Audax v1.2 como referencia del tema **[modifica SPEC §3.1, D-011 y la convención del radio]**
+Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Audax (`audax-deck.css` y `audax-doc.css`, v1.2, el que se usa para presupuestos y presentaciones). Lo que coincidía ya no se toca: DM Sans, el azul #0171FF y el navy #001B39.
+- **Colores:**
+  - tinta #0B1B33 (antes #001B39) y texto secundario #5B6B82 (antes #56667A),
+  - **fondo gris #F5F6F7** con tarjetas, paneles y barra lateral blancos,
+  - bordes #E2E6EC; los de los campos de formulario siguen en #808D9C por el 3:1 de WCAG 1.4.11,
+  - superficies suaves #EEF1F5, cabecera de tabla #E9ECEF y azul claro #E6F0FF,
+  - ámbar de estado #9A5A1A sobre #FBEEE2 y verde suave #E9F5F0.
+- **Excepciones por accesibilidad (AA verificado por test):**
+  - **Azul:** #0171FF con texto blanco da 4,37:1. Botones, enlaces y texto azul siguen en #0068EB / #005FD6, casi idénticos; #0171FF queda para marca, foco, barras, marcadores y gráficas.
+  - **Verde:** #1E9C6B no llega a 4,5:1 como texto, así que el texto verde es #1E7A4C.
+  - **Rojo suave:** la hoja no tiene rojo; el suave pasa a #FDECEB para que el texto secundario cumpla encima.
+- **Estilo plano:** sin esquinas redondeadas (radio 0; los círculos de avatares y puntos se mantienen) y sin sombras. Los radios escritos a mano (`rounded-[3px]`…) pasan a los tokens del tema.
+- **Tipografía:**
+  - DM Sans en 400, 500 y **600 para negritas y cifras**, nunca 700,
+  - interletrado de -0,02 em en textos de 20 px o más y de 0,12 em en etiquetas en mayúsculas,
+  - cabeceras de tabla en mayúsculas pequeñas, sobre gris y con texto secundario, en todas las tablas.
+- **Logo:** el negro oficial #1D1D1B en tema claro y blanco en oscuro.
+- **Fondo de marca:** la imagen original de la portada del kit (`public/brand/fondo-marca.jpg`, 33 KB) sustituye al degradado CSS en el login, la cabecera del portal y los estados vacíos grandes, siempre con el velo navy. El contraste se comprueba sobre la propia imagen, en los recortes de `cover` (apaisado, 16:9 y vertical), con `tests/fixtures/brand-cover-grid.json`.
+- **Se mantiene:**
+  - la paleta de gráficas de D-012: varios tonos para distinguir series; la hoja tiene un único azul porque no tiene gráficas de varias series,
+  - el tema oscuro, que la hoja no define.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1010,6 +1033,6 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
 - Fase 5: D-092 a D-109.
 - Fase 6: D-110 a D-121.
 - Fase 7: D-122 a D-133.
-- Fase 8: D-134 a D-136.
+- Fase 8: D-134 a D-137.
 
-La siguiente libre es **D-137**.
+La siguiente libre es **D-138**.

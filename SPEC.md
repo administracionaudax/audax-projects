@@ -113,6 +113,8 @@ Si consideras que alguna pieza tiene una alternativa claramente mejor para este 
 
 ### 3.1 Identidad visual (look and feel de Audax Studio)
 
+> **Actualización del 03/10/2026 (D-137):** la referencia del tema pasa a ser la **hoja de estilos de Audax v1.2** (kit de maquetación de presupuestos y presentaciones): tinta #0B1B33, fondo gris #F5F6F7 con superficies blancas, bordes #E2E6EC, estilo plano sin esquinas redondeadas ni sombras, DM Sans 400/500/600 y la imagen original de portada como fondo de marca. Donde esta sección y D-137 no coincidan, manda D-137.
+
 La app debe sentirse parte de la marca **Audax Studio**. Toma como referencia la web **https://www.audaxstudio.com**. Si tienes acceso web, revísala tú mismo antes de montar el tema. Los valores siguientes están extraídos de su CSS (variables globales de Elementor) y **son la fuente de verdad**:
 
 **Colores de marca**

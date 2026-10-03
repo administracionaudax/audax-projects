@@ -86,7 +86,7 @@ export function EmojiPopover({
                                     emoji,
                                 })}
                                 className={cn(
-                                    'flex size-9 items-center justify-center rounded-[3px] text-xl hover:bg-accent',
+                                    'flex size-9 items-center justify-center rounded-md text-xl hover:bg-accent',
                                     FOCUS_RING,
                                 )}
                             >

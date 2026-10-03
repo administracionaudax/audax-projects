@@ -71,7 +71,7 @@ export function CardsSection() {
                         return (
                             <Card
                                 key={kpi.label}
-                                className="gap-2 rounded-[3px] py-4 shadow-none"
+                                className="gap-2 rounded-md py-4 shadow-none"
                             >
                                 <CardContent className="grid gap-1 px-4">
                                     <p className="text-sm text-muted-foreground">
@@ -107,7 +107,7 @@ export function CardsSection() {
                 title="Tarjeta de proyecto"
                 className="border-0 p-0 sm:p-0"
             >
-                <Card className="max-w-md gap-4 rounded-[3px] py-5 shadow-none">
+                <Card className="max-w-md gap-4 rounded-md py-5 shadow-none">
                     <CardHeader className="px-5">
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -142,7 +142,7 @@ export function CardsSection() {
                             {DEPARTMENTS.map((name, index) => (
                                 <span
                                     key={name}
-                                    className="inline-flex items-center gap-1.5 rounded-[3px] border px-1.5 py-0.5 text-xs"
+                                    className="inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-xs"
                                 >
                                     <span
                                         aria-hidden="true"
@@ -184,14 +184,14 @@ export function CardsSection() {
                 note="Para etiquetas sin significado de estado (tipo, prioridad, recuento)."
             >
                 <div className="flex flex-wrap gap-2">
-                    <Badge className="rounded-[3px]">Nuevo</Badge>
-                    <Badge variant="secondary" className="rounded-[3px]">
+                    <Badge className="rounded-md">Nuevo</Badge>
+                    <Badge variant="secondary" className="rounded-md">
                         Maquetación
                     </Badge>
-                    <Badge variant="outline" className="rounded-[3px]">
+                    <Badge variant="outline" className="rounded-md">
                         Prioridad alta
                     </Badge>
-                    <Badge variant="outline" className="tabular rounded-[3px]">
+                    <Badge variant="outline" className="tabular rounded-md">
                         12 tareas
                     </Badge>
                 </div>

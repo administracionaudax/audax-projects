@@ -58,7 +58,7 @@ export function HourBankCard({
                         <Link
                             href={urls.hourBank(projectId, bank.id)}
                             className={cn(
-                                'rounded-[3px] text-primary-text hover:underline',
+                                'rounded-md text-primary-text hover:underline',
                                 FOCUS_RING,
                             )}
                         >
@@ -115,7 +115,7 @@ export function HourBankCard({
                     <Link
                         href={urls.hourBank(projectId, bank.renewed_from.id)}
                         className={cn(
-                            'rounded-[3px] text-primary-text hover:underline',
+                            'rounded-md text-primary-text hover:underline',
                             FOCUS_RING,
                         )}
                     >

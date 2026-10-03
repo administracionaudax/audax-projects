@@ -41,7 +41,7 @@ export function PortalBankCard({
                         <Link
                             href={show(bank.id)}
                             className={cn(
-                                'rounded-[3px] hover:underline',
+                                'rounded-md hover:underline',
                                 FOCUS_RING,
                             )}
                         >
@@ -72,7 +72,7 @@ export function PortalBankCard({
                         name: bank.name,
                     })}
                     className={cn(
-                        'inline-flex items-center gap-1 rounded-[3px] text-primary-text hover:underline',
+                        'inline-flex items-center gap-1 rounded-md text-primary-text hover:underline',
                         FOCUS_RING,
                     )}
                 >

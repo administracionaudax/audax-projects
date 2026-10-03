@@ -152,7 +152,7 @@ export function GanttTable({
                                             <button
                                                 type="button"
                                                 onClick={() => onOpen(task)}
-                                                className="rounded-[3px] text-left text-foreground underline-offset-2 hover:underline"
+                                                className="rounded-md text-left text-foreground underline-offset-2 hover:underline"
                                                 data-gantt-focus={task.id}
                                             >
                                                 {task.title}

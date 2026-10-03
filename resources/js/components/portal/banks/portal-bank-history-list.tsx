@@ -26,7 +26,7 @@ export function PortalBankHistoryList({ banks }: { banks: PortalBank[] }) {
                         <Link
                             href={show(bank.id)}
                             className={cn(
-                                'w-fit max-w-full rounded-[3px] break-words text-primary-text hover:underline',
+                                'w-fit max-w-full rounded-md break-words text-primary-text hover:underline',
                                 FOCUS_RING,
                             )}
                         >

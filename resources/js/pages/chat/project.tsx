@@ -38,7 +38,7 @@ export default function ProjectChat({
 
             <ProjectShell project={project} tab="chat" canManage={canManage}>
                 {conversation && messages ? (
-                    <div className="flex h-[70svh] min-h-[28rem] flex-col overflow-hidden rounded-[3px] border">
+                    <div className="flex h-[70svh] min-h-[28rem] flex-col overflow-hidden rounded-md border">
                         <ConversationView
                             key={`${conversation.id}:${focus ?? ''}`}
                             conversation={conversation}

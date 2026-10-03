@@ -83,7 +83,7 @@ function ParentQuote({
             onClick={() => onJump(parent.id)}
             aria-label={`${t('chat.messages.go_to_parent', { name: author })}: ${excerpt}`}
             className={cn(
-                'mb-1 flex max-w-full items-start gap-1.5 rounded-[3px] border-l-2 border-border bg-muted px-2 py-1 text-left text-xs hover:bg-accent',
+                'mb-1 flex max-w-full items-start gap-1.5 rounded-md border-l-2 border-border bg-muted px-2 py-1 text-left text-xs hover:bg-accent',
                 FOCUS_RING,
             )}
             data-test="chat-parent-quote"
@@ -159,7 +159,7 @@ export const MessageItem = memo(function MessageItem({
                     tabIndex={-1}
                     data-message-focus=""
                     className={cn(
-                        'flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-[3px] bg-muted px-3 py-1.5 text-center text-xs',
+                        'flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md bg-muted px-3 py-1.5 text-center text-xs',
                         FOCUS_RING,
                     )}
                     data-test="chat-system-message"
@@ -215,7 +215,7 @@ export const MessageItem = memo(function MessageItem({
                 tabIndex={-1}
                 data-message-focus=""
                 className={cn(
-                    'flex gap-3 rounded-[3px]',
+                    'flex gap-3 rounded-md',
                     FOCUS_RING,
                     'focus-visible:ring-offset-0',
                 )}
@@ -241,7 +241,7 @@ export const MessageItem = memo(function MessageItem({
                                 {name}
                             </span>
                             {message.author && !message.author.is_active ? (
-                                <span className="rounded-[3px] border px-1 text-xs text-muted-foreground">
+                                <span className="rounded-md border px-1 text-xs text-muted-foreground">
                                     {t('chat.messages.inactive')}
                                 </span>
                             ) : null}
@@ -337,7 +337,7 @@ export const MessageItem = memo(function MessageItem({
                             <Link
                                 href={urls.taskById(message.task.id)}
                                 className={cn(
-                                    'inline-flex max-w-full items-center gap-1.5 rounded-[3px] border px-1.5 py-0.5 text-xs text-primary-text hover:bg-accent',
+                                    'inline-flex max-w-full items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-xs text-primary-text hover:bg-accent',
                                     FOCUS_RING,
                                 )}
                                 data-test="chat-message-task"

@@ -134,7 +134,7 @@ export function TaskStatusBadge({
     done?: boolean;
 }) {
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-neutral-soft px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-neutral-soft px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground">
             {done ? (
                 <CircleCheck
                     aria-hidden="true"

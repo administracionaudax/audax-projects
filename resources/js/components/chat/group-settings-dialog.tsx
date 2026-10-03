@@ -228,7 +228,7 @@ export function GroupSettingsDialog({
                                 count: conversation.participants.length,
                             })}
                         </h3>
-                        <ul className="grid gap-px rounded-[3px] border">
+                        <ul className="grid gap-px rounded-md border">
                             {conversation.participants.map((person) => (
                                 <li
                                     key={person.id}
@@ -314,7 +314,7 @@ export function GroupSettingsDialog({
                             ) : (
                                 <ul
                                     id={addId}
-                                    className="max-h-48 overflow-y-auto rounded-[3px] border"
+                                    className="max-h-48 overflow-y-auto rounded-md border"
                                 >
                                     {candidates.length === 0 ? (
                                         <li className="p-3 text-sm text-muted-foreground">

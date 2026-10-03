@@ -98,7 +98,7 @@ export function R2TaskStatus({ tasks }: { tasks: R2TaskStatusSummary }) {
                 </p>
                 <div
                     aria-hidden="true"
-                    className="flex h-2.5 w-full overflow-hidden rounded-[3px] bg-neutral-soft"
+                    className="flex h-2.5 w-full overflow-hidden rounded-md bg-neutral-soft"
                 >
                     <div
                         className="h-full bg-success"
@@ -124,7 +124,7 @@ export function R2TaskStatus({ tasks }: { tasks: R2TaskStatusSummary }) {
                     .map((status) => (
                         <li
                             key={status.id}
-                            className="inline-flex items-center gap-2 rounded-[3px] bg-muted px-2.5 py-1 text-sm"
+                            className="inline-flex items-center gap-2 rounded-md bg-muted px-2.5 py-1 text-sm"
                         >
                             <span
                                 aria-hidden="true"

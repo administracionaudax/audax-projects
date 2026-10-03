@@ -472,7 +472,7 @@ export function MessageList({
                                 <Fragment key={message.id}>
                                     {newDay ? (
                                         <li className="sticky top-0 z-[5] flex justify-center py-1.5">
-                                            <h3 className="rounded-[3px] border bg-background px-2 py-0.5 text-xs text-muted-foreground first-letter:uppercase">
+                                            <h3 className="rounded-md border bg-background px-2 py-0.5 text-xs text-muted-foreground first-letter:uppercase">
                                                 {formatDayLabel(
                                                     message.created_at,
                                                 )}

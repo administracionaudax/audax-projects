@@ -149,13 +149,13 @@ function PanelSkeleton() {
             aria-label={t('task_panel.loading')}
             className="grid gap-4 p-4"
         >
-            <Skeleton className="h-8 w-3/4 rounded-[3px]" />
+            <Skeleton className="h-8 w-3/4 rounded-md" />
             <div className="grid gap-3 sm:grid-cols-2">
                 {[0, 1, 2, 3, 4, 5].map((item) => (
-                    <Skeleton key={item} className="h-9 rounded-[3px]" />
+                    <Skeleton key={item} className="h-9 rounded-md" />
                 ))}
             </div>
-            <Skeleton className="h-24 rounded-[3px]" />
+            <Skeleton className="h-24 rounded-md" />
         </div>
     );
 }
@@ -211,7 +211,7 @@ function PanelBody({
                     <TimerButton task={task} size="sm" />
                 ) : null}
                 {task.is_milestone ? (
-                    <span className="inline-flex items-center gap-1 rounded-[3px] bg-neutral-soft px-1.5 py-0.5 text-xs font-medium">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-neutral-soft px-1.5 py-0.5 text-xs font-medium">
                         <Diamond aria-hidden="true" className="size-3.5" />
                         {t('task_fields.milestone')}
                     </span>
@@ -486,7 +486,7 @@ export function TaskPanel({
                                                     onOpen(parent.id)
                                                 }
                                                 className={cn(
-                                                    'inline-flex items-center gap-0.5 rounded-[3px] hover:underline',
+                                                    'inline-flex items-center gap-0.5 rounded-md hover:underline',
                                                     FOCUS_RING,
                                                 )}
                                             >
@@ -519,7 +519,7 @@ export function TaskPanel({
                                         panel.source_message.message_id,
                                     )}
                                     className={cn(
-                                        'inline-flex w-fit items-center gap-1 rounded-[3px] text-xs text-primary-text hover:underline',
+                                        'inline-flex w-fit items-center gap-1 rounded-md text-xs text-primary-text hover:underline',
                                         FOCUS_RING,
                                     )}
                                     data-test="task-source-message"

@@ -168,7 +168,7 @@ export function AudioTranscription({
                         type="button"
                         aria-controls={contentId}
                         className={cn(
-                            'flex min-w-0 flex-1 items-center gap-1.5 rounded-[3px] py-0.5 text-left text-xs text-muted-foreground hover:text-foreground',
+                            'flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-0.5 text-left text-xs text-muted-foreground hover:text-foreground',
                             FOCUS_RING,
                         )}
                     >
@@ -202,7 +202,7 @@ export function AudioTranscription({
             </div>
             <CollapsibleContent id={contentId}>
                 <p
-                    className="rounded-[3px] bg-muted px-2.5 py-2 text-sm whitespace-pre-line text-foreground"
+                    className="rounded-md bg-muted px-2.5 py-2 text-sm whitespace-pre-line text-foreground"
                     lang={transcription?.language ?? undefined}
                 >
                     {text}

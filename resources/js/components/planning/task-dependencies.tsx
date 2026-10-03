@@ -333,7 +333,7 @@ function LinkedItem({
 
     return (
         <li
-            className="flex items-start gap-2 rounded-[3px] border px-2 py-1.5"
+            className="flex items-start gap-2 rounded-md border px-2 py-1.5"
             data-test="dependency-item"
             data-task-id={link.task.id}
         >
@@ -342,7 +342,7 @@ function LinkedItem({
                     type="button"
                     onClick={() => onOpen(link.task.id)}
                     className={cn(
-                        'inline-flex max-w-full items-center gap-1 rounded-[3px] text-left text-sm hover:underline',
+                        'inline-flex max-w-full items-center gap-1 rounded-md text-left text-sm hover:underline',
                         link.task.is_completed &&
                             'text-muted-foreground line-through',
                         FOCUS_RING,

@@ -20,7 +20,7 @@ export function StatesSection() {
                 title="Estado vacío grande"
                 className="border-0 p-0 sm:p-0"
             >
-                <div className="flex flex-col items-start gap-4 rounded-[3px] px-6 py-10 text-white bg-brand-gradient sm:px-10 sm:py-14">
+                <div className="flex flex-col items-start gap-4 rounded-md px-6 py-10 text-white bg-brand-gradient sm:px-10 sm:py-14">
                     <FolderOpen
                         aria-hidden="true"
                         className="size-8 text-white"
@@ -72,12 +72,12 @@ export function StatesSection() {
                     >
                         {[0, 1, 2].map((row) => (
                             <div key={row} className="flex items-center gap-3">
-                                <Skeleton className="size-8 rounded-[3px]" />
+                                <Skeleton className="size-8 rounded-md" />
                                 <div className="grid flex-1 gap-1.5">
-                                    <Skeleton className="h-3.5 w-3/4 rounded-[2px]" />
-                                    <Skeleton className="h-3 w-1/2 rounded-[2px]" />
+                                    <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                                    <Skeleton className="h-3 w-1/2 rounded-sm" />
                                 </div>
-                                <Skeleton className="h-3.5 w-12 rounded-[2px]" />
+                                <Skeleton className="h-3.5 w-12 rounded-sm" />
                             </div>
                         ))}
                     </div>
@@ -85,7 +85,7 @@ export function StatesSection() {
             </div>
 
             <Specimen title="Error">
-                <Alert className="rounded-[3px] border-transparent bg-danger-soft [&>svg]:text-danger">
+                <Alert className="rounded-md border-transparent bg-danger-soft [&>svg]:text-danger">
                     <CircleAlert aria-hidden="true" />
                     <AlertTitle className="text-danger">
                         No se han podido cargar las horas

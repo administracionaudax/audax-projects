@@ -149,7 +149,7 @@ export function TeamCalendarView({
                 aria-label={t('absences.calendar.legend')}
             >
                 <li className="flex items-center gap-1.5">
-                    <span className="flex size-5 items-center justify-center rounded-[3px] bg-success-soft">
+                    <span className="flex size-5 items-center justify-center rounded-md bg-success-soft">
                         <LegendApprovedIcon
                             aria-hidden="true"
                             className="size-3.5 text-success"
@@ -158,7 +158,7 @@ export function TeamCalendarView({
                     {t('absences.calendar.legend_approved')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                    <span className="flex size-5 items-center justify-center rounded-[3px] border border-dashed border-warning bg-warning-soft">
+                    <span className="flex size-5 items-center justify-center rounded-md border border-dashed border-warning bg-warning-soft">
                         <Clock
                             aria-hidden="true"
                             className="size-3.5 text-warning"
@@ -167,7 +167,7 @@ export function TeamCalendarView({
                     {t('absences.calendar.legend_requested')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                    <span className="flex size-5 items-center justify-center rounded-[3px] bg-neutral-soft">
+                    <span className="flex size-5 items-center justify-center rounded-md bg-neutral-soft">
                         <Flag
                             aria-hidden="true"
                             className="size-3.5 text-muted-foreground"
@@ -176,7 +176,7 @@ export function TeamCalendarView({
                     {t('absences.calendar.legend_holiday')}
                 </li>
                 <li className="flex items-center gap-1.5">
-                    <span className="size-5 rounded-[3px] bg-muted" />
+                    <span className="size-5 rounded-md bg-muted" />
                     {t('absences.calendar.legend_weekend')}
                 </li>
             </ul>
@@ -330,7 +330,7 @@ function CalendarCell({
                 data-test="calendar-absence"
                 data-status={absence.status}
                 className={cn(
-                    'flex size-7 items-center justify-center rounded-[3px]',
+                    'flex size-7 items-center justify-center rounded-md',
                     absence.status === 'approved'
                         ? 'bg-success-soft'
                         : 'border border-dashed border-warning bg-warning-soft',

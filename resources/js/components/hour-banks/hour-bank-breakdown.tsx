@@ -98,10 +98,10 @@ export function HourBankBreakdownTable({
                                     <span className="flex items-center gap-2">
                                         <span
                                             aria-hidden="true"
-                                            className="h-2 w-20 shrink-0 rounded-[3px] bg-neutral-soft"
+                                            className="h-2 w-20 shrink-0 rounded-md bg-neutral-soft"
                                         >
                                             <span
-                                                className="block h-full rounded-[3px] bg-chart-1"
+                                                className="block h-full rounded-md bg-chart-1"
                                                 style={{
                                                     width: `${share * 100}%`,
                                                 }}

@@ -16,7 +16,7 @@ export function LinkPreviewCard({ preview }: { preview: ChatLinkPreview }) {
             rel="noopener noreferrer nofollow"
             aria-label={`${t('chat.link.preview', { domain: preview.domain })}: ${preview.title}`}
             className={cn(
-                'group/preview grid max-w-md gap-0.5 rounded-[3px] border-l-2 border-primary bg-muted px-3 py-2 hover:bg-accent',
+                'group/preview grid max-w-md gap-0.5 rounded-md border-l-2 border-primary bg-muted px-3 py-2 hover:bg-accent',
                 FOCUS_RING,
             )}
             data-test="chat-link-preview"

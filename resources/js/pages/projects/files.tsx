@@ -225,7 +225,7 @@ export default function ProjectFiles({
                     ) : (
                         <div
                             className={cn(
-                                'overflow-x-auto rounded-[3px] border',
+                                'overflow-x-auto rounded-md border',
                                 FOCUS_RING,
                             )}
                             role="region"
@@ -299,10 +299,10 @@ export default function ProjectFiles({
                                                                 }
                                                                 alt=""
                                                                 loading="lazy"
-                                                                className="size-9 shrink-0 rounded-[3px] border object-cover"
+                                                                className="size-9 shrink-0 rounded-md border object-cover"
                                                             />
                                                         ) : (
-                                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-[3px] border bg-muted">
+                                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
                                                                 <Icon
                                                                     aria-hidden="true"
                                                                     className="size-4 text-muted-foreground"
@@ -323,7 +323,7 @@ export default function ProjectFiles({
                                                                     : file.original_name
                                                             }
                                                             className={cn(
-                                                                'truncate rounded-[3px] text-primary-text hover:underline',
+                                                                'truncate rounded-md text-primary-text hover:underline',
                                                                 FOCUS_RING,
                                                             )}
                                                         >
@@ -339,7 +339,7 @@ export default function ProjectFiles({
                                                                 file.task.id,
                                                             )}
                                                             className={cn(
-                                                                'block truncate rounded-[3px] hover:underline',
+                                                                'block truncate rounded-md hover:underline',
                                                                 FOCUS_RING,
                                                             )}
                                                         >
@@ -362,7 +362,7 @@ export default function ProjectFiles({
                                                                     .message_id,
                                                             )}
                                                             className={cn(
-                                                                'inline-flex items-center gap-1 rounded-[3px] text-primary-text hover:underline',
+                                                                'inline-flex items-center gap-1 rounded-md text-primary-text hover:underline',
                                                                 FOCUS_RING,
                                                             )}
                                                             data-test="file-message-link"
@@ -422,7 +422,7 @@ export default function ProjectFiles({
                                     href={pagination.prev_url}
                                     preserveScroll
                                     className={cn(
-                                        'rounded-[3px] text-primary-text underline',
+                                        'rounded-md text-primary-text underline',
                                         FOCUS_RING,
                                     )}
                                 >
@@ -442,7 +442,7 @@ export default function ProjectFiles({
                                     href={pagination.next_url}
                                     preserveScroll
                                     className={cn(
-                                        'rounded-[3px] text-primary-text underline',
+                                        'rounded-md text-primary-text underline',
                                         FOCUS_RING,
                                     )}
                                 >

@@ -389,7 +389,7 @@ function renderNodes(
                 return (
                     <code
                         key={key}
-                        className="rounded-[3px] bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground"
+                        className="rounded-md bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground"
                     >
                         {node.value}
                     </code>
@@ -398,7 +398,7 @@ function renderNodes(
                 return (
                     <pre
                         key={key}
-                        className="my-1 overflow-x-auto rounded-[3px] bg-muted p-2 font-mono text-[0.85em] whitespace-pre text-foreground"
+                        className="my-1 overflow-x-auto rounded-md bg-muted p-2 font-mono text-[0.85em] whitespace-pre text-foreground"
                     >
                         <code>{node.value}</code>
                     </pre>
@@ -424,7 +424,7 @@ function renderNodes(
                         key={key}
                         data-mention={node.id}
                         className={cn(
-                            'rounded-[3px] px-0.5',
+                            'rounded-md px-0.5',
                             node.id === currentUserId
                                 ? 'bg-info-soft text-info'
                                 : 'text-primary-text',
@@ -438,7 +438,7 @@ function renderNodes(
                     <span
                         key={key}
                         data-mention="everyone"
-                        className="rounded-[3px] bg-warning-soft px-0.5 text-warning"
+                        className="rounded-md bg-warning-soft px-0.5 text-warning"
                     >
                         @{t('chat.mention.everyone')}
                     </span>

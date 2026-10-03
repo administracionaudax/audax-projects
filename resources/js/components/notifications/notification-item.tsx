@@ -31,7 +31,7 @@ export function NotificationItem({
                 router.post(open.url(notification.id));
             }}
             className={cn(
-                'flex w-full items-start gap-3 rounded-[3px] px-3 py-2.5 text-left hover:bg-accent',
+                'flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-accent',
                 unread && 'bg-info-soft',
                 FOCUS_RING,
             )}

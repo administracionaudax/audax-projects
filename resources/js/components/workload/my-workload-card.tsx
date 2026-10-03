@@ -36,8 +36,8 @@ export function MyWorkloadSkeleton() {
             role="status"
             aria-label={t('workload_home.loading')}
         >
-            <Skeleton className="h-11 rounded-[3px]" />
-            <Skeleton className="h-11 rounded-[3px]" />
+            <Skeleton className="h-11 rounded-md" />
+            <Skeleton className="h-11 rounded-md" />
         </div>
     );
 }

@@ -85,7 +85,7 @@ export function ConversationHeader({
                 <h2
                     ref={titleRef}
                     tabIndex={-1}
-                    className="truncate rounded-[3px] text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="truncate rounded-md text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     data-test="chat-conversation-title"
                 >
                     {conversation.title}
@@ -93,7 +93,7 @@ export function ConversationHeader({
                 <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                     {subtitle ? <span>{subtitle}</span> : null}
                     {other && !other.is_active ? (
-                        <span className="rounded-[3px] border px-1">
+                        <span className="rounded-md border px-1">
                             {t('chat.messages.inactive')}
                         </span>
                     ) : null}
@@ -149,7 +149,7 @@ export function ConversationHeader({
                                 return (
                                     <li
                                         key={person.id}
-                                        className="flex items-center gap-2 rounded-[3px] px-2 py-1.5 text-sm"
+                                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
                                     >
                                         <ChatAvatar
                                             small
@@ -160,7 +160,7 @@ export function ConversationHeader({
                                             {person.name}
                                         </span>
                                         {!person.is_active ? (
-                                            <span className="rounded-[3px] border px-1 text-xs text-muted-foreground">
+                                            <span className="rounded-md border px-1 text-xs text-muted-foreground">
                                                 {t('chat.messages.inactive')}
                                             </span>
                                         ) : null}

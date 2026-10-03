@@ -53,7 +53,7 @@ export function Reactions({
                                     aria-pressed={reaction.reacted}
                                     aria-label={label}
                                     className={cn(
-                                        'inline-flex h-6 items-center gap-1 rounded-[3px] border px-1.5 text-xs text-foreground disabled:cursor-default',
+                                        'inline-flex h-6 items-center gap-1 rounded-md border px-1.5 text-xs text-foreground disabled:cursor-default',
                                         reaction.reacted
                                             ? 'border-primary bg-accent'
                                             : 'bg-background enabled:hover:bg-accent',

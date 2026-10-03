@@ -17,7 +17,7 @@ export function PortalVisibilityNote({
     return (
         <p
             className={cn(
-                'flex items-start gap-2 rounded-[3px] bg-info-soft px-3 py-2 text-sm text-foreground',
+                'flex items-start gap-2 rounded-md bg-info-soft px-3 py-2 text-sm text-foreground',
                 className,
             )}
             data-test="portal-visibility-note"

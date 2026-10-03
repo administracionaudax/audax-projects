@@ -61,11 +61,11 @@ export function HourBankMiniMeter({
                         overage: formatMinutes(figures.overage),
                     },
                 )}
-                className="relative h-2 w-20 shrink-0 rounded-[3px] bg-neutral-soft"
+                className="relative h-2 w-20 shrink-0 rounded-md bg-neutral-soft"
             >
                 <div
                     className={cn(
-                        'absolute inset-y-0 left-0 rounded-[3px]',
+                        'absolute inset-y-0 left-0 rounded-md',
                         meta.bar,
                     )}
                     style={{ width: `${width}%` }}

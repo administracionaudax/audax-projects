@@ -68,7 +68,7 @@ export function TaskBulkBar({
         <div
             role="region"
             aria-labelledby={labelId}
-            className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 rounded-[3px] border bg-card p-3 shadow-md"
+            className="sticky bottom-4 z-20 flex flex-wrap items-center gap-3 rounded-md border bg-card p-3 shadow-md"
             data-test="bulk-bar"
         >
             <p id={labelId} className="text-sm font-medium" aria-live="polite">

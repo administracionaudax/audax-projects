@@ -95,7 +95,7 @@ export function ImageViewer({
                             ? t('chat_media.viewer.help_many')
                             : t('chat_media.viewer.help')}
                     </DialogDescription>
-                    <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-[3px] bg-muted">
+                    <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                         <img
                             key={image.id}
                             src={image.url}
@@ -168,12 +168,12 @@ function FileCard({ file }: { file: ChatAttachment }) {
                     size: formatBytes(file.size),
                 })}
                 className={cn(
-                    'flex max-w-sm min-w-0 items-center gap-3 rounded-[3px] border bg-card p-2 hover:bg-accent',
+                    'flex max-w-sm min-w-0 items-center gap-3 rounded-md border bg-card p-2 hover:bg-accent',
                     FOCUS_RING,
                 )}
                 data-test="chat-attachment"
             >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-[3px] border bg-muted">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
                     <Icon
                         aria-hidden="true"
                         className="size-5 text-muted-foreground"
@@ -239,7 +239,7 @@ export function AttachmentList({
                                 }}
                                 type="button"
                                 className={cn(
-                                    'flex size-24 items-center justify-center overflow-hidden rounded-[3px] border bg-muted sm:size-28',
+                                    'flex size-24 items-center justify-center overflow-hidden rounded-md border bg-muted sm:size-28',
                                     FOCUS_RING,
                                 )}
                                 aria-label={t('chat_media.attachments.open', {

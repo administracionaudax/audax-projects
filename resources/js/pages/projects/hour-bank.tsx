@@ -78,7 +78,7 @@ export default function HourBankShow({
                     <Link
                         href={urls.project(project.id, 'bolsas')}
                         className={cn(
-                            'inline-flex w-fit items-center gap-1.5 rounded-[3px] text-sm text-primary-text hover:underline',
+                            'inline-flex w-fit items-center gap-1.5 rounded-md text-sm text-primary-text hover:underline',
                             FOCUS_RING,
                         )}
                     >
@@ -214,7 +214,7 @@ export default function HourBankShow({
                         </dl>
 
                         {bank.notes ? (
-                            <p className="rounded-[3px] bg-muted px-3 py-2 text-sm whitespace-pre-line">
+                            <p className="rounded-md bg-muted px-3 py-2 text-sm whitespace-pre-line">
                                 {bank.notes}
                             </p>
                         ) : null}
@@ -353,7 +353,7 @@ function BankLink({
             <Link
                 href={urls.hourBank(projectId, bank.id)}
                 className={cn(
-                    'rounded-[3px] text-primary-text hover:underline',
+                    'rounded-md text-primary-text hover:underline',
                     FOCUS_RING,
                 )}
             >

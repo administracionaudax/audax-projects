@@ -34,7 +34,7 @@ export function ProjectActivity({ items }: { items: ProjectActivityItem[] }) {
                             <Link
                                 href={item.url}
                                 className={cn(
-                                    'rounded-[3px] hover:underline',
+                                    'rounded-md hover:underline',
                                     FOCUS_RING,
                                 )}
                             >

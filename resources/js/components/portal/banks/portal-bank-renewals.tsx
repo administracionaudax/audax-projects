@@ -51,7 +51,7 @@ export function PortalBankRenewals({
                     ) : null}
                     <span
                         className={cn(
-                            'grid min-w-0 gap-1 rounded-[3px] px-2.5 py-1.5',
+                            'grid min-w-0 gap-1 rounded-md px-2.5 py-1.5',
                             bank.current
                                 ? 'border border-foreground/40 bg-card'
                                 : 'bg-muted',
@@ -72,7 +72,7 @@ export function PortalBankRenewals({
                             <Link
                                 href={show(bank.id)}
                                 className={cn(
-                                    'w-fit max-w-full rounded-[3px] text-sm break-words text-primary-text hover:underline',
+                                    'w-fit max-w-full rounded-md text-sm break-words text-primary-text hover:underline',
                                     FOCUS_RING,
                                 )}
                             >

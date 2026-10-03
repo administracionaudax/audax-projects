@@ -84,7 +84,7 @@ export const GanttTaskBar = memo(function GanttTaskBar({
                 {...common}
                 data-variant="milestone"
                 className={cn(
-                    'group/bar absolute rounded-[2px]',
+                    'group/bar absolute rounded-sm',
                     FOCUS_RING,
                     editable && 'cursor-grab',
                     dragging && 'z-10',
@@ -99,7 +99,7 @@ export const GanttTaskBar = memo(function GanttTaskBar({
             >
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-0.5 rotate-45 rounded-[2px] border border-foreground"
+                    className="pointer-events-none absolute inset-0.5 rotate-45 rounded-sm border border-foreground"
                     style={{
                         backgroundColor: color,
                         borderStyle: dashed ? 'dashed' : 'solid',
@@ -126,7 +126,7 @@ export const GanttTaskBar = memo(function GanttTaskBar({
                 {...common}
                 data-variant="summary"
                 className={cn(
-                    'group/bar absolute rounded-[2px] bg-muted-foreground',
+                    'group/bar absolute rounded-sm bg-muted-foreground',
                     FOCUS_RING,
                 )}
                 style={{
@@ -211,7 +211,7 @@ export const GanttTaskBar = memo(function GanttTaskBar({
             {percent !== null ? (
                 <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute bottom-0 left-0 h-[3px] rounded-b-[2px]"
+                    className="pointer-events-none absolute bottom-0 left-0 h-[3px] rounded-b-sm"
                     style={{
                         width: `${Math.min(percent, 100)}%`,
                         backgroundColor: color,
@@ -285,7 +285,7 @@ export function GanttProjectBar({
     return (
         <div
             aria-hidden="true"
-            className="pointer-events-none absolute rounded-[2px] border"
+            className="pointer-events-none absolute rounded-sm border"
             style={{
                 left: box.x,
                 top: top + (ROW_HEIGHT - 10) / 2,

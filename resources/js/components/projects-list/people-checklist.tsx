@@ -79,7 +79,7 @@ export function PeopleChecklist({
                         return (
                             <li
                                 key={person.id}
-                                className="flex items-center gap-2 rounded-[3px] px-1 py-1"
+                                className="flex items-center gap-2 rounded-md px-1 py-1"
                             >
                                 <Checkbox
                                     id={inputId}

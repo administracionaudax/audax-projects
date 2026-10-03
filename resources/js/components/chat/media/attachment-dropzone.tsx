@@ -119,7 +119,7 @@ export function AttachmentDropzone({
             {dragging ? (
                 <div
                     role="status"
-                    className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-[3px] border-2 border-dashed border-primary bg-background/95 p-4 text-center text-sm text-foreground"
+                    className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary bg-background/95 p-4 text-center text-sm text-foreground"
                 >
                     <Upload
                         aria-hidden="true"

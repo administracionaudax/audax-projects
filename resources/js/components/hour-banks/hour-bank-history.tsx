@@ -55,7 +55,7 @@ export function HourBankHistory({
                             <Link
                                 href={urls.project(project.id)}
                                 className={cn(
-                                    'flex w-fit max-w-full min-w-0 items-center gap-2 rounded-[3px] text-sm hover:underline',
+                                    'flex w-fit max-w-full min-w-0 items-center gap-2 rounded-md text-sm hover:underline',
                                     FOCUS_RING,
                                 )}
                             >
@@ -87,14 +87,14 @@ export function HourBankHistory({
                                             className="size-4 text-muted-foreground"
                                         />
                                     ) : null}
-                                    <span className="grid gap-1 rounded-[3px] bg-muted px-2.5 py-1.5">
+                                    <span className="grid gap-1 rounded-md bg-muted px-2.5 py-1.5">
                                         <Link
                                             href={urls.hourBank(
                                                 bank.project_id,
                                                 bank.id,
                                             )}
                                             className={cn(
-                                                'rounded-[3px] text-sm text-primary-text hover:underline',
+                                                'rounded-md text-sm text-primary-text hover:underline',
                                                 FOCUS_RING,
                                             )}
                                         >

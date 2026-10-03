@@ -145,7 +145,7 @@ function renderInline(nodes: MarkdownInline[]): ReactNode[] {
                 return (
                     <code
                         key={index}
-                        className="rounded-[3px] bg-muted px-1 py-0.5 font-mono text-[0.9em]"
+                        className="rounded-md bg-muted px-1 py-0.5 font-mono text-[0.9em]"
                     >
                         {node.text}
                     </code>

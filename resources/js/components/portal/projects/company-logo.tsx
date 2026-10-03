@@ -23,7 +23,7 @@ export function CompanyLogo({
     return (
         <span
             className={cn(
-                'flex h-9 shrink-0 items-center rounded-[3px] bg-white px-2 py-1',
+                'flex h-9 shrink-0 items-center rounded-md bg-white px-2 py-1',
                 className,
             )}
             data-test="portal-company-logo"

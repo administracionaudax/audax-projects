@@ -31,7 +31,7 @@ export function ChartLegend({
                             'shrink-0',
                             item.shape === 'line'
                                 ? 'h-0.5 w-4 rounded-full'
-                                : 'size-2.5 rounded-[2px]',
+                                : 'size-2.5 rounded-sm',
                         )}
                         style={{ backgroundColor: item.color }}
                     />

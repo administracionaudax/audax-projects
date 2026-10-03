@@ -34,14 +34,14 @@ export default function ChatEmojiPicker({
                     aria-label={t('chat.emoji.search')}
                     placeholder={t('chat.emoji.search_placeholder')}
                     className={cn(
-                        'h-8 min-w-0 flex-1 rounded-[3px] border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground',
+                        'h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground',
                         FOCUS_RING,
                     )}
                 />
                 <EmojiPicker.SkinToneSelector
                     aria-label={t('chat.emoji.skin_tone')}
                     className={cn(
-                        'flex size-8 shrink-0 items-center justify-center rounded-[3px] text-lg hover:bg-accent',
+                        'flex size-8 shrink-0 items-center justify-center rounded-md text-lg hover:bg-accent',
                         FOCUS_RING,
                     )}
                 />
@@ -74,7 +74,7 @@ export default function ChatEmojiPicker({
                                 {...props}
                                 type="button"
                                 className={cn(
-                                    'flex size-9 items-center justify-center rounded-[3px] text-xl',
+                                    'flex size-9 items-center justify-center rounded-md text-xl',
                                     emoji.isActive && 'bg-accent',
                                 )}
                             >

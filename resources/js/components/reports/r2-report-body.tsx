@@ -90,7 +90,7 @@ export function R2ReportBody({ children }: { children: ReactNode }) {
 /** Aviso del alcance del informe (qué horas se ven, D-044), con icono y texto. */
 export function R2ScopeNote({ children }: { children: ReactNode }) {
     return (
-        <p className="flex items-start gap-2 rounded-[3px] bg-info-soft px-3 py-2 text-sm text-foreground">
+        <p className="flex items-start gap-2 rounded-md bg-info-soft px-3 py-2 text-sm text-foreground">
             <Info
                 aria-hidden="true"
                 className="mt-0.5 size-4 shrink-0 text-info"

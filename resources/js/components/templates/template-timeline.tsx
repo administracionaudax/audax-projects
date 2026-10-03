@@ -71,14 +71,14 @@ export const TemplateTimeline = memo(function TemplateTimeline({
                 <li className="inline-flex items-center gap-1.5">
                     <span
                         aria-hidden="true"
-                        className="inline-block h-2.5 w-5 rounded-[2px] bg-chart-1"
+                        className="inline-block h-2.5 w-5 rounded-sm bg-chart-1"
                     />
                     {t('templates.timeline.legend_task')}
                 </li>
                 <li className="inline-flex items-center gap-1.5">
                     <span
                         aria-hidden="true"
-                        className="inline-block h-2.5 w-5 rounded-[2px] bg-chart-2"
+                        className="inline-block h-2.5 w-5 rounded-sm bg-chart-2"
                     />
                     {t('templates.timeline.legend_subtask')}
                 </li>
@@ -163,7 +163,7 @@ export const TemplateTimeline = memo(function TemplateTimeline({
                                         ) : (
                                             <span
                                                 className={cn(
-                                                    'absolute top-1/2 h-3 -translate-y-1/2 rounded-[2px]',
+                                                    'absolute top-1/2 h-3 -translate-y-1/2 rounded-sm',
                                                     subtask
                                                         ? 'bg-chart-2'
                                                         : 'bg-chart-1',

@@ -167,7 +167,7 @@ export default function ProjectShow({
                                             'bolsas',
                                         )}
                                         className={cn(
-                                            'rounded-[3px] text-sm text-primary-text hover:underline',
+                                            'rounded-md text-sm text-primary-text hover:underline',
                                             FOCUS_RING,
                                         )}
                                     >
@@ -252,7 +252,7 @@ export default function ProjectShow({
                                                 'ajustes',
                                             )}
                                             className={cn(
-                                                'rounded-[3px] text-primary-text hover:underline',
+                                                'rounded-md text-primary-text hover:underline',
                                                 FOCUS_RING,
                                             )}
                                         >
@@ -371,11 +371,11 @@ function BudgetFigure({ budget, logged }: { budget: number; logged: number }) {
                     budget: formatMinutes(budget),
                     ratio: formatPercent(ratio, 0),
                 })}
-                className="h-2 w-full rounded-[3px] bg-neutral-soft"
+                className="h-2 w-full rounded-md bg-neutral-soft"
             >
                 <div
                     className={cn(
-                        'h-full rounded-[3px]',
+                        'h-full rounded-md',
                         over ? 'bg-danger' : 'bg-primary',
                     )}
                     style={{ width: `${Math.min(ratio, 1) * 100}%` }}

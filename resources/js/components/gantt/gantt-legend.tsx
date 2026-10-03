@@ -30,7 +30,7 @@ export function GanttLegend({
                         >
                             <span
                                 aria-hidden="true"
-                                className="h-3 w-5 shrink-0 rounded-[2px] border"
+                                className="h-3 w-5 shrink-0 rounded-sm border"
                                 style={{
                                     backgroundColor: barFill(entry.color),
                                     borderColor: entry.color,
@@ -63,7 +63,7 @@ export function GanttLegend({
                 <li className="flex items-center gap-1.5">
                     <span
                         aria-hidden="true"
-                        className="h-1.5 w-5 rounded-[2px] bg-muted-foreground"
+                        className="h-1.5 w-5 rounded-sm bg-muted-foreground"
                     />
                     {t('gantt.legend.summary')}
                 </li>

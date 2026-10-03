@@ -234,7 +234,7 @@ export function CalendarChip({
             onBlur={() => setOffset(0)}
             title={chipLabel(task, status, today)}
             className={cn(
-                'flex w-full min-w-0 items-center gap-1 rounded-[3px] border bg-card px-1.5 py-0.5 text-left text-xs hover:bg-accent',
+                'flex w-full min-w-0 items-center gap-1 rounded-md border bg-card px-1.5 py-0.5 text-left text-xs hover:bg-accent',
                 task.is_completed && 'text-muted-foreground',
                 overdue && 'border-l-2 border-l-danger',
                 offset !== 0 && 'ring-2 ring-ring',
@@ -281,7 +281,7 @@ export function CalendarChip({
             {offset !== 0 ? (
                 <span
                     aria-hidden="true"
-                    className="tabular inline-flex shrink-0 items-center gap-0.5 rounded-[3px] bg-accent px-1 text-foreground"
+                    className="tabular inline-flex shrink-0 items-center gap-0.5 rounded-md bg-accent px-1 text-foreground"
                     data-test="calendar-chip-target"
                 >
                     <ArrowRight className="size-3" />

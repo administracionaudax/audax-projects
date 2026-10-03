@@ -230,7 +230,7 @@ export function ConversationList({
             {loadError ? (
                 <p
                     role="status"
-                    className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[3px] bg-warning-soft px-3 py-2 text-xs text-foreground"
+                    className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-foreground"
                 >
                     {t('chat.errors.list')}
                     {onRetry ? (
@@ -307,7 +307,7 @@ export function ConversationList({
                                             active ? 'page' : undefined
                                         }
                                         className={cn(
-                                            'flex items-center gap-3 rounded-[3px] px-3 py-2.5 hover:bg-muted',
+                                            'flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted',
                                             active &&
                                                 'bg-accent hover:bg-accent',
                                             FOCUS_RING,
