@@ -1085,6 +1085,23 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
   - la paleta de gráficas de D-012: varios tonos para distinguir series; la hoja tiene un único azul porque no tiene gráficas de varias series,
   - el tema oscuro, que la hoja no define.
 
+### D-138 · Reordenar las tarjetas de Inicio **[amplía SPEC §5.1]**
+Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las tarjetas de Inicio arrastrándolas.
+- **Interfaz:**
+  - `@dnd-kit/sortable` con `rectSortingStrategy` sobre la rejilla de siempre: cada tarjeta conserva su ancho (las anchas ocupan dos columnas),
+  - se coge por un **asa** (`GripVertical`) en la cabecera, un botón «Mover la tarjeta «X»» que se ve al pasar el ratón o con el foco y siempre en pantallas táctiles,
+  - **teclado:** espacio o Intro para cogerla, flechas para moverla, espacio o Intro para soltarla y Escape para cancelar, con anuncios en español en la región viva,
+  - **ratón y lápiz:** el arrastre empieza al mover el asa 6 px; **táctil:** hay que mantener pulsada el asa 250 ms, para que deslizar el dedo siga desplazando la página,
+  - con «reducir movimiento» las tarjetas cambian de sitio sin animación,
+  - estilo plano (D-137): mientras se arrastra solo cambia el borde, al azul de marca (`--ring`),
+  - «Restablecer orden», junto al subtítulo, solo si hay un orden guardado; al pulsarlo el foco pasa al título.
+- **Persistencia:**
+  - `users.home_layout` (JSON): lista ordenada de ids de tarjeta; null es el orden por defecto,
+  - `PUT /inicio/orden` (`home.layout.update`) y `DELETE /inicio/orden` (`home.layout.destroy`), con un límite de 60 por minuto. Solo ids de la lista blanca (`App\Domain\Home\HomeLayout::CARDS`, la misma que `HOME_CARD_IDS` en TypeScript; `tests/fixtures/home-cards.json` las compara), sin repetir y como mucho tantas como tarjetas,
+  - guardado **optimista** al soltar, con una petición JSON que responde 204: con Inertia, la respuesta volvería a calcular todas las props de Inicio. Si falla, las tarjetas vuelven al último orden guardado con un aviso. Soltar en el orden por defecto borra el guardado.
+- **Al pintar:** primero las guardadas, en su orden; detrás, en su orden por defecto, las que falten (tarjetas nuevas o que dependen del rol). Se ignoran las guardadas que ya no existen o que no le corresponden: el servidor las quita de la prop `home_layout` y la interfaz solo ordena las que pinta.
+- **Colaboradores (D-134):** pueden reordenar sus tarjetas. Las dos rutas están en `config/collaborators.php` y las tarjetas que no ven (carga, indicadores y ausencias) nunca les llegan en la prop.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1092,6 +1109,6 @@ Pedido por el propietario el 03/10: el tema sigue el kit de maquetación de Auda
 - Fase 5: D-092 a D-109.
 - Fase 6: D-110 a D-121.
 - Fase 7: D-122 a D-133.
-- Fase 8: D-134 a D-137.
+- Fase 8: D-134 a D-138.
 
-La siguiente libre es **D-138**.
+La siguiente libre es **D-139**.
