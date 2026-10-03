@@ -245,6 +245,26 @@ describe('resumen del proyecto', () => {
         ).toBeNull();
         expect(screen.queryByText('No hay bolsas abiertas')).toBeNull();
     });
+
+    it('sin las horas de todos ni el presupuesto (null, colaborador externo), no enseña esas cifras (D-134)', () => {
+        const { container } = render(
+            <ProjectShow
+                {...props}
+                summary={{
+                    ...props.summary,
+                    logged_minutes: null,
+                    budget_minutes: null,
+                }}
+            />,
+        );
+
+        expect(screen.queryByText('Horas reales / estimadas')).toBeNull();
+        expect(screen.queryByText('Presupuesto de horas')).toBeNull();
+        expect(screen.queryByRole('meter')).toBeNull();
+        expect(container.textContent).not.toContain('9:00');
+        // Las tareas, sí.
+        expect(container.textContent).toContain('de 5 tareas');
+    });
 });
 
 describe('ajustes del proyecto', () => {

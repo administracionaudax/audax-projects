@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * Mensajes para el navegador (contrato: resources/js/types/chat.ts, ChatMessage) con un número
  * fijo de consultas por página, sin importar cuántos mensajes haya: padres de los hilos,
  * reacciones, adjuntos y transcripciones (MediaPayload::RELATIONS) y tareas con carga anticipada, y TODAS las personas
- * (autores, citas, reacciones, menciones, quien fijó u ocultó) en una sola consulta.
+ * (autores, citas, reacciones, menciones que se resuelven, quien fijó u ocultó) en una sola consulta
+ * (más la de ChatUsers::mentionable).
  *
  * Lo que se ve de cada mensaje (D-069, D-071):
  * - borrado: solo «Mensaje eliminado» (sin cuerpo, adjuntos, reacciones ni cita),
@@ -63,14 +64,21 @@ final class MessagePresenter
      */
     private function userIds(EloquentCollection $messages): array
     {
+        // Las menciones, solo las que se resuelven (ChatUsers::mentionable); quién ocultó, solo
+        // para quien modera (es lo único que lo enseña).
+        $mentions = ChatUsers::mentionable([...$messages->all(), ...$messages->pluck('parent')->all()]);
         $ids = [];
 
         foreach ($messages as $message) {
-            array_push($ids, $message->user_id, $message->hidden_by, $message->pinned_by, ...MessagePreview::mentionIds($message->body));
+            array_push($ids, $message->user_id, $message->pinned_by, ...$mentions[$message->id] ?? []);
+
+            if ($this->can->moderate) {
+                $ids[] = $message->hidden_by;
+            }
 
             $parent = $message->parent;
             if ($parent !== null) {
-                array_push($ids, $parent->user_id, ...MessagePreview::mentionIds($parent->body));
+                array_push($ids, $parent->user_id, ...$mentions[$parent->id] ?? []);
             }
 
             foreach ($message->reactions as $reaction) {

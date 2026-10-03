@@ -398,6 +398,21 @@ describe('panel de la tarea', () => {
         expect(options.only).toEqual(['panel']);
     });
 
+    it('sin las horas de todos (null, colaborador externo) solo dice las suyas (D-134)', () => {
+        const data = panelData();
+        renderPanel({
+            ...data,
+            task: { ...data.task, logged_minutes: null },
+            time_visible_minutes: 45,
+        });
+
+        const dialog = screen.getByRole('dialog', { name: 'Maquetar la home' });
+        expect(
+            within(dialog).getByText('Has imputado 0:45 a esta tarea.'),
+        ).toBeTruthy();
+        expect(within(dialog).queryByText(/imputadas a esta tarea/)).toBeNull();
+    });
+
     it('explica por qué no se puede borrar una tarea con horas', () => {
         renderPanel(panelData());
 

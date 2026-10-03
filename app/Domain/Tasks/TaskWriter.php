@@ -27,7 +27,8 @@ use Illuminate\Validation\ValidationException;
  * - completed_at lo gestiona el modelo al cambiar de estado,
  * - las tareas nuevas van al final de su columna; al cambiar de estado, al final de la nueva,
  * - el creador y el responsable siguen la tarea; asignación, menciones y cambios de estado avisan
- *   (TaskNotifier).
+ *   (TaskNotifier); las menciones de la descripción, filtradas como las de los comentarios
+ *   (TaskMentions, D-134).
  * La autorización (TaskPolicy) la hace el controlador.
  */
 final class TaskWriter
@@ -35,6 +36,7 @@ final class TaskWriter
     public function __construct(
         private readonly TaskPositions $positions,
         private readonly TaskNotifier $notifier,
+        private readonly TaskMentions $mentions,
     ) {}
 
     /**
@@ -91,7 +93,8 @@ final class TaskWriter
             $task->watchers()->syncWithoutDetaching(array_values(array_filter([$actor->id, $assigneeId])));
 
             $assigned = $this->notifier->assigned($task, $actor);
-            $this->notifier->mentioned($task, $actor, array_values(array_diff(RichText::mentionedUserIds($description), $assigned)), 'description', $description);
+            $mentioned = $this->mentions->mentionable(RichText::mentionedUserIds($description), $project->id, $actor);
+            $this->notifier->mentioned($task, $actor, array_values(array_diff($mentioned, $assigned)), 'description', $description);
 
             return $task;
         }));
@@ -213,8 +216,13 @@ final class TaskWriter
 
         $statusChanged = $task->status_id !== $previousStatusId;
         $assigneeChanged = $task->assignee_user_id !== $previousAssigneeId && $task->assignee_user_id !== null;
+        // Las mismas reglas que en los comentarios (TaskMentions, D-134).
         $newMentions = array_key_exists('description', $data)
-            ? array_values(array_diff(RichText::mentionedUserIds($task->description), RichText::mentionedUserIds($previousDescription)))
+            ? $this->mentions->mentionable(
+                array_values(array_diff(RichText::mentionedUserIds($task->description), RichText::mentionedUserIds($previousDescription))),
+                $task->project_id,
+                $actor,
+            )
             : [];
 
         return $this->notifier->capture(fn (): Task => DB::transaction(function () use ($actor, $task, $statusChanged, $assigneeChanged, $bankChanged, $newMentions): Task {

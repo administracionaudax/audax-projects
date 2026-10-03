@@ -34,7 +34,8 @@ class ProjectResource extends FinancialResource
             'status' => $this->status->value,
             'start_date' => $this->start_date?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
-            'budget_minutes' => $this->budget_minutes,
+            // El presupuesto de horas no es para un colaborador externo (D-134).
+            'budget_minutes' => $request->user()?->isCollaborator() ? null : $this->budget_minutes,
             'fixed_price_amount' => $this->when($financials, $this->fixed_price_amount),
             'hourly_rate' => $this->when($financials, $this->hourly_rate),
             'owner' => UserSummaryResource::make($this->whenLoaded('owner')),

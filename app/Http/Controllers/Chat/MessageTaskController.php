@@ -127,7 +127,7 @@ class MessageTaskController extends Controller
      */
     private function suggestedTitle(Message $message): string
     {
-        $users = ChatUsers::load([$message->user_id, ...MessagePreview::mentionIds($message->body)]);
+        $users = ChatUsers::load([$message->user_id, ...ChatUsers::mentionable([$message])[$message->id] ?? []]);
         $line = trim(strtok((string) $message->body, "\n") ?: '');
         $text = MessagePreview::plain($line, $users, self::TITLE_LENGTH);
 
@@ -148,7 +148,7 @@ class MessageTaskController extends Controller
      */
     private function description(Message $message): string
     {
-        $users = ChatUsers::load([$message->user_id, ...MessagePreview::mentionIds($message->body)]);
+        $users = ChatUsers::load([$message->user_id, ...ChatUsers::mentionable([$message])[$message->id] ?? []]);
         $body = (string) $message->body;
 
         if (trim($body) === '' && $message->type === MessageType::Audio) {

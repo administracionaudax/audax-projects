@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Auth\SessionTerminator;
+use App\Enums\ConversationType;
 use App\Enums\Role;
 use App\Events\MembershipsChanged;
 use App\Notifications\ResetPasswordNotification;
@@ -22,6 +23,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -493,6 +495,39 @@ class User extends Authenticatable
     protected function withoutCollaborators(Builder $query): void
     {
         $query->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value));
+    }
+
+    /**
+     * Quien puede ver el proyecto (D-134): la plantilla, siempre; un colaborador externo, solo si
+     * es miembro. La versión en consulta de canSeeProject(), para filtrar destinatarios.
+     *
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function seeingProject(Builder $query, int $projectId): void
+    {
+        $query->where(fn (Builder $scope) => $scope
+            ->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value))
+            ->orWhereIn('users.id', DB::table('project_members')->select('user_id')->where('project_id', $projectId)));
+    }
+
+    /**
+     * Quien queda dentro del alcance de la conversación (D-134, la regla de ConversationPolicy):
+     * en la de un proyecto, quien ve el proyecto; en directas y grupos, nadie que sea colaborador
+     * externo. Red de seguridad para los avisos y el tiempo real del chat.
+     *
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function withinConversationScope(Builder $query, Conversation $conversation): void
+    {
+        if ($conversation->type === ConversationType::Project && $conversation->project_id !== null) {
+            $query->seeingProject($conversation->project_id);
+
+            return;
+        }
+
+        $query->withoutCollaborators();
     }
 
     /**

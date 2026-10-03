@@ -48,7 +48,8 @@ export type GanttTask = {
     /** Estimación efectiva: con subtareas estimadas, su suma (SPEC §6). */
     estimated_minutes: number | null;
     /** Horas imputadas (con las de sus subtareas, si las tiene). */
-    logged_minutes: number;
+    /** null para un colaborador externo (D-134). */
+    logged_minutes: number | null;
     subtasks_count: number;
     can: { update: boolean };
 };

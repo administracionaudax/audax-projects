@@ -67,7 +67,7 @@ it('la vista previa en texto plano quita el markdown, resuelve menciones y recor
     expect(MessagePreview::plain("**Hola** <@{$this->ana->id}>, _mira_ [esto](https://a.es) y `código`\n\nfin", $users))
         ->toBe('Hola @Ana, mira esto y código fin')
         ->and(MessagePreview::plain('snake_case_y 2*3*4 se quedan', []))->toBe('snake_case_y 2*3*4 se quedan')
-        ->and(MessagePreview::plain('<@999999> ya no existe', []))->toBe('@persona ya no existe')
+        ->and(MessagePreview::plain('<@999999> ya no existe', []))->toBe('@Persona desconocida ya no existe')
         ->and(MessagePreview::plain(str_repeat('a', 200), [], 10))->toBe('aaaaaaaaa…')
         ->and(MessagePreview::plain(null, []))->toBe('');
 });

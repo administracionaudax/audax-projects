@@ -17,8 +17,9 @@ use Throwable;
 /**
  * Avisos de tareas que vencen mañana o ya vencidas (SPEC §13), en la app. Una sola notificación por
  * persona y día (resumen), sin repetir aunque el comando se ejecute varias veces el mismo día.
- * Solo tareas abiertas, con responsable interno y activo, de proyectos no archivados. «Hoy» y
- * «mañana» son los de Europe/Madrid.
+ * Solo tareas abiertas, con responsable interno y activo, de proyectos no archivados y que ese
+ * responsable ve (un colaborador externo, solo las de sus proyectos, D-134). «Hoy» y «mañana» son
+ * los de Europe/Madrid.
  *
  * Para no repetir, el propio comando reclama cada aviso con Cache::add (atómico) hasta pasado el
  * día en Madrid, antes de mandarlo a la cola; si la caché se vaciara, el aviso ya guardado en la
@@ -93,8 +94,15 @@ class NotifyDueTasks extends Command
 
             $dueTomorrow = [];
             $overdue = [];
+            // Un colaborador externo solo oye hablar de las tareas de sus proyectos (D-134), como
+            // en Mis tareas (Task::visibleTo): no de las que se quedaron a su nombre en otros.
+            $visible = $user->visibleProjectIds();
 
             foreach ($userTasks as $task) {
+                if ($visible !== null && ! in_array($task->project_id, $visible, true)) {
+                    continue;
+                }
+
                 if ($task->due_date?->toDateString() === $tomorrow) {
                     $dueTomorrow[] = $task->title;
                 } elseif ($task->due_date !== null && $task->due_date->toDateString() < $today->toDateString()) {

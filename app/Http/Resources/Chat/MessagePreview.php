@@ -29,7 +29,7 @@ final class MessagePreview
         $text = (string) preg_replace_callback('/<@(\d{1,10})>/', function (array $match) use ($users): string {
             $user = $users[(int) $match[1]] ?? null;
 
-            return '@'.($user !== null ? $user->name : __('conversations.unknown_person'));
+            return '@'.($user !== null ? $user->name : __('conversations.unknown_mention'));
         }, $text);
         // Marcas de énfasis al principio o al final de una palabra (no las de dentro: snake_case).
         $text = (string) preg_replace('/(?<![\p{L}\p{N}])(\*\*|\*|__|_)(?=\S)|(?<=\S)(\*\*|\*|__|_)(?![\p{L}\p{N}])/u', '', $text);

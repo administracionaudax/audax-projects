@@ -77,7 +77,7 @@ export function barLabel(
         percent !== null
             ? t('gantt.bar.progress', {
                   percent,
-                  logged: formatMinutes(task.logged_minutes),
+                  logged: formatMinutes(task.logged_minutes ?? 0),
                   estimated: formatMinutes(task.estimated_minutes ?? 0),
               })
             : null,

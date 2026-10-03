@@ -5,9 +5,9 @@ namespace App\Notifications\Chat;
 use App\Broadcasting\ChatNoticeThrottle;
 use App\Broadcasting\ConversationViewers;
 use App\Broadcasting\WebPushConfig;
-use App\Domain\Chat\Mentions;
 use App\Enums\ConversationType;
 use App\Enums\MessageType;
+use App\Http\Resources\Chat\ChatUsers;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\MessageMention;
@@ -22,7 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
  * - @todos → todos los participantes,
  * - <@ID> → la persona mencionada (gana a los anteriores),
  *
- * y nunca a: el autor, quien ya no participa, personas desactivadas o clientes, quien tiene la
+ * y nunca a: el autor, quien ya no participa, personas desactivadas o clientes, un colaborador
+ * externo fuera de su alcance (ConversationPolicy, D-134), quien tiene la
  * conversación abierta en ese momento (ConversationViewers) ni quien ya recibió un aviso de esa
  * conversación en los últimos 5 minutos (ChatNoticeThrottle). Silenciar una conversación quita
  * los avisos de @todos y de los directos; una mención personal sigue llegando a la campana, pero
@@ -60,7 +61,9 @@ final class ChatNotices
             ->where('conversation_id', $conversation->id)
             ->whereNull('left_at')
             ->where('user_id', '!=', $message->user_id)
-            ->whereHas('user', fn (Builder $query) => $query->active()->internal())
+            // Red de seguridad (D-134): nadie fuera del alcance de la conversación, aunque siga
+            // como participante (un colaborador externo en una directa, un grupo o un proyecto ajeno).
+            ->whereHas('user', fn (Builder $query) => $query->active()->internal()->withinConversationScope($conversation))
             ->with(['user' => fn ($query) => $query->select(['id', 'name', 'is_active'])->withExists('pushSubscriptions')])
             ->get()
             ->keyBy('user_id');
@@ -132,13 +135,14 @@ final class ChatNotices
     }
 
     /**
-     * Nombres de las personas citadas con <@ID> (para escribir @Nombre en el aviso).
+     * Nombres de las personas citadas con <@ID> que se resuelven (ChatUsers::mentionable), para
+     * escribir @Nombre en el aviso.
      *
      * @return array<int, string>
      */
     private function mentionNames(Message $message): array
     {
-        $ids = Mentions::parse((string) $message->body)['users'];
+        $ids = ChatUsers::mentionable([$message])[$message->id] ?? [];
 
         if ($ids === []) {
             return [];

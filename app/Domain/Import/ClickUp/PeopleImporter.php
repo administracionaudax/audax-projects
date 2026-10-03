@@ -2,6 +2,7 @@
 
 namespace App\Domain\Import\ClickUp;
 
+use App\Domain\Access\CollaboratorOffboarding;
 use App\Domain\Admin\WorkScheduleVersions;
 use App\Domain\Projects\ProjectColors;
 use App\Enums\Role;
@@ -20,7 +21,10 @@ use Illuminate\Support\Str;
  */
 final class PeopleImporter
 {
-    public function __construct(private readonly WorkScheduleVersions $schedules) {}
+    public function __construct(
+        private readonly WorkScheduleVersions $schedules,
+        private readonly CollaboratorOffboarding $offboarding,
+    ) {}
 
     /**
      * @return array<string, PersonMatch> correo de ClickUp => persona (también las que no se importan)
@@ -86,11 +90,18 @@ final class PeopleImporter
         }
 
         if (! $user->hasRole($role->value) || $user->roles()->count() !== 1) {
+            $becomesCollaborator = $role === Role::Collaborator && ! $user->isCollaborator();
             $user->syncRoles([$role->value]);
             $changed = true;
 
             if ($role === Role::Employee || $role === Role::Collaborator) {
                 $user->managedDepartments()->detach();
+            }
+
+            // Como en la administración (D-134): deja de ser co-gestor, suelta las tareas de los
+            // proyectos de los que no es miembro y sale de sus directas y grupos.
+            if ($becomesCollaborator) {
+                $this->offboarding->becameCollaborator($user);
             }
         }
 

@@ -5,6 +5,7 @@ namespace App\Domain\Projects;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -14,14 +15,17 @@ use Illuminate\Database\Eloquent\Builder;
  *   en la base de datos, sin cargar las tareas (SPEC §3: agregados, nunca fila a fila en PHP):
  *   las subtareas estimadas de tareas raíz vivas + las raíces sin subtareas estimadas.
  * - Reales: suma de minutos de todas las entradas del proyecto, en cualquier estado.
+ * Un colaborador externo no ve las horas de todos ni el presupuesto (D-134): le llegan a null.
  */
 final class ProjectSummary
 {
     /**
-     * @return array{estimated_minutes: int, logged_minutes: int, budget_minutes: int|null, open_tasks: int, total_tasks: int}
+     * @return array{estimated_minutes: int, logged_minutes: int|null, budget_minutes: int|null, open_tasks: int, total_tasks: int}
      */
-    public function for(Project $project): array
+    public function for(Project $project, ?User $viewer = null): array
     {
+        $hidden = $viewer?->isCollaborator() ?? false;
+
         $fromSubtasks = (int) Task::query()
             ->where('project_id', $project->id)
             ->whereNotNull('parent_task_id')
@@ -38,7 +42,7 @@ final class ProjectSummary
 
         $estimated = $fromSubtasks + $fromRoots;
 
-        $logged = (int) TimeEntry::query()->where('project_id', $project->id)->sum('minutes');
+        $logged = $hidden ? null : (int) TimeEntry::query()->where('project_id', $project->id)->sum('minutes');
 
         $counts = Task::query()
             ->where('project_id', $project->id)
@@ -49,7 +53,7 @@ final class ProjectSummary
         return [
             'estimated_minutes' => $estimated,
             'logged_minutes' => $logged,
-            'budget_minutes' => $project->budget_minutes,
+            'budget_minutes' => $hidden ? null : $project->budget_minutes,
             'open_tasks' => (int) ($counts->open ?? 0),
             'total_tasks' => (int) ($counts->total ?? 0),
         ];

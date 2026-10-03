@@ -2,6 +2,7 @@
 
 namespace App\Domain\Projects;
 
+use App\Domain\Access\CollaboratorOffboarding;
 use App\Enums\ProjectAlert;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -14,7 +15,8 @@ use Illuminate\Validation\ValidationException;
  * - el gestor principal (owner) es siempre miembro gestor: no se le quita ni se le desmarca,
  * - al cambiar de gestor principal, el nuevo pasa a gestor y el anterior sigue como gestor,
  * - cada gestor tiene sus alertas (por defecto, todas activadas),
- * - un colaborador externo nunca es gestor (D-134).
+ * - un colaborador externo nunca es gestor (D-134); al salir, suelta las tareas del proyecto
+ *   (CollaboratorOffboarding).
  * Los cambios de miembros quedan en la auditoría del proyecto (el pivote no la tiene propia).
  */
 final class ProjectMembership
@@ -26,6 +28,8 @@ final class ProjectMembership
     public const string EVENT_MANAGER_ADDED = 'manager_added';
 
     public const string EVENT_MANAGER_REMOVED = 'manager_removed';
+
+    public function __construct(private readonly CollaboratorOffboarding $offboarding) {}
 
     public function add(Project $project, User $member, bool $isManager, User $actor): void
     {
@@ -86,6 +90,10 @@ final class ProjectMembership
         DB::transaction(function () use ($project, $member, $actor): void {
             $project->members()->detach($member->id);
             $this->log($project, $actor, self::EVENT_MEMBER_REMOVED, $member);
+
+            // Un colaborador externo deja de seguir sus tareas, de ser su responsable y de medir
+            // tiempo en ellas (D-134).
+            $this->offboarding->leftProject($member, $project->id);
         });
     }
 

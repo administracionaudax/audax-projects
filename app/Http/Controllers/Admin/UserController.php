@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Access\CollaboratorOffboarding;
 use App\Domain\Admin\TextSearch;
 use App\Domain\Admin\UserGuard;
 use App\Domain\Admin\UserInviter;
@@ -40,6 +41,7 @@ class UserController extends Controller
 
     public function __construct(
         private readonly UserGuard $guard,
+        private readonly CollaboratorOffboarding $offboarding,
     ) {}
 
     public function index(Request $request): Response
@@ -172,10 +174,10 @@ class UserController extends Controller
                     User::forgetMemberships();
                 }
 
-                // Y deja de ser co-gestor de sus proyectos.
+                // Y deja de ser co-gestor, suelta las tareas de los proyectos de los que no es
+                // miembro y sale de sus directas y grupos (D-134).
                 if ($role === Role::Collaborator) {
-                    DB::table('project_members')->where('user_id', $user->id)->where('is_manager', true)->update(['is_manager' => false]);
-                    User::forgetMemberships();
+                    $this->offboarding->becameCollaborator($user);
                 }
             }
         });

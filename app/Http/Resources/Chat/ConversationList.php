@@ -16,10 +16,10 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * las que tiene quien mira (ConversationDirectory::forUser), de la última actividad a la más
  * antigua, con su nombre, la vista previa del último mensaje, la hora y los no leídos.
  *
- * Siempre 7 consultas, tenga las conversaciones que tenga: conversaciones (con el id de su último
- * mensaje y el recuento de participantes como subconsultas), proyectos, lo suyo (silenciada y
- * leído), la otra persona de cada directa, los últimos mensajes, las personas y los no leídos
- * (una sola consulta agregada).
+ * Siempre 8 consultas como mucho, tenga las conversaciones que tenga: conversaciones (con el id de
+ * su último mensaje y el recuento de participantes como subconsultas), proyectos, lo suyo
+ * (silenciada y leído), la otra persona de cada directa, los últimos mensajes, las menciones que
+ * se resuelven (ChatUsers::mentionable), las personas y los no leídos (una sola agregada).
  */
 final class ConversationList
 {
@@ -71,14 +71,12 @@ final class ConversationList
             ->get(['id', 'conversation_id', 'user_id', 'type', 'body', 'system_key', 'system_payload', 'hidden_at', 'created_at'])
             ->keyBy('conversation_id');
 
-        $userIds = [...$others->pluck('user_id')->all(), ...$last->pluck('user_id')->all()];
-        foreach ($last as $message) {
-            array_push($userIds, ...MessagePreview::mentionIds($message->body));
-        }
+        $mentions = ChatUsers::mentionable($last);
+        $userIds = [...$others->pluck('user_id')->all(), ...$last->pluck('user_id')->all(), ...array_merge(...array_values($mentions))];
         $users = ChatUsers::load($userIds);
         $unread = $this->directory->unreadCounts($user, $ids);
 
-        return array_values($conversations->map(function (Conversation $conversation) use ($user, $mine, $others, $last, $users, $unread): array {
+        return array_values($conversations->map(function (Conversation $conversation) use ($user, $mine, $others, $last, $users, $mentions, $unread): array {
             $project = $conversation->type === ConversationType::Project ? $conversation->project : null;
             $otherId = $others->get($conversation->id)?->user_id;
             $other = $otherId === null ? null : ($users[$otherId] ?? null);
@@ -98,7 +96,7 @@ final class ConversationList
                 'muted' => $participant !== null && $participant->muted,
                 'unread' => $unread[$conversation->id] ?? 0,
                 'read_only' => $project !== null && ! $project->acceptsTime(),
-                'last_message' => $message === null ? null : $this->lastMessage($message, $user, $users),
+                'last_message' => $message === null ? null : $this->lastMessage($message, $user, $users, ChatUsers::only($users, $mentions[$message->id] ?? [])),
                 'last_activity_at' => ($conversation->last_message_at ?? $conversation->created_at)?->toIso8601ZuluString(),
             ];
         })->all());
@@ -109,9 +107,10 @@ final class ConversationList
      * un admin no se enseña en la lista, ni siquiera a quien modera.
      *
      * @param  array<int, User>  $users
+     * @param  array<int, User>  $mentioned  las menciones de este mensaje que se resuelven
      * @return array<string, mixed>
      */
-    private function lastMessage(Message $message, User $viewer, array $users): array
+    private function lastMessage(Message $message, User $viewer, array $users, array $mentioned): array
     {
         $kind = $message->hidden_at !== null ? 'hidden' : $message->type->value;
         $system = $message->type === MessageType::System;
@@ -121,7 +120,7 @@ final class ConversationList
             'kind' => $kind,
             'author' => $message->user_id === null ? null : ($users[$message->user_id] ?? null)?->name,
             'is_mine' => $message->user_id === $viewer->id,
-            'preview' => $kind === 'hidden' || $system ? '' : MessagePreview::plain($message->body, $users),
+            'preview' => $kind === 'hidden' || $system ? '' : MessagePreview::plain($message->body, $mentioned),
             'system' => $system && $kind !== 'hidden' ? ['key' => (string) $message->system_key, 'payload' => (object) ($message->system_payload ?? [])] : null,
             'created_at' => $message->created_at?->toIso8601ZuluString(),
         ];

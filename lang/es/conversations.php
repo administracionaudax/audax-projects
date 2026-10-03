@@ -6,6 +6,8 @@
 
 return [
     'unknown_person' => 'persona',
+    // Una mención <@ID> que no se resuelve (quien no participa ni está en message_mentions).
+    'unknown_mention' => 'Persona desconocida',
     'untitled' => 'Conversación',
     'errors' => [
         'not_participant' => 'Solo quien participa en la conversación puede hacer esto.',

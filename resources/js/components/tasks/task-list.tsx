@@ -53,7 +53,11 @@ function TaskRow({
             : undefined;
     const subtasks = task.subtasks ?? [];
     const logged =
-        level === 0 ? totalLoggedMinutes(task) : (task.logged_minutes ?? 0);
+        level === 0
+            ? totalLoggedMinutes(task)
+            : task.logged_minutes === null
+              ? null
+              : (task.logged_minutes ?? 0);
 
     return (
         <tr
@@ -186,13 +190,16 @@ function TaskRow({
             <td className="px-2 py-2 text-right">
                 <TaskEstimate task={task} />
             </td>
-            <td className="tabular px-2 py-2 text-right">
-                {logged > 0 ? (
-                    formatMinutes(logged)
-                ) : (
-                    <span className="text-muted-foreground">0:00</span>
-                )}
-            </td>
+            {/* Sin las horas de todos (colaborador externo, D-134), sin columna. */}
+            {logged === null ? null : (
+                <td className="tabular px-2 py-2 text-right">
+                    {logged > 0 ? (
+                        formatMinutes(logged)
+                    ) : (
+                        <span className="text-muted-foreground">0:00</span>
+                    )}
+                </td>
+            )}
             <td className="w-10 px-2 py-2">
                 {!task.is_milestone ? <TimerButton task={task} /> : null}
             </td>
@@ -217,6 +224,10 @@ function GroupTable({
 }) {
     const lookups = useTaskLookups();
     const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+    // Un colaborador externo no ve las horas de todos (D-134): le llegan a null y no hay columna.
+    const showLogged = !group.tasks.some(
+        (task) => task.logged_minutes === null,
+    );
     const visibleIds = group.tasks.flatMap((task) => [
         task.id,
         ...(collapsed.has(task.id)
@@ -302,12 +313,14 @@ function GroupTable({
                         >
                             {t('task_list.column.estimate')}
                         </th>
-                        <th
-                            scope="col"
-                            className="px-2 py-2 text-right font-medium"
-                        >
-                            {t('task_list.column.logged')}
-                        </th>
+                        {showLogged ? (
+                            <th
+                                scope="col"
+                                className="px-2 py-2 text-right font-medium"
+                            >
+                                {t('task_list.column.logged')}
+                            </th>
+                        ) : null}
                         <th scope="col" className="w-10 px-2 py-2">
                             <span className="sr-only">
                                 {t('task_list.column.timer')}
@@ -361,7 +374,10 @@ function GroupTable({
                     {group.tasks.length === 0 ? (
                         <tr>
                             <td
-                                colSpan={lookups.usesBanks ? 10 : 9}
+                                colSpan={
+                                    (lookups.usesBanks ? 10 : 9) -
+                                    (showLogged ? 0 : 1)
+                                }
                                 className="px-3 py-3 text-sm text-muted-foreground"
                             >
                                 {t('task_list.group_empty')}

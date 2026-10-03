@@ -18,6 +18,8 @@ return [
         'bank_frozen' => 'La bolsa «:bank» está :status: sus horas ya no se pueden cambiar ni borrar, solo su descripción. Si hay que corregirlas, pídeselo a un administrador.',
         'bank_department' => 'La bolsa «:bank» es solo para el departamento :department.',
         'bank_blocked' => 'La bolsa «:bank» no admite exceso. Saldo disponible: :available.',
+        // Para un colaborador externo, sin el saldo (D-134).
+        'bank_blocked_collaborator' => 'La bolsa «:bank» no admite más horas.',
         'not_member' => 'Solo los miembros del proyecto pueden imputar horas.',
         'collaborator_internal' => 'Los colaboradores externos no imputan horas en los proyectos internos.',
         'future_date' => 'No se pueden imputar horas en fechas futuras.',
@@ -51,6 +53,8 @@ return [
         'no_capacity_other' => 'Ese día :name no tiene jornada y suma :total.',
         'overage_all' => 'Esta bolsa está agotada: estas horas se registrarán como exceso.',
         'overage_partial' => ':minutes de esta entrada se registrarán como exceso: la bolsa se agota.',
+        // Para un colaborador externo, sin cantidades (D-134).
+        'overage_partial_collaborator' => 'Parte de esta entrada se registrará como exceso: la bolsa se agota.',
         'timer_too_short' => 'El temporizador ha durado menos de lo que se redondea: no se ha imputado nada.',
     ],
     // Avisos de éxito (toasts) de las acciones de horas.

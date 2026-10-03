@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -18,8 +19,9 @@ use Illuminate\Database\Query\JoinClause;
  * y @todos, de los últimos 14 días, en las conversaciones en las que participa hoy) y las
  * conversaciones con mensajes sin leer (sin las silenciadas), con el total de la navegación.
  *
- * Siete consultas como mucho, tenga lo que tenga: los no leídos (UnreadCounts, dos), las menciones,
- * las conversaciones con sus proyectos, la otra persona de cada directa y las personas. Lo
+ * Ocho consultas como mucho, tenga lo que tenga: los no leídos (UnreadCounts, dos), las menciones,
+ * las conversaciones con sus proyectos, la otra persona de cada directa, las menciones que se
+ * resuelven (ChatUsers::mentionable) y las personas. Lo
  * ocultado por un admin y lo borrado no aparecen; las propias tampoco.
  */
 final class HomeChatSummary
@@ -61,10 +63,8 @@ final class HomeChatSummary
             ->where('user_id', '!=', $user->id)
             ->pluck('user_id', 'conversation_id');
 
-        $userIds = [...$others->values()->all(), ...$mentions->pluck('user_id')->all()];
-        foreach ($mentions as $message) {
-            array_push($userIds, ...MessagePreview::mentionIds($message->body));
-        }
+        $mentioned = ChatUsers::mentionable($mentions);
+        $userIds = [...$others->values()->all(), ...$mentions->pluck('user_id')->all(), ...array_merge(...array_values($mentioned))];
         $users = ChatUsers::load($userIds);
 
         $title = function (int $id) use ($conversations, $others, $users): string {
@@ -104,7 +104,7 @@ final class HomeChatSummary
                     'conversation_id' => $message->conversation_id,
                     'conversation' => $title($message->conversation_id),
                     'author' => $message->user_id === null ? null : ($users[$message->user_id] ?? null)?->name,
-                    'excerpt' => MessagePreview::plain($message->body, $users, 120),
+                    'excerpt' => MessagePreview::plain($message->body, ChatUsers::only($users, $mentioned[$message->id] ?? []), 120),
                     'everyone' => ! (bool) $message->getAttribute('personal'),
                     'unread' => (bool) $message->getAttribute('is_unread'),
                     'created_at' => $message->created_at?->toIso8601ZuluString(),
@@ -120,6 +120,7 @@ final class HomeChatSummary
      */
     private function mentions(User $user): EloquentCollection
     {
+        $projectIds = $user->visibleProjectIds();
         $mentioned = fn (QueryBuilder $query) => $query->from('message_mentions as mm')
             ->whereColumn('mm.message_id', 'messages.id')
             ->where(fn (QueryBuilder $who) => $who->where('mm.user_id', $user->id)->orWhere('mm.everyone', true));
@@ -133,6 +134,12 @@ final class HomeChatSummary
                     ->where('p.user_id', '=', $user->id)
                     ->whereNull('p.left_at');
             })
+            // Un colaborador externo, solo en las conversaciones de sus proyectos (D-134), aunque
+            // siga como participante de otra.
+            ->when($projectIds !== null, fn (Builder $query) => $query->whereIn('messages.conversation_id', Conversation::query()
+                ->select('id')
+                ->where('type', ConversationType::Project->value)
+                ->whereIn('project_id', $projectIds ?? [])))
             ->whereExists($mentioned)
             ->whereNotNull('messages.user_id')
             ->where('messages.user_id', '!=', $user->id)

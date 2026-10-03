@@ -19,10 +19,19 @@ export function TaskTime({ panel }: { panel: TaskPanelData }) {
         <div className="grid gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm">
-                    {t('task_time.total', {
-                        visible: formatMinutes(panel.time_visible_minutes),
-                        total: formatMinutes(task.logged_minutes ?? 0),
-                    })}
+                    {/* Un colaborador externo no ve el total de todos (D-134): solo lo suyo. */}
+                    {task.logged_minutes === null
+                        ? t('task_time.own', {
+                              visible: formatMinutes(
+                                  panel.time_visible_minutes,
+                              ),
+                          })
+                        : t('task_time.total', {
+                              visible: formatMinutes(
+                                  panel.time_visible_minutes,
+                              ),
+                              total: formatMinutes(task.logged_minutes ?? 0),
+                          })}
                 </p>
                 {panel.can.log_time ? (
                     <div className="flex items-center gap-2">

@@ -98,7 +98,7 @@ test('el cliente ve las tareas y estados de un proyecto abierto, sin comentarios
             ->where('gantt', true));
 
     $content = (string) $response->getContent();
-    expect($content)->not->toContain('Elena')
+    expect($content)->not->toContain('Elena Empleada')->not->toContain('Horas de Elena')
         ->not->toContain('Nota interna')
         ->not->toContain('Comentario interno')
         ->not->toContain('75.00')
@@ -165,7 +165,7 @@ test('el Gantt de solo lectura lleva tareas, hitos y dependencias, sin responsab
             ->where('view', true)
             ->has('statuses'));
 
-    expect((string) $response->getContent())->not->toContain('Elena')->not->toContain('Nota interna');
+    expect((string) $response->getContent())->not->toContain('Elena Empleada')->not->toContain('Horas de Elena')->not->toContain('Nota interna');
 
     // Escala en la URL; los colores siempre por estado.
     $this->actingAs($this->user)

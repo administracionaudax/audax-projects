@@ -967,6 +967,16 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **Proyecto interno:** aunque alguien le añada como miembro, no imputa en él (`time.errors.collaborator_internal`).
   - **Cambio de rol:** al pasar a colaborador deja de ser responsable de departamento y co-gestor de sus proyectos; si es gestor principal de alguno, el cambio se rechaza hasta elegir otro.
   - **Listado de proyectos:** los filtros solo ofrecen los clientes y gestores de sus proyectos, sin departamentos.
+- **Revisión de seguridad (03/10):**
+  - **Menciones en tareas:** las de la descripción (alta y edición) pasan por el mismo filtro que las de los comentarios (`TaskMentions`). Además, `TaskNotifier` descarta a quien no ve el proyecto de la tarea: ningún aviso de una tarea llega a un colaborador que no es miembro, aunque siga como seguidor o mencionado.
+  - **Al dejar de ver un proyecto** (sacarlo de él, mover una tarea a un proyecto del que no es miembro o pasar a colaborador), `CollaboratorOffboarding` le quita de los seguidores de sus tareas, las deja sin responsable y descarta sin imputar su temporizador en ellas.
+  - **Al pasar a colaborador** (administración e importación de ClickUp), además, deja de ser co-gestor y sale (`left_at`) de sus directas y grupos; el histórico se conserva.
+  - **Tareas que vencen:** el aviso diario solo incluye las de sus proyectos, como Mis tareas.
+  - **Menciones `<@ID>` del chat, para todos:** solo resuelven nombre y avatar de quien participa o ha participado en la conversación o tiene su fila en `message_mentions` del mensaje (`ChatUsers::mentionable`); el resto se pinta como «Persona desconocida». Se aplica en los mensajes, los fijados, la lista de conversaciones, Inicio, la búsqueda del chat, los avisos y la tarea creada desde un mensaje. Quién ocultó un mensaje solo se envía a quien modera.
+  - **Red de seguridad del chat:** los avisos (`ChatNotices`), las menciones de Inicio y los destinatarios del tiempo real (`ChatRealtimeRelay`) aplican la regla de `ConversationPolicy` (`User::withinConversationScope`), aunque siga como participante.
+  - **Sin cantidades:** al imputar, el rechazo de una bolsa sin exceso y el aviso de exceso parcial no le dicen el saldo («La bolsa no admite más horas», «Parte de esta entrada se registrará como exceso»).
+  - **Horas de todos y presupuesto:** `logged_minutes` del proyecto, de sus tareas (lista, kanban, panel y Mis tareas) y del Gantt del proyecto, y `budget_minutes`, le llegan a `null`, y la interfaz no enseña nada; en el panel ve solo sus horas.
+  - **Comentarios:** `TaskCommentPolicy` comprueba `canSeeProject`: tras salir del proyecto ya no edita ni borra los suyos de allí. Las personas que aparecen en el panel de la tarea por su histórico (seguidores, autores y creador) se mantienen: es una decisión de producto.
 
 ### D-135 · Importación de ClickUp: alcance y correspondencias
 - **Alcance:** todo el espacio «Audax Studio» y su historial (desde marzo de 2024).

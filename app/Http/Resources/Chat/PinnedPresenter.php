@@ -22,9 +22,10 @@ final class PinnedPresenter
             return [];
         }
 
+        $mentions = ChatUsers::mentionable($messages);
         $ids = [];
         foreach ($messages as $message) {
-            array_push($ids, $message->user_id, $message->pinned_by, ...MessagePreview::mentionIds($message->body));
+            array_push($ids, $message->user_id, $message->pinned_by, ...$mentions[$message->id] ?? []);
         }
         $users = ChatUsers::load($ids);
 
@@ -32,7 +33,7 @@ final class PinnedPresenter
             'id' => $message->id,
             'type' => $message->type->value,
             'author' => $message->user_id === null ? null : ($users[$message->user_id] ?? null)?->name,
-            'excerpt' => $message->type === MessageType::System ? '' : MessagePreview::plain($message->body, $users, 100),
+            'excerpt' => $message->type === MessageType::System ? '' : MessagePreview::plain($message->body, ChatUsers::only($users, $mentions[$message->id] ?? []), 100),
             'system' => $message->type === MessageType::System ? ['key' => (string) $message->system_key, 'payload' => (object) ($message->system_payload ?? [])] : null,
             'hidden' => $message->hidden_at !== null,
             'pinned_at' => $message->pinned_at?->toIso8601ZuluString(),

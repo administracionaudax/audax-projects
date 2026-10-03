@@ -205,7 +205,7 @@ class ProjectController extends Controller
         return Inertia::render('projects/show', [
             'project' => ResourceData::of(ProjectResource::make($project), $request),
             'canManage' => $user->can('update', $project),
-            'summary' => $summary->for($project),
+            'summary' => $summary->for($project, $user),
             'managers' => ResourceData::of(UserSummaryResource::collection($managers), $request),
             'membersCount' => $project->members()->count(),
             'hourBanks' => $banks,

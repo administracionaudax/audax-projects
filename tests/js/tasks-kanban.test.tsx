@@ -291,6 +291,32 @@ describe('kanban', () => {
         expect(onOpen).toHaveBeenCalledWith(11);
     });
 
+    it('sin las horas de todos (null, colaborador externo) la tarjeta solo dice la estimación (D-134)', () => {
+        render(
+            <TaskLookupsProvider value={lookups()}>
+                <TaskKanban
+                    tasks={[
+                        {
+                            ...tasks[0],
+                            logged_minutes: null,
+                            effective_estimated_minutes: 120,
+                        },
+                        { ...tasks[1], logged_minutes: null },
+                    ]}
+                    statuses={statuses}
+                    onOpen={vi.fn()}
+                    hiddenCompletedCount={0}
+                    onShowCompleted={vi.fn()}
+                />
+            </TaskLookupsProvider>,
+        );
+
+        const board = column('Por hacer');
+        expect(board.textContent).toContain('Estimación 2:00');
+        expect(board.textContent).not.toContain('Imputadas');
+        expect(board.textContent).not.toContain('0:00');
+    });
+
     it('mueve una tarea con el teclado desde el menú «Mover a…» y lo envía al servidor', async () => {
         const user = userEvent.setup();
         renderBoard();
