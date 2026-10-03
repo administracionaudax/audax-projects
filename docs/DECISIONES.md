@@ -983,6 +983,23 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **Facturable:** el campo «Facturable» o «Factor facturable» = 1. «Naturaleza: No productiva» no es facturable.
 - **Miembros de cada proyecto:** quien tiene tareas asignadas o horas en él. El gestor principal es el admin o responsable con más horas en el proyecto o, si no hay, Alfredo.
 - **No se importan, de momento:** comentarios, adjuntos y etiquetas (pocas). Se puede añadir más adelante.
+- **Concreciones del importador** (`app:import-clickup`):
+  - **Listas archivadas:** la API no las devuelve dentro de las carpetas archivadas. Se recuperan de los registros de horas (`task_location`) y dan proyectos archivados, o bolsas cerradas, con las tareas de esos registros (título y estado). En el export real son 76 listas y unas 3.500 entradas.
+  - **Clientes:** dos carpetas con el mismo nombre (una activa y otra archivada) son el mismo cliente, activo si alguna lo está.
+  - **Nombres:** sin emoji, sin el cliente entre corchetes y sin el código F. «??h» y «0h» no dan presupuesto ni aparecen en el nombre. Un código F en una lista que no es de bolsas va a la descripción.
+  - **Códigos:** con `ProjectCodeSuggester`, a partir del cliente y del código de la lista (`CLIENTE-FE1`); `CLIENTE-BH` para el proyecto de bolsas e `INTERNO-…` para los internos, con sufijo si se repite.
+  - **Listas sin código:** por horas, aunque el estado de la lista en ClickUp diga «bolsa de horas» (tres archivadas).
+  - **Estados:** además de los nombres de D-135, los de tipo `done` o `closed` van a hecha. Dentro de la categoría se usa el estado local del mismo nombre («En revisión») o el primero.
+  - **Tipos:** «UI» es el «Diseño UI» que ya existe y la errata «Definción» es «Definición». Un tipo que ya existe con otro departamento pasa al de D-135: Maquetación deja Desarrollo y pasa a Diseño.
+  - **Prioridad:** la de ClickUp tal cual; sin prioridad, normal.
+  - **Seguidores:** solo los demás asignados, no los seguidores de ClickUp (incluyen al creador y darían avisos de más).
+  - **Subtareas en ciclo** (dos en el export): quedan como tareas sueltas.
+  - **Fechas:** si el inicio es posterior al vencimiento, la tarea se queda sin inicio. `completed_at` sale de `date_done`, `date_closed` o `date_updated`.
+  - **Descripción:** el Markdown si lo hay (CommonMark sin HTML) o el texto plano en párrafos, siempre saneado con `RichText`.
+  - **Miembros:** personas activas con tareas asignadas u horas. Una colaboradora no entra en un proyecto interno aunque tenga horas históricas en él (sus horas sí se importan, D-134).
+  - **Gestor principal:** se recalcula en cada ejecución y el anterior sigue como gestor. El gestor por defecto es el `default_manager` del fichero de personas (Alfredo) o, si falta, el primer admin activo.
+  - **Bolsas:** empiezan en la fecha de la lista o, si no tiene, en su primera actividad. Las cerradas llevan la fecha de la importación y al gestor por defecto como quien cierra. La cadena de renovaciones se rehace en cada ejecución.
+  - **Tareas de las listas recuperadas:** facturables salvo en los internos, porque sus campos no llegan.
 
 ### D-136 · Importación de ClickUp: horas e idempotencia
 - **Horas:**
@@ -1002,6 +1019,20 @@ Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser
   - **Cuentas existentes:** si ya hay una cuenta con ese correo, se le actualizan el rol y el departamento.
   - **Invitaciones:** el importador **no** envía invitaciones. Se envían después, con el visto bueno del propietario, desde la administración o con `--invitar`.
 - **Simulación:** `--dry-run` hace todo dentro de una transacción que se deshace y muestra el informe de recuentos.
+- **Concreciones del importador** (`app:import-clickup`):
+  - **Exceso antes del bloqueo:** las horas de semanas anteriores se escriben aprobadas y se bloquean después de recalcular las bolsas, para que `HourBankLedger` reparta el exceso (las bloqueadas conservan el suyo, D-019). No se crea un `TimeEntryLock`: el admin las corrige como cualquier bloqueada.
+  - **Registros de más de 24 h** (cinco en el export, temporizadores olvidados): se parten en los cambios de día de Madrid, como el temporizador, sin cambiar el total. En el modo de importación no se valida el total del día.
+  - **Registros de menos de 30 s:** dan 0 min y se descartan (314 en el export).
+  - **Facturable:** el de la tarea, salvo que ClickUp marque el registro como no facturable.
+  - **Orden:** `created_at` es el `at` de ClickUp, para que el reparto del exceso no dependa del orden de importación.
+  - **Personas sin mapear:** se quitan de las asignaciones y sus horas se descartan, con aviso. Nunca se quita el rol de admin a la última cuenta de administración. Solo admins y responsables pueden ser responsables de un departamento.
+  - **Avisos de bolsa:** los umbrales ya cruzados quedan registrados como enviados sin avisar (`HourBankLedger::recordAlertsSilently`), para que la primera imputación en la app no dispare avisos antiguos.
+  - **Sin efectos secundarios:** la importación corre con los eventos de los modelos desactivados (`Model::withoutEvents`) y el registro de actividad apagado (`activity()->disableLogging()`, se reactiva en un `finally`). Así no hay avisos, chat, tiempo real ni una fila de auditoría por registro (serían unas 43.000).
+  - **Auditoría:** cada ejecución deja una sola entrada, «Importación de ClickUp» (`log_name` `import`, evento `clickup_import`, autor «Sistema»), con los recuentos, los minutos y los descartes en `properties`. `--dry-run` no la deja.
+  - **Al terminar**, ya con los eventos activos: el chat de los proyectos con miembros nuevos se sincroniza y `MembershipsChanged` se lanza una vez (caché de informes).
+  - **`--invitar`:** invita a las personas importadas y activas que nunca han entrado. Con `--dry-run` no envía nada.
+  - **Rendimiento:** lectura en streaming (`JsonArrayStream`) y bloques de 500 en transacción. Una ejecución interrumpida se completa repitiéndola.
+  - **Semanas:** las semanas ya aprobadas o bloqueadas no se tocan.
 
 ### Numeración
 - Fase 2: D-078 a D-087.
