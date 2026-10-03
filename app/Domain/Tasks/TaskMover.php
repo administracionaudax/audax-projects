@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tasks;
 
+use App\Domain\Access\CollaboratorOffboarding;
 use App\Domain\Reports\ReportCache;
 use App\Models\Attachment;
 use App\Models\Project;
@@ -22,7 +23,9 @@ use Illuminate\Validation\ValidationException;
  * - los adjuntos de la tarea, de sus subtareas y de sus comentarios pasan a la pestaña Archivos
  *   del proyecto destino (project_id desnormalizado; el fichero no cambia de sitio),
  * - las dependencias solo unen tareas del mismo proyecto (D-056): se quitan las que la tarea y
- *   sus subtareas tenían con tareas que se quedan en el proyecto de origen.
+ *   sus subtareas tenían con tareas que se quedan en el proyecto de origen,
+ * - un colaborador externo que no es miembro del destino deja de seguirlas y de ser su
+ *   responsable (CollaboratorOffboarding, D-134).
  * La autorización (editar la tarea y crear en el destino) la hace el controlador.
  */
 final class TaskMover
@@ -30,6 +33,7 @@ final class TaskMover
     public function __construct(
         private readonly TaskWriter $writer,
         private readonly TaskPositions $positions,
+        private readonly CollaboratorOffboarding $offboarding,
     ) {}
 
     /**
@@ -81,6 +85,9 @@ final class TaskMover
                     ->where(fn (Builder $from) => $from->whereIn('predecessor_task_id', $taskIds)->whereNotIn('successor_task_id', $taskIds))
                     ->orWhere(fn (Builder $to) => $to->whereIn('successor_task_id', $taskIds)->whereNotIn('predecessor_task_id', $taskIds)))
                 ->delete();
+
+            // Los colaboradores externos que no son miembros del destino las sueltan (D-134).
+            $this->offboarding->tasksMoved($taskIds, $target);
 
             // La tarea y sus subtareas cambian de proyecto: la caché de informes, tras el commit (INT-03).
             ReportCache::bumpAfterCommit();
