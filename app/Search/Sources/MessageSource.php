@@ -2,10 +2,10 @@
 
 namespace App\Search\Sources;
 
-use App\Domain\Chat\Mentions;
 use App\Enums\ConversationType;
 use App\Enums\MessageType;
 use App\Enums\TranscriptionStatus;
+use App\Http\Resources\Chat\ChatUsers;
 use App\Models\Attachment;
 use App\Models\AudioTranscription;
 use App\Models\Conversation;
@@ -270,12 +270,12 @@ class MessageSource implements SearchSource
     }
 
     /**
-     * @param  array<int, string>  $names
+     * @param  array<int, array<int, string>>  $names  por mensaje (mentionNames)
      * @return array{id: int, conversation_id: int, conversation: array{type: string, label: string, code: string|null}, author: string|null, created_at: string|null, match: string, excerpt: string, file_name: string|null, is_audio: bool, url: string}
      */
     private function hit(Message $row, string $text, ?string $kind, array $names, int $radius): array
     {
-        $body = self::plain((string) $row->body, $names);
+        $body = self::plain((string) $row->body, $names[$row->id] ?? []);
         $file = self::attribute($row, 'matched_file');
         $transcript = self::attribute($row, 'transcript');
 
@@ -319,21 +319,25 @@ class MessageSource implements SearchSource
     }
 
     /**
-     * Nombres de las personas mencionadas (<@ID>) en los resultados: una consulta, solo si hay alguna.
+     * Nombres de las personas mencionadas (<@ID>) en cada resultado, solo las que se resuelven
+     * (ChatUsers::mentionable: participantes de la conversación o filas de message_mentions). Dos
+     * consultas, solo si hay alguna.
      *
      * @param  Collection<int, Message>  $rows
-     * @return array<int, string>
+     * @return array<int, array<int, string>> id del mensaje => id → nombre
      */
     private function mentionNames(Collection $rows): array
     {
-        $ids = $rows->flatMap(fn (Message $row): array => Mentions::parse((string) $row->body)['users'])->unique()->values()->all();
+        $allowed = ChatUsers::mentionable($rows);
 
-        if ($ids === []) {
+        if ($allowed === []) {
             return [];
         }
 
-        /** @var array<int, string> */
-        return User::query()->whereKey($ids)->pluck('name', 'id')->all();
+        /** @var array<int, string> $names */
+        $names = User::query()->whereKey(array_values(array_unique(array_merge(...array_values($allowed)))))->pluck('name', 'id')->all();
+
+        return array_map(fn (array $ids): array => array_intersect_key($names, array_flip($ids)), $allowed);
     }
 
     /**
@@ -343,7 +347,7 @@ class MessageSource implements SearchSource
      */
     private static function plain(string $body, array $names): string
     {
-        $text = (string) preg_replace_callback('/<@(\d{1,10})>/', fn (array $match): string => '@'.($names[(int) $match[1]] ?? '…'), $body);
+        $text = (string) preg_replace_callback('/<@(\d{1,10})>/', fn (array $match): string => '@'.($names[(int) $match[1]] ?? __('conversations.unknown_mention')), $body);
         $text = (string) preg_replace('/\[([^\]]*)\]\([^)\s]*\)/u', '$1', $text);
         $text = str_replace(['**', '__', '~~', '`'], '', $text);
 

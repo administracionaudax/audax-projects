@@ -49,7 +49,7 @@ final class MessageHtml
 
             return $slot('<a href="'.e($url).'">'.e($url).'</a>').e(substr($m[0], strlen($url)));
         }, $text);
-        $text = (string) preg_replace_callback('/<@(\d{1,10})>/', fn (array $m): string => $slot(e('@'.($users[(int) $m[1]]->name ?? __('conversations.unknown_person')))), $text);
+        $text = (string) preg_replace_callback('/<@(\d{1,10})>/', fn (array $m): string => $slot(e('@'.($users[(int) $m[1]]->name ?? __('conversations.unknown_mention')))), $text);
 
         $text = e($text);
         $text = (string) preg_replace('/(?<![\p{L}\p{N}*])\*\*(?=\S)(.+?)(?<=\S)\*\*(?![\p{L}\p{N}*])/u', '<strong>$1</strong>', $text);

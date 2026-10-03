@@ -5,9 +5,9 @@ namespace App\Notifications\Chat;
 use App\Broadcasting\ChatNoticeThrottle;
 use App\Broadcasting\ConversationViewers;
 use App\Broadcasting\WebPushConfig;
-use App\Domain\Chat\Mentions;
 use App\Enums\ConversationType;
 use App\Enums\MessageType;
+use App\Http\Resources\Chat\ChatUsers;
 use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\MessageMention;
@@ -135,13 +135,14 @@ final class ChatNotices
     }
 
     /**
-     * Nombres de las personas citadas con <@ID> (para escribir @Nombre en el aviso).
+     * Nombres de las personas citadas con <@ID> que se resuelven (ChatUsers::mentionable), para
+     * escribir @Nombre en el aviso.
      *
      * @return array<int, string>
      */
     private function mentionNames(Message $message): array
     {
-        $ids = Mentions::parse((string) $message->body)['users'];
+        $ids = ChatUsers::mentionable([$message])[$message->id] ?? [];
 
         if ($ids === []) {
             return [];

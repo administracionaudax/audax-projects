@@ -15,7 +15,7 @@
     "chat.errors.people": "No se han podido cargar las personas.",
     "chat.errors.task_options": "No se han podido cargar los datos de la tarea.",
     "chat.errors.retry": "Reintentar",
-    "chat.mention.unknown": "persona",
+    "chat.mention.unknown": "Persona desconocida",
     "chat.mention.everyone": "todos",
     "chat.mention.everyone_hint": "Avisa a todos los participantes",
     "chat.mention.list": "Personas que puedes mencionar",

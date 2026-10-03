@@ -197,8 +197,10 @@ describe('pintado', () => {
         expect(mentions[1].className).not.toContain('bg-info-soft');
     });
 
-    it('una mención a alguien desconocido se ve como @persona', () => {
-        expect(html('hola <@999>').textContent).toBe('hola @persona');
+    it('una mención a alguien desconocido se ve como @Persona desconocida', () => {
+        expect(html('hola <@999>').textContent).toBe(
+            'hola @Persona desconocida',
+        );
     });
 
     it('conserva los saltos de línea', () => {

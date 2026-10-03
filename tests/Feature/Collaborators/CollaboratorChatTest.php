@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\Chat\ChatDirectMessageNotification;
 use App\Notifications\Chat\ChatEveryoneNotification;
 use App\Notifications\Chat\ChatMentionNotification;
+use App\Search\Sources\MessageSource;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -83,4 +84,40 @@ it('la actividad en tiempo real no le llega de directas, grupos ni proyectos aje
         ->and($recipients[$this->group->id])->toBe([$this->luis->id])
         ->and($recipients[$this->foreignChat->id])->toContain($this->luis->id)->not->toContain($this->sara->id)
         ->and($recipients[$this->ownChat->id])->toContain($this->sara->id);
+});
+
+describe('menciones <@ID> escritas a mano', function () {
+    beforeEach(function () {
+        // Óscar es de la plantilla, pero no participa en el chat del proyecto de Sara.
+        $this->outsider = User::factory()->employee()->create(['name' => 'Óscar Fuera']);
+        $this->message = $this->writer->post($this->ana, $this->ownChat, "<@{$this->sara->id}> <@{$this->outsider->id}> <@{$this->luis->id}> propuesta");
+        // Luis estaba cuando se le mencionó; después sale del proyecto: su mención sigue siendo suya.
+        $this->directory->leave($this->ownChat, $this->luis->id);
+        $this->expected = '@Sara Colaboradora @Persona desconocida @Luis Plantilla propuesta';
+    });
+
+    it('solo resuelven a participantes o a quien tiene su mención guardada, para cualquiera que mire', function () {
+        foreach ([$this->sara, $this->ana] as $viewer) {
+            $users = collect($this->actingAs($viewer)->getJson("/chat/{$this->ownChat->id}/mensajes")->assertOk()->json('users'))->pluck('id')->all();
+
+            expect($users)->toContain($this->luis->id)
+                ->and($users)->toContain($this->sara->id)
+                ->and($users)->not->toContain($this->outsider->id);
+        }
+    });
+
+    it('la lista de conversaciones, los fijados, Inicio, la búsqueda y la tarea sugerida dicen «Persona desconocida»', function () {
+        $listed = collect($this->actingAs($this->sara)->getJson('/chat/conversaciones')->assertOk()->json('conversations'))->firstWhere('id', $this->ownChat->id);
+        expect($listed['last_message']['preview'])->toBe($this->expected);
+
+        $this->writer->setPinned($this->ana, $this->message, true);
+        expect($this->actingAs($this->sara)->getJson("/chat/{$this->ownChat->id}/fijados")->assertOk()->json('pinned.0.excerpt'))->toBe($this->expected);
+
+        expect(app(HomeChatSummary::class)->for($this->sara)['mentions'][0]['excerpt'])->toBe($this->expected);
+
+        expect(app(MessageSource::class)->find($this->sara, 'propuesta', 10)[0]['excerpt'])->toContain('@Persona desconocida')
+            ->not->toContain('Óscar');
+
+        expect($this->actingAs($this->sara)->getJson("/chat/mensajes/{$this->message->id}/tarea")->assertOk()->json('title'))->toBe($this->expected);
+    });
 });

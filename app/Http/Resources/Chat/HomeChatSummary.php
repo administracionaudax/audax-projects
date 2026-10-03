@@ -19,8 +19,9 @@ use Illuminate\Database\Query\JoinClause;
  * y @todos, de los últimos 14 días, en las conversaciones en las que participa hoy) y las
  * conversaciones con mensajes sin leer (sin las silenciadas), con el total de la navegación.
  *
- * Siete consultas como mucho, tenga lo que tenga: los no leídos (UnreadCounts, dos), las menciones,
- * las conversaciones con sus proyectos, la otra persona de cada directa y las personas. Lo
+ * Ocho consultas como mucho, tenga lo que tenga: los no leídos (UnreadCounts, dos), las menciones,
+ * las conversaciones con sus proyectos, la otra persona de cada directa, las menciones que se
+ * resuelven (ChatUsers::mentionable) y las personas. Lo
  * ocultado por un admin y lo borrado no aparecen; las propias tampoco.
  */
 final class HomeChatSummary
@@ -62,10 +63,8 @@ final class HomeChatSummary
             ->where('user_id', '!=', $user->id)
             ->pluck('user_id', 'conversation_id');
 
-        $userIds = [...$others->values()->all(), ...$mentions->pluck('user_id')->all()];
-        foreach ($mentions as $message) {
-            array_push($userIds, ...MessagePreview::mentionIds($message->body));
-        }
+        $mentioned = ChatUsers::mentionable($mentions);
+        $userIds = [...$others->values()->all(), ...$mentions->pluck('user_id')->all(), ...array_merge(...array_values($mentioned))];
         $users = ChatUsers::load($userIds);
 
         $title = function (int $id) use ($conversations, $others, $users): string {
@@ -105,7 +104,7 @@ final class HomeChatSummary
                     'conversation_id' => $message->conversation_id,
                     'conversation' => $title($message->conversation_id),
                     'author' => $message->user_id === null ? null : ($users[$message->user_id] ?? null)?->name,
-                    'excerpt' => MessagePreview::plain($message->body, $users, 120),
+                    'excerpt' => MessagePreview::plain($message->body, ChatUsers::only($users, $mentioned[$message->id] ?? []), 120),
                     'everyone' => ! (bool) $message->getAttribute('personal'),
                     'unread' => (bool) $message->getAttribute('is_unread'),
                     'created_at' => $message->created_at?->toIso8601ZuluString(),
