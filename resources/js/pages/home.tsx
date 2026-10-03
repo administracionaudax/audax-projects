@@ -1,5 +1,4 @@
 import { Deferred, Head, Link, usePage } from '@inertiajs/react';
-import type { LucideIcon } from 'lucide-react';
 import {
     AtSign,
     CalendarClock,
@@ -10,12 +9,12 @@ import {
     ListChecks,
     Milestone,
     Plus,
+    RotateCcw,
     Square,
     Timer,
     Undo2,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { MyAbsencesCard } from '@/components/absences/my-absences-card';
 import type { MyAbsencesSummary } from '@/components/absences/types';
 import {
@@ -27,6 +26,7 @@ import {
     TimesheetStatusBadge,
 } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
+import { HomePanels, PanelCard } from '@/components/home/home-panels';
 import { KeywordText } from '@/components/keyword-text';
 import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
 import type { MyIndicators } from '@/components/reports/r1-types';
@@ -46,13 +46,6 @@ import {
 } from '@/components/workload/my-workload-card';
 import type { MyWorkloadData } from '@/components/workload/types';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { firstName, useRequiredUser } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
@@ -63,52 +56,13 @@ import { home } from '@/routes';
 import { index as timeIndex } from '@/routes/time';
 import type { ActiveTimer, HomePageProps, HomeTask } from '@/types';
 
-function PanelCard({
-    id,
-    icon: Icon,
-    title,
-    description,
-    wide = false,
-    children,
-}: {
-    id: string;
-    icon: LucideIcon;
-    title: string;
-    description?: string;
-    wide?: boolean;
-    children: ReactNode;
-}) {
-    return (
-        <Card
-            className={cn('gap-4', wide && 'md:col-span-2')}
-            data-test={`home-card-${id}`}
-        >
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <Icon
-                        aria-hidden="true"
-                        className="size-4 text-muted-foreground"
-                        strokeWidth={1.5}
-                    />
-                    <h2>{title}</h2>
-                </CardTitle>
-                {description ? (
-                    <CardDescription>{description}</CardDescription>
-                ) : null}
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
-                {children}
-            </CardContent>
-        </Card>
-    );
-}
-
 /**
  * Panel personal «Inicio» (SPEC §5.1, D-021): solo las cosas de quien lo mira. En la Fase 1
  * están activas las tareas, el temporizador, las horas de la semana y los días sin imputar; en la
  * Fase 2, «Mis indicadores» del mes; en la Fase 3, «Mi carga» (prop diferida `workload`: no
  * retrasa la primera carga) y «Mis ausencias»; en la Fase 4, mis próximos hitos (D-062); en la
- * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat_summary`).
+ * Fase 6, las menciones y los mensajes sin leer (prop diferida `chat_summary`). Cada persona
+ * puede reordenar las tarjetas arrastrándolas (D-138): su orden llega en `home_layout`.
  */
 export default function Home({
     tasks,
@@ -120,6 +74,7 @@ export default function Home({
     workload,
     milestones,
     chat_summary: chatSummary,
+    home_layout: homeLayout,
 }: HomePageProps & {
     /** No llegan a un colaborador externo (D-134): son informes, carga y ausencias. */
     indicators?: MyIndicators;
@@ -131,6 +86,8 @@ export default function Home({
     const collaborator = user.is_collaborator;
     const timer = usePage().props.timer ?? null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
+    // Al restablecer el orden el botón desaparece: el foco pasa al título de la página.
+    const heading = useRef<HTMLHeadingElement>(null);
     const taskCount =
         tasks.overdue.length + tasks.today.length + tasks.week.length;
 
@@ -139,20 +96,46 @@ export default function Home({
             <Head title={t('home.title')} />
 
             <div className="flex flex-1 flex-col gap-8 p-4 md:p-6">
-                <header className="space-y-1">
-                    <h1 className="text-3xl font-normal tracking-tight text-foreground">
-                        <KeywordText
-                            text={t('home.greeting', { name: firstName(user) })}
-                        />
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {t('home.subtitle')}
-                    </p>
-                </header>
-
-                <section
-                    aria-label={t('home.panel_label')}
-                    className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+                <HomePanels
+                    saved={homeLayout}
+                    label={t('home.panel_label')}
+                    header={({ hasSaved, reset }) => (
+                        <header className="space-y-1">
+                            <h1
+                                ref={heading}
+                                tabIndex={-1}
+                                className="text-3xl font-normal tracking-tight text-foreground outline-none"
+                            >
+                                <KeywordText
+                                    text={t('home.greeting', {
+                                        name: firstName(user),
+                                    })}
+                                />
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <p className="text-sm text-muted-foreground">
+                                    {t('home.subtitle')}
+                                </p>
+                                {hasSaved ? (
+                                    <Button
+                                        type="button"
+                                        variant="link"
+                                        size="sm"
+                                        className="h-auto p-0 text-sm text-primary-text"
+                                        title={t('home_layout.reset_hint')}
+                                        onClick={() => {
+                                            reset();
+                                            heading.current?.focus();
+                                        }}
+                                        data-test="home-layout-reset"
+                                    >
+                                        <RotateCcw aria-hidden="true" />
+                                        {t('home_layout.reset')}
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </header>
+                    )}
                 >
                     <PanelCard
                         id="today-tasks"
@@ -416,7 +399,7 @@ export default function Home({
                             ) : null}
                         </Deferred>
                     </PanelCard>
-                </section>
+                </HomePanels>
             </div>
 
             <TimeEntryDialog
