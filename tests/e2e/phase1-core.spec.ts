@@ -113,6 +113,41 @@ test('el temporizador se inicia desde Mis tareas, aparece en la cabecera y se pu
     await expect(page.locator('[data-test="header-log-time"]')).toBeVisible();
 });
 
+test('el temporizador se inicia desde la cabecera eligiendo la tarea, sin ir a ella', async ({
+    page,
+}) => {
+    await login(page, USERS.employee);
+    await page.goto('/horas');
+
+    await page.locator('[data-test="header-start-timer"]').click();
+    await page
+        .getByPlaceholder('Busca por tarea o proyecto')
+        .waitFor({ state: 'visible' });
+    const option = page.locator('[cmdk-group]').getByRole('option').first();
+    const title = (await option.innerText()).trim();
+    await option.click();
+
+    const chip = page.locator('[data-test="timer-chip"]');
+    await expect(chip).toBeVisible();
+    await expect(chip).toContainText(title);
+    await expect(page.locator('[data-test="header-start-timer"]')).toBeHidden();
+
+    await page
+        .getByRole('button', { name: 'Más opciones del temporizador' })
+        .click();
+    await page
+        .getByRole('menuitem', { name: 'Descartar el temporizador' })
+        .click();
+    await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Descartar el temporizador' })
+        .click();
+    await expect(chip).toBeHidden();
+    await expect(
+        page.locator('[data-test="header-start-timer"]'),
+    ).toBeVisible();
+});
+
 /**
  * Flujo crítico del plan de la Fase 1 (BRN-09): crear la bolsa y una tarea, imputar con el
  * temporizador y a mano, comprobar el consumo y el exceso en la tarjeta (política allow) y renovar.

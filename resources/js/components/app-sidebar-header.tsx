@@ -6,6 +6,7 @@ import { SearchTrigger } from '@/components/global-search';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { TimerChip } from '@/components/time/timer-chip';
+import { TimerStartButton } from '@/components/time/timer-start-button';
 import { TimerStopDialog } from '@/components/time/timer-stop-dialog';
 import { useTimeWarnings } from '@/components/time/use-time-warnings';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,8 @@ import { t } from '@/lib/i18n';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 /**
- * Cabecera de la app: menú, migas, temporizador activo (SPEC §7) o «Imputar horas», búsqueda y
- * campana de notificaciones (SPEC §13).
+ * Cabecera de la app: menú, migas, temporizador activo (SPEC §7) o «Iniciar temporizador» e
+ * «Imputar horas», búsqueda y campana de notificaciones (SPEC §13).
  * También pinta los avisos de imputación y el diálogo de «no se ha podido imputar» del
  * temporizador, que comparten todas las páginas.
  */
@@ -43,19 +44,22 @@ export function AppSidebarHeader({
                         warningHours={config?.timer_warning_hours ?? 10}
                     />
                 ) : (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="shrink-0 px-2.5 sm:px-3"
-                        onClick={() => setLogging(true)}
-                        aria-label={t('hours.header.log_time')}
-                        data-test="header-log-time"
-                    >
-                        <Plus aria-hidden="true" />
-                        <span className="hidden sm:inline">
-                            {t('hours.header.log_time')}
-                        </span>
-                    </Button>
+                    <>
+                        <TimerStartButton />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="shrink-0 px-2.5 sm:px-3"
+                            onClick={() => setLogging(true)}
+                            aria-label={t('hours.header.log_time')}
+                            data-test="header-log-time"
+                        >
+                            <Plus aria-hidden="true" />
+                            <span className="hidden sm:inline">
+                                {t('hours.header.log_time')}
+                            </span>
+                        </Button>
+                    </>
                 )
             ) : null}
             <SearchTrigger className="shrink-0" />

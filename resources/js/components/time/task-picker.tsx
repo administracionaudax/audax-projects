@@ -1,5 +1,6 @@
 import { Check, ChevronsUpDown, CircleCheck } from 'lucide-react';
 import { useState } from 'react';
+import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -44,6 +45,7 @@ export function TaskPicker({
     className,
     'aria-describedby': describedBy,
     'aria-label': ariaLabel,
+    trigger,
 }: {
     value: PickedTask | null;
     onChange: (task: LoggableTask) => void;
@@ -56,6 +58,8 @@ export function TaskPicker({
     className?: string;
     'aria-describedby'?: string;
     'aria-label'?: string;
+    /** Botón propio que abre el buscador (p. ej. «Iniciar temporizador» de la cabecera). */
+    trigger?: ReactElement;
 }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -76,34 +80,39 @@ export function TaskPicker({
             }}
         >
             <PopoverTrigger asChild>
-                <Button
-                    id={id}
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    aria-invalid={invalid || undefined}
-                    aria-describedby={describedBy}
-                    aria-label={ariaLabel}
-                    disabled={disabled}
-                    className={cn(
-                        'w-full justify-between font-normal',
-                        !value && 'text-muted-foreground',
-                        className,
-                    )}
-                >
-                    <span className="truncate">
-                        {value
-                            ? taskLabel(value)
-                            : (placeholder ??
-                              t('hours.task_picker.placeholder'))}
-                    </span>
-                    <ChevronsUpDown aria-hidden="true" className="opacity-60" />
-                </Button>
+                {trigger ?? (
+                    <Button
+                        id={id}
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        aria-invalid={invalid || undefined}
+                        aria-describedby={describedBy}
+                        aria-label={ariaLabel}
+                        disabled={disabled}
+                        className={cn(
+                            'w-full justify-between font-normal',
+                            !value && 'text-muted-foreground',
+                            className,
+                        )}
+                    >
+                        <span className="truncate">
+                            {value
+                                ? taskLabel(value)
+                                : (placeholder ??
+                                  t('hours.task_picker.placeholder'))}
+                        </span>
+                        <ChevronsUpDown
+                            aria-hidden="true"
+                            className="opacity-60"
+                        />
+                    </Button>
+                )}
             </PopoverTrigger>
             <PopoverContent
                 className="w-[min(28rem,calc(100vw-2rem))] p-0"
-                align="start"
+                align={trigger ? 'end' : 'start'}
             >
                 <Command shouldFilter={false}>
                     <CommandInput
