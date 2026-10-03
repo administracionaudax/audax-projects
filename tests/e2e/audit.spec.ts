@@ -72,16 +72,38 @@ test('el admin filtra la auditoría, ve el detalle y descarga el CSV', async ({
 }) => {
     await login(page, USERS.admin);
 
-    // Un cambio seguro de encontrar: el admin guarda los ajustes con un redondeo distinto.
+    // Un cambio seguro de encontrar: el admin guarda los ajustes con un redondeo distinto. Al
+    // acabar (también si falla) se deja el redondeo como estaba: es un ajuste global y otros E2E
+    // (el temporizador de phase1-core.spec.ts) cuentan con el redondeo por defecto, al minuto.
+    const original = await saveRounding(page, (current) =>
+        current === '5' ? '10' : '5',
+    );
+
+    try {
+        await filterExportAndCheck(page);
+    } finally {
+        await saveRounding(page, () => original);
+    }
+});
+
+/** Guarda en /admin/ajustes el redondeo al parar que devuelve `next` y devuelve el que había. */
+async function saveRounding(
+    page: Page,
+    next: (current: string) => string,
+): Promise<string> {
     await page.goto('/admin/ajustes');
     const rounding = page.getByLabel('Redondeo al parar');
     const current = await rounding.inputValue();
-    await rounding.selectOption(current === '5' ? '10' : '5');
+    await rounding.selectOption(next(current));
     await page.getByRole('button', { name: 'Guardar los ajustes' }).click();
     await expect(
         page.getByText('Ajustes guardados', { exact: false }).first(),
     ).toBeVisible();
 
+    return current;
+}
+
+async function filterExportAndCheck(page: Page): Promise<void> {
     await page.goto('/admin');
     await page.getByRole('link', { name: 'Abrir la auditoría' }).click();
     await expect(page).toHaveURL(/\/admin\/auditoria$/);
@@ -133,7 +155,7 @@ test('el admin filtra la auditoría, ve el detalle y descarga el CSV', async ({
 
     await page.getByRole('button', { name: 'Quitar los filtros' }).click();
     await expect(page).toHaveURL(/\/admin\/auditoria$/);
-});
+}
 
 test('una empleada no entra en la auditoría', async ({ page }) => {
     await login(page, USERS.employee);
