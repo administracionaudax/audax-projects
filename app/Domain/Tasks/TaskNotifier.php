@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Notification;
  * Notificaciones de tareas en la app (SPEC §13, solo canal database):
  * - asignación: al nuevo responsable, si no es quien asigna,
  * - mención (descripción o comentario): solo a los mencionados nuevos, internos activos, sin el autor,
+ * - nunca a quien no ve el proyecto (un colaborador externo que no es miembro, D-134),
  * - comentario en una tarea que sigo: a los seguidores salvo el autor y los ya avisados por mención,
  * - cambio de estado de una tarea que sigo: a los seguidores salvo quien lo cambia.
  *
@@ -80,7 +81,7 @@ final class TaskNotifier
             return [];
         }
 
-        $recipients = $this->recipients([$task->assignee_user_id]);
+        $recipients = $this->recipients([$task->assignee_user_id], $task->project_id);
 
         $this->send($recipients, new TaskAssignedNotification(
             $task->id,
@@ -101,7 +102,7 @@ final class TaskNotifier
      */
     public function mentioned(Task $task, User $actor, array $userIds, string $context, ?string $html): array
     {
-        $recipients = $this->recipients(array_values(array_diff($userIds, [$actor->id])));
+        $recipients = $this->recipients(array_values(array_diff($userIds, [$actor->id])), $task->project_id);
 
         $this->send($recipients, new TaskMentionedNotification(
             $task->id,
@@ -122,7 +123,7 @@ final class TaskNotifier
     public function commented(Task $task, User $actor, TaskComment $comment, array $alreadyNotified): array
     {
         $watcherIds = $task->watchers()->pluck('users.id')->map(fn ($id): int => (int) $id)->all();
-        $recipients = $this->recipients(array_values(array_diff($watcherIds, [$actor->id], $alreadyNotified)));
+        $recipients = $this->recipients(array_values(array_diff($watcherIds, [$actor->id], $alreadyNotified)), $task->project_id);
 
         $this->send($recipients, new TaskCommentedNotification(
             $task->id,
@@ -142,7 +143,7 @@ final class TaskNotifier
     public function statusChanged(Task $task, User $actor, TaskStatus $status, array $except = []): array
     {
         $watcherIds = $task->watchers()->pluck('users.id')->map(fn ($id): int => (int) $id)->all();
-        $recipients = $this->recipients(array_values(array_diff($watcherIds, [$actor->id], $except)));
+        $recipients = $this->recipients(array_values(array_diff($watcherIds, [$actor->id], $except)), $task->project_id);
 
         $this->send($recipients, new TaskStatusChangedNotification(
             $task->id,
@@ -157,12 +158,14 @@ final class TaskNotifier
     }
 
     /**
-     * Solo personas internas y activas (un cliente nunca recibe avisos de la app interna).
+     * Solo personas internas y activas (un cliente nunca recibe avisos de la app interna) que ven
+     * el proyecto de la tarea: red de seguridad para que ningún aviso llegue a un colaborador
+     * externo que no es miembro (D-134), aunque siga como seguidor o mencionado.
      *
      * @param  list<int>  $ids
      * @return Collection<int, User>
      */
-    private function recipients(array $ids): Collection
+    private function recipients(array $ids, int $projectId): Collection
     {
         $ids = array_values(array_unique(array_filter($ids)));
 
@@ -170,7 +173,7 @@ final class TaskNotifier
             return new Collection;
         }
 
-        return User::query()->whereKey($ids)->active()->internal()->get();
+        return User::query()->whereKey($ids)->active()->internal()->seeingProject($projectId)->get();
     }
 
     /**

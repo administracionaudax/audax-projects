@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Tasks;
 
 use App\Domain\Tasks\AttachmentStorage;
+use App\Domain\Tasks\TaskMentions;
 use App\Domain\Tasks\TaskNotifier;
-use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\StoreCommentRequest;
 use App\Http\Requests\Tasks\UpdateCommentRequest;
@@ -14,7 +14,6 @@ use App\Models\TaskComment;
 use App\Models\User;
 use App\Notifications\Tasks\TaskMentionedNotification;
 use App\Support\RichText;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -26,13 +25,15 @@ use Throwable;
 /**
  * Comentarios de tareas (SPEC §6): con menciones y adjuntos. Comenta cualquier interno (D-031);
  * cada uno edita los suyos y los borra él o un admin (TaskCommentPolicy). El cuerpo se sanea
- * SIEMPRE en el servidor (App\Support\RichText) y las menciones salen del HTML saneado.
+ * SIEMPRE en el servidor (App\Support\RichText) y las menciones salen del HTML saneado, filtradas
+ * por TaskMentions (D-134).
  */
 class TaskCommentController extends Controller
 {
     public function __construct(
         private readonly TaskNotifier $notifier,
         private readonly AttachmentStorage $storage,
+        private readonly TaskMentions $mentions,
     ) {}
 
     public function store(StoreCommentRequest $request, Task $task): RedirectResponse
@@ -42,7 +43,7 @@ class TaskCommentController extends Controller
         /** @var User $user */
         $user = $request->user();
         $body = RichText::sanitize($request->string('body')->toString());
-        $mentioned = $this->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
+        $mentioned = $this->mentions->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
         /** @var list<UploadedFile> $files */
         $files = array_values(array_filter((array) $request->file('files', []), fn ($file): bool => $file instanceof UploadedFile));
         $stored = [];
@@ -86,7 +87,7 @@ class TaskCommentController extends Controller
         $previous = array_map('intval', $comment->mentioned_user_ids ?? []);
         // Un comentario de una tarea borrada ya no se edita (404).
         $task = $comment->task()->with('project')->firstOrFail();
-        $mentioned = $this->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
+        $mentioned = $this->mentions->mentionable(RichText::mentionedUserIds($body), $task->project_id, $user);
 
         $comment->forceFill([
             'body' => $body,
@@ -114,35 +115,6 @@ class TaskCommentController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('tasks.flash.comment_deleted')]);
 
         return back();
-    }
-
-    /**
-     * Solo se guardan (y avisan) las menciones a internos activos. Colaboradores externos (D-134):
-     * a uno solo se le menciona en las tareas de sus proyectos, y uno solo menciona a los miembros
-     * del proyecto.
-     *
-     * @param  list<int>  $ids
-     * @return list<int>
-     */
-    private function mentionable(array $ids, int $projectId, User $author): array
-    {
-        if ($ids === []) {
-            return [];
-        }
-
-        $members = DB::table('project_members')->select('user_id')->where('project_id', $projectId);
-
-        return array_values(User::query()->whereKey($ids)->active()->internal()
-            ->when(
-                $author->isCollaborator(),
-                fn (Builder $query) => $query->whereIn('id', $members),
-                fn (Builder $query) => $query->where(fn (Builder $scope) => $scope->whereIn('id', $members)
-                    ->orWhereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value))),
-            )
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->sort()
-            ->all());
     }
 
     /**
