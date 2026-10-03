@@ -934,6 +934,75 @@ Lo que decidieron N (notificaciones) y A (auditoría y RGPD) sin numerar, en sus
 - **Búsqueda global:** el campo se anuncia «Buscar en la aplicación». cmdk nombra el campo con la etiqueta del `Command` (`aria-labelledby`), que tapaba el `aria-label`.
 - **Limpieza:** se borra `pages/placeholder.tsx` y sus textos: ninguna ruta lo usa desde la Fase 6.
 
+### D-134 · Colaboradores externos **[amplía SPEC §5 y D-021]**
+Pedido por el propietario el 03/10, para quienes trabajan con la agencia sin ser plantilla (Amparo y los colaboradores de AgenciaSEO y Melodía).
+- **Rol nuevo `collaborator` («Colaborador externo»):**
+  - es interno, porque usa la app y no el portal,
+  - está **restringido a los proyectos de los que es miembro**, que el admin o el gestor le asignan como a cualquier miembro.
+- **Qué puede hacer:**
+  - **Proyectos:** ver los suyos (resumen sin datos económicos, tareas, archivos y chat del proyecto),
+  - **Tareas:** las de esos proyectos, con los mismos permisos que un miembro (crear, editar, comentar, adjuntar),
+  - **Mis tareas e Inicio:** solo las tarjetas que le afectan,
+  - **Horas:** solo las suyas y solo en tareas de sus proyectos; nunca en el proyecto interno,
+  - **Chat:** solo las conversaciones de sus proyectos, con las menciones limitadas a sus miembros; ni directos ni grupos,
+  - **Otros:** notificaciones, sus ajustes y su privacidad.
+- **Qué no ve:**
+  - clientes, bolsas, informes, carga, planificación general, Gantt global, ausencias del equipo, plantillas, auditoría y administración,
+  - personas fuera de sus proyectos,
+  - ningún dato económico,
+  - nunca es gestor de proyecto.
+- **Seguridad:**
+  - las rutas internas están **cerradas por defecto** para el colaborador y solo se abren las de una lista explícita,
+  - en esas rutas, las políticas y las consultas usan `User::visibleProjectIds()` / `canSeeProject()`,
+  - un test recorre **todas** las rutas internas con un colaborador.
+- **Aprobación de horas (D-020):** las aprueba el responsable de su departamento si tiene uno (Amparo, en Diseño, por Aga) y, si no, un admin.
+
+### D-135 · Importación de ClickUp: alcance y correspondencias
+- **Alcance:** todo el espacio «Audax Studio» y su historial (desde marzo de 2024).
+  - Fuera quedan los espacios personales «Alfredo» y «CHELE» (indicado por el propietario) y «Recursos» (pruebas y plantillas).
+- **Clientes:** cada carpeta es un cliente, con el nombre sin el emoji. Las carpetas archivadas dan clientes inactivos.
+- **Proyectos y bolsas:** cada lista se lee con el patrón `TIPO+N - Hh - descripción - Fxxxxxx [Cliente]`.
+  - **BH (bolsas):** las de un cliente se agrupan en un proyecto «Bolsa de horas» (`hour_bank`), con una bolsa por lista. Las horas salen del nombre y el código F va a `invoice_reference`. La última sigue activa y las anteriores pasan a «renovada» (`renewed_from_id`).
+  - **FE (fees mensuales):** proyecto `time_and_materials`. Las horas del fee van en la descripción.
+  - **Resto de códigos** (WE, EC, PR, AD, AM, BR, BD, GE…): proyecto `fixed_price` con `budget_minutes` igual a las horas del nombre.
+  - **Listas sin código:** proyecto `time_and_materials` sin presupuesto.
+  - **Archivadas:** las listas o carpetas archivadas dan proyectos archivados y bolsas cerradas.
+- **Audax Interno:** cada una de sus listas (General, Marketing, Presupuestos…) es un proyecto interno (`internal`) sin cliente.
+- **Tareas:**
+  - **Estados:**
+    - terminada, finalizada y archivada pasan a la categoría `done`,
+    - backlog y por hacer, a `todo`,
+    - el resto (en progreso, gestión, estrategia, cm…), a `in_progress`.
+  - **Personas:** el primer asignado es el responsable y los demás pasan a seguidores.
+  - **Subtareas:** de un solo nivel. Las más profundas cuelgan de su tarea raíz.
+  - **«Área» = tipo de tarea, con su departamento:**
+    - UI, UX, Maquetación, Branding, Design System e Investigación → Diseño,
+    - Desarrollo → Desarrollo,
+    - Contenidos, Estrategia y SEO → Contenidos,
+    - Gestión y Definición, sin departamento.
+  - **Facturable:** el campo «Facturable» o «Factor facturable» = 1. «Naturaleza: No productiva» no es facturable.
+- **Miembros de cada proyecto:** quien tiene tareas asignadas o horas en él. El gestor principal es el admin o responsable con más horas en el proyecto o, si no hay, Alfredo.
+- **No se importan, de momento:** comentarios, adjuntos y etiquetas (pocas). Se puede añadir más adelante.
+
+### D-136 · Importación de ClickUp: horas e idempotencia
+- **Horas:**
+  - **Valores:** cada registro da una entrada con la fecha de inicio en Europe/Madrid y la duración redondeada al minuto; las de 0 min no entran.
+  - **Escritura:** siempre con `TimeEntryWriter`, en su modo de importación, que no aplica las validaciones de quien imputa a mano (semana enviada, fecha futura, saldo `block`) pero mantiene las invariantes. Al final, `HourBankLedger::recalculate` una vez por bolsa.
+  - **Registros sin tarea:** van a una tarea «Horas sin tarea (ClickUp)» de su lista o, si no tiene lista, del proyecto interno General.
+- **Estado de las horas:**
+  - **anteriores a la semana en curso:** aprobadas y bloqueadas, con su semana aprobada, porque ya están facturadas,
+  - **de la semana en curso:** borrador.
+  - **Tarifas y costes:** sin instantáneas, porque ClickUp no tiene tarifas.
+- **Idempotencia:**
+  - **Tabla `import_refs`** (`source`, `kind`, `external_id` → modelo local, única por las tres primeras): una segunda ejecución actualiza lo que ya importó y añade lo nuevo, sin duplicar nada.
+  - **Entradas bloqueadas:** nunca se modifican.
+  - **Día del cambio:** se vuelve a ejecutar para traer lo último de ClickUp.
+- **Personas:**
+  - **Origen:** salen de `personas.json` (fuera de Git): correo, nombre, rol, departamento y si es responsable.
+  - **Cuentas existentes:** si ya hay una cuenta con ese correo, se le actualizan el rol y el departamento.
+  - **Invitaciones:** el importador **no** envía invitaciones. Se envían después, con el visto bueno del propietario, desde la administración o con `--invitar`.
+- **Simulación:** `--dry-run` hace todo dentro de una transacción que se deshace y muestra el informe de recuentos.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -941,5 +1010,6 @@ Lo que decidieron N (notificaciones) y A (auditoría y RGPD) sin numerar, en sus
 - Fase 5: D-092 a D-109.
 - Fase 6: D-110 a D-121.
 - Fase 7: D-122 a D-133.
+- Fase 8: D-134 a D-136.
 
-La siguiente libre es **D-134**.
+La siguiente libre es **D-137**.

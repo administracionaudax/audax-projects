@@ -6,6 +6,7 @@ import {
     ShieldCheck,
     User,
     UserCog,
+    UserRoundPlus,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/styleguide/status-badges';
 import { t } from '@/lib/i18n';
@@ -19,6 +20,7 @@ const ROLES: Record<Role, { label: TranslationKey; icon: LucideIcon }> = {
         icon: UserCog,
     },
     employee: { label: 'admin.roles.employee', icon: User },
+    collaborator: { label: 'admin.roles.collaborator', icon: UserRoundPlus },
     client: { label: 'admin.roles.client', icon: User },
 };
 

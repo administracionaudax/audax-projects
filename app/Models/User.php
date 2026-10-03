@@ -401,6 +401,40 @@ class User extends Authenticatable
     }
 
     /**
+     * Colaborador externo (Fase 8, D-134): usa la app interna, pero solo ve los proyectos de los
+     * que es miembro, sus tareas y sus chats. Nada de clientes, bolsas, informes, carga ni
+     * administración.
+     */
+    public function isCollaborator(): bool
+    {
+        return $this->hasRole(Role::Collaborator->value);
+    }
+
+    /**
+     * Ids de los proyectos que puede ver, o null si ve todos (D-021 para la plantilla; D-134 para
+     * los colaboradores, solo aquellos de los que son miembros).
+     *
+     * @return list<int>|null
+     */
+    public function visibleProjectIds(): ?array
+    {
+        if (! $this->isCollaborator()) {
+            return null;
+        }
+
+        /** @var list<int> */
+        return $this->memo('visible-projects', fn (): array => $this->projects()->pluck('projects.id')->map(fn ($id): int => (int) $id)->values()->all());
+    }
+
+    public function canSeeProject(Project|int $project): bool
+    {
+        $ids = $this->visibleProjectIds();
+        $id = $project instanceof Project ? $project->id : $project;
+
+        return $ids === null || in_array($id, $ids, true);
+    }
+
+    /**
      * Al desactivar a un usuario se cierran todas sus sesiones y su «Recordarme» (SPEC §14): no
      * basta con que EnsureUserIsActive lo expulse en la siguiente petición.
      */

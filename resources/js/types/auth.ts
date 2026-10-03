@@ -1,6 +1,11 @@
 /** Contrato con App\Http\Middleware\HandleInertiaRequests::share(). */
 
-export type Role = 'admin' | 'department_manager' | 'employee' | 'client';
+export type Role =
+    | 'admin'
+    | 'department_manager'
+    | 'employee'
+    | 'collaborator'
+    | 'client';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 

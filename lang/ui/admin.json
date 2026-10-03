@@ -38,6 +38,7 @@
     "admin.roles.admin": "Administración",
     "admin.roles.department_manager": "Responsable de departamento",
     "admin.roles.employee": "Empleado",
+    "admin.roles.collaborator": "Colaborador externo",
     "admin.roles.client": "Cliente",
     "admin.roles.none": "Sin rol",
     "admin.week.mon": "Lunes",

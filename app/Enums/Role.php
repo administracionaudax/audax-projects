@@ -10,6 +10,8 @@ enum Role: string
     case Admin = 'admin';
     case DepartmentManager = 'department_manager';
     case Employee = 'employee';
+    /** Colaborador externo (Fase 8, D-134): app interna limitada a los proyectos de los que es miembro. */
+    case Collaborator = 'collaborator';
     case Client = 'client';
 
     public function label(): string
@@ -18,6 +20,7 @@ enum Role: string
             self::Admin => 'Administración',
             self::DepartmentManager => 'Responsable de departamento',
             self::Employee => 'Empleado',
+            self::Collaborator => 'Colaborador externo',
             self::Client => 'Cliente',
         };
     }
@@ -38,6 +41,14 @@ enum Role: string
     public function isInternal(): bool
     {
         return $this !== self::Client;
+    }
+
+    /**
+     * Rol interno restringido (D-134): solo ve sus proyectos, sus tareas y sus chats.
+     */
+    public function isRestricted(): bool
+    {
+        return $this === self::Collaborator;
     }
 
     /**
