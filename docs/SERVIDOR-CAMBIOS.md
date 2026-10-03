@@ -98,3 +98,10 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 | 03/10 04:40 | `shared/.env`: `LOG_STACK=daily_json` (copia `.env.antes-logjson-*`) y `horizon:terminate` | D-077, registros en JSON | `storage/logs/laravel.json-2026-10-03.log` con una línea JSON por mensaje | Volver a `LOG_STACK=daily` |
 | 03/10 05:10 | Batería V (T0 03:17:47) y comparación de webs | Salvaguarda de la Fase 7 | Sin unidades nuevas en `failed`, `nginx -t` y `configtest` correctos, sin recargas de nginx ni de Apache. Aparece una recarga de BIND a las 03:38, ajena a la app (tarea nocturna de Plesk; no se ha tocado el DNS). Webs **33/35** (las 2 suspendidas en Plesk) | No aplica |
 
+### Puesta en marcha (03/10)
+
+| Fecha y hora | Paso / comando | Motivo | Resultado | Cómo revertir |
+|---|---|---|---|---|
+| 03/10 11:30 | Texto informativo de privacidad genérico (versión 2, sin marca de borrador) con `PrivacyNotice::update` desde `artisan tinker` | Petición del propietario, a la espera del texto del asesor | Versión 2 activa; el admin la sustituye desde `/admin/privacidad` | Editarlo en `/admin/privacidad` |
+| 03/10 11:38–11:45 | Copia previa en `/root/audax-backup/2026-10-03-1138-nginx-app` (conf del dominio). **Directiva adicional de nginx** `location ^~ /app/` → `127.0.0.1:18080` (RUNBOOK A1), por la interfaz de Plesk (Configuración de Apache y nginx) con la sesión del propietario. El primer «Aceptar» se guardó vacío, porque el campo no recogió el texto, y el segundo con la directiva | Petición del propietario: tiempo real al instante (D-068) | `vhost_nginx.conf` incluido en el `nginx.conf` del dominio; `nginx -t` correcto; recarga *graceful* de nginx hecha por Plesk (autorizada para este dominio). **WebSocket desde fuera: 101 Switching Protocols.** Batería V (T0 11:38:58): sin unidades nuevas en `failed`; solo la recarga de nginx de Plesk. Webs **33/35** (las 2 suspendidas en Plesk) | Vaciar el campo en Plesk (recarga nginx) |
+
