@@ -128,7 +128,7 @@ final class TimeEntryRules
 
         // Política de exceso `block` (SPEC §8.6): con la bolsa ya bloqueada por el Writer.
         if ($bank !== null) {
-            $this->ledger->assertFits($bank, $minutes, $existing);
+            $this->ledger->assertFits($bank, $minutes, $existing, viewer: $actor);
         }
 
         return $this->warnings($actor, $target, $task, $bank, $date, $minutes, $dayTotal, $existing);
@@ -306,7 +306,10 @@ final class TimeEntryRules
             if ($overage > 0) {
                 $warnings[] = new TimeEntryWarning(TimeEntryWarning::OVERAGE, $overage >= $minutes
                     ? $this->message('time.warnings.overage_all')
-                    : $this->message('time.warnings.overage_partial', ['minutes' => Duration::format($overage)]));
+                    : ($actor->isCollaborator()
+                        // Un colaborador externo no ve cantidades de saldo (D-134).
+                        ? $this->message('time.warnings.overage_partial_collaborator')
+                        : $this->message('time.warnings.overage_partial', ['minutes' => Duration::format($overage)])));
             }
         }
 

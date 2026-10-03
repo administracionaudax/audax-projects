@@ -11,6 +11,7 @@ use App\Models\HourBank;
 use App\Models\HourBankAlert;
 use App\Models\Setting;
 use App\Models\TimeEntry;
+use App\Models\User;
 use App\Support\Duration;
 use App\Support\LocalTime;
 use Illuminate\Support\Facades\DB;
@@ -74,11 +75,12 @@ final class HourBankLedger
 
     /**
      * Con política efectiva `block`, rechaza la imputación que no cabe (SPEC §8.6).
-     * Llamar con la bolsa bloqueada (lock()) dentro de la transacción de escritura.
+     * Llamar con la bolsa bloqueada (lock()) dentro de la transacción de escritura. A un
+     * colaborador externo ($viewer) el error no le dice el saldo (D-134).
      *
      * @throws ValidationException
      */
-    public function assertFits(HourBank $bank, int $minutes, ?TimeEntry $excluding = null, string $field = 'minutes'): void
+    public function assertFits(HourBank $bank, int $minutes, ?TimeEntry $excluding = null, string $field = 'minutes', ?User $viewer = null): void
     {
         if ($this->effectivePolicy($bank) !== OveragePolicy::Block) {
             return;
@@ -95,10 +97,12 @@ final class HourBankLedger
 
         if ($minutes > $available) {
             throw ValidationException::withMessages([
-                $field => __('time.errors.bank_blocked', [
-                    'bank' => $bank->name,
-                    'available' => Duration::format($available),
-                ]),
+                $field => $viewer?->isCollaborator()
+                    ? __('time.errors.bank_blocked_collaborator', ['bank' => $bank->name])
+                    : __('time.errors.bank_blocked', [
+                        'bank' => $bank->name,
+                        'available' => Duration::format($available),
+                    ]),
             ]);
         }
     }
