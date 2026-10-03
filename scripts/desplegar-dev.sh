@@ -52,7 +52,10 @@ fi
 $PHP artisan migrate --force --no-interaction
 $PHP artisan horizon:terminate >/dev/null 2>&1 || true
 if [ "$tests" = 1 ]; then
-  sh scripts/heavy.sh timeout 45m $PHP -d memory_limit=512M vendor/bin/pest --colors=never | tail -5
+  # Salida completa en storage/logs/pest-despliegue.log; aquí, el resumen y el nombre de lo que falle.
+  sh scripts/heavy.sh timeout 45m $PHP -d memory_limit=512M vendor/bin/pest --colors=never > storage/logs/pest-despliegue.log 2>&1 || true
+  tail -5 storage/logs/pest-despliegue.log
+  grep -E "^  (FAILED|⨯)|^  ✗" storage/logs/pest-despliegue.log | head -20 || true
 fi
 EOF
 
