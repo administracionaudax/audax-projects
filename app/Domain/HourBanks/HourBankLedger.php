@@ -240,7 +240,17 @@ final class HourBankLedger
         return $thresholds;
     }
 
-    private function recordAlerts(HourBank $bank, int $previousOverage): void
+    /**
+     * Registra como ya enviados los avisos de umbral que la bolsa ha alcanzado, SIN notificar a
+     * nadie. Para las bolsas que llegan de una importación (D-136): sus umbrales se cruzaron en
+     * la otra herramienta, y la primera imputación en la app no debe disparar avisos antiguos.
+     */
+    public function recordAlertsSilently(HourBank $bank): void
+    {
+        $this->recordAlerts($bank, $bank->overage_minutes, dispatch: false);
+    }
+
+    private function recordAlerts(HourBank $bank, int $previousOverage, bool $dispatch = true): void
     {
         if (! $bank->status->acceptsTime()) {
             return;
@@ -265,7 +275,7 @@ final class HourBankLedger
             }
         }
 
-        if ($reached !== null) {
+        if ($reached !== null && $dispatch) {
             HourBankThresholdReached::dispatch($bank, $reached);
         }
 
