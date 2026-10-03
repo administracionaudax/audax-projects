@@ -63,6 +63,7 @@ return [
         ],
         'reports' => [
             'weekly_digest' => ['label' => 'Resumen semanal de productividad', 'description' => 'Los lunes, la ocupación de tu equipo en la semana anterior.'],
+            'schedule_paused' => ['label' => 'Envíos programados en pausa', 'description' => 'Cuando un envío programado de un informe se pausa porque ya no se puede enviar.'],
         ],
         'system' => [
             'transcriptions_failing' => ['label' => 'Transcripciones que fallan', 'description' => 'Audios del chat que no se consiguen transcribir.'],

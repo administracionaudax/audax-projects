@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PortalAccess\BrandLogoController;
+use App\Http\Controllers\Reports\Delivery\ReportDownloadController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StyleguideController;
 use Illuminate\Support\Facades\Route;
@@ -40,12 +41,19 @@ Route::get('marca/logo/{version}', BrandLogoController::class)
     ->withoutMiddleware('web')
     ->name('brand.logo');
 
+// Informe enviado por correo como enlace (Fase 9, D-141: más de 10 MB): sin sesión, porque lo abre
+// también un destinatario externo; solo con la firma de la URL, que caduca a los 7 días.
+Route::get('informes/descargas/{download}', ReportDownloadController::class)
+    ->whereUuid('download')
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('reports.downloads.show');
+
 Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
     Route::redirect('dashboard', '/')->name('dashboard');
 
     // Una ruta por área (routes/app/*.php), de la Fase 1 a la 7.
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit'] as $area) {
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 

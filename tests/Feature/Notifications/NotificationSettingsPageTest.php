@@ -38,7 +38,8 @@ test('cada persona interna ve la página con sus eventos', function (string $rol
 })->with([
     'admin' => ['admin', ['tasks', 'time', 'hour_banks', 'absences', 'chat', 'reports', 'system']],
     'responsable' => ['departmentManager', ['tasks', 'time', 'hour_banks', 'absences', 'chat', 'reports']],
-    'empleado' => ['employee', ['tasks', 'time', 'absences', 'chat']],
+    // Cualquiera puede programar envíos de informes: el aviso de pausa (D-141) es de todos.
+    'empleado' => ['employee', ['tasks', 'time', 'absences', 'chat', 'reports']],
 ]);
 
 test('un cliente no entra: va a su portal y no se guarda nada', function () {
