@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HomeLayoutController;
 use App\Http\Controllers\PortalAccess\BrandLogoController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StyleguideController;
@@ -43,6 +44,14 @@ Route::get('marca/logo/{version}', BrandLogoController::class)
 Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
     Route::redirect('dashboard', '/')->name('dashboard');
+
+    // Orden de las tarjetas de Inicio de cada persona (D-138): se guarda al soltar una tarjeta.
+    Route::put('inicio/orden', [HomeLayoutController::class, 'update'])
+        ->middleware('throttle:60,1,home-layout')
+        ->name('home.layout.update');
+    Route::delete('inicio/orden', [HomeLayoutController::class, 'destroy'])
+        ->middleware('throttle:60,1,home-layout')
+        ->name('home.layout.destroy');
 
     // Una ruta por área (routes/app/*.php), de la Fase 1 a la 7.
     foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit'] as $area) {

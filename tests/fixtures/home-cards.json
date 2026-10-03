@@ -1,0 +1,15 @@
+{
+    "_comment": "Tarjetas de Inicio en su orden por defecto (D-138). Contrato compartido: App\\Domain\\Home\\HomeLayout::CARDS (Pest) y HOME_CARD_IDS de resources/js/components/home/home-layout.ts (Vitest).",
+    "cards": [
+        "today-tasks",
+        "timer",
+        "week-hours",
+        "workload",
+        "unlogged-days",
+        "indicators",
+        "absences",
+        "milestones",
+        "mentions"
+    ],
+    "collaborator_hidden": ["workload", "indicators", "absences"]
+}
