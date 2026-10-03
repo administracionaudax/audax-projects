@@ -228,14 +228,16 @@ function startLive(presenceChannel: RealtimePresenceChannel): () => void {
     };
 }
 
-function start(user: { id: number }): () => void {
+function start(user: { id: number; restricted?: boolean }): () => void {
     myId = user.id;
     lastActivity = Date.now();
     myStatus = computeStatus();
 
-    const presenceChannel = realtimeEnabled()
-        ? acquireChannel(CHANNEL, 'presence')
-        : null;
+    // Un colaborador externo no entra en el canal «online» de la plantilla (D-134): latidos.
+    const presenceChannel =
+        realtimeEnabled() && !user.restricted
+            ? acquireChannel(CHANNEL, 'presence')
+            : null;
     let stopChannel: (() => void) | null = null;
     let poll: ReturnType<typeof setInterval> | null = null;
 
@@ -295,7 +297,10 @@ function start(user: { id: number }): () => void {
  * Arranca la presencia para la persona con sesión (una vez por pestaña: si se llama de nuevo,
  * reutiliza la que ya está en marcha). Devuelve cómo pararla.
  */
-export function startPresence(user: { id: number }): () => void {
+export function startPresence(user: {
+    id: number;
+    restricted?: boolean;
+}): () => void {
     runs += 1;
 
     if (runs === 1) {

@@ -18,6 +18,8 @@ export type User = {
     two_factor_enabled: boolean;
     roles: Role[];
     is_client: boolean;
+    /** Colaborador externo (D-134): solo sus proyectos, sus tareas y sus chats. */
+    is_collaborator: boolean;
 };
 
 export type Abilities = {
@@ -35,6 +37,11 @@ export type Abilities = {
     manageSettings: boolean;
     /** «Ausencias del equipo»: aprobar y registrar las de su equipo (D-049). */
     viewTeamAbsences: boolean;
+    /** Clientes, Carga, Ausencias e Informes: todos los internos salvo los colaboradores externos (D-134). */
+    viewClients: boolean;
+    viewWorkload: boolean;
+    viewAbsences: boolean;
+    viewReports: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */
