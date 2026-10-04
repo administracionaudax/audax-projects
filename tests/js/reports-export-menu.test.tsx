@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ExportMenu } from '@/components/reports/export-menu';
 import {
     reportRequestUrl,
@@ -9,9 +9,19 @@ import {
 } from '@/components/reports/report-request';
 import type { ReportRequestData } from '@/types';
 
+// Google Sheets (9.4) lee la prop compartida `integrations`: aquí, configurado y sin conectar.
+vi.mock('@inertiajs/react', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@inertiajs/react')>()),
+    usePage: () => ({
+        props: {
+            integrations: { google_sheets: true, google_connected: false },
+        },
+    }),
+}));
+
 /*
 | Menú «Exportar ▾» de los informes (Fase 9, D-139 y D-140): Excel, CSV y PDF descargan con los
-| filtros de la página, Imprimir abre una pestaña, Google Sheets (9.4) va desactivado y «Enviar» y
+| filtros de la página, Imprimir abre una pestaña, Google Sheets (9.4) pide conectar la cuenta si no lo está y «Enviar» y
 | «Programar» (9.3) abren sus diálogos. El de una tabla solo lleva sus formatos.
 */
 
@@ -76,7 +86,7 @@ describe('ExportMenu', () => {
             'Excel (.xlsx)',
             'CSV (.csv)',
             'PDF',
-            'Google SheetsPróximamente',
+            'Google Sheets',
             'Imprimir',
             'Enviar por correo…',
             'Programar envío…',
@@ -100,7 +110,7 @@ describe('ExportMenu', () => {
             screen
                 .getByRole('menuitem', { name: /Google Sheets/ })
                 .getAttribute('aria-disabled'),
-        ).toBe('true');
+        ).toBeNull();
     });
 
     it('«Enviar por correo…» y «Programar envío…» abren su diálogo con el título del informe', async () => {
@@ -142,7 +152,7 @@ describe('ExportMenu', () => {
 
         expect(
             screen.getAllByRole('menuitem').map((item) => item.textContent),
-        ).toEqual(['Excel (.xlsx)', 'CSV (.csv)', 'Google SheetsPróximamente']);
+        ).toEqual(['Excel (.xlsx)', 'CSV (.csv)', 'Google Sheets']);
         expect(
             screen
                 .getByRole('menuitem', { name: 'Excel (.xlsx)' })

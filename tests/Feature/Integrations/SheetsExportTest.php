@@ -117,7 +117,7 @@ test('cada subida queda en la auditoría (report-delivery, evento sheets), sin t
         ->and(AuditCatalog::entityOf('report-delivery'))->toBe('report_delivery')
         ->and(AuditCatalog::ACTIONS['sheets_exported'])->toBe(['sheets'])
         ->and(AuditCatalog::eventLabel('sheets'))->toBe('Exportado a Google Sheets')
-        ->and(AuditCatalog::entityLabel('report_delivery'))->toBe('Envío de informes');
+        ->and(AuditCatalog::entityLabel('report_delivery'))->toBe('Informes (exportados y enviados)');
 });
 
 test('con el token caducado, lo renueva antes de subir', function () {

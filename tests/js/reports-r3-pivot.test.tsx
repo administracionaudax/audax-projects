@@ -14,6 +14,8 @@ const reload = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
+    Link: ({ children }: { children?: unknown }) => children,
+    usePage: () => ({ props: { integrations: { google_sheets: false } } }),
     router: {
         get: (...args: unknown[]) => get(...args),
         on: (event: string, handler: (event: unknown) => void) =>
