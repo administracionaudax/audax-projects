@@ -184,13 +184,15 @@ describe('índice de informes', () => {
         people: [{ id: 5, name: 'Ana', department: 'Diseño', is_active: true }],
     };
 
-    it('una empleada ve su informe y el detallado, nada más', () => {
+    it('una empleada ve su informe, el detallado y sus envíos programados, nada más', () => {
         render(<ReportsIndex {...base} />);
 
         const links = screen.getAllByRole('link');
         expect(links.map((link) => link.getAttribute('href'))).toEqual([
             '/informes/personas/5',
             '/informes/detalle',
+            // Envíos programados (D-141): cada persona, los suyos.
+            '/informes/envios',
         ]);
         expect(screen.queryByText('Dirección')).toBeNull();
         expect(screen.queryByRole('heading', { name: 'Personas' })).toBeNull();

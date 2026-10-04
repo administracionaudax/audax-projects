@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
     Building2,
+    CalendarClock,
     Receipt,
     Table2,
     UserRound,
@@ -16,6 +17,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index } from '@/routes/reports';
+import { index as schedulesIndex } from '@/routes/reports/schedules';
 
 function DashboardCard({
     icon: Icon,
@@ -128,6 +130,13 @@ export default function ReportsIndex({
                                 test="r1-index-billing"
                             />
                         ) : null}
+                        <DashboardCard
+                            icon={CalendarClock}
+                            title={t('deliveries.list.title')}
+                            description={t('deliveries.index.description')}
+                            href={schedulesIndex().url}
+                            test="r1-index-schedules"
+                        />
                     </ul>
                 </PageSection>
 

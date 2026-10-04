@@ -14,6 +14,8 @@ use App\Models\PersonalDataExport;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
 use App\Models\RecurringTaskRule;
+use App\Models\ReportDelivery;
+use App\Models\ReportSchedule;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TimeEntry;
@@ -171,6 +173,15 @@ final class AuditSubjects
                     route('admin.users.edit', ['user' => $export->subject_user_id], false),
                     personId: $export->subject_user_id,
                 ),
+            ),
+            // Envíos de informes (Fase 9, D-141): la programación y cada envío, con su título.
+            ReportSchedule::class => $this->map(
+                ReportSchedule::query()->whereKey($ids)->get(['id', 'title']),
+                fn (ReportSchedule $schedule): AuditSubject => AuditSubject::named($schedule->title, route('reports.schedules.show', ['schedule' => $schedule->id], false)),
+            ),
+            ReportDelivery::class => $this->map(
+                ReportDelivery::query()->whereKey($ids)->get(['id', 'title', 'schedule_id']),
+                fn (ReportDelivery $delivery): AuditSubject => AuditSubject::named($delivery->title, $delivery->schedule_id !== null ? route('reports.schedules.show', ['schedule' => $delivery->schedule_id], false) : null),
             ),
             // Chat (Fase 6): el mensaje moderado, con su autor y su conversación, y el grupo.
             Message::class => $this->messages($ids),

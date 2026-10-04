@@ -148,7 +148,7 @@ test('las preferencias para la página llevan grupos ordenados, textos y canales
 
     expect($settings['daily_digest'])->toBeFalse()
         ->and($settings['push_available'])->toBeFalse()
-        ->and(array_column($settings['groups'], 'key'))->toBe(['tasks', 'time', 'absences', 'chat'])
+        ->and(array_column($settings['groups'], 'key'))->toBe(['tasks', 'time', 'absences', 'chat', 'reports'])
         ->and($settings['groups'][0]['label'])->toBe('Tareas')
         ->and($settings['groups'][0]['events'][0])->toMatchArray([
             'kind' => 'task.assigned',

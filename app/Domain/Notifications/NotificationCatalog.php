@@ -99,6 +99,9 @@ final class NotificationCatalog
 
             // Informes (Fase 2, D-047): el resumen semanal es un email; también queda en la campana.
             new NotificationEvent('reports.weekly_digest', 'reports', [$email, $app], [$email, $app], self::AUDIENCE_MANAGERS),
+            // Envíos programados (Fase 9, D-141): uno se pausa porque su propietario ha perdido el
+            // acceso al informe, está desactivado o se ha quedado sin destinatarios.
+            new NotificationEvent('reports.schedule_paused', 'reports', [$app, $email], [$app, $email]),
 
             // Sistema: solo para el admin y obligatorios (Fases 6 y 7).
             new NotificationEvent('system.transcriptions_failing', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),

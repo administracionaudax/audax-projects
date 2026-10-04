@@ -91,3 +91,20 @@ Schedule::command('app:check-storage')
     ->withoutOverlapping()
     ->onOneServer()
     ->when($exists('app:check-storage'));
+
+/*
+| Fase 9 (D-141): envíos programados de informes y limpieza de los enlaces de descarga caducados.
+*/
+
+// Envíos programados que ya tocan: cada 5 minutos (las horas de cada envío son de Madrid).
+Schedule::command('reports:send-scheduled')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Informes de más de 10 MB enviados como enlace: se borran al caducar el enlace (7 días).
+Schedule::command('reports:prune-downloads')
+    ->dailyAt('03:20')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();

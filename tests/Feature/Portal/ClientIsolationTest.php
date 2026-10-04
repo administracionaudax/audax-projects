@@ -105,6 +105,8 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         '#^health$#', '#^up$#', '#^styleguide$#', '#^storage/#', '#^_inertia/#',
         // Logo de la empresa (D-067): público para los emails, sin sesión.
         '#^marca/logo/#',
+        // Informe enviado por correo como enlace (D-141): sin sesión, solo con firma de 7 días.
+        '#^informes/descargas/#',
         // Horizon: su propia puerta (solo admin fuera de local).
         '#^horizon#',
     ];

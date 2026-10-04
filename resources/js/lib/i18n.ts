@@ -6,7 +6,8 @@
  *   · `lang/ui/*.json`: textos del frontend por área desde la Fase 1 (shared, admin, clients,
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
- *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio). Laravel no los lee.
+ *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
+ *     informes). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -35,6 +36,7 @@ import portalAccess from '../../../lang/ui/portal-access.json';
 import privacy from '../../../lang/ui/privacy.json';
 import projects from '../../../lang/ui/projects.json';
 import realtime from '../../../lang/ui/realtime.json';
+import reportDeliveries from '../../../lang/ui/report-deliveries.json';
 import reports from '../../../lang/ui/reports.json';
 import reportsR2 from '../../../lang/ui/reports-r2.json';
 import reportsR1 from '../../../lang/ui/reports-r1.json';
@@ -66,6 +68,7 @@ const messages = {
     ...reportsR2,
     ...reportsR1,
     ...reportsR3,
+    ...reportDeliveries,
     ...absences,
     ...workload,
     ...gantt,
