@@ -113,16 +113,16 @@ describe('ExportMenu', () => {
         );
         const send = await screen.findByRole('dialog');
         expect(send.textContent).toContain('Informe de Montó');
-        expect(send.textContent).toContain('Próximamente');
+        expect(send.textContent).toContain('Enviar por correo');
         await user.keyboard('{Escape}');
 
         await user.click(screen.getByRole('button', { name: 'Exportar' }));
         await user.click(
             screen.getByRole('menuitem', { name: 'Programar envío…' }),
         );
-        expect((await screen.findByRole('dialog')).textContent).toContain(
-            'Programar envío…',
-        );
+        const schedule = await screen.findByRole('dialog');
+        expect(schedule.textContent).toContain('Programar envío');
+        expect(schedule.textContent).toContain('Informe de Montó');
     });
 
     it('el de una tabla solo lleva Excel, CSV y Google Sheets de esa tabla', async () => {
