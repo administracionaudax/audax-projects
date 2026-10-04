@@ -67,9 +67,26 @@ function insertSession(?User $user, string $userAgent = 'Mozilla/5.0 (Windows NT
  * El tiempo depende de la máquina: se exige en una ejecución normal en local; en paralelo
  * (TEST_TOKEN) o con la máquina saturada (carga media > 8) solo se informa (null), y en la CI
  * (PostgreSQL en un contenedor compartido, con picos de lentitud) solo se vigila que no se
- * dispare. Las consultas y el N+1 se comprueban siempre; la medida buena es la del servidor en
- * el despliegue (D-046).
+ * dispare. Con prioridad baja (nice ≥ 10, como en el servidor con scripts/heavy.sh: dos núcleos y
+ * prioridad mínima para no molestar a las otras webs) tampoco se exige: ahí los milisegundos
+ * dependen de la carga ajena. Las consultas y el N+1 se comprueban siempre (D-046).
  */
+/**
+ * ¿Corre con prioridad baja (nice ≥ 10)? Linux: campo 19 de /proc/self/stat; en otros sistemas, no.
+ */
+function lowPriorityProcess(): bool
+{
+    $stat = @file_get_contents('/proc/self/stat');
+    if ($stat === false) {
+        return false;
+    }
+
+    // El nombre del proceso va entre paréntesis y puede llevar espacios: se cuenta desde el último «)».
+    $fields = explode(' ', trim(substr($stat, (int) strrpos($stat, ')') + 2)));
+
+    return isset($fields[16]) && (int) $fields[16] >= 10;
+}
+
 function perfTimeLimit(int $localMs): ?int
 {
     $load = function_exists('sys_getloadavg') ? sys_getloadavg() : false;
@@ -78,6 +95,7 @@ function perfTimeLimit(int $localMs): ?int
         getenv('TEST_TOKEN') !== false => null,
         getenv('CI') !== false => max($localMs * 10, 10_000),
         $load !== false && $load[0] > 8 => null,
+        lowPriorityProcess() => null,
         default => $localMs,
     };
 }
