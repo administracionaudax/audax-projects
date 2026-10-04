@@ -1142,6 +1142,40 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
 - **Seguridad del token:** el token de refresco se guarda cifrado (`encrypted`) y se borra al desconectar o si Google lo revoca.
 - **Credenciales:** el ID y el secreto del cliente OAuth los pone el propietario en el `.env` del servidor, nunca en Git. Sin ellos, la opción no se ofrece.
 
+### D-143 · Mis tareas: orden por imputación, filtros y paginación **[cambia D-037 y SPEC §6]**
+Pedido por el propietario el 03/10: filtros para reordenar y encontrar tareas rápido y, por defecto, las últimas tareas por orden de imputación.
+- **Qué entra:** las tareas (y subtareas) asignadas a mí y, aunque no lo estén, aquellas en las que he imputado en los **últimos 30 días** (con la etiqueta «No asignada a ti» y, en su nombre accesible, de quién es). Abiertas salvo «Incluir hechas»; de proyectos sin archivar; un colaborador, solo las de sus proyectos (D-134).
+- **Orden** (`?orden=`), con un selector:
+  - **«Imputadas recientemente», por defecto:** primero aquellas en las que he imputado más recientemente (la última fecha de mis horas y, a igualdad, la última que registré); después el resto, por vencimiento. Cada fila dice «Imputaste el …»,
+  - **«Vencimiento»:** conserva las secciones Vencidas, Hoy, Esta semana, Próximas y Sin fecha (D-037),
+  - «Prioridad», «Proyecto», «Creación» y «Actualización».
+- **Filtros en la URL:** `?q=&proyecto=&cliente=&estado=&hechas=1&prioridad=&tipo=&vence=vencidas|hoy|semana|sin_fecha|rango&desde=&hasta=`.
+  - La búsqueda mira el título, el código y el nombre del proyecto y el cliente (sin acentos en PostgreSQL); se aplica al pulsar Intro o al dejar de escribir.
+  - Proyecto, cliente, estado y tipo admiten varios. Las opciones de proyecto y cliente son las de mis tareas. Elegir un estado «hecho» ya incluye las completadas.
+  - «Entre fechas» filtra por la fecha de entrega.
+  - Lo que no vale en la URL se ignora; nunca da un error.
+- **Persistencia:** el último orden y los filtros se guardan por persona en `localStorage` (con try/catch) y se recuperan al entrar sin filtros en la URL. «Limpiar filtros» conserva el orden.
+- **Paginación de servidor por cursor, de 50 en 50** («Cargar más»). Las claves de orden son columnas de una tabla derivada y nunca nulas, para que el cursor de Laravel funcione igual en PostgreSQL y en SQLite; un cursor manipulado o de otro orden se ignora.
+- **Rendimiento:** una consulta para la página (con mis horas por tarea en una subconsulta, índice `time_entries(user_id, task_id, date)`) y sin N+1; presupuesto de 15 consultas (antes 10).
+
+### D-144 · Calendario del equipo **[amplía SPEC §6 y D-061]**
+Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sencilla y rápida las tareas con fecha y las que cada persona tiene cada día, con filtros completos.
+- **Dónde:** `/calendario` (`calendar.index`), en la barra lateral tras Mis tareas, para toda la plantilla y para los colaboradores.
+- **Vistas:** **Mes**, **Semana** (por defecto) y **Día**, con «Hoy», anterior y siguiente; vista y fecha en la URL (`?vista=mes|semana|dia&fecha=`). La semana empieza en lunes.
+  - Entran las tareas con inicio, entrega o las dos que tocan el rango: vencen en él, empiezan en él o lo cruzan. Una tarea de rango se pinta como **franja** de su inicio a su entrega y su tarjeta va el día de la entrega (o el de inicio si no tiene entrega); los hitos llevan su rombo.
+  - **Tarjeta:** el color del proyecto (borde izquierdo), el título, el código del proyecto, el estado con icono y texto y el avatar o las iniciales del responsable. Pulsarla abre el **panel de la tarea** (`?tarea=`) sin salir del calendario: llegan el panel y lo que necesita de su proyecto (`TaskPanelContext`, ahora común con la pestaña Tareas).
+  - Como mucho **1.500 tareas** por vista: si hay más, se avisa y se pide filtrar.
+- **Vista «Personas»** (`?personas=1`, en la semana y el día): una fila por persona (avatar, nombre y departamento) y otra «Sin asignar» si tiene tareas; en cada celda, sus tareas de ese día (en el día, también las que siguen «En curso»).
+  - **Carga:** minutos planificados del día frente a la capacidad, con los colores, el icono y el texto de la Carga (D-052). La planificación es la de `WorkloadPlanner` y la capacidad la de `Capacity` (jornadas, festivos y ausencias). Solo se enseña de quien se puede ver la carga, como en /carga: la propia, la del equipo de un responsable y la de todos para un admin; y solo de hoy en adelante, porque el reparto empieza hoy.
+  - **Ausencias:** un día de ausencia aprobada sale como «Ausente» (o «Ausente parte del día») a todos; el tipo, solo a quien puede verlo (`canSeeAbsencesOf`, D-088). Los festivos, a todos.
+- **Filtros** en la URL y guardados por persona en `localStorage` (vista y filtros; la fecha no, se vuelve a hoy): persona (varias), departamento, proyecto y cliente (varios), tipo (varios), prioridad, «Solo las mías», «Sin asignar», «Solo hitos», «Incluir hechas» y búsqueda. «Solo las mías» manda; con personas y «Sin asignar» a la vez salen las dos cosas.
+- **Interacción:**
+  - **Mover** una tarea a otro día arrastrándola (`@dnd-kit`) o con el teclado (flechas e Intro): mueve inicio y entrega lo mismo, conservando la duración (con una sola fecha, esa). Solo con `TaskPolicy::update` y siempre por `schedule.reschedule.preview` y `store`, con la propuesta de sucesoras (D-057). Una tarea que solo tiene inicio se reprograma moviendo el inicio.
+  - **Crear** con un clic en el hueco de un día (o su «+»): abre «Nueva tarea» del Gantt con esa entrega, con los proyectos donde se puede crear (prop opcional `creatable`).
+- **Permisos:** la plantilla ve todo (D-021). Un colaborador solo ve las tareas de sus proyectos y las personas de ellos, sin departamentos, cargas ni ausencias (D-134); la ruta está en `config/collaborators.php`.
+- **Móvil (375 px):** el mes es una lista agrupada por día; la semana y las personas se desplazan dentro de su caja, nunca la página.
+- **Rendimiento:** una consulta acotada por el rango (índices nuevos `tasks(due_date, start_date)` y `tasks(start_date)`) leída sin modelos, más padres y responsables en una consulta cada uno; un mes de todo el equipo con 18.000 tareas en la base se sirve en unos 0,2 s en local (antes de leer sin modelos, 1,7 s). Presupuestos de consultas por vista en `tests/Feature/Calendar/TeamCalendarPerformanceTest.php`.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1151,5 +1185,6 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
 - Fase 7: D-122 a D-133.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
+- Tareas y calendario: D-143 y D-144.
 
-La siguiente libre es **D-143**.
+La siguiente libre es **D-145**.
