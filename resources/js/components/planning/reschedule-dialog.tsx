@@ -27,7 +27,12 @@ function datesText(start: string | null, due: string | null): string {
 }
 
 /** «al 14/10/2026» o «del 10/10/2026 al 14/10/2026». */
-function moveText(start: string | null, due: string): string {
+function moveText(start: string | null, due: string | null): string {
+    if (due === null) {
+        // Una tarea con inicio y sin entrega (calendario del equipo, D-144): se mueve su inicio.
+        return t('planning.reschedule.to_day', { date: formatDate(start) });
+    }
+
     return start && start !== due
         ? t('planning.reschedule.to_range', {
               start: formatDate(start),

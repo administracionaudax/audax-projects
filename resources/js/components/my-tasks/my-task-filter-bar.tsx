@@ -79,12 +79,18 @@ export function MyTaskSortSelect({
 }
 
 /** Búsqueda que se aplica al pulsar Intro o al dejar de escribir (SEARCH_DELAY_MS). */
-function SearchField({
+export function SearchField({
     value,
     onSearch,
+    label = t('my_tasks.filters.search'),
+    placeholder = t('my_tasks.filters.search_placeholder'),
+    testId = 'my-tasks-search',
 }: {
     value: string | null;
     onSearch: (text: string | null) => void;
+    label?: string;
+    placeholder?: string;
+    testId?: string;
 }) {
     const id = useId();
     const [text, setText] = useState(value ?? '');
@@ -122,7 +128,7 @@ function SearchField({
     return (
         <div className="grid min-w-0 gap-1 sm:w-72">
             <Label htmlFor={id} className="text-xs text-muted-foreground">
-                {t('my_tasks.filters.search')}
+                {label}
             </Label>
             <div className="relative">
                 <Search
@@ -135,7 +141,7 @@ function SearchField({
                     value={text}
                     maxLength={100}
                     autoComplete="off"
-                    placeholder={t('my_tasks.filters.search_placeholder')}
+                    placeholder={placeholder}
                     className="h-8 pl-8"
                     onChange={(event) => {
                         const next = event.target.value;
@@ -156,7 +162,7 @@ function SearchField({
                             apply(text);
                         }
                     }}
-                    data-test="my-tasks-search"
+                    data-test={testId}
                 />
             </div>
         </div>

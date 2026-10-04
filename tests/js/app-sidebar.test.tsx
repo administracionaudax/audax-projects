@@ -114,6 +114,7 @@ describe('navegación principal', () => {
         expect(titles).toEqual([
             'Inicio',
             'Mis tareas',
+            'Calendario',
             'Proyectos',
             'Clientes',
             'Bolsas',
@@ -223,12 +224,13 @@ describe('navegación principal', () => {
 });
 
 describe('navegación de un colaborador externo (D-134)', () => {
-    it('solo tiene Inicio, Mis tareas, Proyectos, Horas y Chat', () => {
+    it('solo tiene Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat', () => {
         const titles = mainNavItems(collaborator).map((item) => item.title);
 
         expect(titles).toEqual([
             'Inicio',
             'Mis tareas',
+            'Calendario',
             'Proyectos',
             'Horas',
             'Chat',

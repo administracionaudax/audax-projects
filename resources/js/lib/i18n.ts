@@ -22,6 +22,7 @@ import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import audit from '../../../lang/ui/audit.json';
+import calendar from '../../../lang/ui/calendar.json';
 import chatMedia from '../../../lang/ui/chat-media.json';
 import chat from '../../../lang/ui/chat.json';
 import clients from '../../../lang/ui/clients.json';
@@ -59,6 +60,7 @@ const messages = {
     ...hourBanks,
     ...tasks,
     ...myTasks,
+    ...calendar,
     ...time,
     ...notifications,
     ...notificationSettings,

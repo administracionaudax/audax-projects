@@ -50,6 +50,7 @@ export function NewTaskDialog({
     projects,
     departmentId,
     reload,
+    initialDue = null,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -57,6 +58,8 @@ export function NewTaskDialog({
     /** Departamento de quien crea: su bolsa sale elegida por defecto. */
     departmentId: number | null;
     reload: string[];
+    /** Entrega propuesta (el día pulsado en el calendario del equipo, D-144). */
+    initialDue?: string | null;
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +72,7 @@ export function NewTaskDialog({
                         projects={projects}
                         departmentId={departmentId}
                         reload={reload}
+                        initialDue={initialDue}
                         onDone={() => onOpenChange(false)}
                     />
                 ) : null}
@@ -90,11 +94,13 @@ function NewTaskForm({
     projects,
     departmentId,
     reload,
+    initialDue,
     onDone,
 }: {
     projects: ReadonlyArray<NewTaskProject>;
     departmentId: number | null;
     reload: string[];
+    initialDue: string | null;
     onDone: () => void;
 }) {
     const id = useId();
@@ -107,7 +113,7 @@ function NewTaskForm({
     const banks = project?.banks ?? [];
     const [title, setTitle] = useState('');
     const [start, setStart] = useState<string | null>(null);
-    const [due, setDue] = useState<string | null>(null);
+    const [due, setDue] = useState<string | null>(initialDue);
     const [milestone, setMilestone] = useState(false);
     const [bankId, setBankId] = useState<number | null>(() =>
         initialBank(project, departmentId),
