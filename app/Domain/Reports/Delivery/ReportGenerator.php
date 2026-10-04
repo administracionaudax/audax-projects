@@ -78,7 +78,8 @@ final class ReportGenerator implements ReportFileGenerator
 
     private static function temporaryPath(): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'audax-report-');
+        // Con el PID: así quien limpie los temporales (p. ej. un test en paralelo) borra solo los suyos.
+        $path = tempnam(sys_get_temp_dir(), 'audax-report-'.getmypid().'-');
         if ($path === false) {
             throw new RuntimeException('No se puede crear el fichero temporal del informe.');
         }

@@ -31,6 +31,12 @@ beforeEach(function () {
     $this->project = Project::query()->where('code', 'ARR-WEB')->sole();
     $this->panelTask = Task::query()->where('project_id', $this->project->id)->whereNull('parent_task_id')->orderBy('id')->firstOrFail();
 
+    // La búsqueda de candidatas (?buscar=dis) carga el padre de las subtareas en UNA consulta, que
+    // solo aparece si algún resultado es subtarea. Con títulos aleatorios eso dependía del azar:
+    // una subtarea fija que coincide deja esa consulta siempre presente (no es un N+1).
+    $root = Task::factory()->create(['project_id' => $this->project->id, 'hour_bank_id' => $this->panelTask->hour_bank_id, 'title' => 'Ficha de producto']);
+    Task::factory()->subtaskOf($root)->create(['title' => 'Diseño de la ficha (fija para la búsqueda)']);
+
     // Presupuesto: lo medido (el máximo de los tres roles) + 3, como en la Fase 1.
     $this->budgets = [
         // +1 fija con la Fase 6: el total sin leer del chat (prop compartida `chat.unread`).

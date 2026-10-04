@@ -41,7 +41,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    foreach (glob(sys_get_temp_dir().'/audax-report-*') ?: [] as $file) {
+    foreach (glob(sys_get_temp_dir().'/audax-report-'.getmypid().'-*') ?: [] as $file) {
         @unlink($file);
     }
 });
