@@ -69,4 +69,19 @@ return [
         'max_per_user' => 10,
     ],
 
+    /*
+    | Google Sheets (Fase 9, D-142): cliente OAuth 2.0 de tipo «Interno» del proyecto de Google
+    | Cloud `audax-proyectos`. El ID y el secreto los pone el propietario en el .env del servidor
+    | (nunca en Git). Sin ellos, la exportación a Google Sheets no se ofrece. La URI de redirección
+    | debe ser exactamente la autorizada en Google Cloud; vacía, se usa la ruta
+    | integrations.google.callback de APP_URL. Solo se aceptan cuentas del dominio de Workspace.
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+        'hosted_domain' => env('GOOGLE_HOSTED_DOMAIN', 'audaxstudio.com'),
+        'timeout' => (int) env('GOOGLE_TIMEOUT', 30),
+    ],
+
 ];

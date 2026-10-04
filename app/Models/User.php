@@ -58,6 +58,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read Department|null $department
  * @property-read Client|null $client
  * @property-read ActiveTimer|null $activeTimer
+ * @property-read GoogleConnection|null $googleConnection
  * @property-read ProjectMember|null $membership
  */
 #[Fillable([
@@ -251,6 +252,16 @@ class User extends Authenticatable
     public function pushSubscriptions(): HasMany
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
+     * Cuenta de Google conectada para exportar a Google Sheets (Fase 9, D-142).
+     *
+     * @return HasOne<GoogleConnection, $this>
+     */
+    public function googleConnection(): HasOne
+    {
+        return $this->hasOne(GoogleConnection::class);
     }
 
     /**
