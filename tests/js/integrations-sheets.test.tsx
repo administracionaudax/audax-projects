@@ -231,7 +231,7 @@ describe('SheetsExportItem', () => {
 
         expect(url).toBe('/informes/sheets');
         expect(init.method).toBe('POST');
-        expect(JSON.parse(String(init.body))).toEqual(request);
+        expect(JSON.parse(init.body as string)).toEqual(request);
         expect(init.headers).toMatchObject({
             Accept: 'application/json',
             'Content-Type': 'application/json',
