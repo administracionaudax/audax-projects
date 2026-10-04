@@ -12,14 +12,15 @@
       - gotenberg
       - --api-port=3000
       - --api-timeout=60s
-      - --api-download-from-disable=true
+      - --api-disable-download-from=true
       - --webhook-disable=true
       - --chromium-auto-start=true
       - --chromium-restart-after=50
       - --chromium-max-queue-size=10
       - --chromium-disable-javascript=true
       - "--chromium-allow-list=^(file:///tmp/|data:)"
-      - "--chromium-deny-list=^file:(?!//\\/tmp/).*"
+      - --chromium-deny-private-ips=true
+      - --chromium-deny-public-ips=true
       - --libreoffice-disable-routes=true
       - --libreoffice-auto-start=false
       - --prometheus-disable-collect=true
