@@ -50,5 +50,6 @@
     "team_calendar.filters.unassigned": "Sin asignar",
     "team_calendar.filters.milestones": "Solo hitos",
     "team_calendar.filters.done": "Incluir hechas",
-    "team_calendar.filters.clear": "Limpiar filtros"
+    "team_calendar.filters.clear": "Limpiar filtros",
+    "team_calendar.month_empty": "No hay tareas con fecha este mes."
 }

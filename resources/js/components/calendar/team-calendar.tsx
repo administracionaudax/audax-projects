@@ -612,7 +612,14 @@ function MonthList({
     );
 
     if (days.length === 0) {
-        return null;
+        return (
+            <p
+                className="text-sm text-muted-foreground"
+                data-test="team-month-list"
+            >
+                {t('team_calendar.month_empty')}
+            </p>
+        );
     }
 
     return (

@@ -32,6 +32,7 @@ export const PRIVACY_PENDING_USER =
 /** Rutas de la barra lateral (URLs en español, contrato de routes/web.php). */
 export const SIDEBAR_PATHS = [
     '/mis-tareas',
+    '/calendario',
     '/proyectos',
     '/clientes',
     '/bolsas',
