@@ -62,7 +62,7 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
         ->name('home.layout.destroy');
 
     // Una ruta por área (routes/app/*.php), de la Fase 1 a la 7.
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries'] as $area) {
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 

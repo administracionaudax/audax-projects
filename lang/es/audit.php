@@ -57,6 +57,7 @@ return [
         'report_scheduled' => 'Cambios en los envíos programados',
         'report_generated' => 'Informes generados',
         'report_printed' => 'Informes impresos',
+        'sheets_exported' => 'Informes exportados a Google Sheets',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -106,6 +107,7 @@ return [
         'schedule_deleted' => 'Envío programado borrado',
         'generated' => 'Informe generado',
         'printed' => 'Informe impreso',
+        'sheets' => 'Exportado a Google Sheets',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).

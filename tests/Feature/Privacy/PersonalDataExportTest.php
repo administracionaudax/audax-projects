@@ -328,6 +328,7 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         'comentarios.json', 'comentarios.csv',
         'mensajes-chat.json', 'mensajes-chat.csv',
         'notificaciones.json', 'notificaciones.csv',
+        'integraciones.json', 'integraciones.csv',
         'accesos.json', 'accesos.csv',
     ]);
 

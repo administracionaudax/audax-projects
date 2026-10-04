@@ -2,6 +2,7 @@
 
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
+use App\Domain\Privacy\Export\Sections\IntegrationsSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
 use App\Domain\Privacy\Export\Sections\NotificationsSection;
 use App\Domain\Privacy\Export\Sections\ProfileSection;
@@ -36,6 +37,8 @@ return [
         TaskCommentsSection::class,
         ChatMessagesSection::class,
         NotificationsSection::class,
+        // Cuenta de Google conectada (Fase 9, D-142): el correo y la fecha, nunca los tokens.
+        IntegrationsSection::class,
         LoginEventsSection::class,
     ],
 

@@ -130,6 +130,11 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
 - **PDF de informes:** `REPORTS_PDF_DRIVER=gotenberg`, `GOTENBERG_URL=http://127.0.0.1:18092` y `GOTENBERG_TIMEOUT=65` (algo más que el `--api-timeout` de Gotenberg, para recibir su error en vez de cortar). En local sin Docker, `REPORTS_PDF_DRIVER=html`: la descarga «PDF» es el HTML.
 - **Avisos del navegador:** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT`. Se generan con `php artisan push:vapid-keys` y se comprueban con `--check`. Si se cambian, las suscripciones existentes dejan de valer.
 - `LINK_PREVIEWS_ENABLED=true`: previsualización de enlaces del chat, con protección SSRF.
+- **Google Sheets (D-142):**
+  - `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`: los del cliente OAuth 2.0 de tipo «Interno» del proyecto `audax-proyectos` de Google Cloud. **Los pone el propietario** en `app/shared/.env`; nunca van en Git ni en un mensaje. Sin ellos, la opción «Google Sheets» no se ofrece y Ajustes → Integraciones dice que no está disponible,
+  - `GOOGLE_REDIRECT_URI=https://projects.audaxstudio.com/integraciones/google/callback`: debe coincidir exactamente con la URI autorizada en Google Cloud,
+  - `GOOGLE_HOSTED_DOMAIN=audaxstudio.com` (por defecto): solo se aceptan cuentas de ese dominio,
+  - la web las lee en la siguiente petición (no se usa `config:cache`); no hace falta reiniciar Horizon ni otros procesos, porque nada de Google va por colas.
 
 ## 7. Comprobaciones rápidas
 

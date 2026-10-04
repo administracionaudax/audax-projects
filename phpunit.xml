@@ -28,6 +28,10 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="TRANSCRIPTION_DRIVER" value="fake"/>
+        <!-- Google Sheets (D-142): sin credenciales salvo en los tests que las ponen; nunca la API real. -->
+        <env name="GOOGLE_CLIENT_ID" value="" force="true"/>
+        <env name="GOOGLE_CLIENT_SECRET" value="" force="true"/>
+        <env name="GOOGLE_REDIRECT_URI" value="" force="true"/>
         <env name="TRANSCRIPTION_QUEUE_CONNECTION" value="sync"/>
         <env name="REPORTS_PDF_DRIVER" value="html"/>
         <!-- Previsualización de enlaces del chat: sin red en los tests (los suyos la activan con Http::fake). -->
