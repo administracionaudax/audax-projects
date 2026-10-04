@@ -127,7 +127,9 @@ test('el cliente ve su bolsa, abre el detalle, descarga el PDF y no entra en la 
         const pdf = await download(page, () =>
             page.getByRole('link', { name: /Descargar PDF/ }).click(),
         );
-        expect(pdf.name).toMatch(/^ARR-WEB-consumo-bolsa-diseno-.*\.(pdf|html)$/);
+        expect(pdf.name).toMatch(
+            /^ARR-WEB-consumo-bolsa-diseno-.*\.(pdf|html)$/,
+        );
         expectReportPdf(pdf);
     });
 

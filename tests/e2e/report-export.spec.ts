@@ -96,7 +96,9 @@ test('imprimir abre el mismo documento en otra pestaña, sin la app, y lanza el 
         .toBe(true);
 });
 
-test('la pestaña Horas de un proyecto tiene el mismo menú', async ({ page }) => {
+test('la pestaña Horas de un proyecto tiene el mismo menú', async ({
+    page,
+}) => {
     await login(page, USERS.admin);
 
     await page.goto('/proyectos');
