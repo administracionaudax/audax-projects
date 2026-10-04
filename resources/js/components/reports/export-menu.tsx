@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { ScheduleReportDialog } from '@/components/reports/delivery/schedule-report-dialog';
 import { SendReportDialog } from '@/components/reports/delivery/send-report-dialog';
 import { SheetsExportItem } from '@/components/reports/delivery/sheets-export-item';
+import { stripKeywords } from '@/components/keyword-text';
 import { reportRequestUrl } from '@/components/reports/report-request';
 import type { ReportFormat } from '@/components/reports/report-request';
 import { Button } from '@/components/ui/button';
@@ -133,7 +134,7 @@ export function ExportMenu({
                         open={dialog === 'send'}
                         onOpenChange={(open) => setDialog(open ? 'send' : null)}
                         request={request}
-                        title={title}
+                        title={stripKeywords(title)}
                     />
                     <ScheduleReportDialog
                         open={dialog === 'schedule'}
@@ -141,7 +142,7 @@ export function ExportMenu({
                             setDialog(open ? 'schedule' : null)
                         }
                         request={request}
-                        title={title}
+                        title={stripKeywords(title)}
                     />
                 </>
             ) : null}

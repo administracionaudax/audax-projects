@@ -28,14 +28,15 @@ test('dirección: el menú tiene todas las salidas y el PDF se descarga con los 
         'Excel (.xlsx)',
         'CSV (.csv)',
         'PDF',
-        /Google Sheets/,
         'Imprimir',
         'Enviar por correo…',
         'Programar envío…',
     ]);
+    // Sin credenciales de Google en el entorno (CI y E2E locales), Google Sheets no se ofrece
+    // (D-142); con ellas lo cubre tests/e2e/integrations.spec.ts.
     await expect(
         menu.getByRole('menuitem', { name: /Google Sheets/ }),
-    ).toHaveAttribute('aria-disabled', 'true');
+    ).toHaveCount(0);
     await expect(menu.getByRole('menuitem', { name: 'PDF' })).toHaveAttribute(
         'href',
         /\/informes\/direccion\?periodo=trimestre.*formato=pdf/,
@@ -53,10 +54,12 @@ test('dirección: el menú tiene todas las salidas y el PDF se descarga con los 
         expect(html).toContain("font-family:'DM Sans'");
     }
 
-    // «Enviar por correo…» abre su diálogo (la entrega 9.3 lo completa).
+    // «Enviar por correo…» abre su diálogo con el título limpio (sin las marcas [[…]] del azul).
     await page.getByRole('button', { name: 'Exportar' }).first().click();
     await page.getByRole('menuitem', { name: 'Enviar por correo…' }).click();
-    await expect(page.getByRole('dialog')).toContainText('Próximamente');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('Enviar por correo');
+    await expect(dialog).not.toContainText('[[');
 });
 
 test('imprimir abre el mismo documento en otra pestaña, sin la app, y lanza el diálogo de impresión', async ({

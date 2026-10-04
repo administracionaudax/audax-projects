@@ -165,7 +165,7 @@ export default function ReportSchedulesIndex({
                                         <Link
                                             href={show(schedule.id)}
                                             className={cn(
-                                                'font-medium text-primary hover:underline',
+                                                'font-medium text-primary-text hover:underline',
                                                 FOCUS_RING,
                                             )}
                                         >
