@@ -202,6 +202,14 @@ MD,
                     'url' => 'Enlace',
                 ],
             ],
+            'integrations' => [
+                'description' => 'Las cuentas externas que tienes conectadas (Google, para exportar a Google Sheets): el servicio, la cuenta y desde cuándo. Nunca los tokens de acceso.',
+                'columns' => [
+                    'service' => 'Servicio',
+                    'account' => 'Cuenta',
+                    'connected_at' => 'Conectada el',
+                ],
+            ],
             'login_events' => [
                 'description' => 'Tus inicios de sesión, correctos y fallidos: fecha, dirección IP y navegador.',
                 'columns' => [
