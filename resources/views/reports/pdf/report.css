@@ -197,3 +197,10 @@ table.compact td {
 table:not(.compact) td:first-child {
     min-width: 34mm;
 }
+/* Logo de la empresa (PNG, D-067): cabe en la caja del logotipo de la portada sin deformarse. */
+.cover > .logo--custom {
+    width: auto;
+    height: auto;
+    max-width: 60mm;
+    max-height: 16mm;
+}

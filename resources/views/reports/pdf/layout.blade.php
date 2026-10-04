@@ -8,6 +8,8 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ $title }}</title>
 <style>{!! $theme !!}</style>
+{{-- La cabecera de cada página lleva el nombre de la empresa (D-067), como el PDF de FPDF. --}}
+<style>@page{@top-right{content:"{!! str_replace(['\\', '"', '<', '>', "\n", "\r"], ['\\\\', '\\"', '', '', ' ', ' '], $company) !!}";}}</style>
 @if ($landscape)
 <style>@page{size:A4 landscape;}</style>
 @endif

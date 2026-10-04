@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reports\Pdf;
 
+use App\Domain\Identity\CompanyIdentity;
 use App\Domain\Reports\Delivery\Documents\ReportPdf;
 use Illuminate\Support\Facades\Vite;
 
@@ -13,11 +14,14 @@ use Illuminate\Support\Facades\Vite;
  *   como data: URI,
  * - la hoja de documentos A4 de Audax (resources/views/reports/pdf/audax-doc.css, copia literal
  *   del kit) y los ajustes de los informes (report.css),
- * - el logotipo (public/brand/audax-logo.svg) en línea.
+ * - el logo de la empresa (D-067) o, si no hay, el logotipo de Audax (public/brand/audax-logo.svg),
+ *   en línea; el nombre de la empresa va en la cabecera de cada página.
  * Con $print, además el diálogo de impresión al cargar (script con el nonce de la CSP).
  */
 final class ReportHtml
 {
+    public function __construct(private readonly CompanyIdentity $identity) {}
+
     public const array FONT_WEIGHTS = [400, 500, 600];
 
     private static ?string $theme = null;
@@ -33,8 +37,26 @@ final class ReportHtml
             'print' => $print,
             'nonce' => $print ? Vite::cspNonce() : null,
             'theme' => self::theme(),
-            'logo' => self::logo(),
+            'logo' => $this->logo(),
+            'company' => $this->identity->name(),
         ])->render();
+    }
+
+    /**
+     * El logo de la empresa si se ha subido en /admin/identidad (D-067, un PNG incrustado) y, si
+     * no, el logotipo de Audax en SVG, como en el PDF de FPDF al que sustituye.
+     */
+    public function logo(): string
+    {
+        $logo = $this->identity->logo();
+        $path = $this->identity->logoPath();
+
+        if ($logo !== null && $path !== null && is_file($path)) {
+            return '<img class="logo logo--custom" src="data:image/png;base64,'.base64_encode((string) file_get_contents($path)).'"'
+                .' width="'.$logo['width'].'" height="'.$logo['height'].'" alt="'.e($this->identity->name()).'">';
+        }
+
+        return self::defaultLogo();
     }
 
     /**
@@ -58,7 +80,7 @@ final class ReportHtml
             .file_get_contents(resource_path('views/reports/pdf/report.css'));
     }
 
-    public static function logo(): string
+    public static function defaultLogo(): string
     {
         return self::$logo ??= (string) preg_replace('/^<svg /', '<svg class="logo" ', trim((string) file_get_contents(public_path('brand/audax-logo.svg'))));
     }

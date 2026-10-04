@@ -1,7 +1,9 @@
 <?php
 
 use App\Domain\Identity\CompanyIdentity;
-use App\Domain\Reports\Pdf\AudaxPdf;
+use App\Domain\Reports\Delivery\Documents\PdfTable;
+use App\Domain\Reports\Delivery\Documents\ReportPdf;
+use App\Domain\Reports\Pdf\ReportHtml;
 use App\Models\Client;
 use App\Models\Setting;
 use App\Models\User;
@@ -216,21 +218,20 @@ test('los emails llevan el logo en la cabecera (o el texto si no hay)', function
         ->toContain('alt="Audax Studio SL"');
 });
 
-test('el PDF dibuja el logo de la empresa si lo hay; si no, el logotipo vectorial', function () {
-    $render = function (): string {
-        $pdf = new AudaxPdf('Audax Studio', 'Pie', 'Página :page de :pages');
-        $pdf->SetCompression(false);
-        $pdf->AddPage();
+test('el PDF lleva el logo de la empresa si lo hay (si no, el logotipo de Audax) y su nombre en la cabecera', function () {
+    $render = fn (): string => app(ReportHtml::class)->render(new ReportPdf('reports.pdf.department', 'Prueba', 'prueba', [
+        'cover' => ['kicker' => 'Informe', 'title' => 'Prueba', 'subtitle' => '', 'facts' => [], 'note' => null],
+        'kpis' => [], 'members' => PdfTable::make([['Persona']], []), 'clients' => PdfTable::make([['Cliente']], []), 'definitions' => [],
+    ]));
 
-        return $pdf->Output('S');
-    };
+    expect($render())->toContain('aria-label="Audax Studio"')
+        ->not->toContain('data:image/png;base64,')
+        ->toContain('@top-right{content:"Audax Studio";}');
 
-    expect($render())->not->toContain('/Subtype /Image');
+    ($this->upload)(($this->transparentPng)(), 'Estudio "Lur"')->assertSessionHasNoErrors();
 
-    ($this->upload)(($this->transparentPng)())->assertSessionHasNoErrors();
-
-    $output = $render();
-    expect($output)->toStartWith('%PDF')
-        ->toContain('/Subtype /Image')
-        ->toContain('/SMask');
+    expect($render())->toContain('<img class="logo logo--custom" src="data:image/png;base64,')
+        ->toContain('alt="Estudio &quot;Lur&quot;"')
+        ->toContain('@top-right{content:"Estudio \\"Lur\\"";}')
+        ->not->toContain('aria-label="Audax Studio"');
 });
