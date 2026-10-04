@@ -7,7 +7,7 @@
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
  *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
- *     informes). Laravel no los lee.
+ *     informes, Mis tareas y el calendario del equipo). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -22,6 +22,7 @@ import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import admin from '../../../lang/ui/admin.json';
 import audit from '../../../lang/ui/audit.json';
+import calendar from '../../../lang/ui/calendar.json';
 import chatMedia from '../../../lang/ui/chat-media.json';
 import chat from '../../../lang/ui/chat.json';
 import clients from '../../../lang/ui/clients.json';
@@ -29,6 +30,7 @@ import gantt from '../../../lang/ui/gantt.json';
 import home from '../../../lang/ui/home.json';
 import integrations from '../../../lang/ui/integrations.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
+import myTasks from '../../../lang/ui/my-tasks.json';
 import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
 import planning from '../../../lang/ui/planning.json';
@@ -59,6 +61,8 @@ const messages = {
     ...home,
     ...hourBanks,
     ...tasks,
+    ...myTasks,
+    ...calendar,
     ...time,
     ...notifications,
     ...notificationSettings,

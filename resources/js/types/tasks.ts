@@ -222,20 +222,76 @@ export type MyTaskSectionKey =
     | 'upcoming'
     | 'no_date';
 
-/** MyTaskItemResource. */
+/** MyTaskItemResource, con lo que añade App\Domain\Tasks\MyTaskList (D-143). */
 export type MyTaskItem = Task & {
     logged_minutes?: number | null;
     project: { id: number; code: string; name: string; color: string };
     hour_bank: { id: number; name: string } | null;
     parent: { id: number; title: string } | null;
+    /** Sección de la vista por vencimiento («hoy» en Madrid). */
+    section: MyTaskSectionKey;
+    /** false: no está asignada a mí, pero he imputado en ella en los últimos 30 días. */
+    assigned_to_me: boolean;
+    /** Última fecha en la que he imputado en ella, "YYYY-MM-DD", o null. */
+    my_last_logged_on: string | null;
+};
+
+/** Orden de Mis tareas (?orden=imputadas|vencimiento|prioridad|proyecto|creacion|actualizacion). */
+export type MyTaskSort =
+    | 'logged'
+    | 'due'
+    | 'priority'
+    | 'project'
+    | 'created'
+    | 'updated';
+
+/** Filtro de vencimiento (?vence=vencidas|hoy|semana|sin_fecha|rango). */
+export type MyTaskDue = 'overdue' | 'today' | 'week' | 'none' | 'range';
+
+/** App\Domain\Tasks\MyTaskFilters::toArray(). */
+export type MyTaskFilters = {
+    q: string | null;
+    projects: number[];
+    clients: number[];
+    statuses: number[];
+    /** Incluir las hechas (?hechas=1). */
+    done: boolean;
+    priority: TaskPriority | null;
+    types: number[];
+    due: MyTaskDue | null;
+    /** Rango de entrega (solo con due = 'range'). */
+    from: string | null;
+    to: string | null;
+    sort: MyTaskSort;
+};
+
+/** Opciones de la barra de filtros: proyectos y clientes de mis tareas, tipos y prioridades. */
+export type MyTaskOptions = {
+    projects: {
+        id: number;
+        code: string;
+        name: string;
+        color: string;
+        client_id: number | null;
+    }[];
+    clients: { id: number; name: string }[];
+    types: TaskType[];
+    priorities: TaskPriority[];
 };
 
 /** App\Http\Controllers\Tasks\MyTasksController. */
 export type MyTasksPageProps = {
     /** Hoy en Madrid, "YYYY-MM-DD". */
     today: string;
-    sections: { key: MyTaskSectionKey; tasks: MyTaskItem[] }[];
+    filters: MyTaskFilters;
+    /** Página de tareas (50 como mucho), en el orden elegido. */
+    tasks: MyTaskItem[];
+    /** Cursor de esta página (null: la primera). */
+    cursor: string | null;
+    /** Cursor de la siguiente (null: no hay más). */
+    next_cursor: string | null;
     statuses: TaskStatus[];
+    options: MyTaskOptions;
 };
 
 export type ProjectFileCategory =

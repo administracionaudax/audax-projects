@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     BarChart3,
     Building2,
+    CalendarDays,
     CalendarOff,
     CalendarRange,
     Clock,
@@ -31,6 +32,7 @@ import { home } from '@/routes';
 import { index as absencesIndex } from '@/routes/absences';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
+import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
 import { index as hourBanksIndex } from '@/routes/hour-banks';
@@ -46,8 +48,9 @@ import type { Abilities, NavItem } from '@/types';
  * Navegación principal (SPEC §3), en este orden, con «Ausencias» tras «Carga» (D-091). Bolsas,
  * «Ausencias del equipo» y Administración dependen de `auth.can` (gate view-hour-banks, quien
  * aprueba ausencias y rol admin); el servidor vuelve a comprobarlo en la ruta. Chat lleva el
- * total de mensajes sin leer (Fase 6). Clientes, Carga, Ausencias e Informes no aparecen a un
- * colaborador externo (D-134), que solo tiene Inicio, Mis tareas, Proyectos, Horas y Chat.
+ * total de mensajes sin leer (Fase 6). El calendario del equipo va tras Mis tareas (D-144).
+ * Clientes, Carga, Ausencias e Informes no aparecen a un colaborador externo (D-134), que solo tiene
+ * Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat.
  */
 export function mainNavItems(
     can: Abilities,
@@ -58,6 +61,7 @@ export function mainNavItems(
     const items: (NavItem | false | undefined)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
+        { title: t('nav.calendar'), href: calendarIndex(), icon: CalendarDays },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
         can.viewClients && {
             title: t('nav.clients'),

@@ -24,6 +24,8 @@ return [
         'home.layout.destroy',
         'dashboard',
         'my-tasks.index',
+        // Calendario del equipo (D-144): solo las tareas y las personas de sus proyectos.
+        'calendar.index',
 
         // Proyectos: listado y ficha con las pestañas Resumen, Tareas, Gantt del proyecto, Chat y Archivos.
         'projects.index',

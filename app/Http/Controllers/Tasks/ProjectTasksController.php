@@ -13,10 +13,9 @@ use App\Http\Resources\Tasks\Plain;
 use App\Http\Resources\Tasks\TaskBankOptionResource;
 use App\Http\Resources\Tasks\TaskListItemResource;
 use App\Http\Resources\Tasks\TaskPanel;
+use App\Http\Resources\Tasks\TaskPanelContext;
 use App\Http\Resources\Tasks\TaskTypeOptionResource;
 use App\Http\Resources\TaskStatusResource;
-use App\Http\Resources\UserSummaryResource;
-use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -78,6 +77,7 @@ class ProjectTasksController extends Controller
         private readonly TaskOptions $options,
         private readonly TaskPanel $panel,
         private readonly TaskCalendar $calendar,
+        private readonly TaskPanelContext $context,
     ) {}
 
     public function index(Request $request, Project $project): Response
@@ -117,13 +117,13 @@ class ProjectTasksController extends Controller
                 ))
                 : null,
             'statuses' => fn (): array => Plain::of(TaskStatusResource::collection($this->options->statuses())),
-            'types' => fn (): array => Plain::of(TaskTypeOptionResource::collection($this->options->types($this->usedTypeIds($project)))),
+            'types' => fn (): array => Plain::of(TaskTypeOptionResource::collection($this->options->types($this->context->usedTypeIds($project)))),
             'banks' => fn (): array => Plain::of(TaskBankOptionResource::collection($this->options->banks($project, $user))),
-            'users' => fn (): array => $this->users($project, $user),
+            'users' => fn (): array => $this->context->users($project, $user),
             'currentUser' => ['id' => $user->id, 'department_id' => $user->department_id],
             'maxAttachmentMb' => AttachmentStorage::maxMegabytes(),
             'panel' => fn (): ?array => $this->panelFor($taskId, $project, $user),
-            'moveTargets' => Inertia::optional(fn (): array => $this->moveTargets($project, $user)),
+            'moveTargets' => Inertia::optional(fn (): array => $this->context->moveTargets($project, $user)),
         ]);
     }
 
@@ -188,63 +188,6 @@ class ProjectTasksController extends Controller
         }
 
         return $this->panel->build($task, $project, $user);
-    }
-
-    /**
-     * Internos activos (primero los miembros) con is_member.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function users(Project $project, User $viewer): array
-    {
-        ['users' => $users, 'memberIds' => $memberIds] = $this->options->assignableUsers($project, $viewer);
-
-        return array_values($users->map(fn (User $user): array => [
-            ...Plain::of(UserSummaryResource::make($user)),
-            'is_member' => in_array($user->id, $memberIds, true),
-        ])->all());
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function usedTypeIds(Project $project): array
-    {
-        return array_values(Task::query()
-            ->where('project_id', $project->id)
-            ->whereNotNull('task_type_id')
-            ->distinct()
-            ->pluck('task_type_id')
-            ->map(fn ($id): int => (int) $id)
-            ->all());
-    }
-
-    /**
-     * Proyectos no archivados donde puede crear tareas (TaskPolicy::create), con sus bolsas abiertas.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function moveTargets(Project $current, User $user): array
-    {
-        $query = Project::query()
-            ->notArchived()
-            ->whereKeyNot($current->id)
-            ->with(['hourBanks' => fn ($banks) => $banks->open()->with('department')->orderBy('start_date')->orderBy('id')])
-            ->orderBy('code');
-
-        if (! $user->isAdmin() && ! $user->isDepartmentManager()) {
-            $query->withMember($user);
-        }
-
-        return array_values($query->get()->map(fn (Project $project): array => [
-            'id' => $project->id,
-            'code' => $project->code,
-            'name' => $project->name,
-            'uses_hour_banks' => $project->usesHourBanks(),
-            'banks' => Plain::of(TaskBankOptionResource::collection(
-                $project->hourBanks->sortBy(fn (HourBank $bank): int => $bank->department_id !== null && $bank->department_id === $user->department_id ? 0 : 1)->values()
-            )),
-        ])->all());
     }
 
     /**

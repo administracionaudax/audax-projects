@@ -19,6 +19,7 @@ return [
     'pages' => [
         'home' => ['title' => 'Inicio', 'subtitle' => 'Tu panel personal', 'keywords' => 'panel dashboard resumen'],
         'my_tasks' => ['title' => 'Mis tareas', 'subtitle' => 'Tareas asignadas a ti', 'keywords' => 'tareas pendientes'],
+        'calendar' => ['title' => 'Calendario', 'subtitle' => 'Tareas del equipo por día, semana o mes', 'keywords' => 'calendario agenda equipo personas fechas hitos'],
         'projects' => ['title' => 'Proyectos', 'subtitle' => 'Proyectos y tareas', 'keywords' => 'proyecto'],
         'clients' => ['title' => 'Clientes', 'subtitle' => 'Clientes de Audax Studio', 'keywords' => 'cliente empresa'],
         'hour_banks' => ['title' => 'Bolsas', 'subtitle' => 'Bolsas de horas', 'keywords' => 'bolsas de horas consumo'],

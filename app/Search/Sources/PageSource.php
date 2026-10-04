@@ -66,6 +66,7 @@ class PageSource implements SearchSource
         $pages = [
             ['route' => 'home', 'key' => 'home', 'allowed' => $always],
             ['route' => 'my-tasks.index', 'key' => 'my_tasks', 'allowed' => $always],
+            ['route' => 'calendar.index', 'key' => 'calendar', 'allowed' => $always],
             ['route' => 'projects.index', 'key' => 'projects', 'allowed' => $always],
             ['route' => 'clients.index', 'key' => 'clients', 'allowed' => $always],
             ['route' => 'hour-banks.index', 'key' => 'hour_banks', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-hour-banks')],

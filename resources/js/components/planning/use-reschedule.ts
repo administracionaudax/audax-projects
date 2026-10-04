@@ -8,7 +8,11 @@ import {
 import { t } from '@/lib/i18n';
 import type { ShiftProposal } from '@/types/schedule';
 
-export type RescheduleDates = { start_date: string | null; due_date: string };
+/** Fechas nuevas. Sin entrega solo en una tarea que solo tiene inicio (calendario del equipo). */
+export type RescheduleDates = {
+    start_date: string | null;
+    due_date: string | null;
+};
 
 export type RescheduleTarget = { id: number; title: string };
 

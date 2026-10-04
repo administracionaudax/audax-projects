@@ -2,30 +2,38 @@
 
 namespace App\Http\Controllers\Tasks;
 
-use App\Domain\Tasks\MyTaskSections;
+use App\Domain\Tasks\MyTaskFilters;
+use App\Domain\Tasks\MyTaskList;
+use App\Domain\Tasks\TaskOptions;
+use App\Enums\TaskPriority;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Tasks\MyTaskItemResource;
 use App\Http\Resources\Tasks\Plain;
+use App\Http\Resources\Tasks\TaskTypeOptionResource;
 use App\Http\Resources\TaskStatusResource;
 use App\Models\Task;
-use App\Models\TaskStatus;
 use App\Models\User;
 use App\Support\LocalTime;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Mis tareas (SPEC §6, D-037): tareas ABIERTAS asignadas a mí (también subtareas) de proyectos no
- * archivados, en las secciones Vencidas, Hoy, Esta semana, Próximas y Sin fecha, con «hoy» en
- * Europe/Madrid. Dentro de cada sección: por vencimiento, prioridad y título. Un colaborador externo,
- * solo las de sus proyectos (D-134).
+ * Mis tareas (SPEC §6, D-037 y D-143): las tareas asignadas a mí y aquellas en las que he imputado
+ * en los últimos 30 días, por defecto ordenadas por «Imputadas recientemente», con filtros y orden
+ * en la URL (App\Domain\Tasks\MyTaskFilters) y paginación por cursor de 50 en 50
+ * (App\Domain\Tasks\MyTaskList). «Vencimiento» conserva las secciones Vencidas, Hoy, Esta semana,
+ * Próximas y Sin fecha (cada tarea trae la suya), con «hoy» en Europe/Madrid. Un colaborador
+ * externo, solo las de sus proyectos (D-134).
+ *
+ * «Cargar más» pide solo `tasks`, `cursor` y `next_cursor` con ?cursor=.
  */
 class MyTasksController extends Controller
 {
-    public function __construct(private readonly MyTaskSections $sections) {}
+    public function __construct(
+        private readonly MyTaskList $list,
+        private readonly TaskOptions $options,
+    ) {}
 
     public function __invoke(Request $request): Response
     {
@@ -33,42 +41,28 @@ class MyTasksController extends Controller
 
         /** @var User $user */
         $user = $request->user();
-        $today = LocalTime::today();
+        $filters = MyTaskFilters::fromRequest($request);
+        $statuses = $this->options->statuses();
+        $cursor = is_string($request->query('cursor')) ? $request->query('cursor') : null;
 
-        $tasks = Task::query()
-            ->select(ProjectTasksController::LIST_COLUMNS)
-            ->open()
-            ->assignedTo($user)
-            ->visibleTo($user)
-            ->whereHas('project', fn (Builder $project) => $project->notArchived())
-            ->with([
-                'project:id,code,name,color',
-                'hourBank:id,name',
-                'parent:id,title',
-            ])
-            ->withSum('timeEntries', 'minutes')
-            ->get();
-
-        $grouped = array_fill_keys(MyTaskSections::ORDER, []);
-
-        $sorted = $tasks->sortBy([
-            fn (Task $a, Task $b): int => ($a->due_date?->toDateString() ?? '9999-12-31') <=> ($b->due_date?->toDateString() ?? '9999-12-31'),
-            fn (Task $a, Task $b): int => ($a->start_date?->toDateString() ?? '9999-12-31') <=> ($b->start_date?->toDateString() ?? '9999-12-31'),
-            fn (Task $a, Task $b): int => $a->priority->weight() <=> $b->priority->weight(),
-            fn (Task $a, Task $b): int => strcasecmp($a->title, $b->title),
-        ]);
-
-        foreach ($sorted as $task) {
-            $grouped[$this->sections->sectionOf($task, $today)][] = Plain::of(MyTaskItemResource::make($task));
-        }
+        // Una sola consulta de la página aunque se pidan sus tres props.
+        $page = null;
+        $load = function () use (&$page, $user, $filters, $statuses, $cursor): array {
+            return $page ??= $this->list->page($user, $filters, $statuses, $cursor);
+        };
 
         return Inertia::render('my-tasks/index', [
-            'today' => $today->toDateString(),
-            'sections' => array_map(fn (string $key): array => [
-                'key' => $key,
-                'tasks' => $grouped[$key],
-            ], MyTaskSections::ORDER),
-            'statuses' => Plain::of(TaskStatusResource::collection(TaskStatus::query()->ordered()->get())),
+            'today' => LocalTime::todayString(),
+            'filters' => $filters->toArray(),
+            'tasks' => fn (): array => $load()['tasks'],
+            'cursor' => fn (): ?string => $load()['cursor'],
+            'next_cursor' => fn (): ?string => $load()['next_cursor'],
+            'statuses' => fn (): array => Plain::of(TaskStatusResource::collection($statuses)),
+            'options' => fn (): array => [
+                ...$this->list->options($user),
+                'types' => Plain::of(TaskTypeOptionResource::collection($this->options->types())),
+                'priorities' => TaskPriority::values(),
+            ],
         ]);
     }
 }
