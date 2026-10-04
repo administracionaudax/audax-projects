@@ -4,6 +4,7 @@ import {
     FileArchive,
     MonitorSmartphone,
     Palette,
+    Plug,
     ShieldCheck,
     UserRound,
 } from 'lucide-react';
@@ -15,6 +16,7 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { t } from '@/lib/i18n';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { edit as editIntegrations } from '@/routes/integrations';
 import { edit as editNotificationSettings } from '@/routes/notification-settings';
 import { index as myDataIndex } from '@/routes/privacy/exports';
 import { edit as editProfile } from '@/routes/profile';
@@ -22,8 +24,14 @@ import { edit as editSecurity } from '@/routes/security';
 import { index as sessionsIndex } from '@/routes/sessions';
 import type { NavItem } from '@/types';
 
-/** Con `isClient`, sin las páginas solo para internos (preferencias de notificación y mis datos). */
-export function settingsNavItems(isClient = false): NavItem[] {
+/**
+ * Con `isClient`, sin las páginas solo para internos (preferencias de notificación y mis datos).
+ * Con `isCollaborator` (D-134), sin Integraciones (D-142): solo la plantilla exporta a Google Sheets.
+ */
+export function settingsNavItems(
+    isClient = false,
+    isCollaborator = false,
+): NavItem[] {
     return [
         {
             title: t('settings.nav.profile'),
@@ -47,6 +55,15 @@ export function settingsNavItems(isClient = false): NavItem[] {
                       title: t('settings.nav.notifications'),
                       href: editNotificationSettings(),
                       icon: Bell,
+                  },
+              ]),
+        ...(isClient || isCollaborator
+            ? []
+            : [
+                  {
+                      title: t('settings.nav.integrations'),
+                      href: editIntegrations(),
+                      icon: Plug,
                   },
               ]),
         {
@@ -73,7 +90,9 @@ export function settingsNavItems(isClient = false): NavItem[] {
  */
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
-    const isClient = usePage().props.auth?.user?.is_client === true;
+    const user = usePage().props.auth?.user;
+    const isClient = user?.is_client === true;
+    const isCollaborator = user?.is_collaborator === true;
 
     return (
         <div className="px-4 py-6">
@@ -90,37 +109,39 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         className="flex flex-col space-y-1 space-x-0"
                         aria-label={t('settings.nav.label')}
                     >
-                        {settingsNavItems(isClient).map((item) => {
-                            const active = isCurrentOrParentUrl(item.href);
+                        {settingsNavItems(isClient, isCollaborator).map(
+                            (item) => {
+                                const active = isCurrentOrParentUrl(item.href);
 
-                            return (
-                                <Button
-                                    key={toUrl(item.href)}
-                                    size="sm"
-                                    variant="ghost"
-                                    asChild
-                                    className={cn('w-full justify-start', {
-                                        'bg-muted': active,
-                                    })}
-                                >
-                                    <Link
-                                        href={item.href}
-                                        aria-current={
-                                            active ? 'page' : undefined
-                                        }
+                                return (
+                                    <Button
+                                        key={toUrl(item.href)}
+                                        size="sm"
+                                        variant="ghost"
+                                        asChild
+                                        className={cn('w-full justify-start', {
+                                            'bg-muted': active,
+                                        })}
                                     >
-                                        {item.icon && (
-                                            <item.icon
-                                                aria-hidden="true"
-                                                className="h-4 w-4"
-                                                strokeWidth={1.5}
-                                            />
-                                        )}
-                                        {item.title}
-                                    </Link>
-                                </Button>
-                            );
-                        })}
+                                        <Link
+                                            href={item.href}
+                                            aria-current={
+                                                active ? 'page' : undefined
+                                            }
+                                        >
+                                            {item.icon && (
+                                                <item.icon
+                                                    aria-hidden="true"
+                                                    className="h-4 w-4"
+                                                    strokeWidth={1.5}
+                                                />
+                                            )}
+                                            {item.title}
+                                        </Link>
+                                    </Button>
+                                );
+                            },
+                        )}
                     </nav>
                 </aside>
 

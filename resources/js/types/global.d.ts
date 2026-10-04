@@ -1,5 +1,6 @@
 import type { ActiveTimer, AppConfig, Auth } from '@/types/auth';
 import type { ChatSharedProps } from '@/types/chat';
+import type { IntegrationsSharedProps } from '@/types/integrations';
 import type { RealtimeConfig } from '@/lib/realtime';
 
 declare module 'react' {
@@ -24,6 +25,8 @@ declare module '@inertiajs/core' {
             chat?: ChatSharedProps;
             /** Aviso de privacidad pendiente de leer (D-075). */
             privacy?: { needs_acknowledgement: boolean };
+            /** Google Sheets (Fase 9, D-142): si se ofrece y si la cuenta está conectada. */
+            integrations?: IntegrationsSharedProps;
             [key: string]: unknown;
         };
     }

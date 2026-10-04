@@ -26,6 +26,7 @@ import chat from '../../../lang/ui/chat.json';
 import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import home from '../../../lang/ui/home.json';
+import integrations from '../../../lang/ui/integrations.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
@@ -73,6 +74,7 @@ const messages = {
     ...templates,
     ...portalBanks,
     ...portalAccess,
+    ...integrations,
 };
 
 export type TranslationKey = keyof typeof messages;

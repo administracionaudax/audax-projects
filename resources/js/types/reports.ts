@@ -137,3 +137,13 @@ export type PivotResult = {
     total: number;
     truncated: boolean;
 };
+
+/**
+ * Qué informe y con qué filtros (Fase 9, D-139): App\Domain\Reports\Delivery\ReportRequest. Lo
+ * usan el menú «Exportar ▾», el envío por correo, los envíos programados y Google Sheets.
+ */
+export type ReportRequestData = {
+    kind: string;
+    route_params: Record<string, number | string>;
+    query: Record<string, unknown>;
+};
