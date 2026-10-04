@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Domain\Access\CollaboratorAccess;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Http\Resources\FinancialResource;
@@ -140,6 +141,22 @@ class HandleInertiaRequests extends Middleware
             'realtime' => fn (): ?array => $this->realtime(),
             // Chat (Fase 6, C1): total sin leer de la entrada Chat de la navegación (una consulta).
             'chat' => fn (): array => ['unread' => app(ConversationDirectory::class)->unreadTotal($user)],
+            // Google Sheets (Fase 9, D-142): sin credenciales, o para un colaborador externo (D-134),
+            // la opción no se ofrece. La conexión, solo si se ofrece (una consulta).
+            'integrations' => fn (): array => $this->integrations($user),
+        ];
+    }
+
+    /**
+     * @return array{google_sheets: bool, google_connected: bool}
+     */
+    private function integrations(User $user): array
+    {
+        $sheets = GoogleOAuth::configured() && ! $user->isCollaborator();
+
+        return [
+            'google_sheets' => $sheets,
+            'google_connected' => $sheets && $user->googleConnection()->exists(),
         ];
     }
 
