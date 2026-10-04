@@ -20,6 +20,7 @@ Nunca se reinician servicios compartidos, ni se tocan el firewall, el SSH, el DN
 | PostgreSQL 18 | Docker `audax-pg`, `127.0.0.1:15432` | Bases `audax_projects` y `audax_projects_test` |
 | Valkey 9 | Docker `audax-valkey`, `127.0.0.1:16379` | Colas, caché y sesiones. **Nunca** el Redis del 6379 |
 | Transcripción | Docker `audax-whisper`, `127.0.0.1:18091` | whisper.cpp 1.9.4, modelo `small`, núcleos 6-7 |
+| PDF de informes | Docker `audax-gotenberg`, `127.0.0.1:18092` | Gotenberg 8.37 (Chromium), núcleos 6-7, 768 MB (Fase 9, sección 9) |
 | Tiempo real | `audax-reverb.service`, `127.0.0.1:18080` | nginx pasa `/app/` (directiva adicional del dominio en Plesk) |
 | Colas | `audax-horizon.service` | Todas salvo la de transcripciones |
 | Transcriptor | `audax-transcriber.service` | Un proceso, cola `redis-transcriptions` |
@@ -126,6 +127,7 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
 - **Transcripción:**
   - `TRANSCRIPTION_DRIVER=whisper` y `TRANSCRIPTION_QUEUE_CONNECTION=redis-transcriptions`,
   - `WHISPER_URL=http://127.0.0.1:18091`, `WHISPER_MODEL=small` y `WHISPER_TIMEOUT=2340`.
+- **PDF de informes:** `REPORTS_PDF_DRIVER=gotenberg`, `GOTENBERG_URL=http://127.0.0.1:18092` y `GOTENBERG_TIMEOUT=65` (algo más que el `--api-timeout` de Gotenberg, para recibir su error en vez de cortar). En local sin Docker, `REPORTS_PDF_DRIVER=html`: la descarga «PDF» es el HTML.
 - **Avisos del navegador:** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT`. Se generan con `php artisan push:vapid-keys` y se comprueban con `--check`. Si se cambian, las suscripciones existentes dejan de valer.
 - `LINK_PREVIEWS_ENABLED=true`: previsualización de enlaces del chat, con protección SSRF.
 
@@ -186,3 +188,35 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
   - avisos: personas sin mapear, listas sin el patrón `TIPO+N - Hh - …`, subtareas aplanadas, registros de más de 24 h partidos por días…,
   - queda una sola entrada en la auditoría, «Importación de ClickUp», con los recuentos.
 - **No se importan:** comentarios, adjuntos ni etiquetas (D-135), ni los espacios personales y «Recursos».
+
+## 9. Gotenberg (PDF de los informes, Fase 9)
+
+Los PDF de los informes (y el de consumo de bolsa, también el del portal) se maquetan en HTML con la hoja de documentos de Audax y los convierte **Gotenberg**, un Chromium sin interfaz en Docker (licencia MIT, D-140). La app le envía el HTML con todo dentro (CSS, DM Sans y el logo) a `POST /forms/chromium/convert/html`; Gotenberg no tiene que cargar nada de fuera.
+
+**Instalación** (la hace el propietario en la 9.5, con copia previa, batería V y webs): el bloque está en `deploy/gotenberg/compose-service.yml`. Se pega bajo `services:` de `/opt/audax/compose.yml`, se añade su red bajo `networks:` y se arranca solo ese servicio con `docker compose -f /opt/audax/compose.yml up -d gotenberg`. Comprobación: `curl -s http://127.0.0.1:18092/health` responde `"status":"up"`.
+
+| Opción | Por qué |
+|---|---|
+| `image: gotenberg/gotenberg:8.37.0` | Versión estable fijada (la última de septiembre de 2026). Se actualiza a mano, nunca con `latest`. |
+| `ports: 127.0.0.1:18092:3000` | Solo escucha en el propio servidor; no se abre a internet ni hace falta tocar el firewall. |
+| `networks: [audax-gotenberg]` | Una red propia: Gotenberg no ve la base de datos ni Valkey. |
+| `restart: unless-stopped` | Vuelve solo tras un reinicio del servidor o un fallo. |
+| `--api-timeout=60s` | Tiempo máximo por documento: si un PDF tarda más, responde 503 y la app lo explica («ha superado su tiempo máximo»). |
+| `--api-download-from-disable=true` | Desactiva `downloadFrom`, que haría que Gotenberg descargase URLs que le pasen (riesgo de SSRF). |
+| `--webhook-disable=true` | Sin webhooks: Gotenberg nunca llama a ninguna URL. |
+| `--chromium-auto-start=true` | Chromium arranca con el contenedor: el primer PDF del día no espera al arranque (≈150 MB en reposo). |
+| `--chromium-restart-after=50` | Reinicia Chromium cada 50 conversiones para que no acumule memoria. |
+| `--chromium-max-queue-size=10` | Como mucho 10 documentos en cola; el resto recibe 503 en vez de amontonarse. |
+| `--chromium-disable-javascript=true` | Los informes no llevan JavaScript; así nada del contenido puede ejecutarse. |
+| `--chromium-allow-list=^(file:///tmp/\|data:)` | Chromium solo carga el propio documento (en `/tmp`) y recursos incrustados (`data:`): ninguna petición a la red. |
+| `--chromium-deny-list` (la de serie) | Además, ningún fichero local fuera de `/tmp`. |
+| `--libreoffice-disable-routes=true` y `--libreoffice-auto-start=false` | No se usa LibreOffice: ni rutas ni proceso (ahorra memoria). |
+| `--prometheus-disable-collect=true` y `--log-level=warn` | Sin métricas que nadie lee y registro solo de avisos. |
+| `tmpfs: /tmp:size=256m` | Los ficheros de cada conversión, en memoria y con tope; desaparecen al reiniciar. |
+| `mem_limit: 768m`, `mem_swappiness: 0`, `oom_score_adj: 1000` | Tope de memoria; si se pasa, el sistema mata antes este contenedor que cualquier otra cosa del servidor. |
+| `cpus: 2`, `cpuset: "6,7"`, `cpu_shares: 64` | Solo los núcleos 6 y 7 (los de las tareas pesadas, como whisper) y con prioridad baja frente a las webs. |
+| `pids_limit: 256`, `no-new-privileges` | Límite de procesos (Chromium abre varios) y sin escalada de privilegios. |
+| `logging` 3 × 10 MB | El registro no llena el disco. |
+
+**Si Gotenberg no está:** la descarga del PDF responde con error y queda en el registro (`PdfConversionFailed`, con el motivo); Excel, CSV e Imprimir siguen funcionando, porque no lo usan.
+

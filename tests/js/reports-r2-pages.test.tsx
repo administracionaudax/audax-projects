@@ -168,6 +168,11 @@ beforeEach(() => {
 const clientProps = (financials: boolean): R2ClientReportProps => ({
     client: { id: 4, name: 'Bodega Ñandú', is_active: true },
     filters: filters(financials),
+    report_request: {
+        kind: 'client',
+        route_params: { client: 4 },
+        query: { periodo: 'semana', fecha: '2026-09-21', persona: [3] },
+    },
     scope: { projects_only: false, team_only: !financials },
     summary: summary(financials),
     comparison: null,
@@ -408,6 +413,11 @@ const projectProps = (financials: boolean): R2ProjectReportProps => ({
         client: { id: 4, name: 'Bodega Ñandú' },
     },
     filters: filters(financials),
+    report_request: {
+        kind: 'project',
+        route_params: { project: 10 },
+        query: { periodo: 'semana', fecha: '2026-09-21', persona: [3] },
+    },
     scope: { team_only: false },
     summary: summary(financials),
     comparison: financials ? { ...summary(true), logged_minutes: 470 } : null,
@@ -536,6 +546,16 @@ const billingProps = (
     overrides: Partial<R2BillingProps> = {},
 ): R2BillingProps => ({
     filters: filters(true),
+    report_request: {
+        kind: 'billing',
+        route_params: {},
+        query: {
+            periodo: 'semana',
+            fecha: '2026-09-21',
+            persona: [3],
+            cliente: [4],
+        },
+    },
     client: null,
     clients: [
         { id: 4, name: 'Bodega Ñandú', is_active: true },

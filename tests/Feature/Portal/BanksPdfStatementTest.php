@@ -2,34 +2,31 @@
 
 use App\Domain\Portal\PortalBankFigures;
 use App\Domain\Portal\PortalScope;
-use App\Domain\Reports\Pdf\AudaxPdf;
 use App\Domain\Reports\Pdf\HourBankStatement;
-use App\Domain\Reports\Pdf\HourBankStatementPdf;
+use App\Domain\Reports\Pdf\HourBankStatementView;
+use App\Domain\Reports\Pdf\ReportHtml;
 use App\Enums\HourBankStatus;
 use App\Enums\PortalEntryVisibility;
 use App\Enums\PortalPersonDisplay;
 use App\Models\HourBank;
-use App\Models\Setting;
 use Tests\Feature\Portal\BanksScenario;
 
 /*
 | El PDF de consumo de la Fase 2 en modo portal (P1, D-066): HourBankStatement::forPortal y los
-| textos del portal en HourBankStatementPdf, sobre el escenario calculado a mano (BanksScenario).
-| Solo las horas que ve el cliente según su ajuste, las personas como las ve él, NUNCA importes y
-| las mismas cifras que PortalBankFigures. El texto se lee sin compresión (SetCompression(false)).
+| textos del portal en HourBankStatementView (Fase 9, D-140), sobre el escenario calculado a mano
+| (BanksScenario). Solo las horas que ve el cliente según su ajuste, las personas como las ve él,
+| NUNCA importes y las mismas cifras que PortalBankFigures. Se lee el texto del HTML del PDF.
 */
 
 beforeEach(function () {
     $this->s = BanksScenario::build($this);
 
-    // El PDF sin comprimir de una bolsa, tal como lo ve la usuaria del portal.
+    // El texto del PDF de una bolsa, tal como lo ve la usuaria del portal.
     $this->pdf = function (HourBank $bank): string {
         $statement = app(HourBankStatement::class)->forPortal(PortalScope::for($this->s->portal->fresh()), $bank);
 
-        return app(HourBankStatementPdf::class)->render($statement, compress: false);
+        return reportHtmlText(app(ReportHtml::class)->render(HourBankStatementView::make($statement, '', 'prueba')));
     };
-    // Una cadena tal como FPDF la escribe (Windows-1252, dentro de un operador de texto).
-    $this->pdfString = fn (string $utf8): string => '('.AudaxPdf::encode($utf8).')';
 });
 
 it('sus cifras, sus meses y su listado cuadran con PortalBankFigures, sin importes', function (PortalEntryVisibility $visibility) {
@@ -82,9 +79,8 @@ it('cifras calculadas a mano: solo aprobadas y bloqueadas, con la persona por su
 
 it('lleva la bolsa, las cifras que ve el cliente, el consumo por mes y sus horas, con acentos y eñes', function () {
     $pdf = ($this->pdf)($this->s->b1);
-    $has = fn (string $utf8) => expect($pdf)->toContain(($this->pdfString)($utf8));
+    $has = fn (string $utf8) => expect($pdf)->toContain($utf8);
 
-    $has(Setting::DEFAULTS['company_name']);
     $has('Consumo de la bolsa de horas');
     $has('Bodega Ñandú');
     $has('NAN-WEB · Web corporativa');
@@ -109,36 +105,34 @@ it('lleva la bolsa, las cifras que ve el cliente, el consumo por mes y sus horas
     $has('Luis Pérez');
     $has('10/09/2026');
     expect($pdf)
-        ->toContain("(Bolsa Dise\xF1o \xF1)")
-        ->not->toContain('/Filter /FlateDecode')
-        // Nunca la enviada ni el borrador, ni «sin aprobar» aparte: las cifras son las del cliente.
-        ->not->toContain(AudaxPdf::encode('Enviada sin aprobar'))
-        ->not->toContain(AudaxPdf::encode('Borrador que no se ve'))
-        ->not->toContain(AudaxPdf::encode('Sin aprobar'))
-        ->not->toContain(AudaxPdf::encode('Horas de otro cliente'));
+        // Nunca la enviada ni el borrador, ni «sin aprobar» aparte (D-095): las cifras son las del cliente.
+        ->not->toContain('Enviada sin aprobar')
+        ->not->toContain('Borrador que no se ve')
+        ->not->toContain('Sin aprobar')
+        ->not->toContain('Horas de otro cliente');
 });
 
 it('nunca lleva importes, tarifas, costes ni notas internas', function () {
     $pdf = ($this->pdf)($this->s->b1);
 
     expect($pdf)
-        ->not->toContain("\x80") // «€» en Windows-1252
-        ->not->toContain(AudaxPdf::encode('Datos económicos'))
-        ->not->toContain(AudaxPdf::encode('Tarifa'))
-        ->not->toContain(AudaxPdf::encode('Precio'))
-        ->not->toContain(AudaxPdf::encode('Ingreso'))
+        ->not->toContain('€')
+        ->not->toContain('Datos económicos')
+        ->not->toContain('Tarifa')
+        ->not->toContain('Precio')
+        ->not->toContain('Ingreso')
         ->not->toContain('1.000,00')
         ->not->toContain('75,00')
         ->not->toContain('31,50')
         ->not->toContain('FAC-2026-017')
-        ->not->toContain(AudaxPdf::encode('Nota interna'));
+        ->not->toContain('Nota interna');
 });
 
 it('con las enviadas lo dice, las lista y cambia la etiqueta de las horas; los borradores nunca', function () {
     $s = $this->s;
     $s->client->update(['portal_entry_visibility' => PortalEntryVisibility::Submitted]);
     $pdf = ($this->pdf)($s->b1);
-    $has = fn (string $utf8) => expect($pdf)->toContain(($this->pdfString)($utf8));
+    $has = fn (string $utf8) => expect($pdf)->toContain($utf8);
 
     $has('Horas enviadas y aprobadas');
     $has('Incluye las horas enviadas y las ya aprobadas a fecha de 15/10/2026. Las horas en borrador no aparecen.');
@@ -147,22 +141,22 @@ it('con las enviadas lo dice, las lista y cambia la etiqueta de las horas; los b
     $has('25:00');
     $has('+5:00');
     $has('125 % de la bolsa');
-    expect($pdf)->not->toContain(AudaxPdf::encode('Borrador que no se ve'));
+    expect($pdf)->not->toContain('Borrador que no se ve');
 });
 
 it('las personas salen como las ve el cliente: iniciales o «Equipo»', function () {
     $s = $this->s;
 
     $s->client->update(['portal_person_display' => PortalPersonDisplay::Initials]);
-    expect(($this->pdf)($s->b1))->toContain(($this->pdfString)('L.P.'))
-        ->toContain(($this->pdfString)('A.G.R.'))
-        ->not->toContain(AudaxPdf::encode('Luis Pérez'))
-        ->not->toContain(AudaxPdf::encode('Ana García'));
+    expect(($this->pdf)($s->b1))->toContain('L.P.')
+        ->toContain('A.G.R.')
+        ->not->toContain('Luis Pérez')
+        ->not->toContain('Ana García');
 
     $s->client->update(['portal_person_display' => PortalPersonDisplay::Team]);
-    expect(($this->pdf)($s->b1))->toContain(($this->pdfString)('Equipo'))
-        ->not->toContain(AudaxPdf::encode('Luis'))
-        ->not->toContain(AudaxPdf::encode('Ana García'));
+    expect(($this->pdf)($s->b1))->toContain('Equipo')
+        ->not->toContain('Luis')
+        ->not->toContain('Ana García');
 });
 
 it('una bolsa sin horas visibles lo dice en lugar del listado', function () {
@@ -175,18 +169,18 @@ it('una bolsa sin horas visibles lo dice en lugar del listado', function () {
     expect($statement['entries'])->toBe([])
         ->and($statement['months'])->toBe([])
         ->and($statement['figures']['remaining'])->toBe(600)
-        ->and($pdf)->toContain(($this->pdfString)('Todavía no hay horas que mostrar en esta bolsa.'))
-        ->and($pdf)->toContain(($this->pdfString)('Activa'));
+        ->and($pdf)->toContain('Todavía no hay horas que mostrar en esta bolsa.')
+        ->and($pdf)->toContain('Activa');
 });
 
 it('el PDF interno de la Fase 2 no cambia: sus textos siguen siendo los de siempre', function () {
     $s = $this->s;
     $statement = app(HourBankStatement::class)->build(userWithRole('admin'), $s->b1);
-    $pdf = app(HourBankStatementPdf::class)->render($statement, compress: false);
+    $pdf = reportHtmlText(app(ReportHtml::class)->render(HourBankStatementView::make($statement, '', 'prueba')));
 
     expect($statement)->not->toHaveKey('portal')
-        ->and($pdf)->toContain(($this->pdfString)('Horas aprobadas'))
-        ->and($pdf)->toContain(AudaxPdf::encode('Solo incluye las horas aprobadas o bloqueadas a fecha de 15/10/2026.'))
+        ->and($pdf)->toContain('Horas aprobadas')
+        ->and($pdf)->toContain('Solo incluye las horas aprobadas o bloqueadas a fecha de 15/10/2026.')
         // El interno enseña aparte lo que falta por aprobar (E3 y E4).
-        ->and($pdf)->toContain(($this->pdfString)('Sin aprobar'));
+        ->and($pdf)->toContain('Sin aprobar');
 });

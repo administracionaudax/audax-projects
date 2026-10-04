@@ -73,6 +73,15 @@ final class TableExporter
     }
 
     /**
+     * Nombre del fichero: el nombre base en minúsculas y sin acentos, la fecha de hoy y la extensión
+     * («informe-de-direccion-clientes-2026-09-25.xlsx»). También lo usa ReportFileGenerator (D-139).
+     */
+    public static function filename(string $basename, string $format): string
+    {
+        return Str::slug($basename, '-', 'es').'-'.LocalTime::todayString().'.'.self::format($format);
+    }
+
+    /**
      * Copia con otro límite de filas (tests del límite sin generar 20.000 entradas).
      */
     public function withMaxRows(int $rows): self
@@ -98,7 +107,7 @@ final class TableExporter
     public function download(string $basename, array $headers, iterable $rows, string $format = 'xlsx'): StreamedResponse
     {
         $format = self::format($format);
-        $filename = Str::slug($basename, '-', 'es').'-'.LocalTime::todayString().'.'.$format;
+        $filename = self::filename($basename, $format);
 
         return response()->streamDownload(function () use ($headers, $rows, $format): void {
             $this->write('php://output', $headers, $rows, $format);

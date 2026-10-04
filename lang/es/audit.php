@@ -26,7 +26,7 @@ return [
         'privacy' => 'Privacidad',
         'chat' => 'Chat',
         'import' => 'Importación',
-        'report_delivery' => 'Envío de informes',
+        'report_delivery' => 'Informes (exportados y enviados)',
         'other' => 'Otros',
     ],
 
@@ -55,6 +55,8 @@ return [
         'imported' => 'Importaciones',
         'report_sent' => 'Informes enviados y descargados',
         'report_scheduled' => 'Cambios en los envíos programados',
+        'report_generated' => 'Informes generados',
+        'report_printed' => 'Informes impresos',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -102,6 +104,8 @@ return [
         'schedule_paused' => 'Envío programado en pausa',
         'schedule_resumed' => 'Envío programado reanudado',
         'schedule_deleted' => 'Envío programado borrado',
+        'generated' => 'Informe generado',
+        'printed' => 'Informe impreso',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).

@@ -77,6 +77,9 @@ export default defineConfig({
             'resources/views/mail/*',
             // Fragmento YAML que se pega con su sangría en /opt/audax/compose.yml (D-070).
             'deploy/whisper/compose-service.yml',
+            'deploy/gotenberg/compose-service.yml',
+            // Copia literal de la hoja de documentos A4 del kit de Audax (D-140): no se reformatea.
+            'resources/views/reports/pdf/audax-doc.css',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

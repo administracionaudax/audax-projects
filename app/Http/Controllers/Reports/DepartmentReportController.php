@@ -2,17 +2,15 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Domain\Reports\Delivery\Documents\DepartmentDocument;
+use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Dimension;
-use App\Domain\Reports\Export\TableExporter;
-use App\Domain\Reports\Metrics;
-use App\Domain\Reports\Money;
-use App\Domain\Reports\ReportCache;
-use App\Domain\Reports\ReportScope;
 use App\Domain\Workload\WorkloadBoard;
 use App\Domain\Workload\WorkloadFilters;
 use App\Domain\Workload\WorkloadHorizon;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
+use App\Http\Controllers\Reports\Concerns\ExportsReports;
 use App\Http\Controllers\Reports\R1\BuildsDashboards;
 use App\Models\Department;
 use App\Models\Setting;
@@ -21,7 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Dashboard de un departamento (/informes/departamentos/{department}, SPEC §10.4, D-044): admin,
@@ -38,56 +36,44 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *   semanas de las personas del departamento, la misma de la vista Carga (WorkloadBoard, D-051),
  *   como prop diferida para no retrasar el informe,
  * - ?formato=xlsx|csv exporta la tabla de miembros (con ingreso, coste y margen si hay permiso) y,
- *   con tabla=clientes, el reparto por cliente completo (SPEC §10: cualquier tabla).
+ *   con tabla=clientes, el reparto por cliente completo (SPEC §10: cualquier tabla); ?formato=pdf
+ *   e imprimir, el informe entero (Fase 9: DepartmentDocument, D-139 y D-140).
  *
  * @phpstan-type LoadTotals array{planned: int, capacity: int}
  * @phpstan-type FutureLoad array{columns: list<array{key: string, from: string, to: string, today: bool, weekend: bool}>,
  *     people: list<array{id: int, name: string, cells: list<LoadTotals>, total: LoadTotals}>, totals: list<LoadTotals>, total: LoadTotals, url: string}
- * @phpstan-type Member array{id: int, name: string, is_active: bool, capacity_minutes: int, capacity_to_date_minutes: int, logged_minutes: int,
- *     billable_minutes: int, occupancy: float|null, pace: float|null, billability: float|null, billable_productivity: float|null,
- *     income: string|null, cost: string|null, margin: string|null}
  */
 class DepartmentReportController extends Controller
 {
-    use BuildsDashboards, BuildsReportScope;
+    use BuildsDashboards, BuildsReportScope, ExportsReports;
 
     public const int TOP = 10;
 
     public function __invoke(
         Request $request,
         Department $department,
-        Metrics $metrics,
-        ReportCache $cache,
-        TableExporter $exporter,
-    ): Response|StreamedResponse {
+        DepartmentDocument $document,
+    ): Response|SymfonyResponse {
         Gate::authorize('viewReport', $department);
 
-        $scope = $this->reportScope($request, ['departmentIds' => [$department->id]]);
-        $clients = fn (): array => $cache->remember($scope, 'r1.department.clients', fn (): array => $this->withMargin($metrics->breakdown($scope, Dimension::Client)));
-
-        $format = $this->exportFormat($request);
-        if ($format !== null && $request->query('tabla') === 'clientes') {
-            $rows = $clients();
-            [$headers, $lines] = $this->breakdownTable(Dimension::Client->label(), $rows, array_sum(array_column($rows, 'logged_minutes')), $scope->canSeeFinancials());
-
-            return $exporter->download(__('reports.r1.exports.department_table', ['department' => $department->name, 'table' => __('reports.r1.tables.clientes')]), $headers, $lines, $format);
+        $export = $this->exportResponse($request, ReportKind::Department);
+        if ($export !== null) {
+            return $export;
         }
 
-        $members = $cache->remember($scope, self::daily('r1.department.members'), fn (): array => $this->members($scope, $metrics));
-
-        if ($format !== null) {
-            [$headers, $rows] = $this->membersTable($members, $scope->canSeeFinancials());
-
-            return $exporter->download(__('reports.r1.exports.department', ['department' => $department->name]), $headers, $rows, $format);
-        }
-
-        $clients = $clients();
-        $summaries = $this->summaries($scope, $metrics, $cache);
+        /** @var User $user */
+        $user = $request->user();
+        $scope = $document->scope($user, $department, $request->query());
+        $members = $document->members($scope);
+        $clients = $document->clients($scope);
+        $summaries = $document->pageSummaries($scope);
         $clients = $this->top($clients, self::TOP);
+        $filters = self::withComparisonRange($this->filterPropsWithout($scope, ['departamento']), $summaries['comparison_range']);
 
         return Inertia::render('reports/department', [
             'department' => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color],
-            'filters' => self::withComparisonRange($this->filterPropsWithout($scope, ['departamento']), $summaries['comparison_range']),
+            'filters' => $filters,
+            'report_request' => $this->reportRequestProp(ReportKind::Department, ['department' => $department->id], $filters['query']),
             'summary' => $summaries['summary'],
             'comparison' => $summaries['comparison'],
             'comparison_partial' => $summaries['comparison_partial'],
@@ -163,106 +149,5 @@ class DepartmentReportController extends Controller
             ],
             'url' => route('workload.index', ['horizonte' => WorkloadHorizon::FourWeeks->value, 'departamento' => $department->id], absolute: false),
         ];
-    }
-
-    /**
-     * Cifras de cada persona del alcance: capacidad del periodo y transcurrida hasta ayer
-     * (Metrics::capacityTotalsByPerson y elapsedCapacityByPerson) e imputadas y facturables
-     * (Metrics::breakdown por persona), de más a menos horas. La ocupación y la productividad
-     * facturable, contra la capacidad del periodo (SPEC §10, como Metrics::summary). El ritmo
-     * (pace, D-080), solo si al periodo aún le quedan días con jornada: imputadas / capacidad
-     * transcurrida hasta ayer, o null si aún no ha pasado ninguno.
-     *
-     * @return list<Member>
-     */
-    private function members(ReportScope $scope, Metrics $metrics): array
-    {
-        $capacity = $metrics->capacityTotalsByPerson($scope);
-        $elapsed = $metrics->elapsedCapacityByPerson($scope);
-        $hours = collect($metrics->breakdown($scope, Dimension::Person))->keyBy('key');
-        $members = [];
-
-        foreach ($scope->people() as $person) {
-            /** @var User $person */
-            $row = $hours->get((string) $person->id);
-            $capacityMinutes = $capacity[$person->id] ?? 0;
-            $toDate = $elapsed[$person->id] ?? 0;
-            $logged = (int) ($row['logged_minutes'] ?? 0);
-            $billable = (int) ($row['billable_minutes'] ?? 0);
-            $income = $scope->canSeeFinancials() ? ($row['income'] ?? '0.00') : null;
-            $cost = $scope->canSeeFinancials() ? ($row['cost'] ?? '0.00') : null;
-
-            $members[] = [
-                'id' => $person->id,
-                'name' => $person->name,
-                'is_active' => $person->is_active,
-                'capacity_minutes' => $capacityMinutes,
-                'capacity_to_date_minutes' => $toDate,
-                'logged_minutes' => $logged,
-                'billable_minutes' => $billable,
-                'occupancy' => Metrics::ratio($logged, $capacityMinutes),
-                'pace' => $toDate < $capacityMinutes ? Metrics::ratio($logged, $toDate) : null,
-                'billability' => Metrics::ratio($billable, $logged),
-                'billable_productivity' => Metrics::ratio($billable, $capacityMinutes),
-                'income' => $income,
-                'cost' => $cost,
-                'margin' => $income === null ? null : Money::round(Money::sub($income, (string) $cost)),
-            ];
-        }
-
-        usort($members, fn (array $a, array $b): int => [$b['logged_minutes'], $a['name']] <=> [$a['logged_minutes'], $b['name']]);
-
-        return $members;
-    }
-
-    /**
-     * Tabla de miembros para exportar. Si al periodo aún le quedan días con jornada, lleva además
-     * la capacidad transcurrida hasta ayer y el ritmo (imputadas / esa capacidad, D-080), como la
-     * tabla de la página.
-     *
-     * @param  list<Member>  $members
-     * @return array{0: list<string>, 1: list<list<string|int|float|null>>}
-     */
-    private function membersTable(array $members, bool $financials): array
-    {
-        $inProgress = array_sum(array_column($members, 'capacity_to_date_minutes')) < array_sum(array_column($members, 'capacity_minutes'));
-        $headers = [
-            __('reports.r1.columns.person'),
-            __('reports.r1.columns.capacity'),
-            ...($inProgress ? [__('reports.r1.columns.capacity_to_date')] : []),
-            __('reports.r1.columns.logged'),
-            __('reports.r1.columns.billable'),
-            __('reports.r1.columns.occupancy'),
-            ...($inProgress ? [__('reports.r1.columns.pace')] : []),
-            __('reports.r1.columns.billability'),
-            __('reports.r1.columns.billable_productivity'),
-        ];
-
-        if ($financials) {
-            array_push($headers, __('reports.r1.columns.income'), __('reports.r1.columns.cost'), __('reports.r1.columns.margin'));
-        }
-
-        $rows = [];
-        foreach ($members as $member) {
-            $line = [
-                $member['name'],
-                TableExporter::hours($member['capacity_minutes']),
-                ...($inProgress ? [TableExporter::hours($member['capacity_to_date_minutes'])] : []),
-                TableExporter::hours($member['logged_minutes']),
-                TableExporter::hours($member['billable_minutes']),
-                self::percent($member['occupancy']),
-                ...($inProgress ? [self::percent($member['pace'])] : []),
-                self::percent($member['billability']),
-                self::percent($member['billable_productivity']),
-            ];
-
-            if ($financials) {
-                array_push($line, TableExporter::money($member['income']), TableExporter::money($member['cost']), TableExporter::money($member['margin']));
-            }
-
-            $rows[] = $line;
-        }
-
-        return [$headers, $rows];
     }
 }

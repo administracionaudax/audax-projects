@@ -13,6 +13,7 @@ import type {
     EstimationSummary,
     MetricsSummary,
     ReportFiltersProps,
+    ReportRequestData,
     SeriesPoint,
 } from '@/types';
 
@@ -90,6 +91,8 @@ export type R1Overdue = {
 
 type Dashboard = {
     filters: ReportFiltersProps;
+    /** El informe con sus filtros, para el menú «Exportar ▾» (Fase 9, D-139). */
+    report_request: ReportRequestData;
     summary: R1Summary;
     /** Resumen del periodo de comparación (solo con comparar=1). */
     comparison: MetricsSummary | null;

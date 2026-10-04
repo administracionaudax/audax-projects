@@ -1,0 +1,36 @@
+# Servicio que se añade a /opt/audax/compose.yml en el despliegue de la Fase 9 (D-140): el PDF de
+# los informes. Cada opción, explicada en docs/DEPLOY.md («Gotenberg»). Se pega con esta sangría
+# bajo `services:` y, al final del fichero, la red propia (bajo `networks:`):
+#   audax-gotenberg: { name: audax-gotenberg }
+  gotenberg:
+    image: gotenberg/gotenberg:8.37.0
+    container_name: audax-gotenberg
+    restart: unless-stopped
+    networks: [audax-gotenberg]
+    ports: ["127.0.0.1:18092:3000"]
+    command:
+      - gotenberg
+      - --api-port=3000
+      - --api-timeout=60s
+      - --api-download-from-disable=true
+      - --webhook-disable=true
+      - --chromium-auto-start=true
+      - --chromium-restart-after=50
+      - --chromium-max-queue-size=10
+      - --chromium-disable-javascript=true
+      - "--chromium-allow-list=^(file:///tmp/|data:)"
+      - "--chromium-deny-list=^file:(?!//\\/tmp/).*"
+      - --libreoffice-disable-routes=true
+      - --libreoffice-auto-start=false
+      - --prometheus-disable-collect=true
+      - --log-level=warn
+    tmpfs: ["/tmp:size=256m"]
+    mem_limit: 768m
+    mem_swappiness: 0
+    cpus: 2
+    cpuset: "6,7"
+    cpu_shares: 64
+    pids_limit: 256
+    oom_score_adj: 1000
+    security_opt: ["no-new-privileges:true"]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }

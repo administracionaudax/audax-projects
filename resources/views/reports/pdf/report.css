@@ -1,0 +1,206 @@
+/* Ajustes de los informes (Fase 9, D-140) sobre audax-doc.css: cifras clave, números alineados,
+   fila de totales, listados largos, exceso en rojo (el de la app, #B43A36) y la barra de bolsa. */
+:root {
+    --danger: #b43a36;
+    --danger-soft: #e5bab9;
+    --blue-soft: #a6cdff;
+}
+.cover__sub + .facts {
+    margin-top: 4pt;
+}
+.facts dd {
+    overflow-wrap: break-word;
+}
+h2:first-child {
+    margin-top: 0;
+}
+.lead {
+    font-size: 8.5pt;
+    color: var(--muted);
+    margin: -4pt 0 6pt;
+}
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: 6mm;
+    border-top: 1px solid var(--line);
+    margin: 4pt 0 14pt;
+}
+.kpi {
+    padding: 8pt 0 9pt;
+    border-bottom: 1px solid var(--line);
+    break-inside: avoid;
+}
+.kpi dt {
+    font-size: 7pt;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+.kpi dd {
+    font-size: 16pt;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+}
+.kpi p {
+    font-size: 7.5pt;
+    color: var(--muted);
+    margin: 0;
+}
+td {
+    overflow-wrap: break-word;
+}
+th.num,
+td.num {
+    text-align: right;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    font-variant-numeric: tabular-nums;
+}
+tr.sum td {
+    background: var(--table-head);
+    font-weight: 600;
+    border-bottom: 0;
+}
+td.overage,
+.overage {
+    color: var(--danger);
+}
+td.muted {
+    color: var(--muted);
+}
+table.compact {
+    font-size: 7.5pt;
+    line-height: 1.35;
+}
+table.compact th {
+    padding: 4pt 5pt;
+    font-size: 6.5pt;
+    letter-spacing: 0.08em;
+}
+table.compact td {
+    padding: 3pt 5pt;
+}
+.empty {
+    font-size: 8.5pt;
+    color: var(--muted);
+    margin: 2pt 0 12pt;
+}
+.alert {
+    font-size: 8.5pt;
+    color: var(--ink);
+    padding: 8pt 12pt;
+    background: var(--amber-bg);
+    border-left: 3px solid var(--amber-ink);
+    margin: 6pt 0 12pt;
+}
+.note + .note,
+.alert + .note,
+.note + .alert {
+    margin-top: 6pt;
+}
+.definitions {
+    margin-top: 18pt;
+    break-inside: avoid;
+}
+.definitions dl {
+    display: grid;
+    grid-template-columns: 44mm 1fr;
+    gap: 5pt 6mm;
+    font-size: 8pt;
+    line-height: 1.45;
+}
+.definitions dt {
+    font-weight: 500;
+}
+.definitions dd {
+    color: var(--muted);
+}
+.report--landscape .cover {
+    height: 148mm;
+}
+/* Barra de consumo de la bolsa (como HourBankMeter): dentro en azul, el exceso en rojo; en tono
+   claro, lo que no sale en el listado; la marca oscura, el total contratado. */
+.meter {
+    position: relative;
+    display: flex;
+    height: 9pt;
+    background: var(--line-soft);
+    margin: 4pt 0 6pt;
+}
+.meter span {
+    display: block;
+    height: 100%;
+}
+.meter .in {
+    background: var(--blue);
+}
+.meter .pending {
+    background: var(--blue-soft);
+}
+.meter .over {
+    background: var(--danger);
+}
+.meter .pending-over {
+    background: var(--danger-soft);
+}
+.meter .gap {
+    background: transparent;
+}
+.meter .mark {
+    position: absolute;
+    top: -2pt;
+    bottom: -2pt;
+    width: 1.5pt;
+    background: var(--ink);
+}
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3pt 12pt;
+    font-size: 7.5pt;
+    color: var(--muted);
+    margin: 0 0 10pt;
+}
+.legend span {
+    white-space: nowrap;
+}
+.legend i {
+    display: inline-block;
+    width: 7pt;
+    height: 7pt;
+    margin-right: 4pt;
+    vertical-align: -0.5pt;
+    background: var(--line-soft);
+}
+.legend .in {
+    background: var(--blue);
+}
+.legend .pending {
+    background: var(--blue-soft);
+}
+.legend .over {
+    background: var(--danger);
+}
+.legend .pending-over {
+    background: var(--danger-soft);
+}
+@media screen {
+    .report--landscape {
+        max-width: 297mm;
+    }
+}
+/* La primera columna (el nombre) no se estrecha por las cifras: sin cortes a mitad de palabra. */
+table:not(.compact) td:first-child {
+    min-width: 34mm;
+}
+/* Logo de la empresa (PNG, D-067): cabe en la caja del logotipo de la portada sin deformarse. */
+.cover > .logo--custom {
+    width: auto;
+    height: auto;
+    max-width: 60mm;
+    max-height: 16mm;
+}

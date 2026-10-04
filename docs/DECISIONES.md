@@ -1109,6 +1109,18 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
   - Imprimir,
   - «Enviar por correo…» y «Programar envío…».
 - Todas las descargas, envíos y subidas quedan en la auditoría (`report-delivery`).
+- **Implementación (entrega 9.2):**
+  - `ReportGenerator` delega en un documento por informe (`app/Domain/Reports/Delivery/Documents`), que comprueba las **mismas políticas que la página** antes de cada título, tabla o PDF. Si el informe ya no existe (un cliente o proyecto borrado), también da `AuthorizationException`.
+  - Excel y CSV son **los ficheros de siempre**: el código de los controladores pasó a los documentos y los nombres y columnas no cambian. Los controladores llaman al generador en `?formato=xlsx|csv|pdf`.
+  - Cada página de informe recibe `report_request`, y la pestaña Horas del proyecto también.
+  - `GeneratedReportFile::mime()` da el tipo real del fichero, también el HTML del motor `html`.
+- **Menú:** en la cabecera de cada informe va el menú completo. En cada tabla va uno corto, con Excel, CSV y Google Sheets de esa tabla, porque el PDF, Imprimir y los envíos son del informe entero.
+- **Auditoría (9.2):**
+  - cada fichero que genera el generador queda como `generated`, con el informe, el formato, los parámetros de ruta, los filtros, el nombre y el título,
+  - cada impresión queda como `printed`,
+  - en *Auditoría* salen en la entidad «Informes exportados», con el título del informe,
+  - el envío y Google Sheets (9.3 y 9.4) añaden sus propios eventos con el destino,
+  - el PDF de bolsa que descarga un cliente desde el portal no pasa por el generador ni se audita.
 
 ### D-140 · PDF e impresión con el estilo de Audax
 - **Maquetación:** el PDF se maqueta en HTML con la hoja de documentos A4 de Audax (`audax-doc.css`, D-137) y DM Sans incrustada:
@@ -1119,6 +1131,19 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
 - **Conversión:** con **Gotenberg** (Chromium en Docker, licencia MIT), solo en `127.0.0.1`, con límite de memoria, núcleos 6-7 y tiempo máximo por documento.
 - **Imprimir:** abre el mismo HTML en una pestaña y lanza el diálogo de impresión del navegador.
 - **El PDF de bolsa (FPDF, D-045 y D-095)** pasa al nuevo motor si el resultado es equivalente. Si no, se mantiene y queda anotado.
+- **Hecho en la 9.2:**
+  - **Todo dentro del HTML:** el CSS (copia literal de `audax-doc.css` más `report.css`), DM Sans 400/500/600 (woff2 latin de `@fontsource/dm-sans`, OFL, en `resources/fonts`) y el logo van incrustados. Gotenberg recibe solo `index.html` y no carga nada, y la pestaña de imprimir es exactamente el mismo documento.
+  - **Motor configurable** (`REPORTS_PDF_DRIVER`): `gotenberg` en el servidor y `html` en los tests, la CI y en local sin Docker, donde el «PDF» que se descarga es el HTML.
+  - **Si Gotenberg falla,** la descarga responde 503 con un mensaje claro y el error queda en el registro. Excel, CSV e Imprimir siguen funcionando.
+  - **Qué lleva cada PDF:** portada, cifras clave, las tablas de la página con su fila de totales y «Cómo se calculan las cifras».
+  - **Listados largos acotados** (el resto, en Excel):
+    - 1.500 entradas en las horas y en las horas para facturar,
+    - las 60 tareas con más horas en el estimado frente a real,
+    - el detalle diario de una persona, hasta 62 días.
+  - **En A4 apaisado:** el detallado (la tabla dinámica, partida en tablas de 10 columnas), las horas y las horas para facturar.
+  - **El exceso, en rojo** (#B43A36, el de la app), aunque la hoja de Audax no tenga rojo: en el PDF de FPDF también lo estaba.
+  - **PDF de bolsa:** pasa al nuevo motor con la misma información, tanto el interno como el del portal (este sin «sin aprobar», D-095). Se borran `AudaxPdf` y `HourBankStatementPdf`; la dependencia `setasign/fpdf` sigue en `composer.json` hasta la 9.5, para no tocar `composer.lock` en paralelo con las otras entregas.
+  - **Imprimir:** `?formato=imprimir` en la URL de cada informe. Abre el HTML del PDF sin la app y llama a `window.print()` con el nonce de la CSP; no descarga nada y queda en la auditoría.
 
 ### D-141 · Envío por correo y envíos programados
 - **Quién puede enviar:** quien puede ver el informe.

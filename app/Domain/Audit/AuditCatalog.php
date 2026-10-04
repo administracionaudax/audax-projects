@@ -10,7 +10,8 @@ namespace App\Domain\Audit;
  * - log_name: el nombre de la tabla en los modelos con LogsDomainActivity; los registros propios
  *   usan holidays, task_statuses, timesheet_periods, time_entry_locks, settings, privacy y chat
  *   (moderación de mensajes y cambios en los grupos de la Fase 6), import (una entrada resumen
- *   por cada importación de ClickUp, D-136) y report-delivery (envíos de informes, D-141).
+ *   por cada importación de ClickUp, D-136) y report-delivery (descargas, impresiones, envíos y
+ *   subidas de informes, D-139 y D-141).
  */
 final class AuditCatalog
 {
@@ -70,6 +71,8 @@ final class AuditCatalog
         'imported' => ['clickup_import'],
         'report_sent' => ['report_sent', 'report_send_failed', 'report_skipped', 'report_downloaded'],
         'report_scheduled' => ['schedule_created', 'schedule_updated', 'schedule_paused', 'schedule_resumed', 'schedule_deleted'],
+        'report_generated' => ['generated'],
+        'report_printed' => ['printed'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */

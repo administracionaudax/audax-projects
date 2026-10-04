@@ -22,7 +22,20 @@ trait BuildsReportScope
     {
         /** @var User $user */
         $user = $request->user();
-        $filters = ReportFilters::fromQuery($request->query());
+
+        return $this->scopeFor($user, $request->query(), $fixed);
+    }
+
+    /**
+     * El mismo alcance sin petición HTTP: quien mira y la query de la URL (los documentos de
+     * exportación, envío y programación de la Fase 9 lo construyen desde un ReportRequest).
+     *
+     * @param  array<string, mixed>  $query
+     * @param  array{userIds?: list<int>, departmentIds?: list<int>, clientIds?: list<int>, projectIds?: list<int>, bankIds?: list<int>, taskTypeIds?: list<int>}  $fixed
+     */
+    protected function scopeFor(User $user, array $query, array $fixed = []): ReportScope
+    {
+        $filters = ReportFilters::fromQuery($query);
 
         return new ReportScope($user, $fixed === [] ? $filters : $filters->with($fixed));
     }

@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
+import { withTable } from '@/components/reports/report-request';
 import {
     R1FutureLoad,
     R1FutureLoadSkeleton,
@@ -53,11 +54,15 @@ export default function DepartmentReport({
     clients,
     occupancy_thresholds: thresholds,
     future_load: futureLoad,
+    report_request: reportRequest,
 }: DepartmentReportProps) {
     const state = useReportVisit();
     const financials = filters.can_see_financials;
     const period = periodQuery(filters.query);
     const url = departmentRoute.url(department.id);
+    const title = t('reports_r1.department.heading', {
+        department: department.name,
+    });
 
     setLayoutProps({
         breadcrumbs: [
@@ -76,10 +81,11 @@ export default function DepartmentReport({
 
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
                 <PageHeader
-                    title={t('reports_r1.department.heading', {
-                        department: department.name,
-                    })}
+                    title={title}
                     description={t('reports_r1.department.description')}
+                    actions={
+                        <ExportMenu request={reportRequest} title={title} />
+                    }
                 />
 
                 <ReportFilterBar
@@ -130,11 +136,10 @@ export default function DepartmentReport({
                             .join(' ')}
                         action={
                             <ExportMenu
-                                href={reportUrls.department(
-                                    department.id,
-                                    filters.query,
-                                )}
+                                request={reportRequest}
+                                title={title}
                                 label={t('reports_r1.export')}
+                                scope="table"
                             />
                         }
                     >
@@ -181,11 +186,10 @@ export default function DepartmentReport({
                         title={t('reports_r1.department.by_client')}
                         action={
                             <ExportMenu
-                                href={reportUrls.department(department.id, {
-                                    ...filters.query,
-                                    tabla: 'clientes',
-                                })}
+                                request={withTable(reportRequest, 'clientes')}
+                                title={title}
                                 label={t('reports_r1.export')}
+                                scope="table"
                             />
                         }
                     >

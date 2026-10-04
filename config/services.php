@@ -36,6 +36,22 @@ return [
     ],
 
     /*
+    | PDF de los informes (Fase 9, D-140): el HTML con la hoja de documentos de Audax se convierte
+    | con Gotenberg (Chromium en Docker, contenedor audax-gotenberg, solo en 127.0.0.1:18092).
+    | REPORTS_PDF_DRIVER=html devuelve el HTML sin convertir: tests y desarrollo local sin Docker.
+    | El timeout del cliente es algo mayor que el --api-timeout de Gotenberg (60 s), para recibir su
+    | 503 con el motivo en vez de cortar la conexión.
+    */
+    'gotenberg' => [
+        'url' => env('GOTENBERG_URL', 'http://127.0.0.1:18092'),
+        'timeout' => (int) env('GOTENBERG_TIMEOUT', 65),
+    ],
+
+    'reports_pdf' => [
+        'driver' => env('REPORTS_PDF_DRIVER', 'gotenberg'),
+    ],
+
+    /*
     | Transcripción de audios del chat (SPEC §12, D-070): whisper.cpp en el propio servidor
     | (contenedor audax-whisper, 127.0.0.1:18091). En local y en los tests, el motor falso.
     */

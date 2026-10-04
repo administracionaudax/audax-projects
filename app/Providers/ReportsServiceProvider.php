@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Domain\Reports\Delivery\ReportFileGenerator;
+use App\Domain\Reports\Delivery\ReportGenerator;
+use App\Domain\Reports\Pdf\Gotenberg;
+use App\Domain\Reports\Pdf\GotenbergEngine;
+use App\Domain\Reports\Pdf\HtmlEngine;
+use App\Domain\Reports\Pdf\PdfEngine;
 use App\Domain\Reports\ReportCache;
 use App\Events\MembershipsChanged;
 use App\Models\Client;
@@ -19,6 +25,7 @@ use App\Models\TimesheetPeriod;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
@@ -45,6 +52,26 @@ class ReportsServiceProvider extends ServiceProvider
     public const string EXPORT_LIMITER = 'report-exports';
 
     public const int EXPORTS_PER_MINUTE = 30;
+
+    /**
+     * Exportación unificada (Fase 9, D-139 y D-140): el generador de ficheros de informe y el motor
+     * de PDF según services.reports_pdf.driver (gotenberg en el servidor; html en los tests y en
+     * local sin Docker).
+     */
+    public function register(): void
+    {
+        $this->app->bind(ReportFileGenerator::class, ReportGenerator::class);
+
+        $this->app->singleton(Gotenberg::class, fn (): Gotenberg => new Gotenberg(
+            (string) config('services.gotenberg.url'),
+            (int) config('services.gotenberg.timeout'),
+        ));
+
+        $this->app->bind(PdfEngine::class, fn (Application $app): PdfEngine => match (config('services.reports_pdf.driver')) {
+            'html' => new HtmlEngine,
+            default => new GotenbergEngine($app->make(Gotenberg::class)),
+        });
+    }
 
     public function boot(): void
     {

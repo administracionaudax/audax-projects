@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { login, USERS } from './support';
+import { expectReportPdf, login, USERS } from './support';
 
 /**
  * Informes de la Fase 2 (SPEC §10, PLAN-FASE-2 «Tests»): dirección con los filtros en la URL y su
@@ -66,8 +66,8 @@ test('el PDF de consumo de la bolsa para el cliente se descarga desde su detalle
         page.getByRole('menuitem', { name: /Para el cliente/ }).click(),
     );
 
-    expect(pdf.name).toMatch(/\.pdf$/);
-    expect(pdf.bytes.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(pdf.name).toMatch(/\.(pdf|html)$/);
+    expectReportPdf(pdf);
 });
 
 test('informe detallado: filas y columnas elegidas en la URL con su total', async ({

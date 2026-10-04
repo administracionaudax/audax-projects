@@ -329,6 +329,8 @@ jobs:
           REVERB_ALLOWED_ORIGINS=127.0.0.1
           TRANSCRIPTION_DRIVER=fake
           TRANSCRIPTION_QUEUE_CONNECTION=sync
+          # Fase 9: sin Gotenberg en la CI, el «PDF» de los informes es su HTML (D-140).
+          REPORTS_PDF_DRIVER=html
           # Sin conexiones a Internet desde los E2E (D-110: apagada en los tests).
           LINK_PREVIEWS_ENABLED=false
           EOF

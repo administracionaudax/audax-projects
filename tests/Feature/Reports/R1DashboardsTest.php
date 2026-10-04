@@ -895,7 +895,7 @@ describe('exportaciones', function () {
 
     it('un formato desconocido enseña la página', function () {
         $this->actingAs($this->admin)
-            ->get('/informes/direccion?formato=pdf')
+            ->get('/informes/direccion?formato=docx')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('reports/direction'));
     });

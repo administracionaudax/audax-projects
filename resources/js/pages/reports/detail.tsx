@@ -19,7 +19,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { formatMinutes, formatPercent } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { detail, index as reportsIndex } from '@/routes/reports';
-import { exportMethod as exportHours } from '@/routes/reports/hours';
 
 /**
  * Informe de horas detallado (SPEC §10.6): tabla dinámica por dos dimensiones con subtotales,
@@ -35,6 +34,7 @@ export default function ReportDetail({
     pivot,
     summary,
     comparison,
+    report_request: reportRequest,
 }: DetailPageProps) {
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -71,7 +71,6 @@ export default function ReportDetail({
             { preserveState: true, preserveScroll: true },
         );
 
-    const query = { ...filters.query, ...layout };
     const measureLabel = t(`reports_r3.measure.${layout.medida}`);
     const caption = t('reports_r3.table.label', {
         measure: measureLabel,
@@ -95,11 +94,17 @@ export default function ReportDetail({
                     actions={
                         <>
                             <ExportMenu
-                                href={detail.url({ query })}
+                                request={reportRequest}
+                                title={t('reports_r3.detail.title')}
                                 label={t('reports_r3.export.table')}
                             />
                             <ExportMenu
-                                href={exportHours.url({ query: filters.query })}
+                                request={{
+                                    kind: 'hours',
+                                    route_params: {},
+                                    query: filters.query,
+                                }}
+                                title={t('reports_r3.export.entries')}
                                 label={t('reports_r3.export.entries')}
                             />
                         </>

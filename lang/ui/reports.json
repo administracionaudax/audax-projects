@@ -61,5 +61,16 @@
     "reports.metric.margin.definition": "Ingreso estimado − coste, y el margen en porcentaje sobre el ingreso.",
     "reports.export.label": "Exportar",
     "reports.export.xlsx": "Excel (.xlsx)",
-    "reports.export.csv": "CSV (.csv)"
+    "reports.export.csv": "CSV (.csv)",
+    "reports.export.menu": "Opciones de exportación",
+    "reports.export.pdf": "PDF",
+    "reports.export.sheets": "Google Sheets",
+    "reports.export.print": "Imprimir",
+    "reports.export.send": "Enviar por correo…",
+    "reports.export.schedule": "Programar envío…",
+    "reports.export.soon": "Próximamente",
+    "reports.export.soon_description": "Esta opción llega en la próxima versión.",
+    "reports.export.close": "Cerrar",
+    "reports.export.table_hint": "Solo esta tabla",
+    "reports.export.report_hint": "El informe entero"
 }

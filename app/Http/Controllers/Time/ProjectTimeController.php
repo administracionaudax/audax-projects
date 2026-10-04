@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Time;
 
+use App\Domain\Reports\Delivery\ReportKind;
+use App\Domain\Reports\Delivery\ReportRequest;
 use App\Enums\TimeEntryStatus;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\Time\Plain;
@@ -21,7 +23,7 @@ use Inertia\Response;
  * Pestaña Horas del proyecto /proyectos/{project}/horas (SPEC §6, D-021): entradas con filtros
  * (persona, fechas, bolsa, estado y facturable), totales y paginación. Un empleado ve solo las
  * suyas; gestores, responsables (las de su equipo) y admins, las que TimeEntry::visibleTo les deja.
- * La exportación llega en la Fase 2.
+ * Se exporta e imprime desde su menú «Exportar ▾» (HoursExportController::project, Fase 9).
  */
 class ProjectTimeController extends TimeController
 {
@@ -98,6 +100,9 @@ class ProjectTimeController extends TimeController
                 'billable_minutes' => (int) ($totals['billable'] ?? 0),
             ],
             'filters' => $filters,
+            // Menú «Exportar ▾» de la pestaña (Fase 9, D-139): sus mismos filtros.
+            'report_request' => (new ReportRequest(ReportKind::ProjectHours, ['project' => $project->id],
+                array_map(fn (int|string $value): string => (string) $value, array_filter($filters, fn (int|string|null $value): bool => $value !== null))))->toArray(),
             'options' => [
                 'people' => User::query()
                     ->whereIn('id', (clone $base)->select('time_entries.user_id')->distinct())

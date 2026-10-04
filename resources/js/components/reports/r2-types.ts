@@ -11,6 +11,7 @@ import type {
     MetricsSummary,
     ProjectStatus,
     ReportFiltersProps,
+    ReportRequestData,
     TaskStatusCategory,
 } from '@/types';
 
@@ -50,6 +51,8 @@ export type R2Timeline = {
 export type R2ClientProjectRow = BreakdownRow & { has_bank: boolean };
 
 export type R2ClientReportProps = {
+    /** El informe con sus filtros, para el menú «Exportar ▾» (Fase 9, D-139). */
+    report_request: ReportRequestData;
     client: { id: number; name: string; is_active: boolean };
     filters: ReportFiltersProps;
     scope: {
@@ -138,6 +141,8 @@ export type R2Milestone = {
 };
 
 export type R2ProjectReportProps = {
+    /** El informe con sus filtros, para el menú «Exportar ▾» (Fase 9, D-139). */
+    report_request: ReportRequestData;
     project: {
         id: number;
         code: string;
@@ -207,6 +212,8 @@ export type R2BillingSummary = {
 
 export type R2BillingProps = {
     filters: ReportFiltersProps;
+    /** El informe con sus filtros (null sin cliente elegido), para el menú «Exportar ▾». */
+    report_request: ReportRequestData | null;
     client: { id: number; name: string; is_active: boolean } | null;
     clients: { id: number; name: string; is_active: boolean }[];
     summary: R2BillingSummary | null;
