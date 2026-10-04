@@ -1141,6 +1141,26 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
 - **Exportar:** sube el XLSX del informe a su Drive convertido a hoja de cálculo nativa y abre el enlace.
 - **Seguridad del token:** el token de refresco se guarda cifrado (`encrypted`) y se borra al desconectar o si Google lo revoca.
 - **Credenciales:** el ID y el secreto del cliente OAuth los pone el propietario en el `.env` del servidor, nunca en Git. Sin ellos, la opción no se ofrece.
+- **Concreción al implementarlo (agente C, 04/10):**
+  - **Sin dependencias nuevas:** OAuth y Drive con el cliente HTTP de Laravel (`App\Domain\Integrations\Google`: `GoogleOAuth` y `GoogleSheetsUploader`).
+  - **Flujo OAuth:**
+    - «Conectar con Google» es un `POST /integraciones/google/conectar` que guarda en la sesión el `state` (40 caracteres) y el verificador **PKCE** (S256), de un solo uso y con 10 minutos de vida, y manda a Google con `access_type=offline`, `hd=audaxstudio.com` y los alcances `openid email drive.file`,
+    - `prompt=consent` si la persona no tiene conexión; si ya la tiene, `select_account` (si Google no repite el token de refresco y es la misma cuenta, se conserva el guardado),
+    - el callback (`GET /integraciones/google/callback`, `integrations.google.callback`) comprueba el `state`, cambia el código y valida el `id_token` recibido del endpoint de tokens (emisor, audiencia, caducidad, `email_verified`, `hd` y correo del dominio). La firma no se comprueba porque el token llega directamente de Google por TLS (OpenID Connect Core §3.1.3.7),
+    - si la cuenta es de otro dominio o la persona desmarca el permiso de Drive (consentimiento parcial), no se conecta y se revoca lo recibido.
+  - **Tabla `google_connections`:** una fila por persona, con `refresh_token` y `access_token` cifrados (`encrypted`), `expires_at` y `scopes`. Los tokens nunca salen en JSON.
+  - **Renovación:** con un minuto de margen antes de caducar. Si Drive responde 401, se renueva una vez y se reintenta; si vuelve a fallar, o Google responde `invalid_grant`, se borra la conexión y se responde 409 pidiendo reconectar.
+  - **Desconectar:** revoca el token de refresco en `oauth2.googleapis.com/revoke` y borra la fila aunque Google no lo confirme (y entonces se avisa de que se puede quitar el acceso desde la cuenta de Google).
+  - **Exportar (`POST /informes/sheets`, `reports.sheets.store`):**
+    - límite propio de 10 por minuto y persona (`throttle:10,1,google-sheets`),
+    - comprueba la conexión antes de generar el XLSX, lo sube en multipart con `fields=id,webViewLink` (Drive v3 no devuelve el enlace si no se pide) y borra el temporal siempre,
+    - errores: sin conexión o con el acceso retirado, 409; Google caído, sin red o cualquier otra respuesta de Drive, 502; sin credenciales, 404.
+  - **Interfaz:**
+    - prop compartida `integrations: {google_sheets, google_connected}`, solo para internos; para un colaborador externo, `google_sheets` es false,
+    - el item abre la pestaña en el clic, escribe en ella «Creando la hoja…», le quita el `opener` y le asigna la URL al terminar; si el navegador la bloquea, el enlace queda en el aviso («Abrir»),
+    - la entrada «Integraciones» de Ajustes no aparece en el portal ni a los colaboradores externos.
+  - **Auditoría:** entidad `report_delivery` (log `report-delivery`) y acción `sheets_exported` (evento `sheets`) en `AuditCatalog`, con el informe, sus parámetros, sus filtros y el título, nunca tokens.
+  - **Privacidad (D-075):** la exportación de datos personales lleva `integraciones.json/.csv` con el servicio, la cuenta y la fecha de conexión, nunca los tokens.
 
 ### Numeración
 - Fase 2: D-078 a D-087.
