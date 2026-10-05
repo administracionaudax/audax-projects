@@ -4,6 +4,8 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AiUsage;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\Task;
+use App\Models\TaskArchive;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyEntry;
@@ -155,3 +157,33 @@ it('«Uso de IA» no crece con las llamadas registradas (10.3)', function () {
     expect($large)->toBeLessThanOrEqual(12)
         ->and($large - $small)->toBeLessThanOrEqual(0);
 });
+
+it('las tareas de Mi espacio y el asistente no crecen con las tareas ni los proyectos (10.6)', function (string $uri, int $budget) {
+    $more = function (int $count): void {
+        foreach (range(1, $count) as $i) {
+            $project = Project::factory()->withMembers([$this->manager])->create(['client_id' => Client::factory()->create()->id]);
+            $task = Task::factory()->assignedTo($this->manager)->create(['project_id' => $project->id, 'created_by' => userWithRole('employee')->id, 'description' => '<p>Nota</p>']);
+            Task::factory()->assignedTo($this->manager)->completed()->create(['project_id' => $project->id]);
+            TaskArchive::query()->create(['user_id' => $this->manager->id, 'task_id' => $task->id]);
+        }
+    };
+
+    WeeklyCycle::factory()->create();
+    $more(3);
+    ($this->measure)($uri);
+    $small = ($this->measure)($uri);
+
+    $more(12);
+    $large = ($this->measure)($uri);
+
+    if (getenv('PERF_REPORT')) {
+        fwrite(STDERR, "{$uri}: {$small} → {$large} consultas\n");
+    }
+
+    expect($large)->toBeLessThanOrEqual($budget)
+        ->and($large - $small)->toBeLessThanOrEqual(0);
+})->with([
+    // Lo de mis weeklies más mis tareas (pendientes y hechas), el catálogo, los estados y la tanda.
+    'tareas de Mi espacio' => ['/mi-espacio?pestana=tareas', 34],
+    'asistente' => ['/ia', 8],
+]);
