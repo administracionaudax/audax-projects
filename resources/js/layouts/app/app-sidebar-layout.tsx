@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import { AppFreshness } from '@/components/app-freshness';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
@@ -25,6 +26,7 @@ export default function AppSidebarLayout({
                     <PrivacyNoticeBanner />
                     {children}
                 </AppContent>
+                <AppFreshness />
             </AppShell>
         </GlobalSearchProvider>
     );

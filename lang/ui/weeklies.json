@@ -291,5 +291,8 @@
     "weeklies.settings.banner_info": "Informativo",
     "weeklies.settings.banner_warning": "Advertencia",
     "weeklies.banner.label": "Aviso para toda la plantilla",
-    "weeklies.banner.dismiss": "Ocultar el aviso"
+    "weeklies.banner.dismiss": "Ocultar el aviso",
+    "app_freshness.outdated": "Hay una versión nueva de la app. Recarga cuando termines lo que estás haciendo.",
+    "app_freshness.reload": "Recargar",
+    "app_freshness.offline": "Sin conexión. Cuando vuelva, se pondrá al día sola."
 }
