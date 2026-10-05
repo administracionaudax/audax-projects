@@ -40,6 +40,6 @@ final class SuggestionReplied extends SuggestionNotification
 
     public function icon(): string
     {
-        return 'message-circle';
+        return 'message-square';
     }
 }

@@ -13,6 +13,7 @@ use App\Models\HelpUpdateLike;
 use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -382,7 +383,7 @@ it('preguntas frecuentes por secciones: crear, mover, reordenar y no borrar una 
 });
 
 it('el canal de tiempo real «help» es de quien usa la ayuda (F-170)', function () {
-    $channels = app(\Illuminate\Broadcasting\BroadcastManager::class)->driver()->getChannels();
+    $channels = app(BroadcastManager::class)->driver()->getChannels();
     $callback = $channels->get('help');
 
     expect($callback($this->employee))->toBeTrue()
