@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixture from '../fixtures/weeklies/project-status-board.json';
 
@@ -245,7 +245,7 @@ const summary = (overrides: Partial<AiSummary> = {}): AiSummary => ({
 });
 
 describe('resumen con IA', () => {
-    const panel = (value: AiSummary | null) =>
+    const panel = (value: ComponentProps<typeof AiSummaryPanel>['summary']) =>
         wrap(
             <AiSummaryPanel
                 title="Resumen del cliente (IA)"

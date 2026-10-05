@@ -40,6 +40,7 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
             'Mi espacio',
             'Weeklies',
             'Clientes',
+            'Equipo',
             'Bolsas',
             'Carga',
             'Ausencias',
@@ -139,5 +140,12 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
     await test.step('Clientes le responde 403', async () => {
         const response = await page.goto('/clientes');
         expect(response?.status()).toBe(403);
+    });
+
+    await test.step('el Equipo y el estado de proyectos de la Weekly, también 403', async () => {
+        for (const path of ['/equipo', '/weeklies/estado-proyectos']) {
+            const response = await page.goto(path);
+            expect(response?.status()).toBe(403);
+        }
     });
 });

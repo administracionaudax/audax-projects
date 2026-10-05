@@ -37,6 +37,7 @@ export const SIDEBAR_PATHS = [
     '/calendario',
     '/proyectos',
     '/clientes',
+    '/equipo',
     '/bolsas',
     '/horas',
     '/carga',
