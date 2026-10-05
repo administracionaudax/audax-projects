@@ -181,6 +181,8 @@ export type AdminSettings = {
     occupancy_high_threshold: number;
     /** Recordatorio de los viernes para enviar la semana (time:remind-week, D-073). */
     week_reminder_enabled: boolean;
+    /** Entrar con Google (D-165). */
+    google_login_enabled?: boolean;
 };
 
 export type AdminSettingsProps = {
@@ -188,4 +190,6 @@ export type AdminSettingsProps = {
     roundings: number[];
     /** Límite de subida del servidor (PHP) en MB, o null si no hay. */
     serverUploadLimitMb: number | null;
+    /** Entrar con Google (D-165): si hay credenciales y qué dominios pueden entrar. */
+    googleLogin?: { configured: boolean; domains: string[] };
 };
