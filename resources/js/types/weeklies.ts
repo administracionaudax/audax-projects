@@ -4,7 +4,7 @@
  * El informe estructurado es App\Domain\Weeklies\Report\WeeklyReport::toArray(), el
  * WeeklyStructuredReport de WeeklySync (ws:types.ts) en snake_case.
  */
-import type { UserSummary } from './domain';
+import type { TaskPriority, UserSummary } from './domain';
 import type { ProjectsPaginated } from './projects';
 import type { ReportRequestData } from './reports';
 
@@ -758,7 +758,103 @@ export type MySpacePageProps = {
     streak: WeeklyStreakSummary;
     /** Solo con ?semana={id}. */
     editor: MyWeeklyEditor | null;
+    /** Pestaña «Tareas» (10.6, F-055 a F-063): con otra pestaña, null. */
+    my_tasks: MySpaceTask[] | null;
+    task_projects: MySpaceTaskProject[] | null;
+    task_statuses: { open: number | null; done: number | null } | null;
+    suggestions: TaskSuggestionBatch | null;
+    /** La última weekly cerrada, de la que salen las tareas sugeridas (F-062). */
+    suggestion_source: WeeklyCycleRef | null;
 };
+
+/** Una semana, en corto. */
+export type WeeklyCycleRef = { id: number; number: string; label: string };
+
+/** Una tarea de «Mi espacio» (MySpaceTasks::list, D-203): asignada a mí, con mi archivado personal. */
+export type MySpaceTask = {
+    id: number;
+    title: string;
+    priority: TaskPriority;
+    due_date: string | null;
+    created_at: string | null;
+    completed: boolean;
+    status: {
+        id: number;
+        name: string;
+        category: 'todo' | 'in_progress' | 'done';
+    };
+    project: { id: number; code: string; name: string };
+    client: { id: number; name: string; icon: string | null } | null;
+    /** Quién la creó, si no fui yo («De: …»). */
+    assigner: { id: number; name: string } | null;
+    /** La descripción en texto plano (F-060). */
+    notes: string;
+    /** false: la descripción tiene formato y se edita en la tarea. */
+    notes_editable: boolean;
+    archived: boolean;
+    can: { update: boolean; delete: boolean };
+};
+
+/** Un proyecto en el que puedo crear tareas (MySpaceTasks::catalog). */
+export type MySpaceTaskProject = {
+    id: number;
+    code: string;
+    name: string;
+    client: { id: number; name: string; icon: string | null } | null;
+    uses_banks: boolean;
+    banks: { id: number; name: string; department_id: number | null }[];
+};
+
+/** Una tarea propuesta por la IA (F-062, D-204): aún no es una tarea. */
+export type TaskSuggestion = {
+    key: string;
+    title: string;
+    client_id: number | null;
+    client_name: string | null;
+    /** El proyecto y la bolsa sugeridos; la persona los revisa. */
+    project_id: number | null;
+    hour_bank_id: number | null;
+    author_id: number | null;
+    author_name: string | null;
+};
+
+/** TaskSuggester::present(): la última tanda de propuestas. */
+export type TaskSuggestionBatch = {
+    state: WeeklyJobState;
+    /** En cola o generando, pero sin cambios desde hace más de 12 minutos. */
+    stuck: boolean;
+    cycle: WeeklyCycleRef | null;
+    items: TaskSuggestion[];
+    /** Propuestas repetidas que se han quitado. */
+    skipped: number;
+    error: string | null;
+    generated_at: string | null;
+};
+
+/** assistant/index (AssistantController::index, F-146 y F-147). */
+export type AssistantPageProps = {
+    suggested_questions: string[];
+    /** Qué entra en el contexto de quien pregunta (D-205). */
+    scope: {
+        weeklies: boolean;
+        clients: boolean;
+        project_status: boolean;
+        hours: 'own' | 'team' | 'all';
+        financials: boolean;
+    };
+    max_question: number;
+};
+
+/** AssistantQuestions::present(): una pregunta y su respuesta (D-206). */
+export type AssistantQuestion = {
+    id: string;
+    state: WeeklyJobState;
+    answer: string | null;
+    error: string | null;
+};
+
+/** Evento `assistant.answered` del canal privado App.Models.User.{id}. */
+export type AssistantAnsweredEvent = { question_id: string; state: string };
 
 /** help/index (HelpController::index). */
 export type HelpTab = 'general' | 'tutoriales' | 'preguntas' | 'sugerencias';

@@ -1,14 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
-import { ListChecks } from 'lucide-react';
+import { Head } from '@inertiajs/react';
 import Heading from '@/components/heading';
-import { Button } from '@/components/ui/button';
 import { MyWeeklyEditor } from '@/components/weeklies/my-weekly-editor';
 import { MyWeeksList } from '@/components/weeklies/my-weeks-list';
-import { WeeklyPlaceholder } from '@/components/weeklies/weekly-placeholder';
+import { MySpaceTasks } from '@/components/weeklies/tasks/my-space-tasks';
 import { WeeklyTabs } from '@/components/weeklies/weekly-tabs';
 import { StreakValue } from '@/components/weeklies/weekly-ui';
 import { t } from '@/lib/i18n';
-import { urls } from '@/lib/urls';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import type { MySpacePageProps } from '@/types/weeklies';
 
@@ -16,13 +13,19 @@ import type { MySpacePageProps } from '@/types/weeklies';
  * /mi-espacio (F-041 a F-054; MySpace de WeeklySync): pestañas «Reportes» y «Tareas».
  * - Reportes: «Mis envíos» (F-042) con mi racha; con ?semana={id}, «Mi weekly» de esa semana
  *   (F-043 a F-054), en solo lectura si está cerrada.
- * - Tareas: llega en la 10.6 (de momento, el enlace a Mis tareas).
+ * - Tareas (10.6, F-055 a F-063): mis tareas por cliente, con mi archivado, las notas con dictado y
+ *   las tareas sugeridas por IA para revisar (MySpaceTasks).
  */
 export default function MySpace({
     tab,
     weeks,
     streak,
     editor,
+    my_tasks: myTasks,
+    task_projects: taskProjects,
+    task_statuses: taskStatuses,
+    suggestions,
+    suggestion_source: suggestionSource,
 }: MySpacePageProps) {
     const tabs = [
         {
@@ -46,7 +49,13 @@ export default function MySpace({
                         : t('my_space.title')
                 }
             />
-            <div className="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-6 p-4 md:p-6">
+            <div
+                className={
+                    tab === 'tareas'
+                        ? 'mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-6 p-4 md:p-6'
+                        : 'mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-6 p-4 md:p-6'
+                }
+            >
                 <Heading
                     as="h1"
                     title={t('my_space.heading')}
@@ -58,19 +67,13 @@ export default function MySpace({
                     current={tab}
                 />
                 {tab === 'tareas' ? (
-                    <div className="grid gap-4">
-                        <WeeklyPlaceholder delivery="10.6" />
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="justify-self-start"
-                        >
-                            <Link href={urls.myTasks()}>
-                                <ListChecks aria-hidden="true" />
-                                {t('my_space.tasks_link')}
-                            </Link>
-                        </Button>
-                    </div>
+                    <MySpaceTasks
+                        tasks={myTasks ?? []}
+                        projects={taskProjects ?? []}
+                        statuses={taskStatuses ?? { open: null, done: null }}
+                        suggestions={suggestions ?? null}
+                        source={suggestionSource ?? null}
+                    />
                 ) : editor ? (
                     <MyWeeklyEditor
                         // Al cambiar de semana, al renunciar a la exención o al cerrarse, de cero.

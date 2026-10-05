@@ -5,6 +5,7 @@ import {
     uploadDictation,
     WeeklyRequestError,
 } from '@/components/weeklies/weekly-api';
+import type { DictationTarget } from '@/components/weeklies/weekly-api';
 import {
     acquireChannel,
     onRealtimeReconnect,
@@ -48,19 +49,16 @@ export type DictationState = {
 };
 
 /**
- * Dictado de un apunte de «Mi weekly» (F-049, D-158): sube el audio grabado, espera a que el
+ * Dictado de un apunte de «Mi weekly» (F-049, D-158) o de las notas de una tarea (F-060): sube el audio grabado, espera a que el
  * Whisper del servidor lo transcriba («Transcribiendo…») y entrega el texto con `onText`.
  *
  * Se entera de que ha terminado por el evento `dictation.updated` del canal privado de quien dicta
  * (App.Models.User.{id}); sin Reverb (o si se corta), pregunta a `dictations.show` cada 3 s.
  */
 export function useDictation({
-    cycleId,
-    clientId,
     onText,
-}: {
-    cycleId: number;
-    clientId: number | null;
+    ...target
+}: DictationTarget & {
     onText: (text: string) => void;
 }): DictationState {
     const userId = usePage().props.auth?.user?.id ?? null;
@@ -195,8 +193,7 @@ export function useDictation({
 
         try {
             const dictation = await uploadDictation({
-                cycleId,
-                clientId,
+                ...target,
                 file,
                 durationMs,
             });

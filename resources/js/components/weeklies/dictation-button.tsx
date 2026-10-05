@@ -47,22 +47,37 @@ const NOTICES: Record<DictationNotice, TranslationKey> = {
  */
 export function DictationButton({
     cycleId,
-    clientId,
-    clientName,
+    clientId = null,
+    taskId,
+    clientName = '',
+    label,
+    groupLabel,
     onText,
     onBusyChange,
     disabled = false,
+    size = 'sm',
 }: {
-    cycleId: number;
-    clientId: number | null;
+    /** El apunte de un cliente en una semana (F-049)… */
+    cycleId?: number;
+    clientId?: number | null;
+    /** …o las notas de una tarea (10.6, F-060). */
+    taskId?: number;
     /** Para el nombre accesible: «Dictar el apunte de Ferretería Ruiz». */
-    clientName: string;
+    clientName?: string;
+    /** Nombre accesible del botón y del grupo de grabación, si no es un apunte de la weekly. */
+    label?: string;
+    groupLabel?: string;
     onText: (text: string) => void;
     onBusyChange?: (busy: boolean) => void;
     disabled?: boolean;
+    size?: 'sm' | 'icon';
 }) {
     const limits = useMediaLimits();
-    const dictation = useDictation({ cycleId, clientId, onText });
+    const dictation = useDictation(
+        taskId !== undefined
+            ? { taskId, onText }
+            : { cycleId: cycleId ?? 0, clientId, onText },
+    );
     const recorder = useAudioRecorder({
         maxSeconds: limits.maxAudioSeconds,
         onRecorded: (file, durationMs) => void dictation.send(file, durationMs),
@@ -125,9 +140,12 @@ export function DictationButton({
             {recording ? (
                 <div
                     role="group"
-                    aria-label={t('weeklies.dictation.group', {
-                        client: clientName,
-                    })}
+                    aria-label={
+                        groupLabel ??
+                        t('weeklies.dictation.group', {
+                            client: clientName,
+                        })
+                    }
                     className="flex min-w-0 flex-wrap items-center gap-2 border bg-card px-2 py-1"
                     onKeyDown={(event) => {
                         if (event.key === 'Escape') {
@@ -215,12 +233,15 @@ export function DictationButton({
                     ref={startButton}
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size={size}
                     className="justify-self-start"
                     disabled={disabled}
-                    aria-label={t('weeklies.dictation.start_for', {
-                        client: clientName,
-                    })}
+                    aria-label={
+                        label ??
+                        t('weeklies.dictation.start_for', {
+                            client: clientName,
+                        })
+                    }
                     title={t('chat_media.recorder.start_hint', {
                         max: formatClock(limits.maxAudioSeconds * 1000),
                     })}
@@ -228,7 +249,7 @@ export function DictationButton({
                     data-test="dictation-start"
                 >
                     <Mic aria-hidden="true" />
-                    {t('weeklies.dictation.start')}
+                    {size === 'icon' ? null : t('weeklies.dictation.start')}
                 </Button>
             )}
 

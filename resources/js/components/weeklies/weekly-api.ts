@@ -1,19 +1,25 @@
 import { xsrfToken } from '@/lib/xsrf';
+import { ask as askRoute } from '@/routes/assistant';
+import { show as showQuestion } from '@/routes/assistant/questions';
 import {
     show as showDictation,
     store as storeDictation,
 } from '@/routes/dictations';
+import { notes as notesRoute } from '@/routes/my-space/tasks';
 import { draft as draftRoute } from '@/routes/my-weekly';
 import type {
+    AssistantQuestion,
     Dictation,
     WeeklyDraftInput,
     WeeklySubmission,
 } from '@/types/weeklies';
 
 /**
- * Peticiones JSON de «Mi weekly» que no recargan la página (D-157 y D-158):
+ * Peticiones JSON de «Mi weekly» y de «Mi espacio» que no recargan la página (D-157, D-158 y 10.6):
  * - el autoguardado del borrador (PUT my-weekly.draft),
- * - subir un dictado (POST dictations.store, multipart) y consultar su estado (GET dictations.show).
+ * - subir un dictado (POST dictations.store, multipart) y consultar su estado (GET dictations.show),
+ * - el autoguardado de las notas de una tarea (PUT my-space.tasks.notes),
+ * - preguntar al asistente (POST assistant.ask) y consultar la respuesta (GET assistant.questions.show).
  * Misma sesión que la página: cookie más cabecera X-XSRF-TOKEN.
  */
 
@@ -82,24 +88,35 @@ export async function saveWeeklyDraft(
     return (await parse<{ submission: WeeklySubmission }>(response)).submission;
 }
 
+/**
+ * Para qué es un dictado (D-152): el apunte de un cliente en «Mi weekly» o las notas de una tarea de
+ * «Mi espacio» (10.6, F-060).
+ */
+export type DictationTarget =
+    | { cycleId: number; clientId: number | null; taskId?: undefined }
+    | { taskId: number; cycleId?: undefined; clientId?: undefined };
+
 /** Sube un dictado grabado en el navegador; responde con el dictado (pendiente o ya hecho). */
 export async function uploadDictation({
-    cycleId,
-    clientId,
     file,
     durationMs,
-}: {
-    cycleId: number;
-    clientId: number | null;
+    ...target
+}: DictationTarget & {
     file: File;
     durationMs: number;
 }): Promise<Dictation> {
     const body = new FormData();
-    body.append('context', 'weekly_entry');
-    body.append('weekly_cycle_id', String(cycleId));
 
-    if (clientId !== null) {
-        body.append('client_id', String(clientId));
+    if (target.taskId !== undefined) {
+        body.append('context', 'task_note');
+        body.append('task_id', String(target.taskId));
+    } else {
+        body.append('context', 'weekly_entry');
+        body.append('weekly_cycle_id', String(target.cycleId));
+
+        if (target.clientId !== null) {
+            body.append('client_id', String(target.clientId));
+        }
     }
 
     body.append('audio', file, file.name);
@@ -122,4 +139,48 @@ export async function fetchDictation(id: number): Promise<Dictation> {
     });
 
     return (await parse<{ dictation: Dictation }>(response)).dictation;
+}
+
+/** Guarda las notas de una tarea (su descripción en texto plano, F-060) sin recargar. */
+export async function saveTaskNotes(
+    taskId: number,
+    notes: string,
+    options: { keepalive?: boolean } = {},
+): Promise<string> {
+    const response = await fetch(notesRoute.url(taskId), {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: headers(true),
+        body: JSON.stringify({ notes }),
+        keepalive: options.keepalive,
+    });
+
+    return (await parse<{ task: { id: number; notes: string } }>(response)).task
+        .notes;
+}
+
+/** Una pregunta al asistente con la conversación anterior; responde con su id (en cola). */
+export async function askAssistant(
+    question: string,
+    history: { role: 'user' | 'assistant'; content: string }[],
+): Promise<AssistantQuestion> {
+    const response = await fetch(askRoute.url(), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers(true),
+        body: JSON.stringify({ question, history }),
+    });
+
+    return (await parse<{ question: AssistantQuestion }>(response)).question;
+}
+
+export async function fetchAssistantQuestion(
+    id: string,
+): Promise<AssistantQuestion> {
+    const response = await fetch(showQuestion.url(id), {
+        credentials: 'same-origin',
+        headers: headers(false),
+    });
+
+    return (await parse<{ question: AssistantQuestion }>(response)).question;
 }

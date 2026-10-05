@@ -12,6 +12,7 @@ import {
     MessagesSquare,
     NotebookPen,
     Settings2,
+    Sparkles,
     ClipboardCheck,
     Users,
     Wallet,
@@ -35,6 +36,7 @@ import { home } from '@/routes';
 import { index as absencesIndex } from '@/routes/absences';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
+import { index as assistantIndex } from '@/routes/assistant';
 import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
@@ -60,7 +62,8 @@ import type { Abilities, NavItem } from '@/types';
  * La Weekly (Fase 10, F-001, D-180): «Mi espacio» (con el contador de mi weekly pendiente, F-003) y
  * «Weeklies», tras Mis tareas, y «Equipo», tras Clientes (10.4), para quien la escribe
  * (`auth.can.useWeeklies`) y con el módulo encendido (`config.modules.weeklies`); nunca a un
- * colaborador externo.
+ * colaborador externo. El asistente IA (10.6, F-006: el botón «Asistente AI» de WeeklySync), tras
+ * Chat, con el módulo `assistant` encendido y para quien usa la Weekly.
  */
 export function mainNavItems(
     can: Abilities,
@@ -68,6 +71,7 @@ export function mainNavItems(
         chatUnread?: number;
         weekliesPending?: number;
         weekliesEnabled?: boolean;
+        assistantEnabled?: boolean;
     } = {},
 ): NavItem[] {
     const chatUnread = counters.chatUnread ?? 0;
@@ -151,6 +155,12 @@ export function mainNavItems(
                       }
                     : undefined,
         },
+        can.useWeeklies === true &&
+            counters.assistantEnabled !== false && {
+                title: t('assistant.title'),
+                href: assistantIndex(),
+                icon: Sparkles,
+            },
         can.viewAdmin && {
             title: t('nav.admin'),
             href: adminIndex(),
@@ -191,6 +201,7 @@ export function AppSidebar() {
                         chatUnread,
                         weekliesPending: props.weeklies?.pending ?? 0,
                         weekliesEnabled: props.config?.modules?.weeklies,
+                        assistantEnabled: props.config?.modules?.assistant,
                     })}
                 />
             </SidebarContent>
