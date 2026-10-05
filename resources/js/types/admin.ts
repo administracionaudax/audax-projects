@@ -2,8 +2,9 @@
  * Props de las páginas del área «admin» (Fase 1). Los tipos de entidad están en ./domain.
  * Contrato con app/Http/Controllers/Admin/* y app/Http/Resources/Admin/*.
  */
-import type { Role } from './auth';
+import type { GlobalBanner, Role } from './auth';
 import type { Department, TaskStatus, TaskType, UserSummary } from './domain';
+import type { AppModule } from './weeklies';
 
 /** Paginación de Laravel (ResourceCollection con un paginador). */
 export type AdminPaginated<T> = {
@@ -183,6 +184,12 @@ export type AdminSettings = {
     occupancy_high_threshold: number;
     /** Recordatorio de los viernes para enviar la semana (time:remind-week, D-073). */
     week_reminder_enabled: boolean;
+    /** Módulos activos (Fase 10, F-177). */
+    modules?: Record<AppModule, boolean>;
+    /** Aviso global para toda la plantilla (F-178); null = sin aviso. */
+    global_banner?: GlobalBanner | null;
+    /** Limpieza con IA del dictado de la weekly (F-172, D-158); apagada por defecto. */
+    weekly_dictation_cleanup?: boolean;
 };
 
 export type AdminSettingsProps = {

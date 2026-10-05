@@ -23,6 +23,16 @@ import { t } from '@/lib/i18n';
 import { index as adminIndex } from '@/routes/admin';
 import { edit, update } from '@/routes/admin/settings';
 import type { AdminSettingsProps } from '@/types';
+import type { AppModule } from '@/types/weeklies';
+
+/** Módulos que se pueden apagar (F-177), en el orden de la pantalla. */
+const MODULES: AppModule[] = [
+    'weeklies',
+    'project_status',
+    'help',
+    'suggestions',
+    'assistant',
+];
 
 /** Máximo de umbrales de alerta de las bolsas. */
 const MAX_THRESHOLDS = 5;
@@ -63,6 +73,10 @@ type SettingsForm = {
     occupancy_high_threshold: string;
     max_audio_seconds: string;
     week_reminder_enabled: boolean;
+    modules: Record<AppModule, boolean>;
+    banner_message: string;
+    banner_tone: 'info' | 'warning';
+    weekly_dictation_cleanup: boolean;
 };
 
 function Section({
@@ -193,6 +207,15 @@ export default function AdminSettings({
         occupancy_high_threshold: String(settings.occupancy_high_threshold),
         max_audio_seconds: String(settings.max_audio_seconds),
         week_reminder_enabled: settings.week_reminder_enabled ?? true,
+        modules: Object.fromEntries(
+            MODULES.map((module) => [
+                module,
+                settings.modules?.[module] ?? true,
+            ]),
+        ) as Record<AppModule, boolean>,
+        banner_message: settings.global_banner?.message ?? '',
+        banner_tone: settings.global_banner?.tone ?? 'info',
+        weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? false,
     });
     const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)
         ? AUDIO_DURATIONS
@@ -226,8 +249,13 @@ export default function AdminSettings({
             return;
         }
 
-        form.transform((data) => ({
+        form.transform(({ banner_message, banner_tone, ...data }) => ({
             ...data,
+            // Aviso global (F-178): sin texto, no hay aviso.
+            global_banner:
+                banner_message.trim() === ''
+                    ? null
+                    : { message: banner_message.trim(), tone: banner_tone },
             timer_rounding_minutes: Number(data.timer_rounding_minutes),
             timer_warning_hours: Number(data.timer_warning_hours),
             hour_bank_alert_thresholds: data.hour_bank_alert_thresholds.map(
@@ -756,6 +784,102 @@ export default function AdminSettings({
                                         {audioDurationLabel(seconds)}
                                     </option>
                                 ))}
+                            </NativeSelect>
+                        </Field>
+                    </Section>
+
+                    <Section
+                        title={t('weeklies.settings.title')}
+                        description={t('weeklies.settings.description')}
+                    >
+                        <fieldset className="grid gap-4">
+                            <legend className="mb-1 text-sm font-medium">
+                                {t('weeklies.settings.modules')}
+                            </legend>
+                            {MODULES.map((module) => (
+                                <Toggle
+                                    key={module}
+                                    id={`${id}-module-${module}`}
+                                    label={t(`app_modules.${module}`)}
+                                    help={t(
+                                        `weeklies.settings.module_help.${module}`,
+                                    )}
+                                    checked={form.data.modules[module]}
+                                    onChange={(checked) =>
+                                        form.setData('modules', {
+                                            ...form.data.modules,
+                                            [module]: checked,
+                                        })
+                                    }
+                                    error={errors[`modules.${module}`]}
+                                />
+                            ))}
+                        </fieldset>
+                        <Toggle
+                            id={`${id}-dictation-cleanup`}
+                            label={t('weeklies.settings.dictation_cleanup')}
+                            help={t('weeklies.settings.dictation_cleanup_help')}
+                            checked={form.data.weekly_dictation_cleanup}
+                            onChange={(checked) =>
+                                form.setData(
+                                    'weekly_dictation_cleanup',
+                                    checked,
+                                )
+                            }
+                            error={errors.weekly_dictation_cleanup}
+                        />
+                        <Field
+                            id={`${id}-banner`}
+                            label={t('weeklies.settings.banner')}
+                            help={t('weeklies.settings.banner_help')}
+                            error={
+                                errors['global_banner.message'] ??
+                                errors.global_banner
+                            }
+                            className="max-w-2xl"
+                        >
+                            <Input
+                                id={`${id}-banner`}
+                                value={form.data.banner_message}
+                                maxLength={300}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'banner_message',
+                                        event.target.value,
+                                    )
+                                }
+                                aria-describedby={describedBy(`${id}-banner`, {
+                                    help: true,
+                                    error:
+                                        errors['global_banner.message'] ??
+                                        errors.global_banner,
+                                })}
+                            />
+                        </Field>
+                        <Field
+                            id={`${id}-banner-tone`}
+                            label={t('weeklies.settings.banner_tone')}
+                            className="max-w-md"
+                        >
+                            <NativeSelect
+                                id={`${id}-banner-tone`}
+                                className="w-48"
+                                value={form.data.banner_tone}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'banner_tone',
+                                        event.target.value === 'warning'
+                                            ? 'warning'
+                                            : 'info',
+                                    )
+                                }
+                            >
+                                <option value="info">
+                                    {t('weeklies.settings.banner_info')}
+                                </option>
+                                <option value="warning">
+                                    {t('weeklies.settings.banner_warning')}
+                                </option>
                             </NativeSelect>
                         </Field>
                     </Section>

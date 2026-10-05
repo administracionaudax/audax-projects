@@ -274,5 +274,22 @@
     "weeklies.stats.on_time": "A tiempo",
     "weeklies.stats.streak": "Racha (semanas)",
     "my_space.tabs.label": "Secciones de Mi espacio",
-    "my_space.tasks_link": "Ir a Mis tareas"
+    "my_space.tasks_link": "Ir a Mis tareas",
+    "weeklies.settings.title": "Weekly y módulos",
+    "weeklies.settings.description": "Qué partes de la app están encendidas, la limpieza del dictado y el aviso global para toda la plantilla.",
+    "weeklies.settings.modules": "Módulos activos",
+    "weeklies.settings.module_help.weeklies": "La weekly: Mi espacio, las weeklies, la tarjeta de Inicio y los avisos. Apagado, sus páginas no existen.",
+    "weeklies.settings.module_help.project_status": "La pestaña «Estado de proyectos» de las weeklies.",
+    "weeklies.settings.module_help.help": "El centro de ayuda: novedades, tutoriales, preguntas frecuentes y manual.",
+    "weeklies.settings.module_help.suggestions": "Las sugerencias del centro de ayuda (necesita el centro de ayuda).",
+    "weeklies.settings.module_help.assistant": "El asistente IA que responde sobre las weeklies, los clientes y las tareas.",
+    "weeklies.settings.dictation_cleanup": "Limpiar el dictado con IA",
+    "weeklies.settings.dictation_cleanup_help": "Tras la transcripción del servidor, Gemini corrige la puntuación y los nombres de clientes y personas. Solo se envía el texto, nunca el audio.",
+    "weeklies.settings.banner": "Aviso global",
+    "weeklies.settings.banner_help": "Sale arriba en todas las páginas de la plantilla (no en el portal de clientes). Déjalo vacío para quitarlo.",
+    "weeklies.settings.banner_tone": "Tipo de aviso",
+    "weeklies.settings.banner_info": "Informativo",
+    "weeklies.settings.banner_warning": "Advertencia",
+    "weeklies.banner.label": "Aviso para toda la plantilla",
+    "weeklies.banner.dismiss": "Ocultar el aviso"
 }

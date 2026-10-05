@@ -13,11 +13,11 @@ import type { ChatIndexPageProps } from '@/types/chat';
 /**
  * Altura del chat: la ventana menos la cabecera de la app (h-16; h-12 con la barra lateral
  * plegada), en escritorio el margen y el borde del contenido, y el aviso de privacidad mientras
- * esté pendiente (--privacy-banner-space, Fase 7). Así la lista y los mensajes tienen su propio
+ * esté pendiente (--privacy-banner-space, Fase 7) y el aviso global (--global-banner-space, Fase 10). Así la lista y los mensajes tienen su propio
  * scroll y el editor queda siempre a la vista.
  */
 const FULL_HEIGHT =
-    'h-[calc(100svh-4rem-var(--privacy-banner-space,0px))] md:h-[calc(100svh-5rem-2px-var(--privacy-banner-space,0px))] md:group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100svh-4rem-2px-var(--privacy-banner-space,0px))]';
+    'h-[calc(100svh-4rem-var(--privacy-banner-space,0px)-var(--global-banner-space,0px))] md:h-[calc(100svh-5rem-2px-var(--privacy-banner-space,0px)-var(--global-banner-space,0px))] md:group-has-data-[collapsible=icon]/sidebar-wrapper:h-[calc(100svh-4rem-2px-var(--privacy-banner-space,0px)-var(--global-banner-space,0px))]';
 
 /**
  * /chat y /chat/{conversación} (SPEC §12). En escritorio, la lista y la conversación a la vez;
