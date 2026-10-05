@@ -3,6 +3,7 @@ import Heading from '@/components/heading';
 import { ProjectStatusView } from '@/components/weeklies/insights/project-status-view';
 import { weekliesTabs } from '@/components/weeklies/insights/weeklies-tabs';
 import { WeeklyTabs } from '@/components/weeklies/weekly-tabs';
+import { useAbilities } from '@/hooks/use-auth';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { index as weekliesIndex, projectStatus } from '@/routes/weeklies';
@@ -16,6 +17,8 @@ export default function WeekliesProjectStatus({
     clients,
     reference_date,
 }: ProjectStatusPageProps) {
+    const abilities = useAbilities();
+
     return (
         <>
             <Head title={t('weeklies.project_status.title')} />
@@ -27,7 +30,7 @@ export default function WeekliesProjectStatus({
                 />
                 <WeeklyTabs
                     label={t('weeklies.tabs.label')}
-                    tabs={weekliesTabs(true)}
+                    tabs={weekliesTabs(true, abilities.manageWeeklies === true)}
                     current="estado-proyectos"
                 />
                 <section

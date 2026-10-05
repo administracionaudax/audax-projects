@@ -205,7 +205,8 @@ export type TeamIndexPageProps = {
     departments: { id: number; name: string }[];
     clients: { id: number; name: string; icon: string | null }[];
     roles: WeeklyRole[];
-    can: { manageUsers: boolean };
+    /** remind: «Recordar» a quien tiene pendiente la semana activa (10.5, F-110). */
+    can: { manageUsers: boolean; remind: boolean };
 };
 
 export type SubmissionDay = 'friday' | 'saturday' | 'sunday' | 'other';
@@ -269,5 +270,5 @@ export type TeamShowPageProps = {
         performance: AiSummary | null;
         client_activity: AiSummary | null;
     } | null;
-    can: { viewAi: boolean; manageUser: boolean };
+    can: { viewAi: boolean; manageUser: boolean; remind: boolean };
 };

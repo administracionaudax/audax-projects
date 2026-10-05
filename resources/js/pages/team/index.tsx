@@ -16,7 +16,11 @@ import {
     AbsenceTodayBadge,
     CopyEmailButton,
 } from '@/components/weeklies/insights/team-ui';
-import { PersonStatusBadge } from '@/components/weeklies/weekly-ui';
+import { RemindButton } from '@/components/weeklies/reminders/remind-button';
+import {
+    isPendingStatus,
+    PersonStatusBadge,
+} from '@/components/weeklies/weekly-ui';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -355,9 +359,23 @@ export default function TeamIndex({
                                         </td>
                                         <td className="px-3 py-2">
                                             {row.report_status ? (
-                                                <PersonStatusBadge
-                                                    status={row.report_status}
-                                                />
+                                                <span className="flex flex-wrap items-center gap-1">
+                                                    <PersonStatusBadge
+                                                        status={
+                                                            row.report_status
+                                                        }
+                                                    />
+                                                    {cycle &&
+                                                    can.remind &&
+                                                    isPendingStatus(
+                                                        row.report_status,
+                                                    ) ? (
+                                                        <RemindButton
+                                                            cycleId={cycle.id}
+                                                            person={row.user}
+                                                        />
+                                                    ) : null}
+                                                </span>
                                             ) : (
                                                 <span className="text-muted-foreground">
                                                     —

@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Plus, TriangleAlert, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
@@ -19,9 +19,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
 import { edit, update } from '@/routes/admin/settings';
+import { edit as remindersEdit } from '@/routes/weeklies/reminders';
 import type { AdminSettingsProps } from '@/types';
 import type { AppModule } from '@/types/weeklies';
 
@@ -849,6 +852,18 @@ export default function AdminSettings({
                                 />
                             ))}
                         </fieldset>
+                        <div className="grid gap-1 text-sm">
+                            <Link
+                                href={remindersEdit.url()}
+                                className={cn('w-fit underline', FOCUS_RING)}
+                                data-test="settings-weekly-reminders"
+                            >
+                                {t('weekly_reminders.settings_link')}
+                            </Link>
+                            <p className="text-muted-foreground">
+                                {t('weekly_reminders.settings_link_help')}
+                            </p>
+                        </div>
                         <Toggle
                             id={`${id}-dictation-cleanup`}
                             label={t('weeklies.settings.dictation_cleanup')}

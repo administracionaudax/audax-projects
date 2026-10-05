@@ -44,7 +44,11 @@ class TeamController extends Controller
             'departments' => Department::query()->orderBy('name')->get(['id', 'name'])->map(fn (Department $department): array => ['id' => $department->id, 'name' => $department->name])->values()->all(),
             'clients' => Client::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'icon'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name, 'icon' => $client->icon])->values()->all(),
             'roles' => User::WEEKLY_ROLES,
-            'can' => ['manageUsers' => $viewer->can('manage-users')],
+            'can' => [
+                'manageUsers' => $viewer->can('manage-users'),
+                // «Recordar» a quien tiene pendiente la semana activa (10.5, F-110).
+                'remind' => $directory['cycle'] !== null && $viewer->can('manage-weeklies'),
+            ],
         ]);
     }
 
@@ -72,6 +76,7 @@ class TeamController extends Controller
             'can' => [
                 'viewAi' => $canAi,
                 'manageUser' => $viewer->can('manage-users'),
+                'remind' => $cycle !== null && $viewer->can('remind', $cycle),
             ],
         ]);
     }

@@ -16,7 +16,10 @@ import type { WeekliesIndexPageProps } from '@/types/weeklies';
  */
 export default function WeekliesIndex(props: WeekliesIndexPageProps) {
     const modules = usePage().props.config?.modules;
-    const tabs = weekliesTabs(modules?.project_status !== false);
+    const tabs = weekliesTabs(
+        modules?.project_status !== false,
+        props.can.reminders,
+    );
 
     return (
         <>

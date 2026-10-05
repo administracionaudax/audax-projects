@@ -44,7 +44,7 @@ final class AiSummariesSection extends Section
             ->where('subject_type', (new Client)->getMorphClass())
             ->orderBy('id')
             ->get()
-            ->filter(fn (AiSummary $summary): bool => isset(($summary->items ?? [])[(string) $user->id]));
+            ->filter(fn (AiSummary $summary): bool => self::sentenceFor($summary, $user->id) !== null);
 
         $clientIds = $teams->pluck('subject_id')->all();
 
@@ -85,10 +85,22 @@ final class AiSummariesSection extends Section
                 'id' => $summary->id,
                 'kind' => self::text("privacy.export.weeklies.ai_kinds.{$summary->kind->value}"),
                 'about' => $clients[$summary->subject_id] ?? null,
-                'content' => ($summary->items ?? [])[(string) $user->id] ?? null,
+                'content' => self::sentenceFor($summary, $user->id),
                 'model' => $summary->model,
                 'generated_at' => self::instant($summary->generated_at),
             ];
         }
+    }
+
+    /** La frase de un resumen con una por persona (items: id → frase) que habla de $userId. */
+    private static function sentenceFor(AiSummary $summary, int $userId): ?string
+    {
+        foreach ($summary->items ?? [] as $id => $sentence) {
+            if ((int) $id === $userId) {
+                return $sentence;
+            }
+        }
+
+        return null;
     }
 }

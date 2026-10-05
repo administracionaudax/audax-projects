@@ -5,6 +5,7 @@
  * WeeklyStructuredReport de WeeklySync (ws:types.ts) en snake_case.
  */
 import type { UserSummary } from './domain';
+import type { ProjectsPaginated } from './projects';
 import type { ReportRequestData } from './reports';
 
 // --- Enums (app/Enums) -------------------------------------------------------------------------
@@ -436,6 +437,8 @@ export type WeeklyEmailTemplate = {
 export type WeeklyReminderLogRow = {
     id: number;
     weekly_cycle_id: number | null;
+    /** Número de la semana («W41-26»), o null si se borró. */
+    cycle_number: string | null;
     user_id: number | null;
     recipient_name: string | null;
     recipient_email: string | null;
@@ -443,7 +446,51 @@ export type WeeklyReminderLogRow = {
     channel: WeeklyReminderChannel;
     status: WeeklyReminderStatus;
     error: string | null;
+    /** Quién lo envió a mano (null: automático). */
+    sent_by_name: string | null;
     created_at: string | null;
+};
+
+/** Plantilla en uso, con si es la de por defecto (10.5). */
+export type WeeklyTemplateState = WeeklyEmailTemplate & { is_default: boolean };
+
+/** Regla tal como se edita (sin id, una nueva). */
+export type WeeklyReminderRuleInput = {
+    id: number | null;
+    channel: WeeklyReminderChannel;
+    day_of_week: number;
+    time: string;
+    enabled: boolean;
+};
+
+/** /weeklies/avisos (WeeklyReminderController::edit, 10.5, D-199 a D-201). */
+export type WeeklyRemindersPageProps = {
+    cycle: {
+        id: number;
+        number: string;
+        label: string;
+        deadline_date: string;
+    } | null;
+    rules: WeeklyReminderRule[];
+    templates: Record<WeeklyEditableTemplate, WeeklyTemplateState>;
+    defaults: Record<WeeklyEditableTemplate, WeeklyEmailTemplate>;
+    /** {nombre}, {semana}, {week_label} y {weekly_url}. */
+    variables: string[];
+    friday: {
+        /** La weekly en el recordatorio de los viernes (weekly_friday_reminder). */
+        weekly: boolean;
+        /** El recordatorio de las horas (week_reminder_enabled, en /admin/ajustes). */
+        hours: boolean;
+    };
+    /** Quién debe enviar la semana activa y aún no lo ha hecho. */
+    pending: UserSummary[];
+    logs: ProjectsPaginated<WeeklyReminderLogRow>;
+    filters: {
+        template: WeeklyReminderTemplate | null;
+        status: WeeklyReminderStatus | null;
+    };
+    push_available: boolean;
+    can: { send: boolean };
 };
 
 // --- Centro de ayuda (10.7) -------------------------------------------------------------------
@@ -603,6 +650,10 @@ export type WeekliesIndexPageProps = {
         extendDeadline: boolean;
         delete: boolean;
         exempt: boolean;
+        /** «Recordar» a una persona pendiente (10.5, F-037). */
+        remind: boolean;
+        /** La pestaña «Avisos» (10.5): quien gestiona la Weekly. */
+        reminders: boolean;
     };
 };
 

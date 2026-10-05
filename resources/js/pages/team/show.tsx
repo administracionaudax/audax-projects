@@ -18,9 +18,11 @@ import {
 } from '@/components/weeklies/insights/team-ui';
 import {
     ClientIcon,
+    isPendingStatus,
     PersonStatusBadge,
     StreakValue,
 } from '@/components/weeklies/weekly-ui';
+import { RemindButton } from '@/components/weeklies/reminders/remind-button';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -208,6 +210,15 @@ export default function TeamShow({
                                         </span>
                                         <PersonStatusBadge status={status} />
                                     </span>
+                                ) : null}
+                                {cycle &&
+                                status &&
+                                can.remind &&
+                                isPendingStatus(status) ? (
+                                    <RemindButton
+                                        cycleId={cycle.id}
+                                        person={person}
+                                    />
                                 ) : null}
                             </div>
                         </div>

@@ -20,6 +20,7 @@ import { UserAvatar } from '@/components/realtime/presence-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { MyWeeklyCallout } from '@/components/weeklies/my-weekly-callout';
+import { RemindButton } from '@/components/weeklies/reminders/remind-button';
 import { TeamStatusStrip } from '@/components/weeklies/team-status-strip';
 import {
     closeBlockers,
@@ -287,6 +288,12 @@ function ManageSection({
                                         {member.user.name}
                                     </span>
                                     <PersonStatusBadge status={member.status} />
+                                    {can.remind ? (
+                                        <RemindButton
+                                            cycleId={cycle.id}
+                                            person={member.user}
+                                        />
+                                    ) : null}
                                     {can.exempt ? (
                                         <ExemptDialog
                                             cycle={cycle}

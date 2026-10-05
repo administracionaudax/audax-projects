@@ -1,0 +1,30 @@
+{
+    "_comment": "Casos compartidos de las plantillas de avisos de la weekly (10.5): App\\Domain\\Weeklies\\Reminders\\WeeklyTemplates::render (Pest) y renderWeeklyTemplate de resources/js/lib/weekly-templates.ts (Vitest).",
+    "values": {
+        "nombre": "Elena Ruiz",
+        "semana": "W41-26",
+        "week_label": "Semana 41 (Lun 05/10 - Vie 09/10)",
+        "weekly_url": "https://projects.audaxstudio.com/mi-espacio?semana=12"
+    },
+    "cases": [
+        { "text": "Hola {nombre},", "expected": "Hola Elena Ruiz," },
+        {
+            "text": "Recordatorio: weekly {semana} ({semana})",
+            "expected": "Recordatorio: weekly W41-26 (W41-26)"
+        },
+        {
+            "text": "{week_label}\n{weekly_url}",
+            "expected": "Semana 41 (Lun 05/10 - Vie 09/10)\nhttps://projects.audaxstudio.com/mi-espacio?semana=12"
+        },
+        { "text": "Sin variables", "expected": "Sin variables" },
+        {
+            "text": "Desconocida: {otra} y {NOMBRE} y { nombre }",
+            "expected": "Desconocida: {otra} y {NOMBRE} y { nombre }"
+        },
+        { "text": "Llaves {{nombre}}", "expected": "Llaves {Elena Ruiz}" },
+        {
+            "text": "Precio $1 y \\1 con {nombre}",
+            "expected": "Precio $1 y \\1 con Elena Ruiz"
+        }
+    ]
+}

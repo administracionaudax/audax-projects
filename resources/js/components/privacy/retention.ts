@@ -31,5 +31,9 @@ export function retentionLabel(type: RetentionType): string {
             return t('privacy.retention.types.activity_log');
         case 'chat_messages':
             return t('privacy.retention.types.chat_messages');
+        case 'weekly_reminder_logs':
+            return t('privacy.retention.types.weekly_reminder_logs');
+        case 'dictations':
+            return t('privacy.retention.types.dictations');
     }
 }

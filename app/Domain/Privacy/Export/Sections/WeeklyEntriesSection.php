@@ -43,7 +43,7 @@ final class WeeklyEntriesSection extends Section
             yield [
                 'id' => $entry->id,
                 'week' => $entry->submission->cycle->number,
-                'client' => $entry->client?->name ?? self::text('weeklies.report.general'),
+                'client' => $entry->client->name ?? self::text('weeklies.report.general'),
                 'project' => $entry->project !== null ? "{$entry->project->code} · {$entry->project->name}" : null,
                 'body' => $entry->body,
                 'source' => $entry->source->label(),
