@@ -273,4 +273,34 @@ return [
             'assistant' => 'Asistente IA',
         ],
     ],
+    // Tipos de proyecto de WeeklySync (10.4, ProjectKindCode): por prefijo del código y por grupo.
+    'project_kinds' => [
+        'PR' => 'Producto',
+        'EC' => 'Ecommerce',
+        'WE' => 'Web',
+        'AD' => 'Auditoría diseño',
+        'AM' => 'Auditoría marketing',
+        'AT' => 'Auditoría técnica',
+        'FE' => 'Fee mensual',
+        'BH' => 'Bolsa de horas',
+        'BR' => 'Branding',
+        'GE' => 'General',
+    ],
+    'project_tags' => [
+        'product' => 'Producto',
+        'ecommerce' => 'Ecommerce',
+        'web' => 'Web',
+        'audit' => 'Auditoría',
+        'monthly_fee' => 'Fee mensual',
+        'hour_bank' => 'Bolsa de horas',
+        'branding' => 'Branding',
+        'general' => 'General',
+    ],
+    // Fichas de cliente y de persona con IA (10.4, D-194).
+    'insights' => [
+        'subject_missing' => 'El cliente o la persona ya no existe.',
+        'requested' => 'Generando el resumen. Tardará unos segundos.',
+        'already_running' => 'El resumen ya se está generando.',
+        'invalid_kind' => 'Ese resumen no existe.',
+    ],
 ];

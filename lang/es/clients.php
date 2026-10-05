@@ -13,6 +13,7 @@ return [
 
     'errors' => [
         'name_taken' => 'Ya hay un cliente con este nombre.',
+        'icon' => 'El icono tiene que ser un solo emoji.',
     ],
 
     'attributes' => [
@@ -23,5 +24,6 @@ return [
         'phone' => 'teléfono',
         'notes' => 'notas',
         'default_hourly_rate' => 'tarifa por hora',
+        'icon' => 'icono',
     ],
 ];

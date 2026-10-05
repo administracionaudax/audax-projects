@@ -5,6 +5,13 @@ namespace App\Http\Controllers\Clients;
 use App\Domain\Admin\TextSearch;
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\Portal\Access\ClientPortalAccess;
+use App\Domain\Weeklies\AppModules;
+use App\Domain\Weeklies\Insights\ClientInsights;
+use App\Domain\Weeklies\Insights\ClientWeeklyTabs;
+use App\Domain\Weeklies\ProjectStatus\ProjectKindCode;
+use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
+use App\Domain\Weeklies\Report\WeeklyProjectStatus;
+use App\Enums\AppModule;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
@@ -14,17 +21,21 @@ use App\Http\Resources\ClientResource;
 use App\Http\Resources\Clients\ClientHourBankResource;
 use App\Http\Resources\Clients\ClientRowResource;
 use App\Http\Resources\ProjectResource;
+use App\Http\Resources\UserSummaryResource;
 use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TimeEntry;
+use App\Models\User;
 use App\Support\LocalTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -41,36 +52,151 @@ class ClientController extends Controller
 
     public const int PER_PAGE = 25;
 
-    public function index(Request $request): Response
+    public function index(Request $request, ProjectStatusBoard $board): Response
     {
         $this->authorize('viewAny', Client::class);
 
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'estado' => ['nullable', 'string', Rule::in(['activos', 'inactivos', 'todos'])],
+            // Cartera de la Weekly (Fase 10, F-123 y F-124): orden, tipo de proyecto, persona y «Mis proyectos».
+            'orden' => ['nullable', 'string', Rule::in(self::SORTS)],
+            'dir' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
+            'tipo' => ['nullable', 'string', Rule::in(ProjectKindCode::TAGS)],
+            'persona' => ['nullable', 'integer', 'min:1'],
+            'mios' => ['nullable', 'boolean'],
         ]);
 
+        /** @var User $user */
+        $user = $request->user();
+        $weekly = self::weeklyEnabled($user);
         $status = $filters['estado'] ?? 'activos';
+        $sort = $filters['orden'] ?? 'nombre';
+        $direction = $filters['dir'] ?? ($sort === 'nombre' ? 'asc' : 'desc');
+
+        if (! $weekly && $sort !== 'nombre') {
+            $sort = 'nombre';
+            $direction = 'asc';
+        }
+
+        $person = isset($filters['persona']) ? (int) $filters['persona'] : null;
+        $mine = (bool) ($filters['mios'] ?? false);
+        $kinds = isset($filters['tipo']) ? $board->prefixesByClient() : null;
         [$monthStart, $monthEnd] = self::monthRange();
 
         $clients = Client::query()
             ->withCount(['projects as active_projects_count' => fn (Builder $query) => $query->where('status', ProjectStatus::Active->value)])
             ->withSum(['timeEntries as month_minutes' => fn (Builder $query) => $query->whereBetween('time_entries.date', [$monthStart, $monthEnd])], 'minutes')
+            ->when($weekly, fn (Builder $query) => $query->addSelect([
+                'last_report_at' => self::lastReportQuery()->selectRaw('max(weekly_submissions.submitted_at)'),
+                'satisfaction_previous' => DB::table('client_satisfaction_snapshots')
+                    ->whereColumn('client_satisfaction_snapshots.client_id', 'clients.id')
+                    ->orderByDesc('client_satisfaction_snapshots.id')
+                    ->limit(1)
+                    ->select('client_satisfaction_snapshots.previous_score'),
+            ]))
             ->when($filters['q'] ?? null, fn (Builder $query, string $term) => TextSearch::apply($query, $term, ['clients.name', 'clients.tax_id', 'clients.contact_name', 'clients.contact_email']))
             ->when($status === 'activos', fn (Builder $query) => $query->where('is_active', true))
             ->when($status === 'inactivos', fn (Builder $query) => $query->where('is_active', false))
-            ->orderBy('name')
+            ->when($kinds !== null, fn (Builder $query) => $query->whereKey(self::clientsWithTag($kinds ?? [], (string) $filters['tipo'])))
+            ->when($person !== null, fn (Builder $query) => self::withPerson($query, (int) $person))
+            ->when($mine, fn (Builder $query) => self::withPerson($query, $user->id))
+            // Sin reportes cuenta como el más antiguo, igual en SQLite y en PostgreSQL (los nulos se
+            // ordenan distinto): se ordena por el alias de una columna con COALESCE.
+            ->when($sort === 'ultimo_reporte', fn (Builder $query) => $query
+                ->addSelect(['last_report_sort' => self::lastReportQuery()->selectRaw('COALESCE(max(weekly_submissions.submitted_at), ?)', ['1970-01-01 00:00:00'])])
+                ->orderBy('last_report_sort', $direction))
+            ->when($sort === 'satisfaccion', fn (Builder $query) => $query->orderBy('satisfaction_score', $direction))
+            ->orderBy('name', $sort === 'nombre' ? $direction : 'asc')
             ->orderBy('id')
             ->paginate(self::PER_PAGE)
             ->withQueryString();
+
+        // Insignias por tipo de proyecto (F-120): una consulta para los clientes de la página.
+        $prefixes = $kinds ?? $board->prefixesByClient(array_values(array_map(intval(...), $clients->getCollection()->modelKeys())));
+        $clients->getCollection()->each(fn (Client $client) => $client->setAttribute('kind_badges', ProjectKindCode::badges($prefixes[$client->id] ?? [])));
 
         return Inertia::render('clients/index', [
             'clients' => ClientRowResource::collection($clients),
             'filters' => [
                 'q' => $filters['q'] ?? '',
                 'estado' => $status,
+                'orden' => $sort,
+                'dir' => $direction,
+                'tipo' => $filters['tipo'] ?? '',
+                'persona' => $person === null ? '' : (string) $person,
+                'mios' => $mine ? '1' : '',
             ],
+            // Personas para el filtro (F-123): la plantilla activa que escribe la weekly.
+            'people' => User::query()
+                ->where('is_active', true)
+                ->role(User::WEEKLY_ROLES)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (User $person): array => ['id' => $person->id, 'name' => $person->name])
+                ->values()
+                ->all(),
+            // Columnas de la Weekly (último reporte y satisfacción): con el módulo y quien la usa.
+            'weekly' => $weekly,
         ]);
+    }
+
+    /** Pestañas de la ficha con la Weekly (F-129 a F-132). */
+    public const array TABS = ['resumen', 'historial', 'equipo', 'satisfaccion'];
+
+    /** Órdenes de la lista (F-124). */
+    public const array SORTS = ['nombre', 'ultimo_reporte', 'satisfaccion'];
+
+    /** ¿Ve quien mira lo de la Weekly en los clientes? (módulo encendido y use-weeklies). */
+    public static function weeklyEnabled(?User $user): bool
+    {
+        return $user !== null && AppModules::enabled(AppModule::Weeklies) && $user->can('use-weeklies');
+    }
+
+    /**
+     * Los envíos con un apunte del cliente (subconsulta correlacionada con clients.id, sin columnas:
+     * cada uso elige la suya).
+     */
+    private static function lastReportQuery(): QueryBuilder
+    {
+        return DB::table('weekly_entries')
+            ->join('weekly_submissions', 'weekly_submissions.id', '=', 'weekly_entries.weekly_submission_id')
+            ->whereColumn('weekly_entries.client_id', 'clients.id')
+            ->whereNotNull('weekly_submissions.submitted_at');
+    }
+
+    /**
+     * Clientes en los que la persona gestiona o es miembro de un proyecto abierto (F-123: filtro por
+     * persona y «Mis proyectos»).
+     *
+     * @param  Builder<Client>  $query
+     */
+    private static function withPerson(Builder $query, int $userId): void
+    {
+        $query->whereHas('projects', fn (Builder $projects) => $projects
+            ->whereIn('status', array_map(fn (ProjectStatus $status): string => $status->value, ProjectStatusBoard::OPEN_STATUSES))
+            ->where(fn (Builder $scope) => $scope->where('owner_user_id', $userId)
+                ->orWhereHas('members', fn (Builder $members) => $members->whereKey($userId))));
+    }
+
+    /**
+     * @param  array<int, list<string>>  $prefixes
+     * @return list<int>
+     */
+    private static function clientsWithTag(array $prefixes, string $tag): array
+    {
+        $ids = [];
+
+        foreach ($prefixes as $clientId => $codes) {
+            foreach ($codes as $code) {
+                if (ProjectKindCode::tag($code) === $tag) {
+                    $ids[] = $clientId;
+                    break;
+                }
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -104,9 +230,15 @@ class ClientController extends Controller
         return to_route('clients.show', $client);
     }
 
-    public function show(Request $request, Client $client, HourBankCommitment $commitment): Response
+    public function show(Request $request, Client $client, HourBankCommitment $commitment, WeeklyProjectStatus $projectStatus): Response
     {
         $this->authorize('view', $client);
+
+        /** @var User $user */
+        $user = $request->user();
+        $weekly = self::weeklyEnabled($user);
+        $tab = $request->validate(['pestana' => ['nullable', 'string', Rule::in(self::TABS)]])['pestana'] ?? 'resumen';
+        $tab = $weekly ? $tab : 'resumen';
 
         $projects = $client->projects()
             ->with('owner')
@@ -139,8 +271,20 @@ class ClientController extends Controller
         $yearStart = LocalTime::today()->startOfYear()->toDateString();
         $yearEnd = LocalTime::today()->endOfYear()->toDateString();
 
+        // Responsable (F-128) e insignias por tipo de proyecto (F-120), con los proyectos ya cargados.
+        $owner = ClientInsights::mainOwner($projects);
+        $openProjects = $projects->filter(fn (Project $project): bool => in_array($project->status, ProjectStatusBoard::OPEN_STATUSES, true));
+
         return Inertia::render('clients/show', [
             'client' => ResourceProps::item(ClientResource::make($client), $request),
+            'tab' => $tab,
+            'owner' => $owner === null ? null : [...(new UserSummaryResource($owner))->resolve(), 'job_title' => $owner->job_title],
+            'kindBadges' => ProjectKindCode::badges($openProjects->map(fn (Project $project): string => ProjectKindCode::for($project->code, $projectStatus->kind($project)))->all()),
+            // La Weekly del cliente (Fase 10, F-129 a F-133): solo la pestaña abierta, diferida; null
+            // sin el módulo o para quien no usa la Weekly.
+            'weekly' => $weekly ? Inertia::defer(fn (): array => app(ClientWeeklyTabs::class)->for($client, $tab, $user), 'weekly') : null,
+            // «Unirme a proyectos» de este cliente (F-133, D-156): se pide al abrir el diálogo.
+            'joinable_projects' => Inertia::optional(fn (): array => $weekly ? ClientWeeklyTabs::joinableProjects($client, $user) : []),
             'projects' => ResourceProps::list(ProjectResource::collection($projects), $request),
             'hourBanks' => ResourceProps::list(ClientHourBankResource::collection($open), $request),
             'hourBankHistory' => ResourceProps::list(ClientHourBankResource::collection($history), $request),
@@ -159,6 +303,8 @@ class ClientController extends Controller
                 'viewReport' => $request->user()?->can('viewReport', $client) ?? false,
                 // Horas para facturar de este cliente (Fase 2, R2; D-045): admins y view-financials.
                 'viewBilling' => $request->user()?->can('viewBilling', Client::class) ?? false,
+                // La Weekly del cliente: sus pestañas, el resumen con IA y unirse o dejar proyectos.
+                'useWeeklies' => $weekly,
             ],
         ]);
     }

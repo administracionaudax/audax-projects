@@ -214,7 +214,7 @@ final class WeeklyProjectStatus
      * @param  list<int>  $projectIds
      * @return array<int, HourBank>
      */
-    private function currentBanks(array $projectIds, CarbonImmutable $reference): array
+    public function currentBanks(array $projectIds, CarbonImmutable $reference): array
     {
         if ($projectIds === []) {
             return [];
@@ -247,7 +247,7 @@ final class WeeklyProjectStatus
      * @param  list<int>  $projectIds
      * @return array<int, array{week: int, month: int, total: int}>
      */
-    private function minutes(array $projectIds, CarbonImmutable $weekStart, CarbonImmutable $monthStart, CarbonImmutable $reference): array
+    public function minutes(array $projectIds, CarbonImmutable $weekStart, CarbonImmutable $monthStart, CarbonImmutable $reference): array
     {
         $weekFrom = $weekStart->toDateString();
         $weekTo = $weekStart->addDays(7)->toDateString();

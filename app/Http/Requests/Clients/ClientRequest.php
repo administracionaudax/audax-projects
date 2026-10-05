@@ -29,7 +29,7 @@ class ClientRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->trimStrings(['name', 'tax_id', 'contact_name', 'phone']);
+        $this->trimStrings(['name', 'tax_id', 'contact_name', 'phone', 'icon']);
 
         $email = $this->input('contact_email');
         if (is_string($email)) {
@@ -59,6 +59,13 @@ class ClientRequest extends FormRequest
             'contact_email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            // Icono del cliente (F-126): un emoji, como en WeeklySync. Un emoji compuesto (banderas,
+            // familias…) ocupa varios caracteres: se limita a 16 y a un solo grafema.
+            'icon' => ['nullable', 'string', 'max:16', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_string($value) && $value !== '' && (preg_match('/^\X$/u', $value) !== 1 || preg_match('/[\p{L}\s]/u', $value) === 1)) {
+                    $fail(__('clients.errors.icon'));
+                }
+            }],
         ];
 
         if (Gate::allows('view-financials')) {
@@ -80,6 +87,7 @@ class ClientRequest extends FormRequest
             'contact_email' => __('clients.attributes.contact_email'),
             'phone' => __('clients.attributes.phone'),
             'notes' => __('clients.attributes.notes'),
+            'icon' => __('clients.attributes.icon'),
             'default_hourly_rate' => __('clients.attributes.default_hourly_rate'),
         ];
     }
@@ -91,7 +99,7 @@ class ClientRequest extends FormRequest
     {
         $data = [];
 
-        foreach (['name', 'tax_id', 'contact_name', 'contact_email', 'phone'] as $key) {
+        foreach (['name', 'tax_id', 'contact_name', 'contact_email', 'phone', 'icon'] as $key) {
             $data[$key] = $this->filled($key) ? $this->string($key)->toString() : null;
         }
 

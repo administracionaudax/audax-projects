@@ -52,6 +52,17 @@ final class FakeLlm implements LlmClient
                 return 'Texto de prueba generado sin IA (GEMINI_DRIVER=fake).';
             }
 
+            // Una frase por persona o por cliente del INPUT_JSON (fichas de cliente y de persona, 10.4).
+            if (isset($request->responseSchema['properties']['summaries']) && preg_match('/INPUT_JSON:\n(.+)\n/u', $request->prompt, $match) === 1) {
+                $input = json_decode($match[1], true);
+
+                return ['summaries' => array_values(array_map(fn (array $row): array => [
+                    'memberId' => $row['memberId'] ?? null,
+                    'clientId' => $row['clientId'] ?? null,
+                    'summary' => 'Actividad de prueba generada sin IA (GEMINI_DRIVER=fake).',
+                ], array_filter(is_array($input) ? $input : [], is_array(...))))];
+            }
+
             $client = preg_match('/CLIENTE:\s*(.+)\n/u', $request->prompt, $match) === 1 ? trim($match[1]) : null;
             preg_match_all('/"clientKey": "([^"]+)"/', $request->prompt, $keys);
 

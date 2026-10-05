@@ -10,6 +10,7 @@ use App\Models\WeeklyEntry;
 use App\Models\WeeklyExemption;
 use App\Models\WeeklySubmission;
 use Database\Seeders\DefaultSettingsSeeder;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -133,11 +134,9 @@ it('lo de cada persona responde 501 a cualquiera de la plantilla', function (str
 
     $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertStatus(501);
 })->with([
-    ['GET', '/weeklies/estado-proyectos'],
     ['POST', '/ia/preguntas'],
     ['POST', '/ayuda/sugerencias'],
     ['POST', '/ayuda/me-gusta'],
-    ['GET', '/equipo'],
 ]);
 
 it('con la semana cerrada no se escribe ni se exime', function () {
@@ -155,13 +154,14 @@ it('una exención de otra semana da 404', function () {
     $this->actingAs(userWithRole('admin'))->json('DELETE', "/weeklies/{$cycle->id}/exenciones/{$other->id}")->assertNotFound();
 });
 
-it('los resúmenes IA de una persona: su responsable sí (501), un compañero no (403)', function () {
+it('los resúmenes IA de una persona: su responsable sí (202), un compañero no (403)', function () {
+    Queue::fake();
     $department = Department::factory()->create();
     $person = userWithRole('employee', ['department_id' => $department->id]);
     $boss = userWithRole('department_manager');
     $boss->managedDepartments()->attach($department->id);
 
-    $this->actingAs($boss)->json('POST', "/equipo/{$person->id}/resumen-ia")->assertStatus(501);
+    $this->actingAs($boss)->json('POST', "/equipo/{$person->id}/resumen-ia")->assertStatus(202);
     $this->actingAs(userWithRole('employee', ['department_id' => $department->id]))->json('POST', "/equipo/{$person->id}/resumen-ia")->assertForbidden();
     $this->actingAs($person)->json('POST', "/equipo/{$person->id}/resumen-ia")->assertForbidden();
 });
