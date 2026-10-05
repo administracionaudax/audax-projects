@@ -1,6 +1,7 @@
 import { audioFileName } from '@/components/chat/media/media-utils';
 import type { SentMediaMessage } from '@/components/chat/media/types';
 import { t } from '@/lib/i18n';
+import { xsrfToken } from '@/lib/xsrf';
 import { store as storeMediaRoute } from '@/routes/chat/media';
 
 /**
@@ -58,17 +59,6 @@ export class MediaUploadError extends Error {
         this.kind = kind;
         this.errors = errors;
     }
-}
-
-/** Token CSRF de la cookie XSRF-TOKEN (lo mismo que hace Inertia). */
-export function xsrfToken(): string | null {
-    if (typeof document === 'undefined') {
-        return null;
-    }
-
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
-
-    return match ? decodeURIComponent(match[1]) : null;
 }
 
 function json(text: string): unknown {

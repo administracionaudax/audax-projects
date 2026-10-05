@@ -3,6 +3,7 @@ import type { ActiveVisit, VisitOptions } from '@inertiajs/core';
 import { toast } from 'sonner';
 import type { GanttDates } from '@/components/gantt/types';
 import { t } from '@/lib/i18n';
+import { xsrfToken } from '@/lib/xsrf';
 import { store as storeTask } from '@/routes/tasks';
 import {
     destroy as destroyDependency,
@@ -202,21 +203,6 @@ function reloadProps(pending: ReadonlyArray<RefreshWaiter>): void {
             waitAgain();
         },
     });
-}
-
-/** Valor de la cookie XSRF-TOKEN (Laravel la acepta en la cabecera X-XSRF-TOKEN). */
-export function xsrfToken(): string | null {
-    if (typeof document === 'undefined') {
-        return null;
-    }
-
-    const cookie = document.cookie
-        .split('; ')
-        .find((item) => item.startsWith('XSRF-TOKEN='));
-
-    return cookie
-        ? decodeURIComponent(cookie.slice('XSRF-TOKEN='.length))
-        : null;
 }
 
 /** Primer mensaje de error de un objeto de errores de validación. */

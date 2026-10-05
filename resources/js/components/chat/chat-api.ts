@@ -1,4 +1,5 @@
 import { t } from '@/lib/i18n';
+import { xsrfToken } from '@/lib/xsrf';
 import {
     conversations as conversationsRoute,
     moderation as moderationRoute,
@@ -72,16 +73,6 @@ export class ChatApiError extends Error {
 
         return first ?? this.message;
     }
-}
-
-function xsrfToken(): string | null {
-    if (typeof document === 'undefined') {
-        return null;
-    }
-
-    const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
-
-    return match ? decodeURIComponent(match[1]) : null;
 }
 
 function messageFor(status: number, fallback: string | undefined): string {

@@ -4,6 +4,8 @@
  * (Laravel también acepta Sec-Fetch-Site: same-origin).
  */
 
+import { xsrfToken } from '@/lib/xsrf';
+
 export class RealtimeHttpError extends Error {
     constructor(public readonly status: number) {
         super(`HTTP ${status}`);
@@ -12,16 +14,6 @@ export class RealtimeHttpError extends Error {
 }
 
 type Method = 'GET' | 'POST' | 'DELETE';
-
-function xsrfToken(): string | null {
-    if (typeof document === 'undefined') {
-        return null;
-    }
-
-    const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
-
-    return match ? decodeURIComponent(match[1]) : null;
-}
 
 /**
  * Devuelve el JSON de la respuesta, o null si no tiene cuerpo (204). Lanza RealtimeHttpError si
