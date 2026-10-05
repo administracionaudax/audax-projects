@@ -18,15 +18,21 @@ use Illuminate\Support\Facades\Cache;
  * estoy exento (y si puedo quitarme la exención) y mi envío. Lo usan «Mi espacio», la tarjeta de
  * Inicio y el contador de la barra lateral.
  *
- * El contador (pendingCount) se guarda 5 minutos por persona y semana activa (D-160):
- * - la clave lleva el plazo y el updated_at de la semana: ampliar el plazo lo renueva para todos,
- * - se olvida al enviar, al cambiar una exención (forget) y al guardar o borrar una ausencia de esa
- *   persona (forgetActive, desde WeekliesServiceProvider),
- * - lo demás (alta, baja o cambio de rol) se nota, como mucho, a los 5 minutos.
+ * El contador (pendingCount) no hace consultas con la caché caliente (va en todas las páginas):
+ * - la semana activa se guarda aparte (activeSnapshot) y se olvida al guardar o borrar una semana,
+ * - el contador se guarda 5 minutos por persona y semana activa (D-160):
+ *   - la clave lleva el plazo y el updated_at de la semana: ampliar el plazo lo renueva para todos,
+ *   - se olvida al enviar, al cambiar una exención (forget) y al guardar o borrar una ausencia de esa
+ *     persona (forgetActive, desde WeekliesServiceProvider),
+ *   - lo demás (alta, baja o cambio de rol) se nota, como mucho, a los 5 minutos.
  */
 final class MyWeeklyStatus
 {
     public const int CACHE_SECONDS = 300;
+
+    public const string ACTIVE_KEY = 'weeklies:active-cycle';
+
+    public const int ACTIVE_SECONDS = 600;
 
     public function __construct(
         private readonly WeeklyEligibility $eligibility,
@@ -78,7 +84,7 @@ final class MyWeeklyStatus
 
     /**
      * Weeklies pendientes de enviar (0 o 1) para el contador rojo de «Mi espacio» (F-003): la semana
-     * activa, si debo enviarla y aún no lo he hecho.
+     * activa, si debo enviarla y aún no lo he hecho. Con todo en caché, sin consultas.
      */
     public function pendingCount(User $user): int
     {
@@ -86,14 +92,16 @@ final class MyWeeklyStatus
             return 0;
         }
 
-        $cycle = WeeklyCycle::query()->active()->first();
+        $active = self::activeSnapshot();
 
-        if ($cycle === null) {
+        if ($active === null) {
             return 0;
         }
 
-        return (int) Cache::remember(self::cacheKey($user->id, $cycle), self::CACHE_SECONDS, function () use ($user, $cycle): int {
-            if (! $this->eligibility->rosterForUser($cycle, $user)->mustSubmit($user->id)) {
+        return (int) Cache::remember(self::cacheKey($user->id, $active), self::CACHE_SECONDS, function () use ($user, $active): int {
+            $cycle = WeeklyCycle::query()->find($active['id']);
+
+            if ($cycle === null || ! $cycle->isActive() || ! $this->eligibility->rosterForUser($cycle, $user)->mustSubmit($user->id)) {
                 return 0;
             }
 
@@ -107,19 +115,47 @@ final class MyWeeklyStatus
         });
     }
 
+    /**
+     * La semana activa (id, plazo y última modificación) en caché, para no consultarla en cada
+     * página. Se olvida al guardar o borrar una semana (WeekliesServiceProvider) y caduca sola a los
+     * 10 minutos por si alguien la toca sin Eloquent.
+     *
+     * @return array{id: int, deadline: string, updated: int}|null
+     */
+    public static function activeSnapshot(): ?array
+    {
+        /** @var array{id: int|null, deadline?: string, updated?: int} $snapshot */
+        $snapshot = Cache::remember(self::ACTIVE_KEY, self::ACTIVE_SECONDS, function (): array {
+            $cycle = WeeklyCycle::query()->active()->first(['id', 'deadline_date', 'updated_at']);
+
+            return $cycle === null ? ['id' => null] : self::snapshotOf($cycle);
+        });
+
+        return $snapshot['id'] === null ? null : [
+            'id' => (int) $snapshot['id'],
+            'deadline' => (string) ($snapshot['deadline'] ?? ''),
+            'updated' => (int) ($snapshot['updated'] ?? 0),
+        ];
+    }
+
+    public static function forgetActiveSnapshot(): void
+    {
+        Cache::forget(self::ACTIVE_KEY);
+    }
+
     /** Olvida el contador de una persona en una semana (al enviar o al cambiar su exención). */
     public static function forget(int $userId, WeeklyCycle $cycle): void
     {
-        Cache::forget(self::cacheKey($userId, $cycle));
+        Cache::forget(self::cacheKey($userId, self::snapshotOf($cycle)));
     }
 
     /** Olvida el contador de una persona en la semana activa, si la hay (al cambiar sus ausencias). */
     public static function forgetActive(int $userId): void
     {
-        $cycle = WeeklyCycle::query()->active()->first(['id', 'deadline_date', 'updated_at']);
+        $active = self::activeSnapshot();
 
-        if ($cycle !== null) {
-            self::forget($userId, $cycle);
+        if ($active !== null) {
+            Cache::forget(self::cacheKey($userId, $active));
         }
     }
 
@@ -129,8 +165,23 @@ final class MyWeeklyStatus
         return in_array($status, [WeeklyPersonStatus::Pending->value, WeeklyPersonStatus::Overdue->value, WeeklyPersonStatus::Upcoming->value], true);
     }
 
-    private static function cacheKey(int $userId, WeeklyCycle $cycle): string
+    /**
+     * @return array{id: int, deadline: string, updated: int}
+     */
+    private static function snapshotOf(WeeklyCycle $cycle): array
     {
-        return "weekly-pending:{$cycle->id}:{$cycle->deadline_date->toDateString()}:".($cycle->updated_at?->getTimestamp() ?? 0).":{$userId}";
+        return [
+            'id' => $cycle->id,
+            'deadline' => $cycle->deadline_date->toDateString(),
+            'updated' => $cycle->updated_at?->getTimestamp() ?? 0,
+        ];
+    }
+
+    /**
+     * @param  array{id: int, deadline: string, updated: int}  $cycle
+     */
+    private static function cacheKey(int $userId, array $cycle): string
+    {
+        return "weekly-pending:{$cycle['id']}:{$cycle['deadline']}:{$cycle['updated']}:{$userId}";
     }
 }

@@ -13,6 +13,7 @@ use App\Domain\Weeklies\EloquentWeeklySubmissionWriter;
 use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\WeeklySubmissionWriter;
 use App\Models\Absence;
+use App\Models\WeeklyCycle;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -42,5 +43,9 @@ class WeekliesServiceProvider extends ServiceProvider
         $forget = fn (Absence $absence) => MyWeeklyStatus::forgetActive((int) $absence->user_id);
         Absence::saved($forget);
         Absence::deleted($forget);
+
+        // La semana activa en caché del contador (D-160): se olvida al abrir, cambiar o borrar una.
+        WeeklyCycle::saved(fn () => MyWeeklyStatus::forgetActiveSnapshot());
+        WeeklyCycle::deleted(fn () => MyWeeklyStatus::forgetActiveSnapshot());
     }
 }
