@@ -416,3 +416,44 @@ Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-187 a D-193**. En `WEEK
 ### Para 10.4 y 10.5
 - **10.4:** `WeeklyProjectStatus` sirve para la vista «Estado de proyectos» (D-148); la satisfacción por semana ya está en `client_satisfaction_snapshots` (F-132) y el enlace de cada cliente del informe lleva a su ficha.
 - **10.5:** escuchar `WeeklyCycleClosed` (cola `ai`, tras la satisfacción) para el aviso «weekly cerrada» a todo el equipo activo (F-095), con su plantilla `weekly_closed` y su `trigger_key` en `weekly_reminder_logs`.
+
+## 10.4 (hecho): clientes, equipo y estado de proyectos
+Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-194 a D-198**. En `WEEKLY-INVENTARIO.md` §A.4, 22 F pasan a «Hecho (10.4)» y se completan F-001, F-028, F-067 y F-133: ya no queda ninguna con la pantalla a medias.
+
+### Datos
+- **Migración `2026_10_05_140000_create_ai_summaries_table`:** `ai_summaries`, el último resumen con IA de cada tipo (`AiSummaryKind`: `client_summary`, `client_team_activity`, `person_performance` y `person_client_activity`) para cada cliente o persona (morph `subject`, único por tipo y sujeto). Lleva `state` (`WeeklyJobState`), `content` (Markdown), `items` (id → frase), `error`, `model`, `requested_by` y `generated_at`. Modelo `AiSummary`.
+- **Sin más columnas:** `clients.icon` y `clients.satisfaction_score` ya estaban (10.1); ahora van en `ClientResource` y el icono se valida y guarda en `ClientRequest` (un solo emoji).
+
+### Dominio
+- **`Weeklies\ProjectStatus`** (D-196):
+  - `ProjectKindCode`: el tipo de WeeklySync de un código (`for()`), su grupo (`tag()`), las insignias (`badges()`) y el orden (`tagIndex()`),
+  - `ProjectStatusBoard`: `build(?today, ?clientIds)` (la cartera por cliente, cinco consultas) y `prefixesByClient(?clientIds)` (una consulta, para la lista de clientes). Reutiliza `WeeklyProjectStatus` (ahora con `currentBanks()` y `minutes()` públicos).
+- **`Weeklies\Insights`** (D-194, D-195 y D-198):
+  - `InsightPrompts`: los cuatro prompts portados, los recortes, el estado de proyectos del resumen, la tendencia, `summariesById()` y `summariesSchema()`,
+  - `ClientInsights`: `mainOwner()`, las pestañas `summary()`, `history()`, `team()` y `satisfaction()`, `deltas()`, `satisfactionNow()` y los datos de la IA (`summaryWeeks()`, `summaryContext()` y `teamActivityPayload()`),
+  - `ClientWeeklyTabs`: la prop `weekly` de la ficha, `myProjects()` y `joinableProjects()`,
+  - `PersonInsights`: `directory()`, `profile()`, `habits()`, `clients()`, `performancePayload()` y `clientActivityPayload()`,
+  - `AiSummaries`: `find()`, `request()` (encola), `generate()` (la llama el Job), `isBusy()` y `present()`.
+- **Job `GenerateAiSummary`** (cola `ai`, un intento, `AiQueue::TIMEOUT`).
+- **`FakeLlm::demo()`** responde también a los prompts con `INPUT_JSON` (una frase por id).
+
+### Rutas, páginas y props
+- **`weeklies.project-status`** (`/weeklies/estado-proyectos`, página `weeklies/project-status`): `ProjectStatusPageProps` (`clients`, `reference_date`). Tercera pestaña de `/weeklies` (`weekliesTabs()`), con el módulo `project_status`.
+- **`clients.index`:** `?orden=nombre|ultimo_reporte|satisfaccion&dir=&tipo=&persona=&mios=1`. Cada fila lleva además `icon`, `satisfaction_score`, `last_report_at`, `satisfaction_trend` y `kind_badges`; la página, `weekly` (columnas de la Weekly) y `people` (diferida).
+- **`clients.show`:** `?pestana=resumen|historial|equipo|satisfaccion`, con `tab`, `owner`, `kindBadges`, `weekly` (diferida, solo la pestaña abierta; null sin la Weekly), `joinable_projects` (opcional) y `can.useWeeklies`. Tipos en `resources/js/types/weekly-insights.ts` (`ClientWeeklyData`).
+- **`clients.ai-summary`** y **`clients.team-activity`** (POST): encolan y vuelven (Inertia) o responden 202 con `{summary}` (JSON).
+- **`team.index`** (`/equipo`, página `team/index`): `TeamIndexPageProps`. **`team.show`** (`/equipo/{user}`, página `team/show`): `TeamShowPageProps`, con `ai` null para quien no puede ver los resúmenes. **`team.ai-summary`** (POST, `tipo=desempeno|clientes`), con `view-person-ai-summary`.
+- **Componentes** (`resources/js/components/weeklies/insights`): `project-kind` (código, tipo, insignias, barra y desviación), `project-status-view`, `ai-summary-panel` (y `useAiSummaryPolling`), `client-weekly-panels` (resumen, historial, equipo, satisfacción y `SatisfactionTrend`), `satisfaction-chart`, `team-ui` (ausencia y copiar el email) y `weeklies-tabs`. Piezas puras en `resources/js/lib/project-status.ts` y `resources/js/lib/team-filter.ts`. Textos en `lang/ui/weekly-insights.json`.
+- **Navegación:** «Equipo» en la barra lateral; la tira del equipo enlaza a la ficha de cada persona; `useListFilters` gana `updateMany()`.
+
+### Tests
+- **Pest:** `ProjectStatusBoardTest` (con el fixture compartido `tests/fixtures/weeklies/project-status-board.json`, los tipos, las insignias, permisos y presupuesto), `ClientWeeklyInsightsTest` (cartera, orden, filtros, icono, pestañas, responsable, resúmenes con IA, `ai_usage` con `GeminiClient` y presupuestos), `TeamWeeklyInsightsTest` (lista, ausencias, ficha, hábitos, permisos de los resúmenes por persona y presupuestos) y `tests/Unit/Weeklies/InsightPromptsTest`. `WeeklyRoutesTest` deja de esperar 501 en lo de la 10.4.
+- **Vitest:** `weeklies-insights` (las piezas puras con el mismo fixture, la vista, el panel de IA, el equipo y la satisfacción del cliente, la lista y la ficha del equipo) y la cartera en `clients-pages`; `weeklies-team-nav`, con los avatares como enlaces.
+- **E2E:** `weekly-insights.spec.ts` (estado de proyectos, cartera, ficha de cliente con sus pestañas e IA de prueba, equipo y los resúmenes por persona; AA y 375 px). `SIDEBAR_PATHS` y `collaborator.spec.ts` incluyen «Equipo». **Escritos, sin ejecutar en el Mac:** van a la CI.
+
+### Para desplegar (con el SSH)
+- `migrate` (una migración nueva: `ai_summaries`). Nada más en el servidor: la cola `ai` y las claves son las de la 10.3.
+
+### Para las siguientes entregas
+- **10.6:** el asistente puede reutilizar `ClientInsights`, `PersonInsights` y `ProjectStatusBoard` para su contexto, respetando lo que ve quien pregunta (D-147 para lo de una persona).
+- **10.8:** la satisfacción histórica va a `client_satisfaction_snapshots` (la serie y las tendencias de la ficha salen de ahí) y el icono, a `clients.icon`.

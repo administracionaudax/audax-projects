@@ -1552,6 +1552,41 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.3 (hecho)»
 - **«Uso de IA»** (`/admin/uso-ia`, F-173 y F-180): solo admins. Llamadas, errores, tokens, caracteres y coste estimado de los últimos 7, 30 o 90 días, por función y por modelo, el coste por día y las 50 últimas llamadas. Enlace en Administración.
 - **La IA de prueba:** con `GEMINI_DRIVER=fake` fuera de los tests (local sin clave y los E2E de la CI), `FakeLlm::demo()` responde siempre con textos que dicen que no son de la IA y con la forma del esquema pedido. En los tests, el `FakeLlm` vacío (cada test programa sus respuestas). La CI de los E2E fija `GEMINI_DRIVER=fake` y `GOOGLE_TTS_DRIVER=fake`.
 
+## 05/10/2026: Clientes, equipo y estado de proyectos de la Weekly (entrega 10.4)
+Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.4 (hecho)»).
+
+### D-194 · Los resúmenes con IA de las fichas
+- **Cuatro resúmenes** (F-129, F-131, F-144 y F-145): el del cliente, el análisis del equipo en un cliente, el desempeño de una persona y su actividad por cliente. Prompts de las Edge Functions de WeeklySync **palabra por palabra** (`Insights\InsightPrompts`), con los datos de Audax.
+- **Se piden a mano y se guardan** en `ai_summaries` (el último de cada tipo para cada cliente o persona) hasta que alguien los regenera; la página dice quién y cuándo. WeeklySync los perdía al recargar.
+- **En la cola `ai`** (`GenerateAiSummary`, un intento, D-146): la página vuelve al momento y recarga solo su prop cada 3 s mientras se genera (sin Reverb). No se encola otro mientras uno esté en cola o generando, salvo que lleve 12 minutos sin cambios (atascado, como D-190). Cada llamada va a `ai_usage` (quién la pidió y sobre qué).
+- **Sin historial, no se llama a la IA:** se guarda el mensaje del original («No hay suficiente historial…»). Si la IA falla, el resumen queda con el error y se puede volver a pedir. En las respuestas con una frase por persona o por cliente, las que falten se rellenan como el original.
+- **Quién los pide y los ve:** los del cliente, quien ve el cliente y usa la Weekly (la plantilla, D-021): solo usan reportes **enviados**, que ya ve toda la plantilla, y minutos de proyectos, sin importes. El análisis del equipo en un cliente resume el trabajo hecho en ese cliente, no el desempeño, así que no lleva la restricción de D-147. Los de una persona, solo el admin y sus responsables (`view-person-ai-summary`, D-147 y D-151): a los demás ni les llegan en la página.
+
+### D-195 · Equipo y responsable del cliente
+- **«Equipo»** (`/equipo`, F-134 a F-137) es una página de la Weekly, tras «Clientes» en la barra lateral, para quien la usa y con el módulo encendido. Lista la plantilla activa que escribe la weekly con su departamento, puesto, rol y el estado de su weekly en la semana activa; los filtros y el orden son del navegador (es una lista corta, como en WeeklySync). El alta, la edición y la baja siguen en `/admin/usuarios` (F-138 a F-141): la página y la ficha enlazan allí a quien puede gestionar personas.
+- **«Ausente»** sale si una ausencia aprobada de día completo cubre hoy; el tipo (vacaciones, baja…), solo para quien puede saberlo (D-088).
+- **La ficha de persona** (`/equipo/{id}`) la ve la plantilla: su estado esta semana, racha, hábitos, clientes, último reporte por cliente e historial de un año. Una persona que no escribe la weekly (colaborador externo o cliente) da 404; una desactivada se ve, con su historial.
+- **El responsable de un cliente** (F-128) es quien gestiona más proyectos abiertos del cliente (a igualdad, el del proyecto más antiguo). **Lidera** un cliente quien gestiona alguno de sus proyectos abiertos y **colabora** quien es miembro sin gestionarlo (D-156). El **equipo** del cliente son los gestores y miembros de sus proyectos abiertos que escriben la weekly.
+
+### D-196 · «Estado de proyectos» nativo
+- La cartera (F-119 a F-121, `ProjectStatusBoard`) son los proyectos **abiertos** (planificados, activos y en pausa) de los clientes **activos**, a fecha de hoy y con las reglas del informe (D-188): la bolsa en curso, el fee con lo esperado por días laborables sin festivos de Audax, el presupuesto o, sin presupuesto, todas sus horas («Sin horas asignadas»). Más las horas de esta semana.
+- **El tipo de WeeklySync** (BH, FE, WE, PR, EC, AD, AM, AT, BR y GE) sale del código importado de ClickUp (`CLIENTE-FE1`, D-135) y, si no es uno de esos, del tipo del proyecto: bolsa BH, fee FE y lo demás GE (`ProjectKindCode`). Las tres auditorías comparten grupo, como en WeeklySync.
+- La ve la plantilla, en minutos y sin importes (D-151). Cinco consultas como mucho, sea cual sea la cartera.
+- **Mismas piezas que el original:** vista por cliente o en tabla, filtros por cliente y tipo, tabla ordenable por cliente, tipo o progreso, barra de consumo con la marca de lo esperado y la desviación (por encima, en tono de peligro; por debajo, de éxito; siempre con texto).
+
+### D-197 · La cartera de clientes
+- **Con la Weekly** (módulo encendido y `use-weeklies`), `/clientes` añade el icono, el último reporte, la satisfacción con su tendencia frente al cierre anterior y las insignias por tipo de proyecto (F-096, F-120, F-123 y F-124); sin ella, la lista de siempre.
+- **Orden** por nombre, último reporte o satisfacción (`?orden=&dir=`); sin reportes cuenta como el más antiguo, igual en SQLite y PostgreSQL.
+- **Filtros:** tipo de proyecto (por grupo), persona y «Mis proyectos» (gestiona o es miembro de un proyecto abierto del cliente). Las personas del filtro llegan diferidas para no pasar del presupuesto de consultas de la lista (D-046).
+- **Cabeceras fijas** (F-020): las tablas de clientes, equipo y estado de proyectos desplazan dentro de su caja (hasta el 70 % del alto de la ventana) con la cabecera fija.
+- **El icono** del cliente (F-126) se pone en el alta y la edición: un solo emoji.
+
+### D-198 · Detalles portados
+- **Hábitos de envío** (F-142): en la hora de Madrid; la hora media se redondea al minuto (WeeklySync truncaba y, por la coma flotante, 14:10 salía 14:09). «Otro día» agrupa de lunes a jueves (en WeeklySync, «Lunes+»).
+- **Tendencias de la satisfacción** (F-132): la última puntuación menos la de 1, 4 y 13 cierres antes, como en WeeklySync; la serie sale de `client_satisfaction_snapshots`.
+- **Ventanas:** el historial del cliente mira las 26 últimas semanas; el historial de la persona, las 52; el resumen del cliente, sus 10 últimas semanas con reportes (de sus 500 últimos apuntes); el desempeño, los 8 últimos envíos.
+- **Recortes de los prompts:** por caracteres, no por unidades UTF-16 de JavaScript (solo cambia con emojis).
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1622,9 +1657,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-193 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-198 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-194**.
+La siguiente libre es **D-199**.

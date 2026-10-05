@@ -81,7 +81,7 @@ La entrega es la de F.
 **Navegación y comportamiento general**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-001 | Barra lateral: Resumen, Mi espacio, Weeklys, Clientes y Equipo | `Layout.tsx:78-83` | Adaptar: entradas nuevas en la barra de Audax (10.2). **Pantalla (10.2):** «Mi espacio» y «Weeklies» (D-180); «Equipo» llega con la 10.4. |
+| F-001 | Barra lateral: Resumen, Mi espacio, Weeklys, Clientes y Equipo | `Layout.tsx:78-83` | Adaptar: entradas nuevas en la barra de Audax (10.2). **Pantalla (10.2):** «Mi espacio» y «Weeklies» (D-180); «Equipo» llega con la 10.4. **Hecho (10.4): «Equipo», tras Clientes (D-195).** |
 | F-002 | Barra plegable con tooltips de cada entrada | `Layout.tsx:229-290` | Existe |
 | F-003 | Contador rojo de reportes pendientes en «Mi espacio» | `Layout.tsx:295-300` | Nueva (10.2). **Servidor hecho (10.2a):** prop compartida `weeklies.pending` (D-160). **Hecho (10.2): contador de «Mi espacio» en la barra lateral (D-180).** |
 | F-004 | Cabecera y menú móviles | `Layout.tsx:191-200` | Existe |
@@ -100,7 +100,7 @@ La entrega es la de F.
 | F-017 | Pantalla de error con «recargar» | `ErrorBoundary.tsx`, `index.tsx` | Existe (`error.tsx`) |
 | F-018 | «¿Tarda demasiado? Forzar entrada» en la carga inicial | `App.tsx:~2895` | No aplica (Inertia no tiene esa carga) |
 | F-019 | PWA: manifest e iconos claro y oscuro | `public/site.webmanifest`, `index.html` | Existe |
-| F-020 | Cabeceras de tabla fijas al desplazar | `src/lib/useFloatingTableHeader.ts` | Adaptar (10.4) |
+| F-020 | Cabeceras de tabla fijas al desplazar | `src/lib/useFloatingTableHeader.ts` | Adaptar (10.4) **Hecho (10.4): cabecera fija en las tablas de clientes, equipo y estado de proyectos (D-197).** |
 | F-021 | Fechas de semana compactas en móvil | `src/lib/mobileWeekFormat.ts` | Adaptar (10.2). **Hecho (10.2): «Sem. 41 · 05/10 - 09/10» en el móvil.** |
 
 **Acceso, onboarding y perfil**
@@ -112,7 +112,7 @@ La entrega es la de F.
 | F-025 | Invitación que se activa en el primer acceso | `create-user`, `account_status` | Existe (`UserInviter`) |
 | F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`). **10.1:** columna `users.job_title`; falta el campo en el perfil y en el alta (10.2). **Servidor hecho (10.2a):** `job_title` en el perfil y en el alta. **Hecho (10.2): «Puesto» en el perfil y en el alta y edición de personas.** |
 | F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto). **Servidor hecho (10.2a):** `job_title` en el perfil. **Hecho (10.2).** |
-| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161). **Hecho (10.2): enviadas, a tiempo y racha en el perfil.** |
+| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161). **Hecho (10.2): enviadas, a tiempo y racha en el perfil.** **Hecho (10.4): también en la ficha de persona.** |
 | F-029 | Avatar | `users.avatar_url` | Existe (avatar subido) |
 
 **Resumen (paneles)**
@@ -164,10 +164,10 @@ La entrega es la de F.
 **Weeklys: histórico y ciclo**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-064 | Pestañas «Histórico» y «Estado de proyectos» | `WeeklysContainer.tsx` | Nueva (10.2 y 10.4). **Servidor hecho (10.2a):** pestaña «Histórico» (`tab`). **Pantalla (10.2):** pestaña «Histórico»; «Estado de proyectos», en la 10.4. |
+| F-064 | Pestañas «Histórico» y «Estado de proyectos» | `WeeklysContainer.tsx` | Nueva (10.2 y 10.4). **Servidor hecho (10.2a):** pestaña «Histórico» (`tab`). **Pantalla (10.2):** pestaña «Histórico»; «Estado de proyectos», en la 10.4. **Hecho (10.4): pestaña «Estado de proyectos» (`/weeklies/estado-proyectos`, D-196).** |
 | F-065 | Weekly actual destacada; la última cerrada sigue destacada hasta que se cierra la siguiente | `WeeklysList.tsx:211, 522-523` | Nueva (10.2). **Servidor hecho (10.2a):** `active` y `latest_closed`. **Hecho (10.2).** |
 | F-066 | Tabla del histórico: weekly, fecha límite, participación, estado (Finalizada, Próximamente, Con retraso, Completada o Por completar) e informe generado o pendiente | `WeeklysList.tsx:92-123, 371, 537-560` | Nueva (10.2). **Servidor hecho (10.2a):** `cycles` con `progress` y `participation`. **Hecho (10.2).** |
-| F-067 | Tira de avatares del equipo (enviado, pendiente o exento) con enlace a la persona | `WeeklyTeamStatusStrip.tsx`, `WeeklysList.tsx:354`, `App.tsx:3034` | Nueva (10.2). **Servidor hecho (10.2a):** `team.members`. **Hecho (10.2): sin enlace a la persona hasta la ficha de la 10.4.** |
+| F-067 | Tira de avatares del equipo (enviado, pendiente o exento) con enlace a la persona | `WeeklyTeamStatusStrip.tsx`, `WeeklysList.tsx:354`, `App.tsx:3034` | Nueva (10.2). **Servidor hecho (10.2a):** `team.members`. **Hecho (10.2): sin enlace a la persona hasta la ficha de la 10.4.** **Hecho (10.4): cada avatar lleva a la ficha de la persona.** |
 | F-068 | Configurar el día límite (ADMIN, solo con la semana activa) | `WeeklysList.tsx:182-195, 637-681`, `App.tsx:2222-2251` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.deadline.update`. **Hecho (10.2).** |
 | F-069 | Eliminar una weekly (ADMIN, irreversible; si era la última, crea la siguiente) | `WeeklysList.tsx:177, 699-710`, `App.tsx:2127-2195` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.destroy` (D-155). **Hecho (10.2).** |
 | F-070 | Una sola semana activa; al cerrar se crea la siguiente (`Wnn-aa` y etiqueta) | `001_…sql:95`, `close-week…:366-395` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyCycleOpener` y `afterClose()` para 10.3. **Pantalla (10.2):** «Iniciar la semana»; abrir la siguiente al cerrar llega con el cierre de la 10.3. **Hecho (10.3): al cerrar se abre la siguiente (`afterClose`, D-191).** |
@@ -204,7 +204,7 @@ La entrega es la de F.
 | F-093 | Satisfacción por cliente con IA + estabilizador determinista | `close-week…:80-215`, `_shared/satisfaction.js` | Nueva (10.3) **Hecho (10.3): `SatisfactionUpdater` con el prompt del original y el estabilizador (D-191).** |
 | F-094 | Foto de la satisfacción en cada weekly (para la gráfica) | `close-week…:230-255` | Nueva (10.3) **Hecho (10.3): en `client_satisfaction_snapshots` y en el informe.** |
 | F-095 | Email «weekly cerrada» con enlace a todo el equipo activo | `close-week…:265`, `send-email-reminder` | Nueva (10.5) **Preparado (10.3): el evento `WeeklyCycleClosed` sale tras la satisfacción; el envío y la plantilla, en la 10.5.** |
-| F-096 | Satisfacción por defecto de 50, con columna y orden en la lista de clientes | `clients.current_satisfaction`, `ClientView.tsx:204, 415` | Nueva (10.4). **10.1:** columna `clients.satisfaction_score` (50 por defecto) e histórico `client_satisfaction_snapshots` |
+| F-096 | Satisfacción por defecto de 50, con columna y orden en la lista de clientes | `clients.current_satisfaction`, `ClientView.tsx:204, 415` | Nueva (10.4). **10.1:** columna `clients.satisfaction_score` (50 por defecto) e histórico `client_satisfaction_snapshots` **Hecho (10.4): columna con la tendencia frente al cierre anterior y orden en `/clientes`.** |
 
 **Exenciones, puntualidad y rachas**
 | ID | Funcionalidad | Origen | Destino |
@@ -239,41 +239,41 @@ La entrega es la de F.
 | F-116 | Paso C: reactivar los clientes ocultos que reaparecen | `ProjectStatusView.tsx:1928-1938` | Sustituida (G3) |
 | F-117 | Paso D: ocultar los clientes activos que no salen en la foto | `ProjectStatusView.tsx:1966-1981` | Sustituida: archivar el cliente (G3) |
 | F-118 | Aplicar la foto (se bloquea si hay faltantes, filas sin revisar o duplicados) y resumen | `ProjectStatusView.tsx:1053-1175`, `apply-project-status-upload` | Sustituida (G3) |
-| F-119 | Portfolio actual: cliente, código, tipo, presupuesto, consumido, esperado, desviación y «En línea con lo esperado», con filtros, orden y vista | `ProjectStatusView.tsx:2124-2366`, `projectStatus.ts` | Nueva: vista nativa «Estado de proyectos» con proyectos, bolsas y horas (10.4) |
-| F-120 | Insignias de tipo de proyecto con recuento en clientes, equipo y resumen | `ProjectBadgeChip.tsx`, `projectStatus.ts:118-182` | Adaptar: tipo de facturación y código (10.4) |
-| F-121 | Consumo esperado de un fee según los días laborables del mes | `projectStatus.ts:231-268` | Nueva, con `Capacity` y festivos (10.4) |
+| F-119 | Portfolio actual: cliente, código, tipo, presupuesto, consumido, esperado, desviación y «En línea con lo esperado», con filtros, orden y vista | `ProjectStatusView.tsx:2124-2366`, `projectStatus.ts` | Nueva: vista nativa «Estado de proyectos» con proyectos, bolsas y horas (10.4) **Hecho (10.4): `ProjectStatusBoard`, por cliente o en tabla, con filtros y orden (D-196).** |
+| F-120 | Insignias de tipo de proyecto con recuento en clientes, equipo y resumen | `ProjectBadgeChip.tsx`, `projectStatus.ts:118-182` | Adaptar: tipo de facturación y código (10.4) **Hecho (10.4): `ProjectKindCode`; insignias en la lista y la ficha de clientes, el estado de proyectos y la ficha de persona.** |
+| F-121 | Consumo esperado de un fee según los días laborables del mes | `projectStatus.ts:231-268` | Nueva, con `Capacity` y festivos (10.4) **Hecho (10.4): días laborables del mes sin fines de semana ni festivos de Audax.** |
 | F-122 | Bolsas leídas por OCR (antiguo, sin uso) | `extract-hour-banks` | Sustituida: bolsas reales (existe) |
 
 **Clientes**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-123 | Cartera con buscador, «Mis proyectos», filtros por tipo de proyecto y por persona, y limpiar filtros | `ClientView.tsx:1494-1591` | Adaptar: lista de clientes de Audax + filtros (10.4) |
-| F-124 | Orden por nombre, último reporte o satisfacción | `ClientView.tsx:121, 204-225, 410-418` | Adaptar (10.4) |
+| F-123 | Cartera con buscador, «Mis proyectos», filtros por tipo de proyecto y por persona, y limpiar filtros | `ClientView.tsx:1494-1591` | Adaptar: lista de clientes de Audax + filtros (10.4) **Hecho (10.4): buscador, estado, tipo de proyecto, persona y «Mis proyectos» (D-197).** |
+| F-124 | Orden por nombre, último reporte o satisfacción | `ClientView.tsx:121, 204-225, 410-418` | Adaptar (10.4) **Hecho (10.4).** |
 | F-125 | Sección de clientes inactivos | `ClientView.tsx:1647` | Existe |
-| F-126 | Alta y edición (icono emoji, nombre, responsable, miembros y etiquetas), solo ADMIN | `ClientView.tsx:245-320, 644-703` | Existe; Adaptar: añadir el icono (10.4) |
+| F-126 | Alta y edición (icono emoji, nombre, responsable, miembros y etiquetas), solo ADMIN | `ClientView.tsx:245-320, 644-703` | Existe; Adaptar: añadir el icono (10.4) **Hecho (10.4): el icono (un emoji) en el alta y la edición.** |
 | F-127 | Activar, desactivar y eliminar un cliente | `ClientView.tsx:265-277, 718-722` | Existe |
-| F-128 | Ficha: responsable con enlace a su perfil y estado | `ClientView.tsx:1019-1078` | Adaptar (10.4) |
-| F-129 | Resumen IA estructurado (estado actual, satisfacción y tendencia, trabajo reciente, equipo, riesgos y estado de proyectos); generar o regenerar | `ClientView.tsx:352-380, 873, 1159-1175`, `StructuredAiSummary.tsx`, `generate-client-summary` | Nueva (10.4) |
-| F-130 | Historial: línea de tiempo semanal (resumen, estado, pasos e hitos) y detalle de los reportes de cada semana | `ClientView.tsx:893, 1227` | Nueva (10.4) |
-| F-131 | Equipo: miembros, responsable, historial de cada uno en el cliente y «Analizar actividad del equipo» (IA) | `ClientView.tsx:329-350, 931, 1306-1402`, `analyze-team-activity` | Nueva (10.4) |
-| F-132 | Satisfacción: actual, semanas analizadas, tendencia semanal, mensual y trimestral, y gráfica | `ClientView.tsx:777-841, 1116, 1451-1478` | Nueva (10.4) |
-| F-133 | Unirse o salir como colaborador | `App.tsx:1661-1830` | Adaptar (igual que F-034). **Servidor hecho (10.2a):** igual que F-034. **Pantalla (10.2):** «Unirme a proyectos» y «Dejar proyecto» en /weeklies; en la ficha de cliente, con la 10.4. |
+| F-128 | Ficha: responsable con enlace a su perfil y estado | `ClientView.tsx:1019-1078` | Adaptar (10.4) **Hecho (10.4): quien gestiona más proyectos abiertos, con enlace a su ficha (D-195).** |
+| F-129 | Resumen IA estructurado (estado actual, satisfacción y tendencia, trabajo reciente, equipo, riesgos y estado de proyectos); generar o regenerar | `ClientView.tsx:352-380, 873, 1159-1175`, `StructuredAiSummary.tsx`, `generate-client-summary` | Nueva (10.4) **Hecho (10.4): pestaña «Resumen», en la cola `ai` y guardado hasta regenerarlo (D-194).** |
+| F-130 | Historial: línea de tiempo semanal (resumen, estado, pasos e hitos) y detalle de los reportes de cada semana | `ClientView.tsx:893, 1227` | Nueva (10.4) **Hecho (10.4): pestaña «Historial».** |
+| F-131 | Equipo: miembros, responsable, historial de cada uno en el cliente y «Analizar actividad del equipo» (IA) | `ClientView.tsx:329-350, 931, 1306-1402`, `analyze-team-activity` | Nueva (10.4) **Hecho (10.4): pestaña «Equipo», con el análisis de cada persona en su tarjeta.** |
+| F-132 | Satisfacción: actual, semanas analizadas, tendencia semanal, mensual y trimestral, y gráfica | `ClientView.tsx:777-841, 1116, 1451-1478` | Nueva (10.4) **Hecho (10.4): pestaña «Satisfacción», con la gráfica (`--chart-1`) y su tabla.** |
+| F-133 | Unirse o salir como colaborador | `App.tsx:1661-1830` | Adaptar (igual que F-034). **Servidor hecho (10.2a):** igual que F-034. **Pantalla (10.2):** «Unirme a proyectos» y «Dejar proyecto» en /weeklies; en la ficha de cliente, con la 10.4. **Hecho (10.4): también en la pestaña «Equipo» de la ficha.** |
 
 **Equipo**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-134 | Lista con buscador y filtros (departamento, rol, estado del reporte y cliente) | `TeamView.tsx:1688-1769` | Adaptar: personas de Audax + filtros (10.4) |
-| F-135 | Columnas ordenables (nombre, email, puesto y estado del reporte) | `TeamView.tsx:392-434, 594-617` | Adaptar (10.4) |
-| F-136 | Estado del reporte por persona (Enviado, Enviado con retraso, Pendiente, Con retraso o No requerido) e insignias VACACIONES y AUSENTE | `TeamView.tsx:480-481, 607-612` | Nueva (10.4) |
-| F-137 | Copiar el email | `TeamView.tsx:262, 698` | Nueva (trivial, 10.4) |
+| F-134 | Lista con buscador y filtros (departamento, rol, estado del reporte y cliente) | `TeamView.tsx:1688-1769` | Adaptar: personas de Audax + filtros (10.4) **Hecho (10.4): `/equipo` (D-195).** |
+| F-135 | Columnas ordenables (nombre, email, puesto y estado del reporte) | `TeamView.tsx:392-434, 594-617` | Adaptar (10.4) **Hecho (10.4): también por departamento.** |
+| F-136 | Estado del reporte por persona (Enviado, Enviado con retraso, Pendiente, Con retraso o No requerido) e insignias VACACIONES y AUSENTE | `TeamView.tsx:480-481, 607-612` | Nueva (10.4) **Hecho (10.4): el tipo de ausencia solo para quien puede saberlo (D-088).** |
+| F-137 | Copiar el email | `TeamView.tsx:262, 698` | Nueva (trivial, 10.4) **Hecho (10.4).** |
 | F-138 | Alta (nombre opcional, email, departamento, puesto y rol) con invitación | `TeamView.tsx:211, 1824-1890`, `create-user` | Existe |
 | F-139 | Editar persona (nombre, estado hasta una fecha, departamento y rol) | `TeamView.tsx:228, 1477-1576` | Existe, con ausencias |
 | F-140 | Eliminar persona conservando su historial | `TeamView.tsx:241, 1046` | Existe (baja = desactivar; corrige el fallo de A.3) |
 | F-141 | Asignar proyectos (clientes) a una persona | `TeamView.tsx:327, 1589-1641` | Existe (miembros de proyecto) |
-| F-142 | Ficha: racha y hábitos de envío (hora media, mañana, tarde o noche, y día más habitual) | `TeamView.tsx:485-530, 1272-1277` | Nueva (10.4) |
-| F-143 | Ficha: último reporte por cliente e historial completo por semanas (plegable) | `TeamView.tsx:168-175, 915-934, 1338-1430`, `get-user-report-history` | Nueva (10.4) |
-| F-144 | Ficha: «Resumen de desempeño (IA)» | `TeamView.tsx:268-290, 1026, 1310-1326`, `generate-performance-summary` | Nueva (10.4; quién lo ve, G2) |
-| F-145 | Ficha: «Actividad por cliente (IA)», más los clientes que lidera y en los que colabora | `TeamView.tsx:292-320, 1440-1465`, `analyze-user-client-activity` | Nueva (10.4; G2) |
+| F-142 | Ficha: racha y hábitos de envío (hora media, mañana, tarde o noche, y día más habitual) | `TeamView.tsx:485-530, 1272-1277` | Nueva (10.4) **Hecho (10.4): en la hora de Madrid (D-198).** |
+| F-143 | Ficha: último reporte por cliente e historial completo por semanas (plegable) | `TeamView.tsx:168-175, 915-934, 1338-1430`, `get-user-report-history` | Nueva (10.4) **Hecho (10.4).** |
+| F-144 | Ficha: «Resumen de desempeño (IA)» | `TeamView.tsx:268-290, 1026, 1310-1326`, `generate-performance-summary` | Nueva (10.4; quién lo ve, G2) **Hecho (10.4): solo el admin y sus responsables (D-147 y D-194).** |
+| F-145 | Ficha: «Actividad por cliente (IA)», más los clientes que lidera y en los que colabora | `TeamView.tsx:292-320, 1440-1465`, `analyze-user-client-activity` | Nueva (10.4; G2) **Hecho (10.4): solo el admin y sus responsables (D-147 y D-194).** |
 
 **Asistente IA**
 | ID | Funcionalidad | Origen | Destino |
@@ -343,7 +343,8 @@ La entrega es la de F.
 - Hechas en la 10.1: F-016, F-169 y F-174.
 - Hechas en la 10.2 (servidor y pantalla): 47, las marcadas «Hecho (10.2)».
 - Hechas en la 10.3: 27, las marcadas «Hecho (10.3)» (F-035, F-070, F-072 a F-094, F-173 y F-180). F-095 queda preparada para la 10.5.
-- Con la pantalla a medias, a la espera de otra entrega: F-001 y F-064 (10.4) y F-133 (10.4).
+- Hechas en la 10.4: 22 (F-020, F-064, F-096, F-119 a F-121, F-123, F-124, F-126, F-128 a F-132, F-134 a F-137 y F-142 a F-145), y se completan F-001, F-028, F-067 y F-133. Todas llevan «Hecho (10.4)».
+- Ya no queda ninguna con la pantalla a medias.
 
 ---
 
