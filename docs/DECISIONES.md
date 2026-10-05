@@ -1447,6 +1447,59 @@ La prop compartida `weeklies.pending` (F-003) va en todas las páginas. Para no 
 - **Versión de la interfaz** (F-013): `GET /version` devuelve la versión de Inertia, sin caché, para que la pestaña abierta detecte un despliegue nuevo. La pueden pedir también los colaboradores externos: no tiene datos.
 - **Tarjeta «Weekly» de Inicio** (D-138): una tarjeta más, diferida, que no llega a los colaboradores externos.
 
+## 05/10/2026: Semana y envío de la Weekly, pantallas (entrega 10.2b)
+Las pantallas de la 10.2 sobre el servidor de la 10.2a. D-162 a D-179 están reservadas para otras ramas: la Fase 10 sigue en D-180.
+
+### D-180 · La Weekly en la barra lateral
+- «Mi espacio» y «Weeklies» van **tras «Mis tareas»** (F-001): son de cada semana y de cada persona. Salen con `auth.can.useWeeklies` y el módulo `weeklies` encendido; nunca a un colaborador externo ni a un cliente.
+- El contador de «Mi espacio» (F-003, `weeklies.pending`) usa el mismo estilo que el del chat. En WeeklySync era rojo, pero en el tema de Audax (D-137) el rojo es de error y no de aviso.
+- La ficha de persona de la tira del equipo (F-067) llega con «Equipo» (10.4). Hasta entonces, cada avatar dice el nombre y el estado, sin enlace.
+
+### D-181 · «Mi weekly» en el navegador
+- **Cajas** (F-044): primero los clientes propuestos (D-157), luego los añadidos a mano y, al final y siempre, «General / Interno». Un cliente añadido se puede quitar mientras no tenga texto. El proyecto de cada apunte es opcional, en un desplegable.
+- **Al abrir:** sin nada escrito, se despliega la primera caja; ya enviada, todas plegadas; con la semana cerrada, solo lectura y solo las cajas con texto (F-043).
+- **Autoguardado** (F-051): cuando se deja de escribir 700 ms, como WeeklySync, con PUT `my-weekly.draft` en JSON y sin recargar. El estado se ve (Guardando…, Guardado el…, No se ha podido guardar con «Reintentar») y se anuncia sin interrumpir. Lo pendiente se manda con `keepalive` al salir de la página y el navegador avisa.
+- **Autocompletar** (F-048): añade a cada caja el texto de `autofill` que aún no contiene.
+- **La guía de cómo reportar** (F-047): en un desplegable que se abre con clic o teclado, no con el ratón encima (en el móvil no hay «encima»).
+- **Enviar:** no se puede mientras hay un dictado en curso, para no enviar sin el texto que falta.
+- Al cambiar de semana, al renunciar a la exención o al cerrarse la semana, la pantalla vuelve a empezar con los datos del servidor.
+
+### D-182 · El dictado en el navegador
+- Se graba con la grabadora del chat (`useAudioRecorder`): el mismo formato, el límite de duración `max_audio_seconds` y menos de 1 s no se envía. El botón «Dictar» va en cada caja.
+- Tras subir el audio, «Transcribiendo…» hasta que llega `dictation.updated` por el canal privado de quien dicta. Siempre hay un sondeo de respaldo de `dictations.show`: cada 3 s sin Reverb y cada 15 s con Reverb, por si se pierde el evento. A los 5 minutos se deja de esperar y se avisa.
+- El texto se añade al final del apunte, sin pisar lo escrito, y el apunte queda con la fuente `dictation`. Sin voz útil (`no_speech`) o demasiado corto (`too_short`), se avisa y el texto no se toca.
+
+### D-183 · El resumen y el histórico de /weeklies
+- **«Resumen»:** para todos, mi weekly de la semana activa con su botón, mi racha y mis clientes, con «Unirme a proyectos» y «Dejar proyecto». Para quien gestiona, además:
+  - el estado global con el porcentaje y la tira,
+  - quién falta, con «Eximir» y una nota,
+  - los exentos, con «Quitar exención» (las exenciones por ausencia no se quitan a mano, D-159),
+  - «¡Todo el equipo disponible ha enviado su weekly!»,
+  - sin semana activa, «Iniciar la semana».
+- **«Histórico»:** la semana activa y la última cerrada destacadas con su equipo y el estado del informe, y debajo la tabla, que en el móvil pasa a tarjetas.
+- **Lo que llega en otras entregas:** «Cerrar semana» (10.3), «Recordar» (10.5) y la pestaña «Estado de proyectos» (10.4).
+- Las pestañas son enlaces (`?pestana=`), como las de Ausencias.
+
+### D-184 · Versión nueva y conexión (F-013 y F-014)
+- La pestaña pregunta por `GET /version`:
+  - al volver a ella,
+  - al recuperar la conexión,
+  - y cada 10 minutos.
+- Si hay un despliegue nuevo, avisa con «Recargar». **Nunca recarga sola**, aunque WeeklySync sí lo hacía: la siguiente navegación de Inertia ya recarga la página por el cambio de versión, y así no se pierde nada a medias.
+- Sin conexión, avisa. Al volver la conexión, o a la pestaña tras 10 minutos oculta, se recargan los datos de la página (`router.reload`). Esto sustituye al tiempo real de WeeklySync en todo menos el dictado (F-015).
+
+### D-185 · Módulos, limpieza del dictado y aviso global en los ajustes
+- En `/admin/ajustes`, la sección «Weekly y módulos» tiene:
+  - los interruptores de los cinco módulos (F-177),
+  - la limpieza del dictado con IA (`weekly_dictation_cleanup`, apagada por defecto, D-158),
+  - el aviso global (F-178), con su texto y su tipo, informativo o de advertencia. Sin texto, no hay aviso.
+- **El aviso global** sale arriba en todas las páginas internas (no en el portal), con su icono, y cada persona lo puede ocultar en su sesión; uno nuevo vuelve a salir. Mide su alto en `--global-banner-space`, para que el chat no quede tapado.
+
+### D-186 · La Weekly en los datos de ejemplo
+- El `DemoDataSeeder` (solo en local, tests y CI) crea las tres semanas anteriores cerradas, con los envíos de la plantilla: Elena siempre a tiempo, Pablo una con retraso y Daniel sin enviar la última.
+- **No abre la semana en curso.** La abre el planificador o «Iniciar la semana», que es lo que hace el E2E. Con una semana activa, el contador de «Mi espacio» (D-160) gasta consultas con la caché fría en todas las páginas, y los presupuestos de los tests de rendimiento que usan los datos de ejemplo (D-046) se pasarían sin que la página haya cambiado.
+- La foto `expected_user_ids` se pone a mano: la plantilla de ejemplo se da de alta el mismo día y `WeeklyEligibility::freeze()` no la vería en semanas pasadas.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1457,6 +1510,6 @@ La prop compartida `weeklies.pending` (F-003) va en todas las páginas. Para no 
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (Weekly): D-145 a D-161 (D-151 a D-154: contrato 10.1; D-155 a D-161: entrega 10.2a).
+- Fase 10: D-145..D-161 y D-180… (D-151 a D-154: contrato 10.1; D-155 a D-161: entrega 10.2a; D-180 a D-186: entrega 10.2b). D-162 a D-179 están reservadas para otras ramas.
 
-La siguiente libre es **D-162**.
+La siguiente libre de la Fase 10 es **D-187**.

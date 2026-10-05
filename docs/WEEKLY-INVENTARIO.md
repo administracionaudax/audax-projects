@@ -81,27 +81,27 @@ La entrega es la de F.
 **Navegación y comportamiento general**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-001 | Barra lateral: Resumen, Mi espacio, Weeklys, Clientes y Equipo | `Layout.tsx:78-83` | Adaptar: entradas nuevas en la barra de Audax (10.2) |
+| F-001 | Barra lateral: Resumen, Mi espacio, Weeklys, Clientes y Equipo | `Layout.tsx:78-83` | Adaptar: entradas nuevas en la barra de Audax (10.2). **Pantalla (10.2):** «Mi espacio» y «Weeklies» (D-180); «Equipo» llega con la 10.4. |
 | F-002 | Barra plegable con tooltips de cada entrada | `Layout.tsx:229-290` | Existe |
-| F-003 | Contador rojo de reportes pendientes en «Mi espacio» | `Layout.tsx:295-300` | Nueva (10.2). **Servidor hecho (10.2a):** prop compartida `weeklies.pending` (D-160) |
+| F-003 | Contador rojo de reportes pendientes en «Mi espacio» | `Layout.tsx:295-300` | Nueva (10.2). **Servidor hecho (10.2a):** prop compartida `weeklies.pending` (D-160). **Hecho (10.2): contador de «Mi espacio» en la barra lateral (D-180).** |
 | F-004 | Cabecera y menú móviles | `Layout.tsx:191-200` | Existe |
 | F-005 | Modo oscuro o claro con conmutador, guardado, y favicon según el tema | `Layout.tsx:323-382`, `index.html:26` | Existe (claro, oscuro y sistema) |
 | F-006 | Botón «Asistente AI», que abre `/ia` | `Layout.tsx:511-513`, `App.tsx:435` | Nueva (10.6) |
-| F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax |
+| F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax. **Hecho (10.2): la ausencia es la de Audax; la exención y la renuncia, en «Mi weekly» y en el resumen.** |
 | F-008 | Acceso al perfil con nombre y rol en el pie de la barra | `Layout.tsx:436-460` | Existe |
 | F-009 | Cerrar sesión, limpiando el almacenamiento local | `Layout.tsx:471-478`, `App.tsx:1347-1374` | Existe |
 | F-010 | Accesos a Ayuda y a Notificaciones (este, solo ADMIN) | `Layout.tsx:350-404` | Nueva: Ayuda (10.7). Adaptar: ajustes (10.5) |
 | F-011 | Avisos emergentes de éxito, error e información | `Layout.tsx:172`, `App.tsx` | Existe |
-| F-012 | Aviso de bienvenida al entrar | `App.tsx:831-833` | Nueva (trivial, 10.2). **Servidor hecho (10.2a):** aviso al entrar (D-161) |
-| F-013 | Detecta una versión nueva y recarga sola cuando no hay nada editándose ni grabándose | `App.tsx:325-400`, `src/lib/appUpdateGuard.ts`, `buildMeta.ts` | Adaptar: versión de Inertia + aviso (10.2). **Servidor hecho (10.2a):** `GET /version` (D-161) |
-| F-014 | Recarga al volver a la pestaña o recuperar la conexión; aviso «Conexión inestable» y reintento | `App.tsx:378-395, 852, 1011` | Adaptar (10.2) |
-| F-015 | Tiempo real de personas, clientes, semanas, envíos, borradores y tareas | `App.tsx:922-980` | Adaptar: Reverb o recarga (10.2) |
+| F-012 | Aviso de bienvenida al entrar | `App.tsx:831-833` | Nueva (trivial, 10.2). **Servidor hecho (10.2a):** aviso al entrar (D-161). **Hecho (10.2): el aviso sale con los avisos emergentes de siempre.** |
+| F-013 | Detecta una versión nueva y recarga sola cuando no hay nada editándose ni grabándose | `App.tsx:325-400`, `src/lib/appUpdateGuard.ts`, `buildMeta.ts` | Adaptar: versión de Inertia + aviso (10.2). **Servidor hecho (10.2a):** `GET /version` (D-161). **Hecho (10.2): aviso «Hay una versión nueva» con «Recargar» (D-184).** |
+| F-014 | Recarga al volver a la pestaña o recuperar la conexión; aviso «Conexión inestable» y reintento | `App.tsx:378-395, 852, 1011` | Adaptar (10.2). **Hecho (10.2): aviso «Sin conexión» y recarga de los datos al volver (D-184).** |
+| F-015 | Tiempo real de personas, clientes, semanas, envíos, borradores y tareas | `App.tsx:922-980` | Adaptar: Reverb o recarga (10.2). **Hecho (10.2): dictado en vivo por Reverb y recarga de los datos al volver a la pestaña o a la conexión (D-184).** |
 | F-016 | Rutas en español con enlace directo (`/resumen`, `/mi-espacio`, `/weeklys/:id`, `/clientes/:id`, `/equipo/:id`, `/ia`, `/ayuda`, `/perfil`, `/notificaciones`) | `src/lib/routes.ts` | **Hecho (10.1):** `routes/app/weeklies.php` con `/weeklies`, `/weeklies/{id}`, `/mi-espacio`, `/equipo`, `/equipo/{id}`, `/ia`, `/ayuda` y `/admin/uso-ia` (clientes, perfil y notificaciones ya existían). Las pantallas, en su entrega |
 | F-017 | Pantalla de error con «recargar» | `ErrorBoundary.tsx`, `index.tsx` | Existe (`error.tsx`) |
 | F-018 | «¿Tarda demasiado? Forzar entrada» en la carga inicial | `App.tsx:~2895` | No aplica (Inertia no tiene esa carga) |
 | F-019 | PWA: manifest e iconos claro y oscuro | `public/site.webmanifest`, `index.html` | Existe |
 | F-020 | Cabeceras de tabla fijas al desplazar | `src/lib/useFloatingTableHeader.ts` | Adaptar (10.4) |
-| F-021 | Fechas de semana compactas en móvil | `src/lib/mobileWeekFormat.ts` | Adaptar (10.2) |
+| F-021 | Fechas de semana compactas en móvil | `src/lib/mobileWeekFormat.ts` | Adaptar (10.2). **Hecho (10.2): «Sem. 41 · 05/10 - 09/10» en el móvil.** |
 
 **Acceso, onboarding y perfil**
 | ID | Funcionalidad | Origen | Destino |
@@ -110,43 +110,43 @@ La entrega es la de F.
 | F-023 | Aviso de entorno: localhost apuntando a producción | `LoginScreen.tsx:22, 105` | No aplica |
 | F-024 | Vincular identidades de Google y fusionar duplicados | `resolve-user-access`, migración 022 | No aplica (un email por cuenta) |
 | F-025 | Invitación que se activa en el primer acceso | `create-user`, `account_status` | Existe (`UserInviter`) |
-| F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`). **10.1:** columna `users.job_title`; falta el campo en el perfil y en el alta (10.2). **Servidor hecho (10.2a):** `job_title` en el perfil y en el alta |
-| F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto). **Servidor hecho (10.2a):** `job_title` en el perfil |
-| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161) |
+| F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`). **10.1:** columna `users.job_title`; falta el campo en el perfil y en el alta (10.2). **Servidor hecho (10.2a):** `job_title` en el perfil y en el alta. **Hecho (10.2): «Puesto» en el perfil y en el alta y edición de personas.** |
+| F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto). **Servidor hecho (10.2a):** `job_title` en el perfil. **Hecho (10.2).** |
+| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161). **Hecho (10.2): enviadas, a tiempo y racha en el perfil.** |
 | F-029 | Avatar | `users.avatar_url` | Existe (avatar subido) |
 
 **Resumen (paneles)**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-030 | Estado de mi weekly (pendiente, con retraso, enviada, enviada con retraso, «¡Todo listo!») con botón para reportar | `AdminDashboard.tsx:330-365`, `MemberDashboard.tsx:187-223` | Nueva: tarjeta de Inicio (10.2). **Servidor hecho (10.2a):** tarjeta `weekly` de Inicio y `me` en /weeklies |
-| F-031 | Racha en el resumen | `AdminDashboard.tsx:294`, `MemberDashboard.tsx:40-80, 150` | Nueva (10.2). **Servidor hecho (10.2a):** `streak` |
-| F-032 | Aviso de weekly exenta (vacaciones o ausencia) y «tu racha no se verá afectada» | `AdminDashboard.tsx:300-308` | Nueva (10.2). **Servidor hecho (10.2a):** `me.exemption_reason` |
-| F-033 | Mis clientes como responsable y como colaborador, con insignias y enlace a la ficha | `AdminDashboard.tsx:502-555`, `MemberDashboard.tsx:98-310` | Adaptar: clientes de mis proyectos (10.2). **Servidor hecho (10.2a):** `my_clients` |
-| F-034 | «Unirme a proyectos» (varios a la vez) y «Dejar proyecto» | `AdminDashboard.tsx:528-730`, `MemberDashboard.tsx:277-375`, `App.tsx:1661-1830` | Adaptar: miembros de proyecto (10.2). **Servidor hecho (10.2a):** `weeklies.projects.join` y `leave` (D-156) |
+| F-030 | Estado de mi weekly (pendiente, con retraso, enviada, enviada con retraso, «¡Todo listo!») con botón para reportar | `AdminDashboard.tsx:330-365`, `MemberDashboard.tsx:187-223` | Nueva: tarjeta de Inicio (10.2). **Servidor hecho (10.2a):** tarjeta `weekly` de Inicio y `me` en /weeklies. **Hecho (10.2): resumen de /weeklies y tarjeta «Weekly» de Inicio.** |
+| F-031 | Racha en el resumen | `AdminDashboard.tsx:294`, `MemberDashboard.tsx:40-80, 150` | Nueva (10.2). **Servidor hecho (10.2a):** `streak`. **Hecho (10.2).** |
+| F-032 | Aviso de weekly exenta (vacaciones o ausencia) y «tu racha no se verá afectada» | `AdminDashboard.tsx:300-308` | Nueva (10.2). **Servidor hecho (10.2a):** `me.exemption_reason`. **Hecho (10.2).** |
+| F-033 | Mis clientes como responsable y como colaborador, con insignias y enlace a la ficha | `AdminDashboard.tsx:502-555`, `MemberDashboard.tsx:98-310` | Adaptar: clientes de mis proyectos (10.2). **Servidor hecho (10.2a):** `my_clients`. **Hecho (10.2).** |
+| F-034 | «Unirme a proyectos» (varios a la vez) y «Dejar proyecto» | `AdminDashboard.tsx:528-730`, `MemberDashboard.tsx:277-375`, `App.tsx:1661-1830` | Adaptar: miembros de proyecto (10.2). **Servidor hecho (10.2a):** `weeklies.projects.join` y `leave` (D-156). **Hecho (10.2).** |
 | F-035 | ADMIN: «Gestión de weekly actual» con acceso al informe y «Cerrar semana» (confirmación y motivo del bloqueo) | `AdminDashboard.tsx:381-430, 208-210` | Nueva (10.3) |
-| F-036 | ADMIN: estado global con el progreso de envíos y la lista de pendientes | `AdminDashboard.tsx:389-490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team` |
+| F-036 | ADMIN: estado global con el progreso de envíos y la lista de pendientes | `AdminDashboard.tsx:389-490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team`. **Hecho (10.2).** |
 | F-037 | ADMIN: recordar por email a una persona pendiente (plantilla «manual») | `AdminDashboard.tsx:229-239, 472`, `emailHelpers.ts:102` | Nueva (10.5) |
-| F-038 | ADMIN: marcar a otra persona como ausente o de vacaciones, con fecha de fin | `AdminDashboard.tsx:464-622` | Adaptar: ausencia aprobada o exención manual (10.2). **Servidor hecho (10.2a):** exención manual (D-159) |
-| F-039 | «¡Todo el equipo disponible ha reportado!» | `AdminDashboard.tsx:490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team.counts` |
-| F-040 | Estado vacío sin semana activa, con «Iniciar ciclo semanal» (ADMIN) | `App.tsx:2930-2955, 2198` | Nueva: apertura automática + botón (10.2). **Servidor hecho (10.2a):** `weeklies:open-week` y «Iniciar la semana» (D-155) |
+| F-038 | ADMIN: marcar a otra persona como ausente o de vacaciones, con fecha de fin | `AdminDashboard.tsx:464-622` | Adaptar: ausencia aprobada o exención manual (10.2). **Servidor hecho (10.2a):** exención manual (D-159). **Hecho (10.2): «Eximir» con nota y «Quitar exención».** |
+| F-039 | «¡Todo el equipo disponible ha reportado!» | `AdminDashboard.tsx:490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team.counts`. **Hecho (10.2).** |
+| F-040 | Estado vacío sin semana activa, con «Iniciar ciclo semanal» (ADMIN) | `App.tsx:2930-2955, 2198` | Nueva: apertura automática + botón (10.2). **Servidor hecho (10.2a):** `weeklies:open-week` y «Iniciar la semana» (D-155). **Hecho (10.2).** |
 
 **Mi espacio: reporte semanal**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-041 | Pestañas «Reportes» y «Tareas» | `MySpace.tsx:89-145` | Nueva (10.2). **Servidor hecho (10.2a):** `tab` |
-| F-042 | Mis weeklies con su estado: Pendiente, Enviado, Enviado con retraso, Próximamente, Con retraso, No enviada, Exento, Cierre sin reporte y Semana activa | `ReportList.tsx:50-152` | Nueva (10.2). **Servidor hecho (10.2a):** `weeks` |
-| F-043 | Abrir el reporte de cualquier semana (solo lectura si está cerrada) | `MySpace.tsx:45-80`, `WeeklyReportingInterface.tsx:27, 484` | Nueva (10.2). **Servidor hecho (10.2a):** `?semana=` con `editor.read_only` |
-| F-044 | Una caja por cliente activo mío + «General / Interno» | `WeeklyReportingInterface.tsx:17, 555` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.proposed` (D-157) |
-| F-045 | Añadir otro cliente al reporte con un buscador | `WeeklyReportingInterface.tsx:297-305, 659-691` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.catalog` |
-| F-046 | Plegar o desplegar un cliente o todos | `WeeklyReportingInterface.tsx:427, 495-501, 572` | Nueva (10.2) |
-| F-047 | Guía «cómo reportar» (consejos) | `WeeklyReportingInterface.tsx:461-477` | Nueva (10.2) |
-| F-048 | «Autocompletar desde Mis tareas»: hechas y pendientes, con sus notas, por cliente | `WeeklyReportingInterface.tsx:308-360` | Adaptar: tareas y horas de Audax de la semana (10.2). **Servidor hecho (10.2a):** `editor.autofill` |
-| F-049 | Dictado por cliente con transcripción y limpieza; aviso si no hay voz; «Transcribiendo y limpiando audio…» | `WeeklyReportingInterface.tsx:199-279, 622-643`, `transcribe-audio`, `src/lib/audioTranscription.js` | Adaptar: Whisper + limpieza (10.2). **Servidor hecho (10.2a):** `dictations.store` y `show` con Whisper (D-158) |
-| F-050 | Descarta los audios demasiado cortos sin llamar a la IA | `audioTranscription.js` (`shouldSkipAudioTranscription`) | Nueva (10.2). **Servidor hecho (10.2a):** `too_short` |
-| F-051 | Borrador autoguardado con estado (Guardando, Guardado, Error) y recuperación | `WeeklyReportingInterface.tsx:126-164, 707-709`, `supabaseHelpers.ts:536-618` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.draft` |
-| F-052 | Enviar o actualizar el reporte: se edita hasta el cierre, también fuera de plazo, y conserva la fecha de envío | `WeeklyReportingInterface.tsx:362-381, 712-718`, `App.tsx:2011-2100` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.submit` |
-| F-053 | Ver mi exención en el formulario y quitármela | `WeeklyReportingInterface.tsx:407-419, 525-537` | Adaptar (10.2). **Servidor hecho (10.2a):** `weeklies.exemptions.waive` (D-159) |
-| F-054 | No se puede editar mientras estoy exento | `WeeklyReportingInterface.tsx:486` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyRuleViolation::EXEMPT` |
+| F-041 | Pestañas «Reportes» y «Tareas» | `MySpace.tsx:89-145` | Nueva (10.2). **Servidor hecho (10.2a):** `tab`. **Hecho (10.2): la pestaña «Tareas» enlaza a Mis tareas hasta la 10.6.** |
+| F-042 | Mis weeklies con su estado: Pendiente, Enviado, Enviado con retraso, Próximamente, Con retraso, No enviada, Exento, Cierre sin reporte y Semana activa | `ReportList.tsx:50-152` | Nueva (10.2). **Servidor hecho (10.2a):** `weeks`. **Hecho (10.2).** |
+| F-043 | Abrir el reporte de cualquier semana (solo lectura si está cerrada) | `MySpace.tsx:45-80`, `WeeklyReportingInterface.tsx:27, 484` | Nueva (10.2). **Servidor hecho (10.2a):** `?semana=` con `editor.read_only`. **Hecho (10.2).** |
+| F-044 | Una caja por cliente activo mío + «General / Interno» | `WeeklyReportingInterface.tsx:17, 555` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.proposed` (D-157). **Hecho (10.2).** |
+| F-045 | Añadir otro cliente al reporte con un buscador | `WeeklyReportingInterface.tsx:297-305, 659-691` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.catalog`. **Hecho (10.2).** |
+| F-046 | Plegar o desplegar un cliente o todos | `WeeklyReportingInterface.tsx:427, 495-501, 572` | Nueva (10.2). **Hecho (10.2).** |
+| F-047 | Guía «cómo reportar» (consejos) | `WeeklyReportingInterface.tsx:461-477` | Nueva (10.2). **Hecho (10.2).** |
+| F-048 | «Autocompletar desde Mis tareas»: hechas y pendientes, con sus notas, por cliente | `WeeklyReportingInterface.tsx:308-360` | Adaptar: tareas y horas de Audax de la semana (10.2). **Servidor hecho (10.2a):** `editor.autofill`. **Hecho (10.2).** |
+| F-049 | Dictado por cliente con transcripción y limpieza; aviso si no hay voz; «Transcribiendo y limpiando audio…» | `WeeklyReportingInterface.tsx:199-279, 622-643`, `transcribe-audio`, `src/lib/audioTranscription.js` | Adaptar: Whisper + limpieza (10.2). **Servidor hecho (10.2a):** `dictations.store` y `show` con Whisper (D-158). **Hecho (10.2): grabadora del chat, «Transcribiendo…» con el evento y sondeo de respaldo (D-182).** |
+| F-050 | Descarta los audios demasiado cortos sin llamar a la IA | `audioTranscription.js` (`shouldSkipAudioTranscription`) | Nueva (10.2). **Servidor hecho (10.2a):** `too_short`. **Hecho (10.2).** |
+| F-051 | Borrador autoguardado con estado (Guardando, Guardado, Error) y recuperación | `WeeklyReportingInterface.tsx:126-164, 707-709`, `supabaseHelpers.ts:536-618` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.draft`. **Hecho (10.2): autoguardado a los 700 ms con su estado y reintento (D-181).** |
+| F-052 | Enviar o actualizar el reporte: se edita hasta el cierre, también fuera de plazo, y conserva la fecha de envío | `WeeklyReportingInterface.tsx:362-381, 712-718`, `App.tsx:2011-2100` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.submit`. **Hecho (10.2).** |
+| F-053 | Ver mi exención en el formulario y quitármela | `WeeklyReportingInterface.tsx:407-419, 525-537` | Adaptar (10.2). **Servidor hecho (10.2a):** `weeklies.exemptions.waive` (D-159). **Hecho (10.2).** |
+| F-054 | No se puede editar mientras estoy exento | `WeeklyReportingInterface.tsx:486` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyRuleViolation::EXEMPT`. **Hecho (10.2).** |
 
 **Mi espacio: tareas**
 | ID | Funcionalidad | Origen | Destino |
@@ -164,14 +164,14 @@ La entrega es la de F.
 **Weeklys: histórico y ciclo**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-064 | Pestañas «Histórico» y «Estado de proyectos» | `WeeklysContainer.tsx` | Nueva (10.2 y 10.4). **Servidor hecho (10.2a):** pestaña «Histórico» (`tab`) |
-| F-065 | Weekly actual destacada; la última cerrada sigue destacada hasta que se cierra la siguiente | `WeeklysList.tsx:211, 522-523` | Nueva (10.2). **Servidor hecho (10.2a):** `active` y `latest_closed` |
-| F-066 | Tabla del histórico: weekly, fecha límite, participación, estado (Finalizada, Próximamente, Con retraso, Completada o Por completar) e informe generado o pendiente | `WeeklysList.tsx:92-123, 371, 537-560` | Nueva (10.2). **Servidor hecho (10.2a):** `cycles` con `progress` y `participation` |
-| F-067 | Tira de avatares del equipo (enviado, pendiente o exento) con enlace a la persona | `WeeklyTeamStatusStrip.tsx`, `WeeklysList.tsx:354`, `App.tsx:3034` | Nueva (10.2). **Servidor hecho (10.2a):** `team.members` |
-| F-068 | Configurar el día límite (ADMIN, solo con la semana activa) | `WeeklysList.tsx:182-195, 637-681`, `App.tsx:2222-2251` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.deadline.update` |
-| F-069 | Eliminar una weekly (ADMIN, irreversible; si era la última, crea la siguiente) | `WeeklysList.tsx:177, 699-710`, `App.tsx:2127-2195` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.destroy` (D-155) |
-| F-070 | Una sola semana activa; al cerrar se crea la siguiente (`Wnn-aa` y etiqueta) | `001_…sql:95`, `close-week…:366-395` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyCycleOpener` y `afterClose()` para 10.3 |
-| F-071 | Participa quien tiene la cuenta activa y se dio de alta antes del final de la semana | `AdminDashboard.tsx:18-31` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility` |
+| F-064 | Pestañas «Histórico» y «Estado de proyectos» | `WeeklysContainer.tsx` | Nueva (10.2 y 10.4). **Servidor hecho (10.2a):** pestaña «Histórico» (`tab`). **Pantalla (10.2):** pestaña «Histórico»; «Estado de proyectos», en la 10.4. |
+| F-065 | Weekly actual destacada; la última cerrada sigue destacada hasta que se cierra la siguiente | `WeeklysList.tsx:211, 522-523` | Nueva (10.2). **Servidor hecho (10.2a):** `active` y `latest_closed`. **Hecho (10.2).** |
+| F-066 | Tabla del histórico: weekly, fecha límite, participación, estado (Finalizada, Próximamente, Con retraso, Completada o Por completar) e informe generado o pendiente | `WeeklysList.tsx:92-123, 371, 537-560` | Nueva (10.2). **Servidor hecho (10.2a):** `cycles` con `progress` y `participation`. **Hecho (10.2).** |
+| F-067 | Tira de avatares del equipo (enviado, pendiente o exento) con enlace a la persona | `WeeklyTeamStatusStrip.tsx`, `WeeklysList.tsx:354`, `App.tsx:3034` | Nueva (10.2). **Servidor hecho (10.2a):** `team.members`. **Hecho (10.2): sin enlace a la persona hasta la ficha de la 10.4.** |
+| F-068 | Configurar el día límite (ADMIN, solo con la semana activa) | `WeeklysList.tsx:182-195, 637-681`, `App.tsx:2222-2251` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.deadline.update`. **Hecho (10.2).** |
+| F-069 | Eliminar una weekly (ADMIN, irreversible; si era la última, crea la siguiente) | `WeeklysList.tsx:177, 699-710`, `App.tsx:2127-2195` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.destroy` (D-155). **Hecho (10.2).** |
+| F-070 | Una sola semana activa; al cerrar se crea la siguiente (`Wnn-aa` y etiqueta) | `001_…sql:95`, `close-week…:366-395` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyCycleOpener` y `afterClose()` para 10.3. **Pantalla (10.2):** «Iniciar la semana»; abrir la siguiente al cerrar llega con el cierre de la 10.3. |
+| F-071 | Participa quien tiene la cuenta activa y se dio de alta antes del final de la semana | `AdminDashboard.tsx:18-31` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility`. **Hecho (10.2).** |
 
 **Informe de la weekly**
 | ID | Funcionalidad | Origen | Destino |
@@ -209,10 +209,10 @@ La entrega es la de F.
 **Exenciones, puntualidad y rachas**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-097 | Exención automática por vacaciones o ausencia que cubre el plazo | `src/lib/weekExcusal.ts` | Adaptar: ausencias aprobadas (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility` |
-| F-098 | Al cambiar el estado de alguien, se actualiza su exención de la semana activa | `App.tsx:1460-1510` | Adaptar (10.2). **Servidor hecho (10.2a):** al vuelo; el contador se renueva (D-160) |
-| F-099 | Racha: semanas seguidas a tiempo; una semana exenta no la rompe, y la activa tampoco hasta el plazo | `MemberDashboard.tsx:40-80`, `ProfileView.tsx:36-83`, `TeamView.tsx:1272` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyStreaks` |
-| F-100 | A tiempo = enviado antes del final del día límite | `src/lib/weekTiming.ts:88-102` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyTiming` |
+| F-097 | Exención automática por vacaciones o ausencia que cubre el plazo | `src/lib/weekExcusal.ts` | Adaptar: ausencias aprobadas (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility`. **Hecho (10.2).** |
+| F-098 | Al cambiar el estado de alguien, se actualiza su exención de la semana activa | `App.tsx:1460-1510` | Adaptar (10.2). **Servidor hecho (10.2a):** al vuelo; el contador se renueva (D-160). **Hecho (10.2).** |
+| F-099 | Racha: semanas seguidas a tiempo; una semana exenta no la rompe, y la activa tampoco hasta el plazo | `MemberDashboard.tsx:40-80`, `ProfileView.tsx:36-83`, `TeamView.tsx:1272` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyStreaks`. **Hecho (10.2).** |
+| F-100 | A tiempo = enviado antes del final del día límite | `src/lib/weekTiming.ts:88-102` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyTiming`. **Hecho (10.2).** |
 
 **Recordatorios y notificaciones**
 | ID | Funcionalidad | Origen | Destino |
@@ -257,7 +257,7 @@ La entrega es la de F.
 | F-130 | Historial: línea de tiempo semanal (resumen, estado, pasos e hitos) y detalle de los reportes de cada semana | `ClientView.tsx:893, 1227` | Nueva (10.4) |
 | F-131 | Equipo: miembros, responsable, historial de cada uno en el cliente y «Analizar actividad del equipo» (IA) | `ClientView.tsx:329-350, 931, 1306-1402`, `analyze-team-activity` | Nueva (10.4) |
 | F-132 | Satisfacción: actual, semanas analizadas, tendencia semanal, mensual y trimestral, y gráfica | `ClientView.tsx:777-841, 1116, 1451-1478` | Nueva (10.4) |
-| F-133 | Unirse o salir como colaborador | `App.tsx:1661-1830` | Adaptar (igual que F-034). **Servidor hecho (10.2a):** igual que F-034 |
+| F-133 | Unirse o salir como colaborador | `App.tsx:1661-1830` | Adaptar (igual que F-034). **Servidor hecho (10.2a):** igual que F-034. **Pantalla (10.2):** «Unirme a proyectos» y «Dejar proyecto» en /weeklies; en la ficha de cliente, con la 10.4. |
 
 **Equipo**
 | ID | Funcionalidad | Origen | Destino |
@@ -315,8 +315,8 @@ La entrega es la de F.
 **IA transversal**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-171 | Transcripción conservadora: detecta silencio y muletillas y no inventa | `transcribe-audio:80-135` | Adaptar: Whisper + filtros (10.2). **Servidor hecho (10.2a):** `no_speech` (D-158) |
-| F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2). **Servidor hecho (10.2a):** `CleanDictation`, ajuste `weekly_dictation_cleanup` (D-158) |
+| F-171 | Transcripción conservadora: detecta silencio y muletillas y no inventa | `transcribe-audio:80-135` | Adaptar: Whisper + filtros (10.2). **Servidor hecho (10.2a):** `no_speech` (D-158). **Hecho (10.2).** |
+| F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2). **Servidor hecho (10.2a):** `CleanDictation`, ajuste `weekly_dictation_cleanup` (D-158). **Hecho (10.2): interruptor en los ajustes.** |
 | F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3). **10.1:** tabla `ai_usage` y `AiUsageRecorder`; GeminiClient y GoogleTtsSynthesizer registran cada llamada con tokens, caracteres y coste. Falta la página (10.3) |
 | F-174 | Modelo configurable sin tocar código | `vertexAI.ts:8-13, 192` | **Hecho (10.1):** `GEMINI_MODEL` (y `GOOGLE_TTS_VOICE`) en `.env`, leídos por `config/services.php`; sin desplegar |
 
@@ -325,8 +325,8 @@ La entrega es la de F.
 |---|---|---|---|
 | F-175 | Tenants: alta, estado, plan, región y referencias de Supabase y Vercel; membresías | `PlatformView.tsx`, `platform-provision-tenant`, `-set-tenant-status`, `-get-tenants`, `-get-tenant-users` | **Descartado** |
 | F-176 | Superadmins de plataforma (owner, admin y support; revocar) | `platform-save-admin` | **Descartado** |
-| F-177 | Módulos activables por tenant (weeklys, tareas, presupuestos, estado de proyectos, ayuda y asistente) | `platform-set-modules`, `PlatformView.tsx:91-96` | **Descartado**. Útil con un solo tenant: ajuste «módulos activos». **Hecho (10.1):** ajuste `modules` (weeklies, estado de proyectos, ayuda, sugerencias y asistente), validado en `PUT /admin/ajustes`, middleware `module:` (404) y `config.modules` en las props; el interruptor en la pantalla de ajustes llega con 10.2 |
-| F-178 | Modo mantenimiento con ventana programada y banner global | `platform-set-maintenance`, `PlatformView.tsx:775-811` | **Descartado**. Útil: un banner global en ajustes; el mantenimiento ya lo cubre `artisan down`. **10.1:** ajuste `global_banner` ({message, tone}) validado y en `config.global_banner`; falta pintarlo y editarlo (10.2) |
+| F-177 | Módulos activables por tenant (weeklys, tareas, presupuestos, estado de proyectos, ayuda y asistente) | `platform-set-modules`, `PlatformView.tsx:91-96` | **Descartado**. Útil con un solo tenant: ajuste «módulos activos». **Hecho (10.1):** ajuste `modules` (weeklies, estado de proyectos, ayuda, sugerencias y asistente), validado en `PUT /admin/ajustes`, middleware `module:` (404) y `config.modules` en las props; el interruptor en la pantalla de ajustes llega con 10.2. **Hecho (10.2): interruptores en /admin/ajustes (D-185).** |
+| F-178 | Modo mantenimiento con ventana programada y banner global | `platform-set-maintenance`, `PlatformView.tsx:775-811` | **Descartado**. Útil: un banner global en ajustes; el mantenimiento ya lo cubre `artisan down`. **10.1:** ajuste `global_banner` ({message, tone}) validado y en `config.global_banner`; falta pintarlo y editarlo (10.2). **Hecho (10.2): aviso global en todas las páginas internas, editable en los ajustes (D-185).** |
 | F-179 | Salud de Supabase, Vercel e IA | `platform-health` | **Descartado** (Audax tiene `/health` y el estado de las copias) |
 | F-180 | Coste y tokens de IA de 30 días | `PlatformView.tsx:564-565`, `platform_ai_usage_summary` | **Descartado** como consola. Útil: página «Uso de IA» para el admin (con F-173, 10.3) |
 | F-181 | Registro de auditoría de la plataforma | `platform_audit_logs` | **Descartado** (Audax tiene auditoría) |
@@ -338,6 +338,11 @@ La entrega es la de F.
 - Sustituidas por un equivalente nativo: 10 (F-022, F-111 a F-118 y F-122). Las confirma el propietario en G3.
 - No aplica: 3.
 - Descartadas: 7, todas de la consola de plataforma. Tres (F-177, F-178 y F-180) tienen un uso aprovechable con un solo tenant.
+
+**Avance de la Fase 10** (05/10/2026):
+- Hechas en la 10.1: F-016, F-169 y F-174.
+- Hechas en la 10.2 (servidor y pantalla): 47, las marcadas «Hecho (10.2)».
+- Con la pantalla a medias, a la espera de otra entrega: F-001 y F-064 (10.4), F-070 (10.3) y F-133 (10.4).
 
 ---
 

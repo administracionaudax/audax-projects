@@ -318,3 +318,49 @@ Decisiones nuevas: **D-155 a D-161**. En `WEEKLY-INVENTARIO.md` §A.4, las F con
 En `tests/Feature/Weeklies`:
 - `WeeklySubmissionWriterTest`, `WeeklyCycleLifecycleTest`, `WeeklyExemptionsTest`, `WeeklyDashboardsTest` y `WeeklyDictationTest`,
 - `WeeklyMiscTest` y `WeeklyPagesPerformanceTest` (presupuestos de consultas).
+
+## 10.2b (hecho): semana y envío, pantallas
+Hecha el 05/10/2026 en `fase-10`, sobre el servidor de la 10.2a. Decisiones nuevas: **D-180 a D-186** (D-162 a D-179 están reservadas para otras ramas). En `WEEKLY-INVENTARIO.md` §A.4, 47 F pasan a «Hecho (10.2)»; F-001, F-064, F-070 y F-133 tienen la pantalla a medias, a la espera de la 10.3 o la 10.4.
+
+### Páginas
+- **`weeklies/index`** (D-183), con las pestañas «Resumen» e «Histórico» como enlaces:
+  - «Resumen» (`WeeklyOverview`): mi weekly con su botón (`MyWeeklyCallout`), mi racha, la gestión de la semana para quien gestiona (estado global, pendientes con «Eximir», exentos con «Quitar exención», «Cambiar el plazo» e «Iniciar la semana») y mis clientes con «Unirme a proyectos» y «Dejar proyecto»,
+  - «Histórico» (`WeeklyHistory`): la semana activa y la última cerrada destacadas con la tira del equipo y el estado del informe, y la tabla (tarjetas en el móvil), con «Eliminar».
+- **`my-space/index`:**
+  - «Reportes»: «Mis envíos» (`MyWeeksList`) con la racha; con `?semana=`, «Mi weekly» (`MyWeeklyEditor`, D-181),
+  - «Tareas»: enlace a Mis tareas hasta la 10.6.
+- **`home`:** la tarjeta «Weekly» (`HomeWeeklyCard`, diferida).
+- **`settings/profile`:** las estadísticas de la weekly (`WeeklyStats`, diferidas).
+- **`admin/settings`:** la sección «Weekly y módulos» (D-185).
+
+### Componentes (`resources/js/components/weeklies`)
+- **Cajas y dictado:**
+  - `client-entry-box`: una caja por cliente,
+  - `dictation-button` y `use-dictation`: el dictado (D-182),
+  - `use-weekly-autosave`: el autoguardado,
+  - `weekly-api`: las peticiones JSON del borrador y del dictado.
+- **Resumen e histórico:** `team-status-strip` (la tira del equipo, F-067), `weekly-ui` (etiquetas de estado, la semana compacta del móvil, el icono del cliente, la racha y la participación), `weekly-dialogs` (el plazo, eximir y unirme a proyectos) y `weekly-tabs`.
+- **Comunes de la app:**
+  - `global-banner` (el aviso global),
+  - `components/app-freshness` (la versión nueva y la conexión, D-184), los dos en el layout de la app.
+- **Fuera de la carpeta:**
+  - la barra lateral (D-180),
+  - `DatePicker` con `min`,
+  - la altura del chat descuenta el aviso global.
+
+### Datos de ejemplo
+El `DemoDataSeeder` trae las tres semanas anteriores cerradas, sin ninguna activa (D-186), con su test en `SeedersTest`. El E2E abre la semana en curso con «Iniciar la semana».
+
+### Tests
+- **Vitest:**
+  - `weeklies-editor` (las cajas, el autoguardado y su error, autocompletar, añadir un cliente, plegar, enviar, exento y solo lectura),
+  - `weeklies-dictation` (MediaRecorder simulado: subida, «Transcribiendo…», texto, sin voz, demasiado corto y error),
+  - `weeklies-team-nav` (la tira, la barra lateral con el contador y la tarjeta de Inicio),
+  - `weeklies-global-banner` y `weeklies-app-freshness`.
+- **E2E:** `weeklies.spec.ts` (escribir el borrador, enviar y verlo en la tira del equipo; eximir y quitar la exención; una semana cerrada en solo lectura; AA y 375 px). Además, `SIDEBAR_PATHS` y `collaborator.spec.ts` incluyen las entradas nuevas. **Escritos, sin ejecutar en el Mac:** van a la CI.
+
+### Para 10.3
+- **«Cerrar semana» (F-035 y F-089):** en la gestión de `WeeklyOverview` y en la página del informe. Al cerrar, `WeeklyCycleOpener::afterClose()` abre la siguiente (completa F-070).
+- **`weeklies/show`:** sigue siendo el esqueleto del contrato. Desde el resumen y el histórico ya se enlaza a él («Ver el informe»).
+- **La tira del equipo** (`TeamStatusStrip`) sirve para el estado del equipo del informe (F-088).
+- **«Recordar» a una persona pendiente** (F-037) es de la 10.5: va en la lista de pendientes de `WeeklyOverview`.
