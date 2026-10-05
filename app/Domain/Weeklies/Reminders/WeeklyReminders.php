@@ -138,7 +138,7 @@ final class WeeklyReminders
         );
     }
 
-    /** El plazo de la semana activa ha cambiado: aviso a quien aún debe enviarla (D-199). */
+    /** El plazo de la semana activa ha cambiado: aviso a quien aún debe enviarla, salvo a quien lo cambia (D-199). */
     public function notifyDeadline(WeeklyCycle $cycle, ?User $sender = null): WeeklyNoticeResult
     {
         if (! $cycle->isActive() || ! AppModules::enabled(AppModule::Weeklies)) {
@@ -150,7 +150,8 @@ final class WeeklyReminders
             $cycle,
             WeeklyReminderTemplate::Deadline,
             "deadline:{$cycle->id}:{$cycle->deadline_date->toDateString()}",
-            $this->recipients->pending($cycle),
+            // Quien cambia el plazo ya lo sabe: no se avisa a sí mismo.
+            $this->recipients->pending($cycle)->reject(fn (User $user): bool => $user->id === $sender?->id),
             WeeklyReminderChannel::cases(),
             fn (User $user): WeeklyDeadlineChanged => new WeeklyDeadlineChanged($cycle),
             $sender,
