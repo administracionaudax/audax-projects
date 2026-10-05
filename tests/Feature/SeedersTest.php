@@ -16,6 +16,8 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
+use App\Models\WeeklyCycle;
+use App\Models\WeeklySubmission;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
@@ -153,13 +155,37 @@ test('los datos de ejemplo tienen festivos y ausencias, y nadie imputa en un dí
     }
 });
 
+test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas y ninguna activa (Fase 10)', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    $closed = WeeklyCycle::query()->closed()->orderBy('start_date')->get();
+    $elena = User::query()->where('email', 'empleado@example.com')->sole();
+    $daniel = User::query()->where('email', 'daniel.ortega@example.com')->sole();
+    $collaborator = User::query()->where('email', DemoDataSeeder::COLLABORATOR_EMAIL)->sole();
+    $monday = LocalTime::today()->startOfWeek()->toDateString();
+
+    expect($closed)->toHaveCount(3)
+        ->and(WeeklyCycle::query()->active()->exists())->toBeFalse()
+        ->and($closed->last()->end_date->toDateString())->toBeLessThan($monday)
+        ->and($closed->last()->start_date->toDateString())->toBe(CarbonImmutable::parse($monday)->subWeek()->toDateString())
+        ->and($closed->every(fn (WeeklyCycle $cycle): bool => in_array($elena->id, $cycle->expected_user_ids ?? [], true)))->toBeTrue()
+        ->and($closed->every(fn (WeeklyCycle $cycle): bool => ! in_array($collaborator->id, $cycle->expected_user_ids ?? [], true)))->toBeTrue();
+
+    // Elena envía siempre a tiempo y con texto; Daniel no envía la última.
+    $elenaClosed = WeeklySubmission::query()->where('user_id', $elena->id)->whereIn('weekly_cycle_id', $closed->pluck('id'))->with('entries')->get();
+    expect($elenaClosed)->toHaveCount(3)
+        ->and($elenaClosed->every(fn (WeeklySubmission $submission): bool => $submission->submitted_at !== null && $submission->entries->isNotEmpty()))->toBeTrue()
+        ->and(WeeklySubmission::query()->where('user_id', $daniel->id)->where('weekly_cycle_id', $closed->last()->id)->exists())->toBeFalse();
+});
+
 test('el seeder de desarrollo es repetible', function () {
     $this->seed(DatabaseSeeder::class);
     $this->seed(DatabaseSeeder::class);
 
     expect(User::query()->count())->toBe(13)
         ->and(Department::query()->count())->toBe(3)
-        ->and(Project::query()->count())->toBe(15);
+        ->and(Project::query()->count())->toBe(15)
+        ->and(WeeklyCycle::query()->count())->toBe(3);
 });
 
 test('el seeder de desarrollo se niega a ejecutarse fuera de local y testing', function (string $env) {

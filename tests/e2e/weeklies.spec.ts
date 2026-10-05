@@ -6,10 +6,11 @@ import { login, USERS } from './support';
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /**
- * La Weekly (Fase 10, entrega 10.2b) con los datos de ejemplo del DemoDataSeeder: tres semanas
- * cerradas con los envíos de la plantilla y la semana en curso activa, en la que Raúl y Lucía ya
- * han enviado y Elena (empleado@example.com) no. Se puede repetir sobre la misma base: si Elena ya
- * envió en una pasada anterior, el botón es «Actualizar weekly». Nunca contra el servidor.
+ * La Weekly (Fase 10, entrega 10.2b) con los datos de ejemplo del DemoDataSeeder (D-186): las tres
+ * semanas anteriores cerradas con los envíos de la plantilla y ninguna activa. La semana en curso la
+ * abre el admin con «Iniciar la semana» (F-040) si aún no lo está. Se puede repetir sobre la misma
+ * base: si Elena (empleado@example.com) ya envió en una pasada anterior, el botón es «Actualizar
+ * weekly». Nunca contra el servidor.
  */
 
 async function expectNoPageScroll(page: Page): Promise<void> {
@@ -44,11 +45,28 @@ async function asAdmin(browser: Browser): Promise<Page> {
     return page;
 }
 
+/** Abre la semana en curso con «Iniciar la semana» si no hay ninguna activa (F-040). */
+async function ensureActiveWeek(browser: Browser): Promise<void> {
+    const admin = await asAdmin(browser);
+    await admin.goto('/weeklies');
+    const open = admin.locator('[data-test="weekly-open-cycle"]');
+
+    if (await open.isVisible()) {
+        await open.click();
+        await expect(
+            admin.locator('[data-test="weekly-manage"]'),
+        ).toBeVisible();
+    }
+
+    await admin.context().close();
+}
+
 test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
     page,
     browser,
 }) => {
     test.setTimeout(90_000);
+    await ensureActiveWeek(browser);
     const text = `Weekly E2E ${Date.now()}: revisada la home con el cliente.`;
 
     await test.step('la barra lateral lleva a Mi espacio y a las weeklies', async () => {
@@ -128,8 +146,10 @@ test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
 
 test('quien gestiona exime a una persona pendiente y le quita la exención', async ({
     page,
+    browser,
 }) => {
     test.setTimeout(60_000);
+    await ensureActiveWeek(browser);
 
     await login(page, USERS.admin);
     await page.goto('/weeklies');

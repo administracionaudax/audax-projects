@@ -8,6 +8,7 @@ use App\Domain\Chat\MessageWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
+use App\Domain\Weeklies\WeeklyCalendar;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BillingType;
@@ -19,6 +20,8 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatusCategory;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
+use App\Enums\WeeklyCycleStatus;
+use App\Enums\WeeklyEntrySource;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
@@ -37,6 +40,9 @@ use App\Models\TaskType;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryLock;
 use App\Models\User;
+use App\Models\WeeklyCycle;
+use App\Models\WeeklyEntry;
+use App\Models\WeeklySubmission;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -190,6 +196,7 @@ class DemoDataSeeder extends Seeder
             $this->comments($projects);
             $this->overloadedDay($projects);
             $this->collaborator();
+            $this->weeklies();
         });
 
         $this->chat();
@@ -252,6 +259,97 @@ class DemoDataSeeder extends Seeder
                 $absence->updated_at = $reviewed;
             }
             $absence->save();
+        }
+    }
+
+    /**
+     * La Weekly de ejemplo (Fase 10), para sus E2E (weeklies.spec.ts): las tres semanas anteriores
+     * cerradas, con los envíos de la plantilla (Elena siempre a tiempo, Pablo con retraso y Daniel
+     * sin enviar la última). La semana en curso NO se abre: la abre el planificador o «Iniciar la
+     * semana» (el E2E), y así las páginas de los tests de rendimiento no pagan el contador de «Mi
+     * espacio» con la caché fría. Sin el generador aleatorio, para no cambiar el resto de datos.
+     */
+    private function weeklies(): void
+    {
+        if (WeeklyCycle::query()->exists()) {
+            return;
+        }
+
+        $calendar = new WeeklyCalendar;
+        $current = $calendar->current($this->today->setTime(12, 0));
+        $people = User::query()
+            ->active()
+            ->internal()
+            ->whereNotIn('email', [self::COLLABORATOR_EMAIL])
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (User $user): bool => $user->writesWeeklies())
+            ->values();
+        $texts = [
+            'Revisión de avances con el cliente y ajustes de la propuesta.',
+            'Entregadas las piezas de la semana; pendiente de su validación.',
+            'Reunión de seguimiento: acordamos los próximos pasos y las fechas.',
+            'Corrección de incidencias y preparación de la siguiente entrega.',
+        ];
+
+        for ($weeksAgo = 3; $weeksAgo >= 1; $weeksAgo--) {
+            $period = $calendar->periodFor($current->start->subWeeks($weeksAgo));
+            // La foto al cerrar (F-092) se fija a mano: la plantilla de ejemplo se da de alta hoy,
+            // así que WeeklyEligibility::freeze() no la vería en semanas pasadas.
+            $cycle = WeeklyCycle::query()->create([
+                ...$period->toAttributes(),
+                'status' => WeeklyCycleStatus::Active,
+                'expected_user_ids' => $people->modelKeys(),
+            ]);
+            $deadline = CarbonImmutable::parse($period->deadline->toDateString().' 17:00:00', WeeklyCalendar::TIMEZONE);
+
+            foreach ($people as $index => $person) {
+                if ($weeksAgo === 1 && $person->email === 'daniel.ortega@example.com') {
+                    continue;
+                }
+
+                $late = $person->email === 'pablo.ruiz@example.com' && $weeksAgo === 2;
+                $this->weeklySubmission($person, $cycle, $late ? $deadline->addDays(3) : $deadline->subHours($index % 6), $texts, $weeksAgo + $index);
+            }
+
+            $cycle->forceFill([
+                'status' => WeeklyCycleStatus::Closed,
+                'closed_at' => $deadline->addDays(3)->utc(),
+            ])->save();
+        }
+    }
+
+    /**
+     * Una weekly de ejemplo: un apunte por cada cliente de sus proyectos (como mucho dos) o, sin
+     * clientes, uno de «General / Interno». Sin fecha de envío, queda como borrador.
+     *
+     * @param  list<string>  $texts
+     */
+    private function weeklySubmission(User $person, WeeklyCycle $cycle, ?CarbonImmutable $submittedAt, array $texts, int $seed): void
+    {
+        $submission = WeeklySubmission::query()->create([
+            'weekly_cycle_id' => $cycle->id,
+            'user_id' => $person->id,
+            'submitted_at' => $submittedAt?->utc(),
+            'draft_saved_at' => ($submittedAt ?? CarbonImmutable::now())->utc(),
+        ]);
+        $clientIds = $person->projects()
+            ->whereNotNull('client_id')
+            ->orderBy('projects.id')
+            ->pluck('client_id')
+            ->unique()
+            ->take(2)
+            ->values()
+            ->all();
+
+        foreach ($clientIds === [] ? [null] : $clientIds as $position => $clientId) {
+            WeeklyEntry::query()->create([
+                'weekly_submission_id' => $submission->id,
+                'client_id' => $clientId,
+                'body' => $texts[($seed + $position) % count($texts)],
+                'source' => WeeklyEntrySource::Text,
+                'position' => $position,
+            ]);
         }
     }
 
