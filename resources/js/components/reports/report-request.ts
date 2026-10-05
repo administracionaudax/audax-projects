@@ -1,6 +1,7 @@
 /**
  * URL de un informe (ReportRequestData, D-139) con `formato=` para descargarlo (xlsx, csv, pdf) o
- * imprimirlo (imprimir). Cada ReportKind es una ruta de routes/app/reports.php (Wayfinder).
+ * imprimirlo (imprimir). Cada ReportKind es una ruta de routes/app/reports.php (Wayfinder); la weekly,
+ * de routes/app/weeklies.php (D-192).
  */
 import {
     billing,
@@ -14,6 +15,7 @@ import {
 } from '@/routes/reports';
 import { exportMethod as exportHours } from '@/routes/reports/hours';
 import { exportMethod as exportProjectTime } from '@/routes/projects/time';
+import { pdf as weeklyReportPdf } from '@/routes/weeklies/report';
 import type { ReportRequestData } from '@/types';
 import type { QueryParams } from '@/wayfinder';
 
@@ -53,6 +55,8 @@ export function reportRequestUrl(
                 { project: id('project'), hourBank: id('hourBank') },
                 { query },
             );
+        case 'weekly':
+            return weeklyReportPdf.url(id('cycle'), { query });
         default:
             throw new Error(`Informe desconocido: ${request.kind}`);
     }

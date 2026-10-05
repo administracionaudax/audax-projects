@@ -26,7 +26,7 @@ export type ReportQuery = {
  * Un informe con sus filtros (App\Domain\Reports\Delivery\ReportRequest::toArray(), D-139): la
  * prop `report_request` de cada página de informe, para el menú «Exportar ▾» y los diálogos de
  * envío y programación. `kind` es un ReportKind (direction, department, person, client, project,
- * billing, detail, hours, project_hours, hour_bank).
+ * billing, detail, hours, project_hours, hour_bank y weekly).
  */
 export type ReportRequestData = {
     kind: string;
