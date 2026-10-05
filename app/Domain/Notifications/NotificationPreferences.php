@@ -2,6 +2,8 @@
 
 namespace App\Domain\Notifications;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\ProjectMember;
 use App\Models\User;
 
@@ -210,6 +212,7 @@ final class NotificationPreferences
 
         return match ($event->audience) {
             NotificationCatalog::AUDIENCE_ADMINS => $user->isAdmin(),
+            NotificationCatalog::AUDIENCE_WEEKLIES => $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::enabled(AppModule::Weeklies),
             NotificationCatalog::AUDIENCE_APPROVERS => $user->isAdmin() || $user->isDepartmentManager(),
             NotificationCatalog::AUDIENCE_MANAGERS => $user->isAdmin() || $user->isDepartmentManager()
                 || ($managesProjects ??= ProjectMember::query()->where('user_id', $user->id)->where('is_manager', true)->exists()),

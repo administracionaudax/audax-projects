@@ -31,6 +31,15 @@ abstract class AppNotification extends Notification implements SendsWebPush, Sho
 {
     use Queueable;
 
+    /**
+     * Canales de Laravel a los que se limita este envío, o null para todos los que decide
+     * NotificationPreferences. Solo QUITA canales, nunca añade: lo usan los avisos de la Weekly
+     * (10.5, D-201), cuyo recordatorio sale por el canal de su regla (si la persona lo quiere).
+     *
+     * @var list<string>|null
+     */
+    public ?array $onlyChannels = null;
+
     abstract public function kind(): string;
 
     abstract public function title(object $notifiable): string;
@@ -52,8 +61,14 @@ abstract class AppNotification extends Notification implements SendsWebPush, Sho
      */
     public function via(object $notifiable): array
     {
-        return app(NotificationPreferences::class)->channelsFor($notifiable, $this->kind())
+        $channels = app(NotificationPreferences::class)->channelsFor($notifiable, $this->kind())
             ?? $this->fallbackChannels();
+
+        if ($this->onlyChannels === null) {
+            return $channels;
+        }
+
+        return array_values(array_intersect($channels, $this->onlyChannels));
     }
 
     /**

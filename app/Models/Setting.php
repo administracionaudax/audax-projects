@@ -72,6 +72,8 @@ class Setting extends Model
         // Plantillas de aviso de la weekly (F-104 y F-105): null = las de lang/es/weeklies.php; si
         // no, {automatic|manual|weekly_closed: {subject, body}}.
         'weekly_email_templates' => null,
+        // La weekly pendiente en el recordatorio de los viernes de las horas (10.5, D-200).
+        'weekly_friday_reminder' => true,
         // Centro de ayuda (F-157): enlace de soporte y manual en PDF ({disk, path, name, size}).
         'help_support_url' => null,
         'help_manual' => null,

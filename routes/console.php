@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Setting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -68,19 +70,31 @@ Schedule::command('notifications:daily-digest')
     ->onOneServer()
     ->when($exists('notifications:daily-digest'));
 
-// Recordatorio de enviar la semana (SPEC §13, D-073): los viernes a las 13:00 de Madrid.
+// Recordatorio de los viernes (SPEC §13, D-073): a las 13:00 de Madrid. Desde la 10.5 (D-200) es
+// uno solo con las horas y la weekly pendientes: se lanza si alguna de las dos partes está activada.
 Schedule::command('time:remind-week')
     ->weeklyOn(5, '13:00')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping()
     ->onOneServer()
-    ->when(fn (): bool => $exists('time:remind-week')() && (bool) Setting::get('week_reminder_enabled', true));
+    ->when(fn (): bool => $exists('time:remind-week')() && (
+        (bool) Setting::get('week_reminder_enabled', true)
+        || ((bool) Setting::get('weekly_friday_reminder', true) && AppModules::enabled(AppModule::Weeklies))
+    ));
 
 // La Weekly (Fase 10, D-150 y D-155): abre la semana si no hay ninguna activa. Cada día a las 00:05
 // de Madrid: el lunes abre la nueva y, si el servidor estuvo parado, la abre en cuanto vuelve.
 Schedule::command('weeklies:open-week')
     ->dailyAt('00:05')
     ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Recordatorios de la weekly por reglas (10.5, D-199): cada 5 minutos, como la GitHub Action de
+// WeeklySync. El comando no hace nada sin semana activa o con el módulo apagado; las reglas son de
+// Madrid y cada disparo se envía una sola vez (weekly_reminder_logs).
+Schedule::command('weeklies:remind')
+    ->everyFiveMinutes()
     ->withoutOverlapping()
     ->onOneServer();
 

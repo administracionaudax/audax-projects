@@ -21,6 +21,7 @@ return [
     'flash' => [
         'opened' => 'Semana abierta: :label.',
         'deadline_updated' => 'Plazo actualizado.',
+        'deadline_updated_notified' => '{1} Plazo actualizado. Se ha avisado a 1 persona pendiente.|[2,*] Plazo actualizado. Se ha avisado a :count personas pendientes.',
         'deleted' => 'Weekly «:label» eliminada.',
         'deleted_and_opened' => 'Weekly «:label» eliminada. Se ha abierto la siguiente: :next.',
         'submitted' => 'Weekly enviada. ¡Gracias!',
@@ -32,6 +33,50 @@ return [
         'joined' => '{0} Ya eras miembro de esos proyectos.|{1} Te has unido a 1 proyecto.|[2,*] Te has unido a :count proyectos.',
         'left' => 'Has dejado el proyecto :project.',
         'closed' => 'Weekly «:label» cerrada. Se ha abierto la siguiente: :next. La satisfacción de los clientes se calcula en segundo plano.',
+    ],
+
+    // Avisos (10.5, D-199 a D-201): reglas, plantillas, envío manual, «Recordar» y registro.
+    'reminders' => [
+        'saved' => 'Avisos de la weekly guardados.',
+        'sent' => '{0} Nadie necesita el recordatorio: ya han enviado su weekly o están exentos.|{1} Recordatorio enviado a 1 persona.|[2,*] Recordatorio enviado a :count personas.',
+        'reminded' => 'Recordatorio enviado a :name.',
+        'not_needed' => ':name no necesita el recordatorio: ya ha enviado su weekly o está exento.',
+        'duplicate' => 'Ya se le ha enviado un recordatorio hace un momento.',
+        'no_channel' => 'No se ha enviado: :name tiene desactivados esos avisos.',
+        'no_active' => 'No hay ninguna semana activa a la que recordar.',
+        'failed' => 'No se ha podido entregar.',
+        'skipped' => [
+            'channel' => 'Este aviso no sale por ese canal.',
+            'push_unavailable' => 'Los avisos del navegador no están configurados.',
+            'push_unsubscribed' => 'No tiene ningún navegador con los avisos activados.',
+            'preferences' => 'Lo tiene desactivado en sus preferencias.',
+            'no_email' => 'No tiene email.',
+        ],
+        'notice' => [
+            'reminder_body' => 'Tu weekly de la :label sigue pendiente. Plazo: :deadline.',
+            'reminder_action' => 'Escribir mi weekly',
+            'closed_body' => 'Ya puedes leer el informe de la :label.',
+            'closed_action' => 'Abrir la weekly',
+            'deadline_title' => 'Nuevo plazo para la weekly',
+            'deadline_body' => 'El plazo de tu weekly de la :label es ahora el :deadline.',
+            'deadline_mail' => "Hola {nombre},\n\nEl plazo de tu weekly de la {week_label} es ahora el :deadline.\n\nGracias.",
+        ],
+        'validation' => [
+            'rules_max' => 'Como mucho :max reglas.',
+            'time' => 'La hora tiene que ser HH:MM (de 00:00 a 23:59).',
+            'day' => 'El día tiene que ser de lunes a domingo.',
+            'channel' => 'El canal tiene que ser «En la app», «Email» o «Navegador».',
+            'channels' => 'Elige al menos un canal.',
+            'users' => 'Elige al menos una persona.',
+        ],
+        'attributes' => [
+            'rules' => 'reglas',
+            'subject' => 'asunto',
+            'body' => 'cuerpo',
+            'user_ids' => 'personas',
+            'channels' => 'canales',
+            'template' => 'plantilla',
+        ],
     ],
 
     // Informe, audio y cierre (10.3).
@@ -234,6 +279,7 @@ return [
             'assistant' => 'Asistente',
         ],
         'reminder_channel' => [
+            'app' => 'En la app',
             'email' => 'Email',
             'push' => 'Navegador',
         ],
@@ -241,8 +287,11 @@ return [
             'automatic' => 'Automático',
             'manual' => 'Manual',
             'weekly_closed' => 'Weekly cerrada',
+            'deadline' => 'Plazo cambiado',
+            'friday' => 'Recordatorio de los viernes',
         ],
         'reminder_status' => [
+            'queued' => 'En cola',
             'sent' => 'Enviado',
             'failed' => 'Fallido',
             'skipped' => 'Omitido',

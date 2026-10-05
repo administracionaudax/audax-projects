@@ -38,8 +38,11 @@ final class NotificationCatalog
 
     public const string AUDIENCE_ADMINS = 'admins';
 
+    /** Quien escribe la weekly (Fase 10, D-147) con el módulo encendido; nunca un colaborador externo. */
+    public const string AUDIENCE_WEEKLIES = 'weeklies';
+
     /** Grupos, en el orden de la página de preferencias. */
-    public const array GROUPS = ['tasks', 'time', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
+    public const array GROUPS = ['tasks', 'time', 'weeklies', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
 
     /** @var array<string, NotificationEvent>|null */
     private ?array $events = null;
@@ -76,11 +79,20 @@ final class NotificationCatalog
             new NotificationEvent('task.status_changed', 'tasks', $all, [$app]),
             new NotificationEvent('task.due', 'tasks', $all, [$app, $email]),
 
-            // Horas (Fase 1 y el recordatorio de los viernes de la Fase 7).
+            // Horas (Fase 1 y el recordatorio de los viernes de la Fase 7, que desde la 10.5 lleva
+            // también la weekly pendiente: un solo aviso los viernes, D-150 y D-200).
             new NotificationEvent('time.returned', 'time', $all, [$app, $email]),
             new NotificationEvent('time.approved', 'time', $all, [$app]),
             new NotificationEvent('time.week_reminder', 'time', $all, [$app]),
             new NotificationEvent('time.timer_long', 'time', $all, [$app]),
+
+            // La Weekly (Fase 10, entrega 10.5, D-199 a D-201). Los recordatorios por reglas salen por
+            // el canal de cada regla (y solo si la persona no lo ha desactivado aquí); por defecto,
+            // en la app y por email, como el email de WeeklySync. «Weekly cerrada» con el enlace al
+            // informe (F-095) y el plazo cambiado, a quien aún debe enviarla.
+            new NotificationEvent('weeklies.reminder', 'weeklies', $all, [$app, $email, $push], self::AUDIENCE_WEEKLIES),
+            new NotificationEvent('weeklies.closed', 'weeklies', $all, [$app, $email], self::AUDIENCE_WEEKLIES),
+            new NotificationEvent('weeklies.deadline_changed', 'weeklies', $all, [$app], self::AUDIENCE_WEEKLIES),
 
             // Bolsas (Fase 1): umbrales y exceso.
             new NotificationEvent('hour_bank.threshold', 'hour_banks', $all, [$app, $email], self::AUDIENCE_MANAGERS),

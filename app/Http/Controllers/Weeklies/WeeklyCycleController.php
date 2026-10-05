@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Weeklies;
 use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Delivery\ReportRequest;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\Reminders\WeeklyReminders;
 use App\Domain\Weeklies\WeeklyCycleCloser;
 use App\Domain\Weeklies\WeeklyCycleOpener;
 use App\Domain\Weeklies\WeeklyJobProgress;
@@ -65,6 +66,8 @@ class WeeklyCycleController extends Controller
                 'extendDeadline' => $active !== null && Gate::allows('extendDeadline', $active),
                 'delete' => Gate::allows('manage-weeklies'),
                 'exempt' => $active !== null && Gate::allows('manage-weeklies'),
+                'remind' => $active !== null && Gate::allows('remind', $active),
+                'reminders' => Gate::allows('manage-weeklies'),
             ],
         ]);
     }
@@ -127,11 +130,19 @@ class WeeklyCycleController extends Controller
     }
 
     /** Ampliar (o cambiar) el plazo de la semana activa (F-068). */
-    public function deadline(UpdateWeeklyDeadlineRequest $request, WeeklyCycle $cycle): RedirectResponse
+    public function deadline(UpdateWeeklyDeadlineRequest $request, WeeklyCycle $cycle, WeeklyReminders $reminders): RedirectResponse
     {
+        $before = $cycle->deadline_date->toDateString();
         $cycle->forceFill(['deadline_date' => $request->date('deadline_date')?->toDateString()])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.deadline_updated')]);
+        // Plazo cambiado (10.5, D-199): aviso a quien aún debe enviar la weekly.
+        /** @var User $user */
+        $user = $request->user();
+        $notified = $cycle->deadline_date->toDateString() !== $before ? $reminders->notifyDeadline($cycle, $user)->notified : 0;
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $notified > 0
+            ? trans_choice('weeklies.flash.deadline_updated_notified', $notified, ['count' => $notified])
+            : __('weeklies.flash.deadline_updated')]);
 
         return back();
     }

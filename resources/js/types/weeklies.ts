@@ -59,11 +59,19 @@ export type AiFeature =
     | 'person_client_activity'
     | 'assistant';
 
-export type WeeklyReminderChannel = 'email' | 'push';
+export type WeeklyReminderChannel = 'app' | 'email' | 'push';
 
-export type WeeklyReminderTemplate = 'automatic' | 'manual' | 'weekly_closed';
+/** Las tres editables (automatic, manual y weekly_closed) y las dos de texto fijo (10.5, D-199). */
+export type WeeklyReminderTemplate =
+    | 'automatic'
+    | 'manual'
+    | 'weekly_closed'
+    | 'deadline'
+    | 'friday';
 
-export type WeeklyReminderStatus = 'sent' | 'failed' | 'skipped';
+export type WeeklyEditableTemplate = 'automatic' | 'manual' | 'weekly_closed';
+
+export type WeeklyReminderStatus = 'queued' | 'sent' | 'failed' | 'skipped';
 
 export type DictationContext = 'weekly_entry' | 'task_note';
 

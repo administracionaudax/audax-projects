@@ -29,6 +29,8 @@ return [
         'report_delivery' => 'Informes (exportados y enviados)',
         'integration' => 'Integraciones',
         'access' => 'Accesos con Google',
+        'weekly' => 'Weekly (semanas y exenciones)',
+        'weekly_reminder' => 'Avisos de la Weekly',
         'other' => 'Otros',
     ],
 
@@ -62,10 +64,15 @@ return [
         'sheets_exported' => 'Informes exportados a Google Sheets',
         'integration_changed' => 'Cuentas de Google conectadas y desconectadas',
         'google_login' => 'Accesos con Google (correctos y rechazados)',
+        'weekly_reminders_sent' => 'Recordatorios de la weekly enviados a mano',
+        'weekly_reminders_changed' => 'Cambios en las plantillas y el recordatorio de los viernes de la weekly',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
     'events' => [
+        'reminders_sent' => 'Recordatorio de la weekly enviado',
+        'templates_updated' => 'Plantillas de la weekly cambiadas',
+        'friday_updated' => 'Weekly en el recordatorio de los viernes',
         'created' => 'Alta',
         'updated' => 'Cambio',
         'deleted' => 'Borrado',

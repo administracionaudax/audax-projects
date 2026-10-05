@@ -13,7 +13,8 @@ namespace App\Domain\Audit;
  *   por cada importación de ClickUp, D-136) y report-delivery (descargas, impresiones, envíos,
  *   envíos programados y subidas a Google Sheets de informes, D-139, D-141 y D-142) e
  *   integrations (conexiones con Google: conectar, desconectar y la desconexión automática, D-142)
- *   y auth (entradas con Google, correctas y rechazadas, D-165).
+ *   y auth (entradas con Google, correctas y rechazadas, D-165) y weekly-reminders (plantillas, la
+ *   weekly en el recordatorio de los viernes y los envíos manuales de la Weekly, D-201).
  */
 final class AuditCatalog
 {
@@ -42,6 +43,10 @@ final class AuditCatalog
         'report_delivery' => ['report-delivery'],
         'integration' => ['integrations'],
         'access' => ['auth'],
+        // La Weekly (Fase 10): semanas (abrir, plazo, cierre y borrado) y exenciones; los avisos
+        // (reglas, plantillas, la weekly del viernes y los envíos manuales y «Recordar», D-201).
+        'weekly' => ['weekly_cycles', 'weekly_exemptions'],
+        'weekly_reminder' => ['weekly_reminder_rules', 'weekly-reminders'],
     ];
 
     /**
@@ -80,6 +85,8 @@ final class AuditCatalog
         'sheets_exported' => ['sheets'],
         'integration_changed' => ['google_connected', 'google_disconnected', 'google_auto_disconnected'],
         'google_login' => ['google_login', 'google_login_rejected'],
+        'weekly_reminders_sent' => ['reminders_sent'],
+        'weekly_reminders_changed' => ['templates_updated', 'friday_updated'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */

@@ -25,6 +25,7 @@ return [
     'groups' => [
         'tasks' => 'Tareas',
         'time' => 'Horas',
+        'weeklies' => 'Weekly',
         'hour_banks' => 'Bolsas de horas',
         'absences' => 'Ausencias',
         'chat' => 'Chat',
@@ -43,8 +44,13 @@ return [
         'time' => [
             'returned' => ['label' => 'Semana devuelta', 'description' => 'Cuando te devuelven la semana para corregirla.'],
             'approved' => ['label' => 'Semana aprobada', 'description' => 'Cuando te aprueban la semana.'],
-            'week_reminder' => ['label' => 'Recordatorio de enviar la semana', 'description' => 'Los viernes, si aún no has enviado la semana.'],
+            'week_reminder' => ['label' => 'Recordatorio de los viernes', 'description' => 'Los viernes, si aún no has enviado la semana de horas o la weekly: un solo aviso con lo que te falte.'],
             'timer_long' => ['label' => 'Temporizador encendido demasiado tiempo', 'description' => 'Cuando tu temporizador lleva muchas horas en marcha.'],
+        ],
+        'weeklies' => [
+            'reminder' => ['label' => 'Recordatorios de la weekly', 'description' => 'Los que programa quien gestiona la Weekly y los «Recordar», si aún no has enviado la tuya. Cada recordatorio sale por el canal que elige quien lo programa; aquí puedes quitar los que no quieras.'],
+            'closed' => ['label' => 'Weekly cerrada', 'description' => 'Cuando se cierra la semana, con el enlace al informe.'],
+            'deadline_changed' => ['label' => 'Plazo de la weekly cambiado', 'description' => 'Cuando se amplía o cambia el plazo de la semana y aún no has enviado tu weekly.'],
         ],
         'hour_bank' => [
             'threshold' => ['label' => 'Bolsas que llegan a un umbral', 'description' => 'Cuando una bolsa que gestionas llega al 75, 90 o 100 %.'],
@@ -97,9 +103,14 @@ return [
     ],
 
     // Recordatorio de enviar la semana (time:remind-week, App\Notifications\Time\WeekSubmissionReminder).
+    // Desde la 10.5 (D-200) lleva también la weekly pendiente: un solo aviso los viernes.
     'reminder' => [
         'title' => 'Recuerda enviar tu semana',
+        'title_both' => 'Recuerda enviar tu semana y tu weekly',
+        'title_weekly' => 'Recuerda enviar tu weekly',
         'body' => 'Llevas :logged de :capacity imputadas en la semana del :week.',
         'body_returned' => 'Te devolvieron la semana del :week para corregirla: llevas :logged de :capacity imputadas.',
+        'body_weekly' => 'Tu weekly de la :cycle sigue pendiente (plazo: :deadline).',
+        'weekly_action' => 'Escribir mi weekly',
     ],
 ];

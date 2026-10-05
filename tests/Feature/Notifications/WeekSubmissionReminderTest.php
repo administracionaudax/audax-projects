@@ -195,10 +195,11 @@ it('quien lo desactiva en la app y por email no lo recibe', function () {
     expect(Cache::has(RemindWeekSubmission::claimKey($ana->id, '2026-09-28')))->toBeFalse();
 });
 
-it('no hace nada con el ajuste desactivado', function () {
+it('no hace nada con las dos partes desactivadas (horas y weekly)', function () {
     Notification::fake();
     ($this->person)();
     Setting::set('week_reminder_enabled', false);
+    Setting::set('weekly_friday_reminder', false);
 
     $this->artisan('time:remind-week')
         ->expectsOutputToContain('desactivado')
@@ -237,7 +238,8 @@ it('hace las mismas consultas con 5 personas que con 50', function () {
     $many = $count;
 
     Notification::assertSentTimes(WeekSubmissionReminder::class, 5 + 50);
-    expect($few)->toBeLessThanOrEqual(8)
+    // Una más desde la 10.5 (D-200): la semana activa de la weekly, aquí sin ninguna.
+    expect($few)->toBeLessThanOrEqual(9)
         ->and($many)->toBe($few);
 });
 
@@ -252,6 +254,14 @@ it('se programa los viernes a las 13:00 de Madrid, sin solaparse, en un solo ser
         ->and($event->onOneServer)->toBeTrue()
         ->and($event->filtersPass(app()))->toBeTrue();
 
+    // Con las horas apagadas sigue saliendo por la weekly (D-200); sin ninguna de las dos, no.
     Setting::set('week_reminder_enabled', false);
+    expect($event->filtersPass(app()))->toBeTrue();
+
+    Setting::set('weekly_friday_reminder', false);
+    expect($event->filtersPass(app()))->toBeFalse();
+
+    Setting::set('weekly_friday_reminder', true);
+    Setting::set('modules', ['weeklies' => false]);
     expect($event->filtersPass(app()))->toBeFalse();
 });
