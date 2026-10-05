@@ -91,6 +91,11 @@ return [
     | (nunca en Git). Sin ellos, la exportación a Google Sheets no se ofrece. La URI de redirección
     | debe ser exactamente la autorizada en Google Cloud; vacía, se usa la ruta
     | integrations.google.callback de APP_URL. Solo se aceptan cuentas del dominio de Workspace.
+    |
+    | Acceso con Google (D-165): el mismo cliente con su propia URI de redirección
+    | (GOOGLE_LOGIN_REDIRECT_URI; vacía, la ruta login.google.callback de APP_URL) y los dominios
+    | de Workspace permitidos (GOOGLE_LOGIN_DOMAINS, separados por comas). Se activa o desactiva en
+    | /admin/ajustes (google_login_enabled).
     */
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
@@ -98,6 +103,8 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
         'hosted_domain' => env('GOOGLE_HOSTED_DOMAIN', 'audaxstudio.com'),
         'timeout' => (int) env('GOOGLE_TIMEOUT', 30),
+        'login_redirect' => env('GOOGLE_LOGIN_REDIRECT_URI'),
+        'login_domains' => env('GOOGLE_LOGIN_DOMAINS', 'audaxstudio.com'),
     ],
 
 ];
