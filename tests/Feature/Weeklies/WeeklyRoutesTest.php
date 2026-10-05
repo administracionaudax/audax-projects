@@ -136,7 +136,6 @@ it('lo de cada persona responde 501 a cualquiera de la plantilla', function (str
 
     $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertStatus(501);
 })->with([
-    ['POST', '/ia/preguntas'],
     ['POST', '/ayuda/sugerencias'],
     ['POST', '/ayuda/me-gusta'],
 ]);

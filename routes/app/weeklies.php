@@ -104,10 +104,11 @@ Route::get('version', AppVersionController::class)
 // «Uso de IA» (10.3, F-173 y F-180): solo admins.
 Route::get('admin/uso-ia', AiUsageController::class)->name('admin.ai-usage.index');
 
-// Asistente IA (10.6).
+// Asistente IA (10.6, D-205 y D-206): la respuesta llega por la cola `ai`.
 Route::middleware('module:assistant')->group(function () {
     Route::get('ia', [AssistantController::class, 'index'])->name('assistant.index');
     Route::post('ia/preguntas', [AssistantController::class, 'ask'])->middleware('throttle:20,1')->name('assistant.ask');
+    Route::get('ia/preguntas/{question}', [AssistantController::class, 'show'])->whereUuid('question')->middleware('throttle:240,1')->name('assistant.questions.show');
 });
 
 // Centro de ayuda (10.7).

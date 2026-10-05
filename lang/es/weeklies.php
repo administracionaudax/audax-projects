@@ -378,5 +378,16 @@ return [
         'not_found' => 'Esa pregunta ya no está disponible.',
         'failed' => 'Lo siento, hubo un error al procesar tu consulta. Por favor intenta de nuevo.',
         'empty' => 'No se pudo generar una respuesta.',
+        // Las preguntas sugeridas de WeeklySync, con nombres de Audax.
+        'suggested' => [
+            'client' => '¿Cuál es el estado actual del cliente «:client»?',
+            'clients' => '¿Cuál es el estado actual de nuestros clientes?',
+            'department' => '¿Qué bloqueos ha reportado el equipo de :department esta semana?',
+            'team' => '¿Qué bloqueos ha reportado el equipo esta semana?',
+            'person' => 'Hazme un resumen de los logros de :person este mes.',
+            'me' => 'Hazme un resumen de mis logros de este mes.',
+            'problems' => '¿Cuándo fue la última vez que tuvimos problemas con la API?',
+            'risk' => '¿Qué clientes están en riesgo según los últimos reportes?',
+        ],
     ],
 ];
