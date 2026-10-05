@@ -72,6 +72,8 @@ class SettingsRequest extends FormRequest
             'occupancy_high_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX],
             // Opcional en la petición: quien no lo envía conserva el valor guardado (Fase 7, D-073).
             'week_reminder_enabled' => ['sometimes', 'required', 'boolean'],
+            // Opcional en la petición: quien no lo envía conserva el valor guardado (D-165).
+            'google_login_enabled' => ['sometimes', 'required', 'boolean'],
         ];
     }
 
@@ -148,6 +150,7 @@ class SettingsRequest extends FormRequest
             'occupancy_low_threshold' => $this->integer('occupancy_low_threshold'),
             'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
             ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
+            ...($this->has('google_login_enabled') ? ['google_login_enabled' => $this->boolean('google_login_enabled')] : []),
         ];
     }
 }

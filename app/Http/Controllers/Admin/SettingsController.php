@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Auth\Google\GoogleLogin;
+use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SettingsRequest;
 use App\Models\Setting;
@@ -30,6 +32,11 @@ class SettingsController extends Controller
             'settings' => $settings,
             'roundings' => SettingsRequest::ROUNDINGS,
             'serverUploadLimitMb' => self::serverUploadLimitMb(),
+            // Entrar con Google (D-165): el interruptor solo tiene efecto con credenciales.
+            'googleLogin' => [
+                'configured' => GoogleOAuth::configured(),
+                'domains' => GoogleLogin::allowedDomains(),
+            ],
         ]);
     }
 
