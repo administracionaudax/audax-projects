@@ -23,7 +23,7 @@ Decisiones: **D-145 a D-150**; las del contrato, **D-151 a D-154**.
 | **10.5 Avisos** | Recordatorios (app, email y push) con reglas y deduplicación, «weekly cerrada», plazo ampliado, plantillas editables, envío manual y registro; un solo recordatorio de los viernes | F-037, F-095 y F-101 a F-110 | M |
 | **10.6 Tareas y asistente** | Tareas de «Mi espacio», tareas sugeridas por IA (revisadas y creadas en un proyecto) y asistente `/ia` con los datos que puede ver quien pregunta | F-006, F-055 a F-063, F-146 y F-147 | M |
 | **10.7 Ayuda y sugerencias** | Centro de ayuda (novedades con «me gusta», tutoriales en vídeo, FAQ, manual y soporte) y sugerencias (tableros, votos, comentarios con adjuntos y reacciones, estados y roadmap) | F-148 a F-170 | XL |
-| **10.8 Migración** | `app:import-weeklysync` idempotente con `--dry-run`, ficheros de correspondencias y `import_refs` (fuente `weeklysync`). Migra ciclos, envíos, entradas, exenciones, satisfacción, audios, ayuda, sugerencias, reglas y plantillas | — | M |
+| **10.8 Migración** | `app:dump-weeklysync` (en el Mac, solo lectura) y `app:import-weeklysync` idempotente con `--dry-run`, ficheros de correspondencias y `import_refs` (fuente `weeklysync`). Migra ciclos, envíos, entradas, exenciones, satisfacción, audios, ayuda, sugerencias, reglas y plantillas | — | M |
 | **10.9 Cierre y apagado** | Revisión de completitud y adversarial, despliegue, última importación con WeeklySync congelado, redirección del dominio antiguo y baja de los servicios (rotando y borrando las claves) | — | S |
 
 Orden: 10.1 → 10.2 → 10.3 → 10.4 → 10.5 → 10.6 → 10.7 → 10.8 → 10.9. Un agente cada vez, con poca carga para el Mac: tests acotados con `nice`, Pest con 2 procesos y la batería completa solo al integrar.
@@ -601,3 +601,113 @@ Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-207 a D-212**. En `WEEK
 ### Para la 10.8
 - La ayuda de WeeklySync: `help_releases` (con `is_hidden`) y `help_release_changes`, `help_manual_updates` (`content_markdown` en Markdown o HTML → `body` saneado con `RichText`), `help_update_likes` (`release_id`/`manual_update_id` → `likeable`), `help_tutorials` (el vídeo del bucket `help-content` → `Attachment` en `help/tutorials`), `help_faq_sections` y `help_faqs`, y `help_settings` (`manual_path` y `support_url` → `help_manual` y `help_support_url`).
 - Las sugerencias: tableros, categorías (la de bugs ya existe: casar por slug), la propuesta con sus votos, comentarios (`parent_comment_id` → `parent_id`), reacciones (`reaction_key`), eventos de estado y adjuntos (bucket `suggestion-attachments` → `Attachment`). El cuerpo y los comentarios en Markdown con menciones `@[Nombre](user:uuid)` → HTML de RichText con `<span data-type="mention" …>` y el id de Audax. Recontar `vote_count` y `comment_count` y dar `position` por `last_activity_at` dentro de cada estado.
+
+## 10.8 (hecho): migración de los datos
+Hecha el 07/10/2026 en `fase-10`. Decisiones nuevas: **D-213 a D-220**. Sin migraciones. Antes de empezar se pasó la batería completa de Pest (la 10.7 no lo había hecho): 4.299 en verde.
+
+### Qué hay
+- **Volcador** (`app:dump-weeklysync <carpeta> [--credenciales=] [--sin-ficheros]`, D-213), para el Mac del propietario:
+  - `App\Domain\Import\WeeklySync\Dump`: `WeeklySyncCredentials` (fichero 600, valores ocultos), `PostgresWeeklySyncSource` (transacción `READ ONLY` y `REPEATABLE READ`, TLS), `SupabaseStorage` (solo `GET`), `WeeklySyncDumper` (carpeta 700, ficheros 600, manifiesto con sha256) y `WeeklySyncConnector` (lo sustituyen los tests).
+  - Solo descarga los ficheros a los que apunta alguna fila (`WeeklySyncDump::references()`).
+- **Importador** (`app:import-weeklysync <carpeta> [--dry-run] [--personas=] [--clientes=]`, D-214 a D-220), para el servidor:
+  - `WeeklySyncDump` (lee y verifica el volcado), `WeeklySyncMappings` (ficheros de correspondencias), `WeeklySyncNames`, `WeeklySyncText` (Markdown y menciones → RichText), `WeeklySyncFiles` (copia con ruta fija y sha256), `WeeklySyncImportReport` y `WeeklySyncImporter`,
+  - etapas en `Stages/`: `PeopleStage`, `ClientsStage`, `WeeksStage` (semanas, informe, audio, exenciones, envíos, borradores y satisfacción), `TasksStage`, `RemindersStage`, `HelpStage`, `SuggestionsStage` y `AiUsageStage`,
+  - reutiliza `ImportRefs`, `ImportOutput` y `SilentOutput` del importador de ClickUp; la consola, `App\Console\Support\CommandImportOutput`,
+  - auditoría: evento `weeklysync_import` en la acción «importado».
+
+### Tests
+- `tests/Feature/Import/WeeklySyncImportTest.php`: casamientos (correo, identidad, fichero, nombre normalizado, códigos de proyecto y factura), inactivos, informe con los ids reescritos, `expected_user_ids`, exenciones, envíos y borradores, unión de duplicados, satisfacción, audios y ficheros, tareas, avisos, ayuda, sugerencias, uso de IA, idempotencia (dos pasadas = mismo resultado), `--dry-run`, lo escrito en Audax, la semana activa, la corrección de correspondencias, el volcado tocado y el comando.
+- `tests/Feature/Import/WeeklySyncDumpTest.php`: el volcador con dobles reproduce el volcado de ejemplo byte a byte, tablas que no existen, carpeta no vacía, rutas del Storage, credenciales (permisos, que nunca salen en pantalla), DSN de PDO y el Storage con `Http::fake`.
+- **Volcado de ejemplo** en `tests/fixtures/weeklysync/` (datos inventados): lo generó el propio volcador con un origen en memoria. Si cambia el formato, el primer test de `WeeklySyncDumpTest` falla y hay que regenerarlo igual.
+
+### Procedimiento de la migración
+Se hace dos veces: un **ensayo** cuando se quiera y la **definitiva** en la 10.9, con WeeklySync congelado. La segunda pasada sobre la misma base trae solo lo nuevo (D-214).
+
+**1. Credenciales (en el Panel de Supabase, proyecto de WeeklySync).** Hacen falta cuatro valores:
+
+| Clave | Dónde | ¿Secreta? |
+|---|---|---|
+| `WEEKLYSYNC_DB_URL` | Botón **«Connect»** (arriba) → «Connection string» → **«Session pooler»** (la «Direct connection» solo va por IPv6). Copia la URI `postgresql://postgres.<ref>:[YOUR-PASSWORD]@aws-0-<región>.pooler.supabase.com:5432/postgres` **quitando `:[YOUR-PASSWORD]`**. | No |
+| `WEEKLYSYNC_DB_PASSWORD` | La contraseña de la base que se puso al crear el proyecto. Si no se conoce: **Project Settings → Database → «Reset database password»** (la app y sus funciones usan las claves de la API, no esta contraseña; compruébalo antes de cambiarla). | **Sí** |
+| `WEEKLYSYNC_URL` | **Project Settings → Data API** (o «API») → «Project URL»: `https://<ref>.supabase.co`. | No |
+| `WEEKLYSYNC_SERVICE_KEY` | **Project Settings → API Keys**: mejor una **clave secreta nueva** solo para esto («Create new secret key», `sb_secret_…`), que se borra al terminar; si no, la `service_role` de «Legacy API keys» («Reveal»). | **Sí** |
+
+En el Mac, en una ventana de Terminal (zsh), sin que las secretas salgan en pantalla ni en el historial:
+
+```zsh
+mkdir -p ~/.config/audax && chmod 700 ~/.config/audax
+umask 077
+f=~/.config/audax/weeklysync.env
+print -r -- "WEEKLYSYNC_DB_URL=postgresql://postgres.<ref>@aws-0-<región>.pooler.supabase.com:5432/postgres" > $f
+print -r -- "WEEKLYSYNC_URL=https://<ref>.supabase.co" >> $f
+stty -echo; IFS= read -r 'p?Contraseña de la base: '; stty echo; print
+print -r -- "WEEKLYSYNC_DB_PASSWORD=$p" >> $f; unset p
+stty -echo; IFS= read -r 'k?Clave secreta de Supabase: '; stty echo; print
+print -r -- "WEEKLYSYNC_SERVICE_KEY=$k" >> $f; unset k
+chmod 600 $f
+```
+
+Para comprobarlo sin ver los valores: `cut -d= -f1 ~/.config/audax/weeklysync.env` (solo los nombres) y `ls -l ~/.config/audax/weeklysync.env` (`-rw-------`).
+
+**2. Volcado (en el Mac, en la copia de trabajo con la 10.8).** No escribe nada en Supabase y no usa la base local:
+
+```zsh
+export PATH=/usr/local/opt/php@8.4/bin:$PATH
+d=~/weeklysync-volcado-$(date +%Y%m%d-%H%M)
+php artisan app:dump-weeklysync $d
+```
+
+Muestra las filas de cada tabla, los ficheros descargados (MB) y los que falten en el Storage. Deben salir unas 13 personas, 50 clientes, 28 semanas, 267 envíos, 1.695 apuntes, 27 borradores (196 apuntes), 602 registros de correo, 4 vídeos y 1 manual (WEEKLY-INVENTARIO §C).
+
+**3. Subida al servidor** (al usuario de la app, en su almacenamiento privado, 700/600):
+
+```zsh
+ssh audax-projects 'mkdir -p -m 700 /var/www/vhosts/projects.audaxstudio.com/app/shared/storage/app/private/weeklysync-import'
+rsync -a --chmod=D700,F600 $d/ audax-projects:/var/www/vhosts/projects.audaxstudio.com/app/shared/storage/app/private/weeklysync-import/
+```
+
+**4. Copia de la base** antes de importar, como en `DEPLOY.md` §8 (paso 1), con el nombre `antes-de-weeklysync.dump`. Los ficheros importados son nuevos (rutas `*-weeklysync.*`): no sustituyen nada.
+
+**5. Simulación** (no guarda nada ni copia ficheros):
+
+```bash
+ssh audax-projects
+cd /var/www/vhosts/projects.audaxstudio.com/app/current
+V=/var/www/vhosts/projects.audaxstudio.com/app/shared/storage/app/private/weeklysync-import
+scripts/heavy.sh /opt/plesk/php/8.4/bin/php artisan app:import-weeklysync $V --dry-run
+```
+
+Revisar en el informe:
+- la tabla «Tabla / Volcado / Leídas / Importadas / Omitidas / Cuadra»: **todas en «sí»**,
+- los avisos: personas creadas inactivas, clientes creados inactivos, clientes casados por códigos o factura (revisarlos), tareas no migradas y clientes del informe sin pareja,
+- lo omitido y su motivo.
+
+Si una persona o un cliente no casa como debe, se escribe su correspondencia en `$V/personas.json` o `$V/clientes.json` (formato en `WeeklySyncMappings`; con `chmod 600`) y se repite la simulación.
+
+**6. Importación de verdad:** el mismo comando sin `--dry-run`. Si se corta, se vuelve a lanzar: continúa sin duplicar.
+
+**7. Comprobaciones:**
+- el informe cuadra igual que en la simulación y no quedan ficheros «que no están en el volcado» sin explicar,
+- `scripts/heavy.sh /opt/plesk/php/8.4/bin/php artisan tinker --execute="dump(App\Models\WeeklyCycle::count(), App\Models\WeeklySubmission::whereNotNull('submitted_at')->count(), App\Models\WeeklySubmission::whereNull('submitted_at')->count(), App\Models\ClientSatisfactionSnapshot::count(), App\Models\WeeklyReminderLog::count(), App\Models\HelpFaq::count(), App\Models\AiUsage::count());"`: las semanas, los envíos, los borradores sin enviar, la satisfacción, el registro, las preguntas y el uso de IA, frente al informe,
+- en la app: el histórico de `/weeklies` con sus 28 semanas, el informe y el audio de una semana cerrada, la satisfacción en la ficha de un cliente, `/ayuda` (vídeo de un tutorial, manual y preguntas), las sugerencias, «Avisos» de `/weeklies` (reglas, plantillas y registro) y «Uso de IA» con 90 días,
+- en `/admin/auditoria`, una sola entrada «Importación de WeeklySync».
+No es un cambio del sistema: no hace falta `verificar.sh` ni `comparar-webs.sh`.
+
+**8. Borrado del volcado y de las credenciales** (después de comprobarlo):
+
+```bash
+# En el servidor
+rm -rf /var/www/vhosts/projects.audaxstudio.com/app/shared/storage/app/private/weeklysync-import
+```
+
+```zsh
+# En el Mac
+rm -rf ~/weeklysync-volcado-*
+rm ~/.config/audax/weeklysync.env
+```
+
+En Supabase, borrar la clave secreta creada para el volcado. La copia nocturna de esa noche puede llevar el volcado: son los mismos datos que ya están en la base y caduca con ella. En la 10.9, tras la última pasada, se rotan y borran todas las claves (`service_role`, contraseña de la base y GCP) al dar de baja Supabase.
+
+### Para la 10.9
+- La última pasada, con WeeklySync congelado (sin escritura) y sus recordatorios apagados: los pasos 1 a 8 otra vez. Después, activar las reglas importadas en «Avisos» y la weekly del recordatorio de los viernes (10.5) y apagar la GitHub Action.
+- Revisar en la app lo creado inactivo (personas y clientes) por si conviene fusionarlo a mano.

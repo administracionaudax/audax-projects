@@ -1703,6 +1703,77 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.7 (hecho)»
 - WeeklySync escuchaba los cambios de las tablas de la ayuda con Supabase Realtime (F-170). Aquí, cada cambio emite `help.changed` por el canal privado **`help`** (quien usa la ayuda), sin contenido: solo si es de la ayuda o de las sugerencias (y qué sugerencia). La página abierta recarga **solo las props de su pestaña** (Inertia `only`), sin perder lo que se está escribiendo; varios cambios seguidos, una recarga.
 - Sin Reverb, la página se pone al día al volver a ella o al recuperar la conexión (D-184).
 
+## 07/10/2026: Migración de los datos de WeeklySync (entrega 10.8)
+Concretan D-149. Procedimiento exacto en `PLAN-FASE-10.md` (10.8).
+
+### D-213 · Volcado en el Mac, importación en el servidor **[concreta D-149]**
+- **Dos pasos** para que las credenciales de Supabase nunca lleguen al servidor ni a Git:
+  1. `php artisan app:dump-weeklysync <carpeta>` en el Mac del propietario lee la base en **solo lectura** y descarga del Storage los ficheros que usan sus filas,
+  2. `php artisan app:import-weeklysync <carpeta>` en el servidor lee solo esa carpeta.
+- **Credenciales:** un fichero local fuera de Git (`~/.config/audax/weeklysync.env`, **600**; el comando se niega si otras cuentas pueden leerlo) con `WEEKLYSYNC_DB_URL` (la del «Session pooler», sin contraseña), `WEEKLYSYNC_DB_PASSWORD`, `WEEKLYSYNC_URL` y `WEEKLYSYNC_SERVICE_KEY`. Nunca se imprimen: ni en la salida, ni en los errores (solo el SQLSTATE o el código HTTP), ni en un `dump()` (`__debugInfo`). Se crean sin que aparezcan en pantalla (`stty -echo`).
+- **Solo lectura de verdad:**
+  - la base, en una transacción `READ ONLY` y `REPEATABLE READ` (PostgreSQL rechaza cualquier escritura y todas las tablas salen de la misma foto), con TLS obligatorio y solo `SELECT to_jsonb(t)` de una lista fija de tablas,
+  - el Storage, solo con `GET` (`/storage/v1/object/<bucket>/<ruta>`), reintentando cortes, 5xx y 429.
+- **Formato** (`WeeklySyncDump`): `manifest.json` (formato, fecha, filas y sha256 de cada tabla y de cada fichero, y los que faltan), `tables/<tabla>.json` (una fila por línea) y `storage/<bucket>/<ruta>`. Carpeta nueva **700** y ficheros **600**. El importador comprueba todos los sha256 **antes de tocar nada**: un volcado incompleto o tocado no se importa.
+- **Solo los ficheros a los que apunta alguna fila:** los audios del informe (completo y por secciones), el manual, los vídeos de los tutoriales y los adjuntos de las sugerencias. Los MP3 de regeneraciones anteriores que quedaron huérfanos en el bucket (la mayoría de los 993) no se copian.
+- **Tablas** (32): personas e identidades, clientes, la foto **actual** del estado de proyectos (solo para casar clientes), semanas, envíos y apuntes, borradores, tareas, avisos, ayuda, sugerencias y uso de IA.
+
+### D-214 · Cómo se casan personas y clientes **[concreta D-149 y WEEKLY-INVENTARIO D.3]**
+- **Personas**, en este orden:
+  1. el fichero de personas (`email`, `import: false` o `create: true`),
+  2. `import_refs` de una pasada anterior,
+  3. cualquiera de sus correos (el suyo, el canónico y los de sus identidades de Google) contra el correo de una cuenta de Audax,
+  4. si no, una cuenta **inactiva** (empleado, contraseña aleatoria que nadie conoce, sin invitación), solo si escribió algo o contaba para la weekly. Las cuentas «PENDING» sin nada escrito no se crean.
+  - No se cambian el rol, el departamento ni el estado de las cuentas que ya existen (mandan los de Audax); solo se rellena el puesto (`job_title`) si está vacío.
+- **Clientes**, en este orden:
+  1. el fichero de clientes (`client`, `client_id` o `create: true`),
+  2. `import_refs`,
+  3. el nombre normalizado (sin tildes, emoji, signos ni la forma societaria), si es único,
+  4. la foto actual del estado de proyectos contra lo importado de ClickUp: primero el código F de factura (`hour_banks.invoice_reference`) y después los códigos de proyecto («FE1» contra «CLIENTE-FE1»), siempre que el nombre se parezca. Sale como aviso para revisarlo,
+  5. si no, un cliente **inactivo** sin proyectos.
+  - El icono se copia si el de Audax está vacío.
+- **El fichero manda sobre `import_refs`:** si se corrige una correspondencia, la siguiente pasada mueve lo importado (los apuntes cambian de cliente). Lo creado inactivo en la pasada anterior se queda, sin datos.
+- **Idempotencia:** `import_refs` con la fuente `weeklysync`. Repetir no duplica nada; la segunda pasada sobre el mismo volcado no crea ni cambia nada (probado).
+
+### D-215 · Semanas, informe, audio, exenciones y satisfacción **[concreta D-149 y D-151]**
+- **Semana:** casa por `import_refs` o por la **fecha de inicio** (Audax puede haber abierto ya la semana en curso). Número y etiqueta, los de Audax (`WeeklyCalendar`); fechas y plazo, los de WeeklySync. Si su número choca con otra semana de Audax, no se importa (aviso).
+- **Activa:** la semana activa de WeeklySync entra activa, salvo que Audax ya tenga otra activa: entonces entra cerrada, con aviso.
+- **Informe:** `structured_report` con `WeeklyReport::fromWeeklySync()`: los `clientId` se reescriben a los de Audax (por id o, si no lo trae, por nombre); un cliente que ya no existe queda sin enlace. Estados «On Track», «Risk» y «Blocked» → `on_track`, `risk` y `blocked`. El texto, en `report_text`. Al comparar se ignora el orden de las claves (jsonb).
+- **Quién debía enviar (`expected_user_ids`)**, en las cerradas: **se reconstruye** con la regla de WeeklySync (`isUserEligibleForWeek`): sus cuentas no pendientes que se unieron antes del final del plazo, menos las excusadas. Es una aproximación: WeeklySync no guardaba esa foto, así que una persona que ya no está en su tabla de usuarios no cuenta.
+- **Exenciones:** `excused_user_ids` → motivo «ausencia», sin ausencia enlazada y con la nota «Importada de WeeklySync».
+- **Cerrada:** `closed_at` es el último cambio de la semana en WeeklySync; `closed_by`, vacío.
+- **Audio:** el completo y cada sección, copiados a `weeklies/{id}/audio/` con **nombre fijo** (`weekly-weeklysync.mp3`, `<clave>-weeklysync.mp3`): repetir no duplica ficheros y no se vuelve a copiar lo que ya está igual (tamaño y sha256). La clave de la sección de un cliente pasa a `client-<id de Audax>`. Una sección sin fichero se queda con su guion.
+- **Satisfacción:** la de cada cliente al cerrar cada semana (`satisfactionScore` del informe) → `client_satisfaction_snapshots` (regla `weeklysync_import`, delta con la anterior); la actual → `clients.satisfaction_score`. No se tocan los clientes en los que Audax ya calcula la suya.
+
+### D-216 · Envíos, borradores y tareas
+- **Envíos:** el texto general es el apunte «General / Interno» y cada `client_report_entries`, un apunte por cliente. Los apuntes vacíos no entran.
+- **Dos de WeeklySync en uno de Audax:** si dos personas o dos clientes de WeeklySync son el mismo en Audax, sus apuntes se unen (separados por una línea en blanco) en el mismo envío o apunte.
+- **Borradores:** un envío con `submitted_at` vacío; no entran si esa persona ya envió esa semana.
+- **Lo escrito en Audax nunca se toca:** un envío, una exención o una satisfacción que no viene de la importación se conserva, y lo de WeeklySync para esa semana y persona se omite (sale en el informe).
+- **Tareas:** solo las de un cliente con un proyecto claro en Audax (uno solo, o uno solo sin archivar ni terminar), hechas y con su archivado personal (`task_archives`) para quien la tenía asignada. El resto se lista en los avisos del informe.
+
+### D-217 · Avisos: reglas, plantillas y registro **[concreta D-199 a D-201]**
+- **Reglas:** `email_reminders` (correo) y `web_notification_reminders` (navegador), con el día de 0 = domingo a ISO (7). Una regla igual que ya esté en Audax (canal, día y hora) no se duplica ni se cambia: dos reglas iguales mandarían dos avisos.
+- **Plantillas:** solo las que el propietario cambió en WeeklySync (las que difieren de sus textos de serie) y solo si en Audax siguen con el texto de serie. «WeeklySync» pasa a «Audax Proyectos». Las variables son las mismas.
+- **Registro:** `email_log` → `weekly_reminder_logs` (canal correo, su semana por id o por número, la persona por su correo) con una clave propia, `ws:<id>:<clave original>`, que no choca con la deduplicación de Audax.
+
+### D-218 · Centro de ayuda **[concreta D-208]**
+- Todo: manual y soporte, versiones con sus cambios, actualizaciones puntuales, «me gusta», tutoriales con su vídeo y preguntas frecuentes por secciones.
+- **No se pisa lo de Audax:** el enlace de soporte y el manual solo si en Audax están vacíos (o son los importados); el resumen de una versión que Audax ya escribió; el vídeo de un tutorial subido aquí.
+- **Formato:** el Markdown (o HTML) de las actualizaciones y las respuestas pasa a HTML saneado con `RichText`. Una pregunta sin sección va a la sección «General».
+- **Vídeos:** un `Attachment` en `help/tutorials/weeklysync-<id>.<ext>`, como los subidos en Audax; si el fichero no es un vídeo que se pueda reproducir, no se adjunta (aviso).
+
+### D-219 · Sugerencias **[concreta D-210]**
+- El tablero de WeeklySync que tiene la categoría «bugs» es el precargado de Audax («Sugerencias»), para que «Reportar un bug» siga teniéndolo todo junto; los demás, por su `slug` o nuevos. Los tableros y categorías de Audax solo se usan, nunca se cambian.
+- Propuestas, votos, comentarios con su árbol, reacciones, cambios de estado y adjuntos (los de un tipo que Audax no admite se omiten).
+- Las menciones `@[Nombre](user:uuid)` pasan a menciones de Audax con su id (o al nombre en texto si la persona se queda fuera).
+- Al final se recuentan votos y comentarios, y el roadmap de lo importado se ordena por la última actividad, detrás de lo que ya había en Audax en cada estado.
+
+### D-220 · Uso de IA y lo que no se migra **[concreta D-149]**
+- **Uso de IA:** `ai_usage_events` → `ai_usage`, cada función de WeeklySync en la de Audax que la sustituye (informe, satisfacción, guion, locución, limpieza del dictado, tareas sugeridas, resúmenes y asistente). Lo del OCR del estado de proyectos y de las bolsas (D-148) no entra; su coste sale en el informe.
+- **No se migran:** las bolsas (`hour_banks`) y la foto del estado de proyectos (`project_status_*`, D-148), los responsables y equipos de cliente (`owner_id`, `client_team_members`) ni las insignias (`client_projects`), que salen de los proyectos de Audax (WEEKLY-INVENTARIO D.1), los roles, departamentos, estados y avatares de las personas, la consola multi-tenant (módulos y aviso global incluidos: se configuran en Audax) y `user_merge_audit` (vacía).
+- **Informe** (`WeeklySyncImportReport`): recuentos por tipo (creados, actualizados, sin cambios y omitidos, por fila de origen), cada tabla frente al manifiesto (volcado, leídas, importadas y omitidas, y si cuadra), ficheros copiados, iguales y que faltan, motivos de lo omitido, avisos, tiempo y memoria. Una sola entrada de auditoría, «Importación de WeeklySync».
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1773,9 +1844,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-212 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-220 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-213**.
+La siguiente libre es **D-221**.

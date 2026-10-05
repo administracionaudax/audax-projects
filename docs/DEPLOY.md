@@ -245,3 +245,12 @@ Los PDF de los informes (y el de consumo de bolsa, también el del portal) se ma
 
 **Si Gotenberg no está:** la descarga del PDF responde con error y queda en el registro (`PdfConversionFailed`, con el motivo); Excel, CSV e Imprimir siguen funcionando, porque no lo usan.
 
+## 10. Importar WeeklySync (Fase 10, entrega 10.8)
+
+Dos comandos (D-213): las credenciales de Supabase **nunca** llegan al servidor.
+
+- **En el Mac:** `php artisan app:dump-weeklysync <carpeta nueva> [--credenciales=~/.config/audax/weeklysync.env] [--sin-ficheros]` lee la base de WeeklySync en solo lectura y descarga del Storage los audios, vídeos, manual y adjuntos que usan sus filas. Escribe `manifest.json` (filas y sha256), `tables/` y `storage/`, con permisos 700/600.
+- **En el servidor:** `scripts/heavy.sh /opt/plesk/php/8.4/bin/php artisan app:import-weeklysync <carpeta> [--dry-run] [--personas=] [--clientes=]`, con la carpeta subida a `shared/storage/app/private/weeklysync-import` (700/600). Idempotente (`import_refs`, fuente `weeklysync`), nunca sobrescribe lo escrito en Audax y no envía nada. Los ficheros van al disco privado: `weeklies/{id}/audio`, `help/manual`, `help/tutorials` y `attachments/suggestions`.
+- **El informe:** recuentos por tipo, cada tabla frente al manifiesto (columna «Cuadra»), ficheros copiados y que faltan, lo omitido con su motivo y avisos (personas y clientes creados inactivos, clientes casados por códigos o factura, tareas no migradas). Una sola entrada de auditoría, «Importación de WeeklySync».
+- **Paso a paso** (credenciales sin que salgan en pantalla, volcado, subida, copia, simulación, importación, comprobaciones y borrado): `PLAN-FASE-10.md`, sección «10.8 (hecho)».
+
