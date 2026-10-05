@@ -1587,6 +1587,40 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.4 (hecho)»
 - **Ventanas:** el historial del cliente mira las 26 últimas semanas; el historial de la persona, las 52; el resumen del cliente, sus 10 últimas semanas con reportes (de sus 500 últimos apuntes); el desempeño, los 8 últimos envíos.
 - **Recortes de los prompts:** por caracteres, no por unidades UTF-16 de JavaScript (solo cambia con emojis).
 
+## 05/10/2026: Avisos de la Weekly (entrega 10.5)
+Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.5 (hecho)»).
+
+### D-199 · Los avisos de la Weekly: qué avisa, a quién y dónde se configura
+- **Grupo `weeklies` del catálogo** (D-073), visible para quien escribe la weekly con el módulo encendido (nunca un colaborador externo):
+  - `weeklies.reminder`: los recordatorios (reglas, envío manual y «Recordar»); canales app, email y navegador; por defecto en la app y por email, como el email de WeeklySync,
+  - `weeklies.closed`: «weekly cerrada» con el enlace al informe (F-095), a **todo el equipo activo** que escribe la weekly (el `all_active` del original), una vez por semana, al terminar la satisfacción (`WeeklyCycleClosed`); por defecto, app y email,
+  - `weeklies.deadline_changed` (**nuevo**): al cambiar el plazo de la semana activa, a quien aún debe enviarla, salvo a quien lo cambia; por defecto, en la app.
+- **A quién recuerda** (F-106): solo a quien **debe** enviar la semana activa y no lo ha hecho (`WeeklyEligibility`: internos activos de plantilla, dados de alta a tiempo, sin exención manual ni por una ausencia aprobada que cubre el plazo; un borrador cuenta como pendiente). WeeklySync no miraba las exenciones en el aviso web (D-145): aquí un exento nunca recibe un recordatorio.
+- **Reglas** (F-101 y F-102): una lista con día ISO, hora de Madrid y **un canal por regla**: «En la app» (nuevo), email o navegador (Web Push, que sustituye al `Notification` del navegador con la pestaña abierta). La configura quien gestiona la Weekly (`manage-weeklies`), como todo lo de esta entrega.
+- **El canal de la regla manda, y la persona puede quitarlo:** si alguien desactiva un canal en `/ajustes/notificaciones`, ese recordatorio no le llega por ahí (queda «omitido» con el motivo). Con el resumen diario activo, el email va a la campana y al resumen (D-073). El navegador solo llega a quien tiene alguno suscrito y con Web Push configurado.
+- **Plantillas** (F-104 y F-105): `automatic`, `manual` y `weekly_closed`, con asunto y cuerpo y las variables del original (`{nombre}`, `{semana}`, `{week_label}` y `{weekly_url}`, que lleva a «Mi weekly» en los recordatorios y al informe en «weekly cerrada»). En la app y en el navegador se usa el asunto como título. Se guarda solo lo que difiere de la de por defecto (`weekly_email_templates`), así que «Restaurar por defecto» la quita. El aviso del plazo y la parte de la weekly del viernes tienen texto fijo.
+- **Envío manual** (F-109): a todas las pendientes o a las elegidas (que también tienen que estar pendientes; «a todas» no incluye a quien ya ha enviado, por F-106), con el texto manual o el automático y los canales elegidos. **«Recordar»** (F-037 y F-110): en las pendientes del resumen de `/weeklies`, en la lista de Equipo y en la ficha de la persona, con el texto manual y los canales que la persona tenga activados.
+- **Dónde:** una cuarta pestaña de `/weeklies`, «Avisos» (`/weeklies/avisos`), solo para quien gestiona la Weekly: es donde se gestiona la semana, y en `/admin/ajustes` solo entra el admin. La sección «Weekly y módulos» de los ajustes enlaza a ella.
+
+### D-200 · Un solo recordatorio de los viernes **[concreta D-150 y D-123]**
+- **Decisión:** «un solo aviso con dos partes». El recordatorio de los viernes a las 13:00 (`time:remind-week`) manda a cada persona **un** aviso con lo que le falte: la semana de horas (D-123) y la weekly de la semana activa. Quien solo tiene pendiente una de las dos recibe solo esa parte (título y enlace según lo que falte: a la hoja de horas o a «Mi weekly»).
+- Sigue siendo el evento `time.week_reminder` («Recordatorio de los viernes»), con las preferencias de cada persona (por defecto, en la app). La parte de la weekly queda en el registro de avisos (plantilla `friday`) y respeta las exenciones.
+- **Dos interruptores:** las horas, `week_reminder_enabled` (en `/admin/ajustes`), y la weekly, `weekly_friday_reminder` (en «Avisos», activado por defecto). El programador lo lanza si alguno está activo; con el módulo de la Weekly apagado, solo las horas.
+- **Las reglas son aparte y no lo duplican:** son los recordatorios que programa quien gestiona (en WeeklySync, el email del viernes a las 16:00). Cada disparo es otro momento y otra clave; un mismo aviso nunca llega dos veces. Por eso no se descarta: el de las 13:00 lleva las dos cosas y las reglas son recordatorios adicionales a otras horas, como en WeeklySync.
+
+### D-201 · Registro y deduplicación de los avisos **[amplía el contrato 10.1]**
+- **Cada fila de `weekly_reminder_logs`** es un aviso a una persona por un canal en un disparo, con la plantilla, la semana, el nombre y el email de entonces y quién lo envió a mano. Se **reclama** antes de enviar (índice único `trigger_key`, `channel`, `user_id`): repetir el comando, solapar dos pasadas o dos clics no mandan dos.
+- **Claves:** `rule:{regla}:{semana}:{fecha}T{hora}`, `friday:{semana}:{fecha}`, `closed:{semana}`, `deadline:{semana}:{fecha}`, y por minuto `manual:{semana}:{quien}:{minuto}` y `remind:{semana}:{persona}:{minuto}`.
+- **Estados:** «en cola» al reclamarla, «enviado» cuando el canal la entrega (`afterSending`), «fallido» con el error si el canal falla (`NotificationFailed`; si la cola lo reintenta y llega, vuelve a «enviado») y «omitido» con el motivo. En las reglas y el envío manual se registra cada canal elegido que no sale; en los avisos «según sus preferencias» (cerrada, plazo y «Recordar»), solo quien no recibe ninguno.
+- **El programador** lanza `weeklies:remind` cada 5 minutos (como la GitHub Action) y una regla toca si su hora de Madrid cae en los últimos 10 minutos. Con instantes reales: una hora que no existe al pasar a la de verano (02:30 del último domingo de marzo) sale a las 03:30, en vez de perderse como en WeeklySync, y una que se repite al volver a la de invierno sale una vez (la segunda, la que elige PHP). Si el servidor está parado más de 10 minutos, ese disparo se pierde, como en el original.
+- **Cambios compatibles del contrato 10.1:** `WeeklyReminderChannel` gana `app`, `WeeklyReminderStatus` gana `queued` y `WeeklyReminderTemplate` gana `deadline` y `friday` (columnas de texto: sin migración). `AppNotification::$onlyChannels` limita un envío a unos canales (solo quita, nunca añade): lo que decide los canales sigue siendo `NotificationPreferences`.
+- **Auditoría:** las reglas (`LogsDomainActivity`), los cambios de plantillas y de la weekly del viernes, y los envíos manuales y «Recordar» (log `weekly-reminders`). Entidades nuevas del filtro: «Weekly (semanas y exenciones)» y «Avisos de la Weekly».
+
+### D-202 · RGPD de la Weekly
+- **La exportación de datos personales** (D-075) lleva, además: sus weeklies (una fila por semana y otra por apunte, con «General / Interno»), sus dictados (transcripción y texto; el audio nunca se guarda), sus exenciones (sin quién las puso), **los resúmenes con IA sobre la persona** (desempeño, actividad por cliente y la frase que habla de ella en el análisis del equipo de cada cliente, aunque ella no los vea en la app, D-147) y los avisos de la weekly que ha recibido.
+- **Plazos nuevos** en `/admin/privacidad` (`app:prune-data`): el registro de avisos, **12 meses** (lleva nombres y emails), y los dictados, **3 meses** (su texto ya está en el apunte; si quedó algún audio en el disco, se borra con él). **Las weeklies no caducan:** son el histórico del equipo, como las horas.
+- Falta el texto RGPD del asesor (pendiente desde la Fase 7): debe mencionar los resúmenes con IA por persona (D-147) y que el texto de las weeklies va a Gemini (D-146).
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1657,9 +1691,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-198 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-202 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-199**.
+La siguiente libre es **D-203**.

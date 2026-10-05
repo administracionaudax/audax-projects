@@ -457,3 +457,50 @@ Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-194 a D-198**. En `WEEK
 ### Para las siguientes entregas
 - **10.6:** el asistente puede reutilizar `ClientInsights`, `PersonInsights` y `ProjectStatusBoard` para su contexto, respetando lo que ve quien pregunta (D-147 para lo de una persona).
 - **10.8:** la satisfacción histórica va a `client_satisfaction_snapshots` (la serie y las tendencias de la ficha salen de ahí) y el icono, a `clients.icon`.
+
+## 10.5 (hecho): avisos
+Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-199 a D-202**. En `WEEKLY-INVENTARIO.md` §A.4, F-037, F-095 y F-101 a F-110 pasan a «Hecho (10.5)» (F-103 ya existía con Web Push) y se completa F-010 (el acceso a los avisos).
+
+### Dominio (`app/Domain/Weeklies/Reminders`)
+- **`WeeklyReminderRecipients`:** `pending(cycle, ?ids)` (quien debe enviar y no ha enviado, con `WeeklyEligibility`: sin exentos, activos, nunca colaboradores) y `team()` (el equipo activo, para «weekly cerrada»).
+- **`WeeklyReminderSchedule`** (puro): `due(rules, now, lookback=10)` con instantes reales de Madrid (medianoche y cambios de hora), `triggerKey()` y `minuteOfDay()`.
+- **`WeeklyTemplates`:** `defaults()`, `all()` (con `is_default`), `get()`, `save()` (solo lo cambiado, con auditoría), `render()` y `normalize()`. Gemelo TS: `resources/js/lib/weekly-templates.ts`, con el fixture compartido `tests/fixtures/weeklies/template-render.json`.
+- **`WeeklyNotifier`:** `send(kind, cycle, template, triggerKey, users, channels, make, ?sender, byPreferences)` (resuelve el canal de cada persona, reclama las filas del registro y manda una notificación por persona con `onlyChannels`), `claim()` (inserción en bloque, deduplicación por el índice único), `resolve()` y `logicalChannel()`. Devuelve `WeeklyNoticeResult(notified, skipped, duplicates)`.
+- **`WeeklyReminders`:** `runDueRules(cycle)`, `sendManual()`, `remindOne()`, `notifyClosed()` y `notifyDeadline()`, con sus claves (D-201).
+- **`TracksWeeklyReminderLogs`** (trait de las notificaciones): `afterSending()` deja la fila «enviada»; el listener `Listeners\Weeklies\MarkWeeklyReminderFailed` (`NotificationFailed`), «fallida» con el error.
+- **Notificaciones** (`app/Notifications/Weeklies`): `WeeklyNotice` (base: foto de la semana, plantilla con variables, email con `mail.weeklies.notice` y botón), `WeeklyReminder` (`weeklies.reminder`), `WeeklyClosedNotice` (`weeklies.closed`) y `WeeklyDeadlineChanged` (`weeklies.deadline_changed`). `Time\WeekSubmissionReminder` lleva ahora las dos partes (`hours` y `weekly`).
+- **Comandos:** `weeklies:remind` (cada 5 minutos, `routes/console.php`); `time:remind-week` manda el recordatorio unificado de los viernes (D-200) y se programa si las horas o la weekly del viernes están activas.
+- **Listener `SendWeeklyClosedNotice`** de `WeeklyCycleClosed` (10.3): «weekly cerrada» a todo el equipo, una vez.
+- **Catálogo:** grupo `weeklies` (audiencia `AUDIENCE_WEEKLIES`); `AppNotification::$onlyChannels`.
+- **Ajustes:** `weekly_friday_reminder` (por defecto, sí), `retention_weekly_reminder_logs_months` (12) y `retention_dictations_months` (3).
+
+### Rutas, páginas y props
+- **`weeklies.reminders.edit`** (`GET /weeklies/avisos?plantilla=&estado=&pagina=`, página `weeklies/reminders`, `WeeklyRemindersPageProps`): `cycle`, `rules`, `templates` (con `is_default`), `defaults`, `variables`, `friday` (`{weekly, hours}`), `pending` (`UserSummary[]`), `logs` (paginado de 50, `WeeklyReminderLogRow` con `cycle_number` y `sent_by_name`), `filters`, `push_available` y `can.send`. Cuarta pestaña «Avisos» de `/weeklies` (`weekliesTabs(projectStatus, manage)`), solo con `manage-weeklies`; enlace desde «Weekly y módulos» de `/admin/ajustes`.
+- **`weeklies.reminders.update`** (`PUT`): `{rules: [{id?, channel, day_of_week 1-7, time "HH:MM", enabled}] (la lista entera, máx. 20), templates?: {automatic|manual|weekly_closed: {subject ≤200, body ≤5000}}, friday_reminder?}`.
+- **`weeklies.reminders.send`** (`POST /weeklies/avisos/enviar`): `{recipients: pending|users, user_ids[]?, template: automatic|manual, channels[]}`; 422 sin semana activa.
+- **`weeklies.reminders.remind`** (`POST /weeklies/{cycle}/recordar`): `{user_id}`; aviso según el resultado (enviado, no lo necesita, ya enviado hace un momento o sin canal).
+- **`weeklies.deadline.update`**: si cambia la fecha, avisa a las pendientes (salvo a quien lo cambia) y lo dice en el aviso.
+- **Props nuevas:** `weeklies/index` `can.remind` y `can.reminders`; `team/index` y `team/show` `can.remind`.
+- **Componentes** (`resources/js/components/weeklies/reminders`): `reminder-rules-editor` (y `rulesSummary`), `template-editor` (vista previa y «Restaurar»), `send-reminders-dialog`, `reminder-log` y `remind-button` (en el resumen, la lista de Equipo y la ficha de persona). Textos en `lang/ui/weekly-reminders.json`.
+
+### RGPD (D-202)
+- **Exportación** (`config('privacy.export_sections')`): `WeeklySubmissionsSection` (`weeklies-envios`), `WeeklyEntriesSection` (`weeklies-apuntes`), `DictationsSection` (`dictados`), `WeeklyExemptionsSection` (`weeklies-exenciones`), `AiSummariesSection` (`resumenes-ia`) y `WeeklyRemindersSection` (`weeklies-avisos`).
+- **Plazos:** `RetentionPolicy::WEEKLY_REMINDER_LOGS` (`WeeklyReminderLogsPruner`) y `DICTATIONS` (`DictationsPruner`), editables en `/admin/privacidad`.
+- **Auditoría:** entidades «Weekly (semanas y exenciones)» y «Avisos de la Weekly», y acciones de envíos manuales y de cambios de plantillas y del viernes.
+
+### Tests
+- **Pest:** `tests/Unit/Weeklies/WeeklyReminderScheduleTest` (margen, medianoche, los dos cambios de hora y el fixture de las plantillas) y, en `tests/Feature/Weeklies`, `WeeklyRemindersTest` (reglas, pendientes y exentos, deduplicación, canales y preferencias, resumen diario, navegador, zona horaria, envío real, fallos, consultas constantes, programación y «weekly cerrada»), `WeeklyReminderPagesTest` (permisos, props, reglas, validación, plantillas, viernes, envío manual, «Recordar», plazo cambiado y auditoría) y `WeeklyFridayReminderTest` (D-200); `tests/Feature/Privacy/WeeklyPersonalDataTest` (exportación y plazos). Al día: `NotificationPreferencesTest`, `NotificationSettingsPageTest`, `WeekSubmissionReminderTest` (una consulta más, la semana activa), `WeeklyRoutesTest` (ya no hay 501 en los avisos), `PrivacyPagesTest`, `PersonalDataExportTest`, `SeedersTest` y el presupuesto de `/weeklies/avisos` en `WeeklyPagesPerformanceTest`.
+- **Vitest:** `weeklies-reminders` (el gemelo de las plantillas con el fixture, el resumen de reglas, la página, la vista previa, «Restaurar», guardar, filtros, sin semana activa, el envío manual y «Recordar»).
+- **E2E:** `weekly-reminders.spec.ts` (programar una regla, el texto con vista previa y «Restaurar», enviar a las pendientes y verlo en el registro, «Recordar» desde el resumen, la plantilla sin acceso, AA y 375 px). **Escrito, sin ejecutar en el Mac:** va a la CI.
+
+### Datos de ejemplo
+El `DemoDataSeeder` añade dos reglas: en la app el jueves a las 10:00 y por email el viernes a las 16:00 (la de WeeklySync).
+
+### Para desplegar (con el SSH)
+- **Sin migraciones nuevas** (los valores nuevos de los enums caben en sus columnas de texto). Nada nuevo en systemd: `audax-scheduler.service` ya ejecuta `schedule:work`, que lanzará `weeklies:remind` cada 5 minutos.
+- **Correo:** sale por la cola `mail` con el SMTP que ya funciona (el relé de Google). Sin cambios en el `.env`. El Web Push necesita las claves VAPID que ya usa el chat.
+- **Mientras se usa WeeklySync** (hasta la 10.9): Audax ya abre semanas y, con esta entrega, recordaría la weekly a la plantilla, que aún la escribe en WeeklySync. Hasta el cambio, **dejar sin reglas** «Avisos de la Weekly» y **desactivar la weekly del recordatorio de los viernes** (o el módulo de la Weekly) en producción, para no avisar dos veces ni de una weekly que se escribe en otra app. En la 10.9, la importación (10.8) trae las reglas y plantillas de WeeklySync, se activa todo aquí y se apaga la GitHub Action.
+- Después, como siempre, `verificar.sh` y `comparar-webs.sh` si se toca el servidor.
+
+### Para las siguientes entregas
+- **10.8:** las reglas de `email_reminders` (canal `email`) y `web_notification_reminders` (canal `push`), pasando el día de 0 = domingo a ISO; las plantillas de `email_templates` a `weekly_email_templates` (solo las que difieran); `email_log` a `weekly_reminder_logs` (`template`, `status`, `trigger_key`, `week_id` → semana importada, canal `email`).
