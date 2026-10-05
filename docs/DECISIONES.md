@@ -1658,6 +1658,51 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.6 (hecho)»
 - **Avisos de que es IA:** el de WeeklySync bajo la caja («La IA puede cometer errores…») y, en las tareas sugeridas, que son propuestas que hay que revisar.
 - **F-006:** el botón flotante «Asistente AI» pasa a una entrada **«Asistente IA» de la barra lateral**, tras Chat, para quien usa la Weekly con el módulo `assistant` encendido. Las preguntas sugeridas son las del original con nombres de Audax (el cliente con el último reporte, el departamento de quien pregunta y la última persona que ha enviado su weekly).
 
+## 05/10/2026: Centro de ayuda y sugerencias (entrega 10.7)
+Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.7 (hecho)»).
+
+### D-207 · Los vídeos de los tutoriales: subida por trozos y reproducción con Range
+- **El límite:** WeeklySync admitía vídeos de 200 MB (Supabase Storage). El PHP del dominio acepta 55 MB por fichero y 64 MB por petición (RUNBOOK-DESPLIEGUE, paso 3) y `max_execution_time` es 60 s. Subir 200 MB de una vez exigiría tocar PHP, nginx y ModSecurity del servidor compartido. **No se toca el servidor:** el navegador sube el vídeo **por trozos de 8 MB** (`TutorialVideoUploads`), cada uno en su petición.
+- **Cómo:** se reserva la subida (nombre y tamaño, como mucho 200 MB) y se mandan los trozos en orden con su posición; el servidor dice cuántos bytes tiene, así que un trozo repetido tras un corte no se duplica (el navegador lo reintenta hasta 3 veces) y uno desordenado se rechaza. Al guardar el tutorial se comprueba que está completo y que es un vídeo de verdad (fileinfo: MP4, WebM, MOV, OGG o M4V), se mueve a `help/tutorials` del disco privado y queda como su `Attachment`; el anterior se borra al sustituirlo. Solo continúa una subida quien la empezó (`manage-help`).
+- **Lo abandonado** (pestaña cerrada, corte) se borra a las 24 h: `help:prune-uploads`, cada noche a las 03:35.
+- **Reproducción:** `help.tutorials.video` con URL firmada (relativa, 6 h) y `BinaryFileResponse`, que atiende `Range` (206): el navegador reproduce a trozos y salta a cualquier punto sin descargarlo entero, como los audios del chat. Lo ve la plantilla (`use-weeklies`).
+- **Disco:** los vídeos de WeeklySync suman 135 MB (4); el servidor tiene 47 GB libres. Entran en la copia nocturna con el resto del disco privado (D-029).
+
+### D-208 · El centro de ayuda: novedades, manual, tutoriales y preguntas frecuentes **[concreta D-147 y D-151]**
+- **Una página, `/ayuda`, con cuatro pestañas en la URL** (F-148); cada una trae solo sus datos y las demás llegan a null sin consultas. «Ayuda» va en la barra lateral, tras el asistente (F-010), con el módulo `help`.
+- **Novedades automáticas** (F-150): al abrir General o Tutoriales se crea, si no existe, la versión de esta semana (`V.serie.mes.semana`, la serie es el año desde 2026) con el resumen por defecto de WeeklySync; una sola inserción que no pisa nada. Su fecha es el día `(semana − 1) · 7 + 5` del mes y está **en curso** mientras es la de esta semana, no ha llegado su fecha y no tiene resumen propio ni cambios. En el listado, la más reciente que no está en curso es la **nueva**; las demás, **anteriores** (port de `helpCenter.ts`, `HelpReleaseCalendar`).
+- **Los cambios de una versión** se editan en su diálogo, en orden (subir, bajar, añadir y quitar): WeeklySync tenía las funciones pero no la pantalla. «Eliminar versión» la **oculta**, como en el original; quien gestiona la puede volver a mostrar. El texto de la versión cambia a «V.1.10.2», el del original.
+- **Actualizaciones a mano** (F-151) con contenido en el editor de Audax (RichText saneado en el servidor). WeeklySync admitía imágenes incrustadas en base64; el editor de Audax no (D-037: los ficheros, como adjuntos).
+- **Manual y soporte** (F-157): el PDF va al disco privado (`help_manual`) con URL firmada; el enlace de soporte, en `help_support_url`. WeeklySync tenía los dos campos sin pantalla; aquí se ven en General y los cambia quien gestiona.
+- **Preguntas frecuentes** (F-156): una sección con preguntas no se borra (antes se mueven o se borran). Además del original, un **buscador** en las preguntas y respuestas de todas las secciones. Las respuestas, con el editor de Audax.
+- **Reordenar** (tutoriales, secciones y preguntas, tableros y categorías): arrastrar con ratón, dedo o teclado, o «Subir» y «Bajar». Se manda la lista entera; si alguien ha cambiado algo mientras tanto, se pide recargar.
+- **Gestiona** `manage-help` (admin y responsables, D-147); los «me gusta» y ver los vídeos, toda la plantilla; nunca un colaborador externo.
+
+### D-209 · Los avisos de las sugerencias
+- **Grupo nuevo «Sugerencias»** del catálogo (D-073), tras «Weekly», para quien usa la ayuda con los módulos `help` y `suggestions` encendidos (audiencia `suggestions`):
+  - `suggestions.status_changed`: cambia el estado de **tu** sugerencia (con la nota oficial); por defecto, en la app,
+  - `suggestions.replied`: comentan tu sugerencia o responden a tu comentario; por defecto, en la app,
+  - `suggestions.mentioned`: te mencionan en una sugerencia o un comentario; por defecto, en la app y en el navegador (como las menciones de tareas y del chat).
+- **Nunca a quien lo hace**, y una sola vez por persona: a quien se menciona y además se responde le llega solo la mención. Al editar, solo avisa a los mencionados nuevos. Solo a la plantilla activa que usa la Weekly (un colaborador externo o alguien desactivado no recibe nada aunque se le mencione).
+- WeeklySync no avisaba de nada de esto; los avisos los pide el propietario para esta entrega.
+
+### D-210 · Sugerencias: roadmap, votos, comentarios y búsqueda
+- **Port de `helpSuggestions.ts`:** tableros y categorías activos, slug único por tablero, estado inicial `open`, contadores `vote_count` y `comment_count` **recontados** (nunca sumados) y `last_activity_at` al comentar o cambiar el estado. Órdenes del feed: Trending (comentarios, votos, actividad y fecha), Top (votos y fecha), Nuevas (fecha) o un estado del roadmap (actividad). Con texto, la **búsqueda es global**: ignora tablero y categoría y busca en el título, el detalle, el slug y el nombre de los tableros y las categorías.
+- **El roadmap se ordena en el servidor** (`position` por columna). En WeeklySync el orden de las tarjetas y de las columnas vivía en el `localStorage` de cada navegador: aquí el orden de las tarjetas es el mismo para todos y lo decide quien gestiona; las columnas van en el orden del ciclo de vida. Arrastrar a otra columna **cambia el estado** (queda en el historial y avisa a quien la propuso); un cambio de estado desde el detalle la pone al final de su columna. También con el menú «Mover a…» de cada tarjeta (teclado y lector de pantalla).
+- **Comentarios:** respuestas anidadas sin límite (se dibujan con sangría hasta 4 niveles), editar solo su autor (queda «editado»), eliminar su autor o quien gestiona, con todas sus respuestas y sus adjuntos. Un comentario puede ir solo con adjuntos. **Reacciones:** una por persona y comentario (la misma la quita, otra la cambia).
+- **Adjuntos** de sugerencias y comentarios: los `Attachment` de Audax con sus reglas (tipo real, extensión, 10 por subida y `max_attachment_mb`, D-037), en `attachments/suggestions/…`, servidos por `attachments.show` con URL firmada a quien puede ver la sugerencia y con el módulo encendido. Se quitan desde la sugerencia o el comentario, nunca sueltos. Se pueden **pegar** en el texto.
+- **«Reportar un bug»** (F-149): `?nueva=bug` abre el formulario fijado en la categoría con slug `bugs`. Esa categoría se puede renombrar u ocultar, pero no eliminar ni cambiar su slug. Un tablero con sugerencias no se elimina: se oculta (sus sugerencias dejan de salir en el feed y el roadmap; quien gestiona aún puede abrirlas).
+
+### D-211 · RGPD, retención y auditoría de la ayuda y las sugerencias **[concreta D-202]**
+- **Exportación de datos personales** (D-075): sus sugerencias (`sugerencias`), sus comentarios (`sugerencias-comentarios`), sus votos y reacciones (`sugerencias-votos`) y sus «me gusta» a las novedades (`ayuda-me-gusta`). Los adjuntos van por su nombre.
+- **Retención:** no caducan. Las sugerencias y la ayuda son el histórico del producto, como las weeklies; sus autores se desactivan, no se borran (las FK de autoría son `restrict`). Lo único temporal, las subidas a medias de vídeos, se borra a las 24 h (D-207).
+- **Auditoría** (D-074): entidades nuevas «Centro de ayuda» (versiones, actualizaciones, tutoriales, secciones, preguntas y los cambios del manual y del soporte) y «Sugerencias» (tableros, categorías y sugerencias, sin los contadores ni el orden del roadmap), y acciones «Cambios en el manual y el enlace de soporte de la ayuda» y «Cambios de estado de las sugerencias». Los comentarios, los votos y las reacciones no se auditan (como los comentarios de las tareas).
+- El texto RGPD pendiente del asesor (Fase 7) debe mencionar las sugerencias y sus comentarios.
+
+### D-212 · Tiempo real de la ayuda **[concreta D-184]**
+- WeeklySync escuchaba los cambios de las tablas de la ayuda con Supabase Realtime (F-170). Aquí, cada cambio emite `help.changed` por el canal privado **`help`** (quien usa la ayuda), sin contenido: solo si es de la ayuda o de las sugerencias (y qué sugerencia). La página abierta recarga **solo las props de su pestaña** (Inertia `only`), sin perder lo que se está escribiendo; varios cambios seguidos, una recarga.
+- Sin Reverb, la página se pone al día al volver a ella o al recuperar la conexión (D-184).
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1728,9 +1773,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-206 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-212 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-207**.
+La siguiente libre es **D-213**.

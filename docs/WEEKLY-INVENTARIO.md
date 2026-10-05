@@ -90,7 +90,7 @@ La entrega es la de F.
 | F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax. **Hecho (10.2): la ausencia es la de Audax; la exención y la renuncia, en «Mi weekly» y en el resumen.** |
 | F-008 | Acceso al perfil con nombre y rol en el pie de la barra | `Layout.tsx:436-460` | Existe |
 | F-009 | Cerrar sesión, limpiando el almacenamiento local | `Layout.tsx:471-478`, `App.tsx:1347-1374` | Existe |
-| F-010 | Accesos a Ayuda y a Notificaciones (este, solo ADMIN) | `Layout.tsx:350-404` | Nueva: Ayuda (10.7). Adaptar: ajustes (10.5). **Hecho (10.5): «Avisos», cuarta pestaña de /weeklies para quien gestiona, con enlace desde /admin/ajustes (D-199); Ayuda, en la 10.7.** |
+| F-010 | Accesos a Ayuda y a Notificaciones (este, solo ADMIN) | `Layout.tsx:350-404` | Nueva: Ayuda (10.7). Adaptar: ajustes (10.5). **Hecho (10.5): «Avisos», cuarta pestaña de /weeklies para quien gestiona, con enlace desde /admin/ajustes (D-199); Ayuda, en la 10.7.** **Hecho (10.7): «Ayuda» en la barra lateral, tras el asistente, con el módulo `help`.** |
 | F-011 | Avisos emergentes de éxito, error e información | `Layout.tsx:172`, `App.tsx` | Existe |
 | F-012 | Aviso de bienvenida al entrar | `App.tsx:831-833` | Nueva (trivial, 10.2). **Servidor hecho (10.2a):** aviso al entrar (D-161). **Hecho (10.2): el aviso sale con los avisos emergentes de siempre.** |
 | F-013 | Detecta una versión nueva y recarga sola cuando no hay nada editándose ni grabándose | `App.tsx:325-400`, `src/lib/appUpdateGuard.ts`, `buildMeta.ts` | Adaptar: versión de Inertia + aviso (10.2). **Servidor hecho (10.2a):** `GET /version` (D-161). **Hecho (10.2): aviso «Hay una versión nueva» con «Recargar» (D-184).** |
@@ -284,33 +284,33 @@ La entrega es la de F.
 **Centro de ayuda**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-148 | Pestañas General, Tutoriales, Preguntas frecuentes y Sugerencias (en la URL) | `HelpView.tsx:1407-1420` | Nueva (10.7) |
-| F-149 | «Reportar bug»: abre una sugerencia en la categoría Bugs | `HelpView.tsx:847-856, 1423` | Nueva (10.7) |
-| F-150 | Novedades: una versión automática por semana (`V.serie.mes.semana`) con su lista de cambios; crear, editar y ocultar versiones; reordenar cambios | `HelpView.tsx:182-188, 859-896, 2049-2118`, `helpCenter.ts:636-660, 867-990` | Nueva (10.7) |
-| F-151 | Actualizaciones puntuales a mano (fecha, título, resumen y contenido) | `HelpView.tsx:1111-1154, 1837-1907` | Nueva (10.7) |
-| F-152 | Estados de las novedades (nueva, en proceso o anterior), buscador y filtro | `HelpView.tsx:382-386, 1434-1494` | Nueva (10.7) |
-| F-153 | «Me gusta» en las novedades y quién lo ha dado | `HelpView.tsx:1310-1321`, `help_update_likes` | Nueva (10.7) |
-| F-154 | Editor de texto con formato (negrita, cursiva, título, subtítulo y divisor) | `HelpView.tsx:284-320`, `AppEditorToolbar.tsx` | Existe (`RichText`) |
-| F-155 | Tutoriales en vídeo (hasta 200 MB, subida con progreso y ligados a una versión): vista previa, editar, sustituir el vídeo, eliminar y reordenar arrastrando | `HelpView.tsx:724-1100, 1602-1671, 1920-2150` | Nueva (10.7) |
-| F-156 | Preguntas frecuentes por secciones: crear, editar, eliminar y reordenar secciones y preguntas; desplegar la respuesta | `HelpView.tsx:1160-1300, 1686-1810, 2170-2282` | Nueva (10.7) |
-| F-157 | Manual en PDF y enlace de soporte | `helpCenter.ts:828`, migración 026 | Nueva (10.7) |
-| F-158 | Solo ADMIN gestiona el contenido | `HelpView.tsx:445` | Nueva, con permiso (10.7) |
+| F-148 | Pestañas General, Tutoriales, Preguntas frecuentes y Sugerencias (en la URL) | `HelpView.tsx:1407-1420` | Nueva (10.7) **Hecho (10.7): `/ayuda?pestana=general|tutoriales|preguntas|sugerencias`; cada pestaña trae solo sus datos (D-208).** |
+| F-149 | «Reportar bug»: abre una sugerencia en la categoría Bugs | `HelpView.tsx:847-856, 1423` | Nueva (10.7) **Hecho (10.7): botón en la cabecera de /ayuda que abre el formulario fijado en la categoría Bugs (`?nueva=bug`, D-210).** |
+| F-150 | Novedades: una versión automática por semana (`V.serie.mes.semana`) con su lista de cambios; crear, editar y ocultar versiones; reordenar cambios | `HelpView.tsx:182-188, 859-896, 2049-2118`, `helpCenter.ts:636-660, 867-990` | Nueva (10.7) **Hecho (10.7): la versión de la semana se crea sola al abrir la ayuda (`V.serie.mes.semana`); crear, editar con sus cambios en orden (subir, bajar, añadir y quitar), ocultar y volver a mostrar (D-208).** |
+| F-151 | Actualizaciones puntuales a mano (fecha, título, resumen y contenido) | `HelpView.tsx:1111-1154, 1837-1907` | Nueva (10.7) **Hecho (10.7): fecha, título, descripción breve y contenido con formato (D-208).** |
+| F-152 | Estados de las novedades (nueva, en proceso o anterior), buscador y filtro | `HelpView.tsx:382-386, 1434-1494` | Nueva (10.7) **Hecho (10.7): nueva, en curso o anterior con la regla de WeeklySync; buscador en título, resumen, versión, contenido y cambios; filtros de tipo y estado.** |
+| F-153 | «Me gusta» en las novedades y quién lo ha dado | `HelpView.tsx:1310-1321`, `help_update_likes` | Nueva (10.7) **Hecho (10.7): alternar, con los avatares y la lista de quién lo ha dado (D-208).** |
+| F-154 | Editor de texto con formato (negrita, cursiva, título, subtítulo y divisor) | `HelpView.tsx:284-320`, `AppEditorToolbar.tsx` | Existe (`RichText`) **Hecho (10.7): el editor de Audax (RichText) en las actualizaciones, las respuestas de las preguntas frecuentes y las sugerencias.** |
+| F-155 | Tutoriales en vídeo (hasta 200 MB, subida con progreso y ligados a una versión): vista previa, editar, sustituir el vídeo, eliminar y reordenar arrastrando | `HelpView.tsx:724-1100, 1602-1671, 1920-2150` | Nueva (10.7) **Hecho (10.7): hasta 200 MB, subida por trozos de 8 MB con progreso y reintento, ligado a una versión, reproductor con Range y URL firmada, editar, sustituir, eliminar y reordenar arrastrando (D-207).** |
+| F-156 | Preguntas frecuentes por secciones: crear, editar, eliminar y reordenar secciones y preguntas; desplegar la respuesta | `HelpView.tsx:1160-1300, 1686-1810, 2170-2282` | Nueva (10.7) **Hecho (10.7): secciones y preguntas con crear, editar, eliminar y reordenar (arrastrar o subir y bajar), respuesta desplegable y buscador en todas (D-208).** |
+| F-157 | Manual en PDF y enlace de soporte | `helpCenter.ts:828`, migración 026 | Nueva (10.7) **Hecho (10.7): PDF en el disco privado con URL firmada y enlace de soporte, editables por quien gestiona (D-208).** |
+| F-158 | Solo ADMIN gestiona el contenido | `HelpView.tsx:445` | Nueva, con permiso (10.7) **Hecho (10.7): `manage-help` (admin y responsables, D-147); lo ve la plantilla; nunca un colaborador externo.** |
 
 **Sugerencias**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-159 | Vistas Feedback y Roadmap | `HelpSuggestionsView.tsx:3088, 3368-3369` | Nueva (10.7) |
-| F-160 | Tableros y categorías: crear, editar, ocultar y reordenar (ADMIN) | `HelpSuggestionsView.tsx:2401-2465, 2603-2757, 3742-3793, 4019-4035` | Nueva (10.7) |
-| F-161 | Crear sugerencia (título, categoría, detalle con formato, adjuntos y pegar archivos) con «sugerencias similares» | `HelpSuggestionsView.tsx:2205-2234, 3875-3967` | Nueva (10.7) |
-| F-162 | Feedback: buscador, filtro de categoría, orden Trending, Top o Nuevo, «cargar más» y resultados globales | `HelpSuggestionsView.tsx:278, 3498-3608`, `helpSuggestions.ts:30-42` | Nueva (10.7) |
-| F-163 | Votar y ver quién ha votado | `HelpSuggestionsView.tsx:714, 2155, 3285-3287` | Nueva (10.7) |
-| F-164 | Detalle con actividad, contexto y categoría; editar o eliminar (autor o ADMIN) | `HelpSuggestionsView.tsx:3069-3307` | Nueva (10.7) |
-| F-165 | Comentarios con respuestas anidadas, edición, borrado, adjuntos y menciones @ con autocompletado | `HelpSuggestionsView.tsx:1062, 1235-1300, 2247-2330, 2779-2983` | Nueva (10.7) |
-| F-166 | Reacciones a los comentarios (Me gusta, Impulso, Siguiendo y Me encanta) | `HelpSuggestionsView.tsx:410-413, 2361` | Nueva (10.7) |
-| F-167 | Moderación: estado (open, future, planned, building_now, beta o completed) con nota oficial e historial | `HelpSuggestionsView.tsx:2545-2554, 3307-3327`, `suggestion_status_events` | Nueva (10.7) |
-| F-168 | Roadmap por columnas de estado: arrastrar entre columnas y reordenar, filtro de estados, buscador y «cargar más» | `HelpSuggestionsView.tsx:803, 1930-1990, 3625-3727` | Nueva (10.7) |
+| F-159 | Vistas Feedback y Roadmap | `HelpSuggestionsView.tsx:3088, 3368-3369` | Nueva (10.7) **Hecho (10.7): Roadmap (por defecto) y Feedback, en la URL (`?vista=`, D-210).** |
+| F-160 | Tableros y categorías: crear, editar, ocultar y reordenar (ADMIN) | `HelpSuggestionsView.tsx:2401-2465, 2603-2757, 3742-3793, 4019-4035` | Nueva (10.7) **Hecho (10.7): «Gestionar categorías» con tableros y categorías: crear, editar, ocultar, eliminar (un tablero con sugerencias no) y reordenar arrastrando (D-210).** |
+| F-161 | Crear sugerencia (título, categoría, detalle con formato, adjuntos y pegar archivos) con «sugerencias similares» | `HelpSuggestionsView.tsx:2205-2234, 3875-3967` | Nueva (10.7) **Hecho (10.7): tablero y categoría, detalle con formato y menciones, adjuntos elegidos o pegados y «sugerencias similares» al escribir el título (D-210).** |
+| F-162 | Feedback: buscador, filtro de categoría, orden Trending, Top o Nuevo, «cargar más» y resultados globales | `HelpSuggestionsView.tsx:278, 3498-3608`, `helpSuggestions.ts:30-42` | Nueva (10.7) **Hecho (10.7): búsqueda global (ignora tablero y categoría), Trending, Top, Nuevas o un estado del roadmap, categoría y «Cargar más» (D-210).** |
+| F-163 | Votar y ver quién ha votado | `HelpSuggestionsView.tsx:714, 2155, 3285-3287` | Nueva (10.7) **Hecho (10.7): un voto por persona (índice único), alternando al momento, y la lista de quién ha votado.** |
+| F-164 | Detalle con actividad, contexto y categoría; editar o eliminar (autor o ADMIN) | `HelpSuggestionsView.tsx:3069-3307` | Nueva (10.7) **Hecho (10.7): `/ayuda/sugerencias/{id}` con la actividad, el tablero y la categoría; editar o eliminar su autor o quien gestiona (con los adjuntos de sus comentarios).** |
+| F-165 | Comentarios con respuestas anidadas, edición, borrado, adjuntos y menciones @ con autocompletado | `HelpSuggestionsView.tsx:1062, 1235-1300, 2247-2330, 2779-2983` | Nueva (10.7) **Hecho (10.7): respuestas anidadas, editar (autor), eliminar con sus respuestas (autor o quien gestiona), adjuntos y menciones @ con el editor de Audax; avisos de respuesta y mención (D-209).** |
+| F-166 | Reacciones a los comentarios (Me gusta, Impulso, Siguiendo y Me encanta) | `HelpSuggestionsView.tsx:410-413, 2361` | Nueva (10.7) **Hecho (10.7): Me gusta, Impulso, Siguiendo y Me encanta; una por persona (la misma la quita, otra la cambia) y quién las ha puesto.** |
+| F-167 | Moderación: estado (open, future, planned, building_now, beta o completed) con nota oficial e historial | `HelpSuggestionsView.tsx:2545-2554, 3307-3327`, `suggestion_status_events` | Nueva (10.7) **Hecho (10.7): estado con nota oficial e historial en la actividad; un cambio sin estado nuevo ni nota no hace nada; avisa a quien la propuso (D-209).** |
+| F-168 | Roadmap por columnas de estado: arrastrar entre columnas y reordenar, filtro de estados, buscador y «cargar más» | `HelpSuggestionsView.tsx:803, 1930-1990, 3625-3727` | Nueva (10.7) **Hecho (10.7): columnas por estado ordenadas en el servidor (`position`); arrastrar entre columnas (cambia el estado) y dentro de una, con teclado y el menú «Mover a…»; estados visibles, categoría, buscador y «Cargar más» (D-210).** |
 | F-169 | Categoría «Bugs» precargada | migración 034 | **Hecho (10.1):** la migración de sugerencias precarga el tablero «Sugerencias» y la categoría `bugs` |
-| F-170 | Tiempo real en ayuda y sugerencias | `helpCenter.ts:814`, `helpSuggestions.ts:1925` | Adaptar (10.7) |
+| F-170 | Tiempo real en ayuda y sugerencias | `helpCenter.ts:814`, `helpSuggestions.ts:1925` | Adaptar (10.7) **Hecho (10.7): evento `help.changed` por el canal privado `help` (Reverb); la página recarga solo la pestaña abierta (D-212).** |
 
 **IA transversal**
 | ID | Funcionalidad | Origen | Destino |
@@ -346,6 +346,8 @@ La entrega es la de F.
 - Hechas en la 10.4: 22 (F-020, F-064, F-096, F-119 a F-121, F-123, F-124, F-126, F-128 a F-132, F-134 a F-137 y F-142 a F-145), y se completan F-001, F-028, F-067 y F-133. Todas llevan «Hecho (10.4)».
 - Ya no queda ninguna con la pantalla a medias.
 - Hechas en la 10.5: 12, las marcadas «Hecho (10.5)» (F-037, F-095, F-101, F-102 y F-104 a F-110), y se completa F-010 con «Avisos». F-103 ya existía (Web Push).
+- Hechas en la 10.6: las marcadas «Hecho (10.6)» (F-006, F-055 a F-063, F-146 y F-147), y se completa F-041.
+- Hechas en la 10.7: 21, las marcadas «Hecho (10.7)» (F-148 a F-153, F-155 a F-168 y F-170); F-154 se usa en las nuevas pantallas y se completa F-010 con «Ayuda». Ya no queda ninguna F pendiente de una entrega de pantallas: solo la migración (10.8) y el cierre (10.9).
 
 ---
 

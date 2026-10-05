@@ -548,3 +548,56 @@ Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-203 a D-206**. En `WEEK
 
 ### Para las siguientes entregas
 - **10.8:** las 36 tareas de WeeklySync (todas hechas, sin proyecto) se migran como tareas hechas si su cliente tiene un proyecto que case (D-149); su `archived` pasa a `task_archives` de su responsable.
+
+## 10.7 (hecho): centro de ayuda y sugerencias
+Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-207 a D-212**. En `WEEKLY-INVENTARIO.md` §A.4, F-148 a F-153, F-155 a F-168 y F-170 pasan a «Hecho (10.7)»; F-154 (el editor) se usa en las nuevas pantallas y se completa F-010 («Ayuda» en la barra lateral). Ya no queda ninguna F pendiente salvo la migración (10.8) y el cierre (10.9).
+
+### Datos
+- **Sin migraciones nuevas:** las tablas son las del contrato 10.1 (`help_*` y `suggestion_*`). Los ajustes `help_manual` (`{disk, path, name, size}`) y `help_support_url` ya estaban en `Setting::DEFAULTS`.
+- **Cambios compatibles del contrato:**
+  - `HelpRelease::versionLabel()` devuelve «V.1.10.2», como WeeklySync (antes «V1.10.2»),
+  - los modelos de la ayuda, los tableros, las categorías y las sugerencias usan `LogsDomainActivity` (`SuggestionPost` sin los contadores, el orden ni la actividad),
+  - `AttachmentStorage::store()` admite `SuggestionPost` y `SuggestionComment` (en `attachments/suggestions/{post}[/comments]`) y `AttachmentPolicy` sirve los adjuntos de la ayuda y las sugerencias (D-210),
+  - se quita el trait `PendingDelivery` y la clave `weeklies.not_implemented`: ya no queda ninguna ruta 501,
+  - los tipos de la ayuda y las sugerencias de `resources/js/types/weeklies.ts` se rehacen con su forma real (`HelpUpdateEntry`, `HelpReleaseOption`, `SuggestionPostDetail`, `SuggestionsTabProps`…).
+
+### Dominio
+- **`Weeklies\Help`:**
+  - `HelpReleaseCalendar` (puro): `versionFor()`, `label()`, `publishedOn()`, `hasContent()`, `isInProgress()` y `withStatuses()` (port de `helpCenter.ts`),
+  - `HelpCenter`: `ensureCurrentRelease()`, `settings()`, `updates(viewer)`, `releaseOptions()`, `tutorials()` (con `tutorialData()`) y `faqSections()`,
+  - `TutorialVideoUploads` (D-207): `start()`, `append()`, `attach()`, `owns()`, `discard()` y `prune()`; `MAX_BYTES` (200 MB), `CHUNK_BYTES` (8 MB) y los tipos de vídeo admitidos.
+- **`Weeklies\Suggestions`:**
+  - `SuggestionQueries`: `boards()` (con recuentos), `feed()`, `roadmap()`, `similar()` y `detail()`,
+  - `SuggestionBoardView::page()`: la prop de la pestaña con los filtros de la URL, y `mentionables()`,
+  - `SuggestionPresenter`: la forma JSON (tablero, categoría, sugerencia, detalle con el árbol de comentarios, adjuntos),
+  - `SuggestionWriter`: `create()`, `update()`, `delete()`, `toggleVote()`, `comment()`, `updateComment()`, `deleteComment()`, `react()`, `changeStatus()` y `move()`, con los avisos (D-209).
+- **Notificaciones** (`app/Notifications/Suggestions`): `SuggestionStatusChanged`, `SuggestionReplied` y `SuggestionMentioned`, en el grupo `suggestions` del catálogo (audiencia `AUDIENCE_SUGGESTIONS`).
+- **Evento `Events\Weeklies\HelpCenterChanged`** (`help.changed`, canal privado `help`, D-212).
+- **Comando `help:prune-uploads`** (cada noche a las 03:35).
+- **Privacidad:** `SuggestionsSection`, `SuggestionCommentsSection`, `SuggestionVotesSection` y `HelpLikesSection` en `config('privacy.export_sections')`.
+- **Auditoría:** entidades `help` y `suggestion`, acciones `help_settings_changed` y `suggestion_status_changed`.
+
+### Rutas, páginas y props
+- **`help/index`** (`HelpController::index` y `page()`, `HelpPageProps`): `tab`, `can` (`manage`, `suggestions`), `settings`, `updates` (General), `releases` (Tutoriales, y General para quien gestiona), `tutorials`, `faq_sections`, `suggestions` (`SuggestionsTabProps`) y `upload` (`video_max_bytes`, `video_chunk_bytes`, `attachment_max_mb`). La pestaña de sugerencias, solo con su módulo.
+- **`suggestions.show`** (`/ayuda/sugerencias/{id}`): la misma página con la sugerencia abierta (`suggestions.post`). 404 a quien no gestiona si su tablero está oculto.
+- **Filtros de la pestaña de sugerencias** (en la URL): `vista=roadmap|feedback`, `tablero`, `categoria`, `q`, `orden`, `estados`, `limite` y `nueva=1|bug`.
+- **Rutas nuevas** (además de las del contrato): `help.tutorials.uploads.store` y `.chunk` (subida por trozos), `help.faq-sections.reorder`, `help.faqs.reorder`, `suggestions.similar` (JSON), `suggestions.boards.reorder` y `suggestions.categories.reorder`. `help.manual` y `help.tutorials.video` van con `signed:relative`.
+- **Cuerpos:** `help.releases.store/update` (`{major_version, month_number, week_of_month, summary?, is_hidden?, changes?: [{id?, description}]}`; sin `summary` ni `changes`, se conservan), `help.updates.*` (`{published_on, title, subtitle, body}`), `help.likes.toggle` (`{kind: release|manual, id}`), `help.tutorials.store/update` (`{title, description?, help_release_id?, upload?}`), `help.settings.update` (multipart: `{support_url?, manual?, remove_manual?}`), reordenar (`{ids}`; las preguntas, con `help_faq_section_id`), `suggestions.store/update` (multipart: `{title, body, suggestion_board_id, suggestion_category_id?, files[], remove_attachment_ids[]}`), `suggestions.comments.store/update` (multipart: `{body, parent_id?, files[], remove_attachment_ids[]}`), `suggestions.comments.react` (`{reaction}`), `suggestions.status.update` (`{status, note?}`) y `suggestions.position.update` (`{status, before_id?, after_id?}`).
+- **Componentes:** `components/help` (`help-general`, `help-dialogs`, `help-tutorials`, `help-faq`, `sortable-list` y `use-help-live`) y `components/suggestions` (`suggestions-tab`, `suggestion-feed`, `suggestion-roadmap`, `suggestion-detail`, `suggestion-comments`, `suggestion-composer`, `suggestion-taxonomy`, `suggestion-ui` y `use-suggestion-query`). Piezas puras en `lib/help-center.ts`, `lib/suggestions.ts` y `lib/video-upload.ts`. Textos en `lang/ui/help.json`, `lang/ui/suggestions.json` y `lang/es/help.php`.
+- **Navegación:** «Ayuda» en la barra lateral, tras el asistente (F-010).
+
+### Tests
+- **Pest:** `tests/Unit/Weeklies/HelpReleaseCalendarTest`, `tests/Feature/Weeklies/HelpCenterTest` (permisos, pestañas, versión automática y estados, versiones con sus cambios, ocultar, actualizaciones, «me gusta», manual y soporte, subida por trozos, vídeo con Range y URL firmada, sustituir y borrar, no vídeo, reordenar, limpieza de subidas, preguntas frecuentes, canal `help`), `tests/Feature/Weeklies/SuggestionsTest` (crear con adjuntos y menciones, validación, editar y borrar con adjuntos, votos únicos, comentarios anidados, avisos, reacciones, estados con historial, roadmap, feed y búsqueda global, similares, tableros y categorías, módulo apagado) y `tests/Feature/Privacy/HelpPersonalDataTest`; presupuestos en `WeeklyPagesPerformanceTest`. Al día: `WeeklyRoutesTest` (sin 501), `WeeklySchemaTest`, `PersonalDataExportTest`, `NotificationPreferencesTest` y `NotificationSettingsPageTest` (grupo «Sugerencias»).
+- **Vitest:** `help-center` (piezas puras, la subida por trozos con reintento, General, gestión, «Reportar un bug», Tutoriales con el límite de 200 MB y Preguntas frecuentes) y `suggestions` (piezas puras, Feedback con el voto al momento, el formulario de bug, el Roadmap con «Mover a…», el detalle con la actividad y las reacciones y la moderación).
+- **E2E:** `help-center.spec.ts` (novedad con «me gusta» y búsqueda, preguntas frecuentes, sugerencia con comentario y reacción, «Reportar un bug», moderación y roadmap; AA y 375 px). `SIDEBAR_PATHS` incluye `/ayuda` y `collaborator.spec.ts`, su 403. **Escritos, sin ejecutar en el Mac:** van a la CI.
+
+### Para desplegar (con el SSH)
+- **Sin migraciones.** El programador (`schedule:work`) lanzará `help:prune-uploads` cada noche.
+- **Límites de subida: no hace falta tocar nada.** Cada trozo del vídeo pesa 8 MB, por debajo de `upload_max_filesize` (55 MB), `post_max_size` (64 MB) y `client_max_body_size` (128 MB), y cada petición dura segundos (`max_execution_time` 60 s). Si algún día ModSecurity bloqueara las subidas por trozos (muchas peticiones seguidas a `/ayuda/tutoriales/subidas/…`), se ajusta solo para este dominio, con aprobación (RUNBOOK A4).
+- **Disco:** los vídeos van a `shared/storage/app/private/help/tutorials` (los 4 de WeeklySync suman 135 MB; con la 10.8) y los trozos temporales a `help/uploads` (borrados a las 24 h). Hay 47 GB libres; la copia nocturna los incluye. El aviso de almacenamiento (D-076) sigue mirando el disco.
+- **Reverb:** nada nuevo en el servidor; el canal `help` se autoriza en `/broadcasting/auth`.
+- Después, como siempre, `verificar.sh` y `comparar-webs.sh` si se toca el servidor.
+
+### Para la 10.8
+- La ayuda de WeeklySync: `help_releases` (con `is_hidden`) y `help_release_changes`, `help_manual_updates` (`content_markdown` en Markdown o HTML → `body` saneado con `RichText`), `help_update_likes` (`release_id`/`manual_update_id` → `likeable`), `help_tutorials` (el vídeo del bucket `help-content` → `Attachment` en `help/tutorials`), `help_faq_sections` y `help_faqs`, y `help_settings` (`manual_path` y `support_url` → `help_manual` y `help_support_url`).
+- Las sugerencias: tableros, categorías (la de bugs ya existe: casar por slug), la propuesta con sus votos, comentarios (`parent_comment_id` → `parent_id`), reacciones (`reaction_key`), eventos de estado y adjuntos (bucket `suggestion-attachments` → `Attachment`). El cuerpo y los comentarios en Markdown con menciones `@[Nombre](user:uuid)` → HTML de RichText con `<span data-type="mention" …>` y el id de Audax. Recontar `vote_count` y `comment_count` y dar `position` por `last_activity_at` dentro de cada estado.
