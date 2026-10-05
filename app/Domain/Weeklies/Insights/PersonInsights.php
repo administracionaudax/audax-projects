@@ -207,9 +207,10 @@ final class PersonInsights
             $distribution[$day]++;
         }
 
-        $average = $hours / count($submittedAt);
-        $hour = (int) floor($average);
-        $minute = (int) floor(($average - $hour) * 60);
+        // En minutos redondeados (WeeklySync truncaba y, por la coma flotante, 14:10 salía 14:09).
+        $average = (int) round($hours / count($submittedAt) * 60);
+        $hour = intdiv($average, 60);
+        $minute = $average % 60;
 
         $mostCommon = 'friday';
         $max = -1;

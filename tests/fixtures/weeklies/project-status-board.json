@@ -1,0 +1,168 @@
+{
+    "_comment": "Estado de proyectos (10.4, D-148 y D-194). Pest monta los datos y comprueba ProjectStatusBoard; Vitest comprueba con las filas esperadas el progreso, lo esperado y la desviación de lib/project-status.ts. Hoy: jueves 08/10/2026; el 12/10 es festivo (octubre: 21 laborables, 6 transcurridos).",
+    "today": "2026-10-08",
+    "holidays": ["2026-10-12"],
+    "clients": [
+        { "key": "acme", "name": "Acme", "icon": "🍷", "active": true },
+        { "key": "beta", "name": "Beta", "icon": null, "active": true },
+        { "key": "old", "name": "Old", "icon": null, "active": false }
+    ],
+    "projects": [
+        {
+            "client": "acme",
+            "code": "ACME-BH",
+            "name": "Bolsa de horas",
+            "billing_type": "hour_bank",
+            "status": "active",
+            "budget_minutes": null,
+            "description": null,
+            "bank": { "name": "BH1 - 20h", "total_minutes": 1200, "start_date": "2026-09-01" },
+            "entries": [["2026-10-06", 300]]
+        },
+        {
+            "client": "acme",
+            "code": "ACME-FE1",
+            "name": "Mantenimiento",
+            "billing_type": "time_and_materials",
+            "status": "active",
+            "budget_minutes": null,
+            "description": "Fee mensual de 20 h.",
+            "bank": null,
+            "entries": [["2026-10-02", 300], ["2026-09-30", 120]]
+        },
+        {
+            "client": "acme",
+            "code": "ACME-WE1",
+            "name": "Web corporativa",
+            "billing_type": "fixed_price",
+            "status": "active",
+            "budget_minutes": 6000,
+            "description": null,
+            "bank": null,
+            "entries": [["2026-08-10", 6100], ["2026-10-07", 60]]
+        },
+        {
+            "client": "acme",
+            "code": "ACME-SOP",
+            "name": "Soporte",
+            "billing_type": "time_and_materials",
+            "status": "planned",
+            "budget_minutes": null,
+            "description": null,
+            "bank": null,
+            "entries": [["2026-09-15", 90]]
+        },
+        {
+            "client": "acme",
+            "code": "ACME-AT2",
+            "name": "Auditoría terminada",
+            "billing_type": "fixed_price",
+            "status": "completed",
+            "budget_minutes": 600,
+            "description": null,
+            "bank": null,
+            "entries": []
+        },
+        {
+            "client": "beta",
+            "code": "BETA-PR1",
+            "name": "App",
+            "billing_type": "fixed_price",
+            "status": "on_hold",
+            "budget_minutes": 3000,
+            "description": null,
+            "bank": null,
+            "entries": [["2026-10-05", 30]]
+        },
+        {
+            "client": "old",
+            "code": "OLD-WE1",
+            "name": "Web antigua",
+            "billing_type": "fixed_price",
+            "status": "active",
+            "budget_minutes": 600,
+            "description": null,
+            "bank": null,
+            "entries": []
+        }
+    ],
+    "expected": [
+        {
+            "client": "Acme",
+            "badges": [
+                { "tag": "web", "count": 1 },
+                { "tag": "monthly_fee", "count": 1 },
+                { "tag": "hour_bank", "count": 1 },
+                { "tag": "general", "count": 1 }
+            ],
+            "projects": [
+                {
+                    "code": "ACME-WE1",
+                    "name": "Web corporativa",
+                    "kind_code": "WE",
+                    "billing_type": "fixed_price",
+                    "budget_minutes": 6000,
+                    "consumed_minutes": 6160,
+                    "expected_minutes": null,
+                    "deviation_minutes": null,
+                    "week_minutes": 60,
+                    "ui": { "progress": 102.67, "over": true, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                },
+                {
+                    "code": "ACME-FE1",
+                    "name": "Mantenimiento",
+                    "kind_code": "FE",
+                    "billing_type": "monthly_fee",
+                    "budget_minutes": 1200,
+                    "consumed_minutes": 300,
+                    "expected_minutes": 343,
+                    "deviation_minutes": -43,
+                    "week_minutes": 0,
+                    "ui": { "progress": 25, "over": false, "expected_percent": 28.58, "tone": "negative", "delta_value": "-0:43" }
+                },
+                {
+                    "code": "ACME-BH",
+                    "name": "Bolsa de horas · BH1 - 20h",
+                    "kind_code": "BH",
+                    "billing_type": "hour_bank",
+                    "budget_minutes": 1200,
+                    "consumed_minutes": 300,
+                    "expected_minutes": null,
+                    "deviation_minutes": null,
+                    "week_minutes": 300,
+                    "ui": { "progress": 25, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                },
+                {
+                    "code": "ACME-SOP",
+                    "name": "Soporte",
+                    "kind_code": "GE",
+                    "billing_type": "time_and_materials",
+                    "budget_minutes": null,
+                    "consumed_minutes": 90,
+                    "expected_minutes": null,
+                    "deviation_minutes": null,
+                    "week_minutes": 0,
+                    "ui": { "progress": 0, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                }
+            ]
+        },
+        {
+            "client": "Beta",
+            "badges": [{ "tag": "product", "count": 1 }],
+            "projects": [
+                {
+                    "code": "BETA-PR1",
+                    "name": "App",
+                    "kind_code": "PR",
+                    "billing_type": "fixed_price",
+                    "budget_minutes": 3000,
+                    "consumed_minutes": 30,
+                    "expected_minutes": null,
+                    "deviation_minutes": null,
+                    "week_minutes": 30,
+                    "ui": { "progress": 1, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                }
+            ]
+        }
+    ]
+}
