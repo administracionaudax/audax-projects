@@ -74,14 +74,37 @@ final class RemindersStage
                     continue;
                 }
 
-                $local = $context->refs->find($table === 'email_reminders' ? 'email_rule' : 'push_rule', $id);
+                $kind = $table === 'email_reminders' ? 'email_rule' : 'push_rule';
+                $isoDay = $day === 0 ? 7 : $day;
+                $local = $context->refs->find($kind, $id);
                 $rule = $local !== null ? WeeklyReminderRule::query()->find($local) : null;
+
+                if ($rule !== null && $context->refs->find($kind.'_created', $id) !== $rule->id) {
+                    // Casó con una regla de Audax en una pasada anterior: no se toca.
+                    $context->report->skip('reminder_rules', 'Reglas que ya estaban en Audax (mismo canal, día y hora)');
+
+                    continue;
+                }
+
+                // Si en Audax ya hay una regla igual (canal, día y hora), se usa esa: dos reglas
+                // iguales mandarían dos avisos.
+                $same = $rule === null
+                    ? WeeklyReminderRule::query()->where(['channel' => $channel->value, 'day_of_week' => $isoDay, 'time' => $time])->first()
+                    : null;
+
+                if ($same !== null) {
+                    $context->refs->put($kind, $id, 'weekly_reminder_rule', $same->id);
+                    $context->report->skip('reminder_rules', 'Reglas que ya estaban en Audax (mismo canal, día y hora)');
+
+                    continue;
+                }
+
                 $created = $rule === null;
                 $rule ??= new WeeklyReminderRule(['position' => ++$position]);
 
                 $rule->fill([
                     'channel' => $channel,
-                    'day_of_week' => $day === 0 ? 7 : $day,
+                    'day_of_week' => $isoDay,
                     'time' => $time,
                     'enabled' => ($row['enabled'] ?? true) === true,
                 ]);
@@ -91,7 +114,8 @@ final class RemindersStage
                     $rule->save();
                 }
 
-                $context->refs->put($table === 'email_reminders' ? 'email_rule' : 'push_rule', $id, 'weekly_reminder_rule', $rule->id);
+                $context->refs->put($kind, $id, 'weekly_reminder_rule', $rule->id);
+                $context->refs->put($kind.'_created', $id, 'weekly_reminder_rule', $rule->id);
                 $context->report->count('reminder_rules', $outcome);
             }
         }

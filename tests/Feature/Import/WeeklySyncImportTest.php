@@ -475,3 +475,14 @@ test('el informe se compara sin el orden de las claves (jsonb de PostgreSQL)', f
         ->and(WeeksStage::sameJson(['a' => [1, 3]], ['a' => [3, 1]]))->toBeFalse()
         ->and(WeeksStage::sameJson(null, []))->toBeFalse();
 });
+
+test('una regla de aviso que ya está en Audax no se duplica ni se cambia', function () {
+    $own = WeeklyReminderRule::query()->create(['channel' => WeeklyReminderChannel::Email, 'day_of_week' => 5, 'time' => '16:00', 'enabled' => false, 'position' => 1]);
+
+    runWeeklySyncImport();
+    $second = runWeeklySyncImport();
+
+    expect(WeeklyReminderRule::query()->where('channel', WeeklyReminderChannel::Email->value)->get()->map(fn ($r) => [$r->id, $r->enabled])->all())->toBe([[$own->id, false]])
+        ->and(WeeklyReminderRule::query()->count())->toBe(2)
+        ->and($second->skipped())->toHaveKey('Reglas que ya estaban en Audax (mismo canal, día y hora)');
+});
