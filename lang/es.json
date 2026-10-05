@@ -207,6 +207,8 @@
     "profile.current_password_help": "Para cambiar el correo electrónico, confirma tu contraseña actual.",
     "profile.description": "Actualiza tu nombre y tu correo electrónico.",
     "profile.heading": "Datos del perfil",
+    "profile.job_title": "Puesto",
+    "profile.job_title_placeholder": "Por ejemplo, diseñadora UX",
     "profile.name": "Nombre",
     "profile.name_placeholder": "Nombre y apellidos",
     "profile.title": "Perfil",

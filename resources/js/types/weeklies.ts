@@ -226,12 +226,123 @@ export type WeeklyExemption = {
     created_at: string | null;
 };
 
-/** Fila del estado del equipo de una semana (F-036, F-067 y F-136), WeeklyRoster + WeeklyTiming. */
+/** Fila del estado del equipo de una semana (F-036, F-067 y F-136), WeeklyTeamStatus::for(). */
 export type WeeklyTeamMember = {
     user: UserSummary;
     status: WeeklyPersonStatus;
     submitted_at: string | null;
     exemption_reason: Exclude<WeeklyExemptionReason, 'waived'> | null;
+    /** Fila de exención que se puede quitar (manual); null en la de ausencia de la semana activa. */
+    exemption_id: number | null;
+};
+
+/** Recuentos del estado del equipo: expected = deben enviar (sin los exentos). */
+export type WeeklyTeamCounts = {
+    submitted: number;
+    expected: number;
+    exempt: number;
+    pending: number;
+};
+
+/** WeeklyTeamStatus::for(): enviadas, pendientes y exentas, en ese orden y por nombre. */
+export type WeeklyTeamStatus = {
+    members: WeeklyTeamMember[];
+    counts: WeeklyTeamCounts;
+};
+
+/** Fila del histórico (F-066), WeeklyOverview. */
+export type WeeklyHistoryRow = WeeklyCycleSummary & {
+    progress: WeeklyCycleProgress;
+    participation: { submitted: number; expected: number; exempt: number };
+};
+
+/** Semana activa o última cerrada, destacadas con su equipo (F-065 y F-067). */
+export type WeeklyHighlightedCycle = WeeklyHistoryRow & {
+    team: WeeklyTeamStatus;
+};
+
+/** MyWeeklyStatus::for(): mi weekly de una semana (F-030, F-032, F-053 y F-054). */
+export type MyWeeklyStatus = {
+    status: WeeklyPersonStatus;
+    participates: boolean;
+    must_submit: boolean;
+    /** absence o manual; null si no estoy exento (o he renunciado). */
+    exemption_reason: Exclude<WeeklyExemptionReason, 'waived'> | null;
+    /** Mi fila manual o de renuncia (para quitarla con weeklies.exemptions.destroy). */
+    exemption_id: number | null;
+    waived: boolean;
+    submission_id: number | null;
+    submitted_at: string | null;
+    resubmitted_at: string | null;
+    draft_saved_at: string | null;
+    entries_count: number;
+};
+
+/** «Mis clientes» (F-033): los que gestiono (owned) y en los que colaboro (member). */
+export type WeeklyMyClient = {
+    id: number;
+    name: string;
+    icon: string | null;
+    projects: { id: number; code: string; name: string; can_leave: boolean }[];
+};
+
+/** «Unirme a proyectos» (F-034, D-156): prop opcional `joinable_projects`. */
+export type WeeklyJoinableProject = {
+    id: number;
+    code: string;
+    name: string;
+    client: { id: number; name: string; icon: string | null };
+};
+
+/** Fila de «Mis weeklies» (F-042), MyWeeklyHistory. */
+export type MyWeeklyRow = {
+    cycle: WeeklyCycleSummary;
+    status: WeeklyPersonStatus;
+    is_upcoming: boolean;
+    submitted_at: string | null;
+    /** Borrador sin enviar con algún apunte. */
+    has_draft: boolean;
+    entries_count: number;
+    exemption_reason: Exclude<WeeklyExemptionReason, 'waived'> | null;
+};
+
+/** Cliente del catálogo de «Mi weekly» (F-045), MyWeeklyClients. */
+export type WeeklyClientOption = {
+    id: number;
+    name: string;
+    icon: string | null;
+    is_active: boolean;
+    projects: { id: number; code: string; name: string; is_mine: boolean }[];
+};
+
+/** «Mi weekly» de una semana (?semana={id}), MySpaceController::editor(). */
+export type MyWeeklyEditor = {
+    cycle: WeeklyCycleSummary;
+    me: MyWeeklyStatus;
+    submission: WeeklySubmission | null;
+    /** proposed: ids de los clientes con caja de entrada (D-150); catalog: «Añadir otro cliente». */
+    clients: { proposed: number[]; catalog: WeeklyClientOption[] };
+    /** «Autocompletar» (F-048): texto por cliente; clave «general» = General / Interno. */
+    autofill: Record<string, string>;
+    read_only: boolean;
+    can: { write: boolean; waive: boolean; undo_waiver: boolean };
+};
+
+/** Tarjeta «Weekly» de Inicio (F-030 a F-040), HomeWeeklyCard; null = sin tarjeta. */
+export type HomeWeeklyCard = {
+    cycle: WeeklyCycleSummary | null;
+    me: MyWeeklyStatus | null;
+    streak: WeeklyStreakSummary;
+    /** Solo para quien gestiona: recuentos y hasta 8 personas pendientes. */
+    team: { counts: WeeklyTeamCounts; pending: UserSummary[] } | null;
+    can: { manage: boolean; open: boolean };
+};
+
+/** Evento `dictation.updated` del canal privado App.Models.User.{id} (D-158). */
+export type DictationUpdatedEvent = {
+    dictation_id: number;
+    status: DictationStatus;
+    warning: string | null;
 };
 
 /** StreakCalculator::summary() (F-028 y F-031). */
@@ -454,10 +565,25 @@ export type SuggestionPost = {
 
 // --- Páginas (Inertia) ------------------------------------------------------------------------
 
-/** weeklies/index (WeeklyCycleController::index). */
+/** weeklies/index (WeeklyCycleController::index), ?pestana=resumen|historico. */
 export type WeekliesIndexPageProps = {
-    cycles: WeeklyCycleSummary[];
-    can: { manage: boolean; create: boolean };
+    tab: 'resumen' | 'historico';
+    active: WeeklyHighlightedCycle | null;
+    latest_closed: WeeklyHighlightedCycle | null;
+    cycles: WeeklyHistoryRow[];
+    /** Mi weekly de la semana activa; null sin semana activa. */
+    me: MyWeeklyStatus | null;
+    streak: WeeklyStreakSummary;
+    my_clients: { owned: WeeklyMyClient[]; member: WeeklyMyClient[] };
+    /** Opcional: se pide con router.reload({ only: ['joinable_projects'] }). */
+    joinable_projects?: WeeklyJoinableProject[];
+    can: {
+        manage: boolean;
+        create: boolean;
+        extendDeadline: boolean;
+        delete: boolean;
+        exempt: boolean;
+    };
 };
 
 /** weeklies/show (WeeklyCycleController::show). */
@@ -471,10 +597,16 @@ export type WeeklyShowPageProps = {
     };
 };
 
-/** my-space/index (MySpaceController::index). */
+/** my-space/index (MySpaceController::index), ?pestana=reportes|tareas&semana={id}. */
 export type MySpacePageProps = {
+    tab: 'reportes' | 'tareas';
+    /** La semana activa y mi weekly de esa semana (contrato 10.1). */
     cycle: WeeklyCycleSummary | null;
     submission: WeeklySubmission | null;
+    weeks: MyWeeklyRow[];
+    streak: WeeklyStreakSummary;
+    /** Solo con ?semana={id}. */
+    editor: MyWeeklyEditor | null;
 };
 
 /** help/index (HelpController::index). */

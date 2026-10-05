@@ -13,6 +13,7 @@ import type {
 } from './domain';
 import type { HomeMilestone } from './planning';
 import type { ReportRequestData } from './reports';
+import type { HomeWeeklyCard } from './weeklies';
 
 /** App\Http\Resources\Time\TimesheetPeriodResource. Una semana sin fila llega con id null. */
 export type TimesheetPeriodData = {
@@ -280,4 +281,6 @@ export type HomePageProps = {
     milestones: HomeMilestone[];
     /** Orden de las tarjetas guardado por quien mira (D-138); null = el orden por defecto. */
     home_layout?: string[] | null;
+    /** La Weekly (Fase 10, prop diferida); null = sin tarjeta; ausente para un colaborador externo. */
+    weekly?: HomeWeeklyCard | null;
 };

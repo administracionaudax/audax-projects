@@ -1,3 +1,5 @@
+import type { WeeklyStreakSummary } from './weeklies';
+
 /**
  * Props de cada página Inertia (contrato con los controladores de app/Http).
  * Las props compartidas (auth, name, sidebarOpen) están en types/global.d.ts.
@@ -38,6 +40,8 @@ export type ProfilePageProps = {
     status?: string | null;
     /** Puesto (Fase 10, F-026). */
     jobTitle?: string | null;
+    /** Estadísticas de la weekly (F-028, prop diferida); null si no la escribe. */
+    weeklyStats?: WeeklyStreakSummary | null;
 };
 
 export type SecurityPageProps = {

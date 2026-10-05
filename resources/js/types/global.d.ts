@@ -25,6 +25,8 @@ declare module '@inertiajs/core' {
             chat?: ChatSharedProps;
             /** Aviso de privacidad pendiente de leer (D-075). */
             privacy?: { needs_acknowledgement: boolean };
+            /** La Weekly (Fase 10, F-003): mi weekly pendiente de la semana activa (0 o 1). */
+            weeklies?: { pending: number };
             /** Google Sheets (Fase 9, D-142): si se ofrece y si la cuenta está conectada. */
             integrations?: IntegrationsSharedProps;
             [key: string]: unknown;
