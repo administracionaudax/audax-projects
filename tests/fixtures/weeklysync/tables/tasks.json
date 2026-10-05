@@ -1,0 +1,4 @@
+[
+{"id":"88888888-0000-4000-8000-000000000001","description":"Enviar maquetas a Manzanas","status":"DONE","priority":"HIGH","due_date":"2026-09-25","assignee_id":"11111111-0000-4000-8000-000000000001","assigner_id":"11111111-0000-4000-8000-000000000002","client_id":"22222222-0000-4000-8000-000000000001","week_id":"33333333-0000-4000-8000-000000000001","archived":true,"notes":"Con la **versión 2**.","created_at":"2026-09-21T10:00:00+00:00","updated_at":"2026-09-24T10:00:00+00:00"},
+{"id":"88888888-0000-4000-8000-000000000002","description":"Llamar a Fresas","status":"DONE","priority":"MEDIUM","due_date":null,"assignee_id":"11111111-0000-4000-8000-000000000002","assigner_id":"11111111-0000-4000-8000-000000000001","client_id":"22222222-0000-4000-8000-000000000004","week_id":"33333333-0000-4000-8000-000000000001","archived":false,"notes":null,"created_at":"2026-09-21T10:00:00+00:00","updated_at":"2026-09-22T10:00:00+00:00"}
+]

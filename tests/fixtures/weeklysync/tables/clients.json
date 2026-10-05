@@ -1,0 +1,9 @@
+[
+{"id":"22222222-0000-4000-8000-000000000001","name":"Manzanas Pérez","owner_id":"11111111-0000-4000-8000-000000000001","icon":"🍎","active":true,"current_satisfaction":72,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000002","name":"PERAS GOMEZ","owner_id":"11111111-0000-4000-8000-000000000001","icon":"🍐","active":true,"current_satisfaction":41,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000003","name":"Kiwis","owner_id":"11111111-0000-4000-8000-000000000002","icon":"🥝","active":true,"current_satisfaction":55,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000004","name":"Prospecto Fresas","owner_id":null,"icon":"🍓","active":false,"current_satisfaction":50,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000005","name":"Limones","owner_id":"11111111-0000-4000-8000-000000000001","icon":"🍋","active":true,"current_satisfaction":60,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000006","name":"Uvas","owner_id":"11111111-0000-4000-8000-000000000001","icon":"🍇","active":true,"current_satisfaction":80,"created_at":"2026-01-01T10:00:00+00:00"},
+{"id":"22222222-0000-4000-8000-000000000007","name":"Naranjas","owner_id":"11111111-0000-4000-8000-000000000001","icon":"🍊","active":true,"current_satisfaction":61,"created_at":"2026-01-01T10:00:00+00:00"}
+]

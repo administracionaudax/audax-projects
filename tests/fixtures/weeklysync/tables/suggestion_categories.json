@@ -1,0 +1,5 @@
+[
+{"id":"99999999-0000-4000-8000-000000000063","board_id":"99999999-0000-4000-8000-000000000061","name":"General","slug":"general","description":"Sugerencias generales del producto.","sort_order":1,"is_active":true,"created_by":null,"created_at":"2026-06-01T10:00:00+00:00"},
+{"id":"99999999-0000-4000-8000-000000000064","board_id":"99999999-0000-4000-8000-000000000061","name":"Bugs","slug":"bugs","description":"Incidencias en WeeklySync.","sort_order":2,"is_active":true,"created_by":null,"created_at":"2026-06-01T10:00:00+00:00"},
+{"id":"99999999-0000-4000-8000-000000000065","board_id":"99999999-0000-4000-8000-000000000062","name":"Procesos","slug":"procesos","description":null,"sort_order":1,"is_active":true,"created_by":"11111111-0000-4000-8000-000000000001","created_at":"2026-06-02T10:00:00+00:00"}
+]

@@ -752,6 +752,7 @@ final class WeeksStage
             ->distinct()
             ->pluck('client_id')
             ->flip();
+        $seen = [];
 
         foreach ($context->dump->rows('clients') as $row) {
             $clientId = $context->client($row['id'] ?? null);
@@ -766,6 +767,13 @@ final class WeeksStage
 
                 continue;
             }
+
+            if (isset($seen[$clientId])) {
+                $context->report->skip('satisfaction_now', 'Satisfacción actual repetida (dos clientes de WeeklySync en uno de Audax: vale la del primero)');
+
+                continue;
+            }
+            $seen[$clientId] = true;
 
             $client = Client::withTrashed()->find($clientId);
             if ($client === null) {

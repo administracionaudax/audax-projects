@@ -1,0 +1,5 @@
+[
+{"id":"99999999-0000-4000-8000-000000000031","recipient_email":"Ana@Audax.test","recipient_name":"Ana Prueba","template_id":"automatic","week_number":"W39-26","week_id":"33333333-0000-4000-8000-000000000001","trigger_key":"automatic:33333333-0000-4000-8000-000000000001:5-16:00","sent_at":"2026-09-25T14:00:00+00:00","status":"sent","error_message":null},
+{"id":"99999999-0000-4000-8000-000000000032","recipient_email":"diego@antiguo.test","recipient_name":"Diego Antiguo","template_id":"manual","week_number":"W40-26","week_id":null,"trigger_key":null,"sent_at":"2026-10-01T09:00:00+00:00","status":"failed","error_message":"Rate limit"},
+{"id":"99999999-0000-4000-8000-000000000033","recipient_email":"ana@audax.test","recipient_name":"Ana Prueba","template_id":"test","week_number":null,"week_id":null,"trigger_key":null,"sent_at":"2026-03-01T10:00:00+00:00","status":"sent","error_message":null}
+]

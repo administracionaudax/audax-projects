@@ -1,0 +1,6 @@
+[
+{"id":"99999999-0000-4000-8000-000000000011","upload_id":"99999999-0000-4000-8000-000000000010","client_id":"22222222-0000-4000-8000-000000000003","raw_client_name":"KIWIS","project_code":"FE1","invoice_number":null,"is_current":true},
+{"id":"99999999-0000-4000-8000-000000000012","upload_id":"99999999-0000-4000-8000-000000000010","client_id":"22222222-0000-4000-8000-000000000003","raw_client_name":"KIWIS","project_code":"WE2","invoice_number":null,"is_current":true},
+{"id":"99999999-0000-4000-8000-000000000013","upload_id":"99999999-0000-4000-8000-000000000010","client_id":"22222222-0000-4000-8000-000000000006","raw_client_name":"UVAS","project_code":"BH1","invoice_number":"F000123","is_current":true},
+{"id":"99999999-0000-4000-8000-000000000014","upload_id":"99999999-0000-4000-8000-000000000009","client_id":"22222222-0000-4000-8000-000000000001","raw_client_name":"MANZANAS","project_code":"XX9","invoice_number":"F999999","is_current":false}
+]

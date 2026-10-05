@@ -61,7 +61,8 @@ final class SuggestionsStage
             $slug = Str::limit(Str::slug(WeeklySyncContext::str($row['slug'] ?? '')) ?: 'tablero', 80, '');
             $local = $context->refs->find('board', $id);
             $board = $local !== null ? SuggestionBoard::query()->find($local) : null;
-            $imported = $board !== null;
+            // Solo se rellenan los tableros que creó la importación; los de Audax solo se usan.
+            $imported = $board !== null && $context->refs->find('board_created', $id) === $board->id;
 
             if ($board === null && isset($withBugs[$id]) && $audaxBugsBoard !== null) {
                 $board = SuggestionBoard::query()->find((int) $audaxBugsBoard);
@@ -82,6 +83,7 @@ final class SuggestionsStage
                     'created_by' => $context->user($row['created_by'] ?? null),
                 ]);
                 $this->save($context, 'suggestion_boards', $board, $created, $row);
+                $context->refs->put('board_created', $id, 'suggestion_board', $board->id);
             }
 
             $context->refs->put('board', $id, 'suggestion_board', $board->id);
@@ -101,7 +103,7 @@ final class SuggestionsStage
             $slug = Str::limit(Str::slug(WeeklySyncContext::str($row['slug'] ?? '')) ?: 'categoria', 80, '');
             $local = $context->refs->find('category', $id);
             $category = $local !== null ? SuggestionCategory::query()->find($local) : null;
-            $imported = $category !== null;
+            $imported = $category !== null && $context->refs->find('category_created', $id) === $category->id;
             $category ??= SuggestionCategory::query()->where(['suggestion_board_id' => $board, 'slug' => $slug])->first();
 
             if ($category !== null && ! $imported) {
@@ -117,6 +119,7 @@ final class SuggestionsStage
                     'created_by' => $context->user($row['created_by'] ?? null),
                 ]);
                 $this->save($context, 'suggestion_categories', $category, $created, $row);
+                $context->refs->put('category_created', $id, 'suggestion_category', $category->id);
             }
 
             $context->refs->put('category', $id, 'suggestion_category', $category->id);

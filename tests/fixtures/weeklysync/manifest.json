@@ -1,0 +1,176 @@
+{
+    "format": 1,
+    "source": "weeklysync",
+    "dumped_at": "2026-10-07T08:00:00+00:00",
+    "tables": {
+        "users": {
+            "rows": 6,
+            "sha256": "93e6a4937a0be6ebfa286d9d6bd4c81b9ac1f4a75fe8854ffb7661d1028f424e"
+        },
+        "user_identities": {
+            "rows": 2,
+            "sha256": "bccf9f11ebfb0e108a0f0644ddf1af04474b948ca7369dccb38dd6374e55db74"
+        },
+        "clients": {
+            "rows": 7,
+            "sha256": "0f3c98c1f7012231fb9a2555c56d7cc6413ddd8f91110d71b6be34117ea3dd9a"
+        },
+        "project_status_entries": {
+            "rows": 4,
+            "sha256": "659966101bddd5732ef0b5fd723bf9e502dd171a43a3ecb0dec88ed41996671c"
+        },
+        "week_cycles": {
+            "rows": 3,
+            "sha256": "4c0972eda7811d2e0a015ba52488f67b56a1185b9becbe8f623dc4d94b24aace"
+        },
+        "weekly_submissions": {
+            "rows": 6,
+            "sha256": "d7170282035f93bc60495507c4a364cb8f8137a9e91bc0bd20062730c43c55c1"
+        },
+        "client_report_entries": {
+            "rows": 11,
+            "sha256": "52ec414d72eb0f5c30e5685377bb439ef89f318f1b8478e9230e3615cbfd071e"
+        },
+        "weekly_submission_drafts": {
+            "rows": 2,
+            "sha256": "a6e32c5d58e791fdd1d5b8e2c69cbf48b31600b51625122cf03672bfd1725f64"
+        },
+        "weekly_submission_draft_entries": {
+            "rows": 3,
+            "sha256": "e5c44d726167cfd721876f5d9bc122057861bb4a2bba8463582be0761666fe55"
+        },
+        "tasks": {
+            "rows": 2,
+            "sha256": "9ed1bb1e3363dacfea5f723b76b715e8360e7bf9a66177e273f8b892f18623c9"
+        },
+        "email_reminders": {
+            "rows": 1,
+            "sha256": "2bb690e4c132a73acdd96520d50ddf39da4fc519b93ca2d703491fddb5b3f75a"
+        },
+        "web_notification_reminders": {
+            "rows": 2,
+            "sha256": "4052c2f0dca5fc14b5c79381b3fca981f798365496462eff7c31594cc501a42c"
+        },
+        "email_templates": {
+            "rows": 3,
+            "sha256": "1ac8b25a8a62ccb9c6f5e3ec92688dc7168204de2e46c1a004417875bb786cd5"
+        },
+        "email_log": {
+            "rows": 3,
+            "sha256": "3ac0be2d2370ece26056481197972b874810f9bc698929d483060aa500c5a398"
+        },
+        "help_settings": {
+            "rows": 1,
+            "sha256": "339ef0f935a01843ac5e63e01548a51014fc1608495d7db3b9f9b1169127a05f"
+        },
+        "help_releases": {
+            "rows": 2,
+            "sha256": "7f7652f7f9920575b6c1a6eddfc432be528c1b0d3c62f928f595d7f365317fa0"
+        },
+        "help_release_changes": {
+            "rows": 2,
+            "sha256": "668bd491a6a0f9c12137523f635b06584acf9d6bd09469ed8b724ad4fce1915c"
+        },
+        "help_manual_updates": {
+            "rows": 1,
+            "sha256": "728e633b69226fb401e755adb65f2e7d2d0203561add48653e14366e5d524a1e"
+        },
+        "help_update_likes": {
+            "rows": 2,
+            "sha256": "86dde41c95dd78407ec6e6989afcbc69012cbafdd591598724f6d182076ddbf8"
+        },
+        "help_tutorials": {
+            "rows": 1,
+            "sha256": "ef99b62048224013f670673b3ec8b1f5e86db3f4fd58d83aa3af403b3063e196"
+        },
+        "help_faq_sections": {
+            "rows": 1,
+            "sha256": "ee178abff7142d3bd4201e8a46e247bce4b349d29f1fc2bdc05040031c8fe502"
+        },
+        "help_faqs": {
+            "rows": 2,
+            "sha256": "da2768713d082042c38708476fe168c1203dfeaf8e98eec10889ced2222c9f89"
+        },
+        "suggestion_boards": {
+            "rows": 2,
+            "sha256": "786e77467ae8c606489e6cb3823391ec2b9f09f97ec9527ebd6ede18f5709cb4"
+        },
+        "suggestion_categories": {
+            "rows": 3,
+            "sha256": "8d88be4afacda2d06c39b9a14abaf833dc5d6ee5e987d70bf9eb5cce703ef219"
+        },
+        "suggestion_posts": {
+            "rows": 1,
+            "sha256": "94735c9d98a171a476e664f5ddc2d9fdef1e08e7ad916e0513f4f944ed10055d"
+        },
+        "suggestion_post_attachments": {
+            "rows": 1,
+            "sha256": "6799cf6830f1f5495fb7912c22cb849858eb19702e36f03c14c29fe02bb18e0c"
+        },
+        "suggestion_votes": {
+            "rows": 1,
+            "sha256": "9289169a15076ed8ea2ea3073a97754a14af77b9b111561260c5787a21c3ba91"
+        },
+        "suggestion_comments": {
+            "rows": 2,
+            "sha256": "faec49f10bfcd8cba5a74eba15792a29cbbe37a82d8e04ca4d947ddc3f7414ee"
+        },
+        "suggestion_comment_reactions": {
+            "rows": 1,
+            "sha256": "f2f77efd077cc484db8bc3b9825a360618f9fe61c8e695fe6b12b7928630a247"
+        },
+        "suggestion_comment_attachments": {
+            "rows": 0,
+            "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        "suggestion_status_events": {
+            "rows": 2,
+            "sha256": "9345caa951938871344fe2a21b0e6a01f1e5d75d72e74840884ba4bf7b551b7c"
+        },
+        "ai_usage_events": {
+            "rows": 3,
+            "sha256": "03abfebc1773c6b1e7d7f2da7db688b88ef1e9c6c9e14cc8a8953dc515a13f21"
+        }
+    },
+    "files": {
+        "audio-submissions/weekly-reports/33333333-0000-4000-8000-000000000001-full.mp3": {
+            "bucket": "audio-submissions",
+            "path": "weekly-reports/33333333-0000-4000-8000-000000000001-full.mp3",
+            "size": 22,
+            "sha256": "a4ff74d171dbe8538d9584ca8987d6fa871b3a8a03ddac938023f5857948739c"
+        },
+        "audio-submissions/weekly-reports/33333333-0000-4000-8000-000000000001/sections/client-1.mp3": {
+            "bucket": "audio-submissions",
+            "path": "weekly-reports/33333333-0000-4000-8000-000000000001/sections/client-1.mp3",
+            "size": 24,
+            "sha256": "efc5b66b08334cb4035e7a89205a78456009d040e2ea3ea333bac52526048233"
+        },
+        "audio-submissions/weekly-reports/33333333-0000-4000-8000-000000000001/sections/intro-1.mp3": {
+            "bucket": "audio-submissions",
+            "path": "weekly-reports/33333333-0000-4000-8000-000000000001/sections/intro-1.mp3",
+            "size": 23,
+            "sha256": "6352dd816311ba9868e1d57b91376160340e1f201c89877c99e855d679fcad0a"
+        },
+        "help-content/manual/manual-weeklysync.pdf": {
+            "bucket": "help-content",
+            "path": "manual/manual-weeklysync.pdf",
+            "size": 45,
+            "sha256": "5a838678058f6de375e8635b5f2fea47a4e5f07cb1a882a44b10f39abc6f34ff"
+        },
+        "help-content/tutorials/99999999-0000-4000-8000-000000000048.mp4": {
+            "bucket": "help-content",
+            "path": "tutorials/99999999-0000-4000-8000-000000000048.mp4",
+            "size": 32,
+            "sha256": "210f8586aa6e4f6810269d0bb466f307a5ca800ea54b342d861ecdbc67fc147b"
+        },
+        "suggestion-attachments/posts/99999999-0000-4000-8000-000000000066/captura.png": {
+            "bucket": "suggestion-attachments",
+            "path": "posts/99999999-0000-4000-8000-000000000066/captura.png",
+            "size": 70,
+            "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+        }
+    },
+    "missing_files": [
+        "audio-submissions/weekly-reports/33333333-0000-4000-8000-000000000001/sections/outro-perdido.mp3"
+    ]
+}

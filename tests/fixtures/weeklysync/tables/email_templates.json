@@ -1,0 +1,5 @@
+[
+{"id":"automatic","subject":"Recordatorio Automático: Reporte Semanal {semana}","body":"Hola {nombre},\n\nEste es un recordatorio automático para que completes tu reporte semanal de la semana {semana}.\n\nPor favor, entra a la plataforma WeeklySync y completa tu reporte antes del viernes.\n\nGracias,\nEquipo de WeeklySync","updated_at":"2026-01-01T10:00:00+00:00"},
+{"id":"manual","subject":"¡Tu weekly, {nombre}!","body":"Hola {nombre},\n\nNo olvides tu weekly {semana} en WeeklySync.\n\nGracias.","updated_at":"2026-03-01T10:00:00+00:00"},
+{"id":"weekly_closed","subject":"Weekly generada: {semana}","body":"Hola {nombre},\n\nLa weekly {semana} ya se ha generado y cerrado.\n\nYa puedes revisarla en WeeklySync desde el siguiente enlace:\n{weekly_url}\n\nGracias,\nEquipo de WeeklySync","updated_at":"2026-01-01T10:00:00+00:00"}
+]
