@@ -123,7 +123,7 @@ La entrega es la de F.
 | F-032 | Aviso de weekly exenta (vacaciones o ausencia) y «tu racha no se verá afectada» | `AdminDashboard.tsx:300-308` | Nueva (10.2). **Servidor hecho (10.2a):** `me.exemption_reason`. **Hecho (10.2).** |
 | F-033 | Mis clientes como responsable y como colaborador, con insignias y enlace a la ficha | `AdminDashboard.tsx:502-555`, `MemberDashboard.tsx:98-310` | Adaptar: clientes de mis proyectos (10.2). **Servidor hecho (10.2a):** `my_clients`. **Hecho (10.2).** |
 | F-034 | «Unirme a proyectos» (varios a la vez) y «Dejar proyecto» | `AdminDashboard.tsx:528-730`, `MemberDashboard.tsx:277-375`, `App.tsx:1661-1830` | Adaptar: miembros de proyecto (10.2). **Servidor hecho (10.2a):** `weeklies.projects.join` y `leave` (D-156). **Hecho (10.2).** |
-| F-035 | ADMIN: «Gestión de weekly actual» con acceso al informe y «Cerrar semana» (confirmación y motivo del bloqueo) | `AdminDashboard.tsx:381-430, 208-210` | Nueva (10.3) |
+| F-035 | ADMIN: «Gestión de weekly actual» con acceso al informe y «Cerrar semana» (confirmación y motivo del bloqueo) | `AdminDashboard.tsx:381-430, 208-210` | Nueva (10.3) **Hecho (10.3): «Cerrar semana» en la gestión del resumen y en el informe, con el motivo del bloqueo (D-191).** |
 | F-036 | ADMIN: estado global con el progreso de envíos y la lista de pendientes | `AdminDashboard.tsx:389-490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team`. **Hecho (10.2).** |
 | F-037 | ADMIN: recordar por email a una persona pendiente (plantilla «manual») | `AdminDashboard.tsx:229-239, 472`, `emailHelpers.ts:102` | Nueva (10.5) |
 | F-038 | ADMIN: marcar a otra persona como ausente o de vacaciones, con fecha de fin | `AdminDashboard.tsx:464-622` | Adaptar: ausencia aprobada o exención manual (10.2). **Servidor hecho (10.2a):** exención manual (D-159). **Hecho (10.2): «Eximir» con nota y «Quitar exención».** |
@@ -170,40 +170,40 @@ La entrega es la de F.
 | F-067 | Tira de avatares del equipo (enviado, pendiente o exento) con enlace a la persona | `WeeklyTeamStatusStrip.tsx`, `WeeklysList.tsx:354`, `App.tsx:3034` | Nueva (10.2). **Servidor hecho (10.2a):** `team.members`. **Hecho (10.2): sin enlace a la persona hasta la ficha de la 10.4.** |
 | F-068 | Configurar el día límite (ADMIN, solo con la semana activa) | `WeeklysList.tsx:182-195, 637-681`, `App.tsx:2222-2251` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.deadline.update`. **Hecho (10.2).** |
 | F-069 | Eliminar una weekly (ADMIN, irreversible; si era la última, crea la siguiente) | `WeeklysList.tsx:177, 699-710`, `App.tsx:2127-2195` | Nueva (10.2). **Servidor hecho (10.2a):** `weeklies.destroy` (D-155). **Hecho (10.2).** |
-| F-070 | Una sola semana activa; al cerrar se crea la siguiente (`Wnn-aa` y etiqueta) | `001_…sql:95`, `close-week…:366-395` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyCycleOpener` y `afterClose()` para 10.3. **Pantalla (10.2):** «Iniciar la semana»; abrir la siguiente al cerrar llega con el cierre de la 10.3. |
+| F-070 | Una sola semana activa; al cerrar se crea la siguiente (`Wnn-aa` y etiqueta) | `001_…sql:95`, `close-week…:366-395` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyCycleOpener` y `afterClose()` para 10.3. **Pantalla (10.2):** «Iniciar la semana»; abrir la siguiente al cerrar llega con el cierre de la 10.3. **Hecho (10.3): al cerrar se abre la siguiente (`afterClose`, D-191).** |
 | F-071 | Participa quien tiene la cuenta activa y se dio de alta antes del final de la semana | `AdminDashboard.tsx:18-31` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility`. **Hecho (10.2).** |
 
 **Informe de la weekly**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-072 | Generar, actualizar o regenerar el texto con IA, con aviso de que tarda y «Hay nuevos reportes» si está desactualizado | `ReportView.tsx:112, 703-729`, `App.tsx:2255-2316`, `generate-weekly-report` | Nueva (10.3) |
-| F-073 | Informe estructurado: resumen global, riesgos del equipo y, por cliente, estado, resumen, próximos pasos, hitos y etiquetas | `ReportView.tsx:1057-1180`, `ClientReportCard.tsx` | Nueva (10.3) |
-| F-074 | Estado de los proyectos en la tarjeta de cada cliente: barra de progreso, desviación frente a lo esperado y tipo | `ClientReportCard.tsx:60-105`, `Project*Bar/Delta/KindChip` | Adaptar con datos nativos (10.3) |
-| F-075 | Riesgo por consumo (desde 85 %, Risk; más de 100 %, Blocked; fees por exceso) y nota para los clientes sin reportes | `pipeline.js:6-7, 73-135` | Nueva (10.3) |
-| F-076 | El informe sale siempre en español (traducción forzada) | `generate-weekly-report/index.ts:90-123` | Nueva (10.3) |
-| F-077 | Editar el informe por cliente: estado, resumen, pasos e hitos con fecha | `ReportView.tsx:1478-1580`, `App.tsx:2478` | Nueva (10.3) |
-| F-078 | Ver los reportes originales de un cliente (ventana) | `ReportView.tsx:1642` | Nueva (10.3) |
-| F-079 | Índice de clientes con salto, también en móvil | `ReportView.tsx:198, 682, 779, 1196` | Nueva (10.3) |
-| F-080 | Filtro «Solo mis proyectos» | `ReportView.tsx:787-793` | Nueva (10.3) |
-| F-081 | Pantalla completa | `ReportView.tsx:661, 846` | Nueva (10.3) |
-| F-082 | Copiar el texto de la weekly | `ReportView.tsx:628-649, 869-877` | Nueva (10.3) |
-| F-083 | Descargar en HTML (respeta el filtro; selector de dónde guardar) | `ReportView.tsx:471-510`, `weeklyHtmlExport.ts` | Adaptar: PDF con Gotenberg, imprimir y HTML (10.3) |
-| F-084 | Generar o regenerar el audio por secciones | `ReportView.tsx:736-743`, `App.tsx:2318-2440`, `generate-audio-tts` | Nueva (10.3) |
-| F-085 | Reproductor: reproducir y pausar, barra, velocidad, reiniciar e ir a la sección de un cliente | `ReportView.tsx:370-463, 936-1042` | Nueva (10.3) |
-| F-086 | Reproductor en cada tarjeta de cliente: solo suena uno a la vez y Escape cierra los menús | `InlineAudioPlayer.tsx`, `weeklyAudioSync.ts` | Nueva (10.3) |
-| F-087 | Descargar el audio | `ReportView.tsx:526-564` | Nueva (10.3) |
-| F-088 | Estado del equipo dentro del informe | `ReportView.tsx:918-923` | Nueva (10.3) |
-| F-089 | Cerrar la semana: exige texto y audio y avisa de los pendientes | `ReportView.tsx:150-182, 902` | Nueva (10.3) |
-| F-090 | Menú de acciones en móvil («Estructurales» y «Generativas y descargas») | `ReportView.tsx:800, 1235-1349` | Nueva (10.3) |
-| F-091 | Pinchar un cliente abre su ficha | `ReportView.tsx:1118` | Nueva (10.3) |
+| F-072 | Generar, actualizar o regenerar el texto con IA, con aviso de que tarda y «Hay nuevos reportes» si está desactualizado | `ReportView.tsx:112, 703-729`, `App.tsx:2255-2316`, `generate-weekly-report` | Nueva (10.3) **Hecho (10.3): Job en la cola `ai` con progreso por Reverb, «Hay nuevos reportes» y regenerar (D-188 y D-190).** |
+| F-073 | Informe estructurado: resumen global, riesgos del equipo y, por cliente, estado, resumen, próximos pasos, hitos y etiquetas | `ReportView.tsx:1057-1180`, `ClientReportCard.tsx` | Nueva (10.3) **Hecho (10.3): `LlmWeeklyReportGenerator` y la página del informe; además «General / Interno» (D-189).** |
+| F-074 | Estado de los proyectos en la tarjeta de cada cliente: barra de progreso, desviación frente a lo esperado y tipo | `ClientReportCard.tsx:60-105`, `Project*Bar/Delta/KindChip` | Adaptar con datos nativos (10.3) **Hecho (10.3): `WeeklyProjectStatus` con bolsas, fees y presupuestos de Audax; barra, esperado y desviación en la tarjeta (D-188).** |
+| F-075 | Riesgo por consumo (desde 85 %, Risk; más de 100 %, Blocked; fees por exceso) y nota para los clientes sin reportes | `pipeline.js:6-7, 73-135` | Nueva (10.3) **Hecho (10.3): `ReportPipeline` (D-188).** |
+| F-076 | El informe sale siempre en español (traducción forzada) | `generate-weekly-report/index.ts:90-123` | Nueva (10.3) **Hecho (10.3): reescritura en español del texto final de cada cliente y del resumen global (D-188).** |
+| F-077 | Editar el informe por cliente: estado, resumen, pasos e hitos con fecha | `ReportView.tsx:1478-1580`, `App.tsx:2478` | Nueva (10.3) **Hecho (10.3): «Editar informe», también el resumen global y los riesgos (D-190).** |
+| F-078 | Ver los reportes originales de un cliente (ventana) | `ReportView.tsx:1642` | Nueva (10.3) **Hecho (10.3).** |
+| F-079 | Índice de clientes con salto, también en móvil | `ReportView.tsx:198, 682, 779, 1196` | Nueva (10.3) **Hecho (10.3): índice lateral y, en el móvil, en un panel.** |
+| F-080 | Filtro «Solo mis proyectos» | `ReportView.tsx:787-793` | Nueva (10.3) **Hecho (10.3): también en el PDF (`?mios=1`).** |
+| F-081 | Pantalla completa | `ReportView.tsx:661, 846` | Nueva (10.3) **Hecho (10.3): Escape vuelve.** |
+| F-082 | Copiar el texto de la weekly | `ReportView.tsx:628-649, 869-877` | Nueva (10.3) **Hecho (10.3): el texto final (`report_text`).** |
+| F-083 | Descargar en HTML (respeta el filtro; selector de dónde guardar) | `ReportView.tsx:471-510`, `weeklyHtmlExport.ts` | Adaptar: PDF con Gotenberg, imprimir y HTML (10.3) **Hecho (10.3): PDF e impresión con la hoja de Audax (`ReportKind::Weekly`), Excel, CSV y HTML (D-192).** |
+| F-084 | Generar o regenerar el audio por secciones | `ReportView.tsx:736-743`, `App.tsx:2318-2440`, `generate-audio-tts` | Nueva (10.3) **Hecho (10.3): guion con Gemini y locución por secciones en la cola `ai` (D-190).** |
+| F-085 | Reproductor: reproducir y pausar, barra, velocidad, reiniciar e ir a la sección de un cliente | `ReportView.tsx:370-463, 936-1042` | Nueva (10.3) **Hecho (10.3).** |
+| F-086 | Reproductor en cada tarjeta de cliente: solo suena uno a la vez y Escape cierra los menús | `InlineAudioPlayer.tsx`, `weeklyAudioSync.ts` | Nueva (10.3) **Hecho (10.3).** |
+| F-087 | Descargar el audio | `ReportView.tsx:526-564` | Nueva (10.3) **Hecho (10.3).** |
+| F-088 | Estado del equipo dentro del informe | `ReportView.tsx:918-923` | Nueva (10.3) **Hecho (10.3): la tira del equipo.** |
+| F-089 | Cerrar la semana: exige texto y audio y avisa de los pendientes | `ReportView.tsx:150-182, 902` | Nueva (10.3) **Hecho (10.3) (D-191).** |
+| F-090 | Menú de acciones en móvil («Estructurales» y «Generativas y descargas») | `ReportView.tsx:800, 1235-1349` | Nueva (10.3) **Hecho (10.3).** |
+| F-091 | Pinchar un cliente abre su ficha | `ReportView.tsx:1118` | Nueva (10.3) **Hecho (10.3): enlace a la ficha del cliente.** |
 
 **Cierre y satisfacción**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-092 | Congelar los exentos al cerrar | `close-week…:24-40, 356` | Nueva (10.3) |
-| F-093 | Satisfacción por cliente con IA + estabilizador determinista | `close-week…:80-215`, `_shared/satisfaction.js` | Nueva (10.3) |
-| F-094 | Foto de la satisfacción en cada weekly (para la gráfica) | `close-week…:230-255` | Nueva (10.3) |
-| F-095 | Email «weekly cerrada» con enlace a todo el equipo activo | `close-week…:265`, `send-email-reminder` | Nueva (10.5) |
+| F-092 | Congelar los exentos al cerrar | `close-week…:24-40, 356` | Nueva (10.3) **Hecho (10.3): `freeze()` al cerrar (D-191).** |
+| F-093 | Satisfacción por cliente con IA + estabilizador determinista | `close-week…:80-215`, `_shared/satisfaction.js` | Nueva (10.3) **Hecho (10.3): `SatisfactionUpdater` con el prompt del original y el estabilizador (D-191).** |
+| F-094 | Foto de la satisfacción en cada weekly (para la gráfica) | `close-week…:230-255` | Nueva (10.3) **Hecho (10.3): en `client_satisfaction_snapshots` y en el informe.** |
+| F-095 | Email «weekly cerrada» con enlace a todo el equipo activo | `close-week…:265`, `send-email-reminder` | Nueva (10.5) **Preparado (10.3): el evento `WeeklyCycleClosed` sale tras la satisfacción; el envío y la plantilla, en la 10.5.** |
 | F-096 | Satisfacción por defecto de 50, con columna y orden en la lista de clientes | `clients.current_satisfaction`, `ClientView.tsx:204, 415` | Nueva (10.4). **10.1:** columna `clients.satisfaction_score` (50 por defecto) e histórico `client_satisfaction_snapshots` |
 
 **Exenciones, puntualidad y rachas**
@@ -317,7 +317,7 @@ La entrega es la de F.
 |---|---|---|---|
 | F-171 | Transcripción conservadora: detecta silencio y muletillas y no inventa | `transcribe-audio:80-135` | Adaptar: Whisper + filtros (10.2). **Servidor hecho (10.2a):** `no_speech` (D-158). **Hecho (10.2).** |
 | F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2). **Servidor hecho (10.2a):** `CleanDictation`, ajuste `weekly_dictation_cleanup` (D-158). **Hecho (10.2): interruptor en los ajustes.** |
-| F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3). **10.1:** tabla `ai_usage` y `AiUsageRecorder`; GeminiClient y GoogleTtsSynthesizer registran cada llamada con tokens, caracteres y coste. Falta la página (10.3) |
+| F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3). **10.1:** tabla `ai_usage` y `AiUsageRecorder`; GeminiClient y GoogleTtsSynthesizer registran cada llamada con tokens, caracteres y coste. Falta la página (10.3) **Hecho (10.3): página «Uso de IA» (D-193).** |
 | F-174 | Modelo configurable sin tocar código | `vertexAI.ts:8-13, 192` | **Hecho (10.1):** `GEMINI_MODEL` (y `GOOGLE_TTS_VOICE`) en `.env`, leídos por `config/services.php`; sin desplegar |
 
 **Consola de plataforma**
@@ -328,7 +328,7 @@ La entrega es la de F.
 | F-177 | Módulos activables por tenant (weeklys, tareas, presupuestos, estado de proyectos, ayuda y asistente) | `platform-set-modules`, `PlatformView.tsx:91-96` | **Descartado**. Útil con un solo tenant: ajuste «módulos activos». **Hecho (10.1):** ajuste `modules` (weeklies, estado de proyectos, ayuda, sugerencias y asistente), validado en `PUT /admin/ajustes`, middleware `module:` (404) y `config.modules` en las props; el interruptor en la pantalla de ajustes llega con 10.2. **Hecho (10.2): interruptores en /admin/ajustes (D-185).** |
 | F-178 | Modo mantenimiento con ventana programada y banner global | `platform-set-maintenance`, `PlatformView.tsx:775-811` | **Descartado**. Útil: un banner global en ajustes; el mantenimiento ya lo cubre `artisan down`. **10.1:** ajuste `global_banner` ({message, tone}) validado y en `config.global_banner`; falta pintarlo y editarlo (10.2). **Hecho (10.2): aviso global en todas las páginas internas, editable en los ajustes (D-185).** |
 | F-179 | Salud de Supabase, Vercel e IA | `platform-health` | **Descartado** (Audax tiene `/health` y el estado de las copias) |
-| F-180 | Coste y tokens de IA de 30 días | `PlatformView.tsx:564-565`, `platform_ai_usage_summary` | **Descartado** como consola. Útil: página «Uso de IA» para el admin (con F-173, 10.3) |
+| F-180 | Coste y tokens de IA de 30 días | `PlatformView.tsx:564-565`, `platform_ai_usage_summary` | **Descartado** como consola. Útil: página «Uso de IA» para el admin (con F-173, 10.3) **Hecho (10.3): `/admin/uso-ia`, de 7, 30 o 90 días, por función y modelo (D-193).** |
 | F-181 | Registro de auditoría de la plataforma | `platform_audit_logs` | **Descartado** (Audax tiene auditoría) |
 
 **Recuento:** 181 funcionalidades.
@@ -342,7 +342,8 @@ La entrega es la de F.
 **Avance de la Fase 10** (05/10/2026):
 - Hechas en la 10.1: F-016, F-169 y F-174.
 - Hechas en la 10.2 (servidor y pantalla): 47, las marcadas «Hecho (10.2)».
-- Con la pantalla a medias, a la espera de otra entrega: F-001 y F-064 (10.4), F-070 (10.3) y F-133 (10.4).
+- Hechas en la 10.3: 27, las marcadas «Hecho (10.3)» (F-035, F-070, F-072 a F-094, F-173 y F-180). F-095 queda preparada para la 10.5.
+- Con la pantalla a medias, a la espera de otra entrega: F-001 y F-064 (10.4) y F-133 (10.4).
 
 ---
 

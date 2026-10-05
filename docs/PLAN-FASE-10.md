@@ -364,3 +364,55 @@ El `DemoDataSeeder` trae las tres semanas anteriores cerradas, sin ninguna activ
 - **`weeklies/show`:** sigue siendo el esqueleto del contrato. Desde el resumen y el histórico ya se enlaza a él («Ver el informe»).
 - **La tira del equipo** (`TeamStatusStrip`) sirve para el estado del equipo del informe (F-088).
 - **«Recordar» a una persona pendiente** (F-037) es de la 10.5: va en la lista de pendientes de `WeeklyOverview`.
+
+## 10.3 (hecho): informe, audio y cierre
+Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-187 a D-193**. En `WEEKLY-INVENTARIO.md` §A.4, F-035, F-070, F-072 a F-094, F-173 y F-180 pasan a «Hecho (10.3)»; F-095 queda preparada (el evento) para la 10.5.
+
+### Dominio
+- **Informe** (`app/Domain/Weeklies/Report` y `LlmWeeklyReportGenerator`, D-188 y D-189):
+  - `ReportPipeline`: el port puro de `pipeline.js` (prompts, lotes, normalización, reglas de estado, reservas sin IA y detección de inglés),
+  - `ReportClientInput` y `ReportEntryInput`: un cliente con sus apuntes; `ReportSchemas`: los `responseSchema` del informe, el guion y la satisfacción,
+  - `WeeklyProjectStatus::forCycle(cycle, clientIds)`: el estado de los proyectos por cliente (bolsa en curso, fee mensual con lo esperado por días laborables, presupuesto y horas de la semana). **Lo puede reutilizar la 10.4** para la vista «Estado de proyectos»,
+  - `WeeklyReportText::markdown()`: el texto para copiar,
+  - `LlmWeeklyReportGenerator` implementa `WeeklyReportGenerator`, enlazado en `WeekliesServiceProvider`.
+- **Audio** (`app/Domain/Weeklies/Audio`, D-190): `WeeklyAudioScripts` (guion por secciones y sus reservas), `WeeklyAudioGenerator` (locución, ficheros y audio completo) y `Mp3Duration`. `Ai\SpeechFailed` envuelve los errores de la locución.
+- **Cierre y satisfacción** (D-191): `WeeklyCycleCloser::close(cycle, user)` y `hasAudio()`; `Satisfaction\SatisfactionUpdater::update(cycle)`.
+- **Progreso** (D-190): `WeeklyJobProgress` (estado en la semana, detalle en caché y evento).
+- **Jobs** (cola `ai`, un intento, `AiQueue::TIMEOUT`): `GenerateWeeklyReport`, `GenerateWeeklyAudio` y `UpdateWeeklySatisfaction`.
+- **Eventos:** `Events\Weeklies\WeeklyGenerationUpdated` (`weekly.progress`, canal privado `weeklies.{id}`, en `routes/channels.php`) y `Events\Weeklies\WeeklyCycleClosed` (sin difusión: para la 10.5).
+- **Cambios del contrato 10.1** (compatibles):
+  - `WeeklyReportGenerator::generate()` admite un tercer parámetro opcional, `?Closure $progress` (hechos, total, paso),
+  - `WeeklyProjectSnapshot` lleva `weekMinutes` (`week_minutes`) y `billingType` es el tipo de la vista (`hour_bank`, `monthly_fee`, `fixed_price` o `time_and_materials`),
+  - `WeeklyCycleResource` lleva `has_audio`,
+  - `weeklies.audio.show` usa `signed:relative` y la URL firmada es relativa, como los audios del chat,
+  - `FakeLlm::demo()` para local y E2E (D-193).
+- **PDF** (D-192): `ReportKind::Weekly`, `Reports\Delivery\Documents\WeeklyDocument` y `resources/views/reports/pdf/weekly.blade.php` (con estilos en `report.css`); `ReportAccess` y `report-request.ts` lo conocen.
+
+### Rutas, páginas y props
+- **`weeklies/show`** (`WeeklyCycleController::show`, `WeeklyShowPageProps`): `cycle` (con `audio_sections`), `team` (`WeeklyTeamStatus`), `reports` (los originales por cliente; clave `general` sin cliente), `stale`, `submitted_count`, `my_client_ids`, `progress` (`{report, audio}`), `close` (`{blockers, pending}`), `report_request` (kind `weekly`) y `can` (`generate`, `edit`, `extendDeadline`, `close`, `delete`).
+- **Acciones:**
+  - `POST weeklies.report.store` (422 con la semana cerrada o si ya se está generando; 202 en JSON),
+  - `PUT weeklies.report.update` (`{global_summary?, team_risks?, client_updates[]}`),
+  - `GET weeklies.report.status` (`WeeklyReportStatus`),
+  - `GET weeklies.report.pdf?formato=pdf|imprimir|xlsx|csv|html&mios=1`,
+  - `POST weeklies.audio.store`, `GET weeklies.audio.download[?descargar=1]` y `GET weeklies.audio.show` (firmada),
+  - `POST weeklies.close`.
+- **`admin/ai-usage`** (`AiUsageController`, `AiUsagePageProps`, `?dias=7|30|90`), con enlace en Administración.
+- **Componentes** (`resources/js/components/weeklies`): `weekly-report-view` (la página), `client-report-card` (tarjeta y barra de proyecto), `weekly-audio` (reproductores y «solo suena uno»), `report-edit-dialog`, `weekly-close-dialog` (también en la gestión de `WeeklyOverview`) y `use-weekly-progress`.
+
+### Tests
+- **Pest:** `tests/Unit/Weeklies/ReportPipelineTest` y, en `tests/Feature/Weeklies`, `WeeklyReportGenerationTest`, `WeeklyAudioTest`, `WeeklyCloseTest` (con los 23 casos del estabilizador de `satisfaction-cases.json` de punta a punta), `WeeklyReportPdfTest` (también «Uso de IA») y los presupuestos de `WeeklyPagesPerformanceTest`. `SeedersTest` comprueba la semana en curso abierta.
+- **Vitest:** `weeklies-report` (la página, los reproductores y las piezas puras) y `weeklies-ai-usage` (la página y la edición).
+- **E2E:** `weekly-report.spec.ts` (generar con la IA de prueba, editar, cerrar y que se abra la siguiente; ver, filtrar, pantalla completa, imprimir y descargar; móvil y AA; «Uso de IA»). **Escrito, sin ejecutar en el Mac:** va a la CI, que ahora fija `GEMINI_DRIVER=fake` y `GOOGLE_TTS_DRIVER=fake`.
+
+### Para desplegar (con el SSH)
+- **`.env` del servidor** (lo pone el propietario): `GEMINI_API_KEY`, `GEMINI_MODEL` (uno vigente: 2.5 Flash se retira el 16/10) y `GOOGLE_TTS_API_KEY` (y, si cambia, `GOOGLE_TTS_VOICE`). `GEMINI_DRIVER=gemini` y `GOOGLE_TTS_DRIVER=google`: **nunca** `fake` en el servidor.
+- **Horizon:** el supervisor `supervisor-ai` (cola `ai`, un proceso de 128 MB, 600 s) ya está en `config/horizon.php`; subir `MemoryLimit=640M` en `audax-horizon.service` (D-154) con `daemon-reload` y reinicio, anotado en `SERVIDOR-CAMBIOS.md`, y después `verificar.sh` y `comparar-webs.sh`. Sin el worker de la cola `ai`, el informe se queda «en cola» (la página lo deja volver a pedir a los 12 minutos).
+- **Reverb:** nada nuevo en el servidor; el canal `weeklies.{id}` se autoriza en `/broadcasting/auth`.
+- **Ficheros:** los MP3 van a `storage/app/private/weeklies/{id}/audio`, que ya entra en la copia nocturna (los adjuntos privados, D-029).
+- **Gotenberg:** el PDF de la weekly usa el mismo motor que los informes (D-140).
+- **Sin migraciones nuevas.**
+
+### Para 10.4 y 10.5
+- **10.4:** `WeeklyProjectStatus` sirve para la vista «Estado de proyectos» (D-148); la satisfacción por semana ya está en `client_satisfaction_snapshots` (F-132) y el enlace de cada cliente del informe lleva a su ficha.
+- **10.5:** escuchar `WeeklyCycleClosed` (cola `ai`, tras la satisfacción) para el aviso «weekly cerrada» a todo el equipo activo (F-095), con su plantilla `weekly_closed` y su `trigger_key` en `weekly_reminder_logs`.

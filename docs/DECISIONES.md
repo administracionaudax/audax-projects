@@ -1497,8 +1497,60 @@ Las pantallas de la 10.2 sobre el servidor de la 10.2a. D-162 a D-179 están res
 
 ### D-186 · La Weekly en los datos de ejemplo
 - El `DemoDataSeeder` (solo en local, tests y CI) crea las tres semanas anteriores cerradas, con los envíos de la plantilla: Elena siempre a tiempo, Pablo una con retraso y Daniel sin enviar la última.
-- **No abre la semana en curso.** La abre el planificador o «Iniciar la semana», que es lo que hace el E2E. Con una semana activa, el contador de «Mi espacio» (D-160) gasta consultas con la caché fría en todas las páginas, y los presupuestos de los tests de rendimiento que usan los datos de ejemplo (D-046) se pasarían sin que la página haya cambiado.
+- **No abre la semana en curso** (cambiado en D-187: ahora sí la abre). La abre el planificador o «Iniciar la semana», que es lo que hace el E2E. Con una semana activa, el contador de «Mi espacio» (D-160) gasta consultas con la caché fría en todas las páginas, y los presupuestos de los tests de rendimiento que usan los datos de ejemplo (D-046) se pasarían sin que la página haya cambiado.
 - La foto `expected_user_ids` se pone a mano: la plantilla de ejemplo se da de alta el mismo día y `WeeklyEligibility::freeze()` no la vería en semanas pasadas.
+
+## 05/10/2026: Informe, audio y cierre de la Weekly (entrega 10.3)
+Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.3 (hecho)»).
+
+### D-187 · La semana en curso abierta en los datos de ejemplo y el contador compartido **[cambia D-160 y D-186]**
+- El `DemoDataSeeder` abre la semana en curso, como estará en producción (la abre el planificador, D-155), con la weekly de Elena enviada y un borrador de Pablo.
+- **El contador de «Mi espacio»** (F-003) ya no se guarda por persona: es **una sola lista** de quién tiene pendiente la semana activa, compartida por toda la plantilla y en caché 5 minutos (la clave lleva el plazo y el `updated_at` de la semana). La calcula la primera página que la necesita (cinco consultas) y las demás personas no pagan nada, aunque su caché personal esté fría (p. ej. al cambiar de usuario en los tests).
+- Se olvida igual que antes: al enviar, al cambiar una exención y al guardar o borrar una ausencia; lo demás se nota como mucho a los 5 minutos.
+- Con la semana activa, **todos los presupuestos de consultas existentes pasan sin cambiarlos** (C3: 8; aprobaciones: 18).
+
+### D-188 · El informe con Gemini: el pipeline de WeeklySync con los datos de Audax
+- **Port fiel de `generate-weekly-report`** (`Report\ReportPipeline` y `LlmWeeklyReportGenerator`): agrupar los apuntes **enviados** por cliente en orden de envío, lotes de 9.000 caracteres (contados como `String.length`), una llamada por lote y otra para fusionar, resumen global y riesgos, «Sin novedades» y el estado por consumo (más del 100 % Blocked; desde el 85 % Risk; en un fee, por encima de lo esperado Risk y con 4 h o más Blocked). **Los prompts son los del original, palabra por palabra.** Cada llamada pide JSON con `responseSchema`.
+- **Diferencias con el original, anotadas:**
+  - las llamadas van **de una en una** (WeeklySync: 3 clientes a la vez): es la cola `ai` de un proceso (D-154) y el Job tiene 10 minutos; si se acerca el límite, para con «La generación de la weekly tardó más de 10 minutos.», como el original,
+  - la **traducción forzada** (F-076) se aplica al texto final de **cada** cliente (el original solo la aplicaba tras fusionar lotes) y al resumen global,
+  - si la IA falla con un cliente, su resumen sale de sus apuntes, como en el original; **sin clave** (`LlmNotConfigured`) se para y la semana queda con el error.
+- **El contexto de proyectos** (D-148) sale de `Report\WeeklyProjectStatus`, en minutos, por proyecto no archivado del cliente:
+  - **bolsa de horas:** la bolsa en curso (activa o agotada, la más reciente que ha empezado), con su total y su consumo de `HourBankLedger`,
+  - **fee mensual:** un proyecto «Por horas» cuya descripción empieza por «Fee mensual» (así importa ClickUp los FE, D-135). El presupuesto es `budget_minutes` o las horas de la descripción; el consumo, el del mes hasta la fecha de referencia; y lo esperado se reparte por días laborables del mes, sin fines de semana ni festivos de Audax,
+  - **cualquier otro con presupuesto:** todas sus horas frente a `budget_minutes`,
+  - los demás, solo si tienen horas esa semana. Siempre con las horas de la semana (de lunes a domingo).
+  - La fecha de referencia es el viernes de la semana o hoy, si aún no ha llegado. En el prompt, las horas van como un `Number` de JavaScript («12.5»), como el original.
+- La foto de los proyectos se guarda en el informe (`WeeklyProjectSnapshot`, ahora con `week_minutes`), para que un informe pasado enseñe lo que había entonces.
+
+### D-189 · «General / Interno» y los clientes inactivos en el informe
+- Los apuntes sin cliente (F-044) **no se pierden**: van al final del informe como «General / Interno» (`client_id` nulo), con su resumen por IA. No reciben «Sin novedades» ni satisfacción.
+- Entran los clientes **activos** y, además, los que tengan apuntes esa semana aunque se hayan desactivado (WeeklySync los dejaba fuera y sus apuntes se perdían en el informe).
+
+### D-190 · Generar, seguir, editar y escuchar el informe
+- **Generar** el texto o el audio encola un Job en la cola `ai` (`GenerateWeeklyReport` y `GenerateWeeklyAudio`, un intento) y la página vuelve al momento. No se encola otro del mismo tipo mientras haya uno «en cola» o «generando», salvo que la semana lleve más de 12 minutos sin cambios (se da por atascado).
+- **Progreso:** el evento `weekly.progress` por el canal privado `weeklies.{id}` (quien puede ver la semana), al empezar, en cada cliente o sección y al terminar; el detalle (paso, hechos y total) también en caché para `weeklies.report.status`, que la página consulta si no hay Reverb. Al terminar, la página recarga sus datos.
+- **El texto de una semana cerrada no se regenera** (como en WeeklySync); el audio sí.
+- **«Desactualizado»** (F-072): hay más envíos que al generar.
+- **Editar** (F-077): quien gestiona, también con la semana cerrada. Por cliente, el estado, el resumen, los pasos y los hitos; además, el resumen global y los riesgos. Los proyectos, la satisfacción y las etiquetas se conservan. Generar de nuevo descarta la edición.
+- **El texto para copiar** (`report_text`) es el Markdown que WeeklySync escribía al editar, ahora también al generar: el texto y el informe nunca difieren.
+- **Audio** (F-084 a F-087), port de `generate-audio-tts` (modo `scripts`) y de la generación de App.tsx: el guion por secciones con Gemini (entrada, un bloque por cliente con sus reportes originales y el estado de sus proyectos, y cierre; con los mismos prompts), una sección en inglés se traduce, y lo que falta se completa con el texto determinista del original; si la IA no responde, todo el guion sale así. Cada sección se locuta con Google TTS (trozos de 4.500 bytes, MP3) y además se guarda el audio completo unido. Todo en el disco privado: las secciones con URL firmada (relativa) y el completo por ruta con permiso, con Range. Las secciones nuevas sustituyen a las anteriores solo si todas se han locutado; si la locución falla, el error dice que es la locución (`SpeechFailed`).
+- **Reproductores:** el principal con una marca por cliente (la posición se reparte en proporción a la duración de cada sección, que se calcula contando las tramas del MP3) y uno en cada tarjeta; solo suena uno a la vez.
+
+### D-191 · Cerrar la semana
+- Solo la activa y con el texto y el audio generados (basta el audio completo o una sección); quien falte por enviar no lo impide, solo se avisa (F-089). También desde la gestión del resumen de `/weeklies` (F-035).
+- En una transacción con la semana bloqueada: `WeeklyEligibility::freeze()` (participación y exentos, F-092) y la semana cerrada con quién y cuándo. Después, `WeeklyCycleOpener::afterClose()` abre la siguiente (F-070).
+- **En segundo plano** (`UpdateWeeklySatisfaction`, cola `ai`): la satisfacción de cada cliente con apuntes, como `close-week-and-update-satisfaction` (mismo prompt, con el historial de sus 5 apuntes anteriores): Gemini propone el delta, `SatisfactionStabilizer` lo amortigua y se guarda en `clients.satisfaction_score`, en `client_satisfaction_snapshots` y en el informe. Como el original, una satisfacción de 0 cuenta como 50. Si la IA falla con un cliente, ese no cambia. Es idempotente: un cliente con su foto de esa semana no se vuelve a mover.
+- Al terminar, aunque la IA falle, el evento **`WeeklyCycleClosed`**: el aviso «weekly cerrada» (F-095), sus plantillas, el email y el registro los escucha la 10.5.
+
+### D-192 · PDF, impresión y HTML del informe
+- `ReportKind::Weekly` (ruta `weeklies.report.pdf`, parámetro `cycle`) con `WeeklyDocument` y la hoja de Audax (D-140): portada, cifras (clientes, con novedades, en riesgo y bloqueados), resumen global, riesgos y un bloque por cliente con estado, satisfacción, resumen, pasos, hitos, etiquetas y el estado de sus proyectos. En Excel y CSV, una fila por cliente.
+- Sustituye a la descarga en HTML de WeeklySync, que se mantiene con `?formato=html` (el mismo documento, sin el diálogo de impresión). `?mios=1` aplica «Solo mis proyectos» (F-080), como hacía la descarga del original.
+- Entra en el menú «Exportar ▾» (envío por correo y programación incluidos), con `WeeklyCyclePolicy::view` y el módulo `weeklies` encendido (`ReportAccess`).
+
+### D-193 · «Uso de IA» y la IA de prueba
+- **«Uso de IA»** (`/admin/uso-ia`, F-173 y F-180): solo admins. Llamadas, errores, tokens, caracteres y coste estimado de los últimos 7, 30 o 90 días, por función y por modelo, el coste por día y las 50 últimas llamadas. Enlace en Administración.
+- **La IA de prueba:** con `GEMINI_DRIVER=fake` fuera de los tests (local sin clave y los E2E de la CI), `FakeLlm::demo()` responde siempre con textos que dicen que no son de la IA y con la forma del esquema pedido. En los tests, el `FakeLlm` vacío (cada test programa sus respuestas). La CI de los E2E fija `GEMINI_DRIVER=fake` y `GOOGLE_TTS_DRIVER=fake`.
 
 ### Numeración
 - Fase 2: D-078 a D-087.
@@ -1510,6 +1562,6 @@ Las pantallas de la 10.2 sobre el servidor de la 10.2a. D-162 a D-179 están res
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10: D-145..D-161 y D-180… (D-151 a D-154: contrato 10.1; D-155 a D-161: entrega 10.2a; D-180 a D-186: entrega 10.2b). D-162 a D-179 están reservadas para otras ramas.
+- Fase 10: D-145..D-161 y D-180… (D-151 a D-154: contrato 10.1; D-155 a D-161: entrega 10.2a; D-180 a D-186: entrega 10.2b; D-187 a D-193: entrega 10.3). D-162 a D-179 están reservadas para otras ramas.
 
-La siguiente libre de la Fase 10 es **D-187**.
+La siguiente libre de la Fase 10 es **D-194**.
