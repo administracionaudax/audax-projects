@@ -37,6 +37,8 @@ class ProfileUpdateRequest extends FormRequest
         $user = $this->user();
 
         $rules = $this->profileRules($user->id);
+        // Puesto (Fase 10, F-026 y F-027): opcional.
+        $rules['job_title'] = ['nullable', 'string', 'max:120'];
 
         // Cambiar el correo exige la contraseña actual: con una sesión robada no se puede desviar
         // el correo y, con él, el restablecimiento de la contraseña.

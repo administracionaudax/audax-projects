@@ -11,12 +11,13 @@ export type UserFormData = {
     email: string;
     role: AdminAssignableRole;
     department_id: string;
+    job_title: string;
     hourly_cost: string;
     default_hourly_rate: string;
 };
 
 /**
- * Campos de una persona (invitar y editar): nombre, correo, rol, departamento y, solo con
+ * Campos de una persona (invitar y editar): nombre, correo, rol, departamento, puesto (F-026) y, solo con
  * view-financials, coste/hora y tarifa por defecto. El rol de administración solo lo ofrece
  * quien es admin (el servidor lo comprueba igualmente).
  */
@@ -45,6 +46,7 @@ export function UserFormFields({
         email: `${id}-email`,
         role: `${id}-role`,
         department: `${id}-department`,
+        jobTitle: `${id}-job-title`,
         cost: `${id}-cost`,
         rate: `${id}-rate`,
     };
@@ -156,6 +158,26 @@ export function UserFormFields({
                         </option>
                     ))}
                 </NativeSelect>
+            </Field>
+
+            <Field
+                id={ids.jobTitle}
+                label={t('admin.users.fields.job_title')}
+                error={errors.job_title}
+            >
+                <Input
+                    id={ids.jobTitle}
+                    value={data.job_title}
+                    onChange={(event) =>
+                        setData('job_title', event.target.value)
+                    }
+                    autoComplete="off"
+                    maxLength={120}
+                    aria-invalid={errors.job_title ? true : undefined}
+                    aria-describedby={describedBy(ids.jobTitle, {
+                        error: errors.job_title,
+                    })}
+                />
             </Field>
 
             {showFinancials ? (

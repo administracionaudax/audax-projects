@@ -15,7 +15,7 @@ import type { ProfilePageProps } from '@/types';
 
 // El borrado de la cuenta propia se eliminó en el contrato de la Fase 0: las bajas las gestiona
 // un admin desactivando al usuario (SPEC §14: nunca se borra a quien tiene horas).
-export default function Profile({ status }: ProfilePageProps) {
+export default function Profile({ status, jobTitle = null }: ProfilePageProps) {
     const user = useRequiredUser();
     const [email, setEmail] = useState(user.email);
     // Cambiar el correo exige la contraseña actual (el backend la valida solo en ese caso).
@@ -69,6 +69,32 @@ export default function Profile({ status }: ProfilePageProps) {
                                 <InputError
                                     className="mt-2"
                                     message={errors.name}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="job_title">
+                                    {t('profile.job_title')}
+                                </Label>
+
+                                <Input
+                                    id="job_title"
+                                    className="mt-1 block w-full"
+                                    defaultValue={jobTitle ?? ''}
+                                    name="job_title"
+                                    maxLength={120}
+                                    autoComplete="organization-title"
+                                    placeholder={t(
+                                        'profile.job_title_placeholder',
+                                    )}
+                                    aria-invalid={
+                                        errors.job_title ? true : undefined
+                                    }
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.job_title}
                                 />
                             </div>
 

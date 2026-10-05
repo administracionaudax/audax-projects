@@ -8,11 +8,13 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
 
 /**
  * Registra el inicio de sesión correcto (SPEC §15) y sincroniza la cookie "appearance" con la
- * preferencia guardada del usuario, para que el tema sea el suyo en cualquier dispositivo.
+ * preferencia guardada del usuario, para que el tema sea el suyo en cualquier dispositivo. Al entrar
+ * con el formulario, da la bienvenida con un aviso (F-012).
  *
  * Un usuario desactivado que vuelve con la cookie de «Recordarme» dispara Login antes de que
  * EnsureUserIsActive lo expulse: ese acceso se registra como fallido, nunca como correcto.
@@ -42,6 +44,11 @@ class RecordSuccessfulLogin
 
         if ($active) {
             Cookie::queue(self::appearanceCookie($user->theme_preference));
+
+            // Aviso de bienvenida al entrar con el formulario (F-012); no al volver con «Recordarme».
+            if ($this->request->isMethod('post') && $this->request->hasSession()) {
+                Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.welcome', ['name' => Str::before(trim($user->name), ' ')])]);
+            }
         }
     }
 

@@ -78,6 +78,7 @@ export default function AdminUserEdit({
                 : user.role,
         department_id:
             user.department_id === null ? '' : String(user.department_id),
+        job_title: user.job_title ?? '',
         hourly_cost: decimalToInput(user.hourly_cost),
         default_hourly_rate: decimalToInput(user.default_hourly_rate),
     });

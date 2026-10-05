@@ -23,6 +23,8 @@ return [
         'home.layout.update',
         'home.layout.destroy',
         'dashboard',
+        // Versión de la interfaz (F-013): sin datos, solo el número del despliegue.
+        'app.version',
         'my-tasks.index',
         // Calendario del equipo (D-144): solo las tareas y las personas de sus proyectos.
         'calendar.index',

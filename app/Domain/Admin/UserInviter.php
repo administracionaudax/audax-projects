@@ -23,7 +23,7 @@ final class UserInviter
     public function __construct(private readonly WorkScheduleVersions $schedules) {}
 
     /**
-     * @param  array{name: string, email: string, department_id: int|null, hourly_cost?: string|null, default_hourly_rate?: string|null}  $data
+     * @param  array{name: string, email: string, department_id: int|null, job_title?: string|null, hourly_cost?: string|null, default_hourly_rate?: string|null}  $data
      */
     public function invite(User $actor, array $data, Role $role): User
     {
@@ -34,6 +34,7 @@ final class UserInviter
                 'email' => Str::lower(trim($data['email'])),
                 'password' => Str::password(40),
                 'department_id' => $data['department_id'],
+                'job_title' => $data['job_title'] ?? null,
                 'hourly_cost' => $data['hourly_cost'] ?? null,
                 'default_hourly_rate' => $data['default_hourly_rate'] ?? null,
                 'is_active' => true,

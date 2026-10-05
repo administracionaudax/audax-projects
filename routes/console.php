@@ -76,6 +76,14 @@ Schedule::command('time:remind-week')
     ->onOneServer()
     ->when(fn (): bool => $exists('time:remind-week')() && (bool) Setting::get('week_reminder_enabled', true));
 
+// La Weekly (Fase 10, D-150 y D-155): abre la semana si no hay ninguna activa. Cada día a las 00:05
+// de Madrid: el lunes abre la nueva y, si el servidor estuvo parado, la abre en cuanto vuelve.
+Schedule::command('weeklies:open-week')
+    ->dailyAt('00:05')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
 Schedule::command('app:prune-data')
     ->dailyAt('03:10')

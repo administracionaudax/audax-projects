@@ -9,6 +9,8 @@ use App\Domain\Weeklies\Ai\GeminiClient;
 use App\Domain\Weeklies\Ai\GoogleTtsSynthesizer;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\SpeechSynthesizer;
+use App\Domain\Weeklies\EloquentWeeklySubmissionWriter;
+use App\Domain\Weeklies\WeeklySubmissionWriter;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -26,5 +28,8 @@ class WeekliesServiceProvider extends ServiceProvider
         $this->app->singleton(SpeechSynthesizer::class, fn (): SpeechSynthesizer => config('services.google_tts.driver') === 'fake'
             ? new FakeSpeechSynthesizer
             : GoogleTtsSynthesizer::fromConfig($this->app->make(AiUsageRecorder::class)));
+
+        // La única forma de escribir una weekly (10.2).
+        $this->app->bind(WeeklySubmissionWriter::class, EloquentWeeklySubmissionWriter::class);
     }
 }

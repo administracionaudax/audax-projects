@@ -15,6 +15,7 @@ return [
         'email' => 'correo electrónico',
         'role' => 'rol',
         'department' => 'departamento',
+        'job_title' => 'puesto',
         'hourly_cost' => 'coste por hora',
         'default_hourly_rate' => 'tarifa por hora',
         'assignee' => 'persona',

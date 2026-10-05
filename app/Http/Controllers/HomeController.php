@@ -12,6 +12,7 @@ use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
 use App\Domain\Time\Capacity;
 use App\Domain\Time\Week;
+use App\Domain\Weeklies\HomeWeeklyCard;
 use App\Domain\Workload\MyWorkload;
 use App\Enums\TimesheetStatus;
 use App\Http\Resources\Chat\HomeChatSummary;
@@ -39,7 +40,8 @@ use Inertia\Response;
  * - mi carga de esta semana y la que viene (Fase 3, prop diferida `workload`),
  * - «Mis ausencias» (Fase 3),
  * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062),
- * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida).
+ * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida),
+ * - su weekly de la semana, su racha y, si la gestiona, el estado del equipo (Fase 10, diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  * Cada persona puede reordenar las tarjetas (D-138): su orden llega en `home_layout` (null = el
  * orden por defecto), ya sin tarjetas que no existan o que no le correspondan.
@@ -104,6 +106,9 @@ class HomeController extends Controller
             'absences' => app(MyAbsencesSummary::class)->for($user),
             // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio.
             'workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today)),
+            // La Weekly (Fase 10, F-030 a F-040): mi weekly, mi racha y, quien gestiona, el equipo.
+            // Null (sin tarjeta) para quien no la escribe o con el módulo apagado.
+            'weekly' => Inertia::defer(fn (): ?array => app(HomeWeeklyCard::class)->for($user)),
         ]);
     }
 

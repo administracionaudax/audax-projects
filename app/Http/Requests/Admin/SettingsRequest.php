@@ -80,6 +80,8 @@ class SettingsRequest extends FormRequest
             'global_banner' => ['sometimes', 'nullable', 'array:message,tone'],
             'global_banner.message' => ['required_with:global_banner', 'string', 'max:300'],
             'global_banner.tone' => ['required_with:global_banner', 'in:info,warning'],
+            // Opcional (Fase 10, F-172): limpieza del dictado de la weekly con IA.
+            'weekly_dictation_cleanup' => ['sometimes', 'required', 'boolean'],
         ];
     }
 
@@ -158,6 +160,7 @@ class SettingsRequest extends FormRequest
             ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
             ...($this->has('modules') ? ['modules' => AppModules::normalize((array) $this->input('modules'))] : []),
             ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
+            ...($this->has('weekly_dictation_cleanup') ? ['weekly_dictation_cleanup' => $this->boolean('weekly_dictation_cleanup')] : []),
         ];
     }
 

@@ -87,6 +87,7 @@
     "admin.users.fields.role_locked": "No se puede cambiar: es tu propia cuenta o la única con el rol de administración.",
     "admin.users.fields.department": "Departamento",
     "admin.users.fields.no_department": "Sin departamento",
+    "admin.users.fields.job_title": "Puesto",
     "admin.users.fields.hourly_cost": "Coste por hora (€)",
     "admin.users.fields.hourly_cost_help": "Lo que cuesta a la empresa una hora de esta persona. Solo lo ve quien tiene acceso a los datos económicos.",
     "admin.users.fields.default_hourly_rate": "Tarifa por hora (€)",

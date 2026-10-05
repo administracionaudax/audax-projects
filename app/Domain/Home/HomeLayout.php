@@ -21,6 +21,7 @@ final class HomeLayout
         'today-tasks',
         'timer',
         'week-hours',
+        'weekly',
         'workload',
         'unlogged-days',
         'indicators',
@@ -30,9 +31,10 @@ final class HomeLayout
     ];
 
     /**
-     * Tarjetas que no llegan a un colaborador externo (D-134): carga, informes y ausencias.
+     * Tarjetas que no llegan a un colaborador externo (D-134): la weekly (D-147), carga, informes y
+     * ausencias.
      */
-    public const array COLLABORATOR_HIDDEN = ['workload', 'indicators', 'absences'];
+    public const array COLLABORATOR_HIDDEN = ['weekly', 'workload', 'indicators', 'absences'];
 
     /**
      * Las tarjetas que ve esta persona, en su orden por defecto.

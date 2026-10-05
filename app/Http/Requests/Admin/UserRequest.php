@@ -28,7 +28,7 @@ class UserRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->trimStrings(['name']);
+        $this->trimStrings(['name', 'job_title']);
 
         $email = $this->input('email');
         if (is_string($email)) {
@@ -51,6 +51,8 @@ class UserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')->ignore($ignore)],
             'role' => ['required', 'string', Rule::in(self::assignableRoles())],
             'department_id' => ['nullable', 'integer', Rule::exists(Department::class, 'id')->withoutTrashed()],
+            // Puesto (Fase 10, F-026): lo enseña la Weekly en el equipo y en la ficha de la persona.
+            'job_title' => ['nullable', 'string', 'max:120'],
         ];
 
         if ($this->canSeeFinancials()) {
@@ -82,6 +84,7 @@ class UserRequest extends FormRequest
             'email' => __('admin.attributes.email'),
             'role' => __('admin.attributes.role'),
             'department_id' => __('admin.attributes.department'),
+            'job_title' => __('admin.attributes.job_title'),
             'hourly_cost' => __('admin.attributes.hourly_cost'),
             'default_hourly_rate' => __('admin.attributes.default_hourly_rate'),
         ];
@@ -100,7 +103,7 @@ class UserRequest extends FormRequest
     /**
      * Datos del usuario (sin el rol), con los económicos solo si puede verlos.
      *
-     * @return array{name: string, email: string, department_id: int|null, hourly_cost?: string|null, default_hourly_rate?: string|null}
+     * @return array{name: string, email: string, department_id: int|null, job_title: string|null, hourly_cost?: string|null, default_hourly_rate?: string|null}
      */
     public function userData(): array
     {
@@ -108,6 +111,7 @@ class UserRequest extends FormRequest
             'name' => $this->string('name')->toString(),
             'email' => $this->string('email')->toString(),
             'department_id' => $this->filled('department_id') ? $this->integer('department_id') : null,
+            'job_title' => $this->filled('job_title') ? $this->string('job_title')->trim()->toString() : null,
         ];
 
         if ($this->canSeeFinancials()) {

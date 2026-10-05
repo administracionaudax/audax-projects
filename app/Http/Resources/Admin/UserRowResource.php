@@ -32,6 +32,7 @@ class UserRowResource extends FinancialResource
             'avatar' => $this->avatar_url,
             'role' => $this->getRoleNames()->first(),
             'department_id' => $this->department_id,
+            'job_title' => $this->job_title,
             'department' => DepartmentResource::make($this->whenLoaded('department')),
             'is_active' => $this->is_active,
             'last_login_at' => $lastLogin !== null ? CarbonImmutable::parse((string) $lastLogin, 'UTC')->toIso8601ZuluString() : null,

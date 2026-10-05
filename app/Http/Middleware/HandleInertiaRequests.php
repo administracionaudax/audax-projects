@@ -9,6 +9,7 @@ use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Weeklies\AppModules;
+use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Http\Resources\FinancialResource;
 use App\Models\Absence;
 use App\Models\ActiveTimer;
@@ -149,6 +150,9 @@ class HandleInertiaRequests extends Middleware
             'realtime' => fn (): ?array => $this->realtime(),
             // Chat (Fase 6, C1): total sin leer de la entrada Chat de la navegación (una consulta).
             'chat' => fn (): array => ['unread' => app(ConversationDirectory::class)->unreadTotal($user)],
+            // La Weekly (Fase 10, F-003): mi weekly pendiente de la semana activa, para el contador de
+            // «Mi espacio» (en caché 5 minutos por persona y semana; 0 a quien no la escribe).
+            'weeklies' => fn (): array => ['pending' => app(MyWeeklyStatus::class)->pendingCount($user)],
             // Google Sheets (Fase 9, D-142): sin credenciales, o para un colaborador externo (D-134),
             // la opción no se ofrece. La conexión, solo si se ofrece (una consulta).
             'integrations' => fn (): array => $this->integrations($user),

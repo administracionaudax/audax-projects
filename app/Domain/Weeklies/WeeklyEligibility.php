@@ -49,6 +49,24 @@ final class WeeklyEligibility
     }
 
     /**
+     * La foto de UNA persona (10.2): para la barra lateral, la tarjeta de Inicio y el envío, sin
+     * cargar a toda la plantilla. Con la semana cerrada, la foto congelada (como rosterFor()).
+     */
+    public function rosterForUser(WeeklyCycle $cycle, User $user): WeeklyRoster
+    {
+        $rows = $this->rows($cycle, $user->id);
+
+        if ($cycle->isClosed()) {
+            return $this->closedRoster($cycle, $rows);
+        }
+
+        $candidates = $this->candidateIds($this->weekEnd($cycle), $user->id);
+        $absences = $this->coveringAbsences($candidates, $cycle->deadline_date);
+
+        return self::resolve($candidates, $absences, $rows);
+    }
+
+    /**
      * Congela la foto al cerrar (F-092): guarda como exención `absence` a quien le eximía una
      * ausencia y en expected_user_ids a quien debía enviar. Llamar dentro de la transacción del
      * cierre y ANTES de marcar la semana como cerrada.
@@ -162,9 +180,10 @@ final class WeeklyEligibility
     /**
      * @return list<int>
      */
-    private function candidateIds(CarbonInterface $weekEnd): array
+    private function candidateIds(CarbonInterface $weekEnd, ?int $onlyUserId = null): array
     {
         return array_values(User::query()
+            ->when($onlyUserId !== null, fn (Builder $query) => $query->whereKey($onlyUserId))
             ->where('is_active', true)
             ->where('created_at', '<=', $weekEnd->utc())
             ->whereHas('roles', fn (Builder $roles) => $roles->whereIn('name', User::WEEKLY_ROLES))
@@ -204,10 +223,11 @@ final class WeeklyEligibility
     /**
      * @return array<int, array{reason: WeeklyExemptionReason, absence_id: int|null}>
      */
-    private function rows(WeeklyCycle $cycle): array
+    private function rows(WeeklyCycle $cycle, ?int $onlyUserId = null): array
     {
         return WeeklyExemption::query()
             ->where('weekly_cycle_id', $cycle->id)
+            ->when($onlyUserId !== null, fn (Builder $query) => $query->where('user_id', $onlyUserId))
             ->get(['user_id', 'reason', 'absence_id'])
             ->mapWithKeys(fn (WeeklyExemption $row): array => [$row->user_id => ['reason' => $row->reason, 'absence_id' => $row->absence_id]])
             ->all();

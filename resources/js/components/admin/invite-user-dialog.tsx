@@ -24,6 +24,7 @@ const EMPTY: UserFormData = {
     email: '',
     role: 'employee',
     department_id: '',
+    job_title: '',
     hourly_cost: '',
     default_hourly_rate: '',
 };

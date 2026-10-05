@@ -12,7 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Perfil propio: solo nombre y correo. Los datos económicos (coste/hora, tarifa) los gestiona el
+ * Perfil propio: nombre, correo y puesto (F-026). Los datos económicos (coste/hora, tarifa) los gestiona el
  * admin y nunca se exponen aquí. No hay borrado de cuenta propio: los usuarios se desactivan (SPEC §14).
  */
 class ProfileController extends Controller
@@ -25,6 +25,8 @@ class ProfileController extends Controller
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            // Puesto (Fase 10, F-026): no va en las props compartidas.
+            'jobTitle' => $request->user()?->job_title,
         ]);
     }
 
@@ -37,6 +39,11 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $user->fill($request->safe()->only(['name', 'email']));
+
+        if ($request->exists('job_title')) {
+            $title = trim((string) $request->input('job_title'));
+            $user->job_title = $title === '' ? null : $title;
+        }
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

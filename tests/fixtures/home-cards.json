@@ -4,6 +4,7 @@
         "today-tasks",
         "timer",
         "week-hours",
+        "weekly",
         "workload",
         "unlogged-days",
         "indicators",
@@ -11,5 +12,5 @@
         "milestones",
         "mentions"
     ],
-    "collaborator_hidden": ["workload", "indicators", "absences"]
+    "collaborator_hidden": ["weekly", "workload", "indicators", "absences"]
 }

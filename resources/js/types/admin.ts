@@ -37,6 +37,8 @@ export type AdminUser = {
     role: Role | null;
     department_id: number | null;
     department?: Department | null;
+    /** Puesto (Fase 10, F-026). */
+    job_title?: string | null;
     is_active: boolean;
     /** Último acceso correcto (ISO UTC); null si aún no ha entrado (invitación pendiente). */
     last_login_at: string | null;

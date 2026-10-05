@@ -8,6 +8,7 @@ export const HOME_CARD_IDS = [
     'today-tasks',
     'timer',
     'week-hours',
+    'weekly',
     'workload',
     'unlogged-days',
     'indicators',

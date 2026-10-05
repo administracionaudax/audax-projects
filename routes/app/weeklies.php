@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\Weeklies\AiUsageController;
 use App\Http\Controllers\Weeklies\AssistantController;
 use App\Http\Controllers\Weeklies\ClientInsightsController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Weeklies\TeamController;
 use App\Http\Controllers\Weeklies\WeeklyAudioController;
 use App\Http\Controllers\Weeklies\WeeklyCycleController;
 use App\Http\Controllers\Weeklies\WeeklyExemptionController;
+use App\Http\Controllers\Weeklies\WeeklyProjectMembershipController;
 use App\Http\Controllers\Weeklies\WeeklyReminderController;
 use App\Http\Controllers\Weeklies\WeeklyReportController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +76,9 @@ Route::middleware('module:weeklies')->group(function () {
     Route::post('mi-espacio/weeklies/{cycle}/enviar', [MyWeeklyController::class, 'submit'])->whereNumber('cycle')->middleware('throttle:30,1')->name('my-weekly.submit');
     Route::post('mi-espacio/dictados', [DictationController::class, 'store'])->middleware('throttle:30,1')->name('dictations.store');
     Route::get('mi-espacio/dictados/{dictation}', [DictationController::class, 'show'])->whereNumber('dictation')->middleware('throttle:240,1')->name('dictations.show');
+    // Unirme a proyectos y dejarlos como miembro (10.2, F-034, D-156).
+    Route::post('mi-espacio/proyectos', [WeeklyProjectMembershipController::class, 'join'])->middleware('throttle:30,1')->name('weeklies.projects.join');
+    Route::delete('mi-espacio/proyectos/{project}', [WeeklyProjectMembershipController::class, 'leave'])->whereNumber('project')->middleware('throttle:30,1')->name('weeklies.projects.leave');
     Route::post('mi-espacio/tareas/sugeridas', [MySpaceTaskController::class, 'suggest'])->middleware('throttle:10,1')->name('my-space.tasks.suggest');
     Route::post('mi-espacio/tareas/{task}/archivar', [MySpaceTaskController::class, 'archive'])->whereNumber('task')->name('my-space.tasks.archive');
     Route::delete('mi-espacio/tareas/{task}/archivar', [MySpaceTaskController::class, 'unarchive'])->whereNumber('task')->name('my-space.tasks.unarchive');
@@ -87,6 +92,11 @@ Route::middleware('module:weeklies')->group(function () {
     Route::post('clientes/{client}/resumen-ia', [ClientInsightsController::class, 'summary'])->whereNumber('client')->middleware('throttle:10,1')->name('clients.ai-summary');
     Route::post('clientes/{client}/actividad-ia', [ClientInsightsController::class, 'teamActivity'])->whereNumber('client')->middleware('throttle:10,1')->name('clients.team-activity');
 });
+
+// Versión de la interfaz (10.2, F-013): la pestaña la compara con la suya para avisar de una nueva.
+Route::get('version', AppVersionController::class)
+    ->middleware('throttle:60,1')
+    ->name('app.version');
 
 // «Uso de IA» (10.3): solo admins.
 Route::get('admin/uso-ia', AiUsageController::class)->name('admin.ai-usage.index');

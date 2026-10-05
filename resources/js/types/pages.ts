@@ -36,6 +36,8 @@ export type ResetPasswordPageProps = {
 export type ProfilePageProps = {
     mustVerifyEmail: boolean;
     status?: string | null;
+    /** Puesto (Fase 10, F-026). */
+    jobTitle?: string | null;
 };
 
 export type SecurityPageProps = {
