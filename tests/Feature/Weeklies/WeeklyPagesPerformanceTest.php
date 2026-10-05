@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyEntry;
 use App\Models\WeeklyExemption;
+use App\Models\WeeklyReminderLog;
 use App\Models\WeeklySubmission;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,8 @@ beforeEach(function () {
             if ($i % 3 === 0) {
                 WeeklyExemption::factory()->create(['weekly_cycle_id' => $closed->id, 'user_id' => $user->id]);
             }
+
+            WeeklyReminderLog::query()->create(['weekly_cycle_id' => $closed->id, 'user_id' => $user->id, 'template' => 'manual', 'channel' => 'email', 'trigger_key' => "manual:{$closed->id}", 'status' => 'sent', 'sent_by' => $this->manager->id]);
         }
     };
 
@@ -65,6 +68,8 @@ it('/weeklies, /mi-espacio y mi weekly no crecen con la plantilla ni con el hist
     'resumen e histórico' => ['/weeklies', 32],
     'mis weeklies' => ['/mi-espacio', 20],
     'mi weekly' => ['/mi-espacio?semana={active}', 34],
+    // 10.5: reglas, plantillas, pendientes y el registro (paginado, con su semana y quién lo envió).
+    'avisos de la weekly' => ['/weeklies/avisos', 24],
 ]);
 
 it('la tarjeta de Inicio de quien gestiona no crece con la plantilla', function () {
