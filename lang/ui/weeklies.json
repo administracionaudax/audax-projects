@@ -266,7 +266,7 @@
     "weeklies.home.title": "Weekly",
     "weeklies.home.description": "Tu weekly de la semana y tu racha.",
     "weeklies.home.open": "Ir a las weeklies",
-    "weeklies.home.pending": "Faltan :count por enviar",
+    "weeklies.home.pending": "Por enviar: :count",
     "weeklies.home.pending_label": "Personas que faltan por enviar",
     "weeklies.stats.title": "Tu weekly",
     "weeklies.stats.description": "Tus envíos de la weekly desde que entraste.",
