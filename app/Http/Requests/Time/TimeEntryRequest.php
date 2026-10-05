@@ -98,7 +98,7 @@ class TimeEntryRequest extends TimeRequest
             userId: $userId,
             taskId: $this->integer('task_id'),
             date: CarbonImmutable::parse($this->string('date')->toString()),
-            minutes: $this->range?->minutes ?? $this->integer('minutes'),
+            minutes: $this->range->minutes ?? $this->integer('minutes'),
             description: $this->filled('description') ? $this->string('description')->toString() : null,
             startedAt: $this->range?->startedAt,
             endedAt: $this->range?->endedAt,
