@@ -86,7 +86,7 @@ La entrega es la de F.
 | F-003 | Contador rojo de reportes pendientes en «Mi espacio» | `Layout.tsx:295-300` | Nueva (10.2). **Servidor hecho (10.2a):** prop compartida `weeklies.pending` (D-160). **Hecho (10.2): contador de «Mi espacio» en la barra lateral (D-180).** |
 | F-004 | Cabecera y menú móviles | `Layout.tsx:191-200` | Existe |
 | F-005 | Modo oscuro o claro con conmutador, guardado, y favicon según el tema | `Layout.tsx:323-382`, `index.html:26` | Existe (claro, oscuro y sistema) |
-| F-006 | Botón «Asistente AI», que abre `/ia` | `Layout.tsx:511-513`, `App.tsx:435` | Nueva (10.6) |
+| F-006 | Botón «Asistente AI», que abre `/ia` | `Layout.tsx:511-513`, `App.tsx:435` | Nueva (10.6) **Hecho (10.6): «Asistente IA» en la barra lateral, tras Chat, con el módulo `assistant` (D-206).** |
 | F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax. **Hecho (10.2): la ausencia es la de Audax; la exención y la renuncia, en «Mi weekly» y en el resumen.** |
 | F-008 | Acceso al perfil con nombre y rol en el pie de la barra | `Layout.tsx:436-460` | Existe |
 | F-009 | Cerrar sesión, limpiando el almacenamiento local | `Layout.tsx:471-478`, `App.tsx:1347-1374` | Existe |
@@ -133,7 +133,7 @@ La entrega es la de F.
 **Mi espacio: reporte semanal**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-041 | Pestañas «Reportes» y «Tareas» | `MySpace.tsx:89-145` | Nueva (10.2). **Servidor hecho (10.2a):** `tab`. **Hecho (10.2): la pestaña «Tareas» enlaza a Mis tareas hasta la 10.6.** |
+| F-041 | Pestañas «Reportes» y «Tareas» | `MySpace.tsx:89-145` | Nueva (10.2). **Servidor hecho (10.2a):** `tab`. **Hecho (10.2): la pestaña «Tareas» enlaza a Mis tareas hasta la 10.6.** **Hecho (10.6): la pestaña «Tareas» es la de WeeklySync (D-203).** |
 | F-042 | Mis weeklies con su estado: Pendiente, Enviado, Enviado con retraso, Próximamente, Con retraso, No enviada, Exento, Cierre sin reporte y Semana activa | `ReportList.tsx:50-152` | Nueva (10.2). **Servidor hecho (10.2a):** `weeks`. **Hecho (10.2).** |
 | F-043 | Abrir el reporte de cualquier semana (solo lectura si está cerrada) | `MySpace.tsx:45-80`, `WeeklyReportingInterface.tsx:27, 484` | Nueva (10.2). **Servidor hecho (10.2a):** `?semana=` con `editor.read_only`. **Hecho (10.2).** |
 | F-044 | Una caja por cliente activo mío + «General / Interno» | `WeeklyReportingInterface.tsx:17, 555` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.proposed` (D-157). **Hecho (10.2).** |
@@ -151,15 +151,15 @@ La entrega es la de F.
 **Mi espacio: tareas**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-055 | Tareas agrupadas por cliente («Tareas Generales» sin cliente) | `TaskView.tsx:132-138, 441` | Adaptar: Mis tareas, agrupadas por cliente (10.6) |
-| F-056 | Filtro Pendientes o Completadas | `TaskView.tsx:305-311` | Existe (D-143) |
-| F-057 | Ver u ocultar archivadas; archivar y recuperar | `TaskView.tsx:153-163, 317-370, 506-517` | Adaptar: archivado personal (10.6) |
-| F-058 | Crear y editar (descripción y cliente obligatorio); Intro guarda | `TaskView.tsx:263-300, 621-665` | Existe (tarea en un proyecto del cliente) |
-| F-059 | Marcar hecha o pendiente con un clic | `TaskView.tsx:141, 463` | Existe |
-| F-060 | Notas de la tarea editables en línea, con dictado | `TaskView.tsx:148, 538-555` | Adaptar: descripción o comentario + dictado con Whisper (10.6) |
-| F-061 | Eliminar para siempre | `TaskView.tsx:158, 524` | Existe |
-| F-062 | Generar tareas con IA a partir de la última weekly cerrada, sin duplicar | `TaskView.tsx:331`, `App.tsx:2674-2760`, `extract-tasks` | Nueva, con revisión antes de crear (10.6) |
-| F-063 | Prioridad y fecha de entrega (en el modelo; la interfaz no las muestra) | `types.ts` (`Task`) | Existe |
+| F-055 | Tareas agrupadas por cliente («Tareas Generales» sin cliente) | `TaskView.tsx:132-138, 441` | Adaptar: Mis tareas, agrupadas por cliente (10.6) **Hecho (10.6): mis tareas asignadas, por cliente del proyecto, con «Tareas generales» para los internos (D-203).** |
+| F-056 | Filtro Pendientes o Completadas | `TaskView.tsx:305-311` | Existe (D-143) **Hecho (10.6): también en «Mi espacio», Todas, Pendientes o Completadas.** |
+| F-057 | Ver u ocultar archivadas; archivar y recuperar | `TaskView.tsx:153-163, 317-370, 506-517` | Adaptar: archivado personal (10.6) **Hecho (10.6): `task_archives`, solo para quien archiva (D-203).** |
+| F-058 | Crear y editar (descripción y cliente obligatorio); Intro guarda | `TaskView.tsx:263-300, 621-665` | Existe (tarea en un proyecto del cliente) **Hecho (10.6): «Nueva tarea» y «Editar» en «Mi espacio», con proyecto (y bolsa) obligatorio, por `tasks.store` y `TaskWriter` (D-203).** |
+| F-059 | Marcar hecha o pendiente con un clic | `TaskView.tsx:141, 463` | Existe **Hecho (10.6): la casilla de «Mi espacio».** |
+| F-060 | Notas de la tarea editables en línea, con dictado | `TaskView.tsx:148, 538-555` | Adaptar: descripción o comentario + dictado con Whisper (10.6) **Hecho (10.6): la descripción en texto plano, con autoguardado y dictado (`task_note`); con formato, se edita en la tarea (D-203).** |
+| F-061 | Eliminar para siempre | `TaskView.tsx:158, 524` | Existe **Hecho (10.6): «Eliminar» en «Mi espacio», con confirmación y solo sin horas (D-037).** |
+| F-062 | Generar tareas con IA a partir de la última weekly cerrada, sin duplicar | `TaskView.tsx:331`, `App.tsx:2674-2760`, `extract-tasks` | Nueva, con revisión antes de crear (10.6) **Hecho (10.6): Job en la cola `ai`, prompt y deduplicación portados; propuestas que se revisan y se crean con `TaskWriter` (D-204).** |
+| F-063 | Prioridad y fecha de entrega (en el modelo; la interfaz no las muestra) | `types.ts` (`Task`) | Existe **Hecho (10.6): se ven y se ponen en «Mi espacio».** |
 
 **Weeklys: histórico y ciclo**
 | ID | Funcionalidad | Origen | Destino |
@@ -278,8 +278,8 @@ La entrega es la de F.
 **Asistente IA**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-146 | Chat de preguntas con historial en la sesión, Intro para enviar y preguntas sugeridas | `KnowledgeBaseView.tsx:20-121, 189`, `query-knowledge-base` | Nueva (10.6) |
-| F-147 | Contexto: últimas semanas, reportes, clientes, personas, tareas y estado de proyectos | `query-knowledge-base:52-130` | Nueva, con datos de Audax (10.6) |
+| F-146 | Chat de preguntas con historial en la sesión, Intro para enviar y preguntas sugeridas | `KnowledgeBaseView.tsx:20-121, 189`, `query-knowledge-base` | Nueva (10.6) **Hecho (10.6): `/ia`, en la cola `ai`, con Reverb o sondeo y la conversación en la sesión (D-206).** |
+| F-147 | Contexto: últimas semanas, reportes, clientes, personas, tareas y estado de proyectos | `query-knowledge-base:52-130` | Nueva, con datos de Audax (10.6) **Hecho (10.6): solo con lo que ve quien pregunta (D-205).** |
 
 **Centro de ayuda**
 | ID | Funcionalidad | Origen | Destino |

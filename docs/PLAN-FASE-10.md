@@ -504,3 +504,47 @@ El `DemoDataSeeder` añade dos reglas: en la app el jueves a las 10:00 y por ema
 
 ### Para las siguientes entregas
 - **10.8:** las reglas de `email_reminders` (canal `email`) y `web_notification_reminders` (canal `push`), pasando el día de 0 = domingo a ISO; las plantillas de `email_templates` a `weekly_email_templates` (solo las que difieran); `email_log` a `weekly_reminder_logs` (`template`, `status`, `trigger_key`, `week_id` → semana importada, canal `email`).
+
+## 10.6 (hecho): tareas de Mi espacio y asistente
+Hecha el 05/10/2026 en `fase-10`. Decisiones nuevas: **D-203 a D-206**. En `WEEKLY-INVENTARIO.md` §A.4, F-006, F-055 a F-063, F-146 y F-147 pasan a «Hecho (10.6)» y se completa F-041 (la pestaña «Tareas»).
+
+### Datos
+- **Migración `2026_10_05_160000_create_task_suggestion_batches_table`:** `task_suggestion_batches`, la última tanda de tareas sugeridas de cada persona (única por `user_id`, en cascada al borrarla): `weekly_cycle_id` (la weekly de origen), `state` (`WeeklyJobState`), `items` (las propuestas: `{key, title, client_id, client_name, project_id, hour_bank_id, author_id, author_name}`), `skipped` (repetidas omitidas), `error`, `model` y `generated_at`. Modelo `TaskSuggestionBatch`.
+- **Sin más tablas:** el archivado personal es `task_archives` y el dictado de las notas, `dictations` con el contexto `task_note` (contrato 10.1).
+
+### Dominio
+- **`Weeklies\Tasks`:**
+  - `MySpaceTasks`: `list(user)` (mis tareas asignadas: las pendientes y las 100 últimas hechas, con cliente, proyecto, estado, «De: …», notas, archivado y `can`), `catalog(user)` (proyectos abiertos en los que puedo crear, con sus bolsas abiertas), `toggleStatuses()` y `editableProjects(user)`,
+  - `TaskNotes` (puro): `isPlain()`, `toPlain()` y `toHtml()` (D-203),
+  - `TaskSuggestionPrompt` (puro): el prompt de `extract-tasks`, `report()`, `schema()`, `rows()`, `id()` e `isDuplicate()` (la deduplicación de App.tsx),
+  - `TaskSuggester`: `sourceCycle()`, `find()`, `request()` (encola; 422 sin weekly cerrada), `isBusy()`, `generate()` (la llama el Job), `proposals()`, `accept()` (con `TaskWriter`, todo o nada), `remove()` y `present()`.
+- **`Weeklies\Assistant`:** `AssistantContext` (`scope(user)` y `for(user)`, D-205), `AssistantPrompt` (puro: `truncate()`, `contextText()` y `prompt()`) y `AssistantQuestions` (`ask()`, `find()`, `answer()` y `present()`, en la caché una hora, D-206).
+- **Jobs** (cola `ai`, un intento, `AiQueue::TIMEOUT`): `SuggestTasksFromWeekly` y `AnswerAssistantQuestion`.
+- **Evento `Events\Weeklies\AssistantAnswered`:** `assistant.answered` por el canal privado `App.Models.User.{id}`, con `{question_id, state}`.
+- **`FakeLlm::demo()`** propone una tarea de prueba para quien la pide (`SuggestedTasks`).
+- **Privacidad:** `MySpaceTasksSection` (`mi-espacio-tareas`) en la exportación de datos.
+
+### Rutas, páginas y props
+- **`my-space/index` con `?pestana=tareas`** (`MySpacePageProps`): `my_tasks` (`MySpaceTask[]`), `task_projects` (`MySpaceTaskProject[]`), `task_statuses` (`{open, done}`), `suggestions` (`TaskSuggestionBatch` o null) y `suggestion_source` (la última weekly cerrada). Con otra pestaña llegan a null sin consultas.
+- **Acciones de Mi espacio:**
+  - `POST my-space.tasks.suggest` (202 en JSON; si no, vuelve con aviso),
+  - `POST my-space.tasks.suggestions.accept` (`{tasks: [{key, title, project_id, hour_bank_id?, priority?, due_date?}], dismiss?: [key]}`; errores en `tasks.{i}.campo`),
+  - `DELETE my-space.tasks.suggestions.dismiss` (`{keys?}`; sin claves, toda la tanda),
+  - `POST`/`DELETE my-space.tasks.archive`/`unarchive`,
+  - `PUT my-space.tasks.notes` (`{notes}`, JSON; 422 si la descripción tiene formato),
+  - crear, editar, marcar hecha y borrar: las rutas `tasks.store`, `tasks.update` y `tasks.destroy` de siempre.
+- **`dictations.store`** acepta `context=task_note` con `task_id` (una tarea que puedo editar y con notas en texto plano).
+- **`assistant/index`** (`AssistantPageProps`): `suggested_questions`, `scope` (`{weeklies, clients, project_status, hours: own|team|all, financials}`) y `max_question`. **`POST assistant.ask`** (`{question, history?: [{role, content}]}` → 202 `{question}`) y **`GET assistant.questions.show`** (`/ia/preguntas/{uuid}`, solo quien pregunta; 404 si no o si caducó).
+- **Componentes:** `components/weeklies/tasks` (`my-space-tasks`, `my-space-task-row`, `my-space-task-dialogs`, `my-space-task-fields`, `task-notes-field` y `task-suggestions-panel`), `components/assistant/use-assistant` y la página `assistant/index`. Piezas puras en `resources/js/lib/my-space-tasks.ts`. El dictado (`DictationButton`, `useDictation` y `uploadDictation`) admite `taskId`. Textos en `lang/ui/my-space-tasks.json` y `lang/ui/assistant.json`.
+- **Navegación:** «Asistente IA» en la barra lateral, tras Chat (F-006).
+
+### Tests
+- **Pest:** `tests/Feature/Weeklies/MySpaceTasksTest.php` (la pestaña y el catálogo, archivado personal, notas, dictado de notas, la petición en la cola `ai`, el prompt sin borradores, la deduplicación, solo para mí, el proyecto y la bolsa sugeridos, el fallo de la IA, la revisión antes de crear, todo o nada, descartar y la IA de prueba) y `AssistantTest.php` (página, acceso de colaboradores, clientes y módulo apagado, validación, la cola `ai`, Reverb y sondeo solo para quien pregunta, fallo, `ai_usage` con `GeminiClient`, y que el contexto **nunca** lleva borradores ajenos, tareas archivadas, horas de otros sin permiso, importes sin `view-financials`, costes ni resúmenes de una persona). Al día: `WeeklyRoutesTest`, `WeeklyDictationTest`, `WeeklyPagesPerformanceTest` (presupuestos de la pestaña y de `/ia`), `WeeklyPersonalDataTest` y `PersonalDataExportTest`.
+- **Vitest:** `my-space-tasks` (piezas puras, la pestaña, marcar hecha, archivar, generar, la revisión de las propuestas, los errores del servidor, descartar y las notas con autoguardado y dictado) y `assistant-page` (preguntas sugeridas, cola y sondeo, Intro y Mayúsculas+Intro, la conversación de la sesión, errores y la entrada de la barra lateral).
+- **E2E:** `my-space-tasks.spec.ts` (crear con proyecto, nota, hecha, archivar y recuperar; generar con la IA de prueba, revisar y crear; el asistente con la conversación al recargar; AA y 375 px). `SIDEBAR_PATHS` incluye `/ia` y `collaborator.spec.ts`, su 403. **Escritos, sin ejecutar en el Mac:** van a la CI.
+
+### Para desplegar (con el SSH)
+- `migrate` (una migración nueva: `task_suggestion_batches`). Nada más en el servidor: la cola `ai`, las claves y Reverb son los de la 10.3.
+
+### Para las siguientes entregas
+- **10.8:** las 36 tareas de WeeklySync (todas hechas, sin proyecto) se migran como tareas hechas si su cliente tiene un proyecto que case (D-149); su `archived` pasa a `task_archives` de su responsable.

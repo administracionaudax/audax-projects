@@ -1621,6 +1621,43 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.5 (hecho)»
 - **Plazos nuevos** en `/admin/privacidad` (`app:prune-data`): el registro de avisos, **12 meses** (lleva nombres y emails), y los dictados, **3 meses** (su texto ya está en el apunte; si quedó algún audio en el disco, se borra con él). **Las weeklies no caducan:** son el histórico del equipo, como las horas.
 - Falta el texto RGPD del asesor (pendiente desde la Fase 7): debe mencionar los resúmenes con IA por persona (D-147) y que el texto de las weeklies va a Gemini (D-146).
 
+## 05/10/2026: Tareas de Mi espacio y asistente IA (entrega 10.6)
+Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.6 (hecho)»).
+
+### D-203 · La pestaña «Tareas» de Mi espacio **[concreta D-151]**
+- **Qué tareas:** las **asignadas a mí** (como el TaskView de WeeklySync), de proyectos sin archivar que puedo ver: todas las pendientes y las **100 últimas hechas**, de la más nueva a la más antigua. Agrupadas por el cliente del proyecto; las de proyectos sin cliente, en «Tareas generales». Mis tareas (D-143) sigue igual y se enlaza desde la pestaña.
+- **Filtros como el original:** Todas, Pendientes o Completadas, y «Ver archivadas», en el navegador (la lista es corta).
+- **Archivado personal** (F-057): `task_archives`, solo para quien archiva; la tarea sigue igual para los demás. Se puede recuperar.
+- **Crear** (F-058): «Nueva tarea» con la descripción y el cliente del original, más lo que exige Audax: el **proyecto** (obligatorio; si el cliente tiene uno solo, se elige solo) y, en uno de bolsas, la **bolsa** (la del departamento primero), y la prioridad y la entrega (F-063). Es para mí. Va por `tasks.store` y `TaskWriter`, como el alta de siempre. Se ofrecen los proyectos abiertos en los que puedo crear tareas (`TaskPolicy::create`: miembro o gestor; todos para el admin y los responsables). No se reutiliza el diálogo de D-173: depende de los datos de un proyecto ya elegido y pide campos (responsable, tipo, estimación) que en «Mi espacio» sobran; se reutilizan sus piezas (prioridad y fecha).
+- **Editar** el título, la prioridad y la entrega; cambiar de proyecto, desde la tarea. **Marcar hecha** (F-059) pasa al primer estado «hecho» o al estado por defecto. **Eliminar** (F-061) borra la tarea para todos (con confirmación que lo dice) y solo sin horas (D-037). Todo con las rutas y la política de siempre.
+- **Notas** (F-060) = la **descripción en texto plano**: una línea por párrafo (`TaskNotes`), con autoguardado al dejar de escribir 1 s y al salir del campo (WeeklySync: 500 ms; aquí algo más, porque cada guardado queda en la actividad de la tarea) y con **dictado** (Whisper del servidor, contexto `task_note` de D-152, solo si puedo editar la tarea). Una descripción **con formato** (negritas, listas, enlaces, menciones) no se pisa: se enseña y se enlaza a la tarea.
+
+### D-204 · Tareas sugeridas por IA: propuestas que se revisan
+- **Fuente:** la última weekly cerrada (por fecha de fin), con los reportes **enviados** de todo el equipo, como `extract-tasks`. Sin reportes, no se llama a la IA.
+- **Cómo:** Job `SuggestTasksFromWeekly` en la cola `ai` (un intento, D-146), con el **prompt de `extract-tasks` palabra por palabra** y los ids de Audax, y un `responseSchema` con su forma. Cada llamada va a `ai_usage`.
+- **Deduplicación de App.tsx** (`TaskSuggestionPrompt::isDuplicate`): repetida si ya tengo (asignada a mí, sin archivar, en cualquier estado) una tarea del **mismo cliente** con la misma descripción o una que contiene a la otra, sin mayúsculas ni espacios de los extremos. Además, a diferencia del original: las propuestas no se repiten entre sí y se descartan las que la IA asigna a otra persona (WeeklySync las habría creado para ella).
+- **Nunca se crean solas** (cambia el original, que las insertaba sin preguntar y sin proyecto): se guardan como **propuestas** en `task_suggestion_batches` (la última tanda de cada persona; la siguiente la sustituye) con el proyecto y la bolsa **sugeridos por el cliente** (el único proyecto del cliente en el que puedo crear; si hay varios, aquel en el que imputé más recientemente). La persona revisa cada una (título, cliente, proyecto, bolsa, prioridad y entrega), marca las que quiere y se crean con `TaskWriter`, **todas o ninguna**, en proyectos en los que puede crear tareas; las demás siguen ahí o se descartan.
+- **Seguimiento:** la página recarga la tanda cada 3 s mientras se genera (sin Reverb, como D-194); en cola o generando más de 12 minutos, atascada y se puede volver a pedir.
+- **RGPD:** las propuestas sin crear y el archivado personal entran en la exportación de datos (`mi-espacio-tareas`). Se borran con la persona.
+
+### D-205 · El contexto del asistente: solo lo que ve quien pregunta **[concreta D-146]**
+- **Recortes de `query-knowledge-base`:** las 6 últimas semanas, los 20 últimos reportes (se envían 15, con 450 caracteres de texto general y 220 por cliente), 40 tareas (se envían 30) y 80 filas de estado de proyectos. El prompt y sus instrucciones son los del original.
+- **Construido por persona** (`AssistantContext`), nunca con un cliente administrador como el original:
+  - semanas, reportes **enviados** (nunca un borrador ajeno) y el último informe cerrado: lo ve toda la plantilla; con el módulo de la Weekly encendido,
+  - clientes activos con su responsable (D-195) y su satisfacción (`ClientPolicy::viewAny`), y el equipo que escribe la weekly (como `/equipo`),
+  - tareas abiertas que puede ver (`Task::visibleTo`), primero las suyas, sin las que ha archivado,
+  - estado de proyectos en horas, sin importes (D-151), con el módulo `project_status`,
+  - **horas** de los últimos 28 días solo de quien puede ver (`canSeeHoursOf`, D-021): las suyas; un responsable, también las de su equipo; el admin, todas,
+  - **importes de venta** (bolsas y proyectos) solo con `view-financials`.
+  - **Nunca:** los costes por hora de las personas, los resúmenes con IA de una persona (D-147), las ausencias ni nada de otra persona que no pueda ver.
+- **Añadidos al prompt:** quién pregunta, el último informe, el equipo, las horas, los importes si los ve, la conversación anterior y una instrucción para que diga que no tiene lo que no está en el contexto. La página explica qué entra para cada persona.
+
+### D-206 · Preguntar en la cola `ai` y la conversación de la sesión
+- **Cada pregunta** (2.000 caracteres como mucho, 20 por minuto) es un Job `AnswerAssistantQuestion` en la cola `ai` (D-146: nunca dentro de una petición web). La pregunta y su respuesta viven **una hora en la caché** y solo las ve quien pregunta. La respuesta llega por el evento `assistant.answered` del canal privado de quien pregunta (sin el texto) y, siempre, por un sondeo de respaldo (cada 2 s sin Reverb, cada 10 s con él). A los 5 minutos se deja de esperar (la cola `ai` puede estar ocupada con un informe).
+- **La conversación es de la sesión**, como en WeeklySync: la guarda el navegador (`sessionStorage`), así que sobrevive a recargar la pestaña y desaparece al cerrarla; el servidor no guarda historial. Con cada pregunta se mandan los 6 últimos turnos (sin los errores), recortados a 600 caracteres, para entender «¿y la semana pasada?».
+- **Avisos de que es IA:** el de WeeklySync bajo la caja («La IA puede cometer errores…») y, en las tareas sugeridas, que son propuestas que hay que revisar.
+- **F-006:** el botón flotante «Asistente AI» pasa a una entrada **«Asistente IA» de la barra lateral**, tras Chat, para quien usa la Weekly con el módulo `assistant` encendido. Las preguntas sugeridas son las del original con nombres de Audax (el cliente con el último reporte, el departamento de quien pregunta y la última persona que ha enviado su weekly).
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1691,9 +1728,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-202 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-206 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-203**.
+La siguiente libre es **D-207**.
