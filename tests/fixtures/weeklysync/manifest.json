@@ -15,6 +15,10 @@
             "rows": 7,
             "sha256": "0f3c98c1f7012231fb9a2555c56d7cc6413ddd8f91110d71b6be34117ea3dd9a"
         },
+        "client_team_members": {
+            "rows": 3,
+            "sha256": "0adfbf39c95a655a60cbbf7fce5c9376db14d4f9f17a7855829174d8d673a821"
+        },
         "project_status_entries": {
             "rows": 4,
             "sha256": "659966101bddd5732ef0b5fd723bf9e502dd171a43a3ecb0dec88ed41996671c"

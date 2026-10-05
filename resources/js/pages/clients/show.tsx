@@ -148,12 +148,10 @@ function WeeklyTabPanel({
     clientId,
     clientName,
     data,
-    joinable,
 }: {
     clientId: number;
     clientName: string;
     data: ClientWeeklyData | null;
-    joinable: ClientShowProps['joinable_projects'];
 }) {
     if (data === null) {
         return null;
@@ -168,7 +166,6 @@ function WeeklyTabPanel({
                     clientId={clientId}
                     clientName={clientName}
                     data={data}
-                    joinable={joinable}
                 />
             );
         case 'satisfaccion':
@@ -199,7 +196,6 @@ export default function ClientShow({
     owner = null,
     kindBadges = [],
     weekly = null,
-    joinable_projects: joinableProjects,
 }: ClientShowProps & {
     /** Acceso al portal (Fase 5, D-063): null para quien no lo gestiona. */
     portal?: ClientPortalAccess | null;
@@ -401,7 +397,6 @@ export default function ClientShow({
                             clientId={client.id}
                             clientName={client.name}
                             data={weekly}
-                            joinable={joinableProjects}
                         />
                     </Deferred>
                 ) : (
@@ -450,7 +445,6 @@ export default function ClientShow({
                                     clientId={client.id}
                                     clientName={client.name}
                                     data={weekly}
-                                    joinable={joinableProjects}
                                 />
                             </Deferred>
                         ) : null}

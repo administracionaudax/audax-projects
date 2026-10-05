@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Los clientes de «Mi weekly» (D-150, F-033, F-044, F-045 y F-048):
- * - propuestos: los de los proyectos (no archivados) de los que soy miembro o gestor y los de los
- *   proyectos en los que he imputado horas esa semana (de lunes a domingo), más los que ya tienen un
- *   apunte en mi weekly,
+ * - propuestos: los de los proyectos (no archivados) de los que soy miembro o gestor, los clientes a
+ *   los que me he unido en la Weekly (D-221) y los de los proyectos en los que he imputado horas esa
+ *   semana (de lunes a domingo), más los que ya tienen un apunte en mi weekly,
  * - catálogo para «Añadir otro cliente»: los clientes activos, con sus proyectos abiertos (el
  *   proyecto del apunte es opcional), más los inactivos que ya tengan un apunte,
  * - «Autocompletar desde mis tareas y horas» (F-048): por cliente, las tareas en las que he imputado
@@ -52,6 +52,9 @@ final class MyWeeklyClients
             ->map(fn ($id): int => (int) $id)
             ->all();
 
+        // Los clientes a los que me he unido en la Weekly (D-221).
+        $followedClientIds = (new WeeklyClientSubscriptions)->clientIds($user);
+
         $entryClientIds = $submission === null ? [] : $submission->entries()
             ->whereNotNull('client_id')
             ->pluck('client_id')
@@ -65,7 +68,7 @@ final class MyWeeklyClients
             ->get(['id', 'name', 'icon', 'is_active']);
 
         $known = $clients->pluck('id')->map(fn ($id): int => (int) $id)->all();
-        $proposed = array_values(array_intersect($known, array_unique([...$proposedFromProjects, ...$entryClientIds])));
+        $proposed = array_values(array_intersect($known, array_unique([...$proposedFromProjects, ...$followedClientIds, ...$entryClientIds])));
         $mine = array_flip($memberProjectIds);
 
         return [

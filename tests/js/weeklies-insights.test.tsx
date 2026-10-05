@@ -373,20 +373,12 @@ describe('ficha de cliente: equipo y satisfacción', () => {
             content: null,
             items: { '2': 'Ana maqueta la home.' },
         }),
-        my_projects: [
-            { id: 5, code: 'ACME-WE1', name: 'Web', can_leave: true },
-        ],
+        my_projects: [{ id: 5, code: 'ACME-WE1', name: 'Web' }],
+        subscription: { subscribed: false, can_join: true },
     };
 
     it('el equipo: responsable, la frase de la IA en cada persona y su histórico en un diálogo', async () => {
-        wrap(
-            <ClientTeamPanel
-                clientId={3}
-                clientName="Acme"
-                data={team}
-                joinable={[]}
-            />,
-        );
+        wrap(<ClientTeamPanel clientId={3} clientName="Acme" data={team} />);
 
         const members = byTest('client-team-member');
         expect(within(members[0]).getByText('Responsable')).toBeTruthy();
@@ -411,6 +403,45 @@ describe('ficha de cliente: equipo y satisfacción', () => {
         const dialog = await screen.findByRole('dialog');
         expect(within(dialog).getByText('Histórico de Ana')).toBeTruthy();
         expect(within(dialog).getByText('Maquetación de la home')).toBeTruthy();
+    });
+
+    it('«Unirme a este cliente» es una suscripción de la Weekly (D-221) y se puede dejar', async () => {
+        const { unmount } = wrap(
+            <ClientTeamPanel clientId={3} clientName="Acme" data={team} />,
+        );
+
+        expect(
+            screen.getByText(
+                'Unirte hace que el cliente salga en tu weekly y en su equipo. No te da acceso a sus proyectos.',
+            ),
+        ).toBeTruthy();
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Unirme a este cliente' }),
+        );
+        expect(router.post).toHaveBeenCalledWith(
+            '/mi-espacio/clientes',
+            { client_ids: [3] },
+            expect.objectContaining({ only: ['weekly'] }),
+        );
+        unmount();
+
+        wrap(
+            <ClientTeamPanel
+                clientId={3}
+                clientName="Acme"
+                data={{
+                    ...team,
+                    subscription: { subscribed: true, can_join: true },
+                }}
+            />,
+        );
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Dejar este cliente' }),
+        );
+        expect(router.delete).toHaveBeenCalledWith(
+            '/mi-espacio/clientes/3',
+            expect.objectContaining({ only: ['weekly'] }),
+        );
     });
 
     it('la satisfacción: actual, semanas y tendencias; sin cierres, un estado vacío', () => {

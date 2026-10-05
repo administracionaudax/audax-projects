@@ -93,7 +93,7 @@ function weeklySyncTableCounts(): array
         'client_satisfaction_snapshots', 'tasks', 'task_archives', 'weekly_reminder_rules', 'weekly_reminder_logs', 'help_releases',
         'help_release_changes', 'help_manual_updates', 'help_update_likes', 'help_tutorials', 'help_faq_sections', 'help_faqs',
         'suggestion_boards', 'suggestion_categories', 'suggestion_posts', 'suggestion_votes', 'suggestion_comments',
-        'suggestion_comment_reactions', 'suggestion_status_events', 'attachments', 'ai_usage', 'import_refs'];
+        'suggestion_comment_reactions', 'suggestion_status_events', 'attachments', 'ai_usage', 'import_refs', 'weekly_client_subscriptions', 'project_members'];
 
     return collect($tables)->mapWithKeys(fn (string $table): array => [$table => DB::table($table)->count()])->all();
 }
@@ -230,6 +230,18 @@ test('importa personas, clientes, semanas, envíos, borradores, exenciones y sat
         ->and($report->get('people', WeeklySyncImportReport::SKIPPED))->toBe(2)
         ->and($report->get('entries', WeeklySyncImportReport::SKIPPED))->toBe(2)
         ->and($report->skipped())->toHaveKey('Borradores de weeklies ya enviadas');
+});
+
+test('los colaboradores de cada cliente pasan a la suscripción de la Weekly, nunca a miembros de proyecto (D-221)', function () {
+    $members = DB::table('project_members')->count();
+    $report = runWeeklySyncImport();
+
+    expect(DB::table('weekly_client_subscriptions')->orderBy('client_id')->get(['client_id', 'user_id'])->map(fn ($row) => [(int) $row->client_id, (int) $row->user_id])->all())
+        ->toBe([[$this->manzanas->id, $this->bruno->id], [$this->kiwis->id, $this->carla->id]])
+        ->and(DB::table('project_members')->count())->toBe($members)
+        ->and($this->manzanasProject->hasMember($this->bruno))->toBeFalse()
+        ->and($report->get('client_team', WeeklySyncImportReport::CREATED))->toBe(2)
+        ->and($report->get('client_team', WeeklySyncImportReport::SKIPPED))->toBe(1);
 });
 
 test('copia los audios del informe a weeklies/{id}/audio con sus secciones', function () {

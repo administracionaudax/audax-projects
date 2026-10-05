@@ -5,6 +5,7 @@ namespace App\Domain\Weeklies\Insights;
 use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
 use App\Domain\Weeklies\Report\WeeklyClientUpdate;
 use App\Domain\Weeklies\Report\WeeklyReport;
+use App\Domain\Weeklies\WeeklyClientSubscriptions;
 use App\Enums\ProjectStatus;
 use App\Http\Resources\UserSummaryResource;
 use App\Models\Client;
@@ -37,7 +38,10 @@ final class ClientInsights
     /** Reportes por persona en el historial del equipo. */
     public const int MEMBER_REPORTS = 20;
 
-    public function __construct(private readonly ProjectStatusBoard $board) {}
+    public function __construct(
+        private readonly ProjectStatusBoard $board,
+        private readonly WeeklyClientSubscriptions $subscriptions = new WeeklyClientSubscriptions,
+    ) {}
 
     /**
      * Responsable del cliente (D.1 del inventario): quien gestiona más proyectos abiertos del cliente;
@@ -384,8 +388,8 @@ final class ClientInsights
     }
 
     /**
-     * Las personas del equipo del cliente: gestores y miembros de sus proyectos abiertos que escriben
-     * la weekly y siguen activas, por nombre.
+     * Las personas del equipo del cliente: gestores y miembros de sus proyectos abiertos y quienes se
+     * han unido al cliente en la Weekly (D-221), que escriben la weekly y siguen activas, por nombre.
      *
      * @param  Collection<int, Project>  $projects
      * @return Collection<int, User>
@@ -393,6 +397,7 @@ final class ClientInsights
     public function teamMembers(Client $client, Collection $projects): Collection
     {
         $ids = $projects->flatMap(fn (Project $project): array => [$project->owner_user_id, ...$project->members->modelKeys()])
+            ->merge($this->subscriptions->userIds($client))
             ->unique()
             ->values()
             ->all();

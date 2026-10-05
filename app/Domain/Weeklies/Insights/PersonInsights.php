@@ -6,6 +6,7 @@ use App\Domain\Weeklies\ProjectStatus\ProjectKindCode;
 use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
 use App\Domain\Weeklies\Report\WeeklyProjectStatus;
 use App\Domain\Weeklies\WeeklyCalendar;
+use App\Domain\Weeklies\WeeklyClientSubscriptions;
 use App\Domain\Weeklies\WeeklyTeamStatus;
 use App\Domain\Weeklies\WeeklyTiming;
 use App\Enums\WeeklyPersonStatus;
@@ -43,6 +44,7 @@ final class PersonInsights
         private readonly WeeklyTeamStatus $teamStatus,
         private readonly WeeklyProjectStatus $projectStatus,
         private readonly WeeklyTiming $timing = new WeeklyTiming,
+        private readonly WeeklyClientSubscriptions $subscriptions = new WeeklyClientSubscriptions,
     ) {}
 
     /**
@@ -233,7 +235,8 @@ final class PersonInsights
 
     /**
      * Los clientes activos de la persona: los que lidera (gestiona algún proyecto abierto) y en los
-     * que colabora (es miembro), con las insignias de sus proyectos (F-120).
+     * que colabora (es miembro de alguno o se ha unido en la Weekly, D-221), con las insignias de sus
+     * proyectos (F-120).
      *
      * @return array{owned: list<array<string, mixed>>, member: list<array<string, mixed>>}
      */
@@ -269,6 +272,13 @@ final class PersonInsights
                 'badges' => ProjectKindCode::badges($clientProjects->map(fn (Project $project): string => ProjectKindCode::for($project->code, $this->projectStatus->kind($project)))->all()),
                 'projects' => $clientProjects->map(fn (Project $project): array => ['id' => $project->id, 'code' => $project->code, 'name' => $project->name])->values()->all(),
             ];
+        }
+
+        $known = array_column([...$groups['owned'], ...$groups['member']], 'id');
+        $followed = array_values(array_diff($this->subscriptions->clientIds($person), $known));
+
+        foreach (Client::query()->whereKey($followed)->get(['id', 'name', 'icon']) as $client) {
+            $groups['member'][] = ['id' => $client->id, 'name' => $client->name, 'icon' => $client->icon, 'badges' => [], 'projects' => []];
         }
 
         foreach ($groups as $key => $rows) {
@@ -457,6 +467,12 @@ final class PersonInsights
 
         foreach ([...$members, ...$owners] as $row) {
             $result[(int) $row->user_id][(int) $row->client_id] = (int) $row->client_id;
+        }
+
+        foreach ($this->subscriptions->clientIdsByUser($userIds) as $userId => $clientIds) {
+            foreach ($clientIds as $clientId) {
+                $result[$userId][$clientId] = $clientId;
+            }
         }
 
         return array_map(fn (array $ids): array => array_values($ids), $result);

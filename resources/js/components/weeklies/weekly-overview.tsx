@@ -30,7 +30,7 @@ import {
 import {
     DeadlineDialog,
     ExemptDialog,
-    JoinProjectsDialog,
+    JoinClientsDialog,
 } from '@/components/weeklies/weekly-dialogs';
 import {
     ClientIcon,
@@ -49,7 +49,7 @@ import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { show as showCycle, store as storeCycle } from '@/routes/weeklies';
 import { destroy as destroyExemption } from '@/routes/weeklies/exemptions';
-import { leave as leaveProject } from '@/routes/weeklies/projects';
+import { leave as leaveClient } from '@/routes/weeklies/clients';
 import type {
     WeekliesIndexPageProps,
     WeeklyHighlightedCycle,
@@ -112,7 +112,7 @@ export function WeeklyOverview(props: WeekliesIndexPageProps) {
                 <ManageSection cycle={active} can={can} />
             ) : null}
 
-            <MyClients clients={myClients} joinable={props.joinable_projects} />
+            <MyClients clients={myClients} joinable={props.joinable_clients} />
         </div>
     );
 }
@@ -426,13 +426,16 @@ function RemoveExemption({
     );
 }
 
-/** «Mis clientes» (F-033) y «Unirme a proyectos» / «Dejar proyecto» (F-034, D-156). */
+/**
+ * «Mis clientes» (F-033) y «Unirme a clientes» / «Dejar cliente» (F-034, D-221): unirse es una
+ * suscripción de la Weekly, sin acceso a los proyectos del cliente.
+ */
 function MyClients({
     clients,
     joinable,
 }: {
     clients: WeekliesIndexPageProps['my_clients'];
-    joinable: WeekliesIndexPageProps['joinable_projects'];
+    joinable: WeekliesIndexPageProps['joinable_clients'];
 }) {
     return (
         <section
@@ -444,14 +447,14 @@ function MyClients({
                 <h2 id="weekly-clients-title" className="text-lg font-normal">
                     {t('weeklies.clients.title')}
                 </h2>
-                <JoinProjectsDialog
-                    projects={joinable}
+                <JoinClientsDialog
+                    clients={joinable}
                     trigger={
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            data-test="weekly-join-projects"
+                            data-test="weekly-join-clients"
                         >
                             <Plus aria-hidden="true" />
                             {t('weeklies.join.open')}
@@ -532,6 +535,12 @@ function ClientGroup({
                                         {client.name}
                                     </span>
                                 )}
+                                {client.subscribed ? (
+                                    <LeaveClient
+                                        clientId={client.id}
+                                        name={client.name}
+                                    />
+                                ) : null}
                             </span>
                             <ul className="flex flex-wrap gap-1.5 pl-9">
                                 {client.projects.map((project) => (
@@ -549,12 +558,6 @@ function ClientGroup({
                                         >
                                             {project.code}
                                         </Link>
-                                        {project.can_leave ? (
-                                            <LeaveProject
-                                                projectId={project.id}
-                                                code={project.code}
-                                            />
-                                        ) : null}
                                     </li>
                                 ))}
                             </ul>
@@ -566,12 +569,13 @@ function ClientGroup({
     );
 }
 
-export function LeaveProject({
-    projectId,
-    code,
+/** «Dejar cliente» de la Weekly (D-221): quita la suscripción; los proyectos no cambian. */
+export function LeaveClient({
+    clientId,
+    name,
 }: {
-    projectId: number;
-    code: string;
+    clientId: number;
+    name: string;
 }) {
     const [processing, setProcessing] = useState(false);
 
@@ -580,22 +584,23 @@ export function LeaveProject({
             trigger={
                 <button
                     type="button"
-                    aria-label={t('weeklies.clients.leave', { project: code })}
-                    title={t('weeklies.clients.leave', { project: code })}
+                    aria-label={t('weeklies.clients.leave', { client: name })}
+                    title={t('weeklies.clients.leave', { client: name })}
                     className={cn(
                         'inline-flex text-muted-foreground hover:text-foreground',
                         FOCUS_RING,
                     )}
+                    data-test="weekly-leave-client"
                 >
                     <UserMinus aria-hidden="true" className="size-3.5" />
                 </button>
             }
-            title={t('weeklies.clients.leave_title', { project: code })}
+            title={t('weeklies.clients.leave_title', { client: name })}
             description={t('weeklies.clients.leave_description')}
             confirmLabel={t('weeklies.clients.leave_confirm')}
             processing={processing}
             onConfirm={() =>
-                router.delete(leaveProject.url(projectId), {
+                router.delete(leaveClient.url(clientId), {
                     preserveScroll: true,
                     onStart: () => setProcessing(true),
                     onFinish: () => setProcessing(false),

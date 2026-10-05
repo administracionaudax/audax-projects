@@ -16,9 +16,9 @@ use App\Http\Controllers\Weeklies\SuggestionCommentController;
 use App\Http\Controllers\Weeklies\SuggestionController;
 use App\Http\Controllers\Weeklies\TeamController;
 use App\Http\Controllers\Weeklies\WeeklyAudioController;
+use App\Http\Controllers\Weeklies\WeeklyClientSubscriptionController;
 use App\Http\Controllers\Weeklies\WeeklyCycleController;
 use App\Http\Controllers\Weeklies\WeeklyExemptionController;
-use App\Http\Controllers\Weeklies\WeeklyProjectMembershipController;
 use App\Http\Controllers\Weeklies\WeeklyReminderController;
 use App\Http\Controllers\Weeklies\WeeklyReportController;
 use Illuminate\Support\Facades\Route;
@@ -76,9 +76,9 @@ Route::middleware('module:weeklies')->group(function () {
     Route::post('mi-espacio/weeklies/{cycle}/enviar', [MyWeeklyController::class, 'submit'])->whereNumber('cycle')->middleware('throttle:30,1')->name('my-weekly.submit');
     Route::post('mi-espacio/dictados', [DictationController::class, 'store'])->middleware('throttle:30,1')->name('dictations.store');
     Route::get('mi-espacio/dictados/{dictation}', [DictationController::class, 'show'])->whereNumber('dictation')->middleware('throttle:240,1')->name('dictations.show');
-    // Unirme a proyectos y dejarlos como miembro (10.2, F-034, D-156).
-    Route::post('mi-espacio/proyectos', [WeeklyProjectMembershipController::class, 'join'])->middleware('throttle:30,1')->name('weeklies.projects.join');
-    Route::delete('mi-espacio/proyectos/{project}', [WeeklyProjectMembershipController::class, 'leave'])->whereNumber('project')->middleware('throttle:30,1')->name('weeklies.projects.leave');
+    // Unirme a clientes y dejarlos (10.2, F-034; D-221: suscripción de la Weekly, nunca membresía de proyecto).
+    Route::post('mi-espacio/clientes', [WeeklyClientSubscriptionController::class, 'join'])->middleware('throttle:30,1')->name('weeklies.clients.join');
+    Route::delete('mi-espacio/clientes/{client}', [WeeklyClientSubscriptionController::class, 'leave'])->whereNumber('client')->middleware('throttle:30,1')->name('weeklies.clients.leave');
     Route::post('mi-espacio/tareas/sugeridas', [MySpaceTaskController::class, 'suggest'])->middleware('throttle:10,1')->name('my-space.tasks.suggest');
     Route::post('mi-espacio/tareas/sugeridas/crear', [MySpaceTaskController::class, 'accept'])->middleware('throttle:30,1')->name('my-space.tasks.suggestions.accept');
     Route::delete('mi-espacio/tareas/sugeridas', [MySpaceTaskController::class, 'dismiss'])->middleware('throttle:30,1')->name('my-space.tasks.suggestions.dismiss');

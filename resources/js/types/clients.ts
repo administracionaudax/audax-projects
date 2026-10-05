@@ -11,7 +11,6 @@ import type {
     ProjectKindBadge,
     ProjectKindTag,
 } from './weekly-insights';
-import type { WeeklyJoinableProject } from './weeklies';
 
 /** ClientRowResource. */
 export type ClientListItem = Client & {
@@ -90,6 +89,4 @@ export type ClientShowProps = {
     kindBadges?: ProjectKindBadge[];
     /** La Weekly de la pestaña abierta (diferida); null sin la Weekly. */
     weekly?: ClientWeeklyData | null;
-    /** Opcional: router.reload({ only: ['joinable_projects'] }) al abrir «Unirme a proyectos». */
-    joinable_projects?: WeeklyJoinableProject[];
 };

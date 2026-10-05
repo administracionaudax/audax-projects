@@ -6,6 +6,7 @@ use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Delivery\ReportRequest;
 use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\Reminders\WeeklyReminders;
+use App\Domain\Weeklies\WeeklyClientSubscriptions;
 use App\Domain\Weeklies\WeeklyCycleCloser;
 use App\Domain\Weeklies\WeeklyCycleOpener;
 use App\Domain\Weeklies\WeeklyJobProgress;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Weeklies\UpdateWeeklyDeadlineRequest;
 use App\Http\Resources\UserSummaryResource;
 use App\Http\Resources\Weeklies\WeeklyCycleDetailResource;
+use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WeeklyCycle;
@@ -43,7 +45,7 @@ class WeeklyCycleController extends Controller
     public const array TABS = ['resumen', 'historico'];
 
     /** /weeklies?pestana=resumen|historico. */
-    public function index(Request $request, WeeklyOverview $overview, MyWeeklyStatus $status, WeeklyStreaks $streaks): Response
+    public function index(Request $request, WeeklyOverview $overview, MyWeeklyStatus $status, WeeklyStreaks $streaks, WeeklyClientSubscriptions $subscriptions): Response
     {
         Gate::authorize('viewAny', WeeklyCycle::class);
 
@@ -58,8 +60,8 @@ class WeeklyCycleController extends Controller
             ...$data,
             'me' => $active === null ? null : $status->for($user, $active),
             'streak' => $streaks->summary($user),
-            'my_clients' => $this->myClients($user),
-            'joinable_projects' => Inertia::optional(fn (): array => $this->joinableProjects($user)),
+            'my_clients' => $this->myClients($user, $subscriptions),
+            'joinable_clients' => Inertia::optional(fn (): array => $this->joinableClients($user, $subscriptions)),
             'can' => [
                 'manage' => Gate::allows('manage-weeklies'),
                 'create' => Gate::allows('create', WeeklyCycle::class) && $active === null,
@@ -228,12 +230,13 @@ class WeeklyCycleController extends Controller
     }
 
     /**
-     * Mis clientes (F-033): los de los proyectos que gestiono (responsable) y los de los que soy
-     * miembro (colaborador), activos y con enlace a su ficha.
+     * Mis clientes (F-033): los de los proyectos abiertos que gestiono (responsable) y aquellos en los
+     * que colaboro: miembro de alguno de sus proyectos o unido en la Weekly (D-221, `subscribed`, que
+     * es lo único que se puede dejar desde aquí). Solo clientes activos, con enlace a su ficha.
      *
      * @return array{owned: list<array<string, mixed>>, member: list<array<string, mixed>>}
      */
-    private function myClients(User $user): array
+    private function myClients(User $user, WeeklyClientSubscriptions $subscriptions): array
     {
         $projects = $user->projects()
             ->notArchived()
@@ -243,22 +246,40 @@ class WeeklyCycleController extends Controller
             ->orderBy('code')
             ->get(['projects.id', 'projects.client_id', 'projects.code', 'projects.name', 'projects.owner_user_id']);
 
+        $subscribed = array_flip($subscriptions->clientIds($user));
         $groups = ['owned' => [], 'member' => []];
+        $entry = fn (Client $client): array => [
+            'id' => $client->id,
+            'name' => $client->name,
+            'icon' => $client->icon,
+            'subscribed' => isset($subscribed[$client->id]),
+            'projects' => [],
+        ];
 
         foreach ($projects as $project) {
-            $isManager = (bool) $project->membership?->is_manager;
-            $bucket = $isManager ? 'owned' : 'member';
-            $key = (int) $project->client_id;
-            $groups[$bucket][$key] ??= ['id' => $project->client?->id, 'name' => $project->client?->name, 'icon' => $project->client?->icon, 'projects' => []];
-            $groups[$bucket][$key]['projects'][] = [
-                'id' => $project->id,
-                'code' => $project->code,
-                'name' => $project->name,
-                'can_leave' => ! $isManager && $project->owner_user_id !== $user->id,
-            ];
+            $client = $project->client;
+
+            if (! $client instanceof Client) {
+                continue;
+            }
+
+            $bucket = ($project->membership?->is_manager || $project->owner_user_id === $user->id) ? 'owned' : 'member';
+            $groups[$bucket][$client->id] ??= $entry($client);
+            $groups[$bucket][$client->id]['projects'][] = ['id' => $project->id, 'code' => $project->code, 'name' => $project->name];
+        }
+
+        // Quien gestiona y colabora en el mismo cliente sale solo en «Gestionas».
+        $groups['member'] = array_diff_key($groups['member'], $groups['owned']);
+        $missing = array_diff_key($subscribed, $groups['owned'], $groups['member']);
+
+        if ($missing !== []) {
+            foreach (Client::query()->whereKey(array_keys($missing))->get(['id', 'name', 'icon']) as $client) {
+                $groups['member'][$client->id] = $entry($client);
+            }
         }
 
         $sort = function (array $list): array {
+            $list = array_values($list);
             usort($list, fn (array $a, array $b): int => strcmp(mb_strtolower((string) $a['name']), mb_strtolower((string) $b['name'])));
 
             return $list;
@@ -268,26 +289,28 @@ class WeeklyCycleController extends Controller
     }
 
     /**
-     * Proyectos abiertos a los que me puedo unir (F-034): los de clientes activos de los que aún no
-     * soy miembro. Se piden al abrir el diálogo (prop opcional).
+     * Clientes a los que me puedo unir (F-034, D-221): los activos que aún no son míos (ni por sus
+     * proyectos ni por la Weekly), con los códigos de sus proyectos abiertos para buscarlos. Se piden
+     * al abrir el diálogo (prop opcional).
      *
      * @return list<array<string, mixed>>
      */
-    private function joinableProjects(User $user): array
+    private function joinableClients(User $user, WeeklyClientSubscriptions $subscriptions): array
     {
-        return array_values(Project::query()
-            ->notArchived()
-            ->whereNotNull('client_id')
-            ->whereHas('client', fn ($client) => $client->where('is_active', true))
-            ->whereDoesntHave('members', fn ($members) => $members->whereKey($user->id))
-            ->with('client:id,name,icon')
-            ->orderBy('code')
-            ->get(['id', 'client_id', 'code', 'name'])
-            ->map(fn (Project $project): array => [
-                'id' => $project->id,
-                'code' => $project->code,
-                'name' => $project->name,
-                'client' => ['id' => $project->client?->id, 'name' => $project->client?->name, 'icon' => $project->client?->icon],
+        $mine = $user->projects()->notArchived()->whereNotNull('client_id')->pluck('projects.client_id')->map(fn ($id): int => (int) $id)->all();
+        $exclude = array_values(array_unique([...$mine, ...$subscriptions->clientIds($user)]));
+
+        return array_values(Client::query()
+            ->where('is_active', true)
+            ->whereKeyNot($exclude)
+            ->with(['projects' => fn ($projects) => $projects->notArchived()->orderBy('code')->select(['id', 'client_id', 'code', 'name'])])
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon'])
+            ->map(fn (Client $client): array => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'icon' => $client->icon,
+                'projects' => array_values($client->projects->map(fn (Project $project): array => ['id' => $project->id, 'code' => $project->code, 'name' => $project->name])->all()),
             ])
             ->all());
     }

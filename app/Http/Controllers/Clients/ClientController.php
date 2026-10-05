@@ -284,8 +284,6 @@ class ClientController extends Controller
             // La Weekly del cliente (Fase 10, F-129 a F-133): solo la pestaña abierta, diferida; null
             // sin el módulo o para quien no usa la Weekly.
             'weekly' => $weekly ? Inertia::defer(fn (): array => app(ClientWeeklyTabs::class)->for($client, $tab, $user), 'weekly') : null,
-            // «Unirme a proyectos» de este cliente (F-133, D-156): se pide al abrir el diálogo.
-            'joinable_projects' => Inertia::optional(fn (): array => $weekly ? ClientWeeklyTabs::joinableProjects($client, $user) : []),
             'projects' => ResourceProps::list(ProjectResource::collection($projects), $request),
             'hourBanks' => ResourceProps::list(ClientHourBankResource::collection($open), $request),
             'hourBankHistory' => ResourceProps::list(ClientHourBankResource::collection($history), $request),

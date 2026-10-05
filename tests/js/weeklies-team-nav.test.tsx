@@ -39,6 +39,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HomeWeeklyCard } from '@/components/weeklies/home-weekly-card';
 import { TeamStatusStrip } from '@/components/weeklies/team-status-strip';
+import { filterJoinableClients } from '@/components/weeklies/weekly-dialogs';
 import { compactWeekLabel } from '@/components/weeklies/weekly-ui';
 import type { Abilities, User } from '@/types';
 import type { WeeklyTeamMember, WeeklyTeamStatus } from '@/types/weeklies';
@@ -329,5 +330,36 @@ describe('tarjeta «Weekly» de Inicio', () => {
                 }),
             ).getByText('Carla Ruiz'),
         ).toBeTruthy();
+    });
+});
+
+describe('«Unirme a clientes» (F-034, D-221)', () => {
+    it('busca por el nombre del cliente y por el código o el nombre de sus proyectos, en orden', () => {
+        const clients = [
+            {
+                id: 2,
+                name: 'Peras',
+                icon: null,
+                projects: [{ id: 9, code: 'PER-BH1', name: 'Bolsa' }],
+            },
+            { id: 1, name: 'Ácaros', icon: null, projects: [] },
+            {
+                id: 3,
+                name: 'Manzanas',
+                icon: null,
+                projects: [{ id: 7, code: 'MAN-WE1', name: 'Web corporativa' }],
+            },
+        ];
+
+        expect(filterJoinableClients(clients, '').map((c) => c.id)).toEqual([
+            1, 3, 2,
+        ]);
+        expect(
+            filterJoinableClients(clients, 'per-bh').map((c) => c.id),
+        ).toEqual([2]);
+        expect(
+            filterJoinableClients(clients, 'CORPORATIVA').map((c) => c.id),
+        ).toEqual([3]);
+        expect(filterJoinableClients(clients, 'nada')).toEqual([]);
     });
 });

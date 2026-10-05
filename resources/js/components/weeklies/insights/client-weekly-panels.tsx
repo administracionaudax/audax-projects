@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import {
     CalendarDays,
     History,
@@ -7,6 +7,7 @@ import {
     Smile,
     TrendingDown,
     TrendingUp,
+    UserMinus,
     Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -29,8 +30,6 @@ import {
     ClientReportCard,
     ClientStatusBadge,
 } from '@/components/weeklies/client-report-card';
-import { JoinProjectsDialog } from '@/components/weeklies/weekly-dialogs';
-import { LeaveProject } from '@/components/weeklies/weekly-overview';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -39,6 +38,10 @@ import { aiSummary, teamActivity } from '@/routes/clients';
 import { show as showProject } from '@/routes/projects';
 import { show as showPerson } from '@/routes/team';
 import { show as showCycle } from '@/routes/weeklies';
+import {
+    join as joinClients,
+    leave as leaveClient,
+} from '@/routes/weeklies/clients';
 import type {
     ClientTeamMember,
     ClientWeeklyHistoryTab,
@@ -46,7 +49,6 @@ import type {
     ClientWeeklySummaryTab,
     ClientWeeklyTeamTab,
 } from '@/types/weekly-insights';
-import type { WeeklyJoinableProject } from '@/types/weeklies';
 
 /** Satisfacción con su tendencia frente al cierre anterior (F-096): número, flecha y texto. */
 export function SatisfactionTrend({
@@ -385,14 +387,20 @@ export function ClientTeamPanel({
     clientId,
     clientName,
     data,
-    joinable,
 }: {
     clientId: number;
     clientName: string;
     data: ClientWeeklyTeamTab;
-    joinable: WeeklyJoinableProject[] | undefined;
 }) {
     const [historyOf, setHistoryOf] = useState<ClientTeamMember | null>(null);
+    const [processing, setProcessing] = useState(false);
+    const subscribed = data.subscription.subscribed;
+    const options = {
+        preserveScroll: true,
+        only: ['weekly'],
+        onStart: () => setProcessing(true),
+        onFinish: () => setProcessing(false),
+    };
     const activity = data.ai?.state === 'done' ? data.ai.items : null;
 
     return (
@@ -534,24 +542,44 @@ export function ClientTeamPanel({
                     <h2 id="client-my-projects" className="text-base">
                         {t('weeklies.client.my_projects')}
                     </h2>
-                    <JoinProjectsDialog
-                        projects={joinable}
-                        trigger={
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                data-test="client-join-projects"
-                            >
+                    {subscribed || data.subscription.can_join ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={processing}
+                            aria-pressed={subscribed}
+                            data-test="client-join"
+                            onClick={() =>
+                                subscribed
+                                    ? router.delete(
+                                          leaveClient.url(clientId),
+                                          options,
+                                      )
+                                    : router.post(
+                                          joinClients.url(),
+                                          { client_ids: [clientId] },
+                                          options,
+                                      )
+                            }
+                        >
+                            {subscribed ? (
+                                <UserMinus aria-hidden="true" />
+                            ) : (
                                 <Plus aria-hidden="true" />
-                                {t('weeklies.client.join')}
-                            </Button>
-                        }
-                    />
+                            )}
+                            {subscribed
+                                ? t('weeklies.client.leave_client')
+                                : t('weeklies.client.join')}
+                        </Button>
+                    ) : null}
                 </div>
+                <p className="text-sm text-muted-foreground">
+                    {t('weeklies.client.join_hint')}
+                </p>
                 {data.my_projects.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        {t('weeklies.clients.member_empty')}
+                        {t('weeklies.client.my_projects_empty')}
                     </p>
                 ) : (
                     <ul className="flex flex-wrap gap-1.5">
@@ -570,12 +598,6 @@ export function ClientTeamPanel({
                                 >
                                     {project.code}
                                 </Link>
-                                {project.can_leave ? (
-                                    <LeaveProject
-                                        projectId={project.id}
-                                        code={project.code}
-                                    />
-                                ) : null}
                             </li>
                         ))}
                     </ul>

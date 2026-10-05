@@ -29,8 +29,8 @@ return [
         'exemption_removed' => 'Exención quitada.',
         'waived' => 'Ya puedes rellenar y enviar tu weekly.',
         'waiver_undone' => 'Vuelves a estar exento esta semana.',
-        'joined' => '{0} Ya eras miembro de esos proyectos.|{1} Te has unido a 1 proyecto.|[2,*] Te has unido a :count proyectos.',
-        'left' => 'Has dejado el proyecto :project.',
+        'joined' => '{0} Ya estabas en el equipo de esos clientes.|{1} Te has unido a 1 cliente.|[2,*] Te has unido a :count clientes.',
+        'left' => 'Has dejado el cliente :client.',
         'closed' => 'Weekly «:label» cerrada. Se ha abierto la siguiente: :next. La satisfacción de los clientes se calcula en segundo plano.',
     ],
 
@@ -159,8 +159,7 @@ return [
         'person' => 'Elige a una persona que participe en la weekly de esta semana.',
         'note_too_long' => 'La nota puede tener como mucho 500 caracteres.',
         'not_exempt' => 'No estás exento esta semana.',
-        'projects' => 'Elige proyectos abiertos de clientes activos.',
-        'manager_cannot_leave' => 'Gestionas este proyecto: no puedes dejarlo desde aquí.',
+        'clients' => 'Elige clientes activos.',
     ],
 
     // Dictado (F-049, F-050, F-171 y F-172).

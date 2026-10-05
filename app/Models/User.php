@@ -206,6 +206,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Clientes a los que me he unido en la Weekly (D-221): solo para la Weekly, sin acceso a sus
+     * proyectos. Ver App\Domain\Weeklies\WeeklyClientSubscriptions.
+     *
+     * @return BelongsToMany<Client, $this>
+     */
+    public function weeklyClients(): BelongsToMany
+    {
+        return $this->belongsToMany(Client::class, 'weekly_client_subscriptions')->withTimestamps();
+    }
+
+    /**
      * Proyectos que gestiona (principal o co-gestor, D-005).
      *
      * @return BelongsToMany<Project, $this, ProjectMember, 'membership'>

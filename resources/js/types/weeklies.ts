@@ -304,15 +304,20 @@ export type WeeklyMyClient = {
     id: number;
     name: string;
     icon: string | null;
-    projects: { id: number; code: string; name: string; can_leave: boolean }[];
+    /** Unido en la Weekly (D-221): es lo único que se puede dejar desde aquí. */
+    subscribed: boolean;
+    projects: { id: number; code: string; name: string }[];
 };
 
-/** «Unirme a proyectos» (F-034, D-156): prop opcional `joinable_projects`. */
-export type WeeklyJoinableProject = {
+/**
+ * «Unirme a clientes» (F-034, D-221): prop opcional `joinable_clients`, con los códigos de sus
+ * proyectos abiertos para buscarlos. Unirse NO da acceso a los proyectos.
+ */
+export type WeeklyJoinableClient = {
     id: number;
-    code: string;
     name: string;
-    client: { id: number; name: string; icon: string | null };
+    icon: string | null;
+    projects: { id: number; code: string; name: string }[];
 };
 
 /** Fila de «Mis weeklies» (F-042), MyWeeklyHistory. */
@@ -742,8 +747,8 @@ export type WeekliesIndexPageProps = {
     me: MyWeeklyStatus | null;
     streak: WeeklyStreakSummary;
     my_clients: { owned: WeeklyMyClient[]; member: WeeklyMyClient[] };
-    /** Opcional: se pide con router.reload({ only: ['joinable_projects'] }). */
-    joinable_projects?: WeeklyJoinableProject[];
+    /** Opcional: se pide con router.reload({ only: ['joinable_clients'] }). */
+    joinable_clients?: WeeklyJoinableClient[];
     can: {
         manage: boolean;
         create: boolean;

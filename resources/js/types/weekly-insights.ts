@@ -140,12 +140,14 @@ export type ClientWeeklyTeamTab = {
     owner_id: number | null;
     members: ClientTeamMember[];
     ai: AiSummary | null;
+    /** Mis proyectos abiertos en el cliente, solo para enlazarlos (D-221). */
     my_projects: {
         id: number;
         code: string;
         name: string;
-        can_leave: boolean;
     }[];
+    /** «Unirme a este cliente» de la Weekly (F-133, D-221): una suscripción, no una membresía. */
+    subscription: { subscribed: boolean; can_join: boolean };
 };
 
 export type ClientSatisfactionPointRow = {

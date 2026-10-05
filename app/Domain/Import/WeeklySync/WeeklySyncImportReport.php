@@ -21,6 +21,7 @@ final class WeeklySyncImportReport
     public const array TYPES = [
         'people' => 'Personas',
         'clients' => 'Clientes',
+        'client_team' => 'Colaboradores de clientes (Weekly)',
         'cycles' => 'Semanas',
         'submissions' => 'Envíos',
         'drafts' => 'Borradores',
@@ -60,6 +61,7 @@ final class WeeklySyncImportReport
     public const array TABLE_TYPES = [
         'users' => 'people',
         'clients' => 'clients',
+        'client_team_members' => 'client_team',
         'week_cycles' => 'cycles',
         'weekly_submissions' => 'submissions',
         'client_report_entries' => 'entries',

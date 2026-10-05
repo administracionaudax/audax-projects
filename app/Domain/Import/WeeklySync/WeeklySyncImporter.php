@@ -7,6 +7,7 @@ use App\Domain\Import\ClickUp\ImportRefs;
 use App\Domain\Import\ClickUp\SilentOutput;
 use App\Domain\Import\WeeklySync\Stages\AiUsageStage;
 use App\Domain\Import\WeeklySync\Stages\ClientsStage;
+use App\Domain\Import\WeeklySync\Stages\ClientTeamStage;
 use App\Domain\Import\WeeklySync\Stages\HelpStage;
 use App\Domain\Import\WeeklySync\Stages\PeopleStage;
 use App\Domain\Import\WeeklySync\Stages\RemindersStage;
@@ -50,6 +51,7 @@ final class WeeklySyncImporter
     public function __construct(
         private readonly PeopleStage $people,
         private readonly ClientsStage $clients,
+        private readonly ClientTeamStage $clientTeam,
         private readonly WeeksStage $weeks,
         private readonly TasksStage $tasks,
         private readonly RemindersStage $reminders,
@@ -104,6 +106,7 @@ final class WeeklySyncImporter
                 DB::transaction(function () use ($context): void {
                     $this->people->run($context);
                     $this->clients->run($context);
+                    $this->clientTeam->run($context);
                 });
 
                 $output->stage('Semanas, envíos, audios y satisfacción');

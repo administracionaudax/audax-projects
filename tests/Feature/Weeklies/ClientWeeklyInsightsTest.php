@@ -204,7 +204,7 @@ it('el equipo: el responsable primero, los miembros con sus proyectos y su hist�
                 ->where('weekly.members.1.projects.0.code', 'ACME-WE1')
                 ->where('weekly.members.1.reports.0.body', 'Maquetación')
                 ->where('weekly.my_projects.0.code', 'ACME-WE1')
-                ->where('weekly.my_projects.0.can_leave', true)));
+                ->where('weekly.subscription', ['subscribed' => false, 'can_join' => true])));
 });
 
 it('la satisfacción: la serie de cada cierre y las tendencias semanal, mensual y trimestral', function () {
@@ -415,7 +415,8 @@ it('la cartera y las pestañas de la ficha no crecen con el histórico ni con el
         'ficha' => ["/clientes/{$this->acme->id}", null, 18],
         'resumen' => ["/clientes/{$this->acme->id}", 'weekly', 14],
         'historial' => ["/clientes/{$this->acme->id}?pestana=historial", 'weekly', 14],
-        'equipo' => ["/clientes/{$this->acme->id}?pestana=equipo", 'weekly', 18],
+        // +2 con D-221: quién se ha unido al cliente en la Weekly y si me he unido yo.
+        'equipo' => ["/clientes/{$this->acme->id}?pestana=equipo", 'weekly', 20],
         'satisfacción' => ["/clientes/{$this->acme->id}?pestana=satisfaccion", 'weekly', 12],
     ];
 

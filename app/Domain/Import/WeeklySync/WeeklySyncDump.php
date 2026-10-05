@@ -31,6 +31,7 @@ final class WeeklySyncDump
         'users',
         'user_identities',
         'clients',
+        'client_team_members',
         'project_status_entries',
         'week_cycles',
         'weekly_submissions',

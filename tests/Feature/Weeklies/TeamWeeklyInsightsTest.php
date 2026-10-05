@@ -240,7 +240,8 @@ it('la lista y la ficha no crecen con la plantilla ni con el histórico', functi
 
         return $count;
     };
-    $pages = ['equipo' => ['/equipo', 24], 'ficha' => ["/equipo/{$this->ana->id}", 30]];
+    // La ficha, +1 con D-221: los clientes a los que se ha unido en la Weekly.
+    $pages = ['equipo' => ['/equipo', 24], 'ficha' => ["/equipo/{$this->ana->id}", 31]];
 
     $grow(3);
     $small = array_map(fn (array $page): int => $measure($page[0]), $pages);

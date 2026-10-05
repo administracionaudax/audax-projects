@@ -25,11 +25,11 @@ import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { update as updateDeadline } from '@/routes/weeklies/deadline';
 import { store as storeExemption } from '@/routes/weeklies/exemptions';
-import { join as joinProjects } from '@/routes/weeklies/projects';
+import { join as joinClients } from '@/routes/weeklies/clients';
 import type { UserSummary } from '@/types';
 import type {
     WeeklyCycleSummary,
-    WeeklyJoinableProject,
+    WeeklyJoinableClient,
 } from '@/types/weeklies';
 
 /** Días que se puede alargar el plazo tras el viernes (UpdateWeeklyDeadlineRequest). */
@@ -240,14 +240,15 @@ export function ExemptDialog({
 }
 
 /**
- * «Unirme a proyectos» (F-034, D-156): varios a la vez, como miembro. La lista (prop opcional
- * `joinable_projects`) se pide al abrir el diálogo.
+ * «Unirme a clientes» (F-034, D-221): varios a la vez. Es una suscripción de la Weekly: el cliente
+ * sale propuesto en «Mi weekly», en «Mis clientes» y en su equipo, sin acceso a sus proyectos. La
+ * lista (prop opcional `joinable_clients`) se pide al abrir el diálogo.
  */
-export function JoinProjectsDialog({
-    projects,
+export function JoinClientsDialog({
+    clients,
     trigger,
 }: {
-    projects: WeeklyJoinableProject[] | undefined;
+    clients: WeeklyJoinableClient[] | undefined;
     trigger: ReactNode;
 }) {
     const id = useId();
@@ -258,47 +259,19 @@ export function JoinProjectsDialog({
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const groups = useMemo(() => {
-        const needle = query.trim().toLocaleLowerCase('es');
-        const map = new Map<
-            number,
-            {
-                client: WeeklyJoinableProject['client'];
-                projects: WeeklyJoinableProject[];
-            }
-        >();
+    const shown = useMemo(
+        () => filterJoinableClients(clients ?? [], query),
+        [clients, query],
+    );
 
-        for (const project of projects ?? []) {
-            const haystack =
-                `${project.code} ${project.name} ${project.client.name}`.toLocaleLowerCase(
-                    'es',
-                );
-
-            if (needle !== '' && !haystack.includes(needle)) {
-                continue;
-            }
-
-            const group = map.get(project.client.id) ?? {
-                client: project.client,
-                projects: [],
-            };
-            group.projects.push(project);
-            map.set(project.client.id, group);
-        }
-
-        return [...map.values()].sort((a, b) =>
-            a.client.name.localeCompare(b.client.name, 'es'),
-        );
-    }, [projects, query]);
-
-    const toggle = (projectId: number, checked: boolean) =>
+    const toggle = (clientId: number, checked: boolean) =>
         setSelected((current) => {
             const next = new Set(current);
 
             if (checked) {
-                next.add(projectId);
+                next.add(clientId);
             } else {
-                next.delete(projectId);
+                next.delete(clientId);
             }
 
             return next;
@@ -316,7 +289,7 @@ export function JoinProjectsDialog({
                     setError(null);
                     setLoading(true);
                     router.reload({
-                        only: ['joinable_projects'],
+                        only: ['joinable_clients'],
                         onFinish: () => setLoading(false),
                     });
                 }
@@ -329,8 +302,8 @@ export function JoinProjectsDialog({
                     onSubmit={(event) => {
                         event.preventDefault();
                         router.post(
-                            joinProjects.url(),
-                            { project_ids: [...selected] },
+                            joinClients.url(),
+                            { client_ids: [...selected] },
                             {
                                 preserveScroll: true,
                                 onStart: () => setProcessing(true),
@@ -369,73 +342,63 @@ export function JoinProjectsDialog({
                         className="max-h-80 min-w-0 overflow-y-auto border"
                         aria-busy={loading}
                     >
-                        {loading && projects === undefined ? (
+                        {loading && clients === undefined ? (
                             <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
                                 <Spinner />
                                 {t('weeklies.join.loading')}
                             </p>
-                        ) : groups.length === 0 ? (
+                        ) : shown.length === 0 ? (
                             <p className="p-3 text-sm text-muted-foreground">
                                 {t('weeklies.join.empty')}
                             </p>
                         ) : (
-                            groups.map((group) => (
-                                <fieldset
-                                    key={group.client.id}
-                                    className="border-b p-3 last:border-b-0"
-                                >
-                                    <legend className="sr-only">
-                                        {group.client.name}
-                                    </legend>
-                                    <p
-                                        aria-hidden="true"
-                                        className="mb-2 flex items-center gap-2 text-sm font-medium"
-                                    >
-                                        <ClientIcon
-                                            icon={group.client.icon}
-                                            className="size-6"
-                                        />
-                                        {group.client.name}
-                                    </p>
-                                    <ul className="grid gap-1.5">
-                                        {group.projects.map((project) => {
-                                            const checkbox = `${id}-${project.id}`;
+                            <ul className="grid">
+                                {shown.map((client) => {
+                                    const checkbox = `${id}-${client.id}`;
 
-                                            return (
-                                                <li
-                                                    key={project.id}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    <Checkbox
-                                                        id={checkbox}
-                                                        checked={selected.has(
-                                                            project.id,
-                                                        )}
-                                                        onCheckedChange={(
-                                                            checked,
-                                                        ) =>
-                                                            toggle(
-                                                                project.id,
-                                                                checked ===
-                                                                    true,
+                                    return (
+                                        <li
+                                            key={client.id}
+                                            className="flex items-center gap-2 border-b p-3 last:border-b-0"
+                                        >
+                                            <Checkbox
+                                                id={checkbox}
+                                                checked={selected.has(
+                                                    client.id,
+                                                )}
+                                                onCheckedChange={(checked) =>
+                                                    toggle(
+                                                        client.id,
+                                                        checked === true,
+                                                    )
+                                                }
+                                            />
+                                            <ClientIcon
+                                                icon={client.icon}
+                                                className="size-6"
+                                            />
+                                            <label
+                                                htmlFor={checkbox}
+                                                className="grid min-w-0 text-sm"
+                                            >
+                                                <span className="truncate">
+                                                    {client.name}
+                                                </span>
+                                                {client.projects.length > 0 ? (
+                                                    <span className="truncate text-xs text-muted-foreground">
+                                                        {client.projects
+                                                            .map(
+                                                                (project) =>
+                                                                    project.code,
                                                             )
-                                                        }
-                                                    />
-                                                    <label
-                                                        htmlFor={checkbox}
-                                                        className="min-w-0 text-sm"
-                                                    >
-                                                        <span className="text-muted-foreground">
-                                                            {project.code}
-                                                        </span>{' '}
-                                                        {project.name}
-                                                    </label>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </fieldset>
-                            ))
+                                                            .join(' · ')}
+                                                    </span>
+                                                ) : null}
+                                            </label>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         )}
                     </div>
                     {error ? (
@@ -469,4 +432,29 @@ export function JoinProjectsDialog({
             </DialogContent>
         </Dialog>
     );
+}
+
+/** Busca por el nombre del cliente o por el código o el nombre de sus proyectos abiertos. */
+export function filterJoinableClients(
+    clients: WeeklyJoinableClient[],
+    query: string,
+): WeeklyJoinableClient[] {
+    const needle = query.trim().toLocaleLowerCase('es');
+
+    return clients
+        .filter(
+            (client) =>
+                needle === '' ||
+                [
+                    client.name,
+                    ...client.projects.flatMap((project) => [
+                        project.code,
+                        project.name,
+                    ]),
+                ]
+                    .join(' ')
+                    .toLocaleLowerCase('es')
+                    .includes(needle),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
