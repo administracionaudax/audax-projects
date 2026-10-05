@@ -23,6 +23,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklySubmission;
+use Carbon\CarbonImmutable;
 use Closure;
 
 /**
@@ -46,7 +47,7 @@ final class LlmWeeklyReportGenerator implements WeeklyReportGenerator
     /** Margen bajo los 600 s del Job (AiQueue::TIMEOUT), como los 10 minutos del original. */
     public const int DEADLINE_SECONDS = 570;
 
-    private float $deadline = 0.0;
+    private ?CarbonImmutable $deadline = null;
 
     public function __construct(
         private readonly LlmClient $llm,
@@ -55,7 +56,7 @@ final class LlmWeeklyReportGenerator implements WeeklyReportGenerator
 
     public function generate(WeeklyCycle $cycle, ?User $requestedBy = null, ?Closure $progress = null): GeneratedWeeklyReport
     {
-        $this->deadline = microtime(true) + self::DEADLINE_SECONDS;
+        $this->deadline = CarbonImmutable::now()->addSeconds(self::DEADLINE_SECONDS);
 
         $submissions = WeeklySubmission::query()
             ->submitted()
@@ -263,7 +264,7 @@ final class LlmWeeklyReportGenerator implements WeeklyReportGenerator
 
     private function checkDeadline(): void
     {
-        if (microtime(true) >= $this->deadline) {
+        if ($this->deadline !== null && CarbonImmutable::now()->greaterThanOrEqualTo($this->deadline)) {
             throw new LlmUnavailable('La generación de la weekly tardó más de 10 minutos.');
         }
     }

@@ -106,12 +106,8 @@ it('las acciones aún sin hacer responden 501 tras autorizar, y 403 a quien no p
     $this->actingAs(userWithRole($allowed))->json($method, $path)->assertStatus(501);
     $this->actingAs(userWithRole($denied))->json($method, $path)->assertForbidden();
 })->with([
-    'cerrar' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/cerrar", 'department_manager', 'employee'],
-    'generar informe' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/informe", 'admin', 'employee'],
-    'generar audio' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/audio", 'department_manager', 'employee'],
     'avisos' => ['GET', fn (WeeklyCycle $c) => '/weeklies/avisos', 'admin', 'employee'],
     'recordar' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/recordar", 'department_manager', 'employee'],
-    'uso de IA' => ['GET', fn (WeeklyCycle $c) => '/admin/uso-ia', 'admin', 'department_manager'],
     'contenido de ayuda' => ['POST', fn (WeeklyCycle $c) => '/ayuda/preguntas', 'department_manager', 'employee'],
     'tableros' => ['POST', fn (WeeklyCycle $c) => '/ayuda/sugerencias/tableros', 'admin', 'employee'],
 ]);
@@ -126,6 +122,10 @@ it('lo de 10.2 lo hace solo quien gestiona: 403 a la plantilla', function (strin
     'ampliar plazo' => ['PUT', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/plazo"],
     'borrar' => ['DELETE', fn (WeeklyCycle $c) => "/weeklies/{$c->id}"],
     'eximir' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/exenciones"],
+    'cerrar (10.3)' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/cerrar"],
+    'generar informe (10.3)' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/informe"],
+    'editar informe (10.3)' => ['PUT', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/informe"],
+    'generar audio (10.3)' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/audio"],
 ]);
 
 it('lo de cada persona responde 501 a cualquiera de la plantilla', function (string $method, string $path) {
@@ -133,7 +133,6 @@ it('lo de cada persona responde 501 a cualquiera de la plantilla', function (str
 
     $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertStatus(501);
 })->with([
-    ['GET', '/weeklies/{cycle}/informe/estado'],
     ['GET', '/weeklies/estado-proyectos'],
     ['POST', '/ia/preguntas'],
     ['POST', '/ayuda/sugerencias'],
