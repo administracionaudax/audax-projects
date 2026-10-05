@@ -150,6 +150,11 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
   - `GOOGLE_REDIRECT_URI=https://projects.audaxstudio.com/integraciones/google/callback`: debe coincidir exactamente con la URI autorizada en Google Cloud,
   - `GOOGLE_HOSTED_DOMAIN=audaxstudio.com` (por defecto): solo se aceptan cuentas de ese dominio,
   - la web las lee en la siguiente petición (no se usa `config:cache`); no hace falta reiniciar Horizon ni otros procesos, porque nada de Google va por colas.
+- **Entrar con Google (D-165):** el mismo cliente OAuth que Google Sheets,
+  - en Google Cloud (proyecto `audax-proyectos` → Credenciales → el cliente OAuth → «URIs de redirección autorizadas»), **añadir** `https://projects.audaxstudio.com/login/google/callback` junto a la de Google Sheets,
+  - `GOOGLE_LOGIN_REDIRECT_URI=https://projects.audaxstudio.com/login/google/callback` (opcional: vacía, la app usa esa misma ruta de `APP_URL`),
+  - `GOOGLE_LOGIN_DOMAINS=audaxstudio.com` (por defecto; varios, separados por comas),
+  - se activa o desactiva en `/admin/ajustes` → Seguridad → «Entrar con Google» (activado por defecto; sin credenciales no se ofrece).
 
 ## 7. Comprobaciones rápidas
 
