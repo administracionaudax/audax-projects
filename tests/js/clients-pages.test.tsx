@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { hourBankAlerts, hourBankLevel } from '@/components/charts/thresholds';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import ClientsIndex from '@/pages/clients/index';
 import ClientShow from '@/pages/clients/show';
 import type {
@@ -216,6 +217,70 @@ describe('listado de clientes', () => {
             expect.anything(),
         );
         vi.useRealTimers();
+    });
+
+    it('con la Weekly: icono, insignias, último reporte y satisfacción con tendencia; ordena y filtra (F-123 y F-124)', async () => {
+        const user = userEvent.setup();
+        render(
+            <TooltipProvider>
+                <ClientsIndex
+                    {...indexProps([
+                        row({
+                            icon: '🍷',
+                            satisfaction_score: 64,
+                            satisfaction_trend: 4,
+                            last_report_at: '2026-10-02T15:00:00+00:00',
+                            kind_badges: [
+                                { tag: 'web', count: 1 },
+                                { tag: 'hour_bank', count: 2 },
+                            ],
+                        }),
+                    ])}
+                    people={[{ id: 7, name: 'Raúl' }]}
+                    weekly
+                />
+            </TooltipProvider>,
+        );
+
+        const rows = within(
+            screen.getByRole('table', { name: 'Clientes' }),
+        ).getAllByRole('row');
+        expect(within(rows[0]).getByText('Último reporte')).toBeTruthy();
+        expect(within(rows[1]).getByText('02/10/2026')).toBeTruthy();
+        expect(within(rows[1]).getByText('64 %')).toBeTruthy();
+        expect(
+            within(rows[1]).getByText(
+                'Sube 4 puntos frente al cierre anterior',
+            ),
+        ).toBeTruthy();
+        expect(within(rows[1]).getByText('2 Bolsas de horas')).toBeTruthy();
+        expect(within(rows[0]).queryByText('Contacto')).toBeNull();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Ordenar por Satisfacción' }),
+        );
+        expect(inertia.get).toHaveBeenLastCalledWith(
+            '/clientes',
+            { orden: 'satisfaccion', dir: 'desc' },
+            expect.anything(),
+        );
+
+        await user.selectOptions(
+            screen.getByLabelText('Tipo de proyecto'),
+            'hour_bank',
+        );
+        expect(inertia.get).toHaveBeenLastCalledWith(
+            '/clientes',
+            expect.objectContaining({ tipo: 'hour_bank' }),
+            expect.anything(),
+        );
+
+        await user.click(screen.getByLabelText('Mis proyectos'));
+        expect(inertia.get).toHaveBeenLastCalledWith(
+            '/clientes',
+            expect.objectContaining({ mios: '1' }),
+            expect.anything(),
+        );
     });
 
     it('sin clientes, un estado vacío', () => {

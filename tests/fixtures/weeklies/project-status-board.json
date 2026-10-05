@@ -16,7 +16,11 @@
             "status": "active",
             "budget_minutes": null,
             "description": null,
-            "bank": { "name": "BH1 - 20h", "total_minutes": 1200, "start_date": "2026-09-01" },
+            "bank": {
+                "name": "BH1 - 20h",
+                "total_minutes": 1200,
+                "start_date": "2026-09-01"
+            },
             "entries": [["2026-10-06", 300]]
         },
         {
@@ -28,7 +32,10 @@
             "budget_minutes": null,
             "description": "Fee mensual de 20 h.",
             "bank": null,
-            "entries": [["2026-10-02", 300], ["2026-09-30", 120]]
+            "entries": [
+                ["2026-10-02", 300],
+                ["2026-09-30", 120]
+            ]
         },
         {
             "client": "acme",
@@ -39,7 +46,10 @@
             "budget_minutes": 6000,
             "description": null,
             "bank": null,
-            "entries": [["2026-08-10", 6100], ["2026-10-07", 60]]
+            "entries": [
+                ["2026-08-10", 6100],
+                ["2026-10-07", 60]
+            ]
         },
         {
             "client": "acme",
@@ -106,7 +116,13 @@
                     "expected_minutes": null,
                     "deviation_minutes": null,
                     "week_minutes": 60,
-                    "ui": { "progress": 102.67, "over": true, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                    "ui": {
+                        "progress": 102.67,
+                        "over": true,
+                        "expected_percent": null,
+                        "tone": "neutral",
+                        "delta_value": null
+                    }
                 },
                 {
                     "code": "ACME-FE1",
@@ -118,7 +134,13 @@
                     "expected_minutes": 343,
                     "deviation_minutes": -43,
                     "week_minutes": 0,
-                    "ui": { "progress": 25, "over": false, "expected_percent": 28.58, "tone": "negative", "delta_value": "-0:43" }
+                    "ui": {
+                        "progress": 25,
+                        "over": false,
+                        "expected_percent": 28.58,
+                        "tone": "negative",
+                        "delta_value": "-0:43"
+                    }
                 },
                 {
                     "code": "ACME-BH",
@@ -130,7 +152,13 @@
                     "expected_minutes": null,
                     "deviation_minutes": null,
                     "week_minutes": 300,
-                    "ui": { "progress": 25, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                    "ui": {
+                        "progress": 25,
+                        "over": false,
+                        "expected_percent": null,
+                        "tone": "neutral",
+                        "delta_value": null
+                    }
                 },
                 {
                     "code": "ACME-SOP",
@@ -142,7 +170,13 @@
                     "expected_minutes": null,
                     "deviation_minutes": null,
                     "week_minutes": 0,
-                    "ui": { "progress": 0, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                    "ui": {
+                        "progress": 0,
+                        "over": false,
+                        "expected_percent": null,
+                        "tone": "neutral",
+                        "delta_value": null
+                    }
                 }
             ]
         },
@@ -160,7 +194,13 @@
                     "expected_minutes": null,
                     "deviation_minutes": null,
                     "week_minutes": 30,
-                    "ui": { "progress": 1, "over": false, "expected_percent": null, "tone": "neutral", "delta_value": null }
+                    "ui": {
+                        "progress": 1,
+                        "over": false,
+                        "expected_percent": null,
+                        "tone": "neutral",
+                        "delta_value": null
+                    }
                 }
             ]
         }
