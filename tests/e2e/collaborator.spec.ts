@@ -37,6 +37,8 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
         await expect(nav.getByRole('link', { name: 'Chat' })).toBeVisible();
 
         for (const name of [
+            'Mi espacio',
+            'Weeklies',
             'Clientes',
             'Bolsas',
             'Carga',
