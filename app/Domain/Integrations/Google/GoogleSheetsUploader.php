@@ -229,7 +229,11 @@ final class GoogleSheetsUploader
             $response = $call($this->oauth->accessToken($user, force: true));
 
             if ($response->status() === 401) {
-                $user->googleConnection()->delete();
+                $connection = $user->googleConnection()->first();
+
+                if ($connection !== null) {
+                    GoogleDisconnector::forgetRevoked($connection);
+                }
 
                 throw new GoogleReconnectRequired('Google Drive rejected a fresh access token');
             }

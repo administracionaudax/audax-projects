@@ -193,7 +193,7 @@ final class GoogleOAuth
         ]));
 
         if ($response->json('error') === 'invalid_grant') {
-            $connection->delete();
+            GoogleDisconnector::forgetRevoked($connection);
 
             throw new GoogleReconnectRequired('Google refresh token revoked (invalid_grant)');
         }

@@ -2,6 +2,8 @@
 
 namespace App\Domain\Access;
 
+use App\Domain\Integrations\Google\GoogleDisconnector;
+use App\Domain\Integrations\Google\GoogleDisconnectReason;
 use App\Enums\ConversationType;
 use App\Enums\Role;
 use App\Models\ActiveTimer;
@@ -20,12 +22,15 @@ use Illuminate\Support\Facades\DB;
  * - si era su responsable, se quedan sin responsable,
  * - si tenía el temporizador en marcha en una de ellas, se descarta sin imputar.
  * Al pasar a colaborador, además, deja de ser co-gestor de sus proyectos y sale (left_at) de sus
- * directas y sus grupos: su histórico se conserva, pero ya no los ve.
+ * directas y sus grupos: su histórico se conserva, pero ya no los ve. Y se desconecta su cuenta de
+ * Google (D-142).
  * Las personas que aparecen en el panel de la tarea por su histórico (autores de comentarios y
  * creador) se mantienen: es una decisión de producto.
  */
 final class CollaboratorOffboarding
 {
+    public function __construct(private readonly GoogleDisconnector $google) {}
+
     /**
      * Ha salido del proyecto (ProjectMembership::remove).
      */
@@ -79,6 +84,10 @@ final class CollaboratorOffboarding
             ->whereNull('left_at')
             ->whereHas('conversation', fn (Builder $query) => $query->whereIn('type', [ConversationType::Direct->value, ConversationType::Group->value]))
             ->update(['left_at' => now()]);
+
+        // Un colaborador externo no tiene Integraciones (D-134, D-142): su cuenta de Google se
+        // desconecta y el token se revoca desde la cola.
+        $this->google->disconnect($user, GoogleDisconnectReason::BecameCollaborator);
 
         User::forgetMemberships();
     }

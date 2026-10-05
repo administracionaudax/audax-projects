@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Integrations;
 
 use App\Domain\Integrations\Google\GoogleAuthorizationFailed;
+use App\Domain\Integrations\Google\GoogleConnectionAudit;
+use App\Domain\Integrations\Google\GoogleDisconnectReason;
 use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Integrations\Google\GoogleUnavailable;
 use App\Http\Controllers\Controller;
@@ -23,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  *   manda a Google,
  * - callback: comprueba el `state`, cambia el código por los tokens y guarda la conexión,
  * - destroy: revoca en Google y borra la conexión.
+ * Conectar y desconectar quedan en la auditoría (log integrations, GoogleConnectionAudit).
  *
  * Sin credenciales (GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET), la página dice que no está
  * disponible y conectar o volver de Google responde 404.
@@ -85,6 +88,7 @@ class IntegrationsController extends Controller
             }
 
             $connection = $oauth->connect($this->user($request), $code, $verifier);
+            GoogleConnectionAudit::connected($this->user($request), $connection->google_email);
         } catch (GoogleAuthorizationFailed $exception) {
             return $this->back('error', $exception->userMessage());
         } catch (GoogleUnavailable $exception) {
@@ -104,7 +108,10 @@ class IntegrationsController extends Controller
             return to_route('integrations.edit');
         }
 
+        $email = $connection->google_email;
         $revoked = $oauth->disconnect($connection);
+
+        GoogleConnectionAudit::disconnected($this->user($request), $email, GoogleDisconnectReason::Manual, $revoked);
 
         return $this->back('success', $this->text($revoked ? 'integrations.google.disconnected' : 'integrations.google.disconnected_unconfirmed'));
     }

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Audit;
 
+use App\Domain\Integrations\Google\GoogleDisconnectReason;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BillingType;
@@ -107,6 +108,7 @@ final class AuditValues
         'time_entries' => ['status' => TimeEntryStatus::class],
         'timesheet_periods' => ['status' => TimesheetStatus::class, 'from' => TimesheetStatus::class],
         'absences' => ['status' => AbsenceStatus::class, 'type' => AbsenceType::class],
+        'integrations' => ['reason' => GoogleDisconnectReason::class],
         'task_statuses' => ['from' => TaskStatusCategory::class, 'to' => TaskStatusCategory::class],
     ];
 

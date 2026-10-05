@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Auth\SessionTerminator;
+use App\Domain\Integrations\Google\GoogleDisconnector;
+use App\Domain\Integrations\Google\GoogleDisconnectReason;
 use App\Enums\ConversationType;
 use App\Enums\Role;
 use App\Events\MembershipsChanged;
@@ -457,13 +459,17 @@ class User extends Authenticatable
 
     /**
      * Al desactivar a un usuario se cierran todas sus sesiones y su «Recordarme» (SPEC §14): no
-     * basta con que EnsureUserIsActive lo expulse en la siguiente petición.
+     * basta con que EnsureUserIsActive lo expulse en la siguiente petición. También se desconecta
+     * su cuenta de Google (D-142).
      */
     protected static function booted(): void
     {
         static::updated(function (User $user): void {
             if ($user->wasChanged('is_active') && ! $user->is_active) {
                 app(SessionTerminator::class)->destroyAll($user);
+
+                // Y su cuenta de Google deja de estar conectada (D-142): la revocación va por la cola.
+                app(GoogleDisconnector::class)->disconnect($user, GoogleDisconnectReason::Deactivated);
             }
         });
     }

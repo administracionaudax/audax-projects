@@ -27,6 +27,7 @@ return [
         'chat' => 'Chat',
         'import' => 'Importación',
         'report_delivery' => 'Informes (exportados y enviados)',
+        'integration' => 'Integraciones',
         'other' => 'Otros',
     ],
 
@@ -58,6 +59,7 @@ return [
         'report_generated' => 'Informes generados',
         'report_printed' => 'Informes impresos',
         'sheets_exported' => 'Informes exportados a Google Sheets',
+        'integration_changed' => 'Cuentas de Google conectadas y desconectadas',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -108,6 +110,9 @@ return [
         'generated' => 'Informe generado',
         'printed' => 'Informe impreso',
         'sheets' => 'Exportado a Google Sheets',
+        'google_connected' => 'Cuenta de Google conectada',
+        'google_disconnected' => 'Cuenta de Google desconectada',
+        'google_auto_disconnected' => 'Cuenta de Google desconectada automáticamente',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).
@@ -270,6 +275,10 @@ return [
         'personal_data_export_days' => 'Días para descargar los datos personales',
         'disk_warning_percent' => 'Aviso de disco',
         'attachments_warning_gb' => 'Aviso de adjuntos',
+        // Integraciones (Fase 9, D-142).
+        'google_email' => 'Cuenta de Google',
+        'reason' => 'Motivo',
+        'revoked' => 'Revocada en Google',
     ],
 
     // Nombres que dependen del registro.
@@ -292,6 +301,12 @@ return [
         'and_more' => 'y :count más',
         'project_conversation' => 'Chat de :project',
         'direct_conversation' => 'Conversación directa',
+        'google_disconnect_reasons' => [
+            'manual' => 'La desconectó la persona',
+            'deactivated' => 'Baja de la persona',
+            'collaborator' => 'Pasó a colaborador externo',
+            'revoked' => 'Google retiró el acceso',
+        ],
         'weekdays' => [
             1 => 'Lunes',
             2 => 'Martes',

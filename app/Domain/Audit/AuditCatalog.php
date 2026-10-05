@@ -11,7 +11,8 @@ namespace App\Domain\Audit;
  *   usan holidays, task_statuses, timesheet_periods, time_entry_locks, settings, privacy y chat
  *   (moderación de mensajes y cambios en los grupos de la Fase 6), import (una entrada resumen
  *   por cada importación de ClickUp, D-136) y report-delivery (descargas, impresiones, envíos,
- *   envíos programados y subidas a Google Sheets de informes, D-139, D-141 y D-142).
+ *   envíos programados y subidas a Google Sheets de informes, D-139, D-141 y D-142) e
+ *   integrations (conexiones con Google: conectar, desconectar y la desconexión automática, D-142).
  */
 final class AuditCatalog
 {
@@ -38,6 +39,7 @@ final class AuditCatalog
         'chat' => ['chat'],
         'import' => ['import'],
         'report_delivery' => ['report-delivery'],
+        'integration' => ['integrations'],
     ];
 
     /**
@@ -74,6 +76,7 @@ final class AuditCatalog
         'report_generated' => ['generated'],
         'report_printed' => ['printed'],
         'sheets_exported' => ['sheets'],
+        'integration_changed' => ['google_connected', 'google_disconnected', 'google_auto_disconnected'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */
