@@ -172,7 +172,9 @@ function MemberAvatar({
                     <UserAvatar
                         user={member.user}
                         className={cn(
-                            group !== 'submitted' && 'opacity-60 grayscale',
+                            // Solo se apaga la foto: las iniciales mantienen el contraste AA (axe color-contrast).
+                            group !== 'submitted' &&
+                                'grayscale [&_img]:opacity-60',
                         )}
                     />
                     <span

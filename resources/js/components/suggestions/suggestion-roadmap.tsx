@@ -143,15 +143,18 @@ function CardBody({
                     ) : null}
                     <span
                         className="inline-flex items-center gap-1"
-                        aria-label={t('suggestions.comments_count', {
-                            count: post.comment_count,
-                        })}
+                        data-test="roadmap-comment-count"
                     >
                         <MessageCircle
                             aria-hidden="true"
                             className="size-3.5"
                         />
                         <span aria-hidden="true">{post.comment_count}</span>
+                        <span className="sr-only">
+                            {t('suggestions.comments_count', {
+                                count: post.comment_count,
+                            })}
+                        </span>
                     </span>
                 </div>
             </div>

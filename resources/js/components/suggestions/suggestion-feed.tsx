@@ -277,10 +277,7 @@ export function SuggestionFeed({
                                 </div>
                                 <span
                                     className="flex shrink-0 items-start gap-1 text-sm text-muted-foreground"
-                                    aria-label={t(
-                                        'suggestions.comments_count',
-                                        { count: post.comment_count },
-                                    )}
+                                    data-test="suggestion-comment-count"
                                 >
                                     <MessageCircle
                                         aria-hidden="true"
@@ -291,6 +288,11 @@ export function SuggestionFeed({
                                         className="tabular"
                                     >
                                         {post.comment_count}
+                                    </span>
+                                    <span className="sr-only">
+                                        {t('suggestions.comments_count', {
+                                            count: post.comment_count,
+                                        })}
                                     </span>
                                 </span>
                             </li>

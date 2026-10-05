@@ -99,6 +99,15 @@ describe('tira de estado del equipo (F-067)', () => {
             document.querySelector('[data-test="weekly-team-counter"]')
                 ?.textContent,
         ).toBe('2 / 3 reportes (1 exento)');
+
+        // Quien falta o está exento se apaga solo en la foto: las iniciales conservan el contraste AA.
+        const avatars = document.querySelectorAll(
+            '[data-test="weekly-team-member"] [data-slot="avatar"]',
+        );
+        expect(avatars).toHaveLength(4);
+        for (const avatar of avatars) {
+            expect(avatar.className).not.toMatch(/(^|\s)opacity-/);
+        }
     });
 
     it('sin nadie que tenga que enviar, lo dice', () => {

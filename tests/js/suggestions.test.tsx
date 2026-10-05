@@ -442,6 +442,15 @@ describe('la pestaña Sugerencias', () => {
         expect(
             within(roadmap).getAllByText('Nada en este estado todavía.'),
         ).toHaveLength(2);
+        // El número de comentarios se lee con texto oculto, no con aria-label en un span (axe aria-prohibited-attr).
+        for (const count of within(roadmap).getAllByTestId(
+            'roadmap-comment-count',
+        )) {
+            expect(count.hasAttribute('aria-label')).toBe(false);
+            expect(count.querySelector('.sr-only')?.textContent).toMatch(
+                /comentario/i,
+            );
+        }
 
         await user.click(
             within(roadmap).getByRole('button', {
