@@ -5,6 +5,7 @@
  * WeeklyStructuredReport de WeeklySync (ws:types.ts) en snake_case.
  */
 import type { UserSummary } from './domain';
+import type { ReportRequestData } from './reports';
 
 // --- Enums (app/Enums) -------------------------------------------------------------------------
 
@@ -104,6 +105,8 @@ export type WeeklyCycleSummary = {
     report_state: WeeklyJobState | null;
     report_generated_at: string | null;
     audio_state: WeeklyJobState | null;
+    /** Hay audio completo generado (10.3): hace falta para cerrar (F-089). */
+    has_audio: boolean;
     submission_count_at_generation: number | null;
     closed_at: string | null;
     /** Enviadas (no borradores), si se han contado. */
@@ -116,17 +119,26 @@ export type WeeklyMilestone = {
     label: string;
 };
 
-/** WeeklyProjectSnapshot (F-074, D-148): minutos al generar el informe. */
+/** Tipo de proyecto en el informe (WeeklyProjectStatus::KIND_*, D-188). */
+export type WeeklyProjectKind =
+    | 'hour_bank'
+    | 'monthly_fee'
+    | 'fixed_price'
+    | 'time_and_materials';
+
+/** WeeklyProjectSnapshot (F-074, D-148 y D-188): minutos al generar el informe. */
 export type WeeklyProjectSnapshot = {
     project_id: number;
     code: string;
     name: string;
-    billing_type: string;
+    billing_type: WeeklyProjectKind;
     budget_minutes: number | null;
     consumed_minutes: number;
     expected_minutes: number | null;
     /** Consumido − esperado (positivo: por encima). */
     deviation_minutes: number | null;
+    /** Horas de la semana del informe (de lunes a domingo). */
+    week_minutes: number;
 };
 
 /** WeeklyClientUpdate (ws:types.ts WeeklyClientUpdate). */
@@ -586,15 +598,95 @@ export type WeekliesIndexPageProps = {
     };
 };
 
-/** weeklies/show (WeeklyCycleController::show). */
+/** Un reporte original de un cliente en la semana (F-078, «Ver reportes»). */
+export type WeeklyOriginalReport = {
+    author: UserSummary;
+    body: string;
+    submitted_at: string | null;
+    project_id: number | null;
+};
+
+/** Paso de un trabajo de IA en marcha (WeeklyJobProgress, D-190). */
+export type WeeklyJobDetail = {
+    step: 'clients' | 'summary' | 'scripts' | 'speech' | null;
+    done: number;
+    total: number;
+};
+
+/** Evento `weekly.progress` del canal privado weeklies.{id} (D-190). */
+export type WeeklyGenerationEvent = {
+    cycle_id: number;
+    kind: 'report' | 'audio';
+    state: WeeklyJobState;
+    step: WeeklyJobDetail['step'];
+    done: number;
+    total: number;
+    error: string | null;
+};
+
+/** GET weeklies.report.status: el estado del informe y del audio mientras se generan. */
+export type WeeklyReportStatus = {
+    report_state: WeeklyJobState | null;
+    report_error: string | null;
+    report_progress: WeeklyJobDetail | null;
+    audio_state: WeeklyJobState | null;
+    audio_error: string | null;
+    audio_progress: WeeklyJobDetail | null;
+    has_report: boolean;
+    has_audio: boolean;
+    submitted_count: number;
+    submission_count_at_generation: number | null;
+    stale: boolean;
+    report_generated_at: string | null;
+    audio_generated_at: string | null;
+};
+
+/** Lo que bloquea el cierre (WeeklyReportState::closeBlockers). */
+export type WeeklyCloseBlocker = 'not_active' | 'report' | 'audio';
+
+/** weeklies/show (WeeklyCycleController::show, 10.3). */
 export type WeeklyShowPageProps = {
     cycle: WeeklyCycleDetail;
+    team: WeeklyTeamStatus;
+    /** Reportes originales por cliente (clave: id del cliente o «general»). */
+    reports: Record<string, WeeklyOriginalReport[]>;
+    /** Hay más envíos que al generar el informe («Hay nuevos reportes», F-072). */
+    stale: boolean;
+    submitted_count: number;
+    /** Clientes de mis proyectos («Solo mis proyectos», F-080). */
+    my_client_ids: number[];
+    progress: { report: WeeklyJobDetail | null; audio: WeeklyJobDetail | null };
+    close: { blockers: WeeklyCloseBlocker[]; pending: number };
+    /** Para el menú «Exportar ▾» (ReportKind weekly, D-192). */
+    report_request: ReportRequestData;
     can: {
         generate: boolean;
+        edit: boolean;
         extendDeadline: boolean;
         close: boolean;
         delete: boolean;
     };
+};
+
+/** Fila de las sumas de «Uso de IA» (D-193). Coste en USD como texto con 6 decimales. */
+export type AiUsageTotals = {
+    calls: number;
+    errors: number;
+    prompt_tokens: number;
+    response_tokens: number;
+    total_tokens: number;
+    characters: number;
+    cost_usd: string;
+};
+
+/** admin/ai-usage (AiUsageController, F-173 y F-180). */
+export type AiUsagePageProps = {
+    range: { days: number; options: number[] };
+    totals: AiUsageTotals;
+    by_feature: (AiUsageTotals & { feature: AiFeature })[];
+    by_model: (AiUsageTotals & { provider: AiProvider; model: string })[];
+    by_day: { date: string; calls: number; cost_usd: string }[];
+    recent: AiUsageRow[];
 };
 
 /** my-space/index (MySpaceController::index), ?pestana=reportes|tareas&semana={id}. */

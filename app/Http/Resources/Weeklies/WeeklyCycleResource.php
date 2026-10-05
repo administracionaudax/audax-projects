@@ -31,6 +31,7 @@ class WeeklyCycleResource extends JsonResource
             'report_state' => $this->report_state?->value,
             'report_generated_at' => $this->report_generated_at?->toIso8601String(),
             'audio_state' => $this->audio_state?->value,
+            'has_audio' => $this->audio_path !== null,
             'submission_count_at_generation' => $this->submission_count_at_generation,
             'closed_at' => $this->closed_at?->toIso8601String(),
             'submissions_count' => $this->whenCounted('submissions'),

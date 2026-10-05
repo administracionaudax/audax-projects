@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
     AudioLines,
+    BrainCircuit,
     Building,
     CalendarDays,
     History,
@@ -29,6 +30,7 @@ import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
+import { index as aiUsageIndex } from '@/routes/admin/ai-usage';
 import { index as auditIndex } from '@/routes/admin/audit';
 import { index as departmentsIndex } from '@/routes/admin/departments';
 import { index as holidaysIndex } from '@/routes/admin/holidays';
@@ -48,7 +50,11 @@ type AreaLink = {
     href: string;
     ability: keyof Pick<
         Abilities,
-        'manageUsers' | 'manageSettings' | 'viewTeamAbsences' | 'viewAdmin'
+        | 'manageUsers'
+        | 'manageSettings'
+        | 'viewTeamAbsences'
+        | 'viewAdmin'
+        | 'viewAiUsage'
     >;
 };
 
@@ -202,6 +208,20 @@ const AREAS: AdminArea[] = [
                 label: 'audit.admin_link',
                 href: auditIndex.url(),
                 ability: 'viewAdmin',
+            },
+        ],
+    },
+    {
+        id: 'ai-usage',
+        icon: BrainCircuit,
+        title: 'ai_usage.admin_area.title',
+        description: 'ai_usage.admin_area.description',
+        phase: 7,
+        links: [
+            {
+                label: 'ai_usage.admin_area.open',
+                href: aiUsageIndex.url(),
+                ability: 'viewAiUsage',
             },
         ],
     },

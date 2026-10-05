@@ -22,6 +22,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { MyWeeklyCallout } from '@/components/weeklies/my-weekly-callout';
 import { TeamStatusStrip } from '@/components/weeklies/team-status-strip';
 import {
+    closeBlockers,
+    closeHint,
+    CloseWeekDialog,
+} from '@/components/weeklies/weekly-close-dialog';
+import {
     DeadlineDialog,
     ExemptDialog,
     JoinProjectsDialog,
@@ -227,7 +232,25 @@ function ManageSection({
                                 }
                             />
                         ) : null}
+                        {can.manage ? (
+                            <CloseWeekDialog
+                                cycle={cycle}
+                                blockers={closeBlockers(cycle)}
+                                pending={cycle.team.counts.pending}
+                            />
+                        ) : null}
                     </div>
+                    {can.manage ? (
+                        <p
+                            className="text-xs text-muted-foreground"
+                            data-test="weekly-close-hint"
+                        >
+                            {closeHint(
+                                closeBlockers(cycle),
+                                cycle.team.counts.pending,
+                            )}
+                        </p>
+                    ) : null}
                 </div>
 
                 <div className="grid content-start gap-4 border bg-card p-4">
