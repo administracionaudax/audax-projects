@@ -198,10 +198,21 @@ return [
     |
     */
 
+    /*
+    | Reparto de memoria (D-141, docs/DEPLOY.md §1): todo cabe en system-audax.slice (1280 MiB).
+    | - supervisor-1 (cola `default`): como siempre, hasta 2 procesos de 128 MB → 256 MB.
+    | - supervisor-mail (cola `mail`): los correos y, desde la Fase 9, el PDF y el Excel de los
+    |   informes que se envían (SendReportDelivery). Un solo proceso de 256 MB, que es también el
+    |   memory_limit que se pone el envío al generarlo (la CLI del servidor trae 128M).
+    | - Workers: 2 × 128 + 1 × 256 = 512 MB, el MemoryLimit de audax-horizon.service; más el
+    |   maestro (memory_limit, 64 MB), el transcriptor (256 MB) y Reverb (256 MB) suman 1088 MB y
+    |   dejan sitio al programador dentro del slice. QueueConfigTest lo comprueba.
+    | `memory` es el umbral a partir del cual Horizon reinicia el worker al acabar un job.
+    */
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'mail'],
+            'queue' => ['default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
@@ -211,6 +222,21 @@ return [
             'memory' => 128,
             'tries' => 3,
             'timeout' => 120,
+            'nice' => 5,
+        ],
+        'supervisor-mail' => [
+            'connection' => 'redis',
+            'queue' => ['mail'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            // El envío de un informe (SendReportDelivery) puede tardar hasta 300 s.
+            'timeout' => 300,
             'nice' => 5,
         ],
     ],
@@ -223,6 +249,9 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+            'supervisor-mail' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'staging' => [
@@ -231,11 +260,17 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+            'supervisor-mail' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
                 'maxProcesses' => 2,
+            ],
+            'supervisor-mail' => [
+                'maxProcesses' => 1,
             ],
         ],
     ],

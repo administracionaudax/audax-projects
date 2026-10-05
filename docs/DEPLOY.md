@@ -31,6 +31,21 @@ Nunca se reinician servicios compartidos, ni se tocan el firewall, el SSH, el DN
 
 Todas las unidades van en `system-audax.slice` (1280 MiB) y cuelgan de `audax-projects.target`. Su origen está en `deploy/systemd/`.
 
+### Reparto de la memoria de las colas (Fase 9, D-141)
+Horizon tiene dos supervisores (`config/horizon.php`). `memory` es el umbral a partir del cual Horizon reinicia un worker al acabar el job.
+
+| Supervisor | Colas | Procesos | `memory` | Total |
+|---|---|---|---|---|
+| `supervisor-1` | `default` | 1 a 2 | 128 MB | 256 MB |
+| `supervisor-mail` | `mail`: correos y el PDF y el Excel de los informes que se envían | 1 | 256 MB | 256 MB |
+
+- **Por qué uno propio para `mail`:** desde la Fase 9, ahí se generan los informes de los envíos (D-141), que piden más memoria que un correo. El envío sube el `memory_limit` del proceso a esos 256 MB, porque la CLI del servidor trae 128M.
+- **Cuentas:**
+  - los workers suman 512 MB, el `MemoryLimit` de `audax-horizon.service`,
+  - con el maestro de Horizon (64 MB), el transcriptor (256 MB) y Reverb (256 MB) suman 1088 MB, y queda sitio para el programador dentro de los 1280 MiB del slice.
+- **Comprobación:** `tests/Feature/QueueConfigTest.php` lee `deploy/systemd/` y falla si un cambio en Horizon o en las unidades se sale del slice.
+- **Al desplegar:** basta con `horizon:terminate`, que ya hace `scripts/desplegar-dev.sh`. No cambia ninguna unidad de systemd.
+
 ## 2. Desplegar
 
 Desde el Mac, en la rama que se quiere desplegar y con los tests y la CI en verde:

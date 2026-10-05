@@ -18,3 +18,91 @@ test('retry_after de cada conexión de Redis supera el timeout de sus jobs largo
         ->and((int) config('queue.connections.redis.retry_after'))->toBeGreaterThan((int) config('horizon.defaults.supervisor-1.timeout', 120))
         ->and((int) config('queue.connections.redis-transcriptions.retry_after'))->toBeGreaterThan($timeout(TranscribeAudioMessage::class));
 });
+
+/*
+| Memoria de las colas (D-141): los supervisores de Horizon, con su `memory` × `maxProcesses`, el
+| maestro de Horizon, el transcriptor y Reverb caben en system-audax.slice (deploy/systemd), y los
+| workers caben además en el MemoryLimit de audax-horizon.service.
+*/
+
+/** MemoryLimit (o MemoryMax) de una unidad de deploy/systemd, en MiB. */
+function systemdMemoryMib(string $unit): int
+{
+    $contents = (string) file_get_contents(base_path("deploy/systemd/{$unit}"));
+
+    expect(preg_match('/^Memory(?:Max|Limit)=(\d+)([MG])$/m', $contents, $match))->toBe(1, "{$unit} sin límite de memoria");
+
+    return (int) $match[1] * ($match[2] === 'G' ? 1024 : 1);
+}
+
+/**
+ * Supervisores efectivos de cada entorno: los defaults con lo que cambie el entorno, como hace
+ * Horizon (ProvisioningPlan).
+ *
+ * @return array<string, array<string, array<string, mixed>>>
+ */
+function horizonPlans(): array
+{
+    $defaults = config('horizon.defaults');
+
+    return collect(config('horizon.environments'))
+        ->map(fn (array $supervisors) => array_replace_recursive($defaults, $supervisors))
+        ->all();
+}
+
+test('la cola mail tiene su propio supervisor de un proceso con 256 MB y default sigue como estaba', function () {
+    foreach (horizonPlans() as $environment => $supervisors) {
+        expect($supervisors['supervisor-1']['queue'])->toBe(['default'], $environment)
+            ->and($supervisors['supervisor-1']['memory'])->toBe(128)
+            ->and($supervisors['supervisor-1']['maxProcesses'])->toBe(2)
+            ->and($supervisors['supervisor-mail']['queue'])->toBe(['mail'])
+            ->and($supervisors['supervisor-mail']['memory'])->toBe(256)
+            ->and($supervisors['supervisor-mail']['maxProcesses'])->toBe(1);
+
+        // Cada cola que se usa la atiende exactamente un supervisor (transcriptions va aparte).
+        $queues = collect($supervisors)->flatMap(fn (array $supervisor) => (array) $supervisor['queue'])->sort()->values()->all();
+        expect($queues)->toBe(['default', 'mail']);
+    }
+
+    expect((int) config('queue.connections.redis.retry_after'))->toBeGreaterThan((int) config('horizon.defaults.supervisor-mail.timeout'))
+        ->and((int) config('horizon.defaults.supervisor-mail.timeout'))->toBeGreaterThanOrEqual((int) (new ReflectionClass(SendReportDelivery::class))->getProperty('timeout')->getDefaultValue());
+});
+
+test('la memoria de las colas, el transcriptor y Reverb cabe en system-audax.slice', function () {
+    $slice = systemdMemoryMib('system-audax.slice');
+    $horizonUnit = systemdMemoryMib('audax-horizon.service');
+    $others = systemdMemoryMib('audax-transcriber.service') + systemdMemoryMib('audax-reverb.service');
+    $master = (int) config('horizon.memory_limit');
+
+    expect($slice)->toBe(1280);
+
+    foreach (horizonPlans() as $environment => $supervisors) {
+        $workers = collect($supervisors)->sum(fn (array $supervisor) => (int) $supervisor['memory'] * (int) $supervisor['maxProcesses']);
+
+        expect($workers)->toBe(512, $environment)
+            ->and($workers)->toBeLessThanOrEqual($horizonUnit)
+            ->and($workers + $master + $others)->toBeLessThanOrEqual($slice);
+    }
+});
+
+test('el envío de un informe sube el memory_limit de la CLI hasta el del supervisor de mail', function () {
+    $original = ini_get('memory_limit');
+
+    try {
+        ini_set('memory_limit', '128M');
+        SendReportDelivery::ensureMemory();
+        expect(ini_get('memory_limit'))->toBe('256M');
+
+        // Nunca lo baja.
+        ini_set('memory_limit', '512M');
+        SendReportDelivery::ensureMemory();
+        expect(ini_get('memory_limit'))->toBe('512M');
+
+        // Sin límite, se queda sin límite.
+        ini_set('memory_limit', '-1');
+        SendReportDelivery::ensureMemory();
+        expect(ini_get('memory_limit'))->toBe('-1');
+    } finally {
+        ini_set('memory_limit', (string) $original);
+    }
+});
