@@ -96,7 +96,7 @@ La entrega es la de F.
 | F-013 | Detecta una versión nueva y recarga sola cuando no hay nada editándose ni grabándose | `App.tsx:325-400`, `src/lib/appUpdateGuard.ts`, `buildMeta.ts` | Adaptar: versión de Inertia + aviso (10.2) |
 | F-014 | Recarga al volver a la pestaña o recuperar la conexión; aviso «Conexión inestable» y reintento | `App.tsx:378-395, 852, 1011` | Adaptar (10.2) |
 | F-015 | Tiempo real de personas, clientes, semanas, envíos, borradores y tareas | `App.tsx:922-980` | Adaptar: Reverb o recarga (10.2) |
-| F-016 | Rutas en español con enlace directo (`/resumen`, `/mi-espacio`, `/weeklys/:id`, `/clientes/:id`, `/equipo/:id`, `/ia`, `/ayuda`, `/perfil`, `/notificaciones`) | `src/lib/routes.ts` | Adaptar: rutas de Audax en español (10.1) |
+| F-016 | Rutas en español con enlace directo (`/resumen`, `/mi-espacio`, `/weeklys/:id`, `/clientes/:id`, `/equipo/:id`, `/ia`, `/ayuda`, `/perfil`, `/notificaciones`) | `src/lib/routes.ts` | **Hecho (10.1):** `routes/app/weeklies.php` con `/weeklies`, `/weeklies/{id}`, `/mi-espacio`, `/equipo`, `/equipo/{id}`, `/ia`, `/ayuda` y `/admin/uso-ia` (clientes, perfil y notificaciones ya existían). Las pantallas, en su entrega |
 | F-017 | Pantalla de error con «recargar» | `ErrorBoundary.tsx`, `index.tsx` | Existe (`error.tsx`) |
 | F-018 | «¿Tarda demasiado? Forzar entrada» en la carga inicial | `App.tsx:~2895` | No aplica (Inertia no tiene esa carga) |
 | F-019 | PWA: manifest e iconos claro y oscuro | `public/site.webmanifest`, `index.html` | Existe |
@@ -110,7 +110,7 @@ La entrega es la de F.
 | F-023 | Aviso de entorno: localhost apuntando a producción | `LoginScreen.tsx:22, 105` | No aplica |
 | F-024 | Vincular identidades de Google y fusionar duplicados | `resolve-user-access`, migración 022 | No aplica (un email por cuenta) |
 | F-025 | Invitación que se activa en el primer acceso | `create-user`, `account_status` | Existe (`UserInviter`) |
-| F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`) (10.1) |
+| F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`). **10.1:** columna `users.job_title`; falta el campo en el perfil y en el alta (10.2) |
 | F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto) |
 | F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4) |
 | F-029 | Avatar | `users.avatar_url` | Existe (avatar subido) |
@@ -204,7 +204,7 @@ La entrega es la de F.
 | F-093 | Satisfacción por cliente con IA + estabilizador determinista | `close-week…:80-215`, `_shared/satisfaction.js` | Nueva (10.3) |
 | F-094 | Foto de la satisfacción en cada weekly (para la gráfica) | `close-week…:230-255` | Nueva (10.3) |
 | F-095 | Email «weekly cerrada» con enlace a todo el equipo activo | `close-week…:265`, `send-email-reminder` | Nueva (10.5) |
-| F-096 | Satisfacción por defecto de 50, con columna y orden en la lista de clientes | `clients.current_satisfaction`, `ClientView.tsx:204, 415` | Nueva (10.4) |
+| F-096 | Satisfacción por defecto de 50, con columna y orden en la lista de clientes | `clients.current_satisfaction`, `ClientView.tsx:204, 415` | Nueva (10.4). **10.1:** columna `clients.satisfaction_score` (50 por defecto) e histórico `client_satisfaction_snapshots` |
 
 **Exenciones, puntualidad y rachas**
 | ID | Funcionalidad | Origen | Destino |
@@ -309,7 +309,7 @@ La entrega es la de F.
 | F-166 | Reacciones a los comentarios (Me gusta, Impulso, Siguiendo y Me encanta) | `HelpSuggestionsView.tsx:410-413, 2361` | Nueva (10.7) |
 | F-167 | Moderación: estado (open, future, planned, building_now, beta o completed) con nota oficial e historial | `HelpSuggestionsView.tsx:2545-2554, 3307-3327`, `suggestion_status_events` | Nueva (10.7) |
 | F-168 | Roadmap por columnas de estado: arrastrar entre columnas y reordenar, filtro de estados, buscador y «cargar más» | `HelpSuggestionsView.tsx:803, 1930-1990, 3625-3727` | Nueva (10.7) |
-| F-169 | Categoría «Bugs» precargada | migración 034 | Nueva (10.7) |
+| F-169 | Categoría «Bugs» precargada | migración 034 | **Hecho (10.1):** la migración de sugerencias precarga el tablero «Sugerencias» y la categoría `bugs` |
 | F-170 | Tiempo real en ayuda y sugerencias | `helpCenter.ts:814`, `helpSuggestions.ts:1925` | Adaptar (10.7) |
 
 **IA transversal**
@@ -317,16 +317,16 @@ La entrega es la de F.
 |---|---|---|---|
 | F-171 | Transcripción conservadora: detecta silencio y muletillas y no inventa | `transcribe-audio:80-135` | Adaptar: Whisper + filtros (10.2) |
 | F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2) |
-| F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3) |
-| F-174 | Modelo configurable sin tocar código | `vertexAI.ts:8-13, 192` | Nueva (`.env`, 10.1) |
+| F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3). **10.1:** tabla `ai_usage` y `AiUsageRecorder`; GeminiClient y GoogleTtsSynthesizer registran cada llamada con tokens, caracteres y coste. Falta la página (10.3) |
+| F-174 | Modelo configurable sin tocar código | `vertexAI.ts:8-13, 192` | **Hecho (10.1):** `GEMINI_MODEL` (y `GOOGLE_TTS_VOICE`) en `.env`, leídos por `config/services.php`; sin desplegar |
 
 **Consola de plataforma**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
 | F-175 | Tenants: alta, estado, plan, región y referencias de Supabase y Vercel; membresías | `PlatformView.tsx`, `platform-provision-tenant`, `-set-tenant-status`, `-get-tenants`, `-get-tenant-users` | **Descartado** |
 | F-176 | Superadmins de plataforma (owner, admin y support; revocar) | `platform-save-admin` | **Descartado** |
-| F-177 | Módulos activables por tenant (weeklys, tareas, presupuestos, estado de proyectos, ayuda y asistente) | `platform-set-modules`, `PlatformView.tsx:91-96` | **Descartado**. Útil con un solo tenant: ajuste «módulos activos» en `/admin/ajustes` (10.1) |
-| F-178 | Modo mantenimiento con ventana programada y banner global | `platform-set-maintenance`, `PlatformView.tsx:775-811` | **Descartado**. Útil: un banner global en ajustes; el mantenimiento ya lo cubre `artisan down` |
+| F-177 | Módulos activables por tenant (weeklys, tareas, presupuestos, estado de proyectos, ayuda y asistente) | `platform-set-modules`, `PlatformView.tsx:91-96` | **Descartado**. Útil con un solo tenant: ajuste «módulos activos». **Hecho (10.1):** ajuste `modules` (weeklies, estado de proyectos, ayuda, sugerencias y asistente), validado en `PUT /admin/ajustes`, middleware `module:` (404) y `config.modules` en las props; el interruptor en la pantalla de ajustes llega con 10.2 |
+| F-178 | Modo mantenimiento con ventana programada y banner global | `platform-set-maintenance`, `PlatformView.tsx:775-811` | **Descartado**. Útil: un banner global en ajustes; el mantenimiento ya lo cubre `artisan down`. **10.1:** ajuste `global_banner` ({message, tone}) validado y en `config.global_banner`; falta pintarlo y editarlo (10.2) |
 | F-179 | Salud de Supabase, Vercel e IA | `platform-health` | **Descartado** (Audax tiene `/health` y el estado de las copias) |
 | F-180 | Coste y tokens de IA de 30 días | `PlatformView.tsx:564-565`, `platform_ai_usage_summary` | **Descartado** como consola. Útil: página «Uso de IA» para el admin (con F-173, 10.3) |
 | F-181 | Registro de auditoría de la plataforma | `platform_audit_logs` | **Descartado** (Audax tiene auditoría) |

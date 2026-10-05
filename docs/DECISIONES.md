@@ -1338,6 +1338,56 @@ La pestaña «Estado de proyectos» de las weeklies deja de alimentarse con capt
 - **Racha:** semanas seguidas enviadas a tiempo; las exentas no la rompen.
 - **Recordatorio de los viernes:** uno solo, con las horas (D-123) y la weekly, para no avisar dos veces.
 
+### D-151 · Contrato de datos de la Weekly (entrega 10.1)
+- **Exenciones:** `weekly_exemptions` con tres motivos:
+  - `manual`: la pone quien gestiona (F-038),
+  - `waived`: la propia persona renuncia a la exención que le da su ausencia para poder enviar (F-053),
+  - `absence`: solo existe con la semana cerrada; es la foto de la ausencia que eximía (F-092).
+  - Mientras la semana está activa, la exención por ausencia se calcula al vuelo (`WeeklyEligibility`): un cambio en las ausencias se nota al momento (F-098). Cuenta una ausencia **aprobada, de día completo**, cuyo rango incluye el día del plazo; con el plazo ampliado, el nuevo día.
+  - Ponerla: `manage-weeklies`. Quitarla: quien gestiona o la propia persona. Las dos cosas, solo con la semana activa.
+- **Participación congelada:** al cerrar, `WeeklyEligibility::freeze()` guarda quién debía enviar en `weekly_cycles.expected_user_ids` y las exenciones por ausencia. El histórico no cambia aunque luego se desactive a alguien o se cancele una ausencia.
+- **Borrador y envío, una sola fila:** `submitted_at` es el **primer** envío y no cambia al reenviar (decide la puntualidad, F-052); `resubmitted_at` guarda el último reenvío.
+- **«General / Interno»** (F-044): un apunte con `client_id` nulo.
+- **Tareas de «Mi espacio»** (F-055 a F-063): son las `tasks` de Audax (con proyecto), no una tabla aparte. Lo único nuevo es el **archivado personal** (`task_archives`): ocultar una tarea compartida solo de mi lista. Las notas con dictado van a la descripción o a un comentario, como ya se previó.
+- **Lo que cabe en `settings`** (sin tablas nuevas):
+  - las plantillas de aviso (`weekly_email_templates`; null = las de `lang/es/weeklies.php`),
+  - el manual en PDF y el enlace de soporte (`help_manual` y `help_support_url`),
+  - los módulos activos (`modules`, F-177) y el aviso global (`global_banner`, F-178), ambos en `PUT /admin/ajustes`.
+- **Módulos activos:** weeklies, project_status, help, suggestions y assistant. Apagado, sus rutas dan 404 (middleware `module:`) y la navegación lo oculta (`config.modules`). Las tareas, las bolsas y los presupuestos de WeeklySync son núcleo de Audax y no se apagan.
+- **Se reutiliza:**
+  - `attachments` (polimórfico) para los vídeos de los tutoriales y los adjuntos de las sugerencias y sus comentarios,
+  - `import_refs` (fuente `weeklysync`) para la migración,
+  - `notifications` para los avisos,
+  - `TranscriptionService` (Whisper) para el dictado (D-152).
+- **Estado de proyectos** (D-148): lo ve toda la plantilla, como en WeeklySync y como el consumo de las bolsas en % (D-021). Son minutos, sin importes. Los colaboradores externos no lo ven.
+- **Resúmenes IA de una persona** (F-144 y F-145, gate `view-person-ai-summary`): el admin y los responsables de esa persona, **ni siquiera la propia persona**, como dice D-147. Si el asesor de RGPD pide que la persona vea los suyos, basta con cambiar la gate.
+- **«Uso de IA»** (F-180): solo admins (gate `view-ai-usage`).
+- **Permisos** (D-147): gates `use-weeklies` (internos de plantilla), `manage-weeklies` (admins y responsables), `manage-help` (= `manage-weeklies`), `view-ai-usage` y `view-person-ai-summary`. Todas se niegan a los colaboradores externos aunque tengan el permiso (`COLLABORATOR_DENIED`).
+
+### D-152 · El dictado de la weekly, en su propia tabla
+- El dictado por cliente (F-049) y el de las notas de una tarea (F-060) van a `dictations`, no a `audio_transcriptions`.
+  - `audio_transcriptions` es 1:1 con un mensaje del chat y tiene la garantía de SPEC §12: todo audio del chat acaba con su texto, se guarda y lo revisa el admin.
+  - El dictado es un borrador de texto: se transcribe con el mismo motor (`TranscriptionService`, Whisper del servidor, D-146) en un Job de la cola `transcriptions` y **el audio se borra al acabar**, como en WeeklySync, que nunca lo guardaba.
+- Guarda la transcripción literal (`raw_text`), el texto limpio (`text`, F-172) y un aviso (`warning`: sin voz, demasiado corto…, F-050 y F-171). La interfaz muestra «Transcribiendo…» hasta que el estado es `done`.
+
+### D-153 · Reglas portadas de WeeklySync
+- **Número de semana:** «Wnn-aa» con la semana ISO del viernes y su **año ISO**. WeeklySync usaba el año natural del viernes: solo cambia cuando el viernes cae en enero y la semana es aún del año anterior (del 28/12/2026 al 01/01/2027: aquí W53-26; allí habría sido W53-27). Las semanas importadas conservan su número.
+- **Plazo:** es un día de Madrid. «A tiempo» es antes del final de ese día (F-100). «Próximamente», antes del día laborable anterior al plazo. «Con retraso», pasado el plazo con la semana activa.
+- **Satisfacción:** `SatisfactionStabilizer` es un port **exacto** de `satisfaction.js`, con la semántica de JavaScript (`Number()`, veracidad, `Math.round` y espacios Unicode). Lo garantizan 325 casos generados ejecutando el original con node (`tests/fixtures/weeklies/`).
+
+### D-154 · La cola `ai` y las claves de la IA
+- **Supervisor `supervisor-ai` en Horizon:**
+  - un proceso de 128 MB, `nice` 10 y 600 s por Job (`AiQueue::TIMEOUT`, por debajo del `retry_after` de 660 s),
+  - los workers suman 640 MB: hay que subir el `MemoryLimit` de `audax-horizon.service` de 512M a 640M al desplegar la Fase 10 (anotarlo en `SERVIDOR-CAMBIOS.md`),
+  - con el maestro, el transcriptor y Reverb suman 1216 MB, dentro de los 1280 del slice.
+- **`GeminiClient`:** la API de AI Studio con la clave en la cabecera `x-goog-api-key`, nunca en la URL ni en los registros.
+  - Reintenta los 429 (5, 10 y 15 s) y los 5xx o fallos de red (2, 4 y 6 s); nunca los 4xx.
+  - Cada llamada, con éxito o error, va a `ai_usage`, con el coste en USD calculado con BCMath (6 decimales); nunca el texto.
+- **Google TTS:** con su propia clave (`GOOGLE_TTS_API_KEY`).
+- **Variables de entorno:**
+  - `GEMINI_DRIVER` y `GOOGLE_TTS_DRIVER` valen `fake` en los tests (`phpunit.xml`) y en local sin claves,
+  - las claves reales las pone el propietario en el `.env` del servidor.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1348,6 +1398,6 @@ La pestaña «Estado de proyectos» de las weeklies deja de alimentarse con capt
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (Weekly): D-145 a D-150.
+- Fase 10 (Weekly): D-145 a D-154 (D-151 a D-154: contrato 10.1).
 
-La siguiente libre es **D-151**.
+La siguiente libre es **D-155**.
