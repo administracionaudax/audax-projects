@@ -3,6 +3,7 @@
 namespace App\Domain\Import\WeeklySync\Dump;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use SensitiveParameter;
 
@@ -30,7 +31,9 @@ final class SupabaseStorage implements WeeklySyncStorage
             ])
                 ->timeout(600)
                 ->connectTimeout(20)
-                ->retry(3, 2000, throw: false)
+                // Reintenta los cortes, los 5xx y los 429; un 4xx (no existe, sin permiso) no.
+                ->retry(3, 2000, fn (\Throwable $e): bool => $e instanceof ConnectionException
+                    || ($e instanceof RequestException && ($e->response->serverError() || $e->response->status() === 429)), throw: false)
                 ->sink($target)
                 ->get($url);
         } catch (ConnectionException) {
