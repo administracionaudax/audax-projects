@@ -70,7 +70,7 @@ final readonly class WeeklyClientUpdate
         return self::fromArray([
             'client_id' => $clientId(isset($data['clientId']) ? (string) $data['clientId'] : null, $name),
             'client_name' => $name,
-            'status' => WeeklyClientStatus::fromWeeklySync((string) ($data['status'] ?? '')),
+            'status' => WeeklyClientStatus::fromWeeklySync((string) ($data['status'] ?? ''))->value,
             'executive_summary' => $data['executiveSummary'] ?? '',
             'next_steps' => $data['nextSteps'] ?? [],
             'milestones' => $data['milestones'] ?? [],

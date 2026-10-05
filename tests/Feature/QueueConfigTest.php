@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Jobs\BuildPersonalDataExport;
 use App\Jobs\SendReportDelivery;
 use App\Jobs\TranscribeAudioMessage;
@@ -59,13 +60,20 @@ test('la cola mail tiene su propio supervisor de un proceso con 256 MB y default
             ->and($supervisors['supervisor-mail']['memory'])->toBe(256)
             ->and($supervisors['supervisor-mail']['maxProcesses'])->toBe(1);
 
+        // La cola `ai` de la Weekly (Fase 10, D-146): un proceso de 128 MB y 600 s por Job.
+        expect($supervisors['supervisor-ai']['queue'])->toBe([AiQueue::NAME], $environment)
+            ->and($supervisors['supervisor-ai']['memory'])->toBe(128)
+            ->and($supervisors['supervisor-ai']['maxProcesses'])->toBe(1)
+            ->and($supervisors['supervisor-ai']['timeout'])->toBe(AiQueue::TIMEOUT);
+
         // Cada cola que se usa la atiende exactamente un supervisor (transcriptions va aparte).
         $queues = collect($supervisors)->flatMap(fn (array $supervisor) => (array) $supervisor['queue'])->sort()->values()->all();
-        expect($queues)->toBe(['default', 'mail']);
+        expect($queues)->toBe(['ai', 'default', 'mail']);
     }
 
     expect((int) config('queue.connections.redis.retry_after'))->toBeGreaterThan((int) config('horizon.defaults.supervisor-mail.timeout'))
-        ->and((int) config('horizon.defaults.supervisor-mail.timeout'))->toBeGreaterThanOrEqual((int) (new ReflectionClass(SendReportDelivery::class))->getProperty('timeout')->getDefaultValue());
+        ->and((int) config('horizon.defaults.supervisor-mail.timeout'))->toBeGreaterThanOrEqual((int) (new ReflectionClass(SendReportDelivery::class))->getProperty('timeout')->getDefaultValue())
+        ->and((int) config('queue.connections.redis.retry_after'))->toBeGreaterThan(AiQueue::TIMEOUT);
 });
 
 test('la memoria de las colas, el transcriptor y Reverb cabe en system-audax.slice', function () {
@@ -79,7 +87,8 @@ test('la memoria de las colas, el transcriptor y Reverb cabe en system-audax.sli
     foreach (horizonPlans() as $environment => $supervisors) {
         $workers = collect($supervisors)->sum(fn (array $supervisor) => (int) $supervisor['memory'] * (int) $supervisor['maxProcesses']);
 
-        expect($workers)->toBe(512, $environment)
+        // 2 × 128 (default) + 256 (mail) + 128 (ai, Fase 10).
+        expect($workers)->toBe(640, $environment)
             ->and($workers)->toBeLessThanOrEqual($horizonUnit)
             ->and($workers + $master + $others)->toBeLessThanOrEqual($slice);
     }

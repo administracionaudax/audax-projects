@@ -16,7 +16,7 @@ class SuggestionBoardFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->unique()->words(2, true);
+        $name = fake()->unique()->word().' '.fake()->word();
 
         return [
             'name' => Str::ucfirst($name),

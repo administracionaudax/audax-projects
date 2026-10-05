@@ -64,7 +64,7 @@ final class WeeklyCalendar
     {
         $friday = $this->periodStartingRaw($date)->addDays(4);
 
-        return sprintf('W%02d-%02d', $friday->isoWeek(), $friday->isoWeekYear() % 100);
+        return sprintf('W%02d-%02d', (int) $friday->format('W'), (int) $friday->format('o') % 100);
     }
 
     /**
@@ -76,7 +76,7 @@ final class WeeklyCalendar
         $friday = $monday->addDays(4);
 
         return __('weeklies.cycle_label', [
-            'week' => sprintf('%02d', $friday->isoWeek()),
+            'week' => $friday->format('W'),
             'start' => $monday->format('d/m'),
             'end' => $friday->format('d/m'),
         ]);

@@ -110,7 +110,7 @@ final class WeeklyEligibility
             }
         }
 
-        return new WeeklyRoster(array_values($candidates), $exemptions, $absenceIds);
+        return new WeeklyRoster($candidates, $exemptions, $absenceIds);
     }
 
     /**
@@ -164,7 +164,7 @@ final class WeeklyEligibility
      */
     private function candidateIds(CarbonInterface $weekEnd): array
     {
-        return User::query()
+        return array_values(User::query()
             ->where('is_active', true)
             ->where('created_at', '<=', $weekEnd->utc())
             ->whereHas('roles', fn (Builder $roles) => $roles->whereIn('name', User::WEEKLY_ROLES))
@@ -172,7 +172,7 @@ final class WeeklyEligibility
             ->orderBy('id')
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
-            ->all();
+            ->all());
     }
 
     /**

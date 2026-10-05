@@ -68,6 +68,46 @@ return [
     ],
 
     /*
+    | IA externa de la Weekly (Fase 10, D-146): solo TEXTO a Google Gemini por la API de AI Studio,
+    | con una clave de pago (Google no entrena con esos datos). La clave y el modelo van en el .env
+    | del servidor (nunca en Git): GEMINI_MODEL se cambia sin desplegar cuando Google retira uno
+    | (F-174). Se llama siempre desde la cola `ai` (App\Domain\Weeklies\Ai\AiQueue). En los tests y
+    | en local sin clave, GEMINI_DRIVER=fake (App\Domain\Weeklies\Ai\FakeLlm).
+    | pricing: USD por millón de tokens (entrada y salida), para el coste estimado de ai_usage.
+    */
+    'gemini' => [
+        'driver' => env('GEMINI_DRIVER', 'gemini'),
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+        // Por intento; un Job de la cola `ai` puede durar hasta 600 s.
+        'timeout' => (int) env('GEMINI_TIMEOUT', 120),
+        'tries' => (int) env('GEMINI_TRIES', 3),
+        'pricing' => [
+            'gemini-3.5-flash' => ['input' => '1.5', 'output' => '9.0'],
+            'gemini-2.5-flash' => ['input' => '0.3', 'output' => '2.5'],
+            'gemini-2.5-flash-lite' => ['input' => '0.1', 'output' => '0.4'],
+            'gemini-2.0-flash' => ['input' => '0.1', 'output' => '0.4'],
+        ],
+    ],
+
+    /*
+    | Locución del informe semanal (Fase 10, D-146, F-084): Google Cloud Text-to-Speech con su propia
+    | clave de API (GOOGLE_TTS_API_KEY, en el .env del servidor). Sin clave, el audio no se genera.
+    | En los tests, GOOGLE_TTS_DRIVER=fake.
+    */
+    'google_tts' => [
+        'driver' => env('GOOGLE_TTS_DRIVER', 'google'),
+        'key' => env('GOOGLE_TTS_API_KEY'),
+        'voice' => env('GOOGLE_TTS_VOICE', 'es-ES-Journey-F'),
+        'language' => env('GOOGLE_TTS_LANGUAGE', 'es-ES'),
+        'base_url' => env('GOOGLE_TTS_BASE_URL', 'https://texttospeech.googleapis.com/v1'),
+        'timeout' => (int) env('GOOGLE_TTS_TIMEOUT', 60),
+        // USD por millón de caracteres (WeeklySync estimaba con la tarifa Neural2).
+        'price_per_million_chars' => env('GOOGLE_TTS_PRICE_PER_MILLION_CHARS', '16'),
+    ],
+
+    /*
     | Web Push (SPEC §12 y §13, D-072). Las claves VAPID se generan en el servidor con
     | `php artisan push:vapid-keys` y se guardan en .env (nunca en Git). Sin claves válidas el
     | canal queda desactivado sin errores. Solo se envía a los servicios de push de los navegadores

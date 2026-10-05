@@ -204,9 +204,13 @@ return [
     | - supervisor-mail (cola `mail`): los correos y, desde la Fase 9, el PDF y el Excel de los
     |   informes que se envían (SendReportDelivery). Un solo proceso de 256 MB, que es también el
     |   memory_limit que se pone el envío al generarlo (la CLI del servidor trae 128M).
-    | - Workers: 2 × 128 + 1 × 256 = 512 MB, el MemoryLimit de audax-horizon.service; más el
-    |   maestro (memory_limit, 64 MB), el transcriptor (256 MB) y Reverb (256 MB) suman 1088 MB y
-    |   dejan sitio al programador dentro del slice. QueueConfigTest lo comprueba.
+    | - supervisor-ai (cola `ai`, Fase 10, D-146): las llamadas a Gemini y a Google TTS de la Weekly
+    |   (informe, satisfacción, audio, resúmenes y asistente). Un solo proceso de 128 MB: son
+    |   llamadas HTTP de uno en uno (cuota de Gemini) y cada Job dura como mucho 600 s (AiQueue).
+    | - Workers: 2 × 128 + 1 × 256 + 1 × 128 = 640 MB, el MemoryLimit de audax-horizon.service
+    |   (antes 512; se aplica en el servidor al desplegar la Fase 10, SERVIDOR-CAMBIOS); más el
+    |   maestro (memory_limit, 64 MB), el transcriptor (256 MB) y Reverb (256 MB) suman 1216 MB,
+    |   dentro de los 1280 del slice. QueueConfigTest lo comprueba.
     | `memory` es el umbral a partir del cual Horizon reinicia el worker al acabar un job.
     */
     'defaults' => [
@@ -239,6 +243,22 @@ return [
             'timeout' => 300,
             'nice' => 5,
         ],
+        'supervisor-ai' => [
+            'connection' => 'redis',
+            'queue' => ['ai'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'minProcesses' => 1,
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            // Los reintentos los hace cada Job (GeminiClient reintenta 429 y 5xx dentro del intento).
+            'tries' => 1,
+            // App\Domain\Weeklies\Ai\AiQueue::TIMEOUT, por debajo del retry_after de redis (660 s).
+            'timeout' => 600,
+            'nice' => 10,
+        ],
     ],
 
     // Servidor compartido: pocos procesos y con límites (unidad systemd audax-horizon, RUNBOOK paso 9).
@@ -252,6 +272,9 @@ return [
             'supervisor-mail' => [
                 'maxProcesses' => 1,
             ],
+            'supervisor-ai' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'staging' => [
@@ -263,6 +286,9 @@ return [
             'supervisor-mail' => [
                 'maxProcesses' => 1,
             ],
+            'supervisor-ai' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'local' => [
@@ -270,6 +296,9 @@ return [
                 'maxProcesses' => 2,
             ],
             'supervisor-mail' => [
+                'maxProcesses' => 1,
+            ],
+            'supervisor-ai' => [
                 'maxProcesses' => 1,
             ],
         ],

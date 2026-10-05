@@ -7,6 +7,7 @@ use App\Providers\HorizonServiceProvider;
 use App\Providers\PortalServiceProvider;
 use App\Providers\ReportDeliveryServiceProvider;
 use App\Providers\ReportsServiceProvider;
+use App\Providers\WeekliesServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -16,4 +17,5 @@ return [
     ReportsServiceProvider::class,
     PortalServiceProvider::class,
     ReportDeliveryServiceProvider::class,
+    WeekliesServiceProvider::class,
 ];
