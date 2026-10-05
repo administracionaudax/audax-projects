@@ -44,8 +44,8 @@ export type ClientsIndexProps = {
         /** '1' = «Mis proyectos». */
         mios: '1' | '';
     };
-    /** Personas de plantilla para el filtro por persona (F-123). */
-    people: { id: number; name: string }[];
+    /** Personas de plantilla para el filtro por persona (F-123); diferida. */
+    people?: { id: number; name: string }[];
     /** Columnas de la Weekly (último reporte y satisfacción): módulo encendido y use-weeklies. */
     weekly: boolean;
 };

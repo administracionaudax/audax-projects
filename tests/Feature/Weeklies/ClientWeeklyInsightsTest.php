@@ -95,7 +95,8 @@ it('la cartera trae el icono, el último reporte, la satisfacción con su tenden
             ->where('clients.data.0.satisfaction_trend', 4)
             ->where('clients.data.0.last_report_at', '2026-10-02T15:00:00+00:00')
             ->where('clients.data.0.kind_badges', [['tag' => 'web', 'count' => 1], ['tag' => 'hour_bank', 'count' => 1]])
-            ->has('people'));
+            ->missing('people')
+            ->loadDeferredProps(fn (Assert $reload) => $reload->where('people.0.name', 'Ana Díaz')));
 });
 
 it('ordena por último reporte (sin reportes, al final) y por satisfacción', function () {

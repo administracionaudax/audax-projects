@@ -230,7 +230,7 @@ export default function ClientsIndex({
                             <option value="">
                                 {t('clients.filter_person_all')}
                             </option>
-                            {people.map((person) => (
+                            {(people ?? []).map((person) => (
                                 <option key={person.id} value={person.id}>
                                     {person.name}
                                 </option>

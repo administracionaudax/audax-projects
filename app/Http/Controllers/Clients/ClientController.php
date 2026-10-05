@@ -127,15 +127,16 @@ class ClientController extends Controller
                 'persona' => $person === null ? '' : (string) $person,
                 'mios' => $mine ? '1' : '',
             ],
-            // Personas para el filtro (F-123): la plantilla activa que escribe la weekly.
-            'people' => User::query()
+            // Personas para el filtro (F-123): la plantilla activa que escribe la weekly. Diferida: no
+            // pesa en la carga de la lista.
+            'people' => Inertia::defer(fn (): array => User::query()
                 ->where('is_active', true)
                 ->role(User::WEEKLY_ROLES)
                 ->orderBy('name')
                 ->get(['id', 'name'])
                 ->map(fn (User $person): array => ['id' => $person->id, 'name' => $person->name])
                 ->values()
-                ->all(),
+                ->all()),
             // Columnas de la Weekly (último reporte y satisfacción): con el módulo y quien la usa.
             'weekly' => $weekly,
         ]);
