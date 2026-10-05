@@ -211,10 +211,11 @@ MD,
                 ],
             ],
             'login_events' => [
-                'description' => 'Tus inicios de sesión, correctos y fallidos: fecha, dirección IP y navegador.',
+                'description' => 'Tus inicios de sesión, correctos y fallidos: fecha, método (contraseña o Google), dirección IP y navegador.',
                 'columns' => [
                     'created_at' => 'Fecha',
                     'succeeded' => 'Correcto',
+                    'method' => 'Método (password: contraseña; google: Google)',
                     'ip_address' => 'Dirección IP',
                     'user_agent' => 'Navegador',
                 ],

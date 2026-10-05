@@ -369,7 +369,7 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         ->and(json_decode($files['horarios.json'], true)[0])->toMatchArray(['valid_from' => '2026-01-01', 'mon_minutes' => 480, 'weekly_total' => '40:00'])
         ->and(json_decode($files['notificaciones.json'], true)[0])->toMatchArray(['kind' => 'task.assigned', 'url' => "/tareas/{$task->id}"])
         ->and(json_decode($files['accesos.json'], true))->toBe([
-            ['created_at' => '2026-10-05T12:00:00+02:00', 'succeeded' => true, 'ip_address' => '10.0.0.7', 'user_agent' => 'Firefox'],
+            ['created_at' => '2026-10-05T12:00:00+02:00', 'succeeded' => true, 'method' => 'password', 'ip_address' => '10.0.0.7', 'user_agent' => 'Firefox'],
         ]);
 
     expect($files['LEEME.txt'])->toContain('Tus datos personales en Audax Proyectos')
