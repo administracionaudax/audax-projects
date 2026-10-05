@@ -1,6 +1,12 @@
 {
-  "people": [
-    {"weeklysync_email": "carla.vieja@gmail.test", "email": "carla@audax.test"},
-    {"weeklysync_id": "11111111-0000-4000-8000-000000000006", "import": false}
-  ]
+    "people": [
+        {
+            "weeklysync_email": "carla.vieja@gmail.test",
+            "email": "carla@audax.test"
+        },
+        {
+            "weeklysync_id": "11111111-0000-4000-8000-000000000006",
+            "import": false
+        }
+    ]
 }

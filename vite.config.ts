@@ -82,6 +82,10 @@ export default defineConfig({
             'resources/views/reports/pdf/audax-doc.css',
             // Fixture generado con el JS original de WeeklySync (un caso por línea, D-153).
             'tests/fixtures/weeklies/satisfaction-cases.json',
+            // Volcado de ejemplo de WeeklySync (D-213): lo escribe el volcador y el manifiesto
+            // lleva el sha256 de cada tabla; reformatearlo lo invalidaría.
+            'tests/fixtures/weeklysync/tables/**',
+            'tests/fixtures/weeklysync/manifest.json',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],
