@@ -352,4 +352,31 @@ return [
         'already_running' => 'El resumen ya se está generando.',
         'invalid_kind' => 'Ese resumen no existe.',
     ],
+
+    // Tareas de «Mi espacio» (10.6, F-055 a F-063, D-203 y D-204).
+    'tasks' => [
+        'no_closed_weekly' => 'Todavía no hay ninguna weekly cerrada de la que sacar tareas.',
+        'requested' => 'Buscando tareas en la última weekly cerrada. Tardará unos segundos.',
+        'already_running' => 'Ya se están buscando tareas en la weekly.',
+        'suggestion_gone' => 'Esa propuesta ya no está: vuelve a cargar la página.',
+        'project_forbidden' => 'No puedes crear tareas en ese proyecto.',
+        'created' => '{1} Se ha creado :count tarea.|[2,*] Se han creado :count tareas.',
+        'dismissed' => 'Propuestas descartadas.',
+        'archived' => '«:task» archivada en tu lista.',
+        'unarchived' => '«:task» recuperada.',
+        'errors' => [
+            'title' => 'Escribe el título de la tarea.',
+            'project' => 'Elige el proyecto de la tarea.',
+            'rich_notes' => 'Esta tarea tiene una descripción con formato: edítala en la tarea para no perderlo.',
+            'task_forbidden' => 'No puedes cambiar las notas de esta tarea.',
+        ],
+    ],
+
+    // Asistente IA (10.6, F-146 y F-147, D-205 y D-206).
+    'assistant' => [
+        'question_required' => 'Escribe una pregunta.',
+        'not_found' => 'Esa pregunta ya no está disponible.',
+        'failed' => 'Lo siento, hubo un error al procesar tu consulta. Por favor intenta de nuevo.',
+        'empty' => 'No se pudo generar una respuesta.',
+    ],
 ];

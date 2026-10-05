@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
- * Dictado de la weekly (F-049, F-050, F-171 y F-172, D-152): sube el audio grabado en el navegador,
+ * Dictado de la weekly (F-049, F-050, F-171 y F-172, D-152) y de las notas de una tarea (F-060, 10.6): sube el audio grabado en el navegador,
  * que se transcribe con el Whisper del servidor en la cola `transcriptions` (TranscribeDictation), y
  * consulta su estado mientras la interfaz muestra «Transcribiendo…» (sondeo).
  *
@@ -38,9 +38,10 @@ class DictationController extends Controller
 
         $dictation = new Dictation([
             'user_id' => $user->id,
-            'context' => DictationContext::WeeklyEntry,
-            'weekly_cycle_id' => $request->integer('weekly_cycle_id'),
-            'client_id' => $request->filled('client_id') ? $request->integer('client_id') : null,
+            'context' => $request->context(),
+            'weekly_cycle_id' => $request->context() === DictationContext::WeeklyEntry ? $request->integer('weekly_cycle_id') : null,
+            'client_id' => $request->context() === DictationContext::WeeklyEntry && $request->filled('client_id') ? $request->integer('client_id') : null,
+            'task_id' => $request->context() === DictationContext::TaskNote ? $request->integer('task_id') : null,
             'mime' => $audio?->getMimeType(),
             'size' => $size,
             'audio_duration_ms' => $duration,

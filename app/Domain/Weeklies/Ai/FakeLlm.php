@@ -2,6 +2,7 @@
 
 namespace App\Domain\Weeklies\Ai;
 
+use App\Enums\AiFeature;
 use Closure;
 use PHPUnit\Framework\Assert;
 use RuntimeException;
@@ -44,6 +45,20 @@ final class FakeLlm implements LlmClient
     public static function demo(): self
     {
         return (new self('fake-gemini'))->respondUsing(function (LlmRequest $request): array|string {
+            // Tareas sugeridas (10.6): una tarea de prueba para el usuario objetivo y el primer cliente.
+            if ($request->feature === AiFeature::SuggestedTasks) {
+                $userId = preg_match('/USUARIO OBJETIVO:\n- id: (\d+)/u', $request->prompt, $match) === 1 ? $match[1] : null;
+                $clientId = preg_match('/CLIENTES CONOCIDOS \(ID y Nombre\):\n\{"id":(\d+)/u', $request->prompt, $match) === 1 ? $match[1] : null;
+
+                return $userId === null ? [] : [[
+                    'description' => 'Revisar la tarea de prueba generada sin IA (GEMINI_DRIVER=fake)',
+                    'assigneeId' => $userId,
+                    'assignerId' => null,
+                    'clientId' => $clientId,
+                    'status' => 'TODO',
+                ]];
+            }
+
             if ($request->responseSchema === null) {
                 if (preg_match('/TRANSCRIPCIÓN BRUTA:\n(.*?)\n\nINSTRUCCIONES:/s', $request->prompt, $match) === 1) {
                     return trim($match[1]);

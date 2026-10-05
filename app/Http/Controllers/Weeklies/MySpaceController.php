@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Weeklies;
 use App\Domain\Weeklies\MyWeeklyClients;
 use App\Domain\Weeklies\MyWeeklyHistory;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\Tasks\MySpaceTasks;
+use App\Domain\Weeklies\Tasks\TaskSuggester;
 use App\Domain\Weeklies\WeeklyStreaks;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Weeklies\WeeklyCycleResource;
@@ -19,11 +21,15 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * «Mi espacio» (F-041 a F-054): pestañas «Reportes» y «Tareas» (10.6).
+ * «Mi espacio» (F-041 a F-063): pestañas «Reportes» y «Tareas».
  * - Sin ?semana: mis weeklies (F-042), con la semana activa destacada, y mi racha.
  * - Con ?semana={id}: mi weekly de esa semana (F-043 a F-054): una caja por cliente propuesto más
  *   «General / Interno», el catálogo para añadir otros, el autocompletado desde mis tareas y horas,
  *   mi exención y el borrador. Con la semana cerrada, en solo lectura.
+ * - Tareas (10.6, F-055 a F-063, D-203 y D-204): mis tareas agrupadas por cliente (`my_tasks`), los
+ *   proyectos en los que puedo crear (`task_projects`), los estados para marcar hecha
+ *   (`task_statuses`) y las tareas sugeridas por IA (`suggestions`, de la weekly `suggestion_source`).
+ *   Solo con ?pestana=tareas; con otra pestaña llegan a null sin consultar nada.
  * `cycle` y `submission` son siempre los de la semana activa (contrato 10.1).
  */
 class MySpaceController extends Controller
@@ -36,6 +42,8 @@ class MySpaceController extends Controller
         MyWeeklyStatus $status,
         MyWeeklyClients $clients,
         WeeklyStreaks $streaks,
+        MySpaceTasks $tasks,
+        TaskSuggester $suggester,
     ): Response {
         Gate::authorize('use-weeklies');
 
@@ -59,6 +67,15 @@ class MySpaceController extends Controller
             'weeks' => $history->for($user),
             'streak' => $streaks->summary($user),
             'editor' => $selected === null ? null : $this->editor($user, $selected, $status, $clients),
+            'my_tasks' => $tab === 'tareas' ? fn (): array => $tasks->list($user) : null,
+            'task_projects' => $tab === 'tareas' ? fn (): array => $tasks->catalog($user) : null,
+            'task_statuses' => $tab === 'tareas' ? fn (): array => $tasks->toggleStatuses() : null,
+            'suggestions' => $tab === 'tareas' ? fn (): ?array => TaskSuggester::present($suggester->find($user)) : null,
+            'suggestion_source' => $tab === 'tareas' ? function () use ($suggester): ?array {
+                $source = $suggester->sourceCycle();
+
+                return $source === null ? null : ['id' => $source->id, 'number' => $source->number, 'label' => $source->label];
+            } : null,
         ]);
     }
 

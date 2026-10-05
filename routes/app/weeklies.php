@@ -80,6 +80,9 @@ Route::middleware('module:weeklies')->group(function () {
     Route::post('mi-espacio/proyectos', [WeeklyProjectMembershipController::class, 'join'])->middleware('throttle:30,1')->name('weeklies.projects.join');
     Route::delete('mi-espacio/proyectos/{project}', [WeeklyProjectMembershipController::class, 'leave'])->whereNumber('project')->middleware('throttle:30,1')->name('weeklies.projects.leave');
     Route::post('mi-espacio/tareas/sugeridas', [MySpaceTaskController::class, 'suggest'])->middleware('throttle:10,1')->name('my-space.tasks.suggest');
+    Route::post('mi-espacio/tareas/sugeridas/crear', [MySpaceTaskController::class, 'accept'])->middleware('throttle:30,1')->name('my-space.tasks.suggestions.accept');
+    Route::delete('mi-espacio/tareas/sugeridas', [MySpaceTaskController::class, 'dismiss'])->middleware('throttle:30,1')->name('my-space.tasks.suggestions.dismiss');
+    Route::put('mi-espacio/tareas/{task}/notas', [MySpaceTaskController::class, 'notes'])->whereNumber('task')->middleware('throttle:120,1')->name('my-space.tasks.notes');
     Route::post('mi-espacio/tareas/{task}/archivar', [MySpaceTaskController::class, 'archive'])->whereNumber('task')->name('my-space.tasks.archive');
     Route::delete('mi-espacio/tareas/{task}/archivar', [MySpaceTaskController::class, 'unarchive'])->whereNumber('task')->name('my-space.tasks.unarchive');
 
