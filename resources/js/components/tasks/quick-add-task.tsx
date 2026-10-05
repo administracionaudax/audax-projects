@@ -1,9 +1,11 @@
 import { router } from '@inertiajs/react';
-import { CircleAlert, Plus } from 'lucide-react';
+import { CircleAlert, Plus, SquarePen } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
+import { TaskCreateDialog } from '@/components/tasks/task-create-dialog';
 import { BankSelect } from '@/components/tasks/task-fields';
 import { defaultBankId, useTaskLookups } from '@/components/tasks/task-lookups';
 import { TASK_RELOAD } from '@/components/tasks/task-requests';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -20,6 +22,7 @@ export type QuickAddDefaults = Partial<{
  * Creación rápida en línea (SPEC §6): escribe el título, pulsa Intro y sigue escribiendo la
  * siguiente. En los proyectos de bolsas pide la bolsa (primero las del departamento del usuario,
  * SPEC §8.3) salvo que venga dada (agrupado por bolsa o subtarea, que usa la del padre).
+ * En una tarea raíz, «Más datos» abre el diálogo completo con lo escrito (D-163).
  */
 export function QuickAddTask({
     defaults = {},
@@ -43,6 +46,7 @@ export function QuickAddTask({
     const [title, setTitle] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [details, setDetails] = useState(false);
     const needsBank =
         lookups.usesBanks &&
         parentId === undefined &&
@@ -148,6 +152,22 @@ export function QuickAddTask({
                         data-test="quick-add-input"
                     />
                 </div>
+                {parentId === undefined ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0 self-start sm:self-auto"
+                        onClick={() => setDetails(true)}
+                        aria-label={t('quick_add.more_details', {
+                            label,
+                        })}
+                        title={t('quick_add.more_details_short')}
+                        data-test="quick-add-details"
+                    >
+                        <SquarePen aria-hidden="true" />
+                    </Button>
+                ) : null}
                 {needsBank ? (
                     <BankSelect
                         value={bankId}
@@ -160,6 +180,17 @@ export function QuickAddTask({
                     />
                 ) : null}
             </form>
+            {parentId === undefined ? (
+                <TaskCreateDialog
+                    open={details}
+                    onOpenChange={setDetails}
+                    onCreated={() => setTitle('')}
+                    defaults={{
+                        ...defaults,
+                        title: title.trim(),
+                    }}
+                />
+            ) : null}
             {error ? (
                 <p
                     id={errorId}
