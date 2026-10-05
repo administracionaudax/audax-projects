@@ -6,6 +6,8 @@ import {
     formatMinutes,
     formatNumber,
     formatPercent,
+    formatTime,
+    formatTimeRange,
 } from '@/lib/format';
 
 // Intl usa espacios de no separación (U+00A0 / U+202F) antes de € y %.
@@ -84,5 +86,23 @@ describe('formatNumber y formatPercent', () => {
     it('formatea porcentajes, incluidos los mayores del 100 %', () => {
         expect(norm(formatPercent(0.756))).toBe('75,6 %');
         expect(norm(formatPercent(1.04))).toBe('104 %');
+    });
+});
+
+describe('formatTime y formatTimeRange (D-162)', () => {
+    it('da la hora de Madrid de un instante UTC', () => {
+        expect(formatTime('2026-09-24T07:05:00Z')).toBe('09:05');
+        expect(formatTime('2026-12-24T07:05:00Z')).toBe('08:05');
+        expect(formatTime(null)).toBe('');
+    });
+
+    it('pinta la franja y la medianoche del final como 24:00', () => {
+        expect(
+            formatTimeRange('2026-09-24T07:00:00Z', '2026-09-24T09:30:00Z'),
+        ).toBe('09:00–11:30');
+        expect(
+            formatTimeRange('2026-09-24T20:00:00Z', '2026-09-24T22:00:00Z'),
+        ).toBe('22:00–24:00');
+        expect(formatTimeRange('2026-09-24T07:00:00Z', null)).toBe('');
     });
 });
