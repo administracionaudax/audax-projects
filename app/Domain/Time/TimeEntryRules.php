@@ -45,6 +45,8 @@ final class TimeEntryRules
         int $minutes,
         ?string $description,
         ?TimeEntry $existing = null,
+        ?CarbonImmutable $startedAt = null,
+        ?CarbonImmutable $endedAt = null,
     ): array {
         // Solo un admin edita entradas bloqueadas, y sin reabrir la semana (SPEC §7).
         $adminEditingLocked = $existing !== null && $existing->isLocked() && $actor->isAdmin();
@@ -117,6 +119,15 @@ final class TimeEntryRules
             }
         }
 
+        // Franja horaria (D-162): las dos horas o ninguna, y el fin nunca antes del inicio. El resto
+        // (sin cruzar la medianoche, minutos = franja) lo comprueba TimeRange en la entrada manual:
+        // el temporizador guarda su franja real aunque los minutos vayan redondeados.
+        if (($startedAt === null) !== ($endedAt === null)) {
+            $errors['end_time'][] = $this->message('time.errors.range_incomplete');
+        } elseif ($startedAt !== null && $endedAt !== null && $endedAt < $startedAt) {
+            $errors['end_time'][] = $this->message('time.errors.range_order');
+        }
+
         // Descripción obligatoria (ajuste)
         if ((bool) Setting::get('time_entry_description_required', false) && trim((string) $description) === '') {
             $errors['description'][] = $this->message('time.errors.description_required');
@@ -131,7 +142,56 @@ final class TimeEntryRules
             $this->ledger->assertFits($bank, $minutes, $existing, viewer: $actor);
         }
 
-        return $this->warnings($actor, $target, $task, $bank, $date, $minutes, $dayTotal, $existing);
+        $warnings = $this->warnings($actor, $target, $task, $bank, $date, $minutes, $dayTotal, $existing);
+
+        if ($startedAt !== null && $endedAt !== null) {
+            $overlap = $this->overlapWarning($actor, $target, $startedAt, $endedAt, $existing);
+
+            if ($overlap !== null) {
+                $warnings[] = $overlap;
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Entradas de la misma persona cuya franja se pisa con esta (D-162): aviso, nunca bloqueo
+     * (puede ser una corrección o una reunión que se solapa a propósito). Una consulta, con las
+     * franjas en hora de Madrid en el mensaje (como mucho tres).
+     */
+    private function overlapWarning(User $actor, User $target, CarbonImmutable $startedAt, CarbonImmutable $endedAt, ?TimeEntry $existing): ?TimeEntryWarning
+    {
+        $overlapping = TimeEntry::query()
+            ->where('user_id', $target->id)
+            ->whereNotNull('started_at')
+            ->whereNotNull('ended_at')
+            ->where('started_at', '<', $endedAt->utc())
+            ->where('ended_at', '>', $startedAt->utc())
+            ->when($existing !== null, fn ($query) => $query->whereKeyNot($existing?->id))
+            ->orderBy('started_at')
+            ->get(['id', 'started_at', 'ended_at']);
+
+        if ($overlapping->isEmpty()) {
+            return null;
+        }
+
+        $zone = LocalTime::timezone();
+        $ranges = $overlapping->take(3)
+            ->map(fn (TimeEntry $entry): string => sprintf(
+                '%s %s–%s',
+                $entry->started_at?->setTimezone($zone)->format('d/m/Y'),
+                $entry->started_at?->setTimezone($zone)->format('H:i'),
+                $entry->ended_at?->setTimezone($zone)->format('H:i'),
+            ))
+            ->implode(', ');
+
+        $key = $actor->id === $target->id ? 'time.warnings.overlap' : 'time.warnings.overlap_other';
+
+        return new TimeEntryWarning(TimeEntryWarning::OVERLAP, Messages::choice($key, $overlapping->count(), [
+            'ranges' => $ranges,
+            'name' => $target->name,
+        ]));
     }
 
     /**

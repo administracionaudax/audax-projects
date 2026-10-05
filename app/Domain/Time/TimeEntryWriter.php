@@ -41,7 +41,7 @@ final class TimeEntryWriter
             $target = $this->user($actor, $data->userId);
             $bank = $this->lockBanks([$task->hour_bank_id])[$task->hour_bank_id] ?? null;
 
-            $warnings = $this->rules->check($actor, $target, $task, $project, $bank, $data->date, $data->minutes, $data->description);
+            $warnings = $this->rules->check($actor, $target, $task, $project, $bank, $data->date, $data->minutes, $data->description, null, $data->startedAt, $data->endedAt);
 
             $entry = new TimeEntry([
                 'user_id' => $target->id,
@@ -97,7 +97,7 @@ final class TimeEntryWriter
             $banks = $this->lockBanks([$current->hour_bank_id, $bankId]);
             $bank = $bankId !== null ? ($banks[$bankId] ?? null) : null;
 
-            $warnings = $this->rules->check($actor, $target, $task, $project, $bank, $data->date, $data->minutes, $data->description, $current);
+            $warnings = $this->rules->check($actor, $target, $task, $project, $bank, $data->date, $data->minutes, $data->description, $current, $data->startedAt, $data->endedAt);
 
             $current->fill([
                 'task_id' => $task->id,
@@ -112,9 +112,14 @@ final class TimeEntryWriter
                 $current->is_billable = $this->billable($task, $project, $data->isBillable);
             }
 
+            // Franja (D-162): con una nueva, se guarda; sin ella, se conserva mientras no cambien la
+            // fecha ni los minutos, y se quita si cambian (ya no describiría la entrada).
             if ($data->startedAt !== null || $data->endedAt !== null) {
                 $current->started_at = $data->startedAt;
                 $current->ended_at = $data->endedAt;
+            } elseif ($current->isDirty(['date', 'minutes'])) {
+                $current->started_at = null;
+                $current->ended_at = null;
             }
 
             $current->save();

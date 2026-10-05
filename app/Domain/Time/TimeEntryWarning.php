@@ -17,6 +17,9 @@ final readonly class TimeEntryWarning
     /** Día con una ausencia aprobada de la persona (SPEC §7, D-049). Añadido por la Fase 3. */
     public const string ABSENCE = 'absence';
 
+    /** Franja que se pisa con otra entrada de la misma persona (D-162). */
+    public const string OVERLAP = 'overlap';
+
     public function __construct(
         public string $code,
         public string $message,

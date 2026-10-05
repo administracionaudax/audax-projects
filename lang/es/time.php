@@ -26,6 +26,12 @@ return [
         'week_closed' => 'La semana del :week está :status. Hay que reabrirla para cambiar sus horas.',
         'minutes_range' => 'La duración debe estar entre 0:01 y 24:00.',
         'day_over_24h' => 'Con esta entrada, el :date suma más de 24 horas.',
+        // Franja horaria de una entrada manual (D-162).
+        'range_format' => 'Escribe la hora como 09:30.',
+        'range_incomplete' => 'Indica la hora de inicio y la de fin, o ninguna de las dos.',
+        'range_empty' => 'La hora de fin tiene que ser posterior a la de inicio.',
+        'range_midnight' => 'La hora de fin tiene que ser posterior a la de inicio. Si trabajaste pasada la medianoche, regístralo en dos entradas: una hasta las 24:00 (fin 00:00) y otra desde las 00:00 del día siguiente.',
+        'range_order' => 'La franja horaria no es válida: el fin es anterior al inicio.',
         'description_required' => 'Escribe una descripción de lo que has hecho.',
         'timer_bank_empty' => 'La bolsa «:bank» no tiene saldo y no admite exceso: no se puede iniciar el temporizador.',
         'no_timer' => 'No tienes ningún temporizador en marcha.',
@@ -55,6 +61,9 @@ return [
         'overage_partial' => ':minutes de esta entrada se registrarán como exceso: la bolsa se agota.',
         // Para un colaborador externo, sin cantidades (D-134).
         'overage_partial_collaborator' => 'Parte de esta entrada se registrará como exceso: la bolsa se agota.',
+        // Franjas que se pisan con otras entradas de la misma persona (D-162): avisa, no bloquea.
+        'overlap' => '{1} Esta franja se solapa con otra entrada tuya: :ranges.|[2,*] Esta franja se solapa con :count entradas tuyas: :ranges.',
+        'overlap_other' => '{1} Esta franja se solapa con otra entrada de :name: :ranges.|[2,*] Esta franja se solapa con :count entradas de :name: :ranges.',
         'timer_too_short' => 'El temporizador ha durado menos de lo que se redondea: no se ha imputado nada.',
     ],
     // Avisos de éxito (toasts) de las acciones de horas.
@@ -102,6 +111,8 @@ return [
         'user_id' => 'persona',
         'date' => 'fecha',
         'minutes' => 'duración',
+        'start_time' => 'hora de inicio',
+        'end_time' => 'hora de fin',
         'description' => 'descripción',
         'is_billable' => 'facturable',
         'week' => 'semana',
