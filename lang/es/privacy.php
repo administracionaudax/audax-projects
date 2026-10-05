@@ -302,6 +302,50 @@ MD,
                     'created_at' => 'Fecha',
                 ],
             ],
+            'suggestions' => [
+                'description' => 'Las sugerencias que has publicado en el centro de ayuda, con su estado y cuántos votos y comentarios tienen.',
+                'columns' => [
+                    'id' => 'Id',
+                    'board' => 'Tablero',
+                    'category' => 'Categoría',
+                    'title' => 'Título',
+                    'body' => 'Detalle',
+                    'status' => 'Estado',
+                    'votes' => 'Votos',
+                    'comments' => 'Comentarios',
+                    'attachments' => 'Adjuntos',
+                    'created_at' => 'Publicada el',
+                    'updated_at' => 'Cambiada el',
+                ],
+            ],
+            'suggestion_comments' => [
+                'description' => 'Tus comentarios en las sugerencias, con sus adjuntos.',
+                'columns' => [
+                    'id' => 'Id',
+                    'post' => 'Sugerencia',
+                    'reply_to' => 'Responde al comentario',
+                    'body' => 'Texto',
+                    'attachments' => 'Adjuntos',
+                    'created_at' => 'Escrito el',
+                    'edited_at' => 'Editado el',
+                ],
+            ],
+            'suggestion_votes' => [
+                'description' => 'Tus votos a las sugerencias y tus reacciones a sus comentarios.',
+                'columns' => [
+                    'kind' => 'Tipo',
+                    'post' => 'Sugerencia',
+                    'reaction' => 'Reacción',
+                    'date' => 'Fecha',
+                ],
+            ],
+            'help_likes' => [
+                'description' => 'Los «me gusta» que has dado a las novedades del centro de ayuda.',
+                'columns' => [
+                    'update' => 'Novedad',
+                    'date' => 'Fecha',
+                ],
+            ],
             'my_space_tasks' => [
                 'description' => 'Lo tuyo de las tareas de «Mi espacio»: las tareas que te ha propuesto la IA y aún no has creado ni descartado, y las que has archivado de tu lista.',
                 'columns' => [
@@ -329,6 +373,11 @@ MD,
                     'hidden_at' => 'Ocultado por la administración el',
                 ],
             ],
+        ],
+        // Centro de ayuda y sugerencias (10.7).
+        'help' => [
+            'vote' => 'Voto a una sugerencia',
+            'reaction' => 'Reacción a un comentario',
         ],
         // La Weekly (Fase 10, 10.5): estados del dictado y tipos de resumen con IA.
         'weeklies' => [

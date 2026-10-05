@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -27,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['published_on', 'title', 'subtitle', 'body', 'created_by'])]
 class HelpManualUpdate extends Model
 {
+    use LogsDomainActivity;
+
     /**
      * @return array<string, string>
      */

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Domain\Weeklies\Help\HelpReleaseCalendar;
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Database\Factories\HelpReleaseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -31,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class HelpRelease extends Model
 {
     /** @use HasFactory<HelpReleaseFactory> */
-    use HasFactory;
+    use HasFactory, LogsDomainActivity;
 
     /**
      * @return array<string, string>
@@ -46,10 +48,10 @@ class HelpRelease extends Model
         ];
     }
 
-    /** «V1.10.2» (serie, mes y semana del mes). */
+    /** «V.1.10.2» (serie, mes y semana del mes), como en WeeklySync. */
     public function versionLabel(): string
     {
-        return "V{$this->major_version}.{$this->month_number}.{$this->week_of_month}";
+        return HelpReleaseCalendar::label($this->major_version, $this->month_number, $this->week_of_month);
     }
 
     /**

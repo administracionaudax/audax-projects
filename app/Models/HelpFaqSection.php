@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Database\Factories\HelpFaqSectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class HelpFaqSection extends Model
 {
     /** @use HasFactory<HelpFaqSectionFactory> */
-    use HasFactory;
+    use HasFactory, LogsDomainActivity;
 
     /**
      * @return array<string, string>

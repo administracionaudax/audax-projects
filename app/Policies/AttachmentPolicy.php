@@ -2,8 +2,13 @@
 
 namespace App\Policies;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Attachment;
+use App\Models\HelpTutorial;
 use App\Models\Message;
+use App\Models\SuggestionComment;
+use App\Models\SuggestionPost;
 use App\Models\TaskComment;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +19,9 @@ use Illuminate\Support\Facades\Gate;
  * (Fase 6, D-071), solo quien puede ver su conversación.
  * Los borra quien los subió, quien gestiona el proyecto o un admin; los del chat, nunca sueltos.
  * Un colaborador externo (D-134), solo los de sus proyectos.
+ * Los del centro de ayuda (Fase 10, 10.7): los vídeos de los tutoriales y los adjuntos de las
+ * sugerencias y sus comentarios los ve quien usa la ayuda (y las sugerencias, con su módulo); se
+ * quitan desde su sugerencia o su comentario, nunca sueltos.
  */
 class AttachmentPolicy
 {
@@ -33,6 +41,10 @@ class AttachmentPolicy
             return $this->viewInChat($user, $attachment);
         }
 
+        if ($this->isHelpAttachment($attachment)) {
+            return $this->viewInHelp($user, $attachment);
+        }
+
         if (! $this->inVisibleProject($user, $attachment)) {
             return false;
         }
@@ -50,7 +62,7 @@ class AttachmentPolicy
     {
         // Los del chat se quitan borrando su mensaje (MessageWriter, D-069), nunca sueltos: así
         // nadie borra un archivo de una conversación que no ve (el admin no ve las directas).
-        if ($attachment->attachable_type === (new Message)->getMorphClass()) {
+        if ($attachment->attachable_type === (new Message)->getMorphClass() || $this->isHelpAttachment($attachment)) {
             return false;
         }
 
@@ -102,5 +114,39 @@ class AttachmentPolicy
         }
 
         return true;
+    }
+
+    private function isHelpAttachment(Attachment $attachment): bool
+    {
+        return in_array($attachment->attachable_type, [
+            (new HelpTutorial)->getMorphClass(),
+            (new SuggestionPost)->getMorphClass(),
+            (new SuggestionComment)->getMorphClass(),
+        ], true);
+    }
+
+    /**
+     * Ayuda y sugerencias: quien usa la Weekly (nunca un colaborador externo), con el módulo de la
+     * ayuda encendido y, en las sugerencias, también el suyo; y solo si lo que lo contiene existe.
+     */
+    private function viewInHelp(User $user, Attachment $attachment): bool
+    {
+        if (! Gate::forUser($user)->allows('use-weeklies') || ! AppModules::enabled(AppModule::Help)) {
+            return false;
+        }
+
+        if ($attachment->attachable_type === (new HelpTutorial)->getMorphClass()) {
+            return HelpTutorial::query()->whereKey($attachment->attachable_id)->exists();
+        }
+
+        if (! AppModules::enabled(AppModule::Suggestions)) {
+            return false;
+        }
+
+        $post = $attachment->attachable_type === (new SuggestionPost)->getMorphClass()
+            ? SuggestionPost::query()->find($attachment->attachable_id)
+            : SuggestionComment::query()->with('post')->find($attachment->attachable_id)?->post;
+
+        return $post !== null && Gate::forUser($user)->allows('view', $post);
     }
 }

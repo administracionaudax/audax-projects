@@ -26,6 +26,7 @@ return [
         'tasks' => 'Tareas',
         'time' => 'Horas',
         'weeklies' => 'Weekly',
+        'suggestions' => 'Sugerencias',
         'hour_banks' => 'Bolsas de horas',
         'absences' => 'Ausencias',
         'chat' => 'Chat',
@@ -51,6 +52,11 @@ return [
             'reminder' => ['label' => 'Recordatorios de la weekly', 'description' => 'Los que programa quien gestiona la Weekly y los «Recordar», si aún no has enviado la tuya. Cada recordatorio sale por el canal que elige quien lo programa; aquí puedes quitar los que no quieras.'],
             'closed' => ['label' => 'Weekly cerrada', 'description' => 'Cuando se cierra la semana, con el enlace al informe.'],
             'deadline_changed' => ['label' => 'Plazo de la weekly cambiado', 'description' => 'Cuando se amplía o cambia el plazo de la semana y aún no has enviado tu weekly.'],
+        ],
+        'suggestions' => [
+            'status_changed' => ['label' => 'Cambia el estado de tu sugerencia', 'description' => 'Cuando quien gestiona la ayuda mueve una sugerencia tuya (planificada, en desarrollo, beta…), con su nota si la hay.'],
+            'replied' => ['label' => 'Te responden en las sugerencias', 'description' => 'Cuando alguien comenta una sugerencia tuya o responde a un comentario tuyo.'],
+            'mentioned' => ['label' => 'Te mencionan en las sugerencias', 'description' => 'Cuando alguien te menciona en una sugerencia o en un comentario.'],
         ],
         'hour_bank' => [
             'threshold' => ['label' => 'Bolsas que llegan a un umbral', 'description' => 'Cuando una bolsa que gestionas llega al 75, 90 o 100 %.'],

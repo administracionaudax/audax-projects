@@ -14,7 +14,8 @@ namespace App\Domain\Audit;
  *   envíos programados y subidas a Google Sheets de informes, D-139, D-141 y D-142) e
  *   integrations (conexiones con Google: conectar, desconectar y la desconexión automática, D-142)
  *   y auth (entradas con Google, correctas y rechazadas, D-165) y weekly-reminders (plantillas, la
- *   weekly en el recordatorio de los viernes y los envíos manuales de la Weekly, D-201).
+ *   weekly en el recordatorio de los viernes y los envíos manuales de la Weekly, D-201), help (el
+ *   manual y el enlace de soporte de la ayuda) y suggestions (cambios de estado de las sugerencias, D-211).
  */
 final class AuditCatalog
 {
@@ -47,6 +48,10 @@ final class AuditCatalog
         // (reglas, plantillas, la weekly del viernes y los envíos manuales y «Recordar», D-201).
         'weekly' => ['weekly_cycles', 'weekly_exemptions'],
         'weekly_reminder' => ['weekly_reminder_rules', 'weekly-reminders'],
+        // Centro de ayuda y sugerencias (10.7, D-211): el contenido de la ayuda y sus ajustes
+        // (manual y soporte); los tableros, las categorías, las sugerencias y sus cambios de estado.
+        'help' => ['help_releases', 'help_manual_updates', 'help_tutorials', 'help_faq_sections', 'help_faqs', 'help'],
+        'suggestion' => ['suggestion_boards', 'suggestion_categories', 'suggestion_posts', 'suggestions'],
     ];
 
     /**
@@ -87,6 +92,8 @@ final class AuditCatalog
         'google_login' => ['google_login', 'google_login_rejected'],
         'weekly_reminders_sent' => ['reminders_sent'],
         'weekly_reminders_changed' => ['templates_updated', 'friday_updated'],
+        'help_settings_changed' => ['settings_updated'],
+        'suggestion_status_changed' => ['status_changed'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */

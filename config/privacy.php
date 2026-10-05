@@ -4,11 +4,15 @@ use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
+use App\Domain\Privacy\Export\Sections\HelpLikesSection;
 use App\Domain\Privacy\Export\Sections\IntegrationsSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
 use App\Domain\Privacy\Export\Sections\MySpaceTasksSection;
 use App\Domain\Privacy\Export\Sections\NotificationsSection;
 use App\Domain\Privacy\Export\Sections\ProfileSection;
+use App\Domain\Privacy\Export\Sections\SuggestionCommentsSection;
+use App\Domain\Privacy\Export\Sections\SuggestionsSection;
+use App\Domain\Privacy\Export\Sections\SuggestionVotesSection;
 use App\Domain\Privacy\Export\Sections\TaskCommentsSection;
 use App\Domain\Privacy\Export\Sections\TimeEntriesSection;
 use App\Domain\Privacy\Export\Sections\WeeklyEntriesSection;
@@ -55,6 +59,12 @@ return [
         WeeklyRemindersSection::class,
         // Mi espacio (10.6, D-204): las tareas sugeridas sin crear y mi archivado personal.
         MySpaceTasksSection::class,
+        // Centro de ayuda y sugerencias (10.7, D-211): lo que has publicado, comentado, votado y
+        // los «me gusta» a las novedades.
+        SuggestionsSection::class,
+        SuggestionCommentsSection::class,
+        SuggestionVotesSection::class,
+        HelpLikesSection::class,
         NotificationsSection::class,
         // Cuenta de Google conectada (Fase 9, D-142): el correo y la fecha, nunca los tokens.
         IntegrationsSection::class,

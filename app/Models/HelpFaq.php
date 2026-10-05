@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['help_faq_section_id', 'question', 'answer', 'position'])]
 class HelpFaq extends Model
 {
+    use LogsDomainActivity;
+
     /**
      * @return array<string, string>
      */

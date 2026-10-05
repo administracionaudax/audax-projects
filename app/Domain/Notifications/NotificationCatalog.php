@@ -41,8 +41,11 @@ final class NotificationCatalog
     /** Quien escribe la weekly (Fase 10, D-147) con el módulo encendido; nunca un colaborador externo. */
     public const string AUDIENCE_WEEKLIES = 'weeklies';
 
+    /** Quien usa las sugerencias del centro de ayuda (10.7, D-209), con sus módulos encendidos. */
+    public const string AUDIENCE_SUGGESTIONS = 'suggestions';
+
     /** Grupos, en el orden de la página de preferencias. */
-    public const array GROUPS = ['tasks', 'time', 'weeklies', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
+    public const array GROUPS = ['tasks', 'time', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
 
     /** @var array<string, NotificationEvent>|null */
     private ?array $events = null;
@@ -93,6 +96,12 @@ final class NotificationCatalog
             new NotificationEvent('weeklies.reminder', 'weeklies', $all, [$app, $email, $push], self::AUDIENCE_WEEKLIES),
             new NotificationEvent('weeklies.closed', 'weeklies', $all, [$app, $email], self::AUDIENCE_WEEKLIES),
             new NotificationEvent('weeklies.deadline_changed', 'weeklies', $all, [$app], self::AUDIENCE_WEEKLIES),
+
+            // Sugerencias del centro de ayuda (10.7, D-209): cambia el estado de la tuya, te responden
+            // (en tu sugerencia o a tu comentario) o te mencionan. Por defecto, en la app.
+            new NotificationEvent('suggestions.status_changed', 'suggestions', $all, [$app], self::AUDIENCE_SUGGESTIONS),
+            new NotificationEvent('suggestions.replied', 'suggestions', $all, [$app], self::AUDIENCE_SUGGESTIONS),
+            new NotificationEvent('suggestions.mentioned', 'suggestions', $all, [$app, $push], self::AUDIENCE_SUGGESTIONS),
 
             // Bolsas (Fase 1): umbrales y exceso.
             new NotificationEvent('hour_bank.threshold', 'hour_banks', $all, [$app, $email], self::AUDIENCE_MANAGERS),

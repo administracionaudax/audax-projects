@@ -6,6 +6,8 @@ use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Models\Attachment;
 use App\Models\Message;
 use App\Models\Setting;
+use App\Models\SuggestionComment;
+use App\Models\SuggestionPost;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
@@ -133,9 +135,10 @@ final class AttachmentStorage
     }
 
     /**
-     * @param  int|null  $projectId  null en conversaciones sin proyecto (directas y de grupo)
+     * @param  int|null  $projectId  null en conversaciones sin proyecto (directas y de grupo) y en las
+     *                               sugerencias del centro de ayuda (Fase 10, F-161 y F-165)
      */
-    public function store(UploadedFile $file, Task|TaskComment|Message $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
+    public function store(UploadedFile $file, Task|TaskComment|Message|SuggestionPost|SuggestionComment $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
     {
         $extension = $audio
             ? (self::audioMatches($file) ? mb_strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION)) : throw new RuntimeException('Audio no admitido.'))
@@ -145,6 +148,8 @@ final class AttachmentStorage
         $directory = match (true) {
             $projectId !== null => "attachments/{$projectId}",
             $attachable instanceof Message => "attachments/chat/{$attachable->conversation_id}",
+            $attachable instanceof SuggestionPost => "attachments/suggestions/{$attachable->id}",
+            $attachable instanceof SuggestionComment => "attachments/suggestions/{$attachable->suggestion_post_id}/comments",
             default => throw new RuntimeException('Adjunto sin proyecto ni conversación.'),
         };
 

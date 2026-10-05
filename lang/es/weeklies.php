@@ -11,7 +11,6 @@ return [
     // Etiqueta de una semana, como en WeeklySync (WeeklyCalendar::label()).
     'cycle_label' => 'Semana :week (Lun :start - Vie :end)',
 
-    'not_implemented' => 'Esta parte de la Weekly todavía no está disponible.',
     'module_disabled' => 'Este módulo está desactivado.',
 
     // Aviso de bienvenida al entrar (F-012).

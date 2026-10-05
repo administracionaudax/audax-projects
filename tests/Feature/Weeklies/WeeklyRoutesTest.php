@@ -15,7 +15,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 /*
 | Rutas de la Weekly (contrato 10.1, F-016): URLs en español, nombres en inglés, autorización antes
-| de nada (403), 501 en lo que aún no existe y 404 con el módulo apagado (F-177).
+| de nada (403) y 404 con el módulo apagado (F-177). Desde la 10.7 ya no queda ninguna ruta a medias (501).
 */
 
 function weeklyRouteActor(string $actor): ?User
@@ -100,11 +100,11 @@ it('Mi espacio trae la semana activa y mi weekly, sin la de los demás', functio
             ->where('submission.entries.0.body', 'Interno'));
 });
 
-it('las acciones aún sin hacer responden 501 tras autorizar, y 403 a quien no puede', function (string $method, Closure $uri, string $allowed, string $denied) {
+it('lo de gestionar la ayuda autoriza antes de validar: 422 a quien puede y 403 a quien no (10.7)', function (string $method, Closure $uri, string $allowed, string $denied) {
     $cycle = WeeklyCycle::factory()->active()->create();
     $path = $uri($cycle);
 
-    $this->actingAs(userWithRole($allowed))->json($method, $path)->assertStatus(501);
+    $this->actingAs(userWithRole($allowed))->json($method, $path)->assertUnprocessable();
     $this->actingAs(userWithRole($denied))->json($method, $path)->assertForbidden();
 })->with([
     'contenido de ayuda' => ['POST', fn (WeeklyCycle $c) => '/ayuda/preguntas', 'department_manager', 'employee'],
@@ -131,10 +131,10 @@ it('lo de 10.2 lo hace solo quien gestiona: 403 a la plantilla', function (strin
     'recordar (10.5)' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/recordar"],
 ]);
 
-it('lo de cada persona responde 501 a cualquiera de la plantilla', function (string $method, string $path) {
+it('lo de cada persona lo puede cualquiera de la plantilla (10.7): valida en vez de prohibir', function (string $method, string $path) {
     $cycle = WeeklyCycle::factory()->active()->create();
 
-    $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertStatus(501);
+    $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertUnprocessable();
 })->with([
     ['POST', '/ayuda/sugerencias'],
     ['POST', '/ayuda/me-gusta'],
@@ -167,14 +167,14 @@ it('los resúmenes IA de una persona: su responsable sí (202), un compañero no
     $this->actingAs($person)->json('POST', "/equipo/{$person->id}/resumen-ia")->assertForbidden();
 });
 
-it('una sugerencia ajena: votar sí (501), editarla no (403), su estado solo quien gestiona', function () {
+it('una sugerencia ajena: votar sí, editarla no (403), su estado solo quien gestiona', function () {
     $post = SuggestionPost::factory()->create();
     $employee = userWithRole('employee');
 
-    $this->actingAs($employee)->json('POST', "/ayuda/sugerencias/{$post->id}/voto")->assertStatus(501);
+    $this->actingAs($employee)->json('POST', "/ayuda/sugerencias/{$post->id}/voto")->assertRedirect();
     $this->actingAs($employee)->json('PUT', "/ayuda/sugerencias/{$post->id}")->assertForbidden();
     $this->actingAs($employee)->json('PUT', "/ayuda/sugerencias/{$post->id}/estado")->assertForbidden();
-    $this->actingAs(userWithRole('department_manager'))->json('PUT', "/ayuda/sugerencias/{$post->id}/estado")->assertStatus(501);
+    $this->actingAs(userWithRole('department_manager'))->json('PUT', "/ayuda/sugerencias/{$post->id}/estado")->assertUnprocessable();
 });
 
 it('un módulo apagado da 404 a todos y vuelve al encenderlo (F-177)', function () {

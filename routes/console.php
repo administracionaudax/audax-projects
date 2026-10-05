@@ -130,3 +130,10 @@ Schedule::command('reports:prune-downloads')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Vídeos de los tutoriales de la ayuda subidos a medias (D-207): se borran pasado un día.
+Schedule::command('help:prune-uploads')
+    ->dailyAt('03:35')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();

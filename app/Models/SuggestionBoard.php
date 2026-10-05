@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Database\Factories\SuggestionBoardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class SuggestionBoard extends Model
 {
     /** @use HasFactory<SuggestionBoardFactory> */
-    use HasFactory;
+    use HasFactory, LogsDomainActivity;
 
     /**
      * @return array<string, string>

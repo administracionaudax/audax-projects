@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 #[Fillable(['title', 'description', 'help_release_id', 'position'])]
 class HelpTutorial extends Model
 {
+    use LogsDomainActivity;
+
     /**
      * @return array<string, string>
      */

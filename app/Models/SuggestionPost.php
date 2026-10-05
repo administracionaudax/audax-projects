@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SuggestionStatus;
+use App\Models\Concerns\LogsDomainActivity;
 use Carbon\CarbonImmutable;
 use Database\Factories\SuggestionPostFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -44,7 +45,17 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class SuggestionPost extends Model
 {
     /** @use HasFactory<SuggestionPostFactory> */
-    use HasFactory;
+    use HasFactory, LogsDomainActivity;
+
+    /**
+     * Los contadores, el orden del roadmap y la última actividad no van a la auditoría.
+     *
+     * @return list<string>
+     */
+    protected static function activityExcept(): array
+    {
+        return ['vote_count', 'comment_count', 'position', 'last_activity_at'];
+    }
 
     /**
      * @var array<string, mixed>

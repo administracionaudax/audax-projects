@@ -503,7 +503,7 @@ export type HelpRelease = {
     major_version: number;
     month_number: number;
     week_of_month: number;
-    /** «V1.10.2». */
+    /** «V.1.10.2». */
     version: string;
     summary: string;
     is_hidden: boolean;

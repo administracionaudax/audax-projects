@@ -31,6 +31,8 @@ return [
         'access' => 'Accesos con Google',
         'weekly' => 'Weekly (semanas y exenciones)',
         'weekly_reminder' => 'Avisos de la Weekly',
+        'help' => 'Centro de ayuda',
+        'suggestion' => 'Sugerencias',
         'other' => 'Otros',
     ],
 
@@ -66,6 +68,8 @@ return [
         'google_login' => 'Accesos con Google (correctos y rechazados)',
         'weekly_reminders_sent' => 'Recordatorios de la weekly enviados a mano',
         'weekly_reminders_changed' => 'Cambios en las plantillas y el recordatorio de los viernes de la weekly',
+        'help_settings_changed' => 'Cambios en el manual y el enlace de soporte de la ayuda',
+        'suggestion_status_changed' => 'Cambios de estado de las sugerencias',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -73,6 +77,8 @@ return [
         'reminders_sent' => 'Recordatorio de la weekly enviado',
         'templates_updated' => 'Plantillas de la weekly cambiadas',
         'friday_updated' => 'Weekly en el recordatorio de los viernes',
+        'settings_updated' => 'Manual o soporte de la ayuda cambiados',
+        'status_changed' => 'Estado de la sugerencia cambiado',
         'created' => 'Alta',
         'updated' => 'Cambio',
         'deleted' => 'Borrado',

@@ -115,7 +115,7 @@ it('la ayuda y las sugerencias guardan su contenido y precargan la categoría Bu
     $bugs = SuggestionCategory::query()->where('slug', SuggestionCategory::BUGS_SLUG)->sole();
     $post = SuggestionPost::factory()->create(['suggestion_board_id' => $bugs->suggestion_board_id, 'suggestion_category_id' => $bugs->id]);
 
-    expect($release->versionLabel())->toBe('V1.10.1')
+    expect($release->versionLabel())->toBe('V.1.10.1')
         ->and($release->likes()->count())->toBe(1)
         ->and($section->faqs()->count())->toBe(1)
         ->and($post->fresh()?->status)->toBe(SuggestionStatus::Open)
