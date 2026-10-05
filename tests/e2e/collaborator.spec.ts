@@ -142,8 +142,8 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
         expect(response?.status()).toBe(403);
     });
 
-    await test.step('el Equipo y el estado de proyectos de la Weekly, también 403', async () => {
-        for (const path of ['/equipo', '/weeklies/estado-proyectos']) {
+    await test.step('el Equipo, el estado de proyectos de la Weekly y el asistente IA, también 403', async () => {
+        for (const path of ['/equipo', '/weeklies/estado-proyectos', '/ia']) {
             const response = await page.goto(path);
             expect(response?.status()).toBe(403);
         }

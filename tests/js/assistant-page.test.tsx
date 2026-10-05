@@ -134,7 +134,7 @@ describe('Asistente IA (/ia, F-146)', () => {
 
         const [url, init] = fetchMock.mock.calls[0];
         expect(url).toBe('/ia/preguntas');
-        expect(JSON.parse(String(init?.body))).toEqual({
+        expect(JSON.parse(init?.body as string)).toEqual({
             question: '¿Cuál es el estado actual del cliente «Acme»?',
             history: [],
         });
@@ -196,7 +196,7 @@ describe('Asistente IA (/ia, F-146)', () => {
         expect(fetchMock).not.toHaveBeenCalled();
 
         await user.type(input, '{Enter}');
-        expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+        expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({
             question: '¿Y la semana pasada?',
             history: [
                 { role: 'user', content: '¿Cómo va Acme?' },

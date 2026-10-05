@@ -611,7 +611,7 @@ describe('TaskNotesField (F-060: notas con autoguardado y dictado)', () => {
         const [url, init] = fetchMock.mock.calls[0];
         expect(url).toBe('/mi-espacio/tareas/5/notas');
         expect(init?.method).toBe('PUT');
-        expect(JSON.parse(String(init?.body))).toEqual({
+        expect(JSON.parse(init?.body as string)).toEqual({
             notes: 'Llamar a Marta',
         });
         expect(screen.getByTestId('task-notes-state').textContent).toBe(

@@ -44,6 +44,7 @@ export const SIDEBAR_PATHS = [
     '/ausencias',
     '/informes',
     '/chat',
+    '/ia',
 ] as const;
 
 export async function login(
