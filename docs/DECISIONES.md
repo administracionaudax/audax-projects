@@ -1254,6 +1254,90 @@ Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sen
 - **Móvil (375 px):** el mes es una lista agrupada por día; la semana y las personas se desplazan dentro de su caja, nunca la página.
 - **Rendimiento:** una consulta acotada por el rango (índices nuevos `tasks(due_date, start_date)` y `tasks(start_date)`) leída sin modelos, más padres y responsables en una consulta cada uno; un mes de todo el equipo con 18.000 tareas en la base se sirve en unos 0,2 s en local (antes de leer sin modelos, 1,7 s). Presupuestos de consultas por vista en `tests/Feature/Calendar/TeamCalendarPerformanceTest.php`.
 
+## 05/10/2026: La Weekly dentro de Audax Proyectos (Fase 10)
+Respuestas del propietario del 05/10 a las preguntas de `docs/WEEKLY-INVENTARIO.md` §G. Plan en `docs/PLAN-FASE-10.md`.
+
+### D-145 · Fusión de WeeklySync **[amplía SPEC §1 y §6]**
+- WeeklySync, la app de las weeklies, **se fusiona** en Audax Proyectos: se reutilizan sus pantallas y su lógica sobre los datos de Audax (usuarios, clientes, proyectos, bolsas, horas y ausencias), con un solo inicio de sesión. Después se apagan Supabase, Vercel, la GitHub Action de recordatorios y Resend.
+- **No se pierde ninguna funcionalidad:** la lista F-001 a F-181 de `WEEKLY-INVENTARIO.md` §A.4 es la definición de hecho. La usa solo Audax, así que **se descarta la consola multi-tenant** (F-175 a F-181). De ella se conservan los módulos activos, el aviso global y la página «Uso de IA».
+- **Entrar con Google** (F-022) se sustituye por el inicio de sesión de Audax (contraseña y 2FA); el alta, el perfil y la fusión de identidades, por la gestión de personas de Audax.
+- **No se copian estos fallos de WeeklySync:**
+  - «Iniciar ciclo» que no guarda la semana,
+  - borrar a una persona que borra sus weeklies (en Audax se desactiva y su historial se conserva),
+  - recordatorios web que no respetan las exenciones,
+  - análisis de IA sin control de permisos.
+
+### D-146 · IA: el texto a Gemini, el audio en casa **[cambia SPEC §2 y §12]**
+- **El dictado** se transcribe con el **Whisper del servidor**, como en el chat (D-070): el audio no sale del servidor.
+- **Solo el texto** va a **Google Gemini**, con una clave de pago de AI Studio (en el plan de pago, Google no entrena con esos datos). Se usa para:
+  - el informe semanal,
+  - el delta de satisfacción (con la regla determinista portada a PHP),
+  - el guion del audio,
+  - las tareas sugeridas,
+  - los resúmenes de cliente, de equipo y de persona,
+  - el asistente,
+  - y, opcionalmente, para limpiar la transcripción y corregir nombres.
+- **La locución** del informe, con Google Cloud TTS (voz `es-ES-Journey-F` o la vigente).
+- **Cómo:**
+  - siempre en Jobs de Horizon, en la cola `ai`, de uno en uno; nunca dentro de una petición web,
+  - la clave y el modelo, en `.env` (`GEMINI_API_KEY` y `GEMINI_MODEL`), para cambiar de modelo sin desplegar cuando Google retire uno,
+  - el uso, los tokens y el coste, en `ai_usage`, visibles en «Uso de IA»,
+  - en los tests, `FakeLlm`.
+- **El asistente** solo recibe los datos que puede ver quien pregunta.
+
+### D-147 · Quién gestiona la Weekly
+- **Escriben la weekly** los internos activos: admin, responsables y empleados. **Los colaboradores externos no** (D-134).
+- **La gestionan los admins y los responsables de departamento:** permiso nuevo `manage-weeklies`, que cubre:
+  - generar, editar y regenerar el informe y el audio,
+  - ampliar el plazo, cerrar y borrar semanas,
+  - las exenciones,
+  - las reglas y plantillas de recordatorio,
+  - el contenido de ayuda y los estados de las sugerencias.
+- **Los resúmenes de desempeño y de actividad por persona hechos con IA** (F-144 y F-145) los ven solo el admin y los responsables de esa persona (`canSeeAbsencesOf`, D-088), nunca un compañero. Hay que mencionarlos en el texto RGPD, pendiente de asesor.
+
+### D-148 · Estado de proyectos con datos reales
+La pestaña «Estado de proyectos» de las weeklies deja de alimentarse con capturas pasadas por OCR (F-111 a F-118 y F-122 sustituidas). La misma vista (presupuesto, consumido, esperado y desviación por proyecto, con los códigos BH, FE, WE…) se calcula con los proyectos, las bolsas (`HourBankLedger`) y las horas de Audax. Lo esperado de un fee usa los días laborables del mes con los festivos de Audax.
+
+### D-149 · Migración de WeeklySync
+- **Se migra todo:**
+  - semanas, envíos y apuntes por cliente,
+  - exenciones,
+  - satisfacción actual e histórica,
+  - audios de los informes,
+  - contenido de ayuda (FAQ, novedades, tutoriales y manual),
+  - sugerencias con votos y estados,
+  - reglas de recordatorio y plantillas.
+- **Personas y clientes:**
+  - se casan por email y por nombre normalizado, apoyados en los códigos de proyecto importados de ClickUp,
+  - con ficheros de correspondencias fuera de Git, como en el importador de ClickUp (D-135),
+  - los que no casan se crean **inactivos**, para conservar quién escribió qué.
+- **Lo que no se migra:**
+  - las bolsas de WeeklySync, porque mandan las de Audax,
+  - sus tareas, que no tienen proyecto (salvo que casen con uno).
+- **Cómo:**
+  - `app:import-weeklysync`, idempotente con `import_refs` (fuente `weeklysync`) y con `--dry-run`,
+  - lee Supabase en solo lectura,
+  - en el servidor, con `heavy.sh` y tras una copia,
+  - la última pasada se hace con WeeklySync congelado.
+
+### D-150 · Reglas de la semana
+- **Ciclo:**
+  - una sola semana activa, de lunes a viernes, con número `Wnn-aa`,
+  - la abre el planificador el lunes, y también al cerrar la anterior,
+  - el plazo es el viernes y quien gestiona puede ampliarlo,
+  - se cierra a mano, con el informe y el audio generados; las personas pendientes no lo impiden, solo se avisa.
+- **Envío:**
+  - un apunte por cliente, con proyecto opcional,
+  - se proponen los clientes en los que la persona es miembro o ha imputado horas esa semana,
+  - borrador autoguardado,
+  - se puede editar hasta el cierre, también fuera de plazo.
+- **Exentos:**
+  - quien tiene una ausencia aprobada que cubre el plazo, o una exención manual,
+  - quien se da de alta después del final de la semana no cuenta,
+  - al cerrar se congelan.
+- **Racha:** semanas seguidas enviadas a tiempo; las exentas no la rompen.
+- **Recordatorio de los viernes:** uno solo, con las horas (D-123) y la weekly, para no avisar dos veces.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1264,5 +1348,6 @@ Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sen
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
+- Fase 10 (Weekly): D-145 a D-150.
 
-La siguiente libre es **D-145**.
+La siguiente libre es **D-151**.
