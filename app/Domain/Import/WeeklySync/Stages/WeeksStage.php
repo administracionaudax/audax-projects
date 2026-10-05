@@ -128,8 +128,14 @@ final class WeeksStage
 
         if ($structured !== null || $text !== null) {
             $report = $structured !== null ? $this->report($context, $structured) : null;
+
+            // `report` es jsonb: PostgreSQL devuelve las claves en otro orden. Solo se asigna si
+            // cambia de verdad, para que repetir la importación no la dé por modificada.
+            if (! self::sameJson($cycle->report, $report)) {
+                $cycle->report = $report;
+            }
+
             $cycle->fill([
-                'report' => $report,
                 'report_text' => $text,
                 'submission_count_at_generation' => is_numeric($week['submission_count_at_generation'] ?? null) ? (int) $week['submission_count_at_generation'] : null,
                 'report_state' => WeeklyJobState::Done,
@@ -798,6 +804,29 @@ final class WeeksStage
         }
 
         return $groups;
+    }
+
+    /**
+     * ¿Mismo JSON, sin tener en cuenta el orden de las claves de los objetos?
+     */
+    public static function sameJson(mixed $a, mixed $b): bool
+    {
+        return self::sortKeys($a) === self::sortKeys($b);
+    }
+
+    private static function sortKeys(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        $value = array_map(self::sortKeys(...), $value);
+
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return $value;
     }
 
     private static function body(string $text): string

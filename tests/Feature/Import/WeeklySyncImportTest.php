@@ -469,3 +469,9 @@ test('el comando muestra el informe y valida los ficheros de correspondencias', 
     expect(WeeklyCycle::query()->count())->toBe(0);
     @unlink($bad);
 });
+
+test('el informe se compara sin el orden de las claves (jsonb de PostgreSQL)', function () {
+    expect(WeeksStage::sameJson(['b' => 1, 'a' => ['y' => 2, 'x' => [3, 1]]], ['a' => ['x' => [3, 1], 'y' => 2], 'b' => 1]))->toBeTrue()
+        ->and(WeeksStage::sameJson(['a' => [1, 3]], ['a' => [3, 1]]))->toBeFalse()
+        ->and(WeeksStage::sameJson(null, []))->toBeFalse();
+});
