@@ -265,9 +265,8 @@ class DemoDataSeeder extends Seeder
     /**
      * La Weekly de ejemplo (Fase 10), para sus E2E (weeklies.spec.ts): las tres semanas anteriores
      * cerradas, con los envíos de la plantilla (Elena siempre a tiempo, Pablo con retraso y Daniel
-     * sin enviar la última). La semana en curso NO se abre: la abre el planificador o «Iniciar la
-     * semana» (el E2E), y así las páginas de los tests de rendimiento no pagan el contador de «Mi
-     * espacio» con la caché fría. Sin el generador aleatorio, para no cambiar el resto de datos.
+     * sin enviar la última), y la semana en curso abierta, como estará en producción (D-187). Sin el
+     * generador aleatorio, para no cambiar el resto de datos.
      */
     private function weeklies(): void
     {
@@ -316,6 +315,19 @@ class DemoDataSeeder extends Seeder
                 'status' => WeeklyCycleStatus::Closed,
                 'closed_at' => $deadline->addDays(3)->utc(),
             ])->save();
+        }
+
+        // La semana en curso, abierta como en producción (la abre el planificador, D-155), con la
+        // weekly ya enviada de Elena y un borrador de Pablo; el resto, pendiente.
+        $cycle = WeeklyCycle::query()->create([...$current->toAttributes(), 'status' => WeeklyCycleStatus::Active]);
+        $deadline = CarbonImmutable::parse($current->deadline->toDateString().' 17:00:00', WeeklyCalendar::TIMEZONE);
+
+        foreach ($people as $index => $person) {
+            match ($person->email) {
+                'empleado@example.com' => $this->weeklySubmission($person, $cycle, CarbonImmutable::now()->min($deadline->subDays(2)), $texts, $index),
+                'pablo.ruiz@example.com' => $this->weeklySubmission($person, $cycle, null, $texts, $index),
+                default => null,
+            };
         }
     }
 

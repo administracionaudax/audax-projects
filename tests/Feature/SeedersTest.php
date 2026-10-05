@@ -155,7 +155,7 @@ test('los datos de ejemplo tienen festivos y ausencias, y nadie imputa en un dí
     }
 });
 
-test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas y ninguna activa (Fase 10)', function () {
+test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas y la en curso abierta (Fase 10, D-187)', function () {
     $this->seed(DatabaseSeeder::class);
 
     $closed = WeeklyCycle::query()->closed()->orderBy('start_date')->get();
@@ -165,7 +165,7 @@ test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas
     $monday = LocalTime::today()->startOfWeek()->toDateString();
 
     expect($closed)->toHaveCount(3)
-        ->and(WeeklyCycle::query()->active()->exists())->toBeFalse()
+        ->and(WeeklyCycle::query()->active()->sole()->start_date->toDateString())->toBe($monday)
         ->and($closed->last()->end_date->toDateString())->toBeLessThan($monday)
         ->and($closed->last()->start_date->toDateString())->toBe(CarbonImmutable::parse($monday)->subWeek()->toDateString())
         ->and($closed->every(fn (WeeklyCycle $cycle): bool => in_array($elena->id, $cycle->expected_user_ids ?? [], true)))->toBeTrue()
@@ -176,6 +176,13 @@ test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas
     expect($elenaClosed)->toHaveCount(3)
         ->and($elenaClosed->every(fn (WeeklySubmission $submission): bool => $submission->submitted_at !== null && $submission->entries->isNotEmpty()))->toBeTrue()
         ->and(WeeklySubmission::query()->where('user_id', $daniel->id)->where('weekly_cycle_id', $closed->last()->id)->exists())->toBeFalse();
+
+    // En la semana en curso, Elena ya la ha enviado y Pablo tiene un borrador.
+    $active = WeeklyCycle::query()->active()->sole();
+    $pablo = User::query()->where('email', 'pablo.ruiz@example.com')->sole();
+    expect(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->where('user_id', $elena->id)->sole()->submitted_at)->not->toBeNull()
+        ->and(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->where('user_id', $pablo->id)->sole()->submitted_at)->toBeNull()
+        ->and(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->count())->toBe(2);
 });
 
 test('el seeder de desarrollo es repetible', function () {
@@ -185,7 +192,7 @@ test('el seeder de desarrollo es repetible', function () {
     expect(User::query()->count())->toBe(13)
         ->and(Department::query()->count())->toBe(3)
         ->and(Project::query()->count())->toBe(15)
-        ->and(WeeklyCycle::query()->count())->toBe(3);
+        ->and(WeeklyCycle::query()->count())->toBe(4);
 });
 
 test('el seeder de desarrollo se niega a ejecutarse fuera de local y testing', function (string $env) {

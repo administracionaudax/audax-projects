@@ -6,9 +6,9 @@ import { login, USERS } from './support';
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /**
- * La Weekly (Fase 10, entrega 10.2b) con los datos de ejemplo del DemoDataSeeder (D-186): las tres
- * semanas anteriores cerradas con los envíos de la plantilla y ninguna activa. La semana en curso la
- * abre el admin con «Iniciar la semana» (F-040) si aún no lo está. Se puede repetir sobre la misma
+ * La Weekly (Fase 10, entrega 10.2b) con los datos de ejemplo del DemoDataSeeder (D-186 y D-187):
+ * las tres semanas anteriores cerradas con los envíos de la plantilla y la en curso abierta. Si no
+ * hubiera ninguna activa, la abre el admin con «Iniciar la semana» (F-040). Se puede repetir sobre la misma
  * base: si Elena (empleado@example.com) ya envió en una pasada anterior, el botón es «Actualizar
  * weekly». Nunca contra el servidor.
  */
