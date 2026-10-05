@@ -2,11 +2,13 @@
 
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Weeklies\Ai\FakeLlm;
+use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmNotConfigured;
 use App\Domain\Weeklies\Ai\LlmRequest;
 use App\Domain\Weeklies\Ai\LlmUnavailable;
 use App\Domain\Weeklies\LlmWeeklyReportGenerator;
 use App\Domain\Weeklies\Report\ReportPipeline;
+use App\Domain\Weeklies\Report\ReportSchemas;
 use App\Domain\Weeklies\Report\WeeklyProjectStatus;
 use App\Domain\Weeklies\WeeklyJobProgress;
 use App\Domain\Weeklies\WeeklyReportGenerator;
@@ -405,4 +407,18 @@ it('la generación se para si pasa del límite, como los 10 minutos del original
     });
 
     expect(fn () => app(WeeklyReportGenerator::class)->generate($this->cycle))->toThrow(LlmUnavailable::class, 'La generación de la weekly tardó más de 10 minutos.');
+});
+
+it('sin clave, la IA de prueba (local y E2E) responde con la forma de cada esquema', function () {
+    $acme = Client::factory()->create(['name' => 'Acme']);
+    reportSubmission($this->cycle, [[$acme->id, 'Texto.']]);
+    app()->instance(LlmClient::class, FakeLlm::demo());
+
+    $report = app(WeeklyReportGenerator::class)->generate($this->cycle)->report;
+
+    expect($report->clientUpdates[0]->executiveSummary)->toBe('Resumen de prueba de Acme generado sin IA (GEMINI_DRIVER=fake).')
+        ->and($report->clientUpdates[0]->status)->toBe(WeeklyClientStatus::OnTrack)
+        ->and($report->globalSummary)->toBe('Resumen global de prueba generado sin IA (GEMINI_DRIVER=fake).')
+        ->and(FakeLlm::demo()->generate(new LlmRequest(AiFeature::TranscriptCleanup, "TRANSCRIPCIÓN BRUTA:\nhola qué tal\n\nINSTRUCCIONES:\n1."))->text)->toBe('hola qué tal')
+        ->and(FakeLlm::demo()->generate(new LlmRequest(AiFeature::AudioScript, 'x "clientKey": "client-3"', responseSchema: ReportSchemas::narration()))->json['clients'])->toBe([['clientKey' => 'client-3', 'script' => 'Bloque de prueba.']]);
 });

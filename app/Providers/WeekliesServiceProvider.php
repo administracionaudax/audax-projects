@@ -26,8 +26,10 @@ class WeekliesServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Con el driver fake: el doble vacío en los tests (cada test programa sus respuestas) y el de
+        // prueba en local y en los E2E (10.3), que responde siempre.
         $this->app->singleton(LlmClient::class, fn (): LlmClient => config('services.gemini.driver') === 'fake'
-            ? new FakeLlm
+            ? ($this->app->runningUnitTests() ? new FakeLlm : FakeLlm::demo())
             : GeminiClient::fromConfig($this->app->make(AiUsageRecorder::class)));
 
         $this->app->singleton(SpeechSynthesizer::class, fn (): SpeechSynthesizer => config('services.google_tts.driver') === 'fake'

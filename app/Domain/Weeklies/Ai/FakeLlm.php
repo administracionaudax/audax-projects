@@ -19,6 +19,10 @@ use Throwable;
  *     $llm->assertSent(fn (LlmRequest $r) => $r->feature === AiFeature::WeeklyReport);
  *
  * Sin respuestas programadas falla con un mensaje claro (así ningún test depende de un valor oculto).
+ *
+ * FakeLlm::demo() (10.3) es el que usa la app con GEMINI_DRIVER=fake fuera de los tests (local sin
+ * clave y los E2E de la CI): responde siempre, con textos de prueba que dicen que no son de la IA y
+ * con la forma del esquema pedido (responseSchema).
  */
 final class FakeLlm implements LlmClient
 {
@@ -32,6 +36,65 @@ final class FakeLlm implements LlmClient
     private array $requests = [];
 
     public function __construct(private readonly string $model = 'fake-gemini') {}
+
+    /**
+     * Respuestas de prueba deterministas para la app sin clave (local y E2E): la forma del esquema
+     * pedido, el cliente del prompt («CLIENTE:») y las claves de las secciones del audio.
+     */
+    public static function demo(): self
+    {
+        return (new self('fake-gemini'))->respondUsing(function (LlmRequest $request): array|string {
+            if ($request->responseSchema === null) {
+                if (preg_match('/TRANSCRIPCIÓN BRUTA:\n(.*?)\n\nINSTRUCCIONES:/s', $request->prompt, $match) === 1) {
+                    return trim($match[1]);
+                }
+
+                return 'Texto de prueba generado sin IA (GEMINI_DRIVER=fake).';
+            }
+
+            $client = preg_match('/CLIENTE:\s*(.+)\n/u', $request->prompt, $match) === 1 ? trim($match[1]) : null;
+            preg_match_all('/"clientKey": "([^"]+)"/', $request->prompt, $keys);
+
+            return self::fromSchema($request->responseSchema, [
+                'clientName' => $client ?? 'Cliente',
+                'executiveSummary' => 'Resumen de prueba'.($client !== null ? " de {$client}" : '').' generado sin IA (GEMINI_DRIVER=fake).',
+                'status' => 'On Track',
+                'globalSummary' => 'Resumen global de prueba generado sin IA (GEMINI_DRIVER=fake).',
+                'intro' => 'Hola equipo. Este es un audio de prueba.',
+                'outro' => 'Y con esto cerramos el repaso de la semana.',
+                'clients' => array_map(fn (string $key): array => ['clientKey' => $key, 'script' => 'Bloque de prueba.'], array_values(array_unique($keys[1]))),
+                'sentiment' => 'NEUTRAL',
+                'evidenceLevel' => 'NONE',
+                'reasoning' => 'Sin evidencia: respuesta de prueba.',
+                'confidence' => 0.5,
+            ]);
+        });
+    }
+
+    /**
+     * Un valor con la forma del esquema; $values manda en las propiedades que tenga.
+     *
+     * @param  array<string, mixed>  $schema
+     * @param  array<string, mixed>  $values
+     * @return array<array-key, mixed>
+     */
+    private static function fromSchema(array $schema, array $values): array
+    {
+        $result = [];
+
+        foreach (is_array($schema['properties'] ?? null) ? $schema['properties'] : [] as $name => $property) {
+            $type = is_array($property) ? ($property['type'] ?? 'STRING') : 'STRING';
+            $result[$name] = $values[$name] ?? match ($type) {
+                'ARRAY' => [],
+                'NUMBER', 'INTEGER' => 0,
+                'BOOLEAN' => false,
+                'OBJECT' => [],
+                default => 'Texto de prueba.',
+            };
+        }
+
+        return $result;
+    }
 
     /** Registra un FakeLlm en el contenedor y lo devuelve. */
     public static function bind(): self

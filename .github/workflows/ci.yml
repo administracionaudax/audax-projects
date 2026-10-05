@@ -333,6 +333,9 @@ jobs:
           REPORTS_PDF_DRIVER=html
           # Sin conexiones a Internet desde los E2E (D-110: apagada en los tests).
           LINK_PREVIEWS_ENABLED=false
+          # Fase 10 (10.3): la IA y la locución de prueba (FakeLlm::demo y FakeSpeechSynthesizer).
+          GEMINI_DRIVER=fake
+          GOOGLE_TTS_DRIVER=fake
           EOF
           php artisan key:generate --ansi
 

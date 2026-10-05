@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\AiUsage;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
@@ -90,4 +91,62 @@ it('un colaborador externo cuenta como ninguno en el estado del equipo', functio
     User::factory()->collaborator()->count(3)->create(['created_at' => '2026-08-01 08:00:00']);
 
     $this->actingAs($this->manager)->get('/weeklies')->assertInertia(fn ($page) => $page->where('active.team.counts.expected', 1));
+});
+
+it('el informe de la semana no crece con los clientes, los reportes ni las secciones del audio (10.3)', function () {
+    $withReport = function (): void {
+        $clients = Client::query()->orderBy('id')->get();
+        $this->active->forceFill(['report' => [
+            'global_summary' => 'Resumen',
+            'team_risks' => [],
+            'client_updates' => $clients->map(fn (Client $client): array => ['client_id' => $client->id, 'client_name' => $client->name, 'status' => 'on_track', 'executive_summary' => 'x'])->all(),
+        ], 'audio_disk' => 'local', 'audio_path' => 'weeklies/audio.mp3'])->save();
+        $this->active->audioSections()->delete();
+        foreach ($clients as $position => $client) {
+            $this->active->audioSections()->create(['key' => "client-{$client->id}", 'kind' => 'client', 'client_id' => $client->id, 'position' => $position, 'disk' => 'local', 'path' => "weeklies/{$client->id}.mp3", 'duration_ms' => 1000]);
+        }
+    };
+
+    ($this->grow)(3);
+    $withReport();
+    $uri = "/weeklies/{$this->active->id}";
+    ($this->measure)($uri);
+    $small = ($this->measure)($uri);
+
+    ($this->grow)(12);
+    $withReport();
+    $large = ($this->measure)($uri);
+
+    if (getenv('PERF_REPORT')) {
+        fwrite(STDERR, "informe: {$small} → {$large} consultas\n");
+    }
+
+    expect($large)->toBeLessThanOrEqual(20)
+        ->and($large - $small)->toBeLessThanOrEqual(1);
+});
+
+it('«Uso de IA» no crece con las llamadas registradas (10.3)', function () {
+    $admin = userWithRole('admin');
+    $measure = function () use ($admin): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get('/admin/uso-ia')->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    AiUsage::factory()->count(5)->create(['user_id' => $admin->id]);
+    $measure();
+    $small = $measure();
+    AiUsage::factory()->count(60)->create();
+    $large = $measure();
+
+    if (getenv('PERF_REPORT')) {
+        fwrite(STDERR, "uso de IA: {$small} → {$large} consultas\n");
+    }
+
+    expect($large)->toBeLessThanOrEqual(12)
+        ->and($large - $small)->toBeLessThanOrEqual(0);
 });
