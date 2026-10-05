@@ -13,7 +13,11 @@ import {
     MY_TASK_PARAMS,
     myTaskQuery,
 } from '@/components/my-tasks/my-task-query';
-import { TaskDates } from '@/components/tasks/task-meta';
+import {
+    TaskDates,
+    loggedBreakdownLabel,
+    totalLoggedMinutes,
+} from '@/components/tasks/task-meta';
 import { TimerButton } from '@/components/time/timer-button';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -47,6 +51,9 @@ function MyTaskRow({
     today: string;
     showLastLogged: boolean;
 }) {
+    // Registrado total: lo propio y lo de sus subtareas (D-160).
+    const logged = totalLoggedMinutes(task);
+
     return (
         <li
             className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4"
@@ -127,11 +134,19 @@ function MyTaskRow({
                     <PriorityBadge priority={task.priority} />
                 ) : null}
                 <TaskDates task={task} today={today} className="text-xs" />
-                {task.logged_minutes ? (
-                    <span className="tabular text-xs text-muted-foreground">
+                {logged ? (
+                    <span
+                        className="tabular text-xs text-muted-foreground"
+                        title={loggedBreakdownLabel(task)}
+                    >
                         {t('my_tasks.logged', {
-                            minutes: formatMinutes(task.logged_minutes),
+                            minutes: formatMinutes(logged),
                         })}
+                        {loggedBreakdownLabel(task) ? (
+                            <span className="sr-only">
+                                {` (${loggedBreakdownLabel(task)})`}
+                            </span>
+                        ) : null}
                     </span>
                 ) : null}
                 {!task.is_milestone && !task.is_completed ? (

@@ -9,8 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Contrato: resources/js/types/domain.ts (Task). Cargar assignee antes (N+1). Los campos
  * opcionales solo aparecen si el controlador los carga: description (si se selecciona la columna),
- * logged_minutes (withSum('timeEntries', 'minutes'); null para un colaborador externo, D-134) y
- * *_count (withCount).
+ * logged_minutes (withSum('timeEntries', 'minutes'), las horas propias; null para un colaborador
+ * externo, D-134), subtasks_logged_minutes (Task::withSubtasksLogged() o las subtareas cargadas,
+ * D-160: lo imputado en sus subtareas; el registrado total es la suma de las dos) y *_count
+ * (withCount).
  *
  * @mixin Task
  */
@@ -43,7 +45,15 @@ class TaskResource extends JsonResource
             'position' => $this->position,
             'completed_at' => $this->completed_at?->toIso8601ZuluString(),
             // Las horas de todos: a un colaborador externo no se le enseñan (D-134), solo las suyas.
-            'logged_minutes' => $this->whenAggregated('timeEntries', 'minutes', 'sum', fn ($value) => $request->user()?->isCollaborator() ? null : (int) $value),
+            // Sin horas, la suma llega a null: se envía 0 (null queda para «no lo ves»).
+            'logged_minutes' => $this->when(
+                array_key_exists('time_entries_sum_minutes', $this->resource->getAttributes()),
+                fn () => $request->user()?->isCollaborator() ? null : (int) $this->resource->getAttribute('time_entries_sum_minutes'),
+            ),
+            'subtasks_logged_minutes' => $this->when(
+                array_key_exists('subtasks_logged_minutes', $this->resource->getAttributes()),
+                fn () => $request->user()?->isCollaborator() ? null : (int) $this->resource->getAttribute('subtasks_logged_minutes'),
+            ),
             'subtasks_count' => $this->whenCounted('subtasks'),
             'comments_count' => $this->whenCounted('comments'),
             'attachments_count' => $this->whenCounted('attachments'),

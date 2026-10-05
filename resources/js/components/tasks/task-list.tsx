@@ -10,6 +10,7 @@ import {
     TaskDates,
     TaskEstimate,
     TaskIndicators,
+    loggedBreakdownLabel,
     totalLoggedMinutes,
 } from '@/components/tasks/task-meta';
 import { TimerButton } from '@/components/time/timer-button';
@@ -192,12 +193,29 @@ function TaskRow({
             </td>
             {/* Sin las horas de todos (colaborador externo, D-134), sin columna. */}
             {logged === null ? null : (
-                <td className="tabular px-2 py-2 text-right">
+                <td
+                    className="tabular px-2 py-2 text-right"
+                    title={level === 0 ? loggedBreakdownLabel(task) : undefined}
+                >
                     {logged > 0 ? (
                         formatMinutes(logged)
                     ) : (
                         <span className="text-muted-foreground">0:00</span>
                     )}
+                    {level === 0 && loggedBreakdownLabel(task) ? (
+                        <>
+                            <span
+                                aria-hidden="true"
+                                className="text-muted-foreground"
+                            >
+                                {' '}
+                                Σ
+                            </span>
+                            <span className="sr-only">
+                                {loggedBreakdownLabel(task)}
+                            </span>
+                        </>
+                    ) : null}
                 </td>
             )}
             <td className="w-10 px-2 py-2">

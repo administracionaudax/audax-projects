@@ -170,6 +170,11 @@ export type Task = {
     completed_at: string | null;
     /** null para un colaborador externo: no ve las horas de todos (D-134). */
     logged_minutes?: number | null;
+    /**
+     * Lo imputado en sus subtareas (D-160), solo en las tareas raíz y si el servidor lo calcula;
+     * null para un colaborador externo. El registrado total es logged_minutes + esto.
+     */
+    subtasks_logged_minutes?: number | null;
     subtasks_count?: number;
     comments_count?: number;
     attachments_count?: number;

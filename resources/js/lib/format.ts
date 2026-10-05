@@ -77,6 +77,45 @@ export function formatDateTime(
     return dateTimeFormatter.format(date).replace(',', '');
 }
 
+const timeFormatter = new Intl.DateTimeFormat(LOCALE, {
+    timeZone: TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+});
+
+/** Instante → "14:05" (hora de Europe/Madrid). */
+export function formatTime(value: string | Date | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+
+    return Number.isNaN(date.getTime()) ? '' : timeFormatter.format(date);
+}
+
+/**
+ * Franja horaria de una entrada (D-162): "09:00–11:30" en Europe/Madrid; si acaba a medianoche
+ * del día siguiente, "22:00–24:00". Vacío si falta alguno de los dos instantes.
+ */
+export function formatTimeRange(
+    startedAt: string | null | undefined,
+    endedAt: string | null | undefined,
+): string {
+    const start = formatTime(startedAt);
+    const end = formatTime(endedAt);
+
+    if (start === '' || end === '') {
+        return '';
+    }
+
+    const crossesMidnight =
+        end === '00:00' && formatDate(endedAt) !== formatDate(startedAt);
+
+    return `${start}–${crossesMidnight ? '24:00' : end}`;
+}
+
 const currencyFormatter = new Intl.NumberFormat(LOCALE, {
     style: 'currency',
     currency: 'EUR',
