@@ -6,6 +6,7 @@ use App\Domain\Chat\Transcription\TranscriptionService;
 use App\Domain\Weeklies\Dictation\DictationCleaner;
 use App\Domain\Weeklies\Dictation\DictationText;
 use App\Enums\TranscriptionStatus;
+use App\Events\Weeklies\DictationUpdated;
 use App\Http\Controllers\Chat\Media\StoreMediaMessageRequest;
 use App\Models\Dictation;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -58,6 +59,7 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
 
         if ($dictation->path === null || $dictation->disk === null || ! Storage::disk($dictation->disk)->exists($dictation->path)) {
             $dictation->forceFill(['status' => TranscriptionStatus::Failed, 'last_error' => 'audio_missing'])->save();
+            event(DictationUpdated::for($dictation));
 
             return;
         }
@@ -102,7 +104,11 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
 
         if ($clean) {
             CleanDictation::dispatch($dictation->id);
+
+            return;
         }
+
+        event(DictationUpdated::for($dictation));
     }
 
     /**
@@ -121,6 +127,7 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
                 'status' => TranscriptionStatus::Failed,
                 'last_error' => mb_substr($exception?->getMessage() ?: 'failed', 0, 1000),
             ])->save();
+            event(DictationUpdated::for($dictation));
         }
 
         self::discardAudio($dictation);

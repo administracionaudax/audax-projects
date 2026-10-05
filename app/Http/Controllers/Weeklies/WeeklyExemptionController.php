@@ -45,7 +45,7 @@ class WeeklyExemptionController extends Controller
             ],
         );
 
-        MyWeeklyStatus::forget($person->id, $cycle->id);
+        MyWeeklyStatus::forget($person->id, $cycle);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.exempted', ['name' => $person->name])]);
 
@@ -73,7 +73,7 @@ class WeeklyExemptionController extends Controller
             );
         }
 
-        MyWeeklyStatus::forget($user->id, $cycle->id);
+        MyWeeklyStatus::forget($user->id, $cycle);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.waived')]);
 
@@ -86,7 +86,7 @@ class WeeklyExemptionController extends Controller
         Gate::authorize('delete', $exemption);
 
         $exemption->delete();
-        MyWeeklyStatus::forget($exemption->user_id, $cycle->id);
+        MyWeeklyStatus::forget($exemption->user_id, $cycle);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __($exemption->reason === WeeklyExemptionReason::Waived ? 'weeklies.flash.waiver_undone' : 'weeklies.flash.exemption_removed')]);
 

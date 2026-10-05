@@ -6,6 +6,7 @@ use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Dictation\DictationCleaner;
 use App\Domain\Weeklies\Dictation\DictationText;
 use App\Enums\TranscriptionStatus;
+use App\Events\Weeklies\DictationUpdated;
 use App\Models\Dictation;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -51,6 +52,8 @@ final class CleanDictation implements ShouldQueue
             'text' => $text,
             'transcribed_at' => now(),
         ])->save();
+
+        event(DictationUpdated::for($dictation));
     }
 
     public function failed(?Throwable $exception): void
@@ -63,6 +66,7 @@ final class CleanDictation implements ShouldQueue
                 'text' => DictationText::strip((string) $dictation->raw_text),
                 'transcribed_at' => now(),
             ])->save();
+            event(DictationUpdated::for($dictation));
         }
     }
 }

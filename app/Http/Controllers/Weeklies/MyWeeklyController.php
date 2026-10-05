@@ -51,7 +51,7 @@ class MyWeeklyController extends Controller
             throw ValidationException::withMessages(['entries' => $violation->userMessage()]);
         }
 
-        MyWeeklyStatus::forget($user->id, $cycle->id);
+        MyWeeklyStatus::forget($user->id, $cycle);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __($first ? 'weeklies.flash.submitted' : 'weeklies.flash.resubmitted')]);
 

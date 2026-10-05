@@ -106,13 +106,9 @@ it('las acciones aún sin hacer responden 501 tras autorizar, y 403 a quien no p
     $this->actingAs(userWithRole($allowed))->json($method, $path)->assertStatus(501);
     $this->actingAs(userWithRole($denied))->json($method, $path)->assertForbidden();
 })->with([
-    'abrir semana' => ['POST', fn (WeeklyCycle $c) => '/weeklies', 'department_manager', 'employee'],
-    'ampliar plazo' => ['PUT', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/plazo", 'admin', 'employee'],
     'cerrar' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/cerrar", 'department_manager', 'employee'],
-    'borrar' => ['DELETE', fn (WeeklyCycle $c) => "/weeklies/{$c->id}", 'admin', 'employee'],
     'generar informe' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/informe", 'admin', 'employee'],
     'generar audio' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/audio", 'department_manager', 'employee'],
-    'eximir' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/exenciones", 'admin', 'employee'],
     'avisos' => ['GET', fn (WeeklyCycle $c) => '/weeklies/avisos', 'admin', 'employee'],
     'recordar' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/recordar", 'department_manager', 'employee'],
     'uso de IA' => ['GET', fn (WeeklyCycle $c) => '/admin/uso-ia', 'admin', 'department_manager'],
@@ -120,15 +116,23 @@ it('las acciones aún sin hacer responden 501 tras autorizar, y 403 a quien no p
     'tableros' => ['POST', fn (WeeklyCycle $c) => '/ayuda/sugerencias/tableros', 'admin', 'employee'],
 ]);
 
+it('lo de 10.2 lo hace solo quien gestiona: 403 a la plantilla', function (string $method, Closure $uri) {
+    $cycle = WeeklyCycle::factory()->active()->create();
+
+    $this->actingAs(userWithRole('employee'))->json($method, $uri($cycle))->assertForbidden();
+    $this->actingAs(User::factory()->collaborator()->create())->json($method, $uri($cycle))->assertForbidden();
+})->with([
+    'abrir semana' => ['POST', fn (WeeklyCycle $c) => '/weeklies'],
+    'ampliar plazo' => ['PUT', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/plazo"],
+    'borrar' => ['DELETE', fn (WeeklyCycle $c) => "/weeklies/{$c->id}"],
+    'eximir' => ['POST', fn (WeeklyCycle $c) => "/weeklies/{$c->id}/exenciones"],
+]);
+
 it('lo de cada persona responde 501 a cualquiera de la plantilla', function (string $method, string $path) {
     $cycle = WeeklyCycle::factory()->active()->create();
 
     $this->actingAs(userWithRole('employee'))->json($method, str_replace('{cycle}', (string) $cycle->id, $path))->assertStatus(501);
 })->with([
-    ['PUT', '/mi-espacio/weeklies/{cycle}'],
-    ['POST', '/mi-espacio/weeklies/{cycle}/enviar'],
-    ['POST', '/mi-espacio/dictados'],
-    ['POST', '/weeklies/{cycle}/exenciones/renuncia'],
     ['GET', '/weeklies/{cycle}/informe/estado'],
     ['GET', '/weeklies/estado-proyectos'],
     ['POST', '/ia/preguntas'],

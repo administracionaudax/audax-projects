@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Domain\Weeklies\AppModules;
+use App\Domain\Weeklies\WeeklyStreaks;
+use App\Enums\AppModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\User;
@@ -14,6 +17,7 @@ use Inertia\Response;
 /**
  * Perfil propio: nombre, correo y puesto (F-026). Los datos económicos (coste/hora, tarifa) los gestiona el
  * admin y nunca se exponen aquí. No hay borrado de cuenta propio: los usuarios se desactivan (SPEC §14).
+ * Quien escribe la weekly ve además sus estadísticas de envío (F-028): enviadas, a tiempo y racha.
  */
 class ProfileController extends Controller
 {
@@ -22,11 +26,18 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        /** @var User $user */
+        $user = $request->user();
+        $writes = $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::enabled(AppModule::Weeklies);
+
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
             // Puesto (Fase 10, F-026): no va en las props compartidas.
-            'jobTitle' => $request->user()?->job_title,
+            'jobTitle' => $user->job_title,
+            // Estadísticas de la weekly (Fase 10, F-028): {submitted, on_time, streak}, diferidas;
+            // null para quien no la escribe o con el módulo apagado.
+            'weeklyStats' => $writes ? Inertia::defer(fn (): array => app(WeeklyStreaks::class)->summary($user)) : null,
         ]);
     }
 

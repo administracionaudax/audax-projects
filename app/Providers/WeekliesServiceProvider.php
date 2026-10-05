@@ -10,7 +10,9 @@ use App\Domain\Weeklies\Ai\GoogleTtsSynthesizer;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\SpeechSynthesizer;
 use App\Domain\Weeklies\EloquentWeeklySubmissionWriter;
+use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\WeeklySubmissionWriter;
+use App\Models\Absence;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -31,5 +33,14 @@ class WeekliesServiceProvider extends ServiceProvider
 
         // La única forma de escribir una weekly (10.2).
         $this->app->bind(WeeklySubmissionWriter::class, EloquentWeeklySubmissionWriter::class);
+    }
+
+    public function boot(): void
+    {
+        // Una ausencia que se aprueba, cambia o se borra puede eximir (o dejar de eximir) de la
+        // weekly activa (F-098): el contador de «Mi espacio» de esa persona se recalcula (D-160).
+        $forget = fn (Absence $absence) => MyWeeklyStatus::forgetActive((int) $absence->user_id);
+        Absence::saved($forget);
+        Absence::deleted($forget);
     }
 }

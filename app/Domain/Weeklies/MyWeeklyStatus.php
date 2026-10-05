@@ -18,8 +18,11 @@ use Illuminate\Support\Facades\Cache;
  * estoy exento (y si puedo quitarme la exención) y mi envío. Lo usan «Mi espacio», la tarjeta de
  * Inicio y el contador de la barra lateral.
  *
- * El contador (pendingCount) se guarda 5 minutos por persona y semana activa, y se olvida al enviar
- * o al cambiar una exención (forget). Un cambio de ausencias se nota, como mucho, a los 5 minutos.
+ * El contador (pendingCount) se guarda 5 minutos por persona y semana activa (D-160):
+ * - la clave lleva el updated_at de la semana, así que ampliar el plazo lo renueva para todos,
+ * - se olvida al enviar, al cambiar una exención (forget) y al guardar o borrar una ausencia de esa
+ *   persona (forgetActive, desde WeekliesServiceProvider),
+ * - lo demás (alta, baja o cambio de rol) se nota, como mucho, a los 5 minutos.
  */
 final class MyWeeklyStatus
 {
@@ -79,7 +82,7 @@ final class MyWeeklyStatus
      */
     public function pendingCount(User $user): int
     {
-        if (! $user->writesWeeklies() || ! AppModules::enabled(AppModule::Weeklies)) {
+        if (! $user->writesWeeklies() || $user->isCollaborator() || ! AppModules::enabled(AppModule::Weeklies)) {
             return 0;
         }
 
@@ -89,7 +92,7 @@ final class MyWeeklyStatus
             return 0;
         }
 
-        return (int) Cache::remember(self::cacheKey($user->id, $cycle->id), self::CACHE_SECONDS, function () use ($user, $cycle): int {
+        return (int) Cache::remember(self::cacheKey($user->id, $cycle), self::CACHE_SECONDS, function () use ($user, $cycle): int {
             if (! $this->eligibility->rosterForUser($cycle, $user)->mustSubmit($user->id)) {
                 return 0;
             }
@@ -105,9 +108,19 @@ final class MyWeeklyStatus
     }
 
     /** Olvida el contador de una persona en una semana (al enviar o al cambiar su exención). */
-    public static function forget(int $userId, int $cycleId): void
+    public static function forget(int $userId, WeeklyCycle $cycle): void
     {
-        Cache::forget(self::cacheKey($userId, $cycleId));
+        Cache::forget(self::cacheKey($userId, $cycle));
+    }
+
+    /** Olvida el contador de una persona en la semana activa, si la hay (al cambiar sus ausencias). */
+    public static function forgetActive(int $userId): void
+    {
+        $cycle = WeeklyCycle::query()->active()->first(['id', 'updated_at']);
+
+        if ($cycle !== null) {
+            self::forget($userId, $cycle);
+        }
     }
 
     /** ¿Está pendiente (o con retraso) en esta semana? */
@@ -116,8 +129,8 @@ final class MyWeeklyStatus
         return in_array($status, [WeeklyPersonStatus::Pending->value, WeeklyPersonStatus::Overdue->value, WeeklyPersonStatus::Upcoming->value], true);
     }
 
-    private static function cacheKey(int $userId, int $cycleId): string
+    private static function cacheKey(int $userId, WeeklyCycle $cycle): string
     {
-        return "weekly-pending:{$cycleId}:{$userId}";
+        return "weekly-pending:{$cycle->id}:".($cycle->updated_at?->getTimestamp() ?? 0).":{$userId}";
     }
 }
