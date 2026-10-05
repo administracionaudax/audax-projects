@@ -80,6 +80,8 @@ export default defineConfig({
             'deploy/gotenberg/compose-service.yml',
             // Copia literal de la hoja de documentos A4 del kit de Audax (D-140): no se reformatea.
             'resources/views/reports/pdf/audax-doc.css',
+            // Fixture generado con el JS original de WeeklySync (un caso por línea, D-153).
+            'tests/fixtures/weeklies/satisfaction-cases.json',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],
