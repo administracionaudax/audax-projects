@@ -113,6 +113,7 @@ return [
         'group_member_removed' => 'Persona quitada del grupo',
         'group_left' => 'Salida del grupo',
         'clickup_import' => 'Importación de ClickUp',
+        'weeklysync_import' => 'Importación de WeeklySync',
         'report_sent' => 'Informe enviado por correo',
         'report_send_failed' => 'Envío de informe fallido',
         'report_skipped' => 'Envío de informe omitido',

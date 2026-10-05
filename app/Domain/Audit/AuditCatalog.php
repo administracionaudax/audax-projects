@@ -82,7 +82,7 @@ final class AuditCatalog
         'message_hidden' => ['hidden'],
         'message_unhidden' => ['unhidden'],
         'group_changed' => ['group_created', 'group_renamed', 'group_members_added', 'group_member_removed', 'group_left'],
-        'imported' => ['clickup_import'],
+        'imported' => ['clickup_import', 'weeklysync_import'],
         'report_sent' => ['report_sent', 'report_send_failed', 'report_skipped', 'report_downloaded'],
         'report_scheduled' => ['schedule_created', 'schedule_updated', 'schedule_paused', 'schedule_resumed', 'schedule_deleted'],
         'report_generated' => ['generated'],
