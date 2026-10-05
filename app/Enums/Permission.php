@@ -10,6 +10,8 @@ enum Permission: string
     case ManageUsers = 'manage-users';
     case ManageSettings = 'manage-settings';
     case ViewFinancials = 'view-financials';
+    /** La Weekly (D-147): informe, audio, plazo, cierre, exenciones, avisos, ayuda y estados de las sugerencias. */
+    case ManageWeeklies = 'manage-weeklies';
 
     public function label(): string
     {
@@ -17,6 +19,7 @@ enum Permission: string
             self::ManageUsers => 'Gestionar usuarios',
             self::ManageSettings => 'Gestionar ajustes',
             self::ViewFinancials => 'Ver datos económicos',
+            self::ManageWeeklies => 'Gestionar las weeklies',
         };
     }
 

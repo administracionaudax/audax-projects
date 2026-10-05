@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
 {
     /**
      * Gates globales que un colaborador externo nunca tiene (D-134): los permisos de
-     * Permission::cases() y las de bolsas, aprobaciones, bloqueo y Horizon.
+     * Permission::cases() y las de bolsas, aprobaciones, bloqueo, Horizon y la Weekly (D-147).
      */
     public const array COLLABORATOR_DENIED = [
         'manage-users',
@@ -29,6 +29,11 @@ class AppServiceProvider extends ServiceProvider
         'approve-time',
         'lock-time',
         'viewHorizon',
+        'manage-weeklies',
+        'use-weeklies',
+        'manage-help',
+        'view-ai-usage',
+        'view-person-ai-summary',
     ];
 
     /**
@@ -83,6 +88,23 @@ class AppServiceProvider extends ServiceProvider
 
         // Bloquear y desbloquear horas al facturar: solo admins (SPEC §7, D-034).
         Gate::define('lock-time', fn (User $user): bool => $user->isAdmin());
+
+        // La Weekly (Fase 10, D-147). La usan (escriben la suya, ven las semanas, los informes, el
+        // estado de proyectos, la ayuda, las sugerencias y el asistente) los internos de plantilla:
+        // admin, responsables y empleados. Nunca un colaborador externo (D-134) ni un cliente.
+        Gate::define('use-weeklies', fn (User $user): bool => $user->writesWeeklies());
+
+        // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
+        Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));
+
+        // Página «Uso de IA» (F-180): solo admins.
+        Gate::define('view-ai-usage', fn (User $user): bool => $user->isAdmin());
+
+        // Resúmenes de desempeño y de actividad por persona hechos con IA (F-144, F-145, D-147): el
+        // admin y los responsables de esa persona (canSeeAbsencesOf, D-088), nunca un compañero ni
+        // la propia persona (D-151).
+        Gate::define('view-person-ai-summary', fn (User $user, User $subject): bool => $user->canSeeAbsencesOf($subject)
+            && ($user->isAdmin() || $user->id !== $subject->id));
 
         // Datos económicos (costes, tarifas, rentabilidad): la gate view-financials definida arriba
         // exige el permiso del mismo nombre, que el admin recibe por defecto (RolesAndPermissionsSeeder).

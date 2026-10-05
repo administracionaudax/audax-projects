@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -39,6 +40,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property int|null $department_id
+ * @property string|null $job_title Puesto (F-026, Fase 10)
  * @property int|null $client_id
  * @property string|null $hourly_cost
  * @property string|null $default_hourly_rate
@@ -62,12 +64,14 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read ActiveTimer|null $activeTimer
  * @property-read GoogleConnection|null $googleConnection
  * @property-read ProjectMember|null $membership
+ * @property-read Collection<int, WeeklySubmission> $weeklySubmissions
  */
 #[Fillable([
     'name',
     'email',
     'password',
     'department_id',
+    'job_title',
     'client_id',
     'hourly_cost',
     'default_hourly_rate',
@@ -95,6 +99,11 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable, TwoFactorAuthenticatable;
 
     public const array THEMES = ['light', 'dark', 'system'];
+
+    /**
+     * Roles que escriben la weekly (D-147): la plantilla interna, sin colaboradores ni clientes.
+     */
+    public const array WEEKLY_ROLES = ['admin', 'department_manager', 'employee'];
 
     /**
      * Atributos económicos que solo ve quien tiene view-financials.
@@ -264,6 +273,25 @@ class User extends Authenticatable
     public function googleConnection(): HasOne
     {
         return $this->hasOne(GoogleConnection::class);
+    }
+
+    /**
+     * Weeklies de la persona (Fase 10), enviadas y borradores.
+     *
+     * @return HasMany<WeeklySubmission, $this>
+     */
+    public function weeklySubmissions(): HasMany
+    {
+        return $this->hasMany(WeeklySubmission::class);
+    }
+
+    /**
+     * ¿Escribe la weekly? Los internos de plantilla: admin, responsables y empleados (D-147). Ni los
+     * colaboradores externos (D-134) ni los clientes. Que esté activa lo comprueba Gate::before.
+     */
+    public function writesWeeklies(): bool
+    {
+        return $this->hasAnyRole(self::WEEKLY_ROLES);
     }
 
     /**

@@ -64,6 +64,17 @@ class Setting extends Model
         'attachments_warning_gb' => null,
         // Recordatorio de los viernes para enviar la semana (D-073).
         'week_reminder_enabled' => true,
+        // Fase 10 (D-151). Módulos activos (F-177): apagado, sus rutas dan 404 y no salen en la
+        // navegación (App\Domain\Weeklies\AppModules).
+        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true],
+        // Aviso global (F-178) en todas las páginas internas: null o {message, tone: info|warning}.
+        'global_banner' => null,
+        // Plantillas de aviso de la weekly (F-104 y F-105): null = las de lang/es/weeklies.php; si
+        // no, {automatic|manual|weekly_closed: {subject, body}}.
+        'weekly_email_templates' => null,
+        // Centro de ayuda (F-157): enlace de soporte y manual en PDF ({disk, path, name, size}).
+        'help_support_url' => null,
+        'help_manual' => null,
     ];
 
     protected static function booted(): void

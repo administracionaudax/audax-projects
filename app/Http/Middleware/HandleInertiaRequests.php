@@ -8,6 +8,7 @@ use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
+use App\Domain\Weeklies\AppModules;
 use App\Http\Resources\FinancialResource;
 use App\Models\Absence;
 use App\Models\ActiveTimer;
@@ -109,6 +110,10 @@ class HandleInertiaRequests extends Middleware
                 'viewWorkload' => $opens('workload.index'),
                 'viewAbsences' => $opens('absences.index'),
                 'viewReports' => $opens('reports.index'),
+                // La Weekly (Fase 10, D-147): usarla (internos de plantilla) y gestionarla.
+                'useWeeklies' => $user ? Gate::forUser($user)->allows('use-weeklies') : false,
+                'manageWeeklies' => $user ? Gate::forUser($user)->allows('manage-weeklies') : false,
+                'viewAiUsage' => $user ? Gate::forUser($user)->allows('view-ai-usage') : false,
             ],
         ];
     }
@@ -133,6 +138,9 @@ class HandleInertiaRequests extends Middleware
                 // Chat (Fase 6): límites de los adjuntos y de los audios que se graban.
                 'max_attachment_mb' => (int) Setting::get('max_attachment_mb', 50),
                 'max_audio_seconds' => (int) Setting::get('max_audio_seconds', 300),
+                // Fase 10 (D-151): módulos activos (F-177) y aviso global (F-178).
+                'modules' => AppModules::map(),
+                'global_banner' => Setting::get('global_banner'),
             ],
             // Aviso de privacidad pendiente de leer (D-075): sin consultas (ajustes en caché).
             'privacy' => fn (): array => [

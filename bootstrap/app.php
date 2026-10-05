@@ -3,6 +3,7 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\EnsureClientUser;
 use App\Http\Middleware\EnsureInternalUser;
+use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -62,6 +63,8 @@ return Application::configure(basePath: dirname(__DIR__))
             '2fa' => RequireTwoFactor::class,
             // Colaboradores externos (D-134): rutas internas cerradas salvo config/collaborators.php.
             'collaborator' => RestrictCollaborators::class,
+            // Módulos activables de la Fase 10 (F-177, D-151): `module:weeklies`, `module:help`…
+            'module' => EnsureModuleEnabled::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Http\Requests\Admin\Concerns\NormalizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -72,6 +74,12 @@ class SettingsRequest extends FormRequest
             'occupancy_high_threshold' => ['required', 'integer', 'between:'.self::OCCUPANCY_MIN.','.self::OCCUPANCY_MAX],
             // Opcional en la petición: quien no lo envía conserva el valor guardado (Fase 7, D-073).
             'week_reminder_enabled' => ['sometimes', 'required', 'boolean'],
+            // Opcionales en la petición (Fase 10, D-151): módulos activos (F-177) y aviso global (F-178).
+            'modules' => ['sometimes', 'required', 'array:'.implode(',', AppModule::values())],
+            'modules.*' => ['required', 'boolean'],
+            'global_banner' => ['sometimes', 'nullable', 'array:message,tone'],
+            'global_banner.message' => ['required_with:global_banner', 'string', 'max:300'],
+            'global_banner.tone' => ['required_with:global_banner', 'in:info,warning'],
         ];
     }
 
@@ -148,6 +156,20 @@ class SettingsRequest extends FormRequest
             'occupancy_low_threshold' => $this->integer('occupancy_low_threshold'),
             'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
             ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
+            ...($this->has('modules') ? ['modules' => AppModules::normalize((array) $this->input('modules'))] : []),
+            ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
         ];
+    }
+
+    /**
+     * @return array{message: string, tone: string}|null
+     */
+    private function banner(): ?array
+    {
+        $message = trim((string) $this->input('global_banner.message', ''));
+
+        return $this->input('global_banner') === null || $message === ''
+            ? null
+            : ['message' => $message, 'tone' => (string) $this->input('global_banner.tone', 'info')];
     }
 }

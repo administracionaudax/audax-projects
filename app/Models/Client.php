@@ -23,12 +23,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @property int $id
  * @property string $name
+ * @property string|null $icon Emoji del cliente (F-126, Fase 10)
  * @property string|null $tax_id
  * @property string|null $contact_name
  * @property string|null $contact_email
  * @property string|null $phone
  * @property string|null $notes
  * @property bool $is_active
+ * @property int $satisfaction_score Satisfacción actual 0-100 (F-096); el histórico, en satisfactionSnapshots
  * @property string|null $default_hourly_rate
  * @property PortalPersonDisplay $portal_person_display
  * @property PortalEntryVisibility $portal_entry_visibility
@@ -38,15 +40,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $deleted_at
  * @property-read Collection<int, Project> $projects
  * @property-read Collection<int, User> $portalUsers
+ * @property-read Collection<int, ClientSatisfactionSnapshot> $satisfactionSnapshots
  */
 #[Fillable([
     'name',
+    'icon',
     'tax_id',
     'contact_name',
     'contact_email',
     'phone',
     'notes',
     'is_active',
+    'satisfaction_score',
     'default_hourly_rate',
     'portal_person_display',
     'portal_entry_visibility',
@@ -64,6 +69,7 @@ class Client extends Model
      */
     protected $attributes = [
         'is_active' => true,
+        'satisfaction_score' => 50,
         'portal_person_display' => 'name',
         'portal_entry_visibility' => 'approved',
         'portal_notify_thresholds' => false,
@@ -76,6 +82,7 @@ class Client extends Model
     {
         return [
             'is_active' => 'boolean',
+            'satisfaction_score' => 'integer',
             'default_hourly_rate' => 'decimal:2',
             'portal_person_display' => PortalPersonDisplay::class,
             'portal_entry_visibility' => PortalEntryVisibility::class,
@@ -115,6 +122,16 @@ class Client extends Model
     public function portalUsers(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Satisfacción al cerrar cada weekly (F-094 y F-132).
+     *
+     * @return HasMany<ClientSatisfactionSnapshot, $this>
+     */
+    public function satisfactionSnapshots(): HasMany
+    {
+        return $this->hasMany(ClientSatisfactionSnapshot::class);
     }
 
     /**
