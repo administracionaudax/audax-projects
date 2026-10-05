@@ -28,6 +28,7 @@ return [
         'import' => 'Importación',
         'report_delivery' => 'Informes (exportados y enviados)',
         'integration' => 'Integraciones',
+        'access' => 'Accesos con Google',
         'other' => 'Otros',
     ],
 
@@ -60,6 +61,7 @@ return [
         'report_printed' => 'Informes impresos',
         'sheets_exported' => 'Informes exportados a Google Sheets',
         'integration_changed' => 'Cuentas de Google conectadas y desconectadas',
+        'google_login' => 'Accesos con Google (correctos y rechazados)',
     ],
 
     // Evento de cada entrada (los que llevan punto se escriben con guion bajo).
@@ -113,6 +115,8 @@ return [
         'google_connected' => 'Cuenta de Google conectada',
         'google_disconnected' => 'Cuenta de Google desconectada',
         'google_auto_disconnected' => 'Cuenta de Google desconectada automáticamente',
+        'google_login' => 'Entrada con Google',
+        'google_login_rejected' => 'Entrada con Google rechazada',
     ],
 
     // Nombre del elemento de cada entrada (AuditSubjects).
@@ -279,6 +283,8 @@ return [
         'google_email' => 'Cuenta de Google',
         'reason' => 'Motivo',
         'revoked' => 'Revocada en Google',
+        // Acceso con Google (D-165).
+        'two_factor_pending' => 'Pendiente de la verificación en dos pasos',
     ],
 
     // Nombres que dependen del registro.
@@ -306,6 +312,18 @@ return [
             'deactivated' => 'Baja de la persona',
             'collaborator' => 'Pasó a colaborador externo',
             'revoked' => 'Google retiró el acceso',
+        ],
+        'google_login_reasons' => [
+            'invalid_state' => 'Enlace caducado o no válido',
+            'denied' => 'Cancelado en Google',
+            'exchange_failed' => 'Google no aceptó el código',
+            'invalid_token' => 'Identidad de Google no válida',
+            'unverified' => 'Correo sin verificar en Google',
+            'wrong_domain' => 'Cuenta de otro dominio',
+            'not_found' => 'No tiene cuenta en la app',
+            'inactive' => 'Cuenta desactivada',
+            'client' => 'Es un cliente del portal',
+            'collaborator' => 'Es un colaborador externo',
         ],
         'weekdays' => [
             1 => 'Lunes',

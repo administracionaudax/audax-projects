@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Models\LoginEvent;
 use App\Models\User;
 use Illuminate\Auth\Events\Login;
@@ -16,6 +17,9 @@ use Symfony\Component\HttpFoundation\Cookie as SymfonyCookie;
  *
  * Un usuario desactivado que vuelve con la cookie de «Recordarme» dispara Login antes de que
  * EnsureUserIsActive lo expulse: ese acceso se registra como fallido, nunca como correcto.
+ *
+ * El método es `google` si la sesión la abre el acceso con Google (D-165), directamente o tras su
+ * 2FA: GoogleLoginController deja en la sesión el id de la persona (GOOGLE_USER), que se consume aquí.
  */
 class RecordSuccessfulLogin
 {
@@ -35,6 +39,7 @@ class RecordSuccessfulLogin
         LoginEvent::query()->create([
             'user_id' => $user->id,
             'email' => $user->email,
+            'method' => $this->pullMethod($user),
             'ip_address' => $this->request->ip(),
             'user_agent' => Str::limit((string) $this->request->userAgent(), 1000, ''),
             'succeeded' => $active,
@@ -43,6 +48,17 @@ class RecordSuccessfulLogin
         if ($active) {
             Cookie::queue(self::appearanceCookie($user->theme_preference));
         }
+    }
+
+    private function pullMethod(User $user): string
+    {
+        if (! $this->request->hasSession()) {
+            return LoginEvent::METHOD_PASSWORD;
+        }
+
+        $googleUser = $this->request->session()->pull(GoogleLoginController::GOOGLE_USER);
+
+        return $googleUser === $user->id ? LoginEvent::METHOD_GOOGLE : LoginEvent::METHOD_PASSWORD;
     }
 
     /**

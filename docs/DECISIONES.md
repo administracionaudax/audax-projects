@@ -1254,6 +1254,35 @@ Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sen
 - **Móvil (375 px):** el mes es una lista agrupada por día; la semana y las personas se desplazan dentro de su caja, nunca la página.
 - **Rendimiento:** una consulta acotada por el rango (índices nuevos `tasks(due_date, start_date)` y `tasks(start_date)`) leída sin modelos, más padres y responsables en una consulta cada uno; un mes de todo el equipo con 18.000 tareas en la base se sirve en unos 0,2 s en local (antes de leer sin modelos, 1,7 s). Presupuestos de consultas por vista en `tests/Feature/Calendar/TeamCalendarPerformanceTest.php`.
 
+### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
+Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
+- **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
+- **Sin dependencias nuevas:** OpenID Connect con el cliente HTTP de Laravel (`App\Domain\Auth\Google\GoogleLogin`), reutilizando de `GoogleOAuth` la validación del `id_token` (`idTokenClaims`, `emailVerified`), el PKCE y el envío.
+- **Flujo:**
+  - `POST /login/google` (`login.google`, solo invitados) guarda en la sesión el `state` (40 caracteres), el verificador **PKCE** (S256), un **`nonce`** y «Mantener la sesión iniciada», de un solo uso y con 10 minutos de vida, y manda a Google con los alcances mínimos **`openid email profile`**, `prompt=select_account` y **`hd=audaxstudio.com`** como pista (solo si hay un único dominio permitido: Google no admite varios),
+  - `GET /login/google/callback` comprueba el `state`, cambia el código y **valida en el servidor** el `id_token` recibido del endpoint de tokens: emisor, audiencia, caducidad, `nonce`, `email_verified`, dominio del correo dentro de los permitidos y **`hd` igual al dominio del correo**. Así solo entran cuentas gestionadas por Google Workspace; una cuenta personal de Google creada con un correo de la empresa (sin `hd`) no vale,
+  - no se piden ni se guardan tokens de Google (sin `access_type=offline`).
+- **Dominios permitidos:** `GOOGLE_LOGIN_DOMAINS` (por defecto `audaxstudio.com`; varios, separados por comas). Sin ninguno válido, el de `GOOGLE_HOSTED_DOMAIN`.
+- **Quién entra:** solo quien **ya existe** en la app con ese correo (comparación `lower(email)`), **activo**, de la plantilla y **que no sea colaborador externo** (D-134). **Nunca se crean usuarios.** Los clientes del portal y los colaboradores externos (que suelen usar Gmail u otro dominio) siguen con su contraseña: el acceso con Google es para la plantilla de Workspace, que es quien se gestiona desde la consola de Google.
+- **Mensajes** (en `/login`, bajo el botón, desde `errors.google`): enlace caducado, cancelado en Google, Google no acepta el código o no responde, identidad no válida, correo sin verificar, dominio no permitido, sin cuenta en la app («Pide a la administración que te dé de alta»), cuenta desactivada y «solo para la plantilla». Revelar que no hay cuenta no es un problema: quien lo ve ya ha demostrado que es dueño de ese correo de la empresa.
+- **Dónde está el botón:** en `/login`, bajo el formulario tras un separador «o», y en la invitación de alta («o, sin crear contraseña») si el correo invitado es de un dominio permitido. Botón neutro con la «G» de Google a color y sin modificar (sus directrices de marca; única excepción a los tokens del tema) y el estilo plano de Audax (D-137). Texto «Entrar con Google», el que pidió el propietario.
+
+### D-166 · Google no sustituye a la verificación en dos pasos propia
+- **Decisión segura:** quien tiene el 2FA propio confirmado **lo sigue pasando** después de Google, con el mismo reto de Fortify que tras la contraseña (`login.id`, `login.remember` y `TwoFactorAuthenticationChallenged`). Quien no lo tiene entra directamente.
+- **Por qué:** el `id_token` de Google no trae una señal fiable de que se usó la verificación en dos pasos de Workspace (Google no documenta `amr` ni `acr` en sus tokens), y la política de Workspace puede cambiar sin que la app lo sepa. Aceptar Google como segundo factor sin esa señal bajaría la seguridad de quien ya tiene el 2FA activado. Si algún día Google la ofrece, se puede revisar.
+- **2FA obligatorio** (`require_2fa`, SPEC §14): igual que con contraseña, `RequireTwoFactor` lleva a configurarlo a quien no lo tenga.
+
+### D-167 · Registro, auditoría, límite e invitación del acceso con Google
+- **Igual que el login con contraseña:** sesión regenerada, «Recordarme», vuelta a la página que se pedía, último acceso y sesiones activas.
+- **Registro de accesos:** columna nueva **`login_events.method`** (`password` o `google`; las filas anteriores, `password`). El acceso correcto lo registra `RecordSuccessfulLogin` con `google` si la sesión la abre Google (directamente o tras su 2FA; el id de la persona queda en la sesión y se consume ahí); un 2FA fallido tras Google, `google`. Un reto 2FA del login con contraseña olvida un Google a medias (`ForgetGoogleLoginOnChallenge`). Los rechazos con un correo identificado quedan como accesos fallidos con `google`. La exportación de datos personales (D-075) incluye el método.
+- **Auditoría** (D-074): log `auth`, entidad «Accesos con Google» y acción «Accesos con Google (correctos y rechazados)»: `google_login` (con la cuenta de Google y si falta el 2FA) y `google_login_rejected` (con el motivo). Los intentos sin identidad (state caducado, cancelado) no se auditan: solo cuentan para el límite.
+- **Límite:** `throttle:google-login`, 10 por minuto e IP entre la salida y la vuelta.
+- **Invitación:** como Google ya ha verificado el correo, entrar con Google **acepta la invitación pendiente** (se borra el enlace de `invitation_tokens`) y marca el correo como verificado. La contraseña sigue sin fijar; si algún día la necesita, «¿Has olvidado tu contraseña?».
+
+### D-168 · Interruptor del acceso con Google en /admin/ajustes
+- Ajuste **`google_login_enabled`** en Seguridad («Entrar con Google»), **activado por defecto**; solo se ofrece si además hay credenciales de Google (`GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`). Sin ellas, la página lo avisa. El cambio queda en la auditoría de ajustes.
+- Desactivado o sin credenciales, `/login` no enseña el botón y las dos rutas responden 404.
+
 ### D-170 · Registrado de una tarea padre: lo suyo más lo de sus subtareas **[amplía D-037 y SPEC §6]**
 Pedido por el propietario el 05/10, como el «tiempo registrado» de ClickUp: «Desarrollo web», estimada en 60 h, muestra 10 h registradas porque suma lo imputado en sus subtareas.
 - **Regla:** el registrado de una tarea raíz es el suyo más el de sus subtareas (las borradas no cuentan); el de una subtarea, el suyo. Las entradas siguen en la tarea en la que se imputaron: solo cambia lo que se enseña.
@@ -1295,7 +1324,8 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- D-145 a D-169: reservadas en otras ramas.
+- D-145 a D-164: reservadas en otras ramas (Fase 10, la Weekly).
+- Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 
-La siguiente libre en esta rama es **D-174** (de D-145 a D-169, ver las otras ramas).
+La siguiente libre en esta rama es **D-174** (de D-145 a D-164, ver la rama `fase-10`).

@@ -21,6 +21,8 @@ export type PlaceholderPageProps = {
 export type LoginPageProps = {
     status?: string | null;
     canResetPassword: boolean;
+    /** «Entrar con Google» (D-165): credenciales de Google y ajuste activado. */
+    googleLogin?: boolean;
 };
 
 export type ForgotPasswordPageProps = {
@@ -31,6 +33,11 @@ export type ResetPasswordPageProps = {
     token: string;
     email: string;
     passwordRules: string;
+};
+
+export type AcceptInvitationPageProps = ResetPasswordPageProps & {
+    /** «Entrar con Google» en lugar de la contraseña (D-165), con un correo de un dominio permitido. */
+    googleLogin?: boolean;
 };
 
 export type ProfilePageProps = {

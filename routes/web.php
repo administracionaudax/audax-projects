@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeLayoutController;
@@ -30,6 +31,16 @@ Route::middleware('guest')->group(function () {
     Route::post('invitacion', [InvitationController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('invitation.store');
+
+    // Entrar con Google (D-165). La URI del callback es exactamente la autorizada en Google Cloud
+    // (proyecto audax-proyectos, el mismo cliente que Google Sheets):
+    // https://projects.audaxstudio.com/login/google/callback
+    Route::post('login/google', [GoogleLoginController::class, 'redirect'])
+        ->middleware('throttle:google-login')
+        ->name('login.google');
+    Route::get('login/google/callback', [GoogleLoginController::class, 'callback'])
+        ->middleware('throttle:google-login')
+        ->name('login.google.callback');
 });
 
 // Guía de estilo: pública durante el desarrollo (APP_STYLEGUIDE_PUBLIC=true); después, solo admin.

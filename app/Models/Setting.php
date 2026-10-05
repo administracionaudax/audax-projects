@@ -64,6 +64,8 @@ class Setting extends Model
         'attachments_warning_gb' => null,
         // Recordatorio de los viernes para enviar la semana (D-073).
         'week_reminder_enabled' => true,
+        // Entrar con Google (D-165): solo se ofrece si además hay credenciales de Google.
+        'google_login_enabled' => true,
     ];
 
     protected static function booted(): void

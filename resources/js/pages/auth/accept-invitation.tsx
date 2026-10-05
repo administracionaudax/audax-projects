@@ -1,4 +1,8 @@
 import { Form, Head } from '@inertiajs/react';
+import {
+    AuthSeparator,
+    GoogleSignInButton,
+} from '@/components/auth/google-sign-in-button';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -7,15 +11,19 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
 import { store } from '@/routes/invitation';
-import type { ResetPasswordPageProps } from '@/types';
+import type { AcceptInvitationPageProps } from '@/types';
 
-/** Aceptar la invitación de alta (enlace del email, válido 7 días). */
+/**
+ * Aceptar la invitación de alta (enlace del email, válido 7 días). Con un correo de la empresa,
+ * también entrando con Google en lugar de crear una contraseña (D-165).
+ */
 
 export default function AcceptInvitation({
     token,
     email,
     passwordRules,
-}: ResetPasswordPageProps) {
+    googleLogin = false,
+}: AcceptInvitationPageProps) {
     return (
         <>
             <Head title={t('invitation.page_title')} />
@@ -96,6 +104,13 @@ export default function AcceptInvitation({
                     </div>
                 )}
             </Form>
+
+            {googleLogin && (
+                <div className="grid gap-6">
+                    <AuthSeparator label={t('invitation.google.separator')} />
+                    <GoogleSignInButton />
+                </div>
+            )}
         </>
     );
 }

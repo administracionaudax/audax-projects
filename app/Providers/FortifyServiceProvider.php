@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Domain\Auth\Google\GoogleLogin;
 use App\Http\Middleware\ThrottlePasswordResetLinkRequests;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\Models\User;
@@ -108,6 +109,8 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
+            // «Entrar con Google» (D-165): con credenciales y el ajuste activado.
+            'googleLogin' => GoogleLogin::available(),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
@@ -144,6 +147,9 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute($perMinute)->by($throttleKey);
         });
+
+        // Entrar con Google (D-165): salir hacia Google y volver, 10 por minuto e IP entre las dos.
+        RateLimiter::for('google-login', fn (Request $request) => Limit::perMinute(10)->by('google-login:'.$request->ip()));
 
         // POST /forgot-password: por IP y por correo (exista o no), para que no sirva para sondear
         // la plantilla ni para inundar un buzón.

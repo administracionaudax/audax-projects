@@ -101,6 +101,8 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         // Cuenta propia (perfil, contraseña, 2FA, sesiones y apariencia) y autenticación.
         '#^ajustes#', '#^user/#', '#^login$#', '#^logout$#', '#^forgot-password$#', '#^reset-password#',
         '#^two-factor-challenge$#', '#^invitacion#',
+        // Entrar con Google (D-165): solo invitados.
+        '#^login/google(/callback)?$#',
         // Públicas o técnicas.
         '#^health$#', '#^up$#', '#^styleguide$#', '#^storage/#', '#^_inertia/#',
         // Logo de la empresa (D-067): público para los emails, sin sesión.
