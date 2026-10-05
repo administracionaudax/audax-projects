@@ -18,7 +18,8 @@ use Carbon\CarbonInterface;
  * - se miran hoy y ayer en Madrid, por si el margen cruza la medianoche,
  * - cambio de hora: una hora que no existe (el último domingo de marzo, de 02:00 a 02:59) se
  *   dispara al pasar a la hora de verano (02:30 → 03:30), en vez de perderse como en WeeklySync;
- *   una que se repite (el último domingo de octubre) se dispara una sola vez, en la primera.
+ *   una que se repite (el último domingo de octubre) se dispara una sola vez, en la segunda (ya en
+ *   hora de invierno, la que elige PHP).
  *
  * Lógica pura: sin base de datos.
  */
@@ -80,7 +81,7 @@ final class WeeklyReminderSchedule
     /**
      * El instante de una fecha y hora de Madrid. PHP lleva la hora que no existe al cambiar a la de
      * verano a la misma hora de reloj después del salto (02:30 → 03:30) y, en la que se repite,
-     * toma la primera.
+     * toma la segunda (la de invierno).
      */
     private static function instant(string $date, string $time): ?CarbonImmutable
     {
