@@ -1,0 +1,486 @@
+/**
+ * La Weekly (Fase 10, D-145 a D-150). Contrato JSON con App\Http\Resources\Weeklies\* y con los
+ * enums de app/Enums. Fechas de semana "YYYY-MM-DD" (días de Madrid, sin zona); instantes ISO en UTC.
+ * El informe estructurado es App\Domain\Weeklies\Report\WeeklyReport::toArray(), el
+ * WeeklyStructuredReport de WeeklySync (ws:types.ts) en snake_case.
+ */
+import type { UserSummary } from './domain';
+
+// --- Enums (app/Enums) -------------------------------------------------------------------------
+
+/** WeeklyCycleStatus: una sola activa (D-150). */
+export type WeeklyCycleStatus = 'active' | 'closed';
+
+/** WeeklyCycleProgress (F-066), WeeklyTiming::cycleProgress(). */
+export type WeeklyCycleProgress =
+    | 'finished'
+    | 'upcoming'
+    | 'overdue'
+    | 'completed'
+    | 'in_progress';
+
+/** WeeklyPersonStatus (F-042 y F-136), WeeklyTiming::personStatus(). */
+export type WeeklyPersonStatus =
+    | 'upcoming'
+    | 'pending'
+    | 'overdue'
+    | 'submitted'
+    | 'submitted_late'
+    | 'missed'
+    | 'exempt'
+    | 'not_required';
+
+/** WeeklyExemptionReason (D-151): waived = renuncia a la exención por ausencia. */
+export type WeeklyExemptionReason = 'absence' | 'manual' | 'waived';
+
+export type WeeklyEntrySource = 'text' | 'dictation';
+
+export type WeeklyAudioSectionKind = 'intro' | 'client' | 'outro';
+
+/** WeeklyJobState: informe o audio en la cola `ai`. */
+export type WeeklyJobState = 'queued' | 'running' | 'done' | 'failed';
+
+/** WeeklyClientStatus («On Track», «Risk» y «Blocked» en WeeklySync). */
+export type WeeklyClientStatus = 'on_track' | 'risk' | 'blocked';
+
+export type AiProvider = 'gemini' | 'google_tts';
+
+export type AiFeature =
+    | 'weekly_report'
+    | 'satisfaction'
+    | 'audio_script'
+    | 'speech'
+    | 'transcript_cleanup'
+    | 'suggested_tasks'
+    | 'client_summary'
+    | 'team_activity'
+    | 'person_performance'
+    | 'person_client_activity'
+    | 'assistant';
+
+export type WeeklyReminderChannel = 'email' | 'push';
+
+export type WeeklyReminderTemplate = 'automatic' | 'manual' | 'weekly_closed';
+
+export type WeeklyReminderStatus = 'sent' | 'failed' | 'skipped';
+
+export type DictationContext = 'weekly_entry' | 'task_note';
+
+/** TranscriptionStatus, el mismo del chat. */
+export type DictationStatus = 'pending' | 'processing' | 'done' | 'failed';
+
+export type SuggestionStatus =
+    | 'open'
+    | 'future'
+    | 'planned'
+    | 'building_now'
+    | 'beta'
+    | 'completed';
+
+export type SuggestionReaction = 'thumbs_up' | 'rocket' | 'eyes' | 'heart';
+
+/** AppModule (F-177): ajuste `modules`, prop compartida config.modules. */
+export type AppModule =
+    | 'weeklies'
+    | 'project_status'
+    | 'help'
+    | 'suggestions'
+    | 'assistant';
+
+// --- Semanas, envíos e informe ----------------------------------------------------------------
+
+/** WeeklyCycleResource. */
+export type WeeklyCycleSummary = {
+    id: number;
+    /** «W41-26». */
+    number: string;
+    /** «Semana 41 (Lun 05/10 - Vie 09/10)». */
+    label: string;
+    start_date: string;
+    end_date: string;
+    deadline_date: string;
+    status: WeeklyCycleStatus;
+    has_report: boolean;
+    report_state: WeeklyJobState | null;
+    report_generated_at: string | null;
+    audio_state: WeeklyJobState | null;
+    submission_count_at_generation: number | null;
+    closed_at: string | null;
+    /** Enviadas (no borradores), si se han contado. */
+    submissions_count?: number;
+};
+
+/** WeeklyMilestone. date: "YYYY-MM-DD" o texto libre de la IA. */
+export type WeeklyMilestone = {
+    date: string | null;
+    label: string;
+};
+
+/** WeeklyProjectSnapshot (F-074, D-148): minutos al generar el informe. */
+export type WeeklyProjectSnapshot = {
+    project_id: number;
+    code: string;
+    name: string;
+    billing_type: string;
+    budget_minutes: number | null;
+    consumed_minutes: number;
+    expected_minutes: number | null;
+    /** Consumido − esperado (positivo: por encima). */
+    deviation_minutes: number | null;
+};
+
+/** WeeklyClientUpdate (ws:types.ts WeeklyClientUpdate). */
+export type WeeklyClientUpdate = {
+    client_id: number | null;
+    client_name: string;
+    status: WeeklyClientStatus;
+    executive_summary: string;
+    next_steps: string[];
+    milestones: WeeklyMilestone[];
+    tags: string[];
+    /** Foto de la satisfacción al cerrar (F-094). */
+    satisfaction_score: number | null;
+    /** false: nadie escribió de él («Sin novedades», F-075). */
+    has_reports: boolean;
+    projects: WeeklyProjectSnapshot[];
+};
+
+/** WeeklyReport (ws:types.ts WeeklyStructuredReport sin audioSections, que van aparte). */
+export type WeeklyReport = {
+    global_summary: string;
+    team_risks: string[];
+    client_updates: WeeklyClientUpdate[];
+};
+
+/** WeeklyAudioSectionResource. url: ruta firmada al MP3. */
+export type WeeklyAudioSection = {
+    id: number;
+    /** "intro", "client-{id}" u "outro". */
+    key: string;
+    kind: WeeklyAudioSectionKind;
+    client_id: number | null;
+    position: number;
+    script: string | null;
+    duration_ms: number | null;
+    generated_at: string | null;
+    url: string | null;
+};
+
+/** WeeklyCycleDetailResource. */
+export type WeeklyCycleDetail = WeeklyCycleSummary & {
+    report: WeeklyReport | null;
+    /** Texto final en Markdown (copiar, F-082). */
+    report_text: string | null;
+    report_error: string | null;
+    report_edited_at: string | null;
+    audio_error: string | null;
+    has_full_audio: boolean;
+    audio_sections?: WeeklyAudioSection[];
+};
+
+/** WeeklyEntryResource. client_id null = «General / Interno». */
+export type WeeklyEntry = {
+    id: number;
+    client_id: number | null;
+    client?: { id: number; name: string; icon: string | null } | null;
+    project_id: number | null;
+    body: string;
+    source: WeeklyEntrySource;
+    position: number;
+};
+
+/** WeeklySubmissionResource: borrador mientras is_submitted es false. */
+export type WeeklySubmission = {
+    id: number;
+    weekly_cycle_id: number;
+    user_id: number;
+    user?: UserSummary;
+    is_submitted: boolean;
+    /** Primer envío: se conserva al reenviar (F-052). */
+    submitted_at: string | null;
+    resubmitted_at: string | null;
+    draft_saved_at: string | null;
+    entries?: WeeklyEntry[];
+};
+
+/** Lo que se envía al guardar el borrador o enviar (WeeklyDraftData::fromArray). */
+export type WeeklyEntryInput = {
+    client_id: number | null;
+    project_id?: number | null;
+    body: string;
+    source?: WeeklyEntrySource;
+};
+
+export type WeeklyDraftInput = {
+    entries: WeeklyEntryInput[];
+};
+
+/** WeeklyExemptionResource (sin el tipo de ausencia: dato de salud, D-088). */
+export type WeeklyExemption = {
+    id: number;
+    weekly_cycle_id: number;
+    user_id: number;
+    reason: WeeklyExemptionReason;
+    note: string | null;
+    created_by: number | null;
+    created_at: string | null;
+};
+
+/** Fila del estado del equipo de una semana (F-036, F-067 y F-136), WeeklyRoster + WeeklyTiming. */
+export type WeeklyTeamMember = {
+    user: UserSummary;
+    status: WeeklyPersonStatus;
+    submitted_at: string | null;
+    exemption_reason: Exclude<WeeklyExemptionReason, 'waived'> | null;
+};
+
+/** StreakCalculator::summary() (F-028 y F-031). */
+export type WeeklyStreakSummary = {
+    submitted: number;
+    on_time: number;
+    streak: number;
+};
+
+/** ClientSatisfactionResource (F-132). */
+export type ClientSatisfactionPoint = {
+    client_id: number;
+    weekly_cycle_id: number;
+    score: number;
+    previous_score: number | null;
+    delta: number;
+    rule: string | null;
+    reasoning: string | null;
+    created_at: string | null;
+};
+
+/** DictationResource (D-152): «Transcribiendo…» hasta status done. */
+export type Dictation = {
+    id: number;
+    context: DictationContext;
+    status: DictationStatus;
+    client_id: number | null;
+    task_id: number | null;
+    text: string | null;
+    /** no_speech, too_short… */
+    warning: string | null;
+    created_at: string | null;
+};
+
+/** AiUsageResource (F-173 y F-180). Coste en USD como texto decimal ("0.000800"). */
+export type AiUsageRow = {
+    id: number;
+    provider: AiProvider;
+    model: string;
+    feature: AiFeature;
+    operation: string | null;
+    status: 'success' | 'error';
+    latency_ms: number | null;
+    prompt_tokens: number | null;
+    response_tokens: number | null;
+    total_tokens: number | null;
+    character_count: number | null;
+    estimated_cost_usd: string | null;
+    error: string | null;
+    user?: UserSummary;
+    created_at: string | null;
+};
+
+/** Regla de recordatorio (F-101 y F-102): día ISO 1-7 y hora "HH:MM" de Madrid. */
+export type WeeklyReminderRule = {
+    id: number;
+    channel: WeeklyReminderChannel;
+    day_of_week: number;
+    time: string;
+    enabled: boolean;
+    position: number;
+};
+
+/** Plantilla editable (setting weekly_email_templates); variables {nombre}, {semana} y {weekly_url}. */
+export type WeeklyEmailTemplate = {
+    subject: string;
+    body: string;
+};
+
+/** Registro de un aviso (F-108). */
+export type WeeklyReminderLogRow = {
+    id: number;
+    weekly_cycle_id: number | null;
+    user_id: number | null;
+    recipient_name: string | null;
+    recipient_email: string | null;
+    template: WeeklyReminderTemplate;
+    channel: WeeklyReminderChannel;
+    status: WeeklyReminderStatus;
+    error: string | null;
+    created_at: string | null;
+};
+
+// --- Centro de ayuda (10.7) -------------------------------------------------------------------
+
+export type HelpLikeUser = { id: number; name: string; avatar: string | null };
+
+/** Novedad automática «V.serie.mes.semana» (F-150). */
+export type HelpRelease = {
+    id: number;
+    major_version: number;
+    month_number: number;
+    week_of_month: number;
+    /** «V1.10.2». */
+    version: string;
+    summary: string;
+    is_hidden: boolean;
+    changes: { id: number; description: string; position: number }[];
+    likes: HelpLikeUser[];
+    liked_by_me: boolean;
+    created_at: string | null;
+};
+
+/** Actualización manual (F-151); body en el formato de RichText. */
+export type HelpManualUpdate = {
+    id: number;
+    published_on: string;
+    title: string;
+    subtitle: string;
+    body: string;
+    likes: HelpLikeUser[];
+    liked_by_me: boolean;
+};
+
+/** Tutorial en vídeo (F-155); video_url: ruta firmada. */
+export type HelpTutorial = {
+    id: number;
+    title: string;
+    description: string | null;
+    help_release_id: number | null;
+    position: number;
+    video_url: string | null;
+    video_name: string | null;
+};
+
+export type HelpFaq = {
+    id: number;
+    help_faq_section_id: number;
+    question: string;
+    answer: string;
+    position: number;
+};
+
+export type HelpFaqSection = {
+    id: number;
+    name: string;
+    position: number;
+    faqs: HelpFaq[];
+};
+
+/** Settings help_support_url y help_manual (F-157). */
+export type HelpSettings = {
+    support_url: string | null;
+    manual_name: string | null;
+    manual_url: string | null;
+};
+
+// --- Sugerencias (10.7) -----------------------------------------------------------------------
+
+export type SuggestionCategory = {
+    id: number;
+    suggestion_board_id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    position: number;
+    is_active: boolean;
+};
+
+export type SuggestionBoard = {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    position: number;
+    is_active: boolean;
+    categories: SuggestionCategory[];
+};
+
+export type SuggestionAttachment = {
+    id: number;
+    name: string;
+    mime: string;
+    size: number;
+    url: string;
+};
+
+export type SuggestionStatusEvent = {
+    id: number;
+    from_status: SuggestionStatus | null;
+    to_status: SuggestionStatus;
+    note: string | null;
+    changed_by: UserSummary | null;
+    created_at: string | null;
+};
+
+export type SuggestionComment = {
+    id: number;
+    parent_id: number | null;
+    author: UserSummary;
+    body: string;
+    edited_at: string | null;
+    created_at: string | null;
+    attachments: SuggestionAttachment[];
+    reactions: { reaction: SuggestionReaction; user: UserSummary }[];
+    replies: SuggestionComment[];
+};
+
+/** Sugerencia en el feed y el roadmap (F-162 y F-168); el detalle añade comments y status_events. */
+export type SuggestionPost = {
+    id: number;
+    suggestion_board_id: number;
+    suggestion_category_id: number | null;
+    author: UserSummary;
+    title: string;
+    slug: string;
+    body: string;
+    status: SuggestionStatus;
+    position: number;
+    vote_count: number;
+    comment_count: number;
+    voted_by_me: boolean;
+    last_activity_at: string | null;
+    created_at: string | null;
+    attachments?: SuggestionAttachment[];
+    voters?: UserSummary[];
+    comments?: SuggestionComment[];
+    status_events?: SuggestionStatusEvent[];
+};
+
+// --- Páginas (Inertia) ------------------------------------------------------------------------
+
+/** weeklies/index (WeeklyCycleController::index). */
+export type WeekliesIndexPageProps = {
+    cycles: WeeklyCycleSummary[];
+    can: { manage: boolean; create: boolean };
+};
+
+/** weeklies/show (WeeklyCycleController::show). */
+export type WeeklyShowPageProps = {
+    cycle: WeeklyCycleDetail;
+    can: {
+        generate: boolean;
+        extendDeadline: boolean;
+        close: boolean;
+        delete: boolean;
+    };
+};
+
+/** my-space/index (MySpaceController::index). */
+export type MySpacePageProps = {
+    cycle: WeeklyCycleSummary | null;
+    submission: WeeklySubmission | null;
+};
+
+/** help/index (HelpController::index). */
+export type HelpTab = 'general' | 'tutoriales' | 'preguntas' | 'sugerencias';
+
+export type HelpPageProps = {
+    tab: HelpTab;
+    can: { manage: boolean };
+};

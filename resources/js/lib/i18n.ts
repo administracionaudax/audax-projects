@@ -7,7 +7,7 @@
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
  *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
- *     informes, Mis tareas y el calendario del equipo). Laravel no los lee.
+ *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -48,6 +48,7 @@ import shared from '../../../lang/ui/shared.json';
 import tasks from '../../../lang/ui/tasks.json';
 import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
+import weeklies from '../../../lang/ui/weeklies.json';
 import workload from '../../../lang/ui/workload.json';
 
 const messages = {
@@ -82,6 +83,7 @@ const messages = {
     ...portalBanks,
     ...portalAccess,
     ...integrations,
+    ...weeklies,
 };
 
 export type TranslationKey = keyof typeof messages;

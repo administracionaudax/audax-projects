@@ -1,4 +1,5 @@
 /** Contrato con App\Http\Middleware\HandleInertiaRequests::share(). */
+import type { AppModule } from './weeklies';
 
 export type Role =
     | 'admin'
@@ -42,6 +43,11 @@ export type Abilities = {
     viewWorkload: boolean;
     viewAbsences: boolean;
     viewReports: boolean;
+    /** La Weekly (Fase 10, D-147): usarla (plantilla interna) y gestionarla (admins y responsables). */
+    useWeeklies?: boolean;
+    manageWeeklies?: boolean;
+    /** «Uso de IA» (F-180): solo admins. */
+    viewAiUsage?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */
@@ -70,6 +76,16 @@ export type AppConfig = {
     max_attachment_mb?: number;
     /** Chat (Fase 6): duración máxima de los audios en segundos (por defecto 300). */
     max_audio_seconds?: number;
+    /** Fase 10 (F-177): módulos activos; apagado, sus rutas dan 404 y no salen en la navegación. */
+    modules?: Record<AppModule, boolean>;
+    /** Fase 10 (F-178): aviso global en todas las páginas internas. */
+    global_banner?: GlobalBanner | null;
+};
+
+/** Ajuste `global_banner` (F-178). */
+export type GlobalBanner = {
+    message: string;
+    tone: 'info' | 'warning';
 };
 
 export type Auth = {
