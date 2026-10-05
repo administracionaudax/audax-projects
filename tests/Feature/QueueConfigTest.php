@@ -86,23 +86,13 @@ test('la memoria de las colas, el transcriptor y Reverb cabe en system-audax.sli
 });
 
 test('el envío de un informe sube el memory_limit de la CLI hasta el del supervisor de mail', function () {
-    $original = ini_get('memory_limit');
-
-    try {
-        ini_set('memory_limit', '128M');
-        SendReportDelivery::ensureMemory();
-        expect(ini_get('memory_limit'))->toBe('256M');
-
+    // Sin ini_set: en la suite en paralelo el proceso ya puede usar más de 128 MB.
+    expect(SendReportDelivery::raisedMemoryLimit('128M'))->toBe('256M')
+        ->and(SendReportDelivery::raisedMemoryLimit('134217728'))->toBe('256M')
+        ->and(SendReportDelivery::raisedMemoryLimit('256M'))->toBeNull()
         // Nunca lo baja.
-        ini_set('memory_limit', '512M');
-        SendReportDelivery::ensureMemory();
-        expect(ini_get('memory_limit'))->toBe('512M');
-
+        ->and(SendReportDelivery::raisedMemoryLimit('512M'))->toBeNull()
+        ->and(SendReportDelivery::raisedMemoryLimit('1G'))->toBeNull()
         // Sin límite, se queda sin límite.
-        ini_set('memory_limit', '-1');
-        SendReportDelivery::ensureMemory();
-        expect(ini_get('memory_limit'))->toBe('-1');
-    } finally {
-        ini_set('memory_limit', (string) $original);
-    }
+        ->and(SendReportDelivery::raisedMemoryLimit('-1'))->toBeNull();
 });

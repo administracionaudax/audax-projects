@@ -40,12 +40,23 @@ class SendReportDelivery implements ShouldQueue
      */
     public static function ensureMemory(): void
     {
-        $wanted = (int) config('horizon.defaults.supervisor-mail.memory', 256) * 1024 * 1024;
-        $current = self::bytes((string) ini_get('memory_limit'));
+        $limit = self::raisedMemoryLimit((string) ini_get('memory_limit'));
 
-        if ($current >= 0 && $current < $wanted) {
-            ini_set('memory_limit', (string) ($wanted / 1024 / 1024).'M');
+        if ($limit !== null) {
+            ini_set('memory_limit', $limit);
         }
+    }
+
+    /**
+     * El memory_limit que hay que poner partiendo de $current, o null si ya basta (o no hay
+     * límite).
+     */
+    public static function raisedMemoryLimit(string $current): ?string
+    {
+        $wanted = (int) config('horizon.defaults.supervisor-mail.memory', 256);
+        $bytes = self::bytes($current);
+
+        return $bytes >= 0 && $bytes < $wanted * 1024 * 1024 ? "{$wanted}M" : null;
     }
 
     /** «128M» → bytes; -1 si no hay límite. */
