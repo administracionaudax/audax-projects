@@ -17,6 +17,7 @@ use App\Models\TimeEntry;
 use App\Models\TimesheetPeriod;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use App\Models\WeeklyReminderRule;
 use App\Models\WeeklySubmission;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -182,7 +183,9 @@ test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas
     $pablo = User::query()->where('email', 'pablo.ruiz@example.com')->sole();
     expect(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->where('user_id', $elena->id)->sole()->submitted_at)->not->toBeNull()
         ->and(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->where('user_id', $pablo->id)->sole()->submitted_at)->toBeNull()
-        ->and(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->count())->toBe(2);
+        ->and(WeeklySubmission::query()->where('weekly_cycle_id', $active->id)->count())->toBe(2)
+        // Los recordatorios de ejemplo (10.5): el jueves en la app y el viernes por email.
+        ->and(WeeklyReminderRule::query()->orderBy('position')->get()->map(fn (WeeklyReminderRule $rule): string => "{$rule->channel->value} {$rule->day_of_week} {$rule->time}")->all())->toBe(['app 4 10:00', 'email 5 16:00']);
 });
 
 test('el seeder de desarrollo es repetible', function () {
@@ -192,7 +195,8 @@ test('el seeder de desarrollo es repetible', function () {
     expect(User::query()->count())->toBe(13)
         ->and(Department::query()->count())->toBe(3)
         ->and(Project::query()->count())->toBe(15)
-        ->and(WeeklyCycle::query()->count())->toBe(4);
+        ->and(WeeklyCycle::query()->count())->toBe(4)
+        ->and(WeeklyReminderRule::query()->count())->toBe(2);
 });
 
 test('el seeder de desarrollo se niega a ejecutarse fuera de local y testing', function (string $env) {

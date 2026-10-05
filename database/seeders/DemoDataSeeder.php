@@ -22,6 +22,7 @@ use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Enums\WeeklyCycleStatus;
 use App\Enums\WeeklyEntrySource;
+use App\Enums\WeeklyReminderChannel;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
@@ -42,6 +43,7 @@ use App\Models\TimeEntryLock;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyEntry;
+use App\Models\WeeklyReminderRule;
 use App\Models\WeeklySubmission;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
@@ -329,6 +331,11 @@ class DemoDataSeeder extends Seeder
                 default => null,
             };
         }
+
+        // Los recordatorios de WeeklySync (10.5): el email del viernes a las 16:00 y, nuevo, uno en
+        // la app el jueves a las 10:00. El de los viernes con las horas sale además a las 13:00.
+        WeeklyReminderRule::query()->create(['channel' => WeeklyReminderChannel::App, 'day_of_week' => 4, 'time' => '10:00', 'position' => 0]);
+        WeeklyReminderRule::query()->create(['channel' => WeeklyReminderChannel::Email, 'day_of_week' => 5, 'time' => '16:00', 'position' => 1]);
     }
 
     /**
