@@ -105,6 +105,43 @@ it('las subtareas son de un solo nivel, del mismo proyecto y con la bolsa del pa
         ->assertSessionHasErrors('parent_task_id');
 });
 
+it('crea una subtarea con todos los datos del diálogo (D-173) y la estimación del padre no cambia', function () {
+    $project = Project::factory()->hourBank()->create();
+    $project->addMember($this->user);
+    $bank = HourBank::factory()->create(['project_id' => $project->id]);
+    $parent = Task::factory()->inBank($bank)->create(['estimated_minutes' => 3600]);
+    $type = TaskType::factory()->create();
+    $doing = TaskStatus::query()->where('category', 'in_progress')->firstOrFail();
+
+    ($this->store)([
+        'title' => 'Formularios',
+        'parent_task_id' => $parent->id,
+        'assignee_user_id' => $this->user->id,
+        'status_id' => $doing->id,
+        'priority' => 'high',
+        'task_type_id' => $type->id,
+        'start_date' => '2026-10-05',
+        'due_date' => '2026-10-09',
+        'estimated_minutes' => 90,
+    ], $project)->assertSessionHasNoErrors();
+
+    $child = Task::query()->where('title', 'Formularios')->firstOrFail();
+
+    expect($child->parent_task_id)->toBe($parent->id)
+        ->and($child->hour_bank_id)->toBe($bank->id)
+        ->and($child->assignee_user_id)->toBe($this->user->id)
+        ->and($child->status_id)->toBe($doing->id)
+        ->and($child->priority->value)->toBe('high')
+        ->and($child->task_type_id)->toBe($type->id)
+        ->and($child->start_date?->toDateString())->toBe('2026-10-05')
+        ->and($child->due_date?->toDateString())->toBe('2026-10-09')
+        ->and($child->estimated_minutes)->toBe(90)
+        ->and($parent->fresh()->estimated_minutes)->toBe(3600);
+
+    ($this->store)(['title' => 'Al revés', 'parent_task_id' => $parent->id, 'start_date' => '2026-10-09', 'due_date' => '2026-10-05'], $project)
+        ->assertSessionHasErrors('due_date');
+});
+
 it('no se añaden subtareas a una tarea que se ha quedado en una bolsa cerrada o renovada (BRN-07)', function (string $status, string $label) {
     $project = Project::factory()->hourBank()->create();
     $project->addMember($this->user);

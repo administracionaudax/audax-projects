@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
@@ -350,5 +350,120 @@ describe('diálogo de imputación', () => {
         expect(
             (server.post.mock.calls[0] as [string, Record<string, unknown>])[1],
         ).toMatchObject({ user_id: 8, minutes: 45 });
+    });
+
+    it('con hora de inicio y fin calcula la duración y envía la franja (D-172)', async () => {
+        const user = userEvent.setup();
+        server.post.mockImplementation(
+            (_url: string, _data: unknown, visit: VisitOptions) => {
+                visit.onSuccess?.();
+                visit.onFinish?.();
+            },
+        );
+
+        render(
+            <TimeEntryDialog
+                open
+                onOpenChange={vi.fn()}
+                task={task}
+                date="2026-09-24"
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('radio', { name: 'Con hora de inicio y fin' }),
+        );
+        expect(screen.queryByLabelText('Duración')).toBeNull();
+        fireEvent.change(screen.getByLabelText('Inicio'), {
+            target: { value: '09:00' },
+        });
+        fireEvent.change(screen.getByLabelText('Fin'), {
+            target: { value: '11:30' },
+        });
+        expect(screen.getByText('Duración: 2:30')).toBeTruthy();
+
+        await user.click(screen.getByRole('button', { name: 'Guardar horas' }));
+
+        expect(server.post.mock.calls[0][1]).toEqual({
+            task_id: 12,
+            user_id: 7,
+            date: '2026-09-24',
+            minutes: null,
+            start_time: '09:00',
+            end_time: '11:30',
+            description: null,
+        });
+    });
+
+    it('no envía una franja que cruza la medianoche y explica cómo registrarla', async () => {
+        const user = userEvent.setup();
+
+        render(<TimeEntryDialog open onOpenChange={vi.fn()} task={task} />);
+
+        await user.click(
+            screen.getByRole('radio', { name: 'Con hora de inicio y fin' }),
+        );
+        await user.click(screen.getByRole('button', { name: 'Guardar horas' }));
+        expect(screen.getByText('Escribe la hora de inicio.')).toBeTruthy();
+        expect(screen.getByText('Escribe la hora de fin.')).toBeTruthy();
+
+        fireEvent.change(screen.getByLabelText('Inicio'), {
+            target: { value: '22:00' },
+        });
+        fireEvent.change(screen.getByLabelText('Fin'), {
+            target: { value: '02:00' },
+        });
+        await user.click(screen.getByRole('button', { name: 'Guardar horas' }));
+
+        expect(
+            screen.getByText(/regístralo en dos entradas: hasta/u),
+        ).toBeTruthy();
+        expect(server.post).not.toHaveBeenCalled();
+    });
+
+    it('al editar una entrada con franja exacta abre en modo franja con sus horas (Madrid)', () => {
+        render(
+            <TimeEntryDialog
+                open
+                onOpenChange={vi.fn()}
+                entry={{
+                    ...entry,
+                    minutes: 90,
+                    started_at: '2026-09-24T07:00:00Z',
+                    ended_at: '2026-09-24T08:30:00Z',
+                }}
+            />,
+        );
+
+        expect(
+            screen
+                .getByRole('radio', { name: 'Con hora de inicio y fin' })
+                .getAttribute('aria-checked'),
+        ).toBe('true');
+        expect(
+            (screen.getByLabelText('Inicio') as HTMLInputElement).value,
+        ).toBe('09:00');
+        expect((screen.getByLabelText('Fin') as HTMLInputElement).value).toBe(
+            '10:30',
+        );
+    });
+
+    it('una entrada del temporizador (minutos redondeados) se edita por duración', () => {
+        render(
+            <TimeEntryDialog
+                open
+                onOpenChange={vi.fn()}
+                entry={{
+                    ...entry,
+                    minutes: 90,
+                    started_at: '2026-09-24T07:00:00Z',
+                    ended_at: '2026-09-24T08:27:00Z',
+                }}
+            />,
+        );
+
+        expect(
+            (screen.getByLabelText('Duración') as HTMLInputElement).value,
+        ).toBe('1:30');
     });
 });

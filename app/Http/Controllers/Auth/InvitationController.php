@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Concerns\PasswordValidationRules;
+use App\Domain\Auth\Google\GoogleLogin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
@@ -19,6 +20,7 @@ use Inertia\Response;
  * Aceptar una invitación de alta (SPEC §14): la persona fija su contraseña con el enlace del
  * email. Usa el broker «invitations» (config/auth.php), que caduca a los 7 días en lugar de los
  * 60 minutos del restablecimiento. El token es de un solo uso (se borra al aceptar).
+ * También se puede aceptar entrando con Google (D-165, GoogleLoginController).
  */
 class InvitationController extends Controller
 {
@@ -28,10 +30,15 @@ class InvitationController extends Controller
 
     public function show(Request $request, string $token): Response
     {
+        $email = Str::lower((string) $request->query('email', ''));
+
         return Inertia::render('auth/accept-invitation', [
             'token' => $token,
-            'email' => Str::lower((string) $request->query('email', '')),
+            'email' => $email,
             'passwordRules' => PasswordRule::defaults()->toPasswordRulesString(),
+            // «Entrar con Google» en lugar de fijar la contraseña (D-165), si el correo es de un
+            // dominio permitido. No revela nada: el callback vuelve a comprobarlo todo.
+            'googleLogin' => GoogleLogin::available() && GoogleLogin::allowsEmail($email),
         ]);
     }
 

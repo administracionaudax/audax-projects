@@ -12,7 +12,8 @@ namespace App\Domain\Audit;
  *   (moderación de mensajes y cambios en los grupos de la Fase 6), import (una entrada resumen
  *   por cada importación de ClickUp, D-136) y report-delivery (descargas, impresiones, envíos,
  *   envíos programados y subidas a Google Sheets de informes, D-139, D-141 y D-142) e
- *   integrations (conexiones con Google: conectar, desconectar y la desconexión automática, D-142).
+ *   integrations (conexiones con Google: conectar, desconectar y la desconexión automática, D-142)
+ *   y auth (entradas con Google, correctas y rechazadas, D-165).
  */
 final class AuditCatalog
 {
@@ -40,6 +41,7 @@ final class AuditCatalog
         'import' => ['import'],
         'report_delivery' => ['report-delivery'],
         'integration' => ['integrations'],
+        'access' => ['auth'],
     ];
 
     /**
@@ -77,6 +79,7 @@ final class AuditCatalog
         'report_printed' => ['printed'],
         'sheets_exported' => ['sheets'],
         'integration_changed' => ['google_connected', 'google_disconnected', 'google_auto_disconnected'],
+        'google_login' => ['google_login', 'google_login_rejected'],
     ];
 
     /** Acciones básicas (el resto se agrupan como «otros eventos» en el selector). */

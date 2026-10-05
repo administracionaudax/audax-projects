@@ -248,6 +248,30 @@ final class GoogleOAuth
      */
     private function verifiedEmail(mixed $idToken): ?string
     {
+        $payload = self::idTokenClaims($idToken);
+
+        if ($payload === null) {
+            return null;
+        }
+
+        $email = is_string($payload['email'] ?? null) ? Str::lower($payload['email']) : '';
+        $domain = $this->hostedDomain();
+
+        $valid = self::emailVerified($payload)
+            && Str::lower((string) ($payload['hd'] ?? '')) === $domain
+            && Str::endsWith($email, '@'.$domain);
+
+        return $valid ? $email : null;
+    }
+
+    /**
+     * Claims del id_token recibido del endpoint de tokens si el emisor es Google, la audiencia es
+     * este cliente y no ha caducado; si no, null. También lo usa el acceso con Google (D-165).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function idTokenClaims(mixed $idToken): ?array
+    {
         if (! is_string($idToken) || substr_count($idToken, '.') !== 2) {
             return null;
         }
@@ -258,18 +282,22 @@ final class GoogleOAuth
             return null;
         }
 
-        $email = is_string($payload['email'] ?? null) ? Str::lower($payload['email']) : '';
-        $domain = $this->hostedDomain();
-        $verified = ($payload['email_verified'] ?? false) === true || ($payload['email_verified'] ?? null) === 'true';
-
         $valid = in_array($payload['iss'] ?? null, self::ISSUERS, true)
             && ($payload['aud'] ?? null) === self::clientId()
-            && is_numeric($payload['exp'] ?? null) && (int) $payload['exp'] > now()->getTimestamp()
-            && $verified
-            && Str::lower((string) ($payload['hd'] ?? '')) === $domain
-            && Str::endsWith($email, '@'.$domain);
+            && is_numeric($payload['exp'] ?? null) && (int) $payload['exp'] > now()->getTimestamp();
 
-        return $valid ? $email : null;
+        /** @var array<string, mixed> $payload */
+        return $valid ? $payload : null;
+    }
+
+    /**
+     * ¿Google da el correo por verificado? (`email_verified` llega como booleano o como texto).
+     *
+     * @param  array<string, mixed>  $claims
+     */
+    public static function emailVerified(array $claims): bool
+    {
+        return ($claims['email_verified'] ?? false) === true || ($claims['email_verified'] ?? null) === 'true';
     }
 
     /**
@@ -277,7 +305,7 @@ final class GoogleOAuth
      *
      * @throws GoogleUnavailable si no hay respuesta (red o tiempo agotado)
      */
-    private function send(callable $call): Response
+    public function send(callable $call): Response
     {
         try {
             return $call(Http::asForm()->acceptJson()->timeout(self::timeout()));
@@ -296,7 +324,7 @@ final class GoogleOAuth
         return is_string($scope) ? trim((string) preg_replace('/\s+/', ' ', $scope)) : '';
     }
 
-    private static function challenge(string $verifier): string
+    public static function challenge(string $verifier): string
     {
         return rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
     }
@@ -306,14 +334,14 @@ final class GoogleOAuth
         return (string) base64_decode(strtr($value, '-_', '+/').str_repeat('=', (4 - strlen($value) % 4) % 4), true);
     }
 
-    private static function clientId(): string
+    public static function clientId(): string
     {
         $id = config('services.google.client_id');
 
         return is_string($id) ? trim($id) : '';
     }
 
-    private static function clientSecret(): string
+    public static function clientSecret(): string
     {
         $secret = config('services.google.client_secret');
 

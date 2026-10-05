@@ -82,6 +82,8 @@ class SettingsRequest extends FormRequest
             'global_banner.tone' => ['required_with:global_banner', 'in:info,warning'],
             // Opcional (Fase 10, F-172): limpieza del dictado de la weekly con IA.
             'weekly_dictation_cleanup' => ['sometimes', 'required', 'boolean'],
+            // Opcional en la petición: quien no lo envía conserva el valor guardado (D-165).
+            'google_login_enabled' => ['sometimes', 'required', 'boolean'],
         ];
     }
 
@@ -161,6 +163,7 @@ class SettingsRequest extends FormRequest
             ...($this->has('modules') ? ['modules' => AppModules::normalize((array) $this->input('modules'))] : []),
             ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
             ...($this->has('weekly_dictation_cleanup') ? ['weekly_dictation_cleanup' => $this->boolean('weekly_dictation_cleanup')] : []),
+            ...($this->has('google_login_enabled') ? ['google_login_enabled' => $this->boolean('google_login_enabled')] : []),
         ];
     }
 

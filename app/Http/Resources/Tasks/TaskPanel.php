@@ -49,6 +49,8 @@ final class TaskPanel
             'comments' => fn ($query) => $query->with(['author', 'reactions.user', 'attachments' => fn ($attachments) => $attachments->with('uploader')->oldest('id')])->oldest('id'),
         ]);
         $task->loadSum('timeEntries', 'minutes');
+        // Registrado total = propio + subtareas (D-170), con las subtareas ya cargadas.
+        TaskListItemResource::withSubtasksLogged($task);
 
         $canUpdate = Gate::forUser($viewer)->allows('update', $task);
         $canManage = $viewer->canManageProject($project);
@@ -65,7 +67,6 @@ final class TaskPanel
 
         $visibleMinutes = (int) TimeEntry::query()->where('task_id', $task->id)->visibleTo($viewer)->sum('minutes');
         $fromSubtasks = $task->subtasks->whereNotNull('estimated_minutes')->isNotEmpty();
-        $subtaskIds = $task->subtasks->modelKeys();
 
         return [
             'task' => [
@@ -92,7 +93,7 @@ final class TaskPanel
             'time_entries' => Plain::of(TimeEntryResource::collection($entries)),
             'time_visible_minutes' => $visibleMinutes,
             'has_time' => (int) ($task->time_entries_sum_minutes ?? 0) > 0
-                || ($subtaskIds !== [] && TimeEntry::query()->whereIn('task_id', $subtaskIds)->exists()),
+                || (int) ($task->getAttribute('subtasks_logged_minutes') ?? 0) > 0,
             'activity' => $this->activity->for($task),
             'dependencies' => $this->dependencies->for($task),
             'reaction_emojis' => CommentReaction::EMOJIS,

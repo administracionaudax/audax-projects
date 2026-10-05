@@ -262,6 +262,19 @@ const baseProps = {
     panel: null,
 } satisfies ProjectTasksPageProps;
 
+/** Elemento por su data-test (el atributo de prueba del proyecto). */
+function byTest(name: string): HTMLElement {
+    const element = document.querySelector<HTMLElement>(
+        `[data-test="${name}"]`,
+    );
+
+    if (!element) {
+        throw new Error(`No hay ningún [data-test="${name}"]`);
+    }
+
+    return element;
+}
+
 /** Sin datos (`panel` sin pasar), el panel está cargando. */
 function renderPanel(panel?: TaskPanelData) {
     const onOpen = vi.fn();
@@ -466,6 +479,106 @@ describe('panel de la tarea', () => {
         expect(
             screen.queryByRole('textbox', { name: 'Estimación' }),
         ).toBeNull();
+    });
+
+    it('en una tarea con subtareas enseña el registrado total con su desglose (D-170)', () => {
+        const data = panelData();
+        renderPanel({
+            ...data,
+            task: {
+                ...data.task,
+                estimated_minutes: 3600,
+                logged_minutes: 60,
+                subtasks_logged_minutes: 540,
+            },
+            effective_estimated_minutes: 3600,
+            time_visible_minutes: 60,
+            subtasks: [
+                listItem(20, 'Maquetación', {
+                    parent_task_id: 10,
+                    logged_minutes: 540,
+                }),
+            ],
+        });
+
+        const breakdown = byTest('task-logged-breakdown');
+        expect(within(breakdown).getByText('Registrado total')).toBeTruthy();
+        expect(breakdown.textContent).toContain('10:00');
+        expect(breakdown.textContent).toContain('de 60:00');
+        expect(breakdown.textContent).toContain('Propio1:00');
+        expect(breakdown.textContent).toContain('En subtareas9:00');
+        expect(
+            screen.getByText(
+                'Ves 1:00 de 1:00 imputadas directamente a esta tarea, sin contar sus subtareas.',
+            ),
+        ).toBeTruthy();
+    });
+
+    it('sin subtareas no hay desglose', () => {
+        renderPanel(panelData());
+
+        expect(
+            document.querySelector('[data-test="task-logged-breakdown"]'),
+        ).toBeNull();
+        expect(
+            screen.getByText('Ves 1:30 de 1:30 imputadas a esta tarea.'),
+        ).toBeTruthy();
+    });
+
+    it('conserva a la vista la estimación propia cuando mandan las subtareas (D-171)', () => {
+        renderPanel(
+            panelData({
+                estimate_from_subtasks: true,
+                effective_estimated_minutes: 600,
+                subtasks: [
+                    listItem(20, 'Cabecera', {
+                        parent_task_id: 10,
+                        estimated_minutes: 600,
+                    }),
+                ],
+                task: {
+                    ...panelData().task,
+                    estimated_minutes: 3600,
+                },
+            }),
+        );
+
+        expect(byTest('task-own-estimate').textContent).toBe(
+            'Su estimación propia (60:00) se conserva: vuelve a contar si sus subtareas se quedan sin estimación.',
+        );
+    });
+
+    it('lista las entradas con su franja horaria en hora de Madrid (D-172)', () => {
+        renderPanel(
+            panelData({
+                time_entries: [
+                    {
+                        id: 1,
+                        user: ana,
+                        user_id: 1,
+                        task_id: 10,
+                        project_id: 1,
+                        hour_bank_id: 5,
+                        date: '2026-09-24',
+                        minutes: 150,
+                        overage_minutes: 0,
+                        in_bank_minutes: 150,
+                        started_at: '2026-09-24T07:00:00Z',
+                        ended_at: '2026-09-24T09:30:00Z',
+                        description: null,
+                        is_billable: true,
+                        status: 'draft',
+                        approved_at: null,
+                        created_by: 1,
+                        logged_on_behalf: false,
+                    },
+                ],
+            }),
+        );
+
+        expect(byTest('task-time-range').textContent).toBe(
+            'Franja: 09:00–11:30',
+        );
     });
 
     it('completa una subtarea con su casilla', async () => {

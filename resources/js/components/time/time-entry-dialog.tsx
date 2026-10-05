@@ -15,7 +15,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -27,6 +29,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useRequiredUser } from '@/hooks/use-auth';
+import { timeRangeMinutes } from '@/lib/duration';
+import { formatMinutes, formatTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { todayInMadrid } from '@/lib/week';
 import { destroy, store, update } from '@/routes/time/entries';
@@ -56,6 +60,8 @@ type Errors = Partial<
         | 'user_id'
         | 'date'
         | 'minutes'
+        | 'start_time'
+        | 'end_time'
         | 'description'
         | 'is_billable'
         | 'general',
@@ -68,9 +74,40 @@ const FIELDS = [
     'user_id',
     'date',
     'minutes',
+    'start_time',
+    'end_time',
     'description',
     'is_billable',
 ] as const;
+
+/** Cómo se indica el tiempo: duración o franja horaria (D-172). */
+type TimeMode = 'duration' | 'range';
+
+/**
+ * Modo inicial al editar: franja si la entrada tiene una que corresponde exactamente a sus minutos
+ * (las del temporizador van redondeadas: se editan por duración para no cambiar sus minutos).
+ */
+function initialRange(
+    entry: TimeEntry | null | undefined,
+): { start: string; end: string } | null {
+    if (!entry?.started_at || !entry.ended_at) {
+        return null;
+    }
+
+    const start = formatTime(entry.started_at);
+    const end = formatTime(entry.ended_at);
+    const range = timeRangeMinutes(start, end);
+
+    return 'minutes' in range && range.minutes === entry.minutes
+        ? { start, end }
+        : null;
+}
+
+const RANGE_ERRORS = {
+    format: 'hours.dialog.errors.range_format',
+    empty: 'hours.dialog.errors.range_empty',
+    midnight: 'hours.dialog.errors.range_midnight',
+} as const;
 
 /** Errores del servidor por campo; los que no son de un campo del formulario van arriba. */
 function mapErrors(errors: Record<string, string>): Errors {
@@ -111,8 +148,8 @@ function initialTask(
 }
 
 /**
- * Diálogo de entrada manual de horas (SPEC §7): tarea, fecha, duración, descripción, persona (si
- * puede imputar por otros) y facturable. Crea, edita y borra con TimeEntryWriter; los errores
+ * Diálogo de entrada manual de horas (SPEC §7): tarea, fecha, duración o franja horaria (hora de
+ * inicio y de fin, D-172), descripción, persona (si puede imputar por otros) y facturable. Crea, edita y borra con TimeEntryWriter; los errores
  * llegan por campo y los avisos (exceso, jornada, tarea completada) como toasts.
  *
  * Contrato: lo usan el panel de tarea (Agente C), Inicio, la cabecera y la hoja semanal.
@@ -167,6 +204,19 @@ function TimeEntryForm({
     const [minutes, setMinutes] = useState<number | null>(
         proposedMinutes ?? entry?.minutes ?? null,
     );
+    const [mode, setMode] = useState<TimeMode>(() =>
+        initialRange(entry) ? 'range' : 'duration',
+    );
+    const [startTime, setStartTime] = useState(
+        () => initialRange(entry)?.start ?? '',
+    );
+    const [endTime, setEndTime] = useState(
+        () => initialRange(entry)?.end ?? '',
+    );
+    const range =
+        startTime !== '' && endTime !== ''
+            ? timeRangeMinutes(startTime, endTime)
+            : null;
     const [description, setDescription] = useState(entry?.description ?? '');
     const [personId, setPersonId] = useState<number>(
         entry?.user_id ?? userId ?? user.id,
@@ -208,8 +258,19 @@ function TimeEntryForm({
         if (!day) {
             found.date = t('hours.dialog.errors.date');
         }
-        if (minutes === null) {
+        if (mode === 'duration' && minutes === null) {
             found.minutes = t('hours.dialog.errors.minutes');
+        }
+        if (mode === 'range') {
+            if (startTime === '') {
+                found.start_time = t('hours.dialog.errors.start_time');
+            }
+            if (endTime === '') {
+                found.end_time = t('hours.dialog.errors.end_time');
+            }
+            if (range && 'error' in range) {
+                found.end_time = t(RANGE_ERRORS[range.error]);
+            }
         }
         if (settings?.description_required && description.trim() === '') {
             found.description = t('hours.dialog.errors.description');
@@ -231,7 +292,9 @@ function TimeEntryForm({
             task_id: pickedTask.id,
             user_id: personId,
             date: day,
-            minutes,
+            ...(mode === 'range'
+                ? { minutes: null, start_time: startTime, end_time: endTime }
+                : { minutes }),
             description: description.trim() === '' ? null : description.trim(),
             ...(billable !== null && !internal
                 ? { is_billable: billable }
@@ -349,6 +412,51 @@ function TimeEntryForm({
                 <InputError id={field('task-error')} message={errors.task_id} />
             </div>
 
+            <div className="grid gap-2">
+                <span className="text-sm font-medium" id={field('mode')}>
+                    {t('hours.dialog.mode')}
+                </span>
+                <RadioGroup
+                    aria-labelledby={field('mode')}
+                    value={mode}
+                    onValueChange={(value) => {
+                        setMode(value as TimeMode);
+                        setErrors((current) => ({
+                            ...current,
+                            minutes: undefined,
+                            start_time: undefined,
+                            end_time: undefined,
+                        }));
+                    }}
+                    className="flex flex-wrap gap-4"
+                >
+                    <div className="flex items-center gap-2">
+                        <RadioGroupItem
+                            id={field('mode-duration')}
+                            value="duration"
+                        />
+                        <Label
+                            htmlFor={field('mode-duration')}
+                            className="font-normal"
+                        >
+                            {t('hours.dialog.mode_duration')}
+                        </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <RadioGroupItem
+                            id={field('mode-range')}
+                            value="range"
+                        />
+                        <Label
+                            htmlFor={field('mode-range')}
+                            className="font-normal"
+                        >
+                            {t('hours.dialog.mode_range')}
+                        </Label>
+                    </div>
+                </RadioGroup>
+            </div>
+
             <div className="grid gap-5 sm:grid-cols-2">
                 <div className="grid content-start gap-2">
                     <Label htmlFor={field('date')}>
@@ -371,24 +479,103 @@ function TimeEntryForm({
                         message={errors.date}
                     />
                 </div>
-                <div className="grid content-start gap-2">
-                    <Label htmlFor={field('minutes')}>
-                        {t('hours.dialog.duration')}
-                    </Label>
-                    <DurationInput
-                        id={field('minutes')}
-                        value={minutes}
-                        onChange={setMinutes}
-                        invalid={Boolean(errors.minutes)}
-                        aria-describedby={
-                            errors.minutes ? field('minutes-error') : undefined
-                        }
-                    />
-                    <InputError
-                        id={field('minutes-error')}
-                        message={errors.minutes}
-                    />
-                </div>
+                {mode === 'duration' ? (
+                    <div className="grid content-start gap-2">
+                        <Label htmlFor={field('minutes')}>
+                            {t('hours.dialog.duration')}
+                        </Label>
+                        <DurationInput
+                            id={field('minutes')}
+                            value={minutes}
+                            onChange={setMinutes}
+                            invalid={Boolean(errors.minutes)}
+                            aria-describedby={
+                                errors.minutes
+                                    ? field('minutes-error')
+                                    : undefined
+                            }
+                        />
+                        <InputError
+                            id={field('minutes-error')}
+                            message={errors.minutes}
+                        />
+                    </div>
+                ) : (
+                    <div className="grid content-start gap-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor={field('start')}>
+                                    {t('hours.dialog.start_time')}
+                                </Label>
+                                <Input
+                                    id={field('start')}
+                                    type="time"
+                                    step={60}
+                                    value={startTime}
+                                    onChange={(event) =>
+                                        setStartTime(event.target.value)
+                                    }
+                                    aria-invalid={
+                                        errors.start_time ? true : undefined
+                                    }
+                                    aria-describedby={
+                                        errors.start_time
+                                            ? field('start-error')
+                                            : undefined
+                                    }
+                                    data-test="time-entry-start"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor={field('end')}>
+                                    {t('hours.dialog.end_time')}
+                                </Label>
+                                <Input
+                                    id={field('end')}
+                                    type="time"
+                                    step={60}
+                                    value={endTime}
+                                    onChange={(event) =>
+                                        setEndTime(event.target.value)
+                                    }
+                                    aria-invalid={
+                                        errors.end_time ? true : undefined
+                                    }
+                                    aria-describedby={[
+                                        errors.end_time
+                                            ? field('end-error')
+                                            : null,
+                                        field('range-preview'),
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' ')}
+                                    data-test="time-entry-end"
+                                />
+                            </div>
+                        </div>
+                        <p
+                            id={field('range-preview')}
+                            className="text-xs text-muted-foreground"
+                            aria-live="polite"
+                        >
+                            {range && 'minutes' in range
+                                ? t('hours.dialog.range_preview', {
+                                      minutes: formatMinutes(range.minutes),
+                                  })
+                                : t('hours.dialog.range_help')}
+                        </p>
+                        <InputError
+                            id={field('start-error')}
+                            message={errors.start_time}
+                        />
+                        <InputError
+                            id={field('end-error')}
+                            message={errors.end_time}
+                        />
+                        {/* Reglas del día (más de 24 h…) que el servidor devuelve en la duración. */}
+                        <InputError message={errors.minutes} />
+                    </div>
+                )}
             </div>
 
             <div className="grid gap-2">

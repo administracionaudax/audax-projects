@@ -1,4 +1,9 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import {
+    AuthSeparator,
+    GoogleSignInButton,
+} from '@/components/auth/google-sign-in-button';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -13,7 +18,16 @@ import { request } from '@/routes/password';
 import type { LoginPageProps } from '@/types';
 
 // Sin registro público (D-008): las cuentas las crea un admin por invitación.
-export default function Login({ status, canResetPassword }: LoginPageProps) {
+// «Entrar con Google» (D-165) solo si el servidor tiene credenciales y el ajuste está activado.
+export default function Login({
+    status,
+    canResetPassword,
+    googleLogin = false,
+}: LoginPageProps) {
+    const [remember, setRemember] = useState(false);
+    const googleError = usePage<{ errors?: Record<string, string> }>().props
+        .errors?.google;
+
     return (
         <>
             <Head title={t('login.page_title')} />
@@ -90,7 +104,14 @@ export default function Login({ status, canResetPassword }: LoginPageProps) {
                         </div>
 
                         <div className="flex items-center space-x-3">
-                            <Checkbox id="remember" name="remember" />
+                            <Checkbox
+                                id="remember"
+                                name="remember"
+                                checked={remember}
+                                onCheckedChange={(checked) =>
+                                    setRemember(checked === true)
+                                }
+                            />
                             <Label htmlFor="remember">
                                 {t('login.remember')}
                             </Label>
@@ -108,6 +129,16 @@ export default function Login({ status, canResetPassword }: LoginPageProps) {
                     </div>
                 )}
             </Form>
+
+            {googleLogin && (
+                <div className="grid gap-6">
+                    <AuthSeparator label={t('login.google.separator')} />
+                    <GoogleSignInButton
+                        remember={remember}
+                        error={googleError}
+                    />
+                </div>
+            )}
         </>
     );
 }

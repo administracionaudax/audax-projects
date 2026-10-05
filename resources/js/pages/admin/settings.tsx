@@ -77,6 +77,7 @@ type SettingsForm = {
     banner_message: string;
     banner_tone: 'info' | 'warning';
     weekly_dictation_cleanup: boolean;
+    google_login_enabled: boolean;
 };
 
 function Section({
@@ -186,6 +187,7 @@ export default function AdminSettings({
     settings,
     roundings,
     serverUploadLimitMb,
+    googleLogin,
 }: AdminSettingsProps) {
     const id = useId();
     const form = useForm<SettingsForm>({
@@ -216,6 +218,7 @@ export default function AdminSettings({
         banner_message: settings.global_banner?.message ?? '',
         banner_tone: settings.global_banner?.tone ?? 'info',
         weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? false,
+        google_login_enabled: settings.google_login_enabled ?? true,
     });
     const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)
         ? AUDIO_DURATIONS
@@ -329,6 +332,37 @@ export default function AdminSettings({
                             }
                             error={errors.require_2fa}
                         />
+                        <Toggle
+                            id={`${id}-google-login`}
+                            label={t('admin.settings.security.google_login')}
+                            help={t(
+                                'admin.settings.security.google_login_help',
+                                {
+                                    domains: (googleLogin?.domains ?? [])
+                                        .map((domain) => `@${domain}`)
+                                        .join(', '),
+                                },
+                            )}
+                            checked={form.data.google_login_enabled}
+                            onChange={(checked) =>
+                                form.setData('google_login_enabled', checked)
+                            }
+                            error={errors.google_login_enabled}
+                        />
+                        {googleLogin && !googleLogin.configured && (
+                            <p
+                                className="flex items-start gap-2 text-sm text-muted-foreground"
+                                data-test="google-login-unconfigured"
+                            >
+                                <TriangleAlert
+                                    aria-hidden="true"
+                                    className="mt-0.5 size-4 shrink-0 text-warning"
+                                />
+                                {t(
+                                    'admin.settings.security.google_login_unconfigured',
+                                )}
+                            </p>
+                        )}
                     </Section>
 
                     <Section title={t('admin.settings.timer.title')}>

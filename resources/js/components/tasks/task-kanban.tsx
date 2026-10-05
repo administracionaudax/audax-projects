@@ -48,6 +48,7 @@ import { useTaskLookups } from '@/components/tasks/task-lookups';
 import {
     TaskDates,
     TaskIndicators,
+    loggedBreakdownLabel,
     totalLoggedMinutes,
 } from '@/components/tasks/task-meta';
 import { TASK_RELOAD, toastErrors } from '@/components/tasks/task-requests';
@@ -145,7 +146,7 @@ function CardBody({
                 <TaskDates task={task} className="text-xs" />
             </div>
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span className="tabular">
+                <span className="tabular" title={loggedBreakdownLabel(task)}>
                     {/* Sin las horas de todos (colaborador externo, D-134), solo la estimación. */}
                     {logged === null
                         ? task.effective_estimated_minutes !== null
@@ -165,6 +166,11 @@ function CardBody({
                           : t('task_board.logged', {
                                 logged: formatMinutes(logged),
                             })}
+                    {loggedBreakdownLabel(task) ? (
+                        <span className="sr-only">
+                            {` (${loggedBreakdownLabel(task)})`}
+                        </span>
+                    ) : null}
                 </span>
                 {!task.is_milestone ? <TimerButton task={task} /> : null}
             </div>

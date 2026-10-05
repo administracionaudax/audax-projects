@@ -285,6 +285,27 @@ class Task extends Model
     }
 
     /**
+     * Minutos imputados en las subtareas de cada tarea (D-170), en una subconsulta agregada de la
+     * misma consulta (sin N+1): `subtasks_logged_minutes`. Las subtareas no tienen subtareas, así
+     * que en ellas vale 0. Funciona también sobre una tabla derivada con el alias `tasks`.
+     *
+     * @param  Builder<Task>  $query
+     */
+    #[Scope]
+    protected function withSubtasksLogged(Builder $query): void
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('tasks.*');
+        }
+
+        $query->addSelect(['subtasks_logged_minutes' => TimeEntry::query()
+            ->selectRaw('COALESCE(SUM(time_entries.minutes), 0)')
+            ->join('tasks as subtask_rows', 'subtask_rows.id', '=', 'time_entries.task_id')
+            ->whereColumn('subtask_rows.parent_task_id', 'tasks.id')
+            ->whereNull('subtask_rows.deleted_at')]);
+    }
+
+    /**
      * Tareas abiertas (estado de categoría distinta de «done»).
      *
      * @param  Builder<Task>  $query

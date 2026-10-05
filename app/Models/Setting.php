@@ -78,6 +78,8 @@ class Setting extends Model
         // Limpieza del dictado de la weekly con IA (F-172, D-146): corrige nombres de clientes y
         // personas en la transcripción de Whisper. Solo el texto va a Gemini.
         'weekly_dictation_cleanup' => false,
+        // Entrar con Google (D-165): solo se ofrece si además hay credenciales de Google.
+        'google_login_enabled' => true,
     ];
 
     protected static function booted(): void

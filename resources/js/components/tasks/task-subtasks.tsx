@@ -1,9 +1,12 @@
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { TaskStatusBadge } from '@/components/domain/badges';
-import { QuickAddTask } from '@/components/tasks/quick-add-task';
+import { TaskCreateDialog } from '@/components/tasks/task-create-dialog';
 import { AssigneeLabel } from '@/components/tasks/task-fields';
 import { isDoneStatus, useTaskLookups } from '@/components/tasks/task-lookups';
 import { TaskEstimate } from '@/components/tasks/task-meta';
 import { updateTask } from '@/components/tasks/task-requests';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
@@ -12,7 +15,7 @@ import type { TaskPanelData } from '@/types';
 
 /**
  * Subtareas (un solo nivel, siempre con la bolsa del padre, D-037): lista con casilla para
- * completarlas y creación rápida.
+ * completarlas y «Añadir subtarea», que abre el diálogo con sus datos (D-173).
  */
 export function TaskSubtasks({
     panel,
@@ -22,6 +25,7 @@ export function TaskSubtasks({
     onOpen: (taskId: number) => void;
 }) {
     const lookups = useTaskLookups();
+    const [creating, setCreating] = useState(false);
     const doneStatus = lookups.statuses.find(
         (status) => status.category === 'done',
     );
@@ -109,13 +113,24 @@ export function TaskSubtasks({
                 </ul>
             )}
             {panel.can.update && lookups.can.create ? (
-                <QuickAddTask
-                    parentId={panel.task.id}
-                    label={t('quick_add.subtask_label', {
-                        task: panel.task.title,
-                    })}
-                    compact
-                />
+                <>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="justify-self-start"
+                        onClick={() => setCreating(true)}
+                        data-test="add-subtask"
+                    >
+                        <Plus aria-hidden="true" />
+                        {t('task_create.add_subtask')}
+                    </Button>
+                    <TaskCreateDialog
+                        open={creating}
+                        onOpenChange={setCreating}
+                        parent={panel.task}
+                    />
+                </>
             ) : null}
         </div>
     );

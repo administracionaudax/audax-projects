@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 03/10/2026_
+_Última actualización: 05/10/2026_
 
 ## Hecho
 
@@ -111,6 +111,19 @@ _Última actualización: 03/10/2026_
 - **Integración:** todo lo anterior conectado con el chat (D-122 a D-133).
 - **Tests:** 3019 en PostgreSQL 18 en el servidor; 1316 de Vitest; 410 E2E con Playwright, axe y Reverb; CI en verde.
 - ✅ **FASE 7 CERRADA el 03/10/2026** (etiqueta `fase-7-cerrada`).
+
+### Mejoras de tareas (rama `mejoras-tareas`, 05/10, sin desplegar)
+Tres mejoras pedidas por el propietario tras probar las tareas que vienen de ClickUp (D-170 a D-173):
+- **Registrado del padre = propio + subtareas**, en la lista, el kanban, el panel (con el desglose) y Mis tareas; la estimación propia del padre se conserva y se ve.
+- **Subtareas con diálogo:** responsable, fechas, estimación, tipo, prioridad y estado, heredados del padre, y «Crear otra al guardar». También «Crear con más datos» en el alta rápida.
+- **Horas con inicio y fin** en el diálogo de horas (panel, `/horas` e Inicio): sin cruzar la medianoche, con aviso de solapes y la franja en las entradas de la tarea.
+- **Tests:** Pest (`TaskLoggedTotalsTest`, `TimeEntryRangeTest` y alta de subtarea), Vitest (diálogos, panel y formateadores) y E2E en `tests/e2e/task-improvements.spec.ts` (sin ejecutar aún).
+
+### Entrar con Google (rama `acceso-google`, 05/10, sin desplegar)
+- **«Entrar con Google»** en `/login` y en la invitación de alta, con el cliente OAuth de Google Sheets: solo la plantilla de Workspace que ya existe en la app, activa y sin ser colaborador externo; nunca crea usuarios (D-165 a D-168).
+- **Seguridad:** `state`, `nonce` y PKCE; validación del `id_token` en el servidor (dominio, `hd` y correo verificado); el 2FA propio se sigue pidiendo a quien lo tiene; registro de accesos con el método, auditoría y límite de intentos.
+- **Interruptor** en `/admin/ajustes` (activado por defecto si hay credenciales).
+- **Pendiente del propietario:** añadir en Google Cloud la URI `https://projects.audaxstudio.com/login/google/callback` al cliente OAuth y desplegar (la migración añade `login_events.method`).
 
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.

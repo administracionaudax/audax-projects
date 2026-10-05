@@ -51,3 +51,35 @@ export function roundToNearest(minutes: number, step: number): number {
 
     return Math.round(minutes / step) * step;
 }
+
+const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/u;
+
+/** Franja horaria de una entrada manual (D-172): sus minutos o por qué no vale. */
+export type TimeRangeResult =
+    | { minutes: number }
+    | { error: 'format' | 'empty' | 'midnight' };
+
+/**
+ * Minutos entre dos horas "HH:MM" del mismo día (gemelo de App\Domain\Time\TimeRange). «00:00»
+ * como fin es la medianoche que cierra el día (24:00). Una franja que cruza la medianoche no vale:
+ * se registra en dos entradas. Es la hora de reloj: el servidor cuenta el tiempo real en los dos
+ * días del año con cambio de hora.
+ */
+export function timeRangeMinutes(start: string, end: string): TimeRangeResult {
+    const from = CLOCK.exec(start);
+    const to = CLOCK.exec(end);
+
+    if (!from || !to) {
+        return { error: 'format' };
+    }
+
+    const startMinutes = Number(from[1]) * 60 + Number(from[2]);
+    const endMinutes =
+        end === '00:00' ? MAX_MINUTES : Number(to[1]) * 60 + Number(to[2]);
+
+    if (end !== '00:00' && endMinutes <= startMinutes) {
+        return { error: endMinutes === startMinutes ? 'empty' : 'midnight' };
+    }
+
+    return { minutes: endMinutes - startMinutes };
+}

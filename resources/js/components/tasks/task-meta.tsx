@@ -77,22 +77,56 @@ export function TaskDates({
     );
 }
 
+/** Lo mínimo para calcular el registrado de una tarea (lista, kanban, panel o Mis tareas). */
+type LoggedSource = {
+    logged_minutes?: number | null;
+    subtasks_logged_minutes?: number | null;
+    subtasks?: { logged_minutes?: number | null }[];
+};
+
 /**
- * Minutos imputados a la tarea y a sus subtareas (las horas de las subtareas suman en el padre);
- * null si quien mira no ve las horas de todos (colaborador externo, D-134).
+ * Registrado de una tarea (D-170): lo propio, lo de sus subtareas y el total. Las subtareas, de
+ * `subtasks_logged_minutes` si llega del servidor o, si no, de las subtareas cargadas. null si
+ * quien mira no ve las horas de todos (colaborador externo, D-134).
  */
-export function totalLoggedMinutes(task: TaskListItem): number | null {
+export function loggedBreakdown(
+    task: LoggedSource,
+): { own: number; subtasks: number; total: number } | null {
     if (task.logged_minutes === null) {
         return null;
     }
 
-    return (
-        (task.logged_minutes ?? 0) +
+    const own = task.logged_minutes ?? 0;
+    const subtasks =
+        task.subtasks_logged_minutes ??
         (task.subtasks ?? []).reduce(
             (sum, subtask) => sum + (subtask.logged_minutes ?? 0),
             0,
-        )
-    );
+        );
+
+    return { own, subtasks, total: own + subtasks };
+}
+
+/**
+ * Minutos imputados a la tarea y a sus subtareas (las horas de las subtareas suman en el padre,
+ * D-170); null si quien mira no ve las horas de todos (colaborador externo, D-134).
+ */
+export function totalLoggedMinutes(task: LoggedSource): number | null {
+    return loggedBreakdown(task)?.total ?? null;
+}
+
+/** Texto accesible y de ayuda con el desglose «propias · en subtareas» (D-170), o undefined. */
+export function loggedBreakdownLabel(task: LoggedSource): string | undefined {
+    const breakdown = loggedBreakdown(task);
+
+    if (breakdown === null || breakdown.subtasks === 0) {
+        return undefined;
+    }
+
+    return t('task_fields.logged_breakdown', {
+        own: formatMinutes(breakdown.own),
+        subtasks: formatMinutes(breakdown.subtasks),
+    });
 }
 
 export function TaskEstimate({ task }: { task: TaskListItem }) {
