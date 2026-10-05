@@ -2,8 +2,21 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\AiUsage;
+use App\Models\Attachment;
 use App\Models\Client;
+use App\Models\HelpFaqSection;
+use App\Models\HelpManualUpdate;
+use App\Models\HelpRelease;
+use App\Models\HelpTutorial;
+use App\Models\HelpUpdateLike;
 use App\Models\Project;
+use App\Models\SuggestionBoard;
+use App\Models\SuggestionCategory;
+use App\Models\SuggestionComment;
+use App\Models\SuggestionCommentReaction;
+use App\Models\SuggestionPost;
+use App\Models\SuggestionStatusEvent;
+use App\Models\SuggestionVote;
 use App\Models\Task;
 use App\Models\TaskArchive;
 use App\Models\User;
@@ -186,4 +199,60 @@ it('las tareas de Mi espacio y el asistente no crecen con las tareas ni los proy
     // Lo de mis weeklies más mis tareas (pendientes y hechas), el catálogo, los estados y la tanda.
     'tareas de Mi espacio' => ['/mi-espacio?pestana=tareas', 34],
     'asistente' => ['/ia', 8],
+]);
+
+it('el centro de ayuda y las sugerencias no crecen con el contenido (10.7)', function (string $uri, int $budget) {
+    $board = SuggestionBoard::query()->firstOrFail();
+    $category = SuggestionCategory::query()->firstOrFail();
+    $first = null;
+    $more = function (int $count) use ($board, $category, &$first): void {
+        foreach (range(1, $count) as $i) {
+            $author = userWithRole('employee');
+            $release = HelpRelease::factory()->create();
+            $release->changes()->create(['description' => 'Cambio', 'position' => 1]);
+            HelpUpdateLike::query()->create(['likeable_type' => $release->getMorphClass(), 'likeable_id' => $release->id, 'user_id' => $author->id]);
+            HelpManualUpdate::query()->create(['published_on' => '2026-09-01', 'title' => "Novedad {$i}", 'subtitle' => 's', 'body' => '<p>x</p>']);
+            $tutorial = HelpTutorial::query()->create(['title' => "Tutorial {$i}", 'help_release_id' => $release->id, 'position' => $i]);
+            Attachment::factory()->create(['attachable_type' => $tutorial->getMorphClass(), 'attachable_id' => $tutorial->id, 'project_id' => null, 'mime' => 'video/mp4']);
+            $section = HelpFaqSection::factory()->create();
+            $section->faqs()->create(['question' => '¿Qué?', 'answer' => '<p>Esto</p>', 'position' => 1]);
+
+            foreach (['open', 'planned', 'beta'] as $status) {
+                $post = SuggestionPost::factory()->create(['suggestion_board_id' => $board->id, 'suggestion_category_id' => $category->id, 'author_id' => $author->id, 'status' => $status]);
+                $first ??= $post;
+                SuggestionVote::query()->create(['suggestion_post_id' => $post->id, 'user_id' => $author->id]);
+                SuggestionVote::query()->insertOrIgnore(['suggestion_post_id' => $first->id, 'user_id' => $author->id, 'created_at' => now()]);
+                $comment = SuggestionComment::query()->create(['suggestion_post_id' => $first->id, 'author_id' => $author->id, 'body' => '<p>x</p>']);
+                SuggestionComment::query()->create(['suggestion_post_id' => $first->id, 'author_id' => $author->id, 'parent_id' => $comment->id, 'body' => '<p>y</p>']);
+                SuggestionCommentReaction::query()->create(['suggestion_comment_id' => $comment->id, 'user_id' => $author->id, 'reaction' => 'heart']);
+                SuggestionStatusEvent::query()->create(['suggestion_post_id' => $first->id, 'to_status' => $status, 'changed_by' => $author->id]);
+                Attachment::factory()->create(['attachable_type' => $comment->getMorphClass(), 'attachable_id' => $comment->id, 'project_id' => null]);
+            }
+        }
+    };
+
+    $more(2);
+    $uri = fn (): string => str_replace('{post}', (string) $first?->id, $uri);
+    ($this->measure)($uri());
+    $small = ($this->measure)($uri());
+
+    $more(8);
+    $large = ($this->measure)($uri());
+
+    if (getenv('PERF_REPORT')) {
+        fwrite(STDERR, "{$uri()}: {$small} → {$large} consultas\n");
+    }
+
+    expect($large)->toBeLessThanOrEqual($budget)
+        ->and($large - $small)->toBeLessThanOrEqual(0);
+})->with([
+    // La versión de la semana (una inserción ignorada), las versiones con sus cambios, las
+    // actualizaciones, los «me gusta» con quién y el selector de versiones.
+    'general' => ['/ayuda', 12],
+    'tutoriales' => ['/ayuda?pestana=tutoriales', 10],
+    'preguntas frecuentes' => ['/ayuda?pestana=preguntas', 7],
+    // Tableros, recuentos, la categoría Bugs, las personas y una consulta por columna (con sus votos).
+    'roadmap' => ['/ayuda?pestana=sugerencias', 27],
+    'feedback' => ['/ayuda?pestana=sugerencias&vista=feedback', 18],
+    'detalle de una sugerencia' => ['/ayuda/sugerencias/{post}', 28],
 ]);
