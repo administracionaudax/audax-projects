@@ -94,8 +94,19 @@ test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
             page.locator('[data-test="weekly-autosave"]'),
         ).toHaveAttribute('data-status', 'saved');
 
+        // Al recargar, la caja enviada sale plegada con el texto de muestra en su botón.
         await page.reload();
-        await expect(page.getByText(text)).toHaveCount(1);
+        const saved = page.locator('[data-test^="weekly-entry-"]').first();
+        await expect(
+            saved.locator('[data-test="weekly-entry-toggle"]'),
+        ).toContainText(text);
+        const savedText = saved.locator('[data-test="weekly-entry-text"]');
+
+        if (!(await savedText.isVisible())) {
+            await saved.locator('[data-test="weekly-entry-toggle"]').click();
+        }
+
+        await expect(savedText).toHaveValue(text);
     });
 
     await test.step('se envía y la tarjeta dice que está enviada', async () => {
@@ -120,7 +131,9 @@ test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
             .locator('[data-test="weekly-active-card"]')
             .locator('[data-test="weekly-team-submitted"]');
         await expect(
-            submitted.getByRole('img', { name: /^Elena Empleada · Enviado/ }),
+            submitted.getByRole('link', {
+                name: /^Elena Empleada · Enviado/,
+            }),
         ).toBeVisible();
         await expectAccessible(admin, '/weeklies?pestana=historico');
         await admin.context().close();
@@ -171,17 +184,21 @@ test('quien gestiona exime a una persona pendiente y le quita la exención', asy
     await expect(dialog).toHaveCount(0);
 
     const exempt = manage.locator('[data-test="weekly-exempt-list"]');
-    await expect(exempt.getByText(person)).toBeVisible();
-    await expect(exempt.getByText('Exención manual')).toBeVisible();
+    // Puede haber otros exentos de pasadas anteriores sobre la misma base: se mira solo su fila.
+    const exemptRow = exempt
+        .locator('[data-test="weekly-exempt-member"]')
+        .filter({ hasText: person });
+    await expect(exemptRow).toBeVisible();
+    await expect(exemptRow.getByText('Exención manual')).toBeVisible();
     await expect(
         manage.locator('[data-test="weekly-pending"]').getByText(person),
     ).toHaveCount(0);
 
     // En la tira, entre los exentos.
     await expect(
-        manage
-            .locator('[data-test="weekly-team-exempt"]')
-            .getByRole('img', { name: `${person} · Exento (Exención manual)` }),
+        manage.locator('[data-test="weekly-team-exempt"]').getByRole('link', {
+            name: `${person} · Exento (Exención manual)`,
+        }),
     ).toBeVisible();
 
     await exempt

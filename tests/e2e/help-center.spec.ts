@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
+import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { login, USERS } from './support';
 
@@ -12,6 +12,13 @@ const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
  */
 
 const stamp = () => Date.now().toString(36);
+
+/** Axe solo analiza páginas abiertas con browser.newContext(), no con browser.newPage(). */
+async function newPage(browser: Browser): Promise<Page> {
+    const context = await browser.newContext();
+
+    return context.newPage();
+}
 
 async function expectAccessible(page: Page, label: string): Promise<void> {
     const results = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze();
@@ -33,7 +40,7 @@ test('quien gestiona publica una novedad y la plantilla le da «me gusta» y la 
     browser,
 }) => {
     const title = `Novedad E2E ${stamp()}`;
-    const manager = await browser.newPage();
+    const manager = await newPage(browser);
     await login(manager, USERS.manager);
     await manager.goto('/ayuda');
     await expect(manager.getByRole('heading', { level: 1 })).toContainText(
@@ -52,9 +59,9 @@ test('quien gestiona publica una novedad y la plantilla le da «me gusta» y la 
         manager.getByText('Actualización puntual creada.'),
     ).toBeVisible();
     await expectAccessible(manager, 'ayuda general');
-    await manager.close();
+    await manager.context().close();
 
-    const employee = await browser.newPage();
+    const employee = await newPage(browser);
     await login(employee, USERS.employee);
     await employee.goto('/ayuda');
     await expect(
@@ -75,7 +82,7 @@ test('quien gestiona publica una novedad y la plantilla le da «me gusta» y la 
         .getByRole('button', { name: `Ver el detalle de «${title}»` })
         .click();
     await expect(employee.getByRole('dialog')).toContainText('Todo el detalle');
-    await employee.close();
+    await employee.context().close();
 });
 
 test('preguntas frecuentes: crear una sección y una pregunta, desplegarla y buscarla', async ({
@@ -91,9 +98,15 @@ test('preguntas frecuentes: crear una sección y una pregunta, desplegarla y bus
     await page.getByLabel('Nombre de la sección').fill(section);
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText('Sección creada.')).toBeVisible();
+    // Se cierra el diálogo de la sección y queda el de «Gestionar secciones», que se cierra con Escape.
+    await expect(page.getByRole('dialog')).toHaveCount(1);
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    await page.getByRole('button', { name: new RegExp(section) }).click();
+    await page
+        .getByRole('navigation', { name: 'Secciones' })
+        .getByRole('button', { name: section })
+        .click();
     await page.getByRole('button', { name: 'Añadir pregunta' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Pregunta').fill(question);
@@ -106,7 +119,7 @@ test('preguntas frecuentes: crear una sección y una pregunta, desplegarla y bus
     await page
         .getByRole('searchbox', { name: 'Buscar en las preguntas frecuentes' })
         .fill('paso a paso');
-    await page.getByRole('button', { name: question }).click();
+    await page.getByRole('button', { name: question, exact: true }).click();
     await expect(page.getByText('Así, paso a paso.')).toBeVisible();
     await expectAccessible(page, 'preguntas frecuentes');
 });
@@ -116,7 +129,7 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
 }) => {
     const idea = `Idea E2E ${stamp()}`;
     const bug = `Bug E2E ${stamp()}`;
-    const employee = await browser.newPage();
+    const employee = await newPage(browser);
     await login(employee, USERS.employee);
 
     // Una sugerencia con «similares» y un comentario.
@@ -155,10 +168,10 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
         .fill('Al pulsar «Guardar» no pasa nada.');
     await dialog.getByRole('button', { name: 'Publicar' }).click();
     await expect(employee.getByText('Bugs').first()).toBeVisible();
-    await employee.close();
+    await employee.context().close();
 
     // Quien gestiona la pasa a «Planificada» con una nota y la mueve a «Beta» con el menú.
-    const manager = await browser.newPage();
+    const manager = await newPage(browser);
     await login(manager, USERS.manager);
     await manager.goto('/ayuda?pestana=sugerencias&vista=feedback');
     await manager
@@ -184,7 +197,7 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
         }),
     ).toBeVisible();
     await expectAccessible(manager, 'roadmap');
-    await manager.close();
+    await manager.context().close();
 });
 
 test('la ayuda en el móvil: sin desplazamiento lateral y con las pestañas a mano', async ({

@@ -67,11 +67,15 @@ test('quien gestiona programa un recordatorio, cambia un texto con vista previa 
     await expect(page.locator('[data-test="reminder-rule"]')).toHaveCount(
         before + 1,
     );
-    await expect(manual.getByText('Personalizada')).toBeVisible();
+    await expect(
+        manual.getByText('Personalizada', { exact: true }),
+    ).toBeVisible();
 
     // Restaurar por defecto y guardar.
     await manual.locator('[data-test="template-manual-restore"]').click();
-    await expect(manual.getByText('Por defecto')).toBeVisible();
+    await expect(
+        manual.getByText('Por defecto', { exact: true }),
+    ).toBeVisible();
     await page.locator('[data-test="reminders-save"]').click();
     await expect(
         page.getByText('Avisos de la weekly guardados.'),

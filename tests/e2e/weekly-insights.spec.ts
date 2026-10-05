@@ -46,7 +46,7 @@ test('el estado de proyectos: la pestaña de las weeklies, por cliente y en tabl
     ).toBeVisible();
     await expectAccessible(page, 'estado de proyectos por cliente');
 
-    await page.getByLabel('Tipo').selectOption('hour_bank');
+    await page.getByLabel('Tipo', { exact: true }).selectOption('hour_bank');
     for (const kind of await page
         .locator('[data-test="project-kind"]')
         .allTextContents()) {
@@ -156,12 +156,16 @@ test('el equipo: estado del reporte y la ficha; los resúmenes con IA solo para 
 
     const rows = page.locator('[data-test="team-row"]');
     await expect(rows.first()).toBeVisible();
-    await page.getByLabel('Estado del reporte').selectOption('submitted');
+    await page
+        .getByLabel('Estado del reporte', { exact: true })
+        .selectOption('submitted');
     await expect(rows.filter({ hasText: 'Elena Empleada' })).toHaveCount(1);
     await expectAccessible(page, 'equipo');
 
     // Una compañera no ve los resúmenes con IA de otra persona (D-147).
-    await page.getByLabel('Estado del reporte').selectOption('');
+    await page
+        .getByLabel('Estado del reporte', { exact: true })
+        .selectOption('');
     await rows
         .filter({ hasText: 'Pablo Ruiz' })
         .getByRole('link', { name: 'Pablo Ruiz' })
