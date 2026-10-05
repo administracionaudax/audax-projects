@@ -54,7 +54,7 @@ test('imputar en una bolsa agotada con política allow avisa de que va como exce
 
     const dialog = await openLogDialog(page);
     await pickTask(page, 'Prototipo', 'ARR-WEB');
-    await dialog.getByLabel('Duración').fill('1');
+    await dialog.getByLabel('Duración', { exact: true }).fill('1');
     await dialog.getByRole('button', { name: 'Guardar horas' }).click();
 
     await expect(dialog).toBeHidden();
@@ -72,7 +72,7 @@ test('una bolsa con política block rechaza la imputación que no cabe e indica 
 
     const dialog = await openLogDialog(page);
     await pickTask(page, 'Auditoría SEO', 'SON-SEO');
-    await dialog.getByLabel('Duración').fill('1');
+    await dialog.getByLabel('Duración', { exact: true }).fill('1');
     await dialog.getByRole('button', { name: 'Guardar horas' }).click();
 
     await expect(dialog).toBeVisible();
@@ -238,7 +238,7 @@ test('bolsa de principio a fin: crearla, tarea, temporizador imputado, consumo y
     await test.step('una imputación que cruza el límite va en parte como exceso', async () => {
         const dialog = await openLogDialog(page);
         await pickTask(page, taskTitle, 'ARR-WEB');
-        await dialog.getByLabel('Duración').fill('1:30');
+        await dialog.getByLabel('Duración', { exact: true }).fill('1:30');
         await dialog.getByRole('button', { name: 'Guardar horas' }).click();
         await expect(dialog).toBeHidden();
         await expect(

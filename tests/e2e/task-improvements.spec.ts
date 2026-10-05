@@ -64,9 +64,12 @@ async function addSubtasks(
         await title.press('Enter');
 
         if (index < subtasks.length - 1) {
-            await expect(dialog.getByRole('status')).toHaveText(
-                `Creada «${subtask.title}». Escribe la siguiente.`,
-            );
+            // La región viva del diálogo (el botón tiene además su spinner con role="status").
+            await expect(
+                dialog
+                    .getByRole('status')
+                    .filter({ hasText: `Creada «${subtask.title}»` }),
+            ).toHaveText(`Creada «${subtask.title}». Escribe la siguiente.`);
             await expect(title).toHaveValue('');
             await expect(title).toBeFocused();
         }
@@ -121,15 +124,22 @@ test('imputa en una subtarea con hora de inicio y fin y el padre enseña el regi
             .locator('[data-test="subtask-list"]')
             .getByRole('button', { name: 'Copias' })
             .click();
-        await expect(panel).toContainText(parent);
+        // Espera a que el panel enseñe la subtarea: el título del padre ya estaba en el panel y,
+        // si se pulsa «Añadir horas» antes del cambio, el diálogo se abre en el padre y se cierra.
+        await expect(
+            panel.getByRole('heading', { level: 2, name: 'Copias' }),
+        ).toBeVisible();
+        await expect(
+            panel.getByRole('button', { name: `Subtarea de «${parent}»` }),
+        ).toBeVisible();
 
         await panel.getByRole('button', { name: 'Añadir horas' }).click();
         const dialog = page.getByRole('dialog', { name: 'Añadir horas' });
         await dialog
             .getByRole('radio', { name: 'Con hora de inicio y fin' })
             .click();
-        await dialog.getByLabel('Inicio').fill('00:00');
-        await dialog.getByLabel('Fin').fill('01:30');
+        await dialog.getByLabel('Inicio', { exact: true }).fill('00:00');
+        await dialog.getByLabel('Fin', { exact: true }).fill('01:30');
         await expect(dialog.getByText('Duración: 1:30')).toBeVisible();
         await dialog.getByRole('button', { name: 'Guardar horas' }).click();
         await expect(dialog).toBeHidden();
@@ -175,8 +185,8 @@ test('una franja que cruza la medianoche no se guarda y explica cómo registrarl
     await dialog
         .getByRole('radio', { name: 'Con hora de inicio y fin' })
         .click();
-    await dialog.getByLabel('Inicio').fill('22:00');
-    await dialog.getByLabel('Fin').fill('02:00');
+    await dialog.getByLabel('Inicio', { exact: true }).fill('22:00');
+    await dialog.getByLabel('Fin', { exact: true }).fill('02:00');
     await dialog.getByRole('button', { name: 'Guardar horas' }).click();
 
     await expect(dialog).toBeVisible();
@@ -185,7 +195,7 @@ test('una franja que cruza la medianoche no se guarda y explica cómo registrarl
     ).toBeVisible();
 
     // 22:00–00:00 sí vale: la medianoche cierra el día.
-    await dialog.getByLabel('Fin').fill('00:00');
+    await dialog.getByLabel('Fin', { exact: true }).fill('00:00');
     await expect(dialog.getByText('Duración: 2:00')).toBeVisible();
     await dialog.getByRole('button', { name: 'Guardar horas' }).click();
     await expect(dialog).toBeHidden();
