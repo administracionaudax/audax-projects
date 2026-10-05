@@ -1254,6 +1254,37 @@ Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sen
 - **Móvil (375 px):** el mes es una lista agrupada por día; la semana y las personas se desplazan dentro de su caja, nunca la página.
 - **Rendimiento:** una consulta acotada por el rango (índices nuevos `tasks(due_date, start_date)` y `tasks(start_date)`) leída sin modelos, más padres y responsables en una consulta cada uno; un mes de todo el equipo con 18.000 tareas en la base se sirve en unos 0,2 s en local (antes de leer sin modelos, 1,7 s). Presupuestos de consultas por vista en `tests/Feature/Calendar/TeamCalendarPerformanceTest.php`.
 
+### D-170 · Registrado de una tarea padre: lo suyo más lo de sus subtareas **[amplía D-037 y SPEC §6]**
+Pedido por el propietario el 05/10, como el «tiempo registrado» de ClickUp: «Desarrollo web», estimada en 60 h, muestra 10 h registradas porque suma lo imputado en sus subtareas.
+- **Regla:** el registrado de una tarea raíz es el suyo más el de sus subtareas (las borradas no cuentan); el de una subtarea, el suyo. Las entradas siguen en la tarea en la que se imputaron: solo cambia lo que se enseña.
+- **Dónde:** la lista y el kanban (el total, con «Σ» y el desglose en el texto accesible y en la ayuda), el panel (un recuadro con «Registrado total … de <estimación>», «Propio» y «En subtareas»; la lista de entradas sigue siendo la de la tarea) y Mis tareas. El calendario del equipo no enseña horas (D-144) y el resumen del proyecto ya suma todas las del proyecto: no cambian.
+- **Contrato:** `logged_minutes` sigue siendo lo propio y llega `subtasks_logged_minutes`; el total es la suma. En la lista y el panel sale de las subtareas ya cargadas (sin consultas); en Mis tareas, de una subconsulta agregada en la misma consulta (`Task::withSubtasksLogged()`): los presupuestos de consultas no cambian y el panel hace una menos.
+- **Colaborador externo:** las dos cifras le llegan a null (D-134).
+- **Arreglo de paso:** una tarea sin horas enviaba `logged_minutes` null (la suma vacía), que la interfaz leía como «no lo ves»; ahora envía 0.
+
+### D-171 · Estimación propia del padre con subtareas **[concreta D-037]**
+Las tareas importadas de ClickUp pueden traer estimación en el padre («Desarrollo web 60 h») y en algunas subtareas. Revisado: ni la importación ni crear o estimar subtareas tocan la estimación del padre; solo se dejaba de ver.
+- **Regla (sin cambios en los cálculos):** si alguna subtarea tiene estimación, la del padre es la suma de las estimadas; si ninguna la tiene, manda la propia del padre. Es la que usan los informes, la carga, el Gantt y la precisión de estimación (D-087), así que no se cambia a «la mayor» ni a «propia + subtareas».
+- **Nunca se pierde:** la estimación propia se guarda aparte y vuelve a mandar en cuanto las subtareas se quedan sin estimación. Mientras mandan las subtareas, el panel la enseña («Su estimación propia (60:00) se conserva…») y no se puede editar (como hasta ahora).
+
+### D-172 · Imputar con hora de inicio y de fin **[amplía SPEC §7 y D-035]**
+Pedido por el propietario el 05/10.
+- **Dónde:** el diálogo de horas, que comparten el panel de la tarea, la hoja semanal y la entrada manual de `/horas`, Inicio y la cabecera, elige entre «Por duración» y «Con hora de inicio y fin» (con la duración calculada en vivo). Al editar, abre con franja si la entrada tiene una que corresponde exactamente a sus minutos; las del temporizador (redondeadas) se editan por duración.
+- **Cálculo:** fecha + horas en hora de Madrid → `started_at` y `ended_at` en UTC y los minutos del tiempo real transcurrido (`App\Domain\Time\TimeRange`, gemelo `timeRangeMinutes` en `lib/duration.ts`). Con franja, la duración que llegue se ignora.
+- **Validación:** fin posterior al inicio; «00:00» como fin es la medianoche que cierra el día (22:00–00:00 = 2 h del mismo día); como mucho 24 h. Y todas las reglas de `TimeEntryRules` (fecha futura, semana cerrada, más de 24 h en el día, bolsa `block`…), porque se escribe con `TimeEntryWriter`.
+- **Medianoche: se rechaza, no se parte.** Una entrada es de un día (la hoja semanal y la aprobación van por días) y partirla en silencio sorprendería a quien la escribe; el mensaje explica cómo registrarla en dos entradas. El temporizador sí parte por días porque mide solo (D-035).
+- **Solapes:** con otra entrada de la misma persona que tenga franja, **aviso sin bloqueo** (`overlap`, con las franjas que se pisan; tocar el extremo no es solaparse). No había regla previa. También avisa al parar el temporizador.
+- **Invariante en `TimeEntryRules`:** la franja va completa y nunca al revés.
+- **Al editar sin franja:** se conserva mientras no cambien la fecha ni los minutos; si cambian, se quita (ya no describiría la entrada).
+- **Panel de la tarea:** cada entrada enseña su franja («09:00–11:30», «22:00–24:00») y, si el temporizador está en marcha en la tarea, desde qué hora y cuánto lleva. Iniciar y parar sigue en la cabecera del panel.
+
+### D-173 · Crear subtareas (y tareas) con sus datos en un diálogo **[amplía SPEC §6]**
+Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
+- **«Añadir subtarea»** (panel de la tarea) abre un diálogo con título, responsable, tipo, inicio, entrega, horas estimadas (el parser de duración, hasta 999 h), prioridad y estado. Usa la misma ruta y `TaskWriter` que el alta rápida.
+- **Por defecto, del padre:** el responsable, el tipo, la prioridad y la entrega; el estado, el por defecto. El inicio no se hereda (repartiría la estimación de la subtarea por todo el rango del padre en la Carga). La bolsa es siempre la del padre (D-037).
+- **Teclado:** el foco empieza en el título, Intro guarda y «Crear otra al guardar» deja el diálogo abierto, vacía el título y la estimación, conserva lo demás, devuelve el foco al título y anuncia «Creada «…»». Errores por campo, como el diálogo de horas.
+- **Tareas raíz:** el alta rápida de la lista y el kanban sigue creando con Intro y añade «Crear con más datos», que abre el mismo diálogo con lo escrito, el estado de la columna y, en un proyecto de bolsas, la bolsa (primero las del departamento).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1264,5 +1295,7 @@ Pedido por el propietario el 03/10: un calendario donde ver de forma fácil, sen
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
+- D-145 a D-169: reservadas en otras ramas.
+- Mejoras de tareas: D-170 a D-173.
 
-La siguiente libre es **D-145**.
+La siguiente libre en esta rama es **D-174** (de D-145 a D-169, ver las otras ramas).

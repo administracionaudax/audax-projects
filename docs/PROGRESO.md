@@ -112,6 +112,13 @@ _Última actualización: 03/10/2026_
 - **Tests:** 3019 en PostgreSQL 18 en el servidor; 1316 de Vitest; 410 E2E con Playwright, axe y Reverb; CI en verde.
 - ✅ **FASE 7 CERRADA el 03/10/2026** (etiqueta `fase-7-cerrada`).
 
+### Mejoras de tareas (rama `mejoras-tareas`, 05/10, sin desplegar)
+Tres mejoras pedidas por el propietario tras probar las tareas que vienen de ClickUp (D-170 a D-173):
+- **Registrado del padre = propio + subtareas**, en la lista, el kanban, el panel (con el desglose) y Mis tareas; la estimación propia del padre se conserva y se ve.
+- **Subtareas con diálogo:** responsable, fechas, estimación, tipo, prioridad y estado, heredados del padre, y «Crear otra al guardar». También «Crear con más datos» en el alta rápida.
+- **Horas con inicio y fin** en el diálogo de horas (panel, `/horas` e Inicio): sin cruzar la medianoche, con aviso de solapes y la franja en las entradas de la tarea.
+- **Tests:** Pest (`TaskLoggedTotalsTest`, `TimeEntryRangeTest` y alta de subtarea), Vitest (diálogos, panel y formateadores) y E2E en `tests/e2e/task-improvements.spec.ts` (sin ejecutar aún).
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.
