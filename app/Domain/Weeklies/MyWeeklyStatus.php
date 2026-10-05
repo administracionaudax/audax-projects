@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Cache;
  * Inicio y el contador de la barra lateral.
  *
  * El contador (pendingCount) se guarda 5 minutos por persona y semana activa (D-160):
- * - la clave lleva el updated_at de la semana, así que ampliar el plazo lo renueva para todos,
+ * - la clave lleva el plazo y el updated_at de la semana: ampliar el plazo lo renueva para todos,
  * - se olvida al enviar, al cambiar una exención (forget) y al guardar o borrar una ausencia de esa
  *   persona (forgetActive, desde WeekliesServiceProvider),
  * - lo demás (alta, baja o cambio de rol) se nota, como mucho, a los 5 minutos.
@@ -116,7 +116,7 @@ final class MyWeeklyStatus
     /** Olvida el contador de una persona en la semana activa, si la hay (al cambiar sus ausencias). */
     public static function forgetActive(int $userId): void
     {
-        $cycle = WeeklyCycle::query()->active()->first(['id', 'updated_at']);
+        $cycle = WeeklyCycle::query()->active()->first(['id', 'deadline_date', 'updated_at']);
 
         if ($cycle !== null) {
             self::forget($userId, $cycle);
@@ -131,6 +131,6 @@ final class MyWeeklyStatus
 
     private static function cacheKey(int $userId, WeeklyCycle $cycle): string
     {
-        return "weekly-pending:{$cycle->id}:".($cycle->updated_at?->getTimestamp() ?? 0).":{$userId}";
+        return "weekly-pending:{$cycle->id}:{$cycle->deadline_date->toDateString()}:".($cycle->updated_at?->getTimestamp() ?? 0).":{$userId}";
     }
 }
