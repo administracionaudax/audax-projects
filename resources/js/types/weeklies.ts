@@ -497,6 +497,15 @@ export type WeeklyRemindersPageProps = {
 
 export type HelpLikeUser = { id: number; name: string; avatar: string | null };
 
+/** Estado de una novedad en el listado (F-152): la más reciente cerrada es la nueva. */
+export type HelpUpdateStatus = 'new' | 'in_progress' | 'previous';
+
+export type HelpReleaseChange = {
+    id: number;
+    description: string;
+    position: number;
+};
+
 /** Novedad automática «V.serie.mes.semana» (F-150). */
 export type HelpRelease = {
     id: number;
@@ -507,38 +516,66 @@ export type HelpRelease = {
     version: string;
     summary: string;
     is_hidden: boolean;
-    changes: { id: number; description: string; position: number }[];
-    likes: HelpLikeUser[];
-    liked_by_me: boolean;
-    created_at: string | null;
+    changes: HelpReleaseChange[];
 };
 
-/** Actualización manual (F-151); body en el formato de RichText. */
+/** Actualización a mano (F-151); body en el formato de RichText. */
 export type HelpManualUpdate = {
     id: number;
     published_on: string;
     title: string;
     subtitle: string;
     body: string;
+};
+
+/** Una entrada del listado de novedades (HelpCenter::updates). */
+export type HelpUpdateEntry = {
+    /** «release:12» o «update:3». */
+    key: string;
+    kind: 'release' | 'manual';
+    id: number;
+    published_on: string;
+    title: string;
+    subtitle: string;
+    version: string | null;
+    status: HelpUpdateStatus;
+    release: HelpRelease | null;
+    manual: HelpManualUpdate | null;
     likes: HelpLikeUser[];
     liked_by_me: boolean;
 };
 
-/** Tutorial en vídeo (F-155); video_url: ruta firmada. */
+/** Versiones para elegir en un tutorial y gestionar (también las ocultas). */
+export type HelpReleaseOption = {
+    id: number;
+    version: string;
+    major_version: number;
+    month_number: number;
+    week_of_month: number;
+    is_hidden: boolean;
+};
+
+/** Tutorial en vídeo (F-155); video_url: ruta firmada (relativa), con Range. */
 export type HelpTutorial = {
     id: number;
     title: string;
     description: string | null;
     help_release_id: number | null;
+    version: string | null;
     position: number;
     video_url: string | null;
     video_name: string | null;
+    video_size: number | null;
+    video_mime: string | null;
+    created_at: string | null;
+    updated_at: string | null;
 };
 
 export type HelpFaq = {
     id: number;
     help_faq_section_id: number;
     question: string;
+    /** HTML de RichText. */
     answer: string;
     position: number;
 };
@@ -550,11 +587,10 @@ export type HelpFaqSection = {
     faqs: HelpFaq[];
 };
 
-/** Settings help_support_url y help_manual (F-157). */
+/** Settings help_support_url y help_manual (F-157); manual.url, ruta firmada. */
 export type HelpSettings = {
     support_url: string | null;
-    manual_name: string | null;
-    manual_url: string | null;
+    manual: { name: string; size: number; url: string } | null;
 };
 
 // --- Sugerencias (10.7) -----------------------------------------------------------------------
@@ -567,6 +603,7 @@ export type SuggestionCategory = {
     description: string | null;
     position: number;
     is_active: boolean;
+    post_count: number;
 };
 
 export type SuggestionBoard = {
@@ -576,6 +613,7 @@ export type SuggestionBoard = {
     description: string | null;
     position: number;
     is_active: boolean;
+    post_count: number;
     categories: SuggestionCategory[];
 };
 
@@ -584,7 +622,10 @@ export type SuggestionAttachment = {
     name: string;
     mime: string;
     size: number;
+    is_image: boolean;
+    /** Ruta firmada de attachments.show. */
     url: string;
+    thumbnail_url: string | null;
 };
 
 export type SuggestionStatusEvent = {
@@ -600,6 +641,7 @@ export type SuggestionComment = {
     id: number;
     parent_id: number | null;
     author: UserSummary;
+    /** HTML de RichText (con menciones). */
     body: string;
     edited_at: string | null;
     created_at: string | null;
@@ -608,15 +650,17 @@ export type SuggestionComment = {
     replies: SuggestionComment[];
 };
 
-/** Sugerencia en el feed y el roadmap (F-162 y F-168); el detalle añade comments y status_events. */
+/** Sugerencia en el feed y el roadmap (F-162 y F-168). */
 export type SuggestionPost = {
     id: number;
     suggestion_board_id: number;
     suggestion_category_id: number | null;
+    category: { id: number; name: string; slug: string } | null;
     author: UserSummary;
     title: string;
     slug: string;
-    body: string;
+    /** Texto plano, 180 caracteres como mucho. */
+    preview: string;
     status: SuggestionStatus;
     position: number;
     vote_count: number;
@@ -624,10 +668,66 @@ export type SuggestionPost = {
     voted_by_me: boolean;
     last_activity_at: string | null;
     created_at: string | null;
-    attachments?: SuggestionAttachment[];
-    voters?: UserSummary[];
-    comments?: SuggestionComment[];
-    status_events?: SuggestionStatusEvent[];
+};
+
+/** El detalle (F-164 a F-167). */
+export type SuggestionPostDetail = SuggestionPost & {
+    body: string;
+    board: { id: number; name: string; slug: string };
+    attachments: SuggestionAttachment[];
+    voters: UserSummary[];
+    comments: SuggestionComment[];
+    status_events: SuggestionStatusEvent[];
+    can: { update: boolean; delete: boolean; moderate: boolean };
+};
+
+export type SuggestionRoadmapStatus = Exclude<
+    SuggestionStatus,
+    'open' | 'future'
+>;
+
+export type SuggestionFeedOrder =
+    | 'trending'
+    | 'top'
+    | 'new'
+    | SuggestionRoadmapStatus;
+
+export type SuggestionPage = {
+    items: SuggestionPost[];
+    total: number;
+    has_more: boolean;
+};
+
+export type SuggestionRoadmapColumn = SuggestionPage & {
+    status: SuggestionRoadmapStatus;
+};
+
+/** Persona que se puede mencionar (F-165). */
+export type SuggestionPerson = {
+    id: number;
+    name: string;
+    avatar: string | null;
+};
+
+/** La pestaña «Sugerencias» (SuggestionBoardView::page). */
+export type SuggestionsTabProps = {
+    view: 'roadmap' | 'feedback';
+    filters: {
+        q: string | null;
+        board: number | null;
+        category: number | null;
+        order: SuggestionFeedOrder;
+        statuses: SuggestionRoadmapStatus[];
+        limit: number;
+    };
+    boards: SuggestionBoard[];
+    bugs_category_id: number | null;
+    feed: SuggestionPage | null;
+    roadmap: SuggestionRoadmapColumn[] | null;
+    post: SuggestionPostDetail | null;
+    people: SuggestionPerson[];
+    composer: 'default' | 'bug' | null;
+    can: { create: boolean; manage_boards: boolean; moderate: boolean };
 };
 
 // --- Páginas (Inertia) ------------------------------------------------------------------------
@@ -861,5 +961,18 @@ export type HelpTab = 'general' | 'tutoriales' | 'preguntas' | 'sugerencias';
 
 export type HelpPageProps = {
     tab: HelpTab;
-    can: { manage: boolean };
+    can: { manage: boolean; suggestions: boolean };
+    settings: HelpSettings;
+    /** Pestaña General; null en las demás. */
+    updates: HelpUpdateEntry[] | null;
+    /** Tutoriales, y General para quien gestiona; null en las demás. */
+    releases: HelpReleaseOption[] | null;
+    tutorials: HelpTutorial[] | null;
+    faq_sections: HelpFaqSection[] | null;
+    suggestions: SuggestionsTabProps | null;
+    upload: {
+        video_max_bytes: number;
+        video_chunk_bytes: number;
+        attachment_max_mb: number;
+    };
 };

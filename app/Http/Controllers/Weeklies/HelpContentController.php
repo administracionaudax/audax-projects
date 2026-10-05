@@ -436,7 +436,9 @@ class HelpContentController extends Controller
     }
 
     /**
-     * @return array{major_version: int, month_number: int, week_of_month: int, summary: string, is_hidden: bool|null, changes: list<array{id: int|null, description: string}>|null}
+     * Sin `summary` ni `changes` (p. ej., «Mostrar» una versión oculta), se conservan.
+     *
+     * @return array{major_version: int, month_number: int, week_of_month: int, summary: string|null, is_hidden: bool|null, changes: list<array{id: int|null, description: string}>|null}
      */
     private function validateRelease(Request $request, ?HelpRelease $release = null): array
     {
@@ -466,7 +468,7 @@ class HelpContentController extends Controller
             'major_version' => (int) $data['major_version'],
             'month_number' => (int) $data['month_number'],
             'week_of_month' => (int) $data['week_of_month'],
-            'summary' => trim((string) ($data['summary'] ?? '')),
+            'summary' => $request->exists('summary') ? trim((string) ($data['summary'] ?? '')) : null,
             'is_hidden' => array_key_exists('is_hidden', $data) && $data['is_hidden'] !== null ? (bool) $data['is_hidden'] : null,
             'changes' => array_key_exists('changes', $data) && is_array($data['changes'])
                 ? array_values(array_map(fn (array $change): array => [
@@ -481,7 +483,7 @@ class HelpContentController extends Controller
      * Guarda la versión y, si llegan, sus cambios en ese orden: los que ya existen se actualizan,
      * los nuevos se crean y los que faltan se borran («reordenar cambios», F-150).
      *
-     * @param  array{major_version: int, month_number: int, week_of_month: int, summary: string, is_hidden: bool|null, changes: list<array{id: int|null, description: string}>|null}  $data
+     * @param  array{major_version: int, month_number: int, week_of_month: int, summary: string|null, is_hidden: bool|null, changes: list<array{id: int|null, description: string}>|null}  $data
      */
     private function saveRelease(HelpRelease $release, array $data): void
     {
@@ -490,8 +492,11 @@ class HelpContentController extends Controller
                 'major_version' => $data['major_version'],
                 'month_number' => $data['month_number'],
                 'week_of_month' => $data['week_of_month'],
-                'summary' => $data['summary'],
             ]);
+
+            if ($data['summary'] !== null || ! $release->exists) {
+                $release->summary = $data['summary'] ?? '';
+            }
 
             if ($data['is_hidden'] !== null) {
                 $release->is_hidden = $data['is_hidden'];

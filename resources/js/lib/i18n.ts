@@ -7,7 +7,7 @@
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
  *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
- *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant). Laravel no los lee.
+ *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant; y el centro de ayuda, help, y sus sugerencias, suggestions). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -30,6 +30,7 @@ import clients from '../../../lang/ui/clients.json';
 import gantt from '../../../lang/ui/gantt.json';
 import home from '../../../lang/ui/home.json';
 import integrations from '../../../lang/ui/integrations.json';
+import help from '../../../lang/ui/help.json';
 import hourBanks from '../../../lang/ui/hour-banks.json';
 import mySpaceTasks from '../../../lang/ui/my-space-tasks.json';
 import myTasks from '../../../lang/ui/my-tasks.json';
@@ -47,6 +48,7 @@ import reportsR2 from '../../../lang/ui/reports-r2.json';
 import reportsR1 from '../../../lang/ui/reports-r1.json';
 import reportsR3 from '../../../lang/ui/reports-r3.json';
 import shared from '../../../lang/ui/shared.json';
+import suggestions from '../../../lang/ui/suggestions.json';
 import tasks from '../../../lang/ui/tasks.json';
 import templates from '../../../lang/ui/templates.json';
 import time from '../../../lang/ui/time.json';
@@ -92,6 +94,8 @@ const messages = {
     ...weeklyReminders,
     ...mySpaceTasks,
     ...assistant,
+    ...help,
+    ...suggestions,
 };
 
 export type TranslationKey = keyof typeof messages;

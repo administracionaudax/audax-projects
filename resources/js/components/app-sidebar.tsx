@@ -8,6 +8,7 @@ import {
     Clock,
     FolderKanban,
     House,
+    LifeBuoy,
     ListChecks,
     MessagesSquare,
     NotebookPen,
@@ -37,6 +38,7 @@ import { index as absencesIndex } from '@/routes/absences';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
 import { index as adminIndex } from '@/routes/admin';
 import { index as assistantIndex } from '@/routes/assistant';
+import { index as helpIndex } from '@/routes/help';
 import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
@@ -63,7 +65,8 @@ import type { Abilities, NavItem } from '@/types';
  * «Weeklies», tras Mis tareas, y «Equipo», tras Clientes (10.4), para quien la escribe
  * (`auth.can.useWeeklies`) y con el módulo encendido (`config.modules.weeklies`); nunca a un
  * colaborador externo. El asistente IA (10.6, F-006: el botón «Asistente AI» de WeeklySync), tras
- * Chat, con el módulo `assistant` encendido y para quien usa la Weekly.
+ * Chat, con el módulo `assistant` encendido y para quien usa la Weekly. La Ayuda (10.7, F-010), tras
+ * el asistente, con el módulo `help`.
  */
 export function mainNavItems(
     can: Abilities,
@@ -72,6 +75,7 @@ export function mainNavItems(
         weekliesPending?: number;
         weekliesEnabled?: boolean;
         assistantEnabled?: boolean;
+        helpEnabled?: boolean;
     } = {},
 ): NavItem[] {
     const chatUnread = counters.chatUnread ?? 0;
@@ -161,6 +165,13 @@ export function mainNavItems(
                 href: assistantIndex(),
                 icon: Sparkles,
             },
+        // Centro de ayuda (10.7, F-010 y F-148): para quien usa la Weekly, con el módulo `help`.
+        can.useWeeklies === true &&
+            counters.helpEnabled !== false && {
+                title: t('help_center.title'),
+                href: helpIndex(),
+                icon: LifeBuoy,
+            },
         can.viewAdmin && {
             title: t('nav.admin'),
             href: adminIndex(),
@@ -202,6 +213,7 @@ export function AppSidebar() {
                         weekliesPending: props.weeklies?.pending ?? 0,
                         weekliesEnabled: props.config?.modules?.weeklies,
                         assistantEnabled: props.config?.modules?.assistant,
+                        helpEnabled: props.config?.modules?.help,
                     })}
                 />
             </SidebarContent>

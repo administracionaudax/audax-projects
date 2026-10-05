@@ -45,6 +45,7 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
             'Carga',
             'Ausencias',
             'Informes',
+            'Ayuda',
             'Administración',
         ]) {
             await expect(nav.getByRole('link', { name })).toHaveCount(0);
@@ -143,7 +144,12 @@ test('un colaborador externo solo trabaja en sus proyectos: tarea, temporizador 
     });
 
     await test.step('el Equipo, el estado de proyectos de la Weekly y el asistente IA, también 403', async () => {
-        for (const path of ['/equipo', '/weeklies/estado-proyectos', '/ia']) {
+        for (const path of [
+            '/equipo',
+            '/weeklies/estado-proyectos',
+            '/ia',
+            '/ayuda',
+        ]) {
             const response = await page.goto(path);
             expect(response?.status()).toBe(403);
         }
