@@ -5,11 +5,14 @@ namespace App\Domain\Weeklies;
 use App\Domain\Weeklies\Ai\LlmException;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use Closure;
 
 /**
- * Genera el informe de una semana con la IA (D-146, F-072 a F-076). Implementación en la entrega
- * 10.3, con los prompts de `ws:generate-weekly-report/pipeline.js`. Se llama SOLO desde un Job de la
- * cola `ai` (AiQueue), nunca en la petición web.
+ * Genera el informe de una semana con la IA (D-146, F-072 a F-076). Implementación (10.3):
+ * LlmWeeklyReportGenerator, con los prompts de `ws:generate-weekly-report/pipeline.js`
+ * (Report\ReportPipeline). Se llama SOLO desde un Job de la cola `ai` (GenerateWeeklyReport), nunca
+ * en la petición web. $progress (añadido en 10.3) recibe (hechos, total, paso) para el progreso por
+ * Reverb; paso es `clients` o `summary`.
  *
  * Lo que debe hacer:
  * - agrupar los apuntes ENVIADOS por cliente activo, en lotes de 9.000 caracteres, fusionarlos por
@@ -27,5 +30,8 @@ use App\Models\WeeklyCycle;
  */
 interface WeeklyReportGenerator
 {
-    public function generate(WeeklyCycle $cycle, ?User $requestedBy = null): GeneratedWeeklyReport;
+    /**
+     * @param  (Closure(int, int, string): void)|null  $progress
+     */
+    public function generate(WeeklyCycle $cycle, ?User $requestedBy = null, ?Closure $progress = null): GeneratedWeeklyReport;
 }

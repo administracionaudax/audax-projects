@@ -2,12 +2,15 @@
 
 namespace App\Domain\Reports\Delivery;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TimeEntry;
 use App\Models\User;
+use App\Models\WeeklyCycle;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +41,7 @@ final class ReportAccess
             ReportKind::Client => ['client'],
             ReportKind::Project, ReportKind::ProjectHours => ['project'],
             ReportKind::HourBank => ['project', 'hourBank'],
+            ReportKind::Weekly => ['cycle'],
             default => [],
         };
     }
@@ -75,6 +79,9 @@ final class ReportAccess
             ReportKind::Hours => $gate->authorize('exportHours', TimeEntry::class),
             ReportKind::ProjectHours => $gate->authorize('view', $this->model(Project::class, $request, 'project')),
             ReportKind::HourBank => $gate->authorize('downloadPdf', $this->hourBank($request)),
+            ReportKind::Weekly => AppModules::enabled(AppModule::Weeklies)
+                ? $gate->authorize('view', $this->model(WeeklyCycle::class, $request, 'cycle'))
+                : throw new AuthorizationException,
         };
     }
 

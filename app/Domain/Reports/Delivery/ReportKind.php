@@ -4,7 +4,7 @@ namespace App\Domain\Reports\Delivery;
 
 /**
  * Informes que se pueden exportar, enviar y programar (Fase 9, D-139). Cada uno corresponde a una
- * ruta de routes/app/reports.php; los parámetros de la ruta y los filtros de la URL viajan en
+ * ruta de routes/app/reports.php (la weekly, de routes/app/weeklies.php, D-192); los parámetros de la ruta y los filtros de la URL viajan en
  * ReportRequest.
  */
 enum ReportKind: string
@@ -19,6 +19,7 @@ enum ReportKind: string
     case Hours = 'hours';
     case ProjectHours = 'project_hours';
     case HourBank = 'hour_bank';
+    case Weekly = 'weekly';
 
     public function routeName(): string
     {
@@ -33,6 +34,7 @@ enum ReportKind: string
             self::Hours => 'reports.hours.export',
             self::ProjectHours => 'projects.time.export',
             self::HourBank => 'reports.hour-bank-pdf',
+            self::Weekly => 'weeklies.report.pdf',
         };
     }
 }

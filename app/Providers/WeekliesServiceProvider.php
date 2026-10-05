@@ -10,7 +10,9 @@ use App\Domain\Weeklies\Ai\GoogleTtsSynthesizer;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\SpeechSynthesizer;
 use App\Domain\Weeklies\EloquentWeeklySubmissionWriter;
+use App\Domain\Weeklies\LlmWeeklyReportGenerator;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\WeeklyReportGenerator;
 use App\Domain\Weeklies\WeeklySubmissionWriter;
 use App\Models\Absence;
 use App\Models\WeeklyCycle;
@@ -34,6 +36,9 @@ class WeekliesServiceProvider extends ServiceProvider
 
         // La única forma de escribir una weekly (10.2).
         $this->app->bind(WeeklySubmissionWriter::class, EloquentWeeklySubmissionWriter::class);
+
+        // El informe con Gemini (10.3).
+        $this->app->bind(WeeklyReportGenerator::class, LlmWeeklyReportGenerator::class);
     }
 
     public function boot(): void

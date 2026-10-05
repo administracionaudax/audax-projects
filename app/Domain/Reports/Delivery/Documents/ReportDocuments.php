@@ -26,6 +26,7 @@ final class ReportDocuments
             ReportKind::Hours => HoursDocument::class,
             ReportKind::ProjectHours => ProjectHoursDocument::class,
             ReportKind::HourBank => HourBankDocument::class,
+            ReportKind::Weekly => WeeklyDocument::class,
         });
     }
 }

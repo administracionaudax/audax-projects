@@ -204,3 +204,64 @@ table:not(.compact) td:first-child {
     max-width: 60mm;
     max-height: 16mm;
 }
+/* La weekly (Fase 10, D-192): bloques por cliente con su estado, listas y etiquetas. */
+.weekly-text {
+    white-space: pre-line;
+    font-size: 9pt;
+    line-height: 1.55;
+    margin: 0 0 10pt;
+}
+.weekly-client {
+    margin-top: 16pt;
+    padding-top: 10pt;
+    border-top: 1px solid var(--line);
+}
+.weekly-client h3 {
+    font-size: 7.5pt;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 8pt 0 4pt;
+}
+.weekly-status {
+    font-size: 7pt;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1pt 5pt;
+    border: 1px solid var(--line);
+    vertical-align: middle;
+}
+.weekly-status--risk {
+    color: var(--amber-ink);
+    border-color: var(--amber-ink);
+}
+.weekly-status--blocked {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+.weekly-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8mm;
+}
+.weekly-list {
+    margin: 0 0 6pt;
+    padding-left: 12pt;
+    font-size: 8.5pt;
+    line-height: 1.45;
+}
+.weekly-tags span {
+    display: inline-block;
+    font-size: 7pt;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 1pt 5pt;
+    margin: 0 4pt 4pt 0;
+}
+.weekly-alert-title {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 3pt;
+}

@@ -2,18 +2,25 @@
 
 namespace App\Http\Controllers\Weeklies;
 
+use App\Domain\Reports\Delivery\ReportKind;
+use App\Domain\Reports\Delivery\ReportRequest;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\WeeklyCycleCloser;
 use App\Domain\Weeklies\WeeklyCycleOpener;
+use App\Domain\Weeklies\WeeklyJobProgress;
 use App\Domain\Weeklies\WeeklyOverview;
+use App\Domain\Weeklies\WeeklyReportState;
 use App\Domain\Weeklies\WeeklyRuleViolation;
 use App\Domain\Weeklies\WeeklyStreaks;
+use App\Domain\Weeklies\WeeklyTeamStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Weeklies\Concerns\PendingDelivery;
 use App\Http\Requests\Weeklies\UpdateWeeklyDeadlineRequest;
+use App\Http\Resources\UserSummaryResource;
 use App\Http\Resources\Weeklies\WeeklyCycleDetailResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use App\Models\WeeklySubmission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,8 +39,6 @@ use Inertia\Response;
  */
 class WeeklyCycleController extends Controller
 {
-    use PendingDelivery;
-
     public const array TABS = ['resumen', 'historico'];
 
     /** /weeklies?pestana=resumen|historico. */
@@ -64,15 +69,40 @@ class WeeklyCycleController extends Controller
         ]);
     }
 
-    /** /weeklies/{cycle}: el informe de una semana (F-072 a F-091, entrega 10.3). */
-    public function show(WeeklyCycle $cycle): Response
+    /**
+     * /weeklies/{cycle}: el informe de una semana (F-072 a F-091, D-190), como el ReportView de
+     * WeeklySync: el informe, el estado del equipo, los reportes originales de cada cliente, el
+     * audio, el progreso de lo que se esté generando y lo que puede hacer quien gestiona.
+     */
+    public function show(Request $request, WeeklyCycle $cycle, WeeklyTeamStatus $team): Response
     {
         Gate::authorize('view', $cycle);
 
+        /** @var User $user */
+        $user = $request->user();
+        $cycle->load('audioSections');
+        $teamStatus = $team->for($cycle);
+        $submitted = WeeklySubmission::query()->submitted()->where('weekly_cycle_id', $cycle->id)->count();
+
         return Inertia::render('weeklies/show', [
-            'cycle' => WeeklyCycleDetailResource::make($cycle->load('audioSections')),
+            'cycle' => WeeklyCycleDetailResource::make($cycle),
+            'team' => $teamStatus,
+            'reports' => $this->originalReports($cycle),
+            'stale' => WeeklyReportState::isStale($cycle, $submitted),
+            'submitted_count' => $submitted,
+            'my_client_ids' => $user->projects()->whereNotNull('client_id')->distinct()->pluck('client_id')->map(fn ($id): int => (int) $id)->values()->all(),
+            'progress' => [
+                'report' => WeeklyJobProgress::detail($cycle->id, WeeklyJobProgress::REPORT),
+                'audio' => WeeklyJobProgress::detail($cycle->id, WeeklyJobProgress::AUDIO),
+            ],
+            'close' => [
+                'blockers' => WeeklyReportState::closeBlockers($cycle, WeeklyCycleCloser::hasAudio($cycle)),
+                'pending' => $cycle->isActive() ? $teamStatus['counts']['pending'] : 0,
+            ],
+            'report_request' => (new ReportRequest(ReportKind::Weekly, ['cycle' => $cycle->id], []))->toArray(),
             'can' => [
                 'generate' => Gate::allows('generate', $cycle),
+                'edit' => Gate::allows('update', $cycle),
                 'extendDeadline' => Gate::allows('extendDeadline', $cycle),
                 'close' => Gate::allows('close', $cycle),
                 'delete' => Gate::allows('delete', $cycle),
@@ -106,12 +136,21 @@ class WeeklyCycleController extends Controller
         return back();
     }
 
-    /** Cerrar con texto y audio: congela exentos, satisfacción y abre la siguiente (10.3). */
-    public function close(WeeklyCycle $cycle): never
+    /**
+     * Cerrar la semana (F-035, F-070 y F-089, D-191): con el texto y el audio generados; congela la
+     * participación, abre la siguiente y, en segundo plano, la satisfacción y el aviso.
+     */
+    public function close(Request $request, WeeklyCycle $cycle, WeeklyCycleCloser $closer): RedirectResponse
     {
         Gate::authorize('close', $cycle);
 
-        $this->pending('10.3');
+        /** @var User $user */
+        $user = $request->user();
+        $next = $closer->close($cycle, $user);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.closed', ['label' => $cycle->label, 'next' => $next->label])]);
+
+        return back();
     }
 
     /**
@@ -141,6 +180,40 @@ class WeeklyCycleController extends Controller
             : __('weeklies.flash.deleted_and_opened', ['label' => $cycle->label, 'next' => $opened->label])]);
 
         return to_route('weeklies.index', ['pestana' => 'historico']);
+    }
+
+    /**
+     * Los reportes originales de la semana por cliente (F-078, «Ver reportes»): solo los enviados,
+     * con su autor y cuándo; «general» = los apuntes sin cliente.
+     *
+     * @return array<int|string, list<array{author: array<array-key, mixed>, body: string, submitted_at: string|null, project_id: int|null}>>
+     */
+    private function originalReports(WeeklyCycle $cycle): array
+    {
+        $reports = [];
+        $submissions = WeeklySubmission::query()
+            ->submitted()
+            ->where('weekly_cycle_id', $cycle->id)
+            ->with(['user', 'entries'])
+            ->orderBy('submitted_at')
+            ->get();
+
+        foreach ($submissions as $submission) {
+            foreach ($submission->entries as $entry) {
+                if (trim((string) $entry->body) === '') {
+                    continue;
+                }
+
+                $reports[$entry->client_id ?? 'general'][] = [
+                    'author' => UserSummaryResource::make($submission->user)->resolve(),
+                    'body' => (string) $entry->body,
+                    'submitted_at' => $submission->submitted_at?->toIso8601String(),
+                    'project_id' => $entry->project_id,
+                ];
+            }
+        }
+
+        return $reports;
     }
 
     /**

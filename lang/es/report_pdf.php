@@ -34,6 +34,7 @@ return [
         'detail' => 'Informe detallado',
         'hours' => 'Horas',
         'project_hours' => 'Horas del proyecto',
+        'weekly' => 'Weekly',
     ],
 
     // Nombre de los ficheros PDF (se pasan a minúsculas sin acentos): «informe-cliente-monto-2026-09.pdf».
@@ -47,6 +48,7 @@ return [
         'detail' => 'informe detallado',
         'hours' => 'horas',
         'project_hours' => 'horas proyecto',
+        'weekly' => 'weekly',
     ],
 
     'cover' => [

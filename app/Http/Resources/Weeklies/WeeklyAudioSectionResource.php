@@ -32,7 +32,7 @@ class WeeklyAudioSectionResource extends JsonResource
             'url' => $this->path === null ? null : URL::temporarySignedRoute('weeklies.audio.show', now()->addHours(6), [
                 'cycle' => $this->weekly_cycle_id,
                 'section' => $this->id,
-            ]),
+            ], absolute: false),
         ];
     }
 }

@@ -53,8 +53,8 @@ Route::middleware('module:weeklies')->group(function () {
     Route::get('weeklies/{cycle}/informe/pdf', [WeeklyReportController::class, 'pdf'])->whereNumber('cycle')->middleware('throttle:30,1')->name('weeklies.report.pdf');
 
     Route::post('weeklies/{cycle}/audio', [WeeklyAudioController::class, 'store'])->whereNumber('cycle')->middleware('throttle:10,1')->name('weeklies.audio.store');
-    Route::get('weeklies/{cycle}/audio', [WeeklyAudioController::class, 'download'])->whereNumber('cycle')->name('weeklies.audio.download');
-    Route::get('weeklies/{cycle}/audio/{section}', [WeeklyAudioController::class, 'show'])->whereNumber(['cycle', 'section'])->middleware('signed')->name('weeklies.audio.show');
+    Route::get('weeklies/{cycle}/audio', [WeeklyAudioController::class, 'download'])->whereNumber('cycle')->middleware('throttle:120,1')->name('weeklies.audio.download');
+    Route::get('weeklies/{cycle}/audio/{section}', [WeeklyAudioController::class, 'show'])->whereNumber(['cycle', 'section'])->middleware('signed:relative')->name('weeklies.audio.show');
 
     // Exenciones (10.2).
     Route::post('weeklies/{cycle}/exenciones', [WeeklyExemptionController::class, 'store'])->whereNumber('cycle')->name('weeklies.exemptions.store');
@@ -98,7 +98,7 @@ Route::get('version', AppVersionController::class)
     ->middleware('throttle:60,1')
     ->name('app.version');
 
-// «Uso de IA» (10.3): solo admins.
+// «Uso de IA» (10.3, F-173 y F-180): solo admins.
 Route::get('admin/uso-ia', AiUsageController::class)->name('admin.ai-usage.index');
 
 // Asistente IA (10.6).

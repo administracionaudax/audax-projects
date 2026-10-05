@@ -31,6 +31,78 @@ return [
         'waiver_undone' => 'Vuelves a estar exento esta semana.',
         'joined' => '{0} Ya eras miembro de esos proyectos.|{1} Te has unido a 1 proyecto.|[2,*] Te has unido a :count proyectos.',
         'left' => 'Has dejado el proyecto :project.',
+        'closed' => 'Weekly «:label» cerrada. Se ha abierto la siguiente: :next. La satisfacción de los clientes se calcula en segundo plano.',
+    ],
+
+    // Informe, audio y cierre (10.3).
+    'report' => [
+        'general' => 'General / Interno',
+        'queued' => 'Generando el informe. Puede tardar varios minutos: te avisamos aquí cuando esté.',
+        'busy' => 'El informe ya se está generando.',
+        'closed' => 'La semana está cerrada: su texto ya no se regenera.',
+        'saved' => 'Informe actualizado.',
+        'empty_edit' => 'Primero genera el informe.',
+    ],
+    'audio' => [
+        'queued' => 'Generando el audio. Puede tardar varios minutos: te avisamos aquí cuando esté.',
+        'busy' => 'El audio ya se está generando.',
+    ],
+    'close' => [
+        'blockers' => [
+            'not_active' => 'Esta semana ya está cerrada.',
+            'report' => 'Falta generar el texto del informe.',
+            'audio' => 'Falta generar el audio del informe.',
+        ],
+    ],
+
+    // PDF, impresión y Excel del informe (F-083, D-192).
+    'pdf' => [
+        'kind' => 'Weekly',
+        'no_report' => 'Aún no se ha generado el informe de esta semana.',
+        'global_summary' => 'Resumen global',
+        'team_risks' => 'Riesgos detectados',
+        'next_steps' => 'Siguientes pasos',
+        'no_next_steps' => 'No hay pasos definidos.',
+        'milestones' => 'Próximos hitos',
+        'no_milestones' => 'No hay hitos próximos.',
+        'satisfaction' => 'Satisfacción al cerrar: :score / 100',
+        'mine_empty' => 'No formas parte de ningún proyecto incluido en esta weekly.',
+        'yes' => 'Sí',
+        'no' => 'No',
+        'facts' => [
+            'week' => 'Semana',
+            'deadline' => 'Plazo',
+            'status' => 'Estado',
+            'submissions' => 'Weeklies enviadas',
+            'filter' => 'Filtro',
+            'only_mine' => 'Solo mis proyectos',
+        ],
+        'kpis' => [
+            'clients' => 'Clientes',
+            'with_news' => 'Con novedades',
+            'risk' => 'En riesgo',
+            'blocked' => 'Bloqueados',
+        ],
+        'columns' => [
+            'client' => 'Cliente',
+            'status' => 'Estado',
+            'summary' => 'Resumen ejecutivo',
+            'next_steps' => 'Siguientes pasos',
+            'milestones' => 'Próximos hitos',
+            'tags' => 'Etiquetas',
+            'satisfaction' => 'Satisfacción',
+            'reports' => 'Con reportes',
+        ],
+        'projects' => [
+            'title' => 'Estado de proyectos',
+            'code' => 'Código',
+            'name' => 'Proyecto',
+            'kind' => 'Tipo',
+            'consumed' => 'Consumido',
+            'budget' => 'Presupuesto',
+            'expected' => 'Esperado',
+            'week' => 'Esta semana',
+        ],
     ],
 
     'validation' => [
@@ -75,6 +147,9 @@ return [
         'llm_invalid_response' => 'La IA ha devuelto una respuesta que no se puede leer.',
         'tts_not_configured' => 'La locución no está configurada (falta GOOGLE_TTS_API_KEY).',
         'tts_unavailable' => 'El servicio de locución no responde ahora mismo.',
+        'report_failed' => 'No se ha podido generar el informe. Inténtalo de nuevo.',
+        'audio_failed' => 'No se ha podido generar el audio. Inténtalo de nuevo.',
+        'audio_needs_report' => 'Primero genera el texto del informe.',
     ],
 
     // Plantillas de aviso por defecto (F-104 y F-105). Se editan en ajustes (setting
