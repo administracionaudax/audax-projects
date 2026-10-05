@@ -220,3 +220,101 @@ Hecho el 05/10/2026 en `fase-10`. Es la base que usan 10.2 a 10.8: **no se cambi
   - el estado «On Track», «Risk» y «Blocked» con `WeeklyClientStatus::fromWeeklySync()`,
   - rellenar `expected_user_ids` y las exenciones `absence` con `excused_user_ids`, con el motivo de importación,
   - `import_refs` con la fuente `weeklysync`.
+
+## 10.2a (hecho): semana y envío, parte de servidor
+Hecha el 05/10/2026 en `fase-10`. La 10.2 se parte en dos:
+- **10.2a:** el servidor, con todos los datos que necesitan las pantallas.
+- **10.2b:** las pantallas React.
+
+Decisiones nuevas: **D-155 a D-161**. En `WEEKLY-INVENTARIO.md` §A.4, las F con el servidor hecho llevan «Servidor hecho (10.2a)». Los tipos TS de todo lo que sigue están en `resources/js/types/weeklies.ts`; las rutas, en `routes/app/weeklies.php`.
+
+### Dominio (`app/Domain/Weeklies`)
+- **`EloquentWeeklySubmissionWriter`:** implementa `WeeklySubmissionWriter` (D-157). Relee y bloquea la semana dentro de la transacción.
+- **`WeeklyCycleOpener`** (D-155): `ensureOpen()`, `target()`, `open()`, `afterDelete()` y `afterClose($cerrada)`, el enganche del cierre de 10.3.
+- **Datos de las pantallas:**
+  - `MyWeeklyStatus`: `for()`, `pendingCount()` (D-160), `forget()` y `forgetActive()`,
+  - `MyWeeklyHistory` y `MyWeeklyClients`: `for()`, `autofill()` y `duration()`,
+  - `WeeklyTeamStatus`, `WeeklyOverview`, `WeeklyStreaks` (`summary()` y `weeks()`) y `HomeWeeklyCard`.
+- **`WeeklyEligibility::rosterForUser()`:** la foto de una sola persona.
+- **Dictado:** `Dictation\DictationText` (reglas puras) y `Dictation\DictationCleaner` (IA, ajuste `weekly_dictation_cleanup`).
+- **Jobs:**
+  - `TranscribeDictation`, en la cola `transcriptions`,
+  - `CleanDictation`, en la cola `ai`.
+- **Evento `App\Events\Weeklies\DictationUpdated`:** `dictation.updated` por el canal `App.Models.User.{id}`, con `{dictation_id, status, warning}`.
+- **Comando `weeklies:open-week`:** lo lanza el planificador cada día a las 00:05 de Madrid.
+
+### Páginas y sus props
+**`weeklies/index`** (`WeeklyCycleController::index`, `/weeklies?pestana=resumen|historico`). `WeekliesIndexPageProps`:
+- `tab`,
+- `active` y `latest_closed`: `WeeklyHighlightedCycle`, es decir, una fila del histórico más `team` (`WeeklyTeamStatus`: `members[]` con `user`, `status`, `submitted_at`, `exemption_reason` y `exemption_id`, y `counts` con `{submitted, expected, exempt, pending}`),
+- `cycles`: `WeeklyHistoryRow[]`, que es `WeeklyCycleResource` más `progress` y `participation`; hasta 104,
+- `me`: `MyWeeklyStatus` de la semana activa, o null,
+- `streak`: `{submitted, on_time, streak}`,
+- `my_clients`: `{owned[], member[]}`, cada uno con `{id, name, icon, projects[{id, code, name, can_leave}]}`,
+- `joinable_projects`: prop **opcional**; se pide con `router.reload({ only: ['joinable_projects'] })`,
+- `can`: `{manage, create, extendDeadline, delete, exempt}`.
+
+**`my-space/index`** (`MySpaceController::index`, `/mi-espacio?pestana=reportes|tareas&semana={id}`). `MySpacePageProps`:
+- `tab`,
+- `cycle` y `submission`: la semana activa y mi envío en ella (contrato 10.1),
+- `weeks`: `MyWeeklyRow[]`, con `cycle`, `status`, `is_upcoming`, `submitted_at`, `has_draft`, `entries_count` y `exemption_reason`,
+- `streak`,
+- `editor`: solo con `?semana=`; si no, null. `MyWeeklyEditor` trae:
+  - `cycle`, `me` y `submission`, con sus `entries`,
+  - `clients`: `proposed` (los id con caja) y `catalog` (`[{id, name, icon, is_active, projects[{id, code, name, is_mine}]}]`),
+  - `autofill`: `{[clientId | "general"]: texto}`,
+  - `read_only`,
+  - `can`: `{write, waive, undo_waiver}`.
+- Una `?semana=` que no existe da 404.
+
+**`home`** (`HomeController`): la prop **diferida** `weekly` (`HomeWeeklyCard`) trae `{cycle, me, streak, team: {counts, pending: UserSummary[] (hasta 8)} | null, can: {manage, open}}`. Es null para quien no escribe la weekly o con el módulo apagado; a un colaborador externo no le llega. La tarjeta `weekly` ya está en `HomeLayout` y en `tests/fixtures/home-cards.json`.
+
+**`settings/profile`:**
+- `jobTitle`,
+- `weeklyStats`, diferida: `{submitted, on_time, streak}`, o null.
+
+**Props compartidas:** `weeklies.pending`, que vale 0 o 1 (D-160), para el contador rojo de «Mi espacio» (F-003). Con `auth.can.useWeeklies` y `config.modules.weeklies` se pinta la barra lateral (F-001).
+
+### Acciones
+- **`PUT /mi-espacio/weeklies/{cycle}`** (`my-weekly.draft`): el autoguardado, sin recargar.
+  - Lleva `{entries: WeeklyEntryInput[]}` y responde en JSON `{submission}`.
+  - Una regla rota da 422 en `entries` con su mensaje (semana cerrada, no te toca o estás exento).
+- **`POST /mi-espacio/weeklies/{cycle}/enviar`** (`my-weekly.submit`): lo mismo, como Inertia. Redirige a `?semana=` con aviso; sin texto, 422.
+- **`POST /mi-espacio/dictados`** (multipart: `context=weekly_entry`, `weekly_cycle_id`, `client_id?`, `audio` y `duration_ms`):
+  - responde 201 con `{dictation}`,
+  - después se sigue con `GET /mi-espacio/dictados/{id}` o con el evento `dictation.updated`, hasta `status` `done` o `failed`,
+  - `text` vacío más `warning` (`too_short` o `no_speech`) es «no se ha oído nada».
+- **`POST /mi-espacio/proyectos`** (`{project_ids[]}`) y **`DELETE /mi-espacio/proyectos/{project}`**.
+- **Gestión** (`manage-weeklies`):
+  - `POST /weeklies`: iniciar la semana,
+  - `PUT /weeklies/{cycle}/plazo` (`{deadline_date: "Y-m-d"}`): del lunes a cuatro semanas después del viernes,
+  - `DELETE /weeklies/{cycle}`: redirige a `?pestana=historico`,
+  - `POST /weeklies/{cycle}/exenciones` (`{user_id, note?}`).
+- **Exenciones de cada persona:**
+  - `POST /weeklies/{cycle}/exenciones/renuncia`: la propia persona,
+  - `DELETE /weeklies/{cycle}/exenciones/{exemption}`: quitar la manual o deshacer la renuncia.
+- **Ajustes:** `PUT /admin/ajustes` acepta además `weekly_dictation_cleanup` (booleano).
+- **`GET /version`:** `{version}`, la de Inertia (F-013).
+
+### Para 10.2b (pantallas)
+- **Barra lateral (F-001):** las entradas «Weeklies» y «Mi espacio», esta con `weeklies.pending`.
+- **«Mi weekly»:**
+  - la caja «General / Interno» va siempre: `client_id` null,
+  - plegar todo (F-046) y la guía (F-047) son solo de interfaz,
+  - el dictado usa la grabadora del chat.
+- **Ajustes:**
+  - el interruptor de los módulos (`modules`) y el aviso global (`global_banner`),
+  - la limpieza del dictado (`weekly_dictation_cleanup`).
+- **Las fechas de semana compactas en el móvil (F-021) y la recarga y el aviso de versión (F-013 y F-014):** solo de interfaz.
+
+### Para 10.3
+- **Al cerrar**, en la transacción:
+  1. `WeeklyEligibility::freeze()`,
+  2. marcar la semana cerrada,
+  3. después, `WeeklyCycleOpener::afterClose($cycle)`.
+- Guardar la semana olvida sola la semana activa en caché (D-160).
+
+### Tests
+En `tests/Feature/Weeklies`:
+- `WeeklySubmissionWriterTest`, `WeeklyCycleLifecycleTest`, `WeeklyExemptionsTest`, `WeeklyDashboardsTest` y `WeeklyDictationTest`,
+- `WeeklyMiscTest` y `WeeklyPagesPerformanceTest` (presupuestos de consultas).

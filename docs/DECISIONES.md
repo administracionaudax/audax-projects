@@ -1388,6 +1388,65 @@ La pestaña «Estado de proyectos» de las weeklies deja de alimentarse con capt
   - `GEMINI_DRIVER` y `GOOGLE_TTS_DRIVER` valen `fake` en los tests (`phpunit.xml`) y en local sin claves,
   - las claves reales las pone el propietario en el `.env` del servidor.
 
+## 05/10/2026: Semana y envío de la Weekly, parte de servidor (entrega 10.2a)
+Las pantallas son la 10.2b. Detalle de las props de cada página en `docs/PLAN-FASE-10.md` («10.2a (hecho)»).
+
+### D-155 · Abrir y borrar semanas
+- **El planificador** lanza `weeklies:open-week` **cada día a las 00:05 de Madrid** (no solo el lunes): el lunes abre la semana nueva y, si el servidor estuvo parado, la abre en cuanto vuelve. Con una activa no hace nada; con el módulo apagado, tampoco.
+- **La semana que se abre** (`WeeklyCycleOpener::target()`) es la más tardía de:
+  - la semana en curso,
+  - la siguiente a la última que existe (una semana cerrada no se reabre),
+  - la siguiente a la que se acaba de cerrar o borrar.
+  - Si el servidor estuvo parado semanas, se abre la en curso, sin rellenar las perdidas.
+- **«Iniciar la semana»** (F-040): quien gestiona, si no hay ninguna activa. Corrige el fallo de WeeklySync, que no la guardaba.
+- **Borrar** (F-069): se lleva en cascada envíos, apuntes, exenciones, dictados, audio y satisfacción, y borra los MP3 del disco. Si era la más reciente, se abre la siguiente (+7 días), como en WeeklySync, también al borrar la activa.
+- **Cierre (10.3):** `WeeklyCycleOpener::afterClose($cerrada)` es el punto de enganche: tras marcarla cerrada, abre la siguiente.
+
+### D-156 · «Unirme a proyectos» desde la Weekly
+- WeeklySync tenía «colaborador de un cliente». En Audax, eso es ser **miembro de un proyecto del cliente** (F-034 y F-133).
+- Cualquier interno de plantilla se apunta como **miembro, nunca gestor**, a varios proyectos abiertos de clientes activos a la vez, y deja los que no gestiona.
+- Pasa por `ProjectMembership`: queda en la auditoría del proyecto. Los colaboradores externos no (D-134).
+
+### D-157 · Escribir la weekly
+- **Una sola fila** por persona y semana (`WeeklySubmissionWriter`): el borrador autoguardado y el envío son la misma.
+- **Autoguardar una weekly ya enviada** cambia sus apuntes al momento, sin tocar `submitted_at` ni `resubmitted_at`. WeeklySync guardaba aparte el borrador. Aquí no hay dos versiones: el informe (10.3) lee siempre lo último guardado. «Actualizar» solo apunta el reenvío.
+- **Apuntes:** uno por cliente (si llegan dos, gana el último, en la posición del primero), sin los vacíos y con el texto recortado. Un proyecto de otro cliente se descarta.
+- **Clientes propuestos** (D-150): los de los proyectos no archivados de los que soy miembro o gestor, los de los proyectos en los que he imputado horas **de lunes a domingo** de esa semana y los que ya tienen un apunte. El catálogo para añadir otro: los clientes activos con sus proyectos abiertos.
+- **«Autocompletar»** (F-048): por cliente, las tareas en las que he imputado esa semana (con el tiempo) y mis tareas terminadas o que vencen esa semana.
+- Con la semana cerrada, **solo lectura**. Exento (sin renuncia), tampoco se escribe (F-054).
+
+### D-158 · El dictado, paso a paso
+1. El navegador sube el audio a `dictations.store`, con las reglas de los audios del chat: tipo real, tamaño y duración máxima.
+2. **Menos de 0,7 s o de 1,5 KB** (F-050): no se transcribe. Queda hecho al momento, sin texto y con el aviso `too_short`.
+3. **`TranscribeDictation`**, en la cola `transcriptions`: el Whisper del servidor (D-070). El audio se borra al acabar, con éxito o sin él.
+4. **Sin voz útil** (F-171): Whisper no dice «no hay voz», sino que inventa frases de subtítulos sobre el silencio. Se quitan las anotaciones («[Música]») y esas frases. Si queda vacío, solo muletillas o una palabra suelta corta, el dictado queda hecho sin texto y con el aviso `no_speech`.
+5. **Limpieza con IA** (F-172): detrás del ajuste `weekly_dictation_cleanup`, **apagado por defecto**. Solo va el texto a Gemini (`CleanDictation`, cola `ai`, un intento), con los nombres de los clientes activos y de la plantilla para corregirlos. Si falla o no devuelve nada útil, se queda el texto de Whisper. Con 4 palabras o menos no se llama.
+6. **Al terminar** se emite `dictation.updated` por el canal privado de su autor (`App.Models.User.{id}`). Sin Reverb, la interfaz sondea `dictations.show`. Solo su autor ve un dictado, ni siquiera el admin.
+
+### D-159 · Exenciones: poner, renunciar y quitar
+- **Poner** (F-038): quien gestiona, a alguien que participa esa semana, con una nota opcional; sustituye una renuncia anterior.
+- **Renunciar** (F-053): la propia persona, para poder escribir:
+  - si es por una ausencia, queda una fila `waived`,
+  - si es manual, se borra; y si además le eximía una ausencia, queda también la renuncia (un solo clic).
+- **Quitar:** la manual, quien gestiona o la propia persona. Deshacer la renuncia, la propia persona o quien gestiona.
+- La foto de una ausencia de una semana cerrada no se toca.
+- Todo, solo con la semana activa.
+
+### D-160 · El contador de «Mi espacio» sin consultas
+La prop compartida `weeklies.pending` (F-003) va en todas las páginas. Para no gastar consultas:
+- **La semana activa** (id, plazo y última modificación) se guarda en caché 10 minutos y se olvida al guardar o borrar una semana.
+- **El contador** se guarda 5 minutos por persona. La clave lleva el plazo y el `updated_at` de la semana, así que ampliar el plazo lo renueva para todos.
+- **Se olvida** al enviar, al cambiar una exención y al guardar o borrar una ausencia de esa persona.
+- Un alta, una baja o un cambio de rol se notan, como mucho, a los 5 minutos.
+- Con la caché caliente no hace ninguna consulta, y las páginas siguen dentro de sus presupuestos (D-046).
+
+### D-161 · Piezas menores de la 10.2
+- **Puesto** (`job_title`, F-026 y F-027): opcional, en el perfil y en el alta y edición de personas (120 caracteres).
+- **Estadísticas de envío del perfil** (F-028: enviadas, a tiempo y racha): se adelantan de la 10.4. Llegan diferidas y solo a quien escribe la weekly.
+- **Bienvenida** (F-012): un aviso al entrar con el formulario, no al volver con «Recordarme».
+- **Versión de la interfaz** (F-013): `GET /version` devuelve la versión de Inertia, sin caché, para que la pestaña abierta detecte un despliegue nuevo. La pueden pedir también los colaboradores externos: no tiene datos.
+- **Tarjeta «Weekly» de Inicio** (D-138): una tarjeta más, diferida, que no llega a los colaboradores externos.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1398,6 +1457,6 @@ La pestaña «Estado de proyectos» de las weeklies deja de alimentarse con capt
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (Weekly): D-145 a D-154 (D-151 a D-154: contrato 10.1).
+- Fase 10 (Weekly): D-145 a D-161 (D-151 a D-154: contrato 10.1; D-155 a D-161: entrega 10.2a).
 
-La siguiente libre es **D-155**.
+La siguiente libre es **D-162**.
