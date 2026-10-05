@@ -17,8 +17,8 @@ use Illuminate\Validation\ValidationException;
  * - se acepta en PNG, JPG o WebP de hasta 1 MB y NUNCA en SVG. El tipo se comprueba con fileinfo
  *   sobre el contenido real, no con la extensión ni con lo que diga el navegador,
  * - se vuelve a codificar con GD en un PNG que cabe en BOX_WIDTH × BOX_HEIGHT (sin ampliar): así
- *   no queda nada del fichero original (metadatos, trozos ajenos a la imagen) y el PDF (FPDF, que
- *   no lee WebP) y los emails usan siempre el mismo PNG,
+ *   no queda nada del fichero original (metadatos, trozos ajenos a la imagen) y los PDF (incrustado
+ *   en su HTML, D-140) y los emails usan siempre el mismo PNG,
  * - se guarda en el disco privado (`local`) y se sirve con una ruta propia y pública,
  *   /marca/logo/{versión} (BrandLogoController): los emails la cargan sin sesión. La versión es el
  *   principio del SHA-1 del PNG, así que cambiar el logo cambia la URL.

@@ -392,6 +392,7 @@ _Detalle y contexto en `docs/PLAN-FASE-2.md`. Las que surjan al implementar se a
   - barra de consumo, dentro y exceso por separado,
   - consumo por mes y listado de entradas aprobadas con fecha, persona, tarea, horas y descripción.
   Pensado para enviárselo al cliente: solo lleva las horas aprobadas o bloqueadas, como hará el portal de la F5.
+  - **Desde la Fase 9, Gotenberg (D-140):** el PDF de bolsa se maqueta en HTML con DM Sans y la hoja de documentos de Audax y lo convierte Gotenberg, con la misma información. `setasign/fpdf` se retiró de `composer.json` y `composer.lock` en la entrega 9.5.
 - **Exportación para facturar:** por cliente y periodo, con el detalle de cada entrada (dentro de bolsa y exceso por separado) y sus tarifas si hay `view-financials`.
 
 ### D-046 · Rendimiento
@@ -647,6 +648,7 @@ _Concretan D-063 a D-067 (`docs/PLAN-FASE-5.md`): las de P1 (bolsas), las de P2 
 
 ### D-095 · PDF del portal **[concreta D-066]**
 - Sus cifras, su consumo por mes y su listado son los de `PortalBankFigures` (D-092), así que **no lleva el bloque «sin aprobar»** del PDF interno (D-045): lo que el cliente no ve no aparece, ni siquiera como total aparte. La nota del PDF explica qué horas ve.
+- **Desde la Fase 9, Gotenberg (D-140):** sale del mismo motor HTML que el PDF interno, con las mismas cifras del portal y sin «sin aprobar». FPDF ya no está en el proyecto.
 
 ### D-096 · Personas y acceso en el portal **[concreta D-063 y D-064]**
 - **Con «Equipo»**, los nombres de las personas **ni se cargan ni viajan** al navegador ni al PDF (no se pide la relación con la persona); con las iniciales, solo viajan las iniciales.
@@ -1143,6 +1145,7 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
   - **En A4 apaisado:** el detallado (la tabla dinámica, partida en tablas de 10 columnas), las horas y las horas para facturar.
   - **El exceso, en rojo** (#B43A36, el de la app), aunque la hoja de Audax no tenga rojo: en el PDF de FPDF también lo estaba.
   - **PDF de bolsa:** pasa al nuevo motor con la misma información, tanto el interno como el del portal (este sin «sin aprobar», D-095). Se borran `AudaxPdf` y `HourBankStatementPdf`; la dependencia `setasign/fpdf` sigue en `composer.json` hasta la 9.5, para no tocar `composer.lock` en paralelo con las otras entregas.
+    - **Retirada en la 9.5:** nada usaba ya FPDF (comprobado con grep) y se quitó con `composer remove setasign/fpdf`. No había fuentes ni recursos propios de FPDF en `resources/` ni en `storage/`.
   - **Imprimir:** `?formato=imprimir` en la URL de cada informe. Abre el HTML del PDF sin la app y llama a `window.print()` con el nonce de la CSP; no descarga nada y queda en la auditoría.
 
 ### D-141 · Envío por correo y envíos programados
