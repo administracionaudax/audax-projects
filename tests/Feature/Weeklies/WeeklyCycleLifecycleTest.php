@@ -24,7 +24,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 | «Iniciar la semana»), ampliar el plazo, borrar una semana y el punto de enganche del cierre (10.3).
 */
 
-function madrid(string $at): CarbonImmutable
+function weeklyMadrid(string $at): CarbonImmutable
 {
     return CarbonImmutable::parse($at, 'Europe/Madrid');
 }
@@ -32,7 +32,7 @@ function madrid(string $at): CarbonImmutable
 // --- WeeklyCycleOpener -------------------------------------------------------------------------
 
 it('sin semanas, abre la semana en curso de Madrid (de lunes a viernes, plazo el viernes)', function () {
-    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(madrid('2026-10-05 00:05'));
+    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(weeklyMadrid('2026-10-05 00:05'));
 
     expect($cycle->status)->toBe(WeeklyCycleStatus::Active)
         ->and($cycle->number)->toBe('W41-26')
@@ -43,21 +43,21 @@ it('sin semanas, abre la semana en curso de Madrid (de lunes a viernes, plazo el
 });
 
 it('el domingo a última hora de Madrid aún es la semana anterior; el lunes a las 00:05, la nueva', function () {
-    expect(app(WeeklyCycleOpener::class)->target(madrid('2026-10-04 23:59'))->number)->toBe('W40-26')
-        ->and(app(WeeklyCycleOpener::class)->target(madrid('2026-10-05 00:05'))->number)->toBe('W41-26');
+    expect(app(WeeklyCycleOpener::class)->target(weeklyMadrid('2026-10-04 23:59'))->number)->toBe('W40-26')
+        ->and(app(WeeklyCycleOpener::class)->target(weeklyMadrid('2026-10-05 00:05'))->number)->toBe('W41-26');
 });
 
 it('con una activa no abre otra: la devuelve', function () {
     $active = WeeklyCycle::factory()->active('2026-09-28')->create();
 
-    expect(app(WeeklyCycleOpener::class)->ensureOpen(madrid('2026-10-05 00:05'))->id)->toBe($active->id)
+    expect(app(WeeklyCycleOpener::class)->ensureOpen(weeklyMadrid('2026-10-05 00:05'))->id)->toBe($active->id)
         ->and(WeeklyCycle::query()->count())->toBe(1);
 });
 
 it('una semana ya cerrada no se vuelve a abrir: abre la siguiente a la última', function () {
     WeeklyCycle::factory()->forWeekOf('2026-10-05')->create();
 
-    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(madrid('2026-10-07 09:00'));
+    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(weeklyMadrid('2026-10-07 09:00'));
 
     expect($cycle->number)->toBe('W42-26')
         ->and($cycle->start_date->toDateString())->toBe('2026-10-12');
@@ -66,38 +66,38 @@ it('una semana ya cerrada no se vuelve a abrir: abre la siguiente a la última',
 it('si el servidor estuvo parado semanas, abre la semana en curso, no las perdidas', function () {
     WeeklyCycle::factory()->forWeekOf('2026-09-07')->create();
 
-    expect(app(WeeklyCycleOpener::class)->ensureOpen(madrid('2026-10-07 09:00'))->number)->toBe('W41-26');
+    expect(app(WeeklyCycleOpener::class)->ensureOpen(weeklyMadrid('2026-10-07 09:00'))->number)->toBe('W41-26');
 });
 
 it('open() con una activa es ALREADY_ACTIVE; la carrera del índice único devuelve la activa', function () {
     $opener = app(WeeklyCycleOpener::class);
     WeeklyCycle::factory()->active('2026-10-05')->create();
 
-    expect(fn () => $opener->open($opener->target(madrid('2026-10-12 09:00'))))
+    expect(fn () => $opener->open($opener->target(weeklyMadrid('2026-10-12 09:00'))))
         ->toThrow(WeeklyRuleViolation::class, WeeklyRuleViolation::ALREADY_ACTIVE);
 });
 
 it('afterClose (enganche del cierre, 10.3) abre la siguiente a la cerrada', function () {
     $closed = WeeklyCycle::factory()->forWeekOf('2026-10-05')->create();
 
-    $next = app(WeeklyCycleOpener::class)->afterClose($closed, madrid('2026-10-09 18:00'));
+    $next = app(WeeklyCycleOpener::class)->afterClose($closed, weeklyMadrid('2026-10-09 18:00'));
 
     expect($next->number)->toBe('W42-26')
         ->and($next->isActive())->toBeTrue();
 });
 
 it('el cambio de año usa la semana y el año ISO (D-153)', function () {
-    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(madrid('2026-12-28 00:05'));
+    $cycle = app(WeeklyCycleOpener::class)->ensureOpen(weeklyMadrid('2026-12-28 00:05'));
 
     expect($cycle->number)->toBe('W53-26')
-        ->and(app(WeeklyCycleOpener::class)->afterClose(tap($cycle)->update(['status' => WeeklyCycleStatus::Closed, 'closed_at' => now()]), madrid('2027-01-01 18:00'))->number)
+        ->and(app(WeeklyCycleOpener::class)->afterClose(tap($cycle)->update(['status' => WeeklyCycleStatus::Closed, 'closed_at' => now()]), weeklyMadrid('2027-01-01 18:00'))->number)
         ->toBe('W01-27');
 });
 
 // --- Comando y planificador --------------------------------------------------------------------
 
 it('weeklies:open-week abre la semana y es idempotente', function () {
-    $this->travelTo(madrid('2026-10-05 00:05'));
+    $this->travelTo(weeklyMadrid('2026-10-05 00:05'));
 
     $this->artisan('weeklies:open-week')->expectsOutputToContain('W41-26')->assertSuccessful();
     $this->artisan('weeklies:open-week')->expectsOutputToContain('Ya había')->assertSuccessful();
@@ -126,7 +126,7 @@ it('se programa cada día a las 00:05 de Madrid, sin solaparse', function () {
 // --- «Iniciar la semana» (F-040) ---------------------------------------------------------------
 
 it('quien gestiona inicia la semana si no hay ninguna activa', function () {
-    $this->travelTo(madrid('2026-10-06 10:00'));
+    $this->travelTo(weeklyMadrid('2026-10-06 10:00'));
 
     $this->actingAs(userWithRole('department_manager'))
         ->post('/weeklies')
@@ -181,7 +181,7 @@ it('con la semana cerrada no se amplía el plazo (403)', function () {
 });
 
 it('ampliar el plazo recalcula quién está exento y renueva el contador de pendientes (F-098)', function () {
-    $this->travelTo(madrid('2026-10-07 10:00'));
+    $this->travelTo(weeklyMadrid('2026-10-07 10:00'));
     $cycle = WeeklyCycle::factory()->active('2026-10-05')->create();
     $me = userWithRole('employee', ['created_at' => '2026-09-01 08:00:00']);
     Absence::factory()->approved()->between('2026-10-08', '2026-10-09')->create(['user_id' => $me->id]);
@@ -197,7 +197,7 @@ it('ampliar el plazo recalcula quién está exento y renueva el contador de pend
 
 it('borrar la semana más reciente se lleva todo lo suyo y abre la siguiente', function () {
     Storage::fake('local');
-    $this->travelTo(madrid('2026-10-07 10:00'));
+    $this->travelTo(weeklyMadrid('2026-10-07 10:00'));
     $cycle = WeeklyCycle::factory()->active('2026-10-05')->create(['audio_disk' => 'local', 'audio_path' => 'weeklies/41/full.mp3']);
     $submission = WeeklySubmission::factory()->submitted()->create(['weekly_cycle_id' => $cycle->id]);
     WeeklyEntry::factory()->general()->create(['weekly_submission_id' => $submission->id]);
@@ -248,7 +248,7 @@ it('borrar no toca a las personas: autoría restrict, envíos en cascada', funct
 // --- Página de las Weeklies --------------------------------------------------------------------
 
 it('/weeklies trae la gestión de la semana a quien gestiona y no a la plantilla', function () {
-    $this->travelTo(madrid('2026-10-07 10:00'));
+    $this->travelTo(weeklyMadrid('2026-10-07 10:00'));
     $cycle = WeeklyCycle::factory()->active('2026-10-05')->create();
 
     $this->actingAs(userWithRole('department_manager'))->get('/weeklies')->assertInertia(fn (Assert $page) => $page

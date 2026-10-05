@@ -6,6 +6,7 @@ use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Delivery\ReportRequest;
 use App\Domain\Reports\Pdf\PdfConversionFailed;
 use App\Models\Project;
+use App\Models\WeeklyCycle;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
@@ -14,7 +15,7 @@ use Tests\Feature\Reports\R2Scenario;
 
 /*
 | ReportFileGenerator (Fase 9, entrega 9.2; D-139 y D-140) sobre el escenario de R2 (semana del 21
-| al 27/09/2026, hoy viernes 25): los 10 informes en Excel, CSV y PDF (con el motor `html` de los
+| al 27/09/2026, hoy viernes 25): los 11 informes (con la weekly, D-192) en Excel, CSV y PDF (con el motor `html` de los
 | tests, el HTML que convertiría Gotenberg), con los permisos de quien lo pide, sin importes sin
 | view-financials, con título y nombre legibles y en la auditoría (report-delivery). Además, la
 | versión para imprimir y la descarga por la URL de cada informe.
@@ -37,6 +38,8 @@ beforeEach(function () {
         ReportKind::Hours => new ReportRequest($kind, [], $this->week),
         ReportKind::ProjectHours => new ReportRequest($kind, ['project' => $s->web->id], ['desde' => '2026-09-01']),
         ReportKind::HourBank => new ReportRequest($kind, ['project' => $s->web->id, 'hourBank' => $s->b1->id]),
+        // La weekly (Fase 10, D-192): su informe de una semana.
+        ReportKind::Weekly => new ReportRequest($kind, ['cycle' => WeeklyCycle::factory()->create()->id]),
     };
 });
 
