@@ -57,6 +57,10 @@ export type Department = {
 export type Client = {
     id: number;
     name: string;
+    /** Emoji del cliente (Fase 10, F-126). */
+    icon?: string | null;
+    /** Satisfacción actual 0-100 (Fase 10, F-096). */
+    satisfaction_score?: number;
     tax_id: string | null;
     contact_name: string | null;
     contact_email: string | null;

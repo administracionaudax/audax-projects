@@ -56,6 +56,14 @@ export function useListFilters<T extends FilterValues>(
         }
     };
 
+    /** Varios filtros a la vez en una sola visita (p. ej. el orden y su sentido). */
+    const updateMany = (values: Partial<T>) => {
+        const next = { ...filters, ...values } as T;
+        setFilters(next);
+        window.clearTimeout(timer.current);
+        visit(next);
+    };
+
     const reset = () => {
         const next = { ...initial };
         for (const key of Object.keys(next)) {
@@ -67,5 +75,5 @@ export function useListFilters<T extends FilterValues>(
         visit(next);
     };
 
-    return { filters, update, reset };
+    return { filters, update, updateMany, reset };
 }

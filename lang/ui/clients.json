@@ -70,5 +70,17 @@
     "clients.show.period": "Periodo",
     "clients.show.consumed": "Consumidas / totales",
     "clients.show.overage": "Exceso",
-    "clients.show.closed_remaining": "Saldo sin consumir: :minutes"
+    "clients.show.closed_remaining": "Saldo sin consumir: :minutes",
+    "clients.sort_by": "Ordenar por :column",
+    "clients.filter_kind": "Tipo de proyecto",
+    "clients.filter_kind_all": "Todos los tipos",
+    "clients.filter_person": "Persona",
+    "clients.filter_person_all": "Todas las personas",
+    "clients.filter_mine": "Mis proyectos",
+    "clients.columns.projects": "Proyectos",
+    "clients.columns.last_report": "Último reporte",
+    "clients.columns.satisfaction": "Satisfacción",
+    "clients.no_reports": "Sin reportes",
+    "clients.form.icon": "Icono",
+    "clients.form.icon_help": "Un emoji para reconocerlo en la cartera y en la Weekly."
 }

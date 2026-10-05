@@ -1,5 +1,6 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import Heading from '@/components/heading';
+import { weekliesTabs } from '@/components/weeklies/insights/weeklies-tabs';
 import { WeeklyHistory } from '@/components/weeklies/weekly-history';
 import { WeeklyOverview } from '@/components/weeklies/weekly-overview';
 import { WeeklyTabs } from '@/components/weeklies/weekly-tabs';
@@ -9,23 +10,13 @@ import type { WeekliesIndexPageProps } from '@/types/weeklies';
 
 /**
  * /weeklies (F-030 a F-040 y F-064 a F-069): pestañas «Resumen» (mi weekly, mi racha, mis clientes
- * y, para quien gestiona, la semana actual con quién falta y las exenciones) e «Histórico»
- * (semana activa y última cerrada destacadas con su equipo, y la tabla). El estado de proyectos
- * llega como pestaña en la 10.4 y el informe de cada semana, en la 10.3.
+ * y, para quien gestiona, la semana actual con quién falta y las exenciones), «Histórico»
+ * (semana activa y última cerrada destacadas con su equipo, y la tabla) y, con su módulo, «Estado de
+ * proyectos» (10.4, su propia página).
  */
 export default function WeekliesIndex(props: WeekliesIndexPageProps) {
-    const tabs = [
-        {
-            id: 'resumen',
-            label: t('weeklies.tabs.summary'),
-            href: weekliesIndex.url(),
-        },
-        {
-            id: 'historico',
-            label: t('weeklies.tabs.history'),
-            href: weekliesIndex.url({ query: { pestana: 'historico' } }),
-        },
-    ];
+    const modules = usePage().props.config?.modules;
+    const tabs = weekliesTabs(modules?.project_status !== false);
 
     return (
         <>

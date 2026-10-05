@@ -1,4 +1,11 @@
-import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/react';
+import {
+    Deferred,
+    Head,
+    Link,
+    router,
+    setLayoutProps,
+    usePage,
+} from '@inertiajs/react';
 import {
     ChartColumn,
     Clock,
@@ -34,6 +41,16 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    ClientHistoryPanel,
+    ClientSatisfactionPanel,
+    ClientSummaryPanel,
+    ClientTeamPanel,
+    SatisfactionTrend,
+} from '@/components/weeklies/insights/client-weekly-panels';
+import { ProjectKindBadges } from '@/components/weeklies/insights/project-kind';
+import { ClientIcon } from '@/components/weeklies/weekly-ui';
+import { WeeklyTabs } from '@/components/weeklies/weekly-tabs';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -46,7 +63,9 @@ import {
     show,
 } from '@/routes/clients';
 import { billing, client as clientReport } from '@/routes/reports';
+import { show as showPerson } from '@/routes/team';
 import type { ClientShowProps } from '@/types';
+import type { ClientTab, ClientWeeklyData } from '@/types/weekly-insights';
 
 const MONTHS = new Intl.DateTimeFormat('es-ES', {
     month: 'long',
@@ -104,9 +123,69 @@ function Detail({
     );
 }
 
+const CLIENT_TABS: ClientTab[] = [
+    'resumen',
+    'historial',
+    'equipo',
+    'satisfaccion',
+];
+
+/** Esqueleto mientras llega la Weekly del cliente (prop diferida). */
+function WeeklyLoading() {
+    return (
+        <p
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+        >
+            <Spinner />
+            {t('weeklies.client.loading')}
+        </p>
+    );
+}
+
+/** La pestaña de la Weekly abierta (F-129 a F-133); la de «Resumen» va dentro de la ficha. */
+function WeeklyTabPanel({
+    clientId,
+    clientName,
+    data,
+    joinable,
+}: {
+    clientId: number;
+    clientName: string;
+    data: ClientWeeklyData | null;
+    joinable: ClientShowProps['joinable_projects'];
+}) {
+    if (data === null) {
+        return null;
+    }
+
+    switch (data.tab) {
+        case 'historial':
+            return <ClientHistoryPanel data={data} />;
+        case 'equipo':
+            return (
+                <ClientTeamPanel
+                    clientId={clientId}
+                    clientName={clientName}
+                    data={data}
+                    joinable={joinable}
+                />
+            );
+        case 'satisfaccion':
+            return (
+                <ClientSatisfactionPanel clientName={clientName} data={data} />
+            );
+        default:
+            return <ClientSummaryPanel clientId={clientId} data={data} />;
+    }
+}
+
 /**
  * Ficha de cliente (SPEC §6): datos, proyectos, bolsas activas con su consumo, horas del mes y del
- * año (totales de todas las personas), histórico de bolsas y el acceso al portal (Fase 5).
+ * año (totales de todas las personas), histórico de bolsas y el acceso al portal (Fase 5). Con la
+ * Weekly (Fase 10, F-128 a F-133): el icono, el responsable, la satisfacción y las insignias por tipo
+ * de proyecto en la cabecera, y las pestañas «Resumen» (con el resumen con IA y la última weekly),
+ * «Historial», «Equipo» y «Satisfacción».
  */
 export default function ClientShow({
     client,
@@ -116,6 +195,11 @@ export default function ClientShow({
     hours,
     can,
     portal,
+    tab = 'resumen',
+    owner = null,
+    kindBadges = [],
+    weekly = null,
+    joinable_projects: joinableProjects,
 }: ClientShowProps & {
     /** Acceso al portal (Fase 5, D-063): null para quien no lo gestiona. */
     portal?: ClientPortalAccess | null;
@@ -161,7 +245,13 @@ export default function ClientShow({
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
                 <header className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2">
-                        <h1 className="text-2xl font-normal tracking-tight break-words">
+                        <h1 className="flex items-center gap-3 text-2xl font-normal tracking-tight break-words">
+                            {client.icon ? (
+                                <ClientIcon
+                                    icon={client.icon}
+                                    className="size-10 text-2xl"
+                                />
+                            ) : null}
                             {client.name}
                         </h1>
                         <div className="flex flex-wrap items-center gap-2">
@@ -171,6 +261,44 @@ export default function ClientShow({
                                     {client.tax_id}
                                 </span>
                             ) : null}
+                            {can.useWeeklies &&
+                            client.satisfaction_score !== undefined ? (
+                                <SatisfactionTrend
+                                    score={client.satisfaction_score}
+                                    trend={null}
+                                    className="text-sm"
+                                />
+                            ) : null}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                            <span
+                                className="inline-flex items-center gap-1"
+                                data-test="client-owner"
+                            >
+                                <span className="text-muted-foreground">
+                                    {t('weeklies.client.owner')}:
+                                </span>
+                                {owner ? (
+                                    can.useWeeklies ? (
+                                        <Link
+                                            href={showPerson.url(owner.id)}
+                                            className={cn(
+                                                'hover:underline',
+                                                FOCUS_RING,
+                                            )}
+                                        >
+                                            {owner.name}
+                                        </Link>
+                                    ) : (
+                                        <span>{owner.name}</span>
+                                    )
+                                ) : (
+                                    <span className="text-muted-foreground">
+                                        {t('weeklies.client.owner_none')}
+                                    </span>
+                                )}
+                            </span>
+                            <ProjectKindBadges badges={kindBadges} />
                         </div>
                     </div>
                     {can.update || can.viewReport || can.viewBilling ? (
@@ -253,456 +381,533 @@ export default function ClientShow({
                     ) : null}
                 </header>
 
-                <section aria-labelledby="client-hours-heading">
-                    <h2 id="client-hours-heading" className="sr-only">
-                        {t('clients.show.summary')}
-                    </h2>
-                    <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                        <Stat
-                            icon={Clock}
-                            label={t('clients.show.month_hours', {
-                                month: monthName(hours.month_start),
-                            })}
-                            value={formatMinutes(hours.month_minutes)}
-                        />
-                        <Stat
-                            icon={Clock}
-                            label={t('clients.show.year_hours', {
-                                year: hours.year,
-                            })}
-                            value={formatMinutes(hours.year_minutes)}
-                        />
-                        <Stat
-                            icon={FolderKanban}
-                            label={t('clients.show.active_projects')}
-                            value={String(activeProjects)}
-                        />
-                        <Stat
-                            icon={Wallet}
-                            label={t('clients.show.open_banks')}
-                            value={String(hourBanks.length)}
-                        />
-                    </dl>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                        {t('clients.show.hours_note')}
-                    </p>
-                </section>
+                {can.useWeeklies ? (
+                    <WeeklyTabs
+                        label={t('weeklies.client.tabs_label')}
+                        current={tab}
+                        tabs={CLIENT_TABS.map((id) => ({
+                            id,
+                            label: t(`weeklies.client.tab.${id}`),
+                            href: show.url(client.id, {
+                                query: id === 'resumen' ? {} : { pestana: id },
+                            }),
+                        }))}
+                    />
+                ) : null}
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>
-                                <h2 className="text-base font-medium">
-                                    {t('clients.show.details')}
-                                </h2>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <dl className="grid gap-4 sm:grid-cols-2">
-                                <Detail label={t('clients.form.contact_name')}>
-                                    {client.contact_name ?? (
-                                        <span className="text-muted-foreground">
-                                            —
-                                        </span>
-                                    )}
-                                </Detail>
-                                <Detail label={t('clients.form.contact_email')}>
-                                    {client.contact_email ? (
-                                        <a
-                                            href={`mailto:${client.contact_email}`}
-                                            className={cn(
-                                                'rounded-sm text-primary-text hover:underline',
-                                                FOCUS_RING,
-                                            )}
-                                        >
-                                            {client.contact_email}
-                                        </a>
-                                    ) : (
-                                        <span className="text-muted-foreground">
-                                            —
-                                        </span>
-                                    )}
-                                </Detail>
-                                <Detail label={t('clients.form.phone')}>
-                                    {client.phone ? (
-                                        <a
-                                            href={`tel:${client.phone.replace(/\s+/g, '')}`}
-                                            className={cn(
-                                                'rounded-sm text-primary-text hover:underline',
-                                                FOCUS_RING,
-                                            )}
-                                        >
-                                            {client.phone}
-                                        </a>
-                                    ) : (
-                                        <span className="text-muted-foreground">
-                                            —
-                                        </span>
-                                    )}
-                                </Detail>
-                                <Detail label={t('clients.form.tax_id')}>
-                                    {client.tax_id ?? (
-                                        <span className="text-muted-foreground">
-                                            —
-                                        </span>
-                                    )}
-                                </Detail>
-                                {showFinancials ? (
-                                    <Detail
-                                        label={t(
-                                            'clients.form.default_hourly_rate',
-                                        )}
-                                    >
-                                        {client.default_hourly_rate ? (
-                                            <span className="tabular">
-                                                {formatCurrency(
-                                                    client.default_hourly_rate,
-                                                )}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground">
-                                                {t('clients.show.no_rate')}
-                                            </span>
-                                        )}
-                                    </Detail>
-                                ) : null}
-                                <Detail
-                                    label={t('clients.form.notes')}
-                                    className="sm:col-span-2"
-                                >
-                                    {client.notes ? (
-                                        <span className="whitespace-pre-line">
-                                            {client.notes}
-                                        </span>
-                                    ) : (
-                                        <span className="text-muted-foreground">
-                                            —
-                                        </span>
-                                    )}
-                                </Detail>
-                            </dl>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>
-                                <h2 className="flex items-center gap-2 text-base font-medium">
-                                    <Globe
-                                        aria-hidden="true"
-                                        className="size-4 text-muted-foreground"
-                                    />
-                                    {t('clients.show.portal')}
-                                </h2>
-                            </CardTitle>
-                            <CardDescription>
-                                {t('clients.show.portal_description')}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ClientPortalSection
-                                clientId={client.id}
-                                clientName={client.name}
-                                portal={portal}
-                            />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <section
-                    className="grid gap-3"
-                    aria-labelledby="client-projects-heading"
-                >
-                    <h2
-                        id="client-projects-heading"
-                        className="text-lg font-normal"
-                    >
-                        {t('clients.show.projects', { count: projects.length })}
-                    </h2>
-                    {projects.length === 0 ? (
-                        <EmptyState
-                            icon={FolderKanban}
-                            title={t('clients.show.no_projects')}
-                            description={t(
-                                'clients.show.no_projects_description',
-                            )}
+                {tab !== 'resumen' ? (
+                    <Deferred data="weekly" fallback={<WeeklyLoading />}>
+                        <WeeklyTabPanel
+                            clientId={client.id}
+                            clientName={client.name}
+                            data={weekly}
+                            joinable={joinableProjects}
                         />
-                    ) : (
-                        <div
-                            className={cn(
-                                'overflow-x-auto rounded-md border',
-                                FOCUS_RING,
-                            )}
-                            role="region"
-                            aria-label={t('clients.show.projects_table')}
-                            tabIndex={0}
-                        >
-                            <table className="w-full min-w-[40rem] text-sm">
-                                <caption className="sr-only">
-                                    {t('clients.show.projects_table')}
-                                </caption>
-                                <thead>
-                                    <tr className="border-b text-left">
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
-                                        >
-                                            {t('clients.show.project')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
-                                        >
-                                            {t('clients.show.billing')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
-                                        >
-                                            {t('clients.show.owner')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
-                                        >
-                                            {t('clients.status_filter')}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {projects.map((project) => (
-                                        <tr
-                                            key={project.id}
-                                            className="border-b last:border-b-0 even:bg-muted"
-                                            data-test="client-project"
-                                        >
-                                            <td className="px-3 py-2">
-                                                <span className="flex items-center gap-2">
-                                                    <span
-                                                        aria-hidden="true"
-                                                        className="size-2.5 shrink-0 rounded-full"
-                                                        style={{
-                                                            backgroundColor:
-                                                                project.color,
-                                                        }}
-                                                    />
-                                                    <Link
-                                                        href={urls.project(
-                                                            project.id,
-                                                        )}
-                                                        className={cn(
-                                                            'rounded-sm font-medium hover:underline',
-                                                            FOCUS_RING,
-                                                        )}
-                                                    >
-                                                        {project.name}
-                                                    </Link>
-                                                </span>
-                                                <span className="block pl-4.5 text-xs text-muted-foreground">
-                                                    {project.code}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {t(
-                                                    `project.billing_type.${project.billing_type}`,
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {project.owner?.name ?? '—'}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <ProjectStatusBadge
-                                                    status={project.status}
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </section>
-
-                <section
-                    className="grid gap-3"
-                    aria-labelledby="client-banks-heading"
-                >
-                    <h2
-                        id="client-banks-heading"
-                        className="text-lg font-normal"
-                    >
-                        {t('clients.show.banks', { count: hourBanks.length })}
-                    </h2>
-                    {hourBanks.length === 0 ? (
-                        <EmptyState
-                            icon={Wallet}
-                            title={t('clients.show.no_banks')}
-                            description={t('clients.show.no_banks_description')}
-                        />
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {hourBanks.map((bank) => (
-                                <ClientHourBankCard
-                                    key={bank.id}
-                                    bank={bank}
-                                    thresholds={thresholds}
+                    </Deferred>
+                ) : (
+                    <>
+                        <section aria-labelledby="client-hours-heading">
+                            <h2 id="client-hours-heading" className="sr-only">
+                                {t('clients.show.summary')}
+                            </h2>
+                            <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                                <Stat
+                                    icon={Clock}
+                                    label={t('clients.show.month_hours', {
+                                        month: monthName(hours.month_start),
+                                    })}
+                                    value={formatMinutes(hours.month_minutes)}
                                 />
-                            ))}
-                        </div>
-                    )}
-                </section>
+                                <Stat
+                                    icon={Clock}
+                                    label={t('clients.show.year_hours', {
+                                        year: hours.year,
+                                    })}
+                                    value={formatMinutes(hours.year_minutes)}
+                                />
+                                <Stat
+                                    icon={FolderKanban}
+                                    label={t('clients.show.active_projects')}
+                                    value={String(activeProjects)}
+                                />
+                                <Stat
+                                    icon={Wallet}
+                                    label={t('clients.show.open_banks')}
+                                    value={String(hourBanks.length)}
+                                />
+                            </dl>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {t('clients.show.hours_note')}
+                            </p>
+                        </section>
 
-                <section
-                    className="grid gap-3"
-                    aria-labelledby="client-history-heading"
-                >
-                    <h2
-                        id="client-history-heading"
-                        className="flex items-center gap-2 text-lg font-normal"
-                    >
-                        <History
-                            aria-hidden="true"
-                            className="size-5 text-muted-foreground"
-                            strokeWidth={1.5}
-                        />
-                        {t('clients.show.history')}
-                    </h2>
-                    {hourBankHistory.length === 0 ? (
-                        <EmptyState
-                            icon={History}
-                            title={t('clients.show.no_history')}
-                        />
-                    ) : (
-                        <div
-                            className={cn(
-                                'overflow-x-auto rounded-md border',
-                                FOCUS_RING,
-                            )}
-                            role="region"
-                            aria-label={t('clients.show.history_table')}
-                            tabIndex={0}
-                        >
-                            <table className="w-full min-w-[44rem] text-sm">
-                                <caption className="sr-only">
-                                    {t('clients.show.history_table')}
-                                </caption>
-                                <thead>
-                                    <tr className="border-b text-left">
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
+                        {can.useWeeklies ? (
+                            <Deferred
+                                data="weekly"
+                                fallback={<WeeklyLoading />}
+                            >
+                                <WeeklyTabPanel
+                                    clientId={client.id}
+                                    clientName={client.name}
+                                    data={weekly}
+                                    joinable={joinableProjects}
+                                />
+                            </Deferred>
+                        ) : null}
+
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>
+                                        <h2 className="text-base font-medium">
+                                            {t('clients.show.details')}
+                                        </h2>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <dl className="grid gap-4 sm:grid-cols-2">
+                                        <Detail
+                                            label={t(
+                                                'clients.form.contact_name',
+                                            )}
                                         >
-                                            {t('clients.show.bank')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
+                                            {client.contact_name ?? (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </Detail>
+                                        <Detail
+                                            label={t(
+                                                'clients.form.contact_email',
+                                            )}
                                         >
-                                            {t('clients.show.period')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 text-right font-medium"
+                                            {client.contact_email ? (
+                                                <a
+                                                    href={`mailto:${client.contact_email}`}
+                                                    className={cn(
+                                                        'rounded-sm text-primary-text hover:underline',
+                                                        FOCUS_RING,
+                                                    )}
+                                                >
+                                                    {client.contact_email}
+                                                </a>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </Detail>
+                                        <Detail label={t('clients.form.phone')}>
+                                            {client.phone ? (
+                                                <a
+                                                    href={`tel:${client.phone.replace(/\s+/g, '')}`}
+                                                    className={cn(
+                                                        'rounded-sm text-primary-text hover:underline',
+                                                        FOCUS_RING,
+                                                    )}
+                                                >
+                                                    {client.phone}
+                                                </a>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </Detail>
+                                        <Detail
+                                            label={t('clients.form.tax_id')}
                                         >
-                                            {t('clients.show.consumed')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 text-right font-medium"
-                                        >
-                                            {t('clients.show.overage')}
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-3 py-2 font-medium"
-                                        >
-                                            {t('clients.status_filter')}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {hourBankHistory.map((bank) => (
-                                        <tr
-                                            key={bank.id}
-                                            className="border-b last:border-b-0 even:bg-muted"
-                                            data-test="client-bank-history"
-                                        >
-                                            <td className="px-3 py-2">
-                                                {bank.project ? (
-                                                    <Link
-                                                        href={urls.hourBank(
-                                                            bank.project.id,
-                                                            bank.id,
-                                                        )}
-                                                        className={cn(
-                                                            'rounded-sm font-medium hover:underline',
-                                                            FOCUS_RING,
-                                                        )}
-                                                    >
-                                                        {bank.name}
-                                                    </Link>
-                                                ) : (
-                                                    bank.name
-                                                )}
-                                                {bank.project ? (
-                                                    <span className="block text-xs text-muted-foreground">
-                                                        {bank.project.code} ·{' '}
-                                                        {bank.project.name}
-                                                    </span>
-                                                ) : null}
-                                            </td>
-                                            <td className="tabular px-3 py-2 whitespace-nowrap">
-                                                {formatDate(bank.start_date)}
-                                                {bank.end_date
-                                                    ? ` – ${formatDate(bank.end_date)}`
-                                                    : ''}
-                                            </td>
-                                            <td className="tabular px-3 py-2 text-right whitespace-nowrap">
-                                                {formatMinutes(
-                                                    bank.consumed_minutes,
-                                                )}{' '}
-                                                /{' '}
-                                                {formatMinutes(
-                                                    bank.total_minutes,
-                                                )}
-                                            </td>
-                                            <td
-                                                className={cn(
-                                                    'tabular px-3 py-2 text-right whitespace-nowrap',
-                                                    bank.overage_minutes > 0 &&
-                                                        'font-medium text-danger',
+                                            {client.tax_id ?? (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </Detail>
+                                        {showFinancials ? (
+                                            <Detail
+                                                label={t(
+                                                    'clients.form.default_hourly_rate',
                                                 )}
                                             >
-                                                {bank.overage_minutes > 0
-                                                    ? `+${formatMinutes(bank.overage_minutes)}`
-                                                    : '0:00'}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <HourBankStatusBadge
-                                                    status={bank.status}
-                                                />
-                                                {bank.status === 'closed' &&
-                                                bank.closed_remaining_minutes ? (
-                                                    <span className="block text-xs text-muted-foreground">
-                                                        {t(
-                                                            'clients.show.closed_remaining',
-                                                            {
-                                                                minutes:
-                                                                    formatMinutes(
-                                                                        bank.closed_remaining_minutes,
-                                                                    ),
-                                                            },
+                                                {client.default_hourly_rate ? (
+                                                    <span className="tabular">
+                                                        {formatCurrency(
+                                                            client.default_hourly_rate,
                                                         )}
                                                     </span>
-                                                ) : null}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        {t(
+                                                            'clients.show.no_rate',
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </Detail>
+                                        ) : null}
+                                        <Detail
+                                            label={t('clients.form.notes')}
+                                            className="sm:col-span-2"
+                                        >
+                                            {client.notes ? (
+                                                <span className="whitespace-pre-line">
+                                                    {client.notes}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </Detail>
+                                    </dl>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>
+                                        <h2 className="flex items-center gap-2 text-base font-medium">
+                                            <Globe
+                                                aria-hidden="true"
+                                                className="size-4 text-muted-foreground"
+                                            />
+                                            {t('clients.show.portal')}
+                                        </h2>
+                                    </CardTitle>
+                                    <CardDescription>
+                                        {t('clients.show.portal_description')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <ClientPortalSection
+                                        clientId={client.id}
+                                        clientName={client.name}
+                                        portal={portal}
+                                    />
+                                </CardContent>
+                            </Card>
                         </div>
-                    )}
-                </section>
+
+                        <section
+                            className="grid gap-3"
+                            aria-labelledby="client-projects-heading"
+                        >
+                            <h2
+                                id="client-projects-heading"
+                                className="text-lg font-normal"
+                            >
+                                {t('clients.show.projects', {
+                                    count: projects.length,
+                                })}
+                            </h2>
+                            {projects.length === 0 ? (
+                                <EmptyState
+                                    icon={FolderKanban}
+                                    title={t('clients.show.no_projects')}
+                                    description={t(
+                                        'clients.show.no_projects_description',
+                                    )}
+                                />
+                            ) : (
+                                <div
+                                    className={cn(
+                                        'overflow-x-auto rounded-md border',
+                                        FOCUS_RING,
+                                    )}
+                                    role="region"
+                                    aria-label={t(
+                                        'clients.show.projects_table',
+                                    )}
+                                    tabIndex={0}
+                                >
+                                    <table className="w-full min-w-[40rem] text-sm">
+                                        <caption className="sr-only">
+                                            {t('clients.show.projects_table')}
+                                        </caption>
+                                        <thead>
+                                            <tr className="border-b text-left">
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.show.project')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.show.billing')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.show.owner')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.status_filter')}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {projects.map((project) => (
+                                                <tr
+                                                    key={project.id}
+                                                    className="border-b last:border-b-0 even:bg-muted"
+                                                    data-test="client-project"
+                                                >
+                                                    <td className="px-3 py-2">
+                                                        <span className="flex items-center gap-2">
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="size-2.5 shrink-0 rounded-full"
+                                                                style={{
+                                                                    backgroundColor:
+                                                                        project.color,
+                                                                }}
+                                                            />
+                                                            <Link
+                                                                href={urls.project(
+                                                                    project.id,
+                                                                )}
+                                                                className={cn(
+                                                                    'rounded-sm font-medium hover:underline',
+                                                                    FOCUS_RING,
+                                                                )}
+                                                            >
+                                                                {project.name}
+                                                            </Link>
+                                                        </span>
+                                                        <span className="block pl-4.5 text-xs text-muted-foreground">
+                                                            {project.code}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {t(
+                                                            `project.billing_type.${project.billing_type}`,
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {project.owner?.name ??
+                                                            '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <ProjectStatusBadge
+                                                            status={
+                                                                project.status
+                                                            }
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </section>
+
+                        <section
+                            className="grid gap-3"
+                            aria-labelledby="client-banks-heading"
+                        >
+                            <h2
+                                id="client-banks-heading"
+                                className="text-lg font-normal"
+                            >
+                                {t('clients.show.banks', {
+                                    count: hourBanks.length,
+                                })}
+                            </h2>
+                            {hourBanks.length === 0 ? (
+                                <EmptyState
+                                    icon={Wallet}
+                                    title={t('clients.show.no_banks')}
+                                    description={t(
+                                        'clients.show.no_banks_description',
+                                    )}
+                                />
+                            ) : (
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {hourBanks.map((bank) => (
+                                        <ClientHourBankCard
+                                            key={bank.id}
+                                            bank={bank}
+                                            thresholds={thresholds}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
+                        <section
+                            className="grid gap-3"
+                            aria-labelledby="client-history-heading"
+                        >
+                            <h2
+                                id="client-history-heading"
+                                className="flex items-center gap-2 text-lg font-normal"
+                            >
+                                <History
+                                    aria-hidden="true"
+                                    className="size-5 text-muted-foreground"
+                                    strokeWidth={1.5}
+                                />
+                                {t('clients.show.history')}
+                            </h2>
+                            {hourBankHistory.length === 0 ? (
+                                <EmptyState
+                                    icon={History}
+                                    title={t('clients.show.no_history')}
+                                />
+                            ) : (
+                                <div
+                                    className={cn(
+                                        'overflow-x-auto rounded-md border',
+                                        FOCUS_RING,
+                                    )}
+                                    role="region"
+                                    aria-label={t('clients.show.history_table')}
+                                    tabIndex={0}
+                                >
+                                    <table className="w-full min-w-[44rem] text-sm">
+                                        <caption className="sr-only">
+                                            {t('clients.show.history_table')}
+                                        </caption>
+                                        <thead>
+                                            <tr className="border-b text-left">
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.show.bank')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.show.period')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 text-right font-medium"
+                                                >
+                                                    {t('clients.show.consumed')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 text-right font-medium"
+                                                >
+                                                    {t('clients.show.overage')}
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    className="px-3 py-2 font-medium"
+                                                >
+                                                    {t('clients.status_filter')}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {hourBankHistory.map((bank) => (
+                                                <tr
+                                                    key={bank.id}
+                                                    className="border-b last:border-b-0 even:bg-muted"
+                                                    data-test="client-bank-history"
+                                                >
+                                                    <td className="px-3 py-2">
+                                                        {bank.project ? (
+                                                            <Link
+                                                                href={urls.hourBank(
+                                                                    bank.project
+                                                                        .id,
+                                                                    bank.id,
+                                                                )}
+                                                                className={cn(
+                                                                    'rounded-sm font-medium hover:underline',
+                                                                    FOCUS_RING,
+                                                                )}
+                                                            >
+                                                                {bank.name}
+                                                            </Link>
+                                                        ) : (
+                                                            bank.name
+                                                        )}
+                                                        {bank.project ? (
+                                                            <span className="block text-xs text-muted-foreground">
+                                                                {
+                                                                    bank.project
+                                                                        .code
+                                                                }{' '}
+                                                                ·{' '}
+                                                                {
+                                                                    bank.project
+                                                                        .name
+                                                                }
+                                                            </span>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="tabular px-3 py-2 whitespace-nowrap">
+                                                        {formatDate(
+                                                            bank.start_date,
+                                                        )}
+                                                        {bank.end_date
+                                                            ? ` – ${formatDate(bank.end_date)}`
+                                                            : ''}
+                                                    </td>
+                                                    <td className="tabular px-3 py-2 text-right whitespace-nowrap">
+                                                        {formatMinutes(
+                                                            bank.consumed_minutes,
+                                                        )}{' '}
+                                                        /{' '}
+                                                        {formatMinutes(
+                                                            bank.total_minutes,
+                                                        )}
+                                                    </td>
+                                                    <td
+                                                        className={cn(
+                                                            'tabular px-3 py-2 text-right whitespace-nowrap',
+                                                            bank.overage_minutes >
+                                                                0 &&
+                                                                'font-medium text-danger',
+                                                        )}
+                                                    >
+                                                        {bank.overage_minutes >
+                                                        0
+                                                            ? `+${formatMinutes(bank.overage_minutes)}`
+                                                            : '0:00'}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <HourBankStatusBadge
+                                                            status={bank.status}
+                                                        />
+                                                        {bank.status ===
+                                                            'closed' &&
+                                                        bank.closed_remaining_minutes ? (
+                                                            <span className="block text-xs text-muted-foreground">
+                                                                {t(
+                                                                    'clients.show.closed_remaining',
+                                                                    {
+                                                                        minutes:
+                                                                            formatMinutes(
+                                                                                bank.closed_remaining_minutes,
+                                                                            ),
+                                                                    },
+                                                                )}
+                                                            </span>
+                                                        ) : null}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </section>
+                    </>
+                )}
             </div>
         </>
     );

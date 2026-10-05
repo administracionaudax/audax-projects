@@ -22,6 +22,7 @@ import type { Client } from '@/types';
 
 type ClientForm = {
     name: string;
+    icon: string;
     tax_id: string;
     contact_name: string;
     contact_email: string;
@@ -33,6 +34,7 @@ type ClientForm = {
 function initialData(client?: Client): ClientForm {
     return {
         name: client?.name ?? '',
+        icon: client?.icon ?? '',
         tax_id: client?.tax_id ?? '',
         contact_name: client?.contact_name ?? '',
         contact_email: client?.contact_email ?? '',
@@ -46,7 +48,8 @@ function initialData(client?: Client): ClientForm {
 
 /**
  * Alta y edición de un cliente en un diálogo (SPEC §6). La tarifa por defecto solo aparece con
- * view-financials (el servidor la ignora sin ese permiso). Solo el nombre es obligatorio.
+ * view-financials (el servidor la ignora sin ese permiso). Solo el nombre es obligatorio. El icono
+ * (un emoji, F-126) sale en la cartera, la ficha y la Weekly.
  */
 export function ClientDialog({
     client,
@@ -158,6 +161,12 @@ export function ClientDialog({
                         {text('name', t('clients.form.name'), {
                             required: true,
                             maxLength: 255,
+                        })}
+                        {text('icon', t('clients.form.icon'), {
+                            optional: true,
+                            maxLength: 16,
+                            placeholder: '🍷',
+                            help: t('clients.form.icon_help'),
                         })}
                         {text('tax_id', t('clients.form.tax_id'), {
                             optional: true,

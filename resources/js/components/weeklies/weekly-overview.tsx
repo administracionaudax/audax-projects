@@ -559,7 +559,7 @@ function ClientGroup({
     );
 }
 
-function LeaveProject({
+export function LeaveProject({
     projectId,
     code,
 }: {
