@@ -1,18 +1,26 @@
 <?php
 
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
+use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
+use App\Domain\Privacy\Export\Sections\DictationsSection;
 use App\Domain\Privacy\Export\Sections\IntegrationsSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
 use App\Domain\Privacy\Export\Sections\NotificationsSection;
 use App\Domain\Privacy\Export\Sections\ProfileSection;
 use App\Domain\Privacy\Export\Sections\TaskCommentsSection;
 use App\Domain\Privacy\Export\Sections\TimeEntriesSection;
+use App\Domain\Privacy\Export\Sections\WeeklyEntriesSection;
+use App\Domain\Privacy\Export\Sections\WeeklyExemptionsSection;
+use App\Domain\Privacy\Export\Sections\WeeklyRemindersSection;
+use App\Domain\Privacy\Export\Sections\WeeklySubmissionsSection;
 use App\Domain\Privacy\Export\Sections\WorkSchedulesSection;
 use App\Domain\Privacy\Retention\ActivityLogPruner;
 use App\Domain\Privacy\Retention\ChatMessagesPruner;
+use App\Domain\Privacy\Retention\DictationsPruner;
 use App\Domain\Privacy\Retention\LoginEventsPruner;
 use App\Domain\Privacy\Retention\ReadNotificationsPruner;
+use App\Domain\Privacy\Retention\WeeklyReminderLogsPruner;
 use App\Domain\Privacy\RetentionPolicy;
 
 /*
@@ -36,6 +44,14 @@ return [
         AbsencesSection::class,
         TaskCommentsSection::class,
         ChatMessagesSection::class,
+        // La Weekly (Fase 10, 10.5, D-202): envíos, apuntes, dictados, exenciones, los resúmenes
+        // con IA sobre la persona y los avisos que ha recibido.
+        WeeklySubmissionsSection::class,
+        WeeklyEntriesSection::class,
+        DictationsSection::class,
+        WeeklyExemptionsSection::class,
+        AiSummariesSection::class,
+        WeeklyRemindersSection::class,
         NotificationsSection::class,
         // Cuenta de Google conectada (Fase 9, D-142): el correo y la fecha, nunca los tokens.
         IntegrationsSection::class,
@@ -49,6 +65,9 @@ return [
         RetentionPolicy::READ_NOTIFICATIONS => ReadNotificationsPruner::class,
         RetentionPolicy::ACTIVITY_LOG => ActivityLogPruner::class,
         RetentionPolicy::CHAT_MESSAGES => ChatMessagesPruner::class,
+        // La Weekly (10.5, D-202): el registro de avisos y los dictados (borradores de texto).
+        RetentionPolicy::WEEKLY_REMINDER_LOGS => WeeklyReminderLogsPruner::class,
+        RetentionPolicy::DICTATIONS => DictationsPruner::class,
     ],
 
     // Filas por lote al borrar: cada lote es una sentencia corta, sin bloqueos largos.

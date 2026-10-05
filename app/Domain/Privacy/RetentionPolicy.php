@@ -8,8 +8,9 @@ use Carbon\CarbonImmutable;
 /**
  * Plazos de retención configurables (SPEC §15, D-075). Los aplica el comando diario
  * app:prune-data. NUNCA se borran horas, bolsas, tareas ni proyectos: solo registros de acceso,
- * notificaciones leídas, auditoría antigua, mensajes del chat (si se fija un plazo) y
- * exportaciones de datos personales caducadas.
+ * notificaciones leídas, auditoría antigua, mensajes del chat (si se fija un plazo), el registro de
+ * avisos y los dictados de la Weekly (D-202) y exportaciones de datos personales caducadas. Las
+ * weeklies (envíos y apuntes) no caducan: son el histórico del equipo, como las horas.
  */
 final class RetentionPolicy
 {
@@ -21,12 +22,20 @@ final class RetentionPolicy
 
     public const string CHAT_MESSAGES = 'chat_messages';
 
+    /** Registro de avisos de la Weekly (10.5, D-202): lleva el nombre y el email de quien lo recibe. */
+    public const string WEEKLY_REMINDER_LOGS = 'weekly_reminder_logs';
+
+    /** Dictados de la Weekly (D-152 y D-202): borradores de texto que ya se copiaron al apunte. */
+    public const string DICTATIONS = 'dictations';
+
     /** Ajuste de cada tipo de dato, en meses (null = sin límite). */
     public const array SETTINGS = [
         self::LOGIN_EVENTS => 'retention_login_events_months',
         self::READ_NOTIFICATIONS => 'retention_read_notifications_months',
         self::ACTIVITY_LOG => 'retention_activity_log_months',
         self::CHAT_MESSAGES => 'retention_chat_messages_months',
+        self::WEEKLY_REMINDER_LOGS => 'retention_weekly_reminder_logs_months',
+        self::DICTATIONS => 'retention_dictations_months',
     ];
 
     /** Mínimo en meses que se puede fijar (la auditoría, al menos un año). */
@@ -35,6 +44,8 @@ final class RetentionPolicy
         self::READ_NOTIFICATIONS => 1,
         self::ACTIVITY_LOG => 12,
         self::CHAT_MESSAGES => 1,
+        self::WEEKLY_REMINDER_LOGS => 1,
+        self::DICTATIONS => 1,
     ];
 
     /** Máximo en meses (10 años). */

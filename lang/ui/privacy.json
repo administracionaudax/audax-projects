@@ -55,6 +55,8 @@
     "privacy.retention.types.read_notifications": "Notificaciones leídas",
     "privacy.retention.types.activity_log": "Registro de cambios (auditoría)",
     "privacy.retention.types.chat_messages": "Mensajes del chat",
+    "privacy.retention.types.weekly_reminder_logs": "Registro de avisos de la Weekly",
+    "privacy.retention.types.dictations": "Dictados de la Weekly",
     "privacy.admin.title": "Privacidad y datos",
     "privacy.admin.heading": "Privacidad y [[datos]]",
     "privacy.admin.description": "El texto informativo que lee la plantilla, cuánto se conserva cada dato y los avisos de almacenamiento.",
@@ -92,5 +94,6 @@
     "privacy.admin_user.request": "Preparar sus datos",
     "privacy.admin_user.in_progress": "Ya hay una exportación en curso.",
     "privacy.admin_user.empty": "Aún no se ha exportado ningún dato de esta persona",
+    "privacy.admin.dictations_help": "El texto de cada dictado ya está en su apunte de la weekly: aquí solo se borra el borrador del dictado. El audio nunca se guarda.",
     "privacy.admin.chat_messages_help": "Con un plazo, cada mensaje más antiguo se borra con sus adjuntos, sus audios y sus transcripciones. Las tareas creadas desde un mensaje se conservan."
 }

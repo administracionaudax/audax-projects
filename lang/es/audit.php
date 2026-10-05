@@ -283,6 +283,8 @@ return [
         'retention_read_notifications_months' => 'Conservación de las notificaciones leídas',
         'retention_activity_log_months' => 'Conservación de la auditoría',
         'retention_chat_messages_months' => 'Conservación de los mensajes del chat',
+        'retention_weekly_reminder_logs_months' => 'Conservación del registro de avisos de la Weekly',
+        'retention_dictations_months' => 'Conservación de los dictados de la Weekly',
         'personal_data_export_days' => 'Días para descargar los datos personales',
         'disk_warning_percent' => 'Aviso de disco',
         'attachments_warning_gb' => 'Aviso de adjuntos',
