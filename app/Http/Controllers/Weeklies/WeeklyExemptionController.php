@@ -66,7 +66,11 @@ class WeeklyExemptionController extends Controller
 
         if ($roster->reasonFor($user->id) === WeeklyExemptionReason::Manual) {
             WeeklyExemption::query()->where('weekly_cycle_id', $cycle->id)->where('user_id', $user->id)->delete();
-        } else {
+            $roster = $eligibility->rosterForUser($cycle, $user);
+        }
+
+        // Si además le exime una ausencia, queda la renuncia: con un solo clic puede escribir.
+        if ($roster->isExempt($user->id)) {
             WeeklyExemption::query()->updateOrCreate(
                 ['weekly_cycle_id' => $cycle->id, 'user_id' => $user->id],
                 ['reason' => WeeklyExemptionReason::Waived, 'absence_id' => $roster->absenceFor($user->id), 'note' => null, 'created_by' => $user->id],
