@@ -144,7 +144,7 @@ describe('DictationButton (dictado de la weekly, F-049)', () => {
 
         // La subida: multipart con la semana, el cliente, el audio y la duración.
         const [url, init] = fetchMock.mock.calls[0];
-        expect(String(url)).toBe('/mi-espacio/dictados');
+        expect(url).toBe('/mi-espacio/dictados');
         expect(init?.method).toBe('POST');
         const body = init?.body as FormData;
         expect(body.get('context')).toBe('weekly_entry');
@@ -180,9 +180,7 @@ describe('DictationButton (dictado de la weekly, F-049)', () => {
             vi.advanceTimersByTime(DICTATION_POLL_MS);
         });
 
-        expect(String(fetchMock.mock.calls[2][0])).toBe(
-            '/mi-espacio/dictados/5',
-        );
+        expect(fetchMock.mock.calls[2][0]).toBe('/mi-espacio/dictados/5');
         expect(onText).toHaveBeenCalledWith('Revisada la home con el cliente.');
         expect(
             document.querySelector('[data-test="dictation-transcribing"]'),
@@ -268,7 +266,7 @@ describe('DictationButton (dictado de la weekly, F-049)', () => {
         });
 
         expect(
-            (fetchMock.mock.calls[0][1]?.body as FormData).has('client_id'),
+            (fetchMock.mock.calls[0][1]!.body as FormData).has('client_id'),
         ).toBe(false);
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(onText).not.toHaveBeenCalled();

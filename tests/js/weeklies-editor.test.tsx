@@ -231,9 +231,9 @@ describe('Mi weekly: una caja por cliente con autoguardado (F-044 y F-051)', () 
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const [url, init] = fetchMock.mock.calls[0];
-        expect(String(url)).toBe('/mi-espacio/weeklies/12');
+        expect(url).toBe('/mi-espacio/weeklies/12');
         expect(init?.method).toBe('PUT');
-        expect(JSON.parse(String(init?.body))).toEqual({
+        expect(JSON.parse(init?.body as string)).toEqual({
             entries: [
                 {
                     client_id: 3,
