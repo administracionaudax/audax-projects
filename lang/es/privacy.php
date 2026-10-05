@@ -302,6 +302,17 @@ MD,
                     'created_at' => 'Fecha',
                 ],
             ],
+            'my_space_tasks' => [
+                'description' => 'Lo tuyo de las tareas de «Mi espacio»: las tareas que te ha propuesto la IA y aún no has creado ni descartado, y las que has archivado de tu lista.',
+                'columns' => [
+                    'kind' => 'Tipo',
+                    'title' => 'Tarea',
+                    'client' => 'Cliente',
+                    'week' => 'Semana de origen',
+                    'author' => 'Del reporte de',
+                    'date' => 'Fecha',
+                ],
+            ],
             'chat_messages' => [
                 'description' => 'Tus mensajes del chat (no los de otras personas): conversación, fecha, texto, adjuntos y la transcripción de tus audios. También los borrados que siguen guardados.',
                 'columns' => [
@@ -321,6 +332,11 @@ MD,
         ],
         // La Weekly (Fase 10, 10.5): estados del dictado y tipos de resumen con IA.
         'weeklies' => [
+            // Mi espacio (10.6).
+            'my_space_kind' => [
+                'suggestion' => 'Tarea sugerida por la IA (sin crear)',
+                'archived' => 'Tarea archivada de mi lista',
+            ],
             'dictation_status' => [
                 'pending' => 'En cola',
                 'processing' => 'Transcribiendo',

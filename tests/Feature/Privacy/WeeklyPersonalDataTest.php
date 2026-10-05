@@ -2,6 +2,7 @@
 
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
+use App\Domain\Privacy\Export\Sections\MySpaceTasksSection;
 use App\Domain\Privacy\Export\Sections\WeeklyEntriesSection;
 use App\Domain\Privacy\Export\Sections\WeeklyExemptionsSection;
 use App\Domain\Privacy\Export\Sections\WeeklyRemindersSection;
@@ -17,6 +18,9 @@ use App\Models\Client;
 use App\Models\Dictation;
 use App\Models\Project;
 use App\Models\Setting;
+use App\Models\Task;
+use App\Models\TaskArchive;
+use App\Models\TaskSuggestionBatch;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyEntry;
@@ -145,4 +149,26 @@ it('app:prune-data borra el registro de avisos y los dictados pasado su plazo, y
     Setting::set('retention_weekly_reminder_logs_months', 120);
     $this->artisan('app:prune-data')->assertSuccessful();
     expect(DB::table('weekly_reminder_logs')->count())->toBe(1);
+});
+
+it('lo mío de las tareas de Mi espacio: las sugeridas sin crear y las que he archivado (10.6)', function () {
+    $task = Task::factory()->create(['title' => 'Tarea compartida']);
+    TaskArchive::query()->create(['user_id' => $this->elena->id, 'task_id' => $task->id]);
+    TaskArchive::query()->create(['user_id' => $this->other->id, 'task_id' => $task->id]);
+    TaskSuggestionBatch::query()->create([
+        'user_id' => $this->elena->id, 'weekly_cycle_id' => $this->cycle->id, 'state' => WeeklyJobState::Done,
+        'items' => [['key' => 'a', 'title' => 'Revisar el banner', 'client_id' => $this->client->id, 'client_name' => 'Acme', 'author_name' => 'Raúl']],
+        'generated_at' => now(),
+    ]);
+    TaskSuggestionBatch::query()->create(['user_id' => $this->other->id, 'state' => WeeklyJobState::Done, 'items' => [['key' => 'b', 'title' => 'De otra persona']]]);
+
+    $section = new MySpaceTasksSection;
+    $rows = ($this->rows)($section, $this->elena);
+
+    expect(config('privacy.export_sections'))->toContain(MySpaceTasksSection::class)
+        ->and($section->description())->not->toStartWith('privacy.')
+        ->and($rows)->toHaveCount(2)
+        ->and($rows[0])->toMatchArray(['title' => 'Revisar el banner', 'client' => 'Acme', 'week' => 'W41-26', 'author' => 'Raúl'])
+        ->and($rows[1])->toMatchArray(['title' => 'Tarea compartida', 'kind' => 'Tarea archivada de mi lista'])
+        ->and(json_encode($rows))->not->toContain('De otra persona');
 });
