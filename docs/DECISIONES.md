@@ -1178,6 +1178,7 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
   - **Programar desde `/informes/envios`:** se pueden programar el informe personal, el detallado y el de dirección (si lo ves). El resto, desde «Exportar ▾» de cada informe.
   - **Editar:** cambia la frecuencia, el periodo relativo, los destinatarios, el formato, el asunto y el mensaje, pero no el informe ni sus filtros. Se comprueba que el propietario puede verlo.
   - **Títulos:** el de la lista es el que se veía al programar; el correo usa `ReportFileGenerator::title()` del día del envío.
+  - **Memoria de la cola `mail` (9.5):** como ahí se generan el PDF y el Excel de los envíos, la cola `mail` tiene su propio supervisor de Horizon (`supervisor-mail`): un proceso con `memory` 256 y `timeout` 300, y `SendReportDelivery` sube el `memory_limit` de la CLI (128M en el servidor) hasta esos 256 MB. `default` sigue con 2 procesos de 128 MB. Los workers suman 512 MB, el límite de `audax-horizon.service`; con el maestro, el transcriptor y Reverb, 1088 MB dentro de los 1280 MiB de `system-audax.slice`. Lo comprueba `QueueConfigTest` leyendo `deploy/systemd/`, y el reparto está en `docs/DEPLOY.md`.
 
 ### D-142 · Google Sheets
 - **Conexión:** cada persona conecta su cuenta de Google de Workspace en *Ajustes → Integraciones* (OAuth, tipo «Interno»), con el alcance mínimo **`drive.file`**: la app solo puede tocar los archivos que ella misma crea.
@@ -1204,6 +1205,20 @@ Pedido por el propietario el 03/10: cada persona puede ordenar a su gusto las ta
     - la entrada «Integraciones» de Ajustes no aparece en el portal ni a los colaboradores externos.
   - **Auditoría:** entidad `report_delivery` (log `report-delivery`) y acción `sheets_exported` (evento `sheets`) en `AuditCatalog`, con el informe, sus parámetros, sus filtros y el título, nunca tokens.
   - **Privacidad (D-075):** la exportación de datos personales lleva `integraciones.json/.csv` con el servicio, la cuenta y la fecha de conexión, nunca los tokens.
+- **Cabos cerrados en la 9.5:**
+  - **Ficheros grandes:** la subida multipart de Drive admite hasta 5 MB. Por encima, **subida reanudable**:
+    - un POST de inicio (`uploadType=resumable`) con los metadatos, incluido el `mimeType` de conversión a hoja de cálculo, y el tipo y el tamaño del contenido,
+    - el contenido en PUT a la URI de la sesión, por trozos de 8 MB (múltiplos de 256 KiB) leídos del disco uno a uno, así que nunca está entero en memoria,
+    - si un trozo falla por la red o con un 5xx, se pregunta a Drive cuánto ha guardado (`Content-Range: bytes */total`) y se sigue desde ahí, 3 veces como mucho; cualquier otro error, o la sesión caducada, responde 502,
+    - un 401 a mitad renueva el token una vez y repite el trozo,
+    - solo se acepta una URI de sesión de `www.googleapis.com/upload/drive/v3/files`, porque cada trozo lleva el token.
+  - **Desconexión automática:** al desactivar a una persona (la baja de `/admin/usuarios/{user}/baja` y cualquier `is_active = false`, desde `User::booted`) o al pasarla a colaborador externo (`CollaboratorOffboarding::becameCollaborator`, desde la administración o la importación), `GoogleDisconnector`:
+    - borra su fila de `google_connections` en el momento, dentro de la misma transacción,
+    - y revoca el token en Google desde la cola (`RevokeGoogleToken`), después del commit y sin bloquear. El job va cifrado (`ShouldBeEncrypted`, el token nunca queda en claro en Valkey ni en `failed_jobs`) y tiene un solo intento: si Google no lo confirma, queda un aviso en el registro, sin el token, y no se reintenta.
+  - **Auditoría:** entidad «Integraciones» (log `integrations`) y acción «Cuentas de Google conectadas y desconectadas» en `AuditCatalog`, sobre la persona dueña de la cuenta y con su correo de Google, nunca tokens. Eventos:
+    - `google_connected`,
+    - `google_disconnected`, cuando la persona la desconecta, con si Google confirmó la revocación,
+    - `google_auto_disconnected`, con el motivo: baja, paso a colaborador o acceso retirado por Google (`invalid_grant` o un token renovado que Drive rechaza).
 
 ### D-143 · Mis tareas: orden por imputación, filtros y paginación **[cambia D-037 y SPEC §6]**
 Pedido por el propietario el 03/10: filtros para reordenar y encontrar tareas rápido y, por defecto, las últimas tareas por orden de imputación.
