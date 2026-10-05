@@ -23,6 +23,9 @@ final class FakeReportFileGenerator implements ReportFileGenerator
     /** @var list<string> */
     public array $paths = [];
 
+    /** Contenido del XLSX que se escribe (por defecto, CONTENTS). */
+    public ?string $contents = null;
+
     public function generate(ReportRequest $request, ExportFormat $format, User $as): GeneratedReportFile
     {
         if ($request->kind === ReportKind::Client) {
@@ -30,7 +33,7 @@ final class FakeReportFileGenerator implements ReportFileGenerator
         }
 
         $path = (string) tempnam(sys_get_temp_dir(), 'audax-report-');
-        file_put_contents($path, self::CONTENTS);
+        file_put_contents($path, $this->contents ?? self::CONTENTS);
         $this->paths[] = $path;
 
         return new GeneratedReportFile($path, 'informe.xlsx', $format, $this->title($request, $as));
