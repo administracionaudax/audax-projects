@@ -13,6 +13,7 @@ import {
     NotebookPen,
     Settings2,
     ClipboardCheck,
+    Users,
     Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -39,6 +40,7 @@ import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
 import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
+import { index as teamIndex } from '@/routes/team';
 import { index as myTasksIndex } from '@/routes/my-tasks';
 import { index as projectsIndex } from '@/routes/projects';
 import { index as reportsIndex } from '@/routes/reports';
@@ -56,8 +58,9 @@ import type { Abilities, NavItem } from '@/types';
  * Clientes, Carga, Ausencias e Informes no aparecen a un colaborador externo (D-134), que solo tiene
  * Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat.
  * La Weekly (Fase 10, F-001, D-180): «Mi espacio» (con el contador de mi weekly pendiente, F-003) y
- * «Weeklies», tras Mis tareas, para quien la escribe (`auth.can.useWeeklies`) y con el módulo
- * encendido (`config.modules.weeklies`); nunca a un colaborador externo.
+ * «Weeklies», tras Mis tareas, y «Equipo», tras Clientes (10.4), para quien la escribe
+ * (`auth.can.useWeeklies`) y con el módulo encendido (`config.modules.weeklies`); nunca a un
+ * colaborador externo.
  */
 export function mainNavItems(
     can: Abilities,
@@ -98,6 +101,12 @@ export function mainNavItems(
             title: t('nav.clients'),
             href: clientsIndex(),
             icon: Building2,
+        },
+        // Equipo de la Weekly (10.4, F-001 y F-134): la plantilla con el estado de su weekly.
+        weeklies && {
+            title: t('weeklies.team.nav'),
+            href: teamIndex(),
+            icon: Users,
         },
         can.viewHourBanks && {
             title: t('nav.hour_banks'),

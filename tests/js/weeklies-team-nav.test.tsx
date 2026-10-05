@@ -86,15 +86,15 @@ describe('tira de estado del equipo (F-067)', () => {
 
         expect(
             within(submitted)
-                .getAllByRole('img')
+                .getAllByRole('link')
                 .map((avatar) => avatar.getAttribute('aria-label')),
         ).toEqual(['Ana García · Enviado', 'Bruno Díaz · Enviado con retraso']);
         expect(
-            within(pending).getByRole('img').getAttribute('aria-label'),
+            within(pending).getByRole('link').getAttribute('aria-label'),
         ).toBe('Carla Ruiz · Con retraso');
-        expect(within(exempt).getByRole('img').getAttribute('aria-label')).toBe(
-            'Diego León · Exento (Ausencia)',
-        );
+        expect(
+            within(exempt).getByRole('link').getAttribute('aria-label'),
+        ).toBe('Diego León · Exento (Ausencia)');
         expect(
             document.querySelector('[data-test="weekly-team-counter"]')
                 ?.textContent,

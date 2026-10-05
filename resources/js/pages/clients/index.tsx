@@ -85,8 +85,8 @@ function SortHeader({
 export default function ClientsIndex({
     clients,
     filters: initialFilters,
-    people = [],
-    weekly = false,
+    people,
+    weekly,
 }: ClientsIndexProps) {
     const id = useId();
     const can = usePage().props.auth?.can;

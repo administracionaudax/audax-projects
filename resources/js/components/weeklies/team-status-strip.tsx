@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { CalendarOff, Check, Clock } from 'lucide-react';
 import { UserAvatar } from '@/components/realtime/presence-indicator';
 import {
@@ -12,6 +13,7 @@ import {
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { show as showPerson } from '@/routes/team';
 import type { WeeklyTeamMember, WeeklyTeamStatus } from '@/types/weeklies';
 
 type Group = 'submitted' | 'pending' | 'exempt';
@@ -49,7 +51,7 @@ function describe(member: WeeklyTeamMember): string {
  * Tira de avatares del equipo de una semana (F-067, WeeklyTeamStatusStrip de WeeklySync): primero
  * quien ha enviado (con la marca), luego quien falta y al final los exentos, separados por una
  * línea. Cada avatar dice su nombre y su estado (tooltip con el teclado y texto para el lector de
- * pantalla). Debajo, el recuento: «3 / 5 enviadas (1 exento)». En el móvil, la tira salta de línea
+ * pantalla) y lleva a su ficha del equipo (10.4). Debajo, el recuento: «3 / 5 enviadas (1 exento)». En el móvil, la tira salta de línea
  * en vez de desplazarse.
  */
 export function TeamStatusStrip({
@@ -157,9 +159,8 @@ function MemberAvatar({
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <span
-                    tabIndex={0}
-                    role="img"
+                <Link
+                    href={showPerson.url(member.user.id)}
                     aria-label={text}
                     className={cn(
                         'relative inline-flex rounded-full border-2 border-card bg-card',
@@ -187,7 +188,7 @@ function MemberAvatar({
                     >
                         <Icon className="size-2.5" strokeWidth={2.5} />
                     </span>
-                </span>
+                </Link>
             </TooltipTrigger>
             <TooltipContent>{text}</TooltipContent>
         </Tooltip>

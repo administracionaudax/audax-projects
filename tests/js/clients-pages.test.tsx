@@ -94,6 +94,9 @@ const row = (overrides: Partial<ClientListItem> = {}): ClientListItem => ({
     is_active: true,
     active_projects_count: 2,
     month_minutes: 150,
+    last_report_at: null,
+    satisfaction_trend: null,
+    kind_badges: [],
     ...overrides,
 });
 
@@ -114,7 +117,18 @@ const indexProps = (
             total: data.length,
         },
     },
-    filters: { q: '', estado: 'activos', ...filters },
+    filters: {
+        q: '',
+        estado: 'activos',
+        orden: 'nombre',
+        dir: 'asc',
+        tipo: '',
+        persona: '',
+        mios: '',
+        ...filters,
+    },
+    people: [],
+    weekly: false,
 });
 
 describe('listado de clientes', () => {
