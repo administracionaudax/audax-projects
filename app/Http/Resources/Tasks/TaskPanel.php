@@ -49,7 +49,7 @@ final class TaskPanel
             'comments' => fn ($query) => $query->with(['author', 'reactions.user', 'attachments' => fn ($attachments) => $attachments->with('uploader')->oldest('id')])->oldest('id'),
         ]);
         $task->loadSum('timeEntries', 'minutes');
-        // Registrado total = propio + subtareas (D-160), con las subtareas ya cargadas.
+        // Registrado total = propio + subtareas (D-170), con las subtareas ya cargadas.
         TaskListItemResource::withSubtasksLogged($task);
 
         $canUpdate = Gate::forUser($viewer)->allows('update', $task);

@@ -481,7 +481,7 @@ describe('panel de la tarea', () => {
         ).toBeNull();
     });
 
-    it('en una tarea con subtareas enseña el registrado total con su desglose (D-160)', () => {
+    it('en una tarea con subtareas enseña el registrado total con su desglose (D-170)', () => {
         const data = panelData();
         renderPanel({
             ...data,
@@ -525,7 +525,7 @@ describe('panel de la tarea', () => {
         ).toBeTruthy();
     });
 
-    it('conserva a la vista la estimación propia cuando mandan las subtareas (D-161)', () => {
+    it('conserva a la vista la estimación propia cuando mandan las subtareas (D-171)', () => {
         renderPanel(
             panelData({
                 estimate_from_subtasks: true,
@@ -548,7 +548,7 @@ describe('panel de la tarea', () => {
         );
     });
 
-    it('lista las entradas con su franja horaria en hora de Madrid (D-162)', () => {
+    it('lista las entradas con su franja horaria en hora de Madrid (D-172)', () => {
         renderPanel(
             panelData({
                 time_entries: [

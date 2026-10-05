@@ -85,7 +85,7 @@ type LoggedSource = {
 };
 
 /**
- * Registrado de una tarea (D-160): lo propio, lo de sus subtareas y el total. Las subtareas, de
+ * Registrado de una tarea (D-170): lo propio, lo de sus subtareas y el total. Las subtareas, de
  * `subtasks_logged_minutes` si llega del servidor o, si no, de las subtareas cargadas. null si
  * quien mira no ve las horas de todos (colaborador externo, D-134).
  */
@@ -109,13 +109,13 @@ export function loggedBreakdown(
 
 /**
  * Minutos imputados a la tarea y a sus subtareas (las horas de las subtareas suman en el padre,
- * D-160); null si quien mira no ve las horas de todos (colaborador externo, D-134).
+ * D-170); null si quien mira no ve las horas de todos (colaborador externo, D-134).
  */
 export function totalLoggedMinutes(task: LoggedSource): number | null {
     return loggedBreakdown(task)?.total ?? null;
 }
 
-/** Texto accesible y de ayuda con el desglose «propias · en subtareas» (D-160), o undefined. */
+/** Texto accesible y de ayuda con el desglose «propias · en subtareas» (D-170), o undefined. */
 export function loggedBreakdownLabel(task: LoggedSource): string | undefined {
     const breakdown = loggedBreakdown(task);
 

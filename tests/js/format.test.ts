@@ -89,7 +89,7 @@ describe('formatNumber y formatPercent', () => {
     });
 });
 
-describe('formatTime y formatTimeRange (D-162)', () => {
+describe('formatTime y formatTimeRange (D-172)', () => {
     it('da la hora de Madrid de un instante UTC', () => {
         expect(formatTime('2026-09-24T07:05:00Z')).toBe('09:05');
         expect(formatTime('2026-12-24T07:05:00Z')).toBe('08:05');

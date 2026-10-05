@@ -33,7 +33,7 @@ import { t } from '@/lib/i18n';
 import { store as storeTask } from '@/routes/tasks';
 import type { Task, TaskPriority } from '@/types';
 
-/** Tarea padre de la que hereda los valores por defecto (D-163). */
+/** Tarea padre de la que hereda los valores por defecto (D-173). */
 export type TaskCreateParent = Pick<
     Task,
     | 'id'
@@ -98,7 +98,7 @@ function mapErrors(errors: Record<string, string>): Errors {
 }
 
 /**
- * Crear una tarea o una subtarea con sus datos (D-163): título, responsable, estado, prioridad,
+ * Crear una tarea o una subtarea con sus datos (D-173): título, responsable, estado, prioridad,
  * tipo, inicio, entrega y horas estimadas (y la bolsa en una tarea raíz de un proyecto de bolsas).
  * Una subtarea hereda del padre el responsable, el tipo, la prioridad y la entrega; su bolsa es
  * siempre la del padre (D-037). Intro guarda; con «Crear otra al guardar» el diálogo sigue abierto,

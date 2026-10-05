@@ -285,7 +285,7 @@ class Task extends Model
     }
 
     /**
-     * Minutos imputados en las subtareas de cada tarea (D-160), en una subconsulta agregada de la
+     * Minutos imputados en las subtareas de cada tarea (D-170), en una subconsulta agregada de la
      * misma consulta (sin N+1): `subtasks_logged_minutes`. Las subtareas no tienen subtareas, así
      * que en ellas vale 0. Funciona también sobre una tabla derivada con el alias `tasks`.
      *

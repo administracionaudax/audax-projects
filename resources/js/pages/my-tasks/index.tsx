@@ -51,7 +51,7 @@ function MyTaskRow({
     today: string;
     showLastLogged: boolean;
 }) {
-    // Registrado total: lo propio y lo de sus subtareas (D-160).
+    // Registrado total: lo propio y lo de sus subtareas (D-170).
     const logged = totalLoggedMinutes(task);
 
     return (

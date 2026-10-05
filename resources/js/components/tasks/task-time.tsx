@@ -19,7 +19,7 @@ import { t } from '@/lib/i18n';
 import type { TaskPanelData } from '@/types';
 
 /**
- * Temporizador en marcha en esta tarea: desde qué hora y cuánto lleva (D-162). El contador no se
+ * Temporizador en marcha en esta tarea: desde qué hora y cuánto lleva (D-172). El contador no se
  * anuncia cada segundo: el texto accesible dice desde cuándo.
  */
 function RunningTimer({ startedAt }: { startedAt: string }) {
@@ -45,8 +45,8 @@ function RunningTimer({ startedAt }: { startedAt: string }) {
 
 /**
  * Horas de la tarea (SPEC §6 y §7): el registrado (en una tarea con subtareas, el total con su
- * desglose, D-160), las entradas que quien mira puede ver (D-021) con su franja horaria, el
- * temporizador en marcha (el botón de iniciar y parar va en la cabecera del panel) y «Añadir horas» (por duración o con hora de inicio y fin, D-162). Los hitos no
+ * desglose, D-170), las entradas que quien mira puede ver (D-021) con su franja horaria, el
+ * temporizador en marcha (el botón de iniciar y parar va en la cabecera del panel) y «Añadir horas» (por duración o con hora de inicio y fin, D-172). Los hitos no
  * llevan horas.
  */
 export function TaskTime({ panel }: { panel: TaskPanelData }) {

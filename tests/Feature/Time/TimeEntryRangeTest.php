@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 
 /*
-| Entrada manual con hora de inicio y de fin (D-162): la duración sale de la franja, se guardan
+| Entrada manual con hora de inicio y de fin (D-172): la duración sale de la franja, se guardan
 | started_at y ended_at (UTC), no cruza la medianoche y los solapes con otras entradas de la misma
 | persona avisan sin bloquear. Siempre por TimeEntryWriter, con todas sus reglas.
 | «Hoy» es el viernes 25/09/2026 en Madrid (UTC+2).

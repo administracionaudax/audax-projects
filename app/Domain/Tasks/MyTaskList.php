@@ -90,7 +90,7 @@ final class MyTaskList
                 'assignee:id,name,avatar_path,department_id,is_active',
             ])
             ->withSum('timeEntries', 'minutes')
-            // Registrado total de una tarea padre = propio + subtareas (D-160), en la misma consulta.
+            // Registrado total de una tarea padre = propio + subtareas (D-170), en la misma consulta.
             ->withSubtasksLogged();
 
         foreach ($orders as [$column, $direction]) {

@@ -10,8 +10,8 @@ use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
-| Registrado de una tarea padre = lo suyo + lo de sus subtareas (D-160) y estimación propia del
-| padre que se conserva (D-161): lista, kanban, panel y Mis tareas.
+| Registrado de una tarea padre = lo suyo + lo de sus subtareas (D-170) y estimación propia del
+| padre que se conserva (D-171): lista, kanban, panel y Mis tareas.
 */
 
 beforeEach(function () {
@@ -40,7 +40,7 @@ it('la lista y el kanban envían lo imputado en las subtareas de cada tarea raí
             ->where('tasks.0.title', 'Desarrollo web')
             ->where('tasks.0.logged_minutes', 60)
             ->where('tasks.0.subtasks_logged_minutes', 540)
-            // Sin subtareas estimadas, manda la estimación propia del padre (D-161).
+            // Sin subtareas estimadas, manda la estimación propia del padre (D-171).
             ->where('tasks.0.estimate_from_subtasks', false)
             ->where('tasks.0.effective_estimated_minutes', 3600)
             ->missing('tasks.0.subtasks.0.subtasks_logged_minutes'));
@@ -113,7 +113,7 @@ it('a un colaborador externo no le llegan las horas de las subtareas (D-134)', f
     expect(collect($props['tasks'])->firstWhere('id', $this->parent->id)['subtasks_logged_minutes'])->toBeNull();
 });
 
-it('la estimación propia del padre se conserva al estimar sus subtareas y vuelve a mandar al quitarlas (D-161)', function () {
+it('la estimación propia del padre se conserva al estimar sus subtareas y vuelve a mandar al quitarlas (D-171)', function () {
     /** @var TaskWriter $writer */
     $writer = app(TaskWriter::class);
     $admin = userWithRole('admin');

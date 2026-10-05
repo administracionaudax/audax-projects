@@ -26,7 +26,7 @@ return [
         'week_closed' => 'La semana del :week está :status. Hay que reabrirla para cambiar sus horas.',
         'minutes_range' => 'La duración debe estar entre 0:01 y 24:00.',
         'day_over_24h' => 'Con esta entrada, el :date suma más de 24 horas.',
-        // Franja horaria de una entrada manual (D-162).
+        // Franja horaria de una entrada manual (D-172).
         'range_format' => 'Escribe la hora como 09:30.',
         'range_incomplete' => 'Indica la hora de inicio y la de fin, o ninguna de las dos.',
         'range_empty' => 'La hora de fin tiene que ser posterior a la de inicio.',
@@ -61,7 +61,7 @@ return [
         'overage_partial' => ':minutes de esta entrada se registrarán como exceso: la bolsa se agota.',
         // Para un colaborador externo, sin cantidades (D-134).
         'overage_partial_collaborator' => 'Parte de esta entrada se registrará como exceso: la bolsa se agota.',
-        // Franjas que se pisan con otras entradas de la misma persona (D-162): avisa, no bloquea.
+        // Franjas que se pisan con otras entradas de la misma persona (D-172): avisa, no bloquea.
         'overlap' => '{1} Esta franja se solapa con otra entrada tuya: :ranges.|[2,*] Esta franja se solapa con :count entradas tuyas: :ranges.',
         'overlap_other' => '{1} Esta franja se solapa con otra entrada de :name: :ranges.|[2,*] Esta franja se solapa con :count entradas de :name: :ranges.',
         'timer_too_short' => 'El temporizador ha durado menos de lo que se redondea: no se ha imputado nada.',

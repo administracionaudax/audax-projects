@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
  * Amplía TaskResource con las subtareas (un nivel) y la estimación efectiva: la suma de las
  * subtareas si alguna tiene estimación (SPEC §6). Cargar antes `assignee`, `subtasks.assignee` y
  * withSum('timeEntries', 'minutes') en las tareas y en las subtareas (sin N+1). En las raíz añade
- * subtasks_logged_minutes, la suma de lo imputado en sus subtareas (D-160).
+ * subtasks_logged_minutes, la suma de lo imputado en sus subtareas (D-170).
  *
  * @mixin Task
  */
@@ -40,7 +40,7 @@ class TaskListItemResource extends TaskResource
     }
 
     /**
-     * Lo imputado en las subtareas (D-160) a partir de las subtareas ya cargadas con su
+     * Lo imputado en las subtareas (D-170) a partir de las subtareas ya cargadas con su
      * withSum('timeEntries', 'minutes'): sin consultas. Solo en las tareas raíz.
      */
     public static function withSubtasksLogged(Task $task): void

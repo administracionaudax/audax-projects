@@ -80,7 +80,7 @@ const FIELDS = [
     'is_billable',
 ] as const;
 
-/** Cómo se indica el tiempo: duración o franja horaria (D-162). */
+/** Cómo se indica el tiempo: duración o franja horaria (D-172). */
 type TimeMode = 'duration' | 'range';
 
 /**
@@ -149,7 +149,7 @@ function initialTask(
 
 /**
  * Diálogo de entrada manual de horas (SPEC §7): tarea, fecha, duración o franja horaria (hora de
- * inicio y de fin, D-162), descripción, persona (si puede imputar por otros) y facturable. Crea, edita y borra con TimeEntryWriter; los errores
+ * inicio y de fin, D-172), descripción, persona (si puede imputar por otros) y facturable. Crea, edita y borra con TimeEntryWriter; los errores
  * llegan por campo y los avisos (exceso, jornada, tarea completada) como toasts.
  *
  * Contrato: lo usan el panel de tarea (Agente C), Inicio, la cabecera y la hoja semanal.

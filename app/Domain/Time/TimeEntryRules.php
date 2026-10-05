@@ -119,7 +119,7 @@ final class TimeEntryRules
             }
         }
 
-        // Franja horaria (D-162): las dos horas o ninguna, y el fin nunca antes del inicio. El resto
+        // Franja horaria (D-172): las dos horas o ninguna, y el fin nunca antes del inicio. El resto
         // (sin cruzar la medianoche, minutos = franja) lo comprueba TimeRange en la entrada manual:
         // el temporizador guarda su franja real aunque los minutos vayan redondeados.
         if (($startedAt === null) !== ($endedAt === null)) {
@@ -156,7 +156,7 @@ final class TimeEntryRules
     }
 
     /**
-     * Entradas de la misma persona cuya franja se pisa con esta (D-162): aviso, nunca bloqueo
+     * Entradas de la misma persona cuya franja se pisa con esta (D-172): aviso, nunca bloqueo
      * (puede ser una corrección o una reunión que se solapa a propósito). Una consulta, con las
      * franjas en hora de Madrid en el mensaje (como mucho tres).
      */

@@ -352,7 +352,7 @@ describe('diálogo de imputación', () => {
         ).toMatchObject({ user_id: 8, minutes: 45 });
     });
 
-    it('con hora de inicio y fin calcula la duración y envía la franja (D-162)', async () => {
+    it('con hora de inicio y fin calcula la duración y envía la franja (D-172)', async () => {
         const user = userEvent.setup();
         server.post.mockImplementation(
             (_url: string, _data: unknown, visit: VisitOptions) => {

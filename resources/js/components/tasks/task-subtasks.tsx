@@ -15,7 +15,7 @@ import type { TaskPanelData } from '@/types';
 
 /**
  * Subtareas (un solo nivel, siempre con la bolsa del padre, D-037): lista con casilla para
- * completarlas y «Añadir subtarea», que abre el diálogo con sus datos (D-163).
+ * completarlas y «Añadir subtarea», que abre el diálogo con sus datos (D-173).
  */
 export function TaskSubtasks({
     panel,

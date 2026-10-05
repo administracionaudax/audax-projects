@@ -13,7 +13,7 @@ use Illuminate\Validation\Validator;
 
 /**
  * Entrada manual (POST /horas/entradas y PUT /horas/entradas/{entry}): tarea, persona, fecha,
- * duración (o franja horaria: hora de inicio y de fin, D-162), descripción y facturable. El formato
+ * duración (o franja horaria: hora de inicio y de fin, D-172), descripción y facturable. El formato
  * se valida aquí (la franja, con TimeRange); las reglas de imputación (SPEC §7 y §8) las aplica
  * TimeEntryWriter.
  */

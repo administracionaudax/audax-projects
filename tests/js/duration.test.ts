@@ -40,7 +40,7 @@ describe('roundToNearest', () => {
     });
 });
 
-describe('timeRangeMinutes (gemelo de TimeRange, D-162)', () => {
+describe('timeRangeMinutes (gemelo de TimeRange, D-172)', () => {
     it.each([
         ['09:00', '11:30', 150],
         ['22:00', '00:00', 120],

@@ -112,7 +112,7 @@ final class TimeEntryWriter
                 $current->is_billable = $this->billable($task, $project, $data->isBillable);
             }
 
-            // Franja (D-162): con una nueva, se guarda; sin ella, se conserva mientras no cambien la
+            // Franja (D-172): con una nueva, se guarda; sin ella, se conserva mientras no cambien la
             // fecha ni los minutos, y se quita si cambian (ya no describiría la entrada).
             if ($data->startedAt !== null || $data->endedAt !== null) {
                 $current->started_at = $data->startedAt;

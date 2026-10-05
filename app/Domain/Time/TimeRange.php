@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Franja horaria de una entrada manual (D-162): fecha más hora de inicio y de fin, en hora de
+ * Franja horaria de una entrada manual (D-172): fecha más hora de inicio y de fin, en hora de
  * Madrid. Da los instantes en UTC (`started_at`/`ended_at`) y la duración en minutos, que es el
  * tiempo real transcurrido (en los cambios de hora, 01:00–04:00 no siempre son 3 h).
  *

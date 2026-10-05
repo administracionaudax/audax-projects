@@ -105,7 +105,7 @@ it('las subtareas son de un solo nivel, del mismo proyecto y con la bolsa del pa
         ->assertSessionHasErrors('parent_task_id');
 });
 
-it('crea una subtarea con todos los datos del diálogo (D-163) y la estimación del padre no cambia', function () {
+it('crea una subtarea con todos los datos del diálogo (D-173) y la estimación del padre no cambia', function () {
     $project = Project::factory()->hourBank()->create();
     $project->addMember($this->user);
     $bank = HourBank::factory()->create(['project_id' => $project->id]);

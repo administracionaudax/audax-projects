@@ -22,7 +22,7 @@ export type QuickAddDefaults = Partial<{
  * Creación rápida en línea (SPEC §6): escribe el título, pulsa Intro y sigue escribiendo la
  * siguiente. En los proyectos de bolsas pide la bolsa (primero las del departamento del usuario,
  * SPEC §8.3) salvo que venga dada (agrupado por bolsa o subtarea, que usa la del padre).
- * En una tarea raíz, «Más datos» abre el diálogo completo con lo escrito (D-163).
+ * En una tarea raíz, «Más datos» abre el diálogo completo con lo escrito (D-173).
  */
 export function QuickAddTask({
     defaults = {},

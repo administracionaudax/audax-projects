@@ -12,7 +12,7 @@ import {
 import type { Project, TaskStatus } from '@/types';
 
 /*
-| Diálogo para crear una subtarea (o una tarea con «Más datos») con sus datos (D-163).
+| Diálogo para crear una subtarea (o una tarea con «Más datos») con sus datos (D-173).
 */
 
 type Options = {

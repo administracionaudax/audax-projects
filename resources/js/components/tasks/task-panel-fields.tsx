@@ -67,7 +67,7 @@ function EstimateField({
                     {t('task_panel.estimate_from_subtasks')}
                 </p>
                 {/* La estimación propia (p. ej. la importada de ClickUp) se conserva y vuelve a
-                    mandar si las subtareas dejan de estar estimadas (D-161). */}
+                    mandar si las subtareas dejan de estar estimadas (D-171). */}
                 {task.estimated_minutes !== null ? (
                     <p
                         className="text-xs text-muted-foreground"

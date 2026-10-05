@@ -54,7 +54,7 @@ export function roundToNearest(minutes: number, step: number): number {
 
 const CLOCK = /^([01]\d|2[0-3]):([0-5]\d)$/u;
 
-/** Franja horaria de una entrada manual (D-162): sus minutos o por qué no vale. */
+/** Franja horaria de una entrada manual (D-172): sus minutos o por qué no vale. */
 export type TimeRangeResult =
     | { minutes: number }
     | { error: 'format' | 'empty' | 'midnight' };

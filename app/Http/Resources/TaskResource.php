@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * opcionales solo aparecen si el controlador los carga: description (si se selecciona la columna),
  * logged_minutes (withSum('timeEntries', 'minutes'), las horas propias; null para un colaborador
  * externo, D-134), subtasks_logged_minutes (Task::withSubtasksLogged() o las subtareas cargadas,
- * D-160: lo imputado en sus subtareas; el registrado total es la suma de las dos) y *_count
+ * D-170: lo imputado en sus subtareas; el registrado total es la suma de las dos) y *_count
  * (withCount).
  *
  * @mixin Task

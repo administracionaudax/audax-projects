@@ -96,7 +96,7 @@ export function formatTime(value: string | Date | null | undefined): string {
 }
 
 /**
- * Franja horaria de una entrada (D-162): "09:00–11:30" en Europe/Madrid; si acaba a medianoche
+ * Franja horaria de una entrada (D-172): "09:00–11:30" en Europe/Madrid; si acaba a medianoche
  * del día siguiente, "22:00–24:00". Vacío si falta alguno de los dos instantes.
  */
 export function formatTimeRange(
