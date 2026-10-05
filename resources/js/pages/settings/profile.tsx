@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Deferred, Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
@@ -8,15 +8,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { useRequiredUser } from '@/hooks/use-auth';
+import {
+    WeeklyStats,
+    WeeklyStatsSkeleton,
+} from '@/components/weeklies/weekly-stats';
+import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { edit } from '@/routes/profile';
 import type { ProfilePageProps } from '@/types';
 
 // El borrado de la cuenta propia se eliminó en el contrato de la Fase 0: las bajas las gestiona
 // un admin desactivando al usuario (SPEC §14: nunca se borra a quien tiene horas).
-export default function Profile({ status, jobTitle = null }: ProfilePageProps) {
+export default function Profile({
+    status,
+    jobTitle = null,
+    weeklyStats,
+}: ProfilePageProps) {
     const user = useRequiredUser();
+    // Estadísticas de la weekly (F-028): solo a quien la escribe (prop diferida).
+    const writesWeeklies = useAbilities().useWeeklies === true;
     const [email, setEmail] = useState(user.email);
     // Cambiar el correo exige la contraseña actual (el backend la valida solo en ese caso).
     const emailChanged =
@@ -172,6 +182,24 @@ export default function Profile({ status, jobTitle = null }: ProfilePageProps) {
                         </>
                     )}
                 </Form>
+
+                {writesWeeklies && weeklyStats !== null ? (
+                    <section className="space-y-3">
+                        <Heading
+                            variant="small"
+                            title={t('weeklies.stats.title')}
+                            description={t('weeklies.stats.description')}
+                        />
+                        <Deferred
+                            data="weeklyStats"
+                            fallback={<WeeklyStatsSkeleton />}
+                        >
+                            {weeklyStats ? (
+                                <WeeklyStats stats={weeklyStats} />
+                            ) : null}
+                        </Deferred>
+                    </section>
+                ) : null}
             </div>
         </>
     );

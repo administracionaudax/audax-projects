@@ -22,6 +22,8 @@ type DatePickerProps = {
     clearable?: boolean;
     /** Fechas posteriores no seleccionables (p. ej. hoy, si no se admiten fechas futuras). */
     max?: string;
+    /** Fechas anteriores no seleccionables (p. ej. el plazo de una weekly, desde su lunes). */
+    min?: string;
     className?: string;
     'aria-label'?: string;
 };
@@ -53,6 +55,7 @@ export function DatePicker({
     invalid,
     clearable = true,
     max,
+    min,
     className,
     ...aria
 }: DatePickerProps) {
@@ -86,7 +89,10 @@ export function DatePicker({
                     mode="single"
                     selected={selected}
                     defaultMonth={selected}
-                    disabled={max ? { after: toDate(max) } : undefined}
+                    disabled={[
+                        ...(min ? [{ before: toDate(min) }] : []),
+                        ...(max ? [{ after: toDate(max) }] : []),
+                    ]}
                     onSelect={(date) => {
                         onChange(date ? toValue(date) : null);
                         setOpen(false);

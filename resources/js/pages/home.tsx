@@ -8,6 +8,7 @@ import {
     Gauge,
     ListChecks,
     Milestone,
+    NotebookPen,
     Plus,
     RotateCcw,
     Square,
@@ -46,7 +47,11 @@ import {
 } from '@/components/workload/my-workload-card';
 import type { MyWorkloadData } from '@/components/workload/types';
 import { Button } from '@/components/ui/button';
-import { firstName, useRequiredUser } from '@/hooks/use-auth';
+import {
+    HomeWeeklyCard,
+    HomeWeeklySkeleton,
+} from '@/components/weeklies/home-weekly-card';
+import { firstName, useAbilities, useRequiredUser } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -75,6 +80,7 @@ export default function Home({
     milestones,
     chat_summary: chatSummary,
     home_layout: homeLayout,
+    weekly,
 }: HomePageProps & {
     /** No llegan a un colaborador externo (D-134): son informes, carga y ausencias. */
     indicators?: MyIndicators;
@@ -84,7 +90,15 @@ export default function Home({
     const user = useRequiredUser();
     // Un colaborador externo solo ve las tarjetas que le afectan (D-134).
     const collaborator = user.is_collaborator;
-    const timer = usePage().props.timer ?? null;
+    const page = usePage();
+    const timer = page.props.timer ?? null;
+    const can = useAbilities();
+    // La Weekly (Fase 10, D-161): quien la escribe y con el módulo encendido; nunca un colaborador.
+    const showWeekly =
+        !collaborator &&
+        can.useWeeklies === true &&
+        page.props.config?.modules?.weeklies !== false &&
+        weekly !== null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
     // Al restablecer el orden el botón desaparece: el foco pasa al título de la página.
     const heading = useRef<HTMLHeadingElement>(null);
@@ -278,6 +292,28 @@ export default function Home({
                             {t('home_panel.hours.open_sheet')}
                         </Link>
                     </PanelCard>
+
+                    {showWeekly ? (
+                        <PanelCard
+                            id="weekly"
+                            icon={NotebookPen}
+                            title={t('weeklies.home.title')}
+                            description={t('weeklies.home.description')}
+                        >
+                            <Deferred
+                                data="weekly"
+                                fallback={<HomeWeeklySkeleton />}
+                            >
+                                {weekly ? (
+                                    <HomeWeeklyCard card={weekly} />
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('weeklies.overview.no_active')}
+                                    </p>
+                                )}
+                            </Deferred>
+                        </PanelCard>
+                    ) : null}
 
                     {collaborator ? null : (
                         <PanelCard
