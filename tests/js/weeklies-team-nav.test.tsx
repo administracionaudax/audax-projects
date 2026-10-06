@@ -192,6 +192,8 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
             name: 'Audax',
             config: { modules: { weeklies: true } },
             weeklies: { pending: 1 },
+            // Weekly desplegada (por defecto nace plegada, D-261).
+            navCollapsed: [],
         };
     });
 
@@ -246,7 +248,7 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         ]);
         expect(
             within(nav)
-                .getByRole('link', { name: 'Inicio' })
+                .getByRole('link', { name: 'Chat' })
                 .closest('[role="group"]'),
         ).toBeNull();
     });
