@@ -11,6 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import PortalLayout from '@/layouts/portal-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { installDeferredPropsGuard } from '@/lib/deferred-props';
 import { t } from '@/lib/i18n';
 import { registerServiceWorker } from '@/lib/register-sw';
 import type { Auth } from '@/types';
@@ -52,6 +53,9 @@ void createInertiaApp({
         color: '#0171FF',
     },
 });
+
+// Vuelve a pedir las props diferidas que una visita haya cancelado antes de llegar (D-310).
+installDeferredPropsGuard();
 
 // Aplica el tema claro/oscuro guardado antes del primer render.
 initializeTheme();
