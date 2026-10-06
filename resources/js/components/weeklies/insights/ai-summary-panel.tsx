@@ -172,6 +172,7 @@ export function AiSummaryPanel({
                                     source={summary.content}
                                     headingLevel={3}
                                     className="text-sm"
+                                    links={false}
                                 />
                             ) : null)}
                         <p className="text-xs text-muted-foreground">

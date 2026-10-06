@@ -5,8 +5,10 @@ import { SafeMarkdown } from '@/components/privacy/safe-markdown';
 import {
     inlineText,
     parseInline,
+    linkDomain,
     parseMarkdown,
     safeHref,
+    withoutLinks,
 } from '@/lib/markdown';
 import fixture from '../fixtures/privacy-draft.json';
 
@@ -273,5 +275,36 @@ describe('SafeMarkdown', () => {
         const { container } = renderMarkdown('   \n\n  ');
 
         expect(container.textContent).toBe('');
+    });
+});
+
+describe('withoutLinks (D-224)', () => {
+    it('cambia cada enlace por su texto y su dominio, también dentro de listas, citas y negritas', () => {
+        const blocks = withoutLinks(
+            parseMarkdown(
+                '# [Título](https://a.example/x)\n\n- **[uno](https://b.example)**\n\n> [dos](mailto:x@y.es)',
+            ),
+        );
+        const json = JSON.stringify(blocks);
+
+        expect(json).not.toContain('"link"');
+        expect(json).toContain('(a.example)');
+        expect(json).toContain('(b.example)');
+        expect(json).toContain('(mailto:x@y.es)');
+        expect(linkDomain('https://sub.dominio.es:8080/ruta?q=1')).toBe(
+            'sub.dominio.es',
+        );
+    });
+
+    it('SafeMarkdown con links={false} no pinta ningún <a>', () => {
+        const { container } = render(
+            <SafeMarkdown
+                source="Mira [esto](https://phishing.example/login)."
+                links={false}
+            />,
+        );
+
+        expect(container.querySelector('a')).toBeNull();
+        expect(screen.getByText('Mira esto (phishing.example).')).toBeTruthy();
     });
 });

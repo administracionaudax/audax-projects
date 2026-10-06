@@ -257,6 +257,22 @@ describe('resumen con IA', () => {
             />,
         );
 
+    it('los enlaces que escriba la IA no son enlaces: texto con su dominio visible (D-224)', () => {
+        const { container } = panel(
+            summary({
+                content:
+                    'Todo bien. [Revisa el informe](https://phishing.example/login) ya.',
+            }),
+        );
+
+        expect(container.querySelector('a[href*="phishing"]')).toBeNull();
+        expect(
+            screen.getByText(
+                'Todo bien. Revisa el informe (phishing.example) ya.',
+            ),
+        ).toBeTruthy();
+    });
+
     it('sin resumen, «Generar resumen» lo pide', async () => {
         panel(null);
 

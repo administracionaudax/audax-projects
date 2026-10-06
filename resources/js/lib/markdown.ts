@@ -85,6 +85,56 @@ export function isExternalHref(href: string): boolean {
     return /^https?:\/\//i.test(href);
 }
 
+/**
+ * Los enlaces pasan a texto sin enlace, con su dominio visible entre paréntesis (D-224): para lo que
+ * escribe la IA a partir de textos de la plantilla, que podrían colar un enlace de phishing.
+ */
+export function withoutLinks(blocks: MarkdownBlock[]): MarkdownBlock[] {
+    const inline = (nodes: MarkdownInline[]): MarkdownInline[] =>
+        nodes.flatMap((node): MarkdownInline[] => {
+            switch (node.type) {
+                case 'link': {
+                    const domain = linkDomain(node.href);
+
+                    return [
+                        ...inline(node.children),
+                        ...(domain
+                            ? [{ type: 'text' as const, text: ` (${domain})` }]
+                            : []),
+                    ];
+                }
+                case 'strong':
+                case 'emphasis':
+                    return [{ ...node, children: inline(node.children) }];
+                default:
+                    return [node];
+            }
+        });
+
+    return blocks.map((block): MarkdownBlock => {
+        switch (block.type) {
+            case 'heading':
+            case 'paragraph':
+                return { ...block, children: inline(block.children) };
+            case 'list':
+                return { ...block, items: block.items.map(withoutLinks) };
+            case 'quote':
+                return { ...block, children: withoutLinks(block.children) };
+            default:
+                return block;
+        }
+    });
+}
+
+/** El dominio de un enlace absoluto («ejemplo.com»); el texto tal cual si no lo es. */
+export function linkDomain(href: string): string {
+    try {
+        return isExternalHref(href) ? new URL(href).hostname : href;
+    } catch {
+        return href;
+    }
+}
+
 export function parseMarkdown(source: string): MarkdownBlock[] {
     const lines = source
         .replace(/\r\n?/g, '\n')

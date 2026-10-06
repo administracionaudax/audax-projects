@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
-import { isExternalHref, parseMarkdown } from '@/lib/markdown';
+import { isExternalHref, parseMarkdown, withoutLinks } from '@/lib/markdown';
 import type { MarkdownBlock, MarkdownInline } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 
@@ -26,13 +26,23 @@ export function SafeMarkdown({
     source,
     headingLevel = 2,
     className,
+    links = true,
 }: {
     source: string;
     /** Nivel del encabezado más alto del texto (2 = h2). */
     headingLevel?: 2 | 3;
     className?: string;
+    /**
+     * false: los enlaces se pintan como texto, con su dominio visible (D-224). Para lo que escribe la
+     * IA, que puede repetir un enlace colado en una weekly.
+     */
+    links?: boolean;
 }) {
-    const blocks = useMemo(() => parseMarkdown(source), [source]);
+    const blocks = useMemo(() => {
+        const parsed = parseMarkdown(source);
+
+        return links ? parsed : withoutLinks(parsed);
+    }, [source, links]);
     const minLevel = Math.min(
         6,
         ...blocks
