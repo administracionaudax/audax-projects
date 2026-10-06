@@ -6,6 +6,7 @@ use App\Domain\Access\CollaboratorAccess;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Integrations\Google\GoogleOAuth;
+use App\Domain\Navigation\NavSections;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Weeklies\AppModules;
@@ -165,6 +166,8 @@ class HandleInertiaRequests extends Middleware
             // Google Sheets (Fase 9, D-142): sin credenciales, o para un colaborador externo (D-134),
             // la opción no se ofrece. La conexión, solo si se ofrece (una consulta).
             'integrations' => fn (): array => $this->integrations($user),
+            // Secciones plegadas de la barra lateral (D-260), sin consultas (columna del usuario).
+            'navCollapsed' => fn (): array => NavSections::collapsedFor($user),
         ];
     }
 

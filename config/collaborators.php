@@ -22,6 +22,8 @@ return [
         'home',
         'home.layout.update',
         'home.layout.destroy',
+        // Secciones plegadas de su barra lateral (D-260): una preferencia propia, sin datos de nadie.
+        'nav.sections.update',
         'dashboard',
         // Versión de la interfaz (F-013): sin datos, solo el número del despliegue.
         'app.version',

@@ -1,0 +1,4 @@
+{
+    "_comment": "Secciones plegables de la barra lateral, en su orden (D-260). Contrato compartido: App\\Domain\\Navigation\\NavSections::SECTIONS (Pest) y NAV_SECTION_IDS de resources/js/hooks/use-nav-sections.ts (Vitest).",
+    "sections": ["projects", "weekly", "people", "billing", "admin"]
+}
