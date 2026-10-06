@@ -163,7 +163,7 @@ it('las asignaciones de un previsto: manage-forecast; un gestor de proyecto, no'
 
 it('los errores de una asignación vuelven como errores de validación', function () {
     $this->actingAs($this->manager)
-        ->post("/prevision/proyectos/{$this->forecast->id}/asignaciones", ['user_id' => $this->collaborator->id, 'mode' => 'total', 'minutes' => 60, 'start_date' => '2026-11-02', 'end_date' => '2026-11-02'])
+        ->post("/prevision/proyectos/{$this->forecast->id}/asignaciones", ['user_id' => User::factory()->client()->create()->id, 'mode' => 'total', 'minutes' => 60, 'start_date' => '2026-11-02', 'end_date' => '2026-11-02'])
         ->assertSessionHasErrors('user_id');
 
     $this->actingAs($this->manager)

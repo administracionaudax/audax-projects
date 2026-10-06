@@ -33,7 +33,22 @@ export const CHART_INK = {
 export const LINE_WIDTH = 2;
 export const SURFACE_GAP = 2;
 export const MAX_BAR_SIZE = 24;
-export const BAR_RADIUS = 4;
+/** Estilo plano (D-137 y D-307): las columnas, sin esquinas redondeadas. */
+export const BAR_RADIUS = 0;
+
+/**
+ * Capas de la previsión (D-291): el color dice de qué tipo es la hora (real, previsto e imputado) y
+ * la trama dice «puede no salir» (lo posible usa el mismo violeta que lo seguro, con trama).
+ */
+export const LAYER_COLORS = {
+    real: 'var(--chart-1)',
+    firm: 'var(--chart-3)',
+    tentative: 'var(--chart-3)',
+    logged: 'var(--chart-2)',
+} as const;
+
+/** Línea de capacidad (D-291): 2 px en tinta, escalonada. */
+export const CAPACITY_STROKE = 'var(--foreground)';
 
 /** Color de la serie en la posición `index` (0 → var(--chart-1)). Fuera de rango, error: nunca se cicla. */
 export function seriesColor(index: number): ChartColor {
@@ -115,6 +130,8 @@ export type TooltipRow = {
     label: string;
     color: string;
     value: string;
+    /** «hatch»: la clave lleva la trama de lo posible (D-291). */
+    pattern?: 'hatch';
 };
 
 type PayloadItem = {
@@ -158,7 +175,8 @@ export type LegendItem = {
     key: string;
     label: string;
     color: string;
-    shape: 'line' | 'rect';
+    /** «hatch»: rectángulo con la trama de lo posible; «dashed»: rectángulo con borde discontinuo. */
+    shape: 'line' | 'rect' | 'hatch' | 'dashed';
 };
 
 /** Leyenda: solo con 2 o más series (una sola serie ya la nombra el título). */

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Absences\MyAbsencesSummary;
 use App\Domain\DayPlan\HomeDayPlanCard;
+use App\Domain\Forecast\MyForecast;
 use App\Domain\Home\HomeLayout;
 use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Reports\Dimension;
@@ -28,6 +29,7 @@ use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -106,8 +108,11 @@ class HomeController extends Controller
             'indicators' => $this->indicators($user, $metrics, $cache),
             // Fase 3: tarjeta «Mis ausencias» (próximas aprobadas y solicitudes pendientes).
             'absences' => app(MyAbsencesSummary::class)->for($user),
-            // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio.
-            'workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today)),
+            // Mi carga (Fase 3): se pide después de pintar la página, para no retrasar Inicio. Con la
+            // previsión (D-305), solo las asignaciones (P6), también las de previstos (P8): `my_forecast`.
+            ...(Gate::forUser($user)->allows('use-forecast')
+                ? ['my_forecast' => Inertia::defer(fn (): array => app(MyForecast::class)->for($user))]
+                : ['workload' => Inertia::defer(fn (): array => app(MyWorkload::class)->for($user, $today))]),
             // La Weekly (Fase 10, F-030 a F-040): mi weekly, mi racha y, quien gestiona, el equipo.
             // Null (sin tarjeta) para quien no la escribe o con el módulo apagado.
             'weekly' => Inertia::defer(fn (): ?array => app(HomeWeeklyCard::class)->for($user)),

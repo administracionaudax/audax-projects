@@ -27,6 +27,10 @@ Route::middleware('module:forecast')->group(function () {
         ->middleware('throttle:60,1,forecast.mine')
         ->name('forecast.mine');
 
+    Route::get('prevision/disponibilidad', [ForecastBoardController::class, 'availability'])
+        ->middleware('throttle:120,1,forecast.availability')
+        ->name('forecast.availability');
+
     Route::get('prevision/proyectos', [ForecastProjectController::class, 'index'])->name('forecast.projects.index');
     Route::post('prevision/proyectos', [ForecastProjectController::class, 'store'])
         ->middleware('throttle:60,1,forecast.projects.store')

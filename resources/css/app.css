@@ -204,6 +204,10 @@
     --chart-4: #e65fb3;
     --chart-5: #3c41ae;
     --chart-6: #0892c4;
+    /* Previsión (D-291): fondo de la trama de lo «posible» (violeta de --chart-3 al 16 % sobre la
+       tarjeta) y el gris de contexto del impacto «sin este proyecto». */
+    --posible-bg: color-mix(in oklab, var(--chart-3) 16%, var(--card));
+    --context-mark: color-mix(in oklab, var(--muted-foreground) 38%, var(--card));
 
     --sidebar: #ffffff;
     --sidebar-foreground: #0b1b33;
@@ -256,6 +260,8 @@
     --chart-4: #b53087;
     --chart-5: #7685f8;
     --chart-6: #04729b;
+    --posible-bg: color-mix(in oklab, var(--chart-3) 22%, var(--card));
+    --context-mark: color-mix(in oklab, var(--muted-foreground) 38%, var(--card));
 
     --sidebar: #121c30;
     --sidebar-foreground: #f5f6f7;
@@ -330,4 +336,18 @@
         var(--brand-veil),
         url('/brand/fondo-marca.jpg') center / cover no-repeat,
         var(--brand-gradient);
+}
+
+/*
+ * Previsión (D-291): la trama de lo «posible», rayas de 2 px a 45° de --chart-3 sobre --posible-bg.
+ * Es un dato, no un adorno: va siempre, también al imprimir y con colores forzados.
+ */
+@utility bg-hatch-tentative {
+    background: repeating-linear-gradient(
+        135deg,
+        var(--chart-3) 0 2px,
+        var(--posible-bg) 2px 5px
+    );
+    forced-color-adjust: none;
+    print-color-adjust: exact;
 }

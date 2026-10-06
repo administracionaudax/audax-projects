@@ -9,13 +9,14 @@ use Carbon\CarbonImmutable;
 
 /**
  * Impacto «sin / con» un proyecto previsto (docs/PLAN-CARGAS.md §5.2 paso 3 y §5.3, D-285): por
- * mes, la capacidad y la carga de cada departamento y de cada persona que toca el previsto, sin él
+ * semana si dura hasta 16 semanas y si no por mes (D-304), la capacidad y la carga de cada departamento y de cada persona que toca el previsto, sin él
  * (todas las capas: real, seguro y posible, «la pregunta incómoda primero») y con él. Solo de los
  * previstos que cuentan (abiertos o confirmados); de hoy en adelante y como mucho 12 meses.
  *
  * @phpstan-type ImpactCell array{capacity: int, without: int, with: int}
  * @phpstan-type Impact array{
  *     buckets: list<array{key: string, from: string, to: string}>,
+ *     granularity: string,
  *     layer: string,
  *     departments: list<array{id: int|null, name: string|null, color: string|null, cells: list<ImpactCell>}>,
  *     people: list<array{id: int, name: string, department_id: int|null, cells: list<ImpactCell>}>
@@ -25,6 +26,9 @@ final class ForecastImpact
 {
     /** Meses del impacto de un previsto sin fechas de fin. */
     public const int OPEN_MONTHS = 3;
+
+    /** Semanas como mucho del impacto por semanas; más largo, por meses. */
+    public const int WEEKS = 16;
 
     public function __construct(private readonly LoadCombiner $combiner) {}
 
@@ -45,7 +49,7 @@ final class ForecastImpact
         $today = LocalTime::today();
 
         if ($allocations->isEmpty()) {
-            return ['buckets' => [], 'layer' => $layer->value, 'departments' => [], 'people' => []];
+            return ['buckets' => [], 'granularity' => ForecastPeriod::WEEK, 'layer' => $layer->value, 'departments' => [], 'people' => []];
         }
 
         $start = $allocations->min(fn (Allocation $allocation): string => $allocation->start_date->toDateString());
@@ -57,11 +61,19 @@ final class ForecastImpact
         $to = CarbonImmutable::parse((string) $end);
 
         if ($to < $from) {
-            return ['buckets' => [], 'layer' => $layer->value, 'departments' => [], 'people' => []];
+            return ['buckets' => [], 'granularity' => ForecastPeriod::WEEK, 'layer' => $layer->value, 'departments' => [], 'people' => []];
         }
 
-        $months = ($to->year - $from->year) * 12 + $to->month - $from->month + 1;
-        $period = ForecastPeriod::make($from, $months, ForecastPeriod::MONTH);
+        // Por semanas si cabe en WEEKS semanas (se lee mejor «la semana 47»); si no, por meses (D-304).
+        $weekStart = $from->startOfWeek(CarbonImmutable::MONDAY);
+        $weekEnd = $to->endOfWeek(CarbonImmutable::SUNDAY)->startOfDay();
+
+        if ((int) $weekStart->diffInDays($weekEnd) + 1 <= self::WEEKS * 7) {
+            $period = new ForecastPeriod($weekStart, $weekEnd, ForecastPeriod::WEEK);
+        } else {
+            $months = ($to->year - $from->year) * 12 + $to->month - $from->month + 1;
+            $period = ForecastPeriod::make($from, $months, ForecastPeriod::MONTH);
+        }
 
         $without = $this->combiner->board($period, ['exclude_forecast_ids' => [$forecast->id]]);
         $only = $this->combiner->board($period, ['only_forecast_ids' => [$forecast->id]]);
@@ -78,6 +90,7 @@ final class ForecastImpact
 
         return [
             'buckets' => $without['buckets'],
+            'granularity' => $period->granularity,
             'layer' => $layer->value,
             'departments' => array_map(fn (array $department): array => [
                 'id' => $department['id'],

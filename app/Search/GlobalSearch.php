@@ -4,6 +4,7 @@ namespace App\Search;
 
 use App\Models\User;
 use App\Search\Sources\ClientSource;
+use App\Search\Sources\ForecastProjectSource;
 use App\Search\Sources\MessageSource;
 use App\Search\Sources\PageSource;
 use App\Search\Sources\PeopleSource;
@@ -31,6 +32,8 @@ class GlobalSearch
         ProjectSource::class => 5,
         TaskSource::class => 6,
         ClientSource::class => 4,
+        // Previsión (D-306): los proyectos previstos, para quien ve la previsión.
+        ForecastProjectSource::class => 3,
         PeopleSource::class => 4,
         // Fase 6: mensajes, archivos y transcripciones del chat (solo de las conversaciones que ve).
         MessageSource::class => 4,

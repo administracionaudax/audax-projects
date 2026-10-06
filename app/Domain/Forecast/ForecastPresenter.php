@@ -164,15 +164,16 @@ final class ForecastPresenter
     }
 
     /**
-     * Personas y departamentos de los selectores de una asignación (la plantilla activa).
+     * Personas y departamentos de los selectores de una asignación: la plantilla activa y los
+     * colaboradores externos activos (D-300), marcados.
      *
-     * @return array{people: list<array{id: int, name: string, department_id: int|null}>, departments: list<array{id: int, name: string, color: string}>}
+     * @return array{people: list<array{id: int, name: string, department_id: int|null, collaborator: bool}>, departments: list<array{id: int, name: string, color: string}>}
      */
     public function options(): array
     {
         return [
-            'people' => array_values(ForecastPeople::staff()->orderBy('name')->get(['id', 'name', 'department_id'])
-                ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'department_id' => $user->department_id])->all()),
+            'people' => array_values(ForecastPeople::assignables()->with('roles:id,name')->orderBy('name')->get(['id', 'name', 'department_id'])
+                ->map(fn (User $user): array => ['id' => $user->id, 'name' => $user->name, 'department_id' => $user->department_id, 'collaborator' => $user->isCollaborator()])->all()),
             'departments' => array_values(Department::query()->orderBy('name')->get(['id', 'name', 'color'])
                 ->map(fn (Department $department): array => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color])->all()),
         ];

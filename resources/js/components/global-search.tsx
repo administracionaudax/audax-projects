@@ -7,6 +7,7 @@ import {
     MessageSquare,
     Search,
     SquareCheck,
+    TrendingUp,
     User,
 } from 'lucide-react';
 import {
@@ -47,6 +48,7 @@ const GROUPS: {
     { type: 'client', label: 'search.group.client', icon: Building2 },
     { type: 'project', label: 'search.group.project', icon: FolderKanban },
     { type: 'task', label: 'search.group.task', icon: SquareCheck },
+    { type: 'forecast', label: 'search.group.forecast', icon: TrendingUp },
     { type: 'message', label: 'search.group.message', icon: MessageSquare },
 ];
 
