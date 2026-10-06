@@ -175,8 +175,9 @@ it('las actualizaciones a mano: crear con formato saneado, editar y borrar con s
     expect($update->body)->toBe('<p><strong>Hola</strong></p>')
         ->and($update->created_by)->toBe($this->admin->id);
 
+    // Los errores dicen el nombre del campo en español (revisión de formularios, D-310).
     $this->actingAs($this->admin)->post('/ayuda/actualizaciones', ['published_on' => '2026-10-02', 'title' => ''])
-        ->assertSessionHasErrors(['title', 'subtitle']);
+        ->assertSessionHasErrors(['title' => 'El campo título es obligatorio.', 'subtitle' => 'El campo subtítulo es obligatorio.']);
 
     $this->actingAs($this->employee)->post('/ayuda/me-gusta', ['kind' => 'manual', 'id' => $update->id]);
     $this->actingAs($this->admin)->delete("/ayuda/actualizaciones/{$update->id}")->assertSessionHasNoErrors();
