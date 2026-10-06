@@ -27,8 +27,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  *
  * Quién (D-044, ProjectPolicy::viewReport = viewAllTime): admins, responsables y gestores del
  * proyecto. Las horas pasan por ReportScope: un responsable que no gestiona el proyecto ve las de su
- * equipo (D-021). Exporta con ?formato=xlsx|csv&tabla=tareas|estimado-por-tipo|personas|tipos|semanas
- * y, entero, con ?formato=pdf o imprimir (Fase 9: ProjectDocument, D-139 y D-140).
+ * equipo (D-021). Exporta con ?formato=xlsx|csv&tabla=… (ProjectDocument::TABLES) y, entero, con
+ * ?formato=xlsx (un libro), pdf o imprimir (Fase 9: ProjectDocument, D-139 y D-140), en la versión
+ * interna y completa o en la del cliente (?version=interno|cliente, D-240 a D-242).
  */
 class ProjectReportController extends Controller
 {
