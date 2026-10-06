@@ -409,7 +409,41 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
         ).toBe(true);
 
         view.unmount();
-        renderView(props({ close: { blockers: [], pending: 2 } }));
+        const member = (
+            id: number,
+            name: string,
+            status: 'overdue' | 'submitted',
+        ) => ({
+            user: {
+                id,
+                name,
+                avatar: null,
+                department_id: null,
+                is_active: true,
+            },
+            status,
+            submitted_at: null,
+            exemption_reason: null,
+            exemption_id: null,
+        });
+        renderView(
+            props({
+                close: { blockers: [], pending: 2 },
+                team: {
+                    members: [
+                        member(3, 'Elena', 'submitted'),
+                        member(4, 'Pablo', 'overdue'),
+                        member(5, 'Daniel', 'overdue'),
+                    ],
+                    counts: {
+                        submitted: 1,
+                        expected: 3,
+                        exempt: 0,
+                        pending: 2,
+                    },
+                },
+            }),
+        );
         expect(
             document.querySelector('[data-test="weekly-close-hint"]')
                 ?.textContent,
@@ -423,6 +457,8 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
                 'Puedes cerrar. Aviso: 2 sin reportar (se cerrará igualmente).',
             ),
         ).toBeTruthy();
+        // Como WeeklySync, los nombra (10.9b).
+        expect(within(dialog).getByText('Faltan: Pablo, Daniel.')).toBeTruthy();
         await user.click(
             within(dialog).getByRole('button', {
                 name: 'Sí, cerrar la semana',

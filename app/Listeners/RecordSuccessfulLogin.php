@@ -38,10 +38,12 @@ class RecordSuccessfulLogin
         $user = $event->user;
         $active = $user->isActive();
 
+        $method = $this->pullMethod($user);
+
         LoginEvent::query()->create([
             'user_id' => $user->id,
             'email' => $user->email,
-            'method' => $this->pullMethod($user),
+            'method' => $method,
             'ip_address' => $this->request->ip(),
             'user_agent' => Str::limit((string) $this->request->userAgent(), 1000, ''),
             'succeeded' => $active,
@@ -50,8 +52,9 @@ class RecordSuccessfulLogin
         if ($active) {
             Cookie::queue(self::appearanceCookie($user->theme_preference));
 
-            // Aviso de bienvenida al entrar con el formulario (F-012); no al volver con «Recordarme».
-            if ($this->request->isMethod('post') && $this->request->hasSession()) {
+            // Aviso de bienvenida al entrar con el formulario o con Google (F-012, 10.9b: Google vuelve
+            // por GET); no al volver con «Recordarme».
+            if (($this->request->isMethod('post') || $method === 'google') && $this->request->hasSession()) {
                 Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.welcome', ['name' => Str::before(trim($user->name), ' ')])]);
             }
         }

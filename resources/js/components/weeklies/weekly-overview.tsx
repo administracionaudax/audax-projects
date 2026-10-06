@@ -240,6 +240,11 @@ function ManageSection({
                                 cycle={cycle}
                                 blockers={closeBlockers(cycle)}
                                 pending={cycle.team.counts.pending}
+                                pendingNames={cycle.team.members
+                                    .filter((member) =>
+                                        isPendingStatus(member.status),
+                                    )
+                                    .map((member) => member.user.name)}
                             />
                         ) : null}
                     </div>

@@ -223,11 +223,23 @@ export function Participation({
                     </span>
                 ) : null}
             </p>
+            {/* Color por tramo, como WeeklySync (10.9b): todas verde, más de la mitad ámbar, si no rojo. */}
             <Progress
                 value={ratio}
                 aria-label={label}
+                data-tone={
+                    expected === 0 || submitted >= expected
+                        ? 'complete'
+                        : ratio > 50
+                          ? 'partial'
+                          : 'low'
+                }
                 indicatorClassName={
-                    expected > 0 && submitted >= expected ? 'bg-success' : ''
+                    expected === 0 || submitted >= expected
+                        ? 'bg-success'
+                        : ratio > 50
+                          ? 'bg-warning'
+                          : 'bg-danger'
                 }
             />
         </div>

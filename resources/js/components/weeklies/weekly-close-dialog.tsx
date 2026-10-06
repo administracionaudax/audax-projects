@@ -60,11 +60,14 @@ export function CloseWeekDialog({
     cycle,
     blockers,
     pending,
+    pendingNames = [],
     size = 'sm',
 }: {
     cycle: Pick<WeeklyCycleSummary, 'id' | 'label'>;
     blockers: WeeklyCloseBlocker[];
     pending: number;
+    /** Quién no ha enviado, para nombrarlos al confirmar (como WeeklySync, 10.9b). */
+    pendingNames?: string[];
     size?: 'sm' | 'default';
 }) {
     const [open, setOpen] = useState(false);
@@ -106,9 +109,21 @@ export function CloseWeekDialog({
                             aria-hidden="true"
                             className="mt-0.5 size-4 shrink-0 text-warning"
                         />
-                        {t('weeklies.close.pending_warning', {
-                            count: pending,
-                        })}
+                        <span>
+                            {t('weeklies.close.pending_warning', {
+                                count: pending,
+                            })}
+                            {pendingNames.length > 0 ? (
+                                <span
+                                    className="block"
+                                    data-test="weekly-close-pending-names"
+                                >
+                                    {t('weeklies.close.pending_names', {
+                                        names: pendingNames.join(', '),
+                                    })}
+                                </span>
+                            ) : null}
+                        </span>
                     </p>
                 ) : null}
                 <DialogFooter className="gap-2">

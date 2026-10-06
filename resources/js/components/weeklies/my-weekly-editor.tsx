@@ -511,6 +511,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                                         return next;
                                     });
                                 }}
+                                dictationLocked={dictating && !busy.has(key)}
                                 onBusyChange={(value) =>
                                     setBusy((current) => {
                                         if (value === current.has(key)) {

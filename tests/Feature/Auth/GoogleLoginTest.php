@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Activitylog\Models\Activity;
 use Tests\Feature\Integrations\GoogleFakes;
@@ -154,7 +155,10 @@ describe('vuelta de Google', function () {
         $this->withSession(googleLoginSession());
         $before = session()->getId();
 
-        $this->get(googleCallback())->assertRedirect('/');
+        $this->get(googleCallback())
+            ->assertRedirect('/')
+            // La bienvenida también al entrar con Google (F-012, 10.9b).
+            ->assertInertiaFlash('toast.message', __('weeklies.welcome', ['name' => Str::before(trim($this->user->name), ' ')]));
 
         $this->assertAuthenticatedAs($this->user);
         expect(session()->getId())->not->toBe($before)

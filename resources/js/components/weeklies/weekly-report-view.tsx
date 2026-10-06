@@ -56,7 +56,10 @@ import {
     CloseWeekDialog,
 } from '@/components/weeklies/weekly-close-dialog';
 import { DeadlineDialog } from '@/components/weeklies/weekly-dialogs';
-import { compactWeekLabel } from '@/components/weeklies/weekly-ui';
+import {
+    compactWeekLabel,
+    isPendingStatus,
+} from '@/components/weeklies/weekly-ui';
 import {
     isBusy,
     useWeeklyProgress,
@@ -583,6 +586,9 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                     cycle={cycle}
                     blockers={close.blockers}
                     pending={close.pending}
+                    pendingNames={team.members
+                        .filter((member) => isPendingStatus(member.status))
+                        .map((member) => member.user.name)}
                 />
             ) : null}
         </div>

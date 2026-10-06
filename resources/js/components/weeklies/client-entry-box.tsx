@@ -45,6 +45,7 @@ export function ClientEntryBox({
     onChange,
     onRemove,
     onBusyChange,
+    dictationLocked = false,
 }: {
     cycleId: number;
     clientId: number | null;
@@ -60,6 +61,8 @@ export function ClientEntryBox({
     onChange: (value: EntryValue) => void;
     onRemove?: () => void;
     onBusyChange?: (busy: boolean) => void;
+    /** Otro apunte está dictando: un solo dictado a la vez, como WeeklySync (10.9b). */
+    dictationLocked?: boolean;
 }) {
     const id = useId();
     const bodyId = `${id}-body`;
@@ -169,6 +172,7 @@ export function ClientEntryBox({
                                 clientName={name}
                                 onText={append}
                                 onBusyChange={onBusyChange}
+                                disabled={dictationLocked}
                             />
                             {projects.length > 0 ? (
                                 <div className="grid min-w-0 gap-1.5 sm:w-64">

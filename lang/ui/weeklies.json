@@ -433,6 +433,7 @@
     "weeklies.close.missing.audio": "generar el audio",
     "weeklies.close.and": " y ",
     "weeklies.close.pending_warning": "Puedes cerrar. Aviso: :count sin reportar (se cerrará igualmente).",
+    "weeklies.close.pending_names": "Faltan: :names.",
     "weeklies.close.ready": "Lista para cerrar.",
     "weeklies.edit.title": "Editar informe",
     "weeklies.edit.status": "Estado",
