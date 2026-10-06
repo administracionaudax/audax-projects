@@ -60,61 +60,24 @@ import type { Abilities, NavItem } from '@/types';
  * aprueba ausencias y rol admin); el servidor vuelve a comprobarlo en la ruta. Chat lleva el
  * total de mensajes sin leer (Fase 6). El calendario del equipo va tras Mis tareas (D-144).
  * Clientes, Carga, Ausencias e Informes no aparecen a un colaborador externo (D-134), que solo tiene
- * Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat.
- * La Weekly (Fase 10, F-001, D-180): «Mi espacio» (con el contador de mi weekly pendiente, F-003) y
- * «Weeklies», tras Mis tareas, y «Equipo», tras Clientes (10.4), para quien la escribe
- * (`auth.can.useWeeklies`) y con el módulo encendido (`config.modules.weeklies`); nunca a un
- * colaborador externo. El asistente IA (10.6, F-006: el botón «Asistente AI» de WeeklySync), tras
- * Chat, con el módulo `assistant` encendido y para quien usa la Weekly. La Ayuda (10.7, F-010), tras
- * el asistente, con el módulo `help`.
+ * Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat. Las entradas de la Weekly van en su propio
+ * bloque (weeklyNavItems, D-239).
  */
 export function mainNavItems(
     can: Abilities,
-    counters: {
-        chatUnread?: number;
-        weekliesPending?: number;
-        weekliesEnabled?: boolean;
-        assistantEnabled?: boolean;
-        helpEnabled?: boolean;
-    } = {},
+    counters: { chatUnread?: number } = {},
 ): NavItem[] {
     const chatUnread = counters.chatUnread ?? 0;
-    const weekliesPending = counters.weekliesPending ?? 0;
-    const weeklies =
-        can.useWeeklies === true && counters.weekliesEnabled !== false;
 
     const items: (NavItem | false | undefined)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
-        weeklies && {
-            title: t('my_space.title'),
-            href: mySpaceIndex(),
-            icon: NotebookPen,
-            badge:
-                weekliesPending > 0
-                    ? {
-                          count: weekliesPending,
-                          label: t('weeklies.nav.pending'),
-                      }
-                    : undefined,
-        },
-        weeklies && {
-            title: t('weeklies.title'),
-            href: weekliesIndex(),
-            icon: ClipboardCheck,
-        },
         { title: t('nav.calendar'), href: calendarIndex(), icon: CalendarDays },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
         can.viewClients && {
             title: t('nav.clients'),
             href: clientsIndex(),
             icon: Building2,
-        },
-        // Equipo de la Weekly (10.4, F-001 y F-134): la plantilla con el estado de su weekly.
-        weeklies && {
-            title: t('weeklies.team.nav'),
-            href: teamIndex(),
-            icon: Users,
         },
         can.viewHourBanks && {
             title: t('nav.hour_banks'),
@@ -159,19 +122,6 @@ export function mainNavItems(
                       }
                     : undefined,
         },
-        can.useWeeklies === true &&
-            counters.assistantEnabled !== false && {
-                title: t('assistant.title'),
-                href: assistantIndex(),
-                icon: Sparkles,
-            },
-        // Centro de ayuda (10.7, F-010 y F-148): para quien usa la Weekly, con el módulo `help`.
-        can.useWeeklies === true &&
-            counters.helpEnabled !== false && {
-                title: t('help_center.title'),
-                href: helpIndex(),
-                icon: LifeBuoy,
-            },
         can.viewAdmin && {
             title: t('nav.admin'),
             href: adminIndex(),
@@ -180,6 +130,70 @@ export function mainNavItems(
     ];
 
     // Sin la habilidad (false o, en props antiguas, undefined), la entrada no se pinta.
+    return items.filter((item): item is NavItem => Boolean(item));
+}
+
+/**
+ * Bloque de la Weekly (Fase 10, F-001, D-180 y D-239), bajo una línea fina y con su encabezado:
+ * «Mi espacio» (con el contador de mi weekly pendiente, F-003), «Weeklies» y «Equipo» (10.4) con el
+ * módulo `weeklies`; el asistente IA (10.6, F-006) con `assistant`; la Ayuda (10.7, F-010) con
+ * `help`. Solo para quien escribe la weekly (`auth.can.useWeeklies`), nunca un colaborador externo.
+ * Los módulos llegan como los ve cada persona (config.modules): en modo de prueba, un admin ve
+ * también los apagados.
+ */
+export function weeklyNavItems(
+    can: Abilities,
+    counters: {
+        weekliesPending?: number;
+        weekliesEnabled?: boolean;
+        assistantEnabled?: boolean;
+        helpEnabled?: boolean;
+    } = {},
+): NavItem[] {
+    if (can.useWeeklies !== true) {
+        return [];
+    }
+
+    const weekliesPending = counters.weekliesPending ?? 0;
+    const weeklies = counters.weekliesEnabled !== false;
+
+    const items: (NavItem | false)[] = [
+        weeklies && {
+            title: t('my_space.title'),
+            href: mySpaceIndex(),
+            icon: NotebookPen,
+            badge:
+                weekliesPending > 0
+                    ? {
+                          count: weekliesPending,
+                          label: t('weeklies.nav.pending'),
+                      }
+                    : undefined,
+        },
+        weeklies && {
+            title: t('weeklies.title'),
+            href: weekliesIndex(),
+            icon: ClipboardCheck,
+        },
+        // Equipo de la Weekly (10.4, F-001 y F-134): la plantilla con el estado de su weekly.
+        weeklies && {
+            title: t('weeklies.team.nav'),
+            href: teamIndex(),
+            icon: Users,
+        },
+        counters.assistantEnabled !== false && {
+            title: t('assistant.title'),
+            href: assistantIndex(),
+            icon: Sparkles,
+        },
+        // Centro de ayuda (10.7, F-010 y F-148), con el módulo `help`.
+        counters.helpEnabled !== false && {
+            title: t('help_center.title'),
+            href: helpIndex(),
+            icon: LifeBuoy,
+        },
+    ];
+
     return items.filter((item): item is NavItem => Boolean(item));
 }
 
@@ -208,13 +222,24 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain
-                    items={mainNavItems(can, {
-                        chatUnread,
-                        weekliesPending: props.weeklies?.pending ?? 0,
-                        weekliesEnabled: props.config?.modules?.weeklies,
-                        assistantEnabled: props.config?.modules?.assistant,
-                        helpEnabled: props.config?.modules?.help,
-                    })}
+                    sections={[
+                        {
+                            id: 'main',
+                            items: mainNavItems(can, { chatUnread }),
+                        },
+                        {
+                            id: 'weekly',
+                            label: t('weeklies.nav.group'),
+                            items: weeklyNavItems(can, {
+                                weekliesPending: props.weeklies?.pending ?? 0,
+                                weekliesEnabled:
+                                    props.config?.modules?.weeklies,
+                                assistantEnabled:
+                                    props.config?.modules?.assistant,
+                                helpEnabled: props.config?.modules?.help,
+                            }),
+                        },
+                    ]}
                 />
             </SidebarContent>
 

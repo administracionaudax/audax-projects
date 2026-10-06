@@ -23,7 +23,7 @@ vi.mock('@inertiajs/react', async (importOriginal) => {
     return { ...original, Head: () => null, usePage: () => page };
 });
 
-import { mainNavItems } from '@/components/app-sidebar';
+import { weeklyNavItems } from '@/components/app-sidebar';
 import {
     ASSISTANT_POLL_MS,
     historyFor,
@@ -262,7 +262,7 @@ describe('El asistente en la barra lateral (F-006)', () => {
         const titles = (
             counters: { assistantEnabled?: boolean },
             abilities: Abilities = can,
-        ) => mainNavItems(abilities, counters).map((item) => item.title);
+        ) => weeklyNavItems(abilities, counters).map((item) => item.title);
 
         expect(titles({ assistantEnabled: true })).toContain('Asistente IA');
         expect(titles({ assistantEnabled: false })).not.toContain(

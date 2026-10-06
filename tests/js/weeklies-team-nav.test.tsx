@@ -34,7 +34,12 @@ vi.mock('@inertiajs/react', async (importOriginal) => {
     };
 });
 
-import { AppSidebar, mainNavItems } from '@/components/app-sidebar';
+import {
+    AppSidebar,
+    mainNavItems,
+    weeklyNavItems,
+} from '@/components/app-sidebar';
+import { ModulePreviewBanner } from '@/components/weeklies/module-preview-banner';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HomeWeeklyCard } from '@/components/weeklies/home-weekly-card';
@@ -190,20 +195,77 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         };
     });
 
-    it('«Mi espacio» y «Weeklies» van tras Mis tareas para quien escribe la weekly', () => {
-        const titles = mainNavItems(employee).map((item) => item.title);
-
-        expect(titles.slice(0, 4)).toEqual([
-            'Inicio',
-            'Mis tareas',
+    it('la Weekly va en su propio bloque, no entre las entradas generales (D-239)', () => {
+        expect(mainNavItems(employee).map((item) => item.title)).not.toContain(
+            'Mi espacio',
+        );
+        expect(weeklyNavItems(employee).map((item) => item.title)).toEqual([
             'Mi espacio',
             'Weeklies',
+            'Equipo',
+            'Asistente IA',
+            'Ayuda',
         ]);
+    });
+
+    it('el bloque de la Weekly va bajo una línea fina y con su encabezado', () => {
+        render(
+            <TooltipProvider>
+                <SidebarProvider>
+                    <AppSidebar />
+                </SidebarProvider>
+            </TooltipProvider>,
+        );
+
+        const nav = screen.getByRole('navigation', {
+            name: 'Navegación principal',
+        });
+        const separators = nav.querySelectorAll('[data-test="nav-separator"]');
+        expect(separators).toHaveLength(1);
+
+        const block = within(nav).getByRole('group', { name: 'Weekly' });
+        expect(separators[0].nextElementSibling).toBe(block);
+        expect(
+            within(block)
+                .getAllByRole('link')
+                .map((link) => link.textContent),
+        ).toEqual([
+            'Mi espacio',
+            'Weeklies',
+            'Equipo',
+            'Asistente IA',
+            'Ayuda',
+        ]);
+        expect(
+            within(nav)
+                .getByRole('link', { name: 'Inicio' })
+                .closest('[role="group"]'),
+        ).toBeNull();
+    });
+
+    it('sin entradas de la Weekly no hay bloque ni línea', () => {
+        page.props = {
+            ...page.props,
+            auth: { user, can: { ...employee, useWeeklies: false } },
+        };
+        render(
+            <TooltipProvider>
+                <SidebarProvider>
+                    <AppSidebar />
+                </SidebarProvider>
+            </TooltipProvider>,
+        );
+
+        const nav = screen.getByRole('navigation', {
+            name: 'Navegación principal',
+        });
+        expect(nav.querySelector('[data-test="nav-separator"]')).toBeNull();
+        expect(within(nav).queryByRole('group', { name: 'Weekly' })).toBeNull();
     });
 
     it('sin el permiso (colaborador externo) o con el módulo apagado, no salen', () => {
         const titles = (can: Abilities, enabled?: boolean) =>
-            mainNavItems(can, { weekliesEnabled: enabled }).map(
+            weeklyNavItems(can, { weekliesEnabled: enabled }).map(
                 (item) => item.title,
             );
 
@@ -361,5 +423,22 @@ describe('«Unirme a clientes» (F-034, D-221)', () => {
             filterJoinableClients(clients, 'CORPORATIVA').map((c) => c.id),
         ).toEqual([3]);
         expect(filterJoinableClients(clients, 'nada')).toEqual([]);
+    });
+});
+
+describe('aviso del modo de prueba (D-239)', () => {
+    it('sale solo en las páginas de un módulo que el admin ve por la prueba', () => {
+        page.props = { ...page.props, module_preview: true };
+        const { unmount } = render(<ModulePreviewBanner />);
+
+        expect(
+            screen.getByRole('complementary', { name: 'Modo de prueba' })
+                .textContent,
+        ).toBe('Modo de prueba: solo lo ven los admins; no se envían avisos.');
+        unmount();
+
+        page.props = { ...page.props, module_preview: false };
+        render(<ModulePreviewBanner />);
+        expect(screen.queryByRole('complementary')).toBeNull();
     });
 });
