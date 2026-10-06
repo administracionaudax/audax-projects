@@ -15,13 +15,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $task_id
  * @property CarbonImmutable $started_at
  * @property string|null $description
+ * @property int|null $day_plan_item_id Línea del plan del día desde la que se arrancó (D-254)
  * @property CarbonImmutable|null $warned_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  * @property-read Task $task
  */
-#[Fillable(['user_id', 'task_id', 'started_at', 'description', 'warned_at'])]
+#[Fillable(['user_id', 'task_id', 'started_at', 'description', 'warned_at', 'day_plan_item_id'])]
 class ActiveTimer extends Model
 {
     protected $primaryKey = 'user_id';

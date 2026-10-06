@@ -108,7 +108,8 @@ export type AppModule =
     | 'project_status'
     | 'help'
     | 'suggestions'
-    | 'assistant';
+    | 'assistant'
+    | 'day_plan';
 
 // --- Semanas, envíos e informe ----------------------------------------------------------------
 

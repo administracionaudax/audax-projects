@@ -44,6 +44,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $locked_at
  * @property int|null $time_entry_lock_id
  * @property int|null $created_by
+ * @property int|null $day_plan_item_id Línea del plan del día de la que sale (D-254); solo un enlace
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read int $in_bank_minutes
@@ -74,6 +75,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'locked_at',
     'time_entry_lock_id',
     'created_by',
+    'day_plan_item_id',
 ])]
 class TimeEntry extends Model
 {

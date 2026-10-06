@@ -29,6 +29,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 | Semana del 05/10/2026; hoy, viernes 09/10 a las 16:02 de Madrid.
 */
 
+// Los de la Weekly; el plan del día (D-250) es un módulo aparte y sigue encendido.
 const PREVIEW_ALL_OFF = ['weeklies' => false, 'project_status' => false, 'help' => false, 'suggestions' => false, 'assistant' => false];
 
 beforeEach(function () {
@@ -55,7 +56,7 @@ it('el ajuste está apagado por defecto y solo cuenta para los admins', function
         ->and(AppModules::visibleTo($this->ana, AppModule::Weeklies))->toBeFalse()
         ->and(AppModules::visibleTo(null, AppModule::Weeklies))->toBeFalse()
         ->and(AppModules::enabled(AppModule::Weeklies))->toBeFalse()
-        ->and(AppModules::previewedBy($this->admin))->toBe(AppModule::values())
+        ->and(AppModules::previewedBy($this->admin))->toBe(array_keys(PREVIEW_ALL_OFF))
         ->and(AppModules::previewedBy($this->ana))->toBe([]);
 });
 
@@ -68,7 +69,7 @@ it('en modo de prueba, el admin entra en las páginas de los módulos apagados, 
             ->where('config.modules.weeklies', true)
             ->where('config.modules.assistant', true)
             ->where('config.modules.help', true)
-            ->where('config.modules_preview', AppModule::values()));
+            ->where('config.modules_preview', array_keys(PREVIEW_ALL_OFF)));
 })->with(['/weeklies', '/mi-espacio', '/equipo', '/ia', '/ayuda', '/weeklies/avisos']);
 
 it('en modo de prueba, el resto de la plantilla sigue sin los módulos: 404 y sin menú', function (string $role) {

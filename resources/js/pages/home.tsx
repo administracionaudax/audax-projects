@@ -12,6 +12,7 @@ import {
     Plus,
     RotateCcw,
     Square,
+    Sun,
     Timer,
     Undo2,
 } from 'lucide-react';
@@ -27,6 +28,10 @@ import {
     TimesheetStatusBadge,
 } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
+import {
+    HomeDayPlanCard,
+    HomeDayPlanSkeleton,
+} from '@/components/day-plan/home-day-plan-card';
 import { HomePanels, PanelCard } from '@/components/home/home-panels';
 import { KeywordText } from '@/components/keyword-text';
 import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
@@ -81,6 +86,7 @@ export default function Home({
     chat_summary: chatSummary,
     home_layout: homeLayout,
     weekly,
+    day_plan: dayPlan,
 }: HomePageProps & {
     /** No llegan a un colaborador externo (D-134): son informes, carga y ausencias. */
     indicators?: MyIndicators;
@@ -99,6 +105,9 @@ export default function Home({
         can.useWeeklies === true &&
         page.props.config?.modules?.weeklies !== false &&
         weekly !== null;
+    // Plan del día (D-250): con la habilidad (gate y módulo); sin tarjeta si llega null.
+    const showDayPlan =
+        !collaborator && can.useDayPlan === true && dayPlan !== null;
     const [logging, setLogging] = useState<{ date?: string } | null>(null);
     // Al restablecer el orden el botón desaparece: el foco pasa al título de la página.
     const heading = useRef<HTMLHeadingElement>(null);
@@ -223,6 +232,26 @@ export default function Home({
                             {t('hours.header.log_time')}
                         </Button>
                     </PanelCard>
+
+                    {showDayPlan ? (
+                        <PanelCard
+                            id="day-plan"
+                            icon={Sun}
+                            title={t('day_plan.home.title')}
+                            description={t('day_plan.home.description')}
+                        >
+                            <Deferred
+                                data="day_plan"
+                                fallback={<HomeDayPlanSkeleton />}
+                            >
+                                {dayPlan ? (
+                                    <HomeDayPlanCard card={dayPlan} />
+                                ) : (
+                                    <HomeDayPlanSkeleton />
+                                )}
+                            </Deferred>
+                        </PanelCard>
+                    ) : null}
 
                     <PanelCard
                         id="week-hours"

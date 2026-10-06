@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Absences\MyAbsencesSummary;
+use App\Domain\DayPlan\HomeDayPlanCard;
 use App\Domain\Home\HomeLayout;
 use App\Domain\Planning\UpcomingMilestones;
 use App\Domain\Reports\Dimension;
@@ -41,7 +42,8 @@ use Inertia\Response;
  * - «Mis ausencias» (Fase 3),
  * - sus próximos hitos: los de sus proyectos, vencidos y de los próximos 30 días (D-062),
  * - sus menciones recientes y sus conversaciones con mensajes sin leer (Fase 6, prop diferida),
- * - su weekly de la semana, su racha y, si la gestiona, el estado del equipo (Fase 10, diferida).
+ * - su weekly de la semana, su racha y, si la gestiona, el estado del equipo (Fase 10, diferida),
+ * - «Mi día»: sus líneas del plan de hoy (plan del día, D-250, diferida).
  * El temporizador activo llega en las props compartidas. El resto de tarjetas llegan en otras fases.
  * Cada persona puede reordenar las tarjetas (D-138): su orden llega en `home_layout` (null = el
  * orden por defecto), ya sin tarjetas que no existan o que no le correspondan.
@@ -109,6 +111,8 @@ class HomeController extends Controller
             // La Weekly (Fase 10, F-030 a F-040): mi weekly, mi racha y, quien gestiona, el equipo.
             // Null (sin tarjeta) para quien no la escribe o con el módulo apagado.
             'weekly' => Inertia::defer(fn (): ?array => app(HomeWeeklyCard::class)->for($user)),
+            // Plan del día (D-250): «Mi día» de hoy. Null (sin tarjeta) sin el módulo o sin usarlo.
+            'day_plan' => Inertia::defer(fn (): ?array => app(HomeDayPlanCard::class)->for($user)),
         ]);
     }
 

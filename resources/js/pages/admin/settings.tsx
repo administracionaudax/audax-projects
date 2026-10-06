@@ -35,6 +35,8 @@ const MODULES: AppModule[] = [
     'help',
     'suggestions',
     'assistant',
+    // Plan del día (D-250): módulo propio, no es parte de la Weekly.
+    'day_plan',
 ];
 
 /** Máximo de umbrales de alerta de las bolsas. */

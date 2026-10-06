@@ -1958,6 +1958,22 @@ Pedido por el propietario el 06/10: la Weekly está desplegada con todos los mó
 - **Barra lateral:** las entradas de la Weekly (Mi espacio, Weeklies, Equipo, Asistente IA y Ayuda) van en su propio bloque al final, bajo una línea fina (el separador de la barra lateral, D-137) y con el encabezado discreto «Weekly», en modo de prueba y encendida. Sin ninguna entrada, no hay bloque ni línea. Sigue siendo un solo `<nav>` «Navegación principal»; el bloque es un grupo con nombre.
 - **Búsqueda global:** se añaden las cinco páginas de la Weekly, para quien usa la Weekly y con su módulo visible.
 
+## 07/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
+Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan). La Previsión (Nivel 2) no entra aquí.
+
+### D-250 · El plan del día: módulo propio `day_plan`, «Mi día» y la tarjeta de Inicio **[amplía D-151; concreta PLAN-CARGAS §4 y §7]**
+- **Módulo propio** `day_plan` en `AppModule` (no es parte de la Weekly), **activado por defecto** (un módulo que falta en el ajuste `modules` está encendido). Se apaga en `/admin/ajustes` → «Weekly y módulos». Apagado: sus rutas dan 404, sin entrada en la barra lateral, ni tarjeta en Inicio, ni búsqueda, ni recordatorio. En modo de prueba (D-239) lo ven los admins y el recordatorio no sale (`AppModules::enabled`).
+- **Tablas** `day_plans` (cabecera por persona y día, `published_at` = la primera línea, `note`, `reminded_at`), `day_plan_items` (las líneas, con `carry_count` desnormalizado para la marca «↻ ×N» sin recorrer la cadena) y `day_plan_comments`; enlaces opcionales `active_timers.day_plan_item_id` y `time_entries.day_plan_item_id`. Migración solo aditiva.
+- **Escritura:** `App\Domain\DayPlan\DayPlanWriter` es el único punto (como `TimeEntryWriter`): añadir, editar, borrar (lógico), ordenar, cerrar, pasar, nota y «adoptar» la tarea. Tarea → fija proyecto y cliente; proyecto → fija cliente; nada = «General / Interno». Máximo 60 líneas al día.
+- **Pantallas:** «Mi día» (`/dia?fecha=`), con Intro para la siguiente línea, `@cliente`, `#proyecto` y `~1:30` (el parser de duración de siempre), arrastrar o «Subir/Bajar» para ordenar, «Desde mis tareas» y la nota del día. La entrada «Mi día» va en la barra lateral tras «Mis tareas»; la tarjeta «Mi día» de Inicio va tras el temporizador (las de siempre conservan su orden).
+- **Cifras de Mi día** (§6.1): previsto = horas previstas de las líneas no pasadas; imputado = todas las entradas de la persona ese día (también sin línea); hechas / líneas del día.
+
+### D-251 · Quién ve qué del plan del día **[concreta PLAN-CARGAS §8 y P1 a]**
+- **Lo usan** admin, responsables y empleados (gate `use-day-plan` = los de la Weekly, D-147, con el módulo visible para esa persona). Nunca un colaborador externo (sus rutas tampoco están en `config/collaborators.php`) ni un cliente.
+- **Textos y checks:** toda la plantilla ve los de todos (Equipo hoy y Semana).
+- **Cifras** (horas previstas e imputadas, jornada, cumplimiento, hora de publicación, temporizador en marcha) y **comentarios**: solo la propia persona, su responsable y los admins (`canSeeAbsencesOf`, D-088). Para el resto llegan a `null` en las props, no solo ocultas. El motivo de una ausencia, igual (D-088); el festivo, para todos.
+- **Nadie edita la línea de otro**, tampoco un admin (`DayPlanItemPolicy`). Sin ranking ni puntuación.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1971,6 +1987,7 @@ Pedido por el propietario el 06/10: la Weekly está desplegada con todos los mó
 - Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
+- Plan del día: D-250… (D-240 a D-249, en otras ramas).
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
 La siguiente libre es **D-240**.

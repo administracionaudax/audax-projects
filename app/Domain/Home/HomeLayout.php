@@ -20,6 +20,8 @@ final class HomeLayout
     public const array CARDS = [
         'today-tasks',
         'timer',
+        // Plan del día (D-250): «Mi día», con el módulo day_plan.
+        'day-plan',
         'week-hours',
         'weekly',
         'workload',
@@ -31,10 +33,10 @@ final class HomeLayout
     ];
 
     /**
-     * Tarjetas que no llegan a un colaborador externo (D-134): la weekly (D-147), carga, informes y
-     * ausencias.
+     * Tarjetas que no llegan a un colaborador externo (D-134): la weekly (D-147), carga, informes,
+     * ausencias y el plan del día (D-251).
      */
-    public const array COLLABORATOR_HIDDEN = ['weekly', 'workload', 'indicators', 'absences'];
+    public const array COLLABORATOR_HIDDEN = ['weekly', 'workload', 'indicators', 'absences', 'day-plan'];
 
     /**
      * Las tarjetas que ve esta persona, en su orden por defecto.

@@ -72,8 +72,9 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
         ->middleware('throttle:60,1,home-layout')
         ->name('home.layout.destroy');
 
-    // Una ruta por área (routes/app/*.php), de la Fase 1 a la 10 (weeklies: la Weekly, D-145).
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations', 'calendar', 'weeklies'] as $area) {
+    // Una ruta por área (routes/app/*.php), de la Fase 1 a la 10 (weeklies: la Weekly, D-145) y el plan
+    // del día (day-plan, D-250).
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations', 'calendar', 'weeklies', 'day-plan'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 

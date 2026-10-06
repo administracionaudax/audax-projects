@@ -50,6 +50,8 @@ export type Abilities = {
     manageWeeklies?: boolean;
     /** «Uso de IA» (F-180): solo admins. */
     viewAiUsage?: boolean;
+    /** Plan del día (D-251): la plantilla interna con el módulo day_plan visible. */
+    useDayPlan?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */
@@ -62,6 +64,8 @@ export type ActiveTimer = {
     /** Instante ISO en UTC. */
     started_at: string;
     description: string | null;
+    /** Línea del plan del día desde la que se arrancó (D-254). */
+    day_plan_item?: { id: number; text: string } | null;
 };
 
 /** Configuración compartida con todas las páginas internas. */

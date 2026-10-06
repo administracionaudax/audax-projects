@@ -12,6 +12,8 @@ enum AppModule: string
     case Help = 'help';
     case Suggestions = 'suggestions';
     case Assistant = 'assistant';
+    /** Plan del día (D-250): no es parte de la Weekly; activado por defecto. */
+    case DayPlan = 'day_plan';
 
     public function label(): string
     {

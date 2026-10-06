@@ -46,5 +46,9 @@ return [
         'weekly_team' => ['title' => 'Equipo', 'subtitle' => 'Weekly', 'keywords' => 'weekly plantilla personas estado envios racha'],
         'assistant' => ['title' => 'Asistente IA', 'subtitle' => 'Weekly', 'keywords' => 'weekly ia inteligencia artificial preguntas asistente'],
         'help' => ['title' => 'Ayuda', 'subtitle' => 'Weekly', 'keywords' => 'weekly ayuda tutoriales preguntas frecuentes manual novedades sugerencias'],
+        // Plan del día (D-250).
+        'day_plan' => ['title' => 'Mi día', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia hoy daily lista lineas pendientes'],
+        'day_plan_team' => ['title' => 'Equipo hoy', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia equipo hoy daily quien sin plan'],
+        'day_plan_week' => ['title' => 'Semana del equipo', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia semana equipo daily'],
     ],
 ];

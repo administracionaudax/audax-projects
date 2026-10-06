@@ -13,6 +13,7 @@ import type {
 } from './domain';
 import type { HomeMilestone } from './planning';
 import type { ReportRequestData } from './reports';
+import type { HomeDayPlanCard } from './day-plan';
 import type { HomeWeeklyCard } from './weeklies';
 
 /** App\Http\Resources\Time\TimesheetPeriodResource. Una semana sin fila llega con id null. */
@@ -283,4 +284,6 @@ export type HomePageProps = {
     home_layout?: string[] | null;
     /** La Weekly (Fase 10, prop diferida); null = sin tarjeta; ausente para un colaborador externo. */
     weekly?: HomeWeeklyCard | null;
+    /** Plan del día (D-250, prop diferida); null = sin tarjeta; ausente para un colaborador externo. */
+    day_plan?: HomeDayPlanCard | null;
 };

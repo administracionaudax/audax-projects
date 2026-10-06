@@ -118,6 +118,8 @@ class HandleInertiaRequests extends Middleware
                 'useWeeklies' => $user ? Gate::forUser($user)->allows('use-weeklies') : false,
                 'manageWeeklies' => $user ? Gate::forUser($user)->allows('manage-weeklies') : false,
                 'viewAiUsage' => $user ? Gate::forUser($user)->allows('view-ai-usage') : false,
+                // Plan del día (D-251): la plantilla interna con el módulo day_plan visible.
+                'useDayPlan' => $user ? Gate::forUser($user)->allows('use-day-plan') : false,
             ],
         ];
     }

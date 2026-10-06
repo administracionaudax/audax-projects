@@ -14,6 +14,7 @@ import {
     NotebookPen,
     Settings2,
     Sparkles,
+    Sun,
     ClipboardCheck,
     Users,
     Wallet,
@@ -42,6 +43,7 @@ import { index as helpIndex } from '@/routes/help';
 import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
+import { show as dayPlanShow } from '@/routes/day-plan';
 import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import { index as teamIndex } from '@/routes/team';
@@ -58,7 +60,8 @@ import type { Abilities, NavItem } from '@/types';
  * Navegación principal (SPEC §3), en este orden, con «Ausencias» tras «Carga» (D-091). Bolsas,
  * «Ausencias del equipo» y Administración dependen de `auth.can` (gate view-hour-banks, quien
  * aprueba ausencias y rol admin); el servidor vuelve a comprobarlo en la ruta. Chat lleva el
- * total de mensajes sin leer (Fase 6). El calendario del equipo va tras Mis tareas (D-144).
+ * total de mensajes sin leer (Fase 6). «Mi día» (plan del día, D-250) va tras Mis tareas y el
+ * calendario del equipo, después (D-144).
  * Clientes, Carga, Ausencias e Informes no aparecen a un colaborador externo (D-134), que solo tiene
  * Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat. Las entradas de la Weekly van en su propio
  * bloque (weeklyNavItems, D-239).
@@ -72,6 +75,12 @@ export function mainNavItems(
     const items: (NavItem | false | undefined)[] = [
         { title: t('nav.home'), href: home(), icon: House },
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
+        // Plan del día (D-250): la plantilla interna con el módulo day_plan visible.
+        can.useDayPlan === true && {
+            title: t('day_plan.nav'),
+            href: dayPlanShow(),
+            icon: Sun,
+        },
         { title: t('nav.calendar'), href: calendarIndex(), icon: CalendarDays },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
         can.viewClients && {
