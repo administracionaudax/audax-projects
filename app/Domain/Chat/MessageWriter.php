@@ -64,6 +64,11 @@ final class MessageWriter
 
         try {
             $message = DB::transaction(function () use ($author, $conversation, $body, $parentId, $files, $audio, $audioDurationMs, &$stored): Message {
+                // Quien escribe en un canal que ve sin participar pasa a participar (D-270).
+                if ($conversation->type->isChannel() && ! $conversation->hasParticipant($author)) {
+                    Participants::join($conversation, $author->id);
+                }
+
                 $message = $conversation->messages()->create([
                     'user_id' => $author->id,
                     'type' => $audio !== null ? MessageType::Audio : ($body === null || $body === '' ? MessageType::File : MessageType::Text),
@@ -301,6 +306,20 @@ final class MessageWriter
     private function syncMentions(Message $message, Conversation $conversation): void
     {
         $parsed = Mentions::parse((string) $message->body);
+
+        // En un canal, a quien se menciona y lo ve sin participar se le hace entrar (D-270): si no,
+        // la mención no le llegaría.
+        if ($conversation->type->isChannel() && $parsed['users'] !== []) {
+            $outside = User::query()->whereKey($parsed['users'])
+                ->whereKeyNot($message->user_id ?? 0)
+                ->whereNotIn('id', $conversation->activeParticipants()->select('user_id'))
+                ->get();
+            foreach ($outside as $person) {
+                if (ConversationAccess::canView($person, $conversation)) {
+                    Participants::join($conversation, $person->id);
+                }
+            }
+        }
         $valid = $parsed['users'] === [] ? [] : $conversation->activeParticipants()
             ->whereIn('user_id', $parsed['users'])
             ->where('user_id', '!=', $message->user_id)

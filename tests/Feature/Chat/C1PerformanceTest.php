@@ -37,8 +37,10 @@ const CHAT_PERF_MAX_REPEATS = 3;
  */
 const CHAT_PERF_BUDGETS = [
     'chat.index' => 14,
-    'chat.show' => 32,
-    'chat.show.focus' => 34,
+    // La lista del chat (D-273) suma los canales que le tocan (ChannelMembership::ensureFor) y los
+    // clientes de los proyectos y de los canales.
+    'chat.show' => 35,
+    'chat.show.focus' => 37,
     'chat.conversations' => 11,
     'chat.people' => 5,
     'chat.messages.older' => 17,

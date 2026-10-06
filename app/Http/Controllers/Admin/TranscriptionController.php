@@ -68,8 +68,9 @@ class TranscriptionController extends Controller
                 ->select(['id', 'conversation_id', 'user_id', 'hidden_at', 'deleted_at', 'created_at'])
                 ->with([
                     'author:id,name',
-                    'conversation:id,type,name,project_id',
+                    'conversation:id,type,name,project_id,client_id',
                     'conversation.project' => fn ($project) => $project->withTrashed()->select(['id', 'name', 'code']),
+                    'conversation.client' => fn ($client) => $client->select(['id', 'name']),
                 ])])
             ->when($status !== null, fn ($query) => $query->where('status', $status))
             ->orderByDesc('id')
@@ -180,7 +181,8 @@ class TranscriptionController extends Controller
         $direct = $conversation->type === ConversationType::Direct;
         $label = match ($conversation->type) {
             ConversationType::Project => $conversation->project === null ? null : $conversation->project->code.' · '.$conversation->project->name,
-            ConversationType::Group => $conversation->name,
+            ConversationType::Group, ConversationType::Team => $conversation->name,
+            ConversationType::Client => $conversation->client?->name,
             ConversationType::Direct => null,
         };
         $visible = ! $direct && ! $message->trashed();

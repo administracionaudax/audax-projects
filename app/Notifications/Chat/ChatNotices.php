@@ -48,7 +48,7 @@ final class ChatNotices
     public function forMessage(int $messageId): array
     {
         $message = Message::query()
-            ->with(['conversation.project:id,name', 'author:id,name'])
+            ->with(['conversation.project:id,name', 'conversation.client:id,name', 'author:id,name'])
             ->find($messageId);
 
         if ($message === null || $message->user_id === null || $message->author === null
@@ -75,7 +75,11 @@ final class ChatNotices
 
         $viewing = $this->viewers->viewing($conversation->id, array_keys($reasons));
         $excerpt = ChatExcerpt::of($message, $this->mentionNames($message));
-        $name = $conversation->type === ConversationType::Project ? $conversation->project?->name : $conversation->name;
+        $name = match ($conversation->type) {
+            ConversationType::Project => $conversation->project?->name,
+            ConversationType::Client => $conversation->client?->name,
+            default => $conversation->name,
+        };
         $pushEnabled = WebPushConfig::enabled();
         $sent = [];
 

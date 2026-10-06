@@ -2,6 +2,7 @@
 
 namespace App\Search\Sources;
 
+use App\Domain\Chat\ConversationAccess;
 use App\Enums\ConversationType;
 use App\Enums\MessageType;
 use App\Enums\TranscriptionStatus;
@@ -112,6 +113,7 @@ class MessageSource implements SearchSource
         $rows = Message::query()
             ->join('conversations', 'conversations.id', '=', 'messages.conversation_id')
             ->leftJoin('projects', 'projects.id', '=', 'conversations.project_id')
+            ->leftJoin('clients', 'clients.id', '=', 'conversations.client_id')
             ->leftJoin('users as authors', 'authors.id', '=', 'messages.user_id')
             ->whereNull('messages.hidden_at')
             ->where('messages.type', '!=', MessageType::System->value)
@@ -133,6 +135,7 @@ class MessageSource implements SearchSource
                 'messages.id', 'messages.conversation_id', 'messages.user_id', 'messages.type', 'messages.body', 'messages.created_at',
                 'conversations.type as conversation_type', 'conversations.name as conversation_name',
                 'projects.name as project_name', 'projects.code as project_code',
+                'clients.name as client_name',
                 'authors.name as author_name',
             ])
             ->selectSub($matchedFile, 'matched_file')
@@ -149,7 +152,7 @@ class MessageSource implements SearchSource
 
     /**
      * De entre $conversationIds, las que $user puede ver, en UNA consulta y con la misma regla que
-     * ConversationPolicy::view (participante activo; el admin, además, las que no son directas).
+     * ConversationPolicy::view (ConversationAccess).
      * Para autorizar listas sin una consulta por conversación.
      *
      * @param  list<int>  $conversationIds
@@ -163,19 +166,7 @@ class MessageSource implements SearchSource
 
         return array_values(Conversation::query()
             ->whereKey($conversationIds)
-            ->where(function (Builder $query) use ($user): void {
-                $query->whereHas('participants', fn (Builder $participants) => $participants
-                    ->where('user_id', $user->id)
-                    ->whereNull('left_at'));
-
-                if ($user->hasRole('admin')) {
-                    $query->orWhere('type', '!=', ConversationType::Direct->value);
-                }
-            })
-            // Colaborador externo (D-134): solo las conversaciones de los proyectos que ve.
-            ->when($user->visibleProjectIds() !== null, fn (Builder $query) => $query
-                ->where('type', ConversationType::Project->value)
-                ->whereIn('project_id', $user->visibleProjectIds() ?? []))
+            ->where(fn (Builder $query) => ConversationAccess::scope($query, $user))
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all());
@@ -188,7 +179,8 @@ class MessageSource implements SearchSource
     {
         $label = match ($conversation->type) {
             ConversationType::Project => $conversation->project()->withTrashed()->value('name'),
-            ConversationType::Group => $conversation->name,
+            ConversationType::Group, ConversationType::Team => $conversation->name,
+            ConversationType::Client => $conversation->client()->value('name'),
             ConversationType::Direct => $conversation->participants()
                 ->join('users', 'users.id', '=', 'conversation_participants.user_id')
                 ->where('conversation_participants.user_id', '!=', $viewer->id)
@@ -252,21 +244,7 @@ class MessageSource implements SearchSource
      */
     private function whereVisible(Builder $query, User $user): void
     {
-        $query->whereIn('messages.conversation_id', ConversationParticipant::query()
-            ->select('conversation_id')
-            ->where('user_id', $user->id)
-            ->whereNull('left_at'));
-
-        if ($user->hasRole('admin')) {
-            $query->orWhere('conversations.type', '!=', ConversationType::Direct->value);
-        }
-
-        // Colaborador externo (D-134): solo las conversaciones de los proyectos que ve.
-        $projectIds = $user->visibleProjectIds();
-        if ($projectIds !== null) {
-            $query->where('conversations.type', ConversationType::Project->value)
-                ->whereIn('conversations.project_id', $projectIds);
-        }
+        ConversationAccess::scope($query, $user);
     }
 
     /**
@@ -296,7 +274,8 @@ class MessageSource implements SearchSource
         $type = (string) self::attribute($row, 'conversation_type');
         $label = match ($type) {
             ConversationType::Project->value => self::attribute($row, 'project_name'),
-            ConversationType::Group->value => self::attribute($row, 'conversation_name'),
+            ConversationType::Group->value, ConversationType::Team->value => self::attribute($row, 'conversation_name'),
+            ConversationType::Client->value => self::attribute($row, 'client_name'),
             default => self::attribute($row, 'peer_name'),
         };
 

@@ -428,6 +428,8 @@ MD,
         'chat' => [
             'project' => 'Proyecto :project',
             'group' => 'Grupo «:name»',
+            'team' => 'Canal «:name»',
+            'client' => 'Canal del cliente :client',
             'direct' => 'Directa con :person',
             'someone' => 'alguien',
             'types' => [
