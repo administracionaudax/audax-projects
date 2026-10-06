@@ -1,5 +1,5 @@
 /** Contrato con App\Http\Middleware\HandleInertiaRequests::share(). */
-import type { AppModule } from './weeklies';
+import type { AppModule, WeeklyAwayStatus } from './weeklies';
 
 export type Role =
     | 'admin'
@@ -21,6 +21,8 @@ export type User = {
     is_client: boolean;
     /** Colaborador externo (D-134): solo sus proyectos, sus tareas y sus chats. */
     is_collaborator: boolean;
+    /** «Estoy fuera» de la Weekly (D-228), si sigue activo. */
+    weekly_away?: WeeklyAwayStatus | null;
 };
 
 export type Abilities = {

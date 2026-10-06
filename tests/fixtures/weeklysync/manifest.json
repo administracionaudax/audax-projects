@@ -5,7 +5,7 @@
     "tables": {
         "users": {
             "rows": 6,
-            "sha256": "93e6a4937a0be6ebfa286d9d6bd4c81b9ac1f4a75fe8854ffb7661d1028f424e"
+            "sha256": "c310562241bba8f82f38bb52bf4facfe5be5e19213c5b872f585436f72fa692a"
         },
         "user_identities": {
             "rows": 2,

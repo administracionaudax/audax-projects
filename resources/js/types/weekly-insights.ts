@@ -5,6 +5,7 @@
  */
 import type { ProjectStatus, UserSummary } from './domain';
 import type {
+    WeeklyAwayStatus,
     WeeklyClientUpdate,
     WeeklyCycleStatus,
     WeeklyJobState,
@@ -197,6 +198,8 @@ export type TeamMemberRow = {
     report_status: WeeklyPersonStatus | null;
     submitted_at: string | null;
     absence: PersonAbsenceToday | null;
+    /** «Estoy fuera» de la Weekly (D-228), si sigue activo. */
+    away?: WeeklyAwayStatus | null;
     client_ids: number[];
 };
 
@@ -254,6 +257,7 @@ export type TeamShowPageProps = {
         role: WeeklyRole | null;
     };
     absence: PersonAbsenceToday | null;
+    away?: WeeklyAwayStatus | null;
     habits: SubmissionHabits | null;
     clients: { owned: PersonClient[]; member: PersonClient[] };
     last_reports: {
@@ -272,5 +276,11 @@ export type TeamShowPageProps = {
         performance: AiSummary | null;
         client_activity: AiSummary | null;
     } | null;
-    can: { viewAi: boolean; manageUser: boolean; remind: boolean };
+    can: {
+        viewAi: boolean;
+        manageUser: boolean;
+        remind: boolean;
+        /** «Estoy fuera» (D-228): la propia persona o quien gestiona la Weekly. */
+        markAway?: boolean;
+    };
 };

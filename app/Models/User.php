@@ -7,6 +7,7 @@ use App\Domain\Integrations\Google\GoogleDisconnector;
 use App\Domain\Integrations\Google\GoogleDisconnectReason;
 use App\Enums\ConversationType;
 use App\Enums\Role;
+use App\Enums\WeeklyAwayReason;
 use App\Events\MembershipsChanged;
 use App\Notifications\ResetPasswordNotification;
 use Closure;
@@ -41,6 +42,9 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $password
  * @property int|null $department_id
  * @property string|null $job_title Puesto (F-026, Fase 10)
+ * @property WeeklyAwayReason|null $weekly_away_reason «Estoy fuera» de la Weekly (D-228)
+ * @property Carbon|null $weekly_away_since
+ * @property Carbon|null $weekly_away_until vuelta (incluida); null = hasta que lo quite
  * @property int|null $client_id
  * @property string|null $hourly_cost
  * @property string|null $default_hourly_rate
@@ -138,6 +142,10 @@ class User extends Authenticatable
             'home_layout' => 'array',
             'privacy_acknowledged_version' => 'integer',
             'privacy_acknowledged_at' => 'datetime',
+            // «Estoy fuera» de la Weekly (D-228): App\Domain\Weeklies\WeeklyAway.
+            'weekly_away_reason' => WeeklyAwayReason::class,
+            'weekly_away_since' => 'date',
+            'weekly_away_until' => 'date',
         ];
     }
 

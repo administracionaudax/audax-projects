@@ -5,6 +5,7 @@ namespace App\Domain\Weeklies;
 use App\Enums\AppModule;
 use App\Enums\WeeklyExemptionReason;
 use App\Enums\WeeklyPersonStatus;
+use App\Models\Absence;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyExemption;
@@ -44,7 +45,7 @@ final class MyWeeklyStatus
     /**
      * @return array{
      *     status: string, participates: bool, must_submit: bool, exemption_reason: string|null,
-     *     exemption_id: int|null, waived: bool, submission_id: int|null, submitted_at: string|null,
+     *     exemption_id: int|null, exemption_until: string|null, waived: bool, submission_id: int|null, submitted_at: string|null,
      *     resubmitted_at: string|null, draft_saved_at: string|null, entries_count: int
      * }
      */
@@ -75,6 +76,15 @@ final class MyWeeklyStatus
             // Fila propia que se puede quitar (manual o renuncia); la de ausencia de una semana
             // activa no tiene fila: se renuncia con waive.
             'exemption_id' => $row !== null && $row->reason !== WeeklyExemptionReason::Absence ? $row->id : null,
+            // Hasta cuándo dura la exención (el aviso del editor, como WeeklySync): la vuelta de la
+            // ausencia o de «Estoy fuera»; null si es manual o no tiene fecha.
+            'exemption_until' => ! $cycle->isActive() ? null : match ($reason) {
+                WeeklyExemptionReason::Absence => ($absenceId = $roster->absenceFor($user->id)) !== null
+                    ? Absence::query()->whereKey($absenceId)->first(['id', 'end_date'])?->end_date->toDateString()
+                    : null,
+                WeeklyExemptionReason::Away => $user->weekly_away_until?->toDateString(),
+                default => null,
+            },
             'waived' => $row?->reason === WeeklyExemptionReason::Waived,
             'submission_id' => $submission?->id,
             'submitted_at' => $submittedAt?->toIso8601String(),

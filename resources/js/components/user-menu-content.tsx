@@ -1,5 +1,5 @@
-import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { LogOut, Palmtree, Settings } from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -15,10 +15,13 @@ import type { User } from '@/types';
 
 type Props = {
     user: User;
+    /** «Estoy fuera…» de la Weekly (D-228): abre el diálogo (lo pinta NavUser). */
+    onAway?: () => void;
 };
 
-export function UserMenuContent({ user }: Props) {
+export function UserMenuContent({ user, onAway }: Props) {
     const cleanup = useMobileNavigation();
+    const useWeeklies = usePage().props.auth?.can?.useWeeklies === true;
 
     const handleLogout = () => {
         cleanup();
@@ -45,6 +48,18 @@ export function UserMenuContent({ user }: Props) {
                         {t('user_menu.settings')}
                     </Link>
                 </DropdownMenuItem>
+                {onAway && useWeeklies ? (
+                    <DropdownMenuItem
+                        className="cursor-pointer"
+                        onSelect={() => onAway()}
+                        data-test="user-menu-away"
+                    >
+                        <Palmtree aria-hidden="true" className="mr-2" />
+                        {user.weekly_away
+                            ? t('weeklies.away.change_self')
+                            : t('weeklies.away.open_self')}
+                    </DropdownMenuItem>
+                ) : null}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

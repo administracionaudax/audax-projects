@@ -6,7 +6,9 @@ use App\Domain\Admin\WorkScheduleVersions;
 use App\Domain\Import\WeeklySync\WeeklySyncContext;
 use App\Domain\Import\WeeklySync\WeeklySyncImportReport as Report;
 use App\Domain\Import\WeeklySync\WeeklySyncNames;
+use App\Domain\Weeklies\WeeklyAway;
 use App\Enums\Role;
+use App\Enums\WeeklyAwayReason;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -20,11 +22,15 @@ use Illuminate\Support\Str;
  *      para conservar quién escribió qué. Solo si escribió algo o contaba para la weekly (no las
  *      cuentas «PENDING» sin nada escrito).
  * No se cambian el rol, el departamento ni el estado de las cuentas que ya existen (mandan los de
- * Audax); solo se rellena el puesto (`job_title`) si está vacío.
+ * Audax); solo se rellena el puesto (`job_title`) si está vacío y, si estaba de vacaciones o
+ * ausente con la vuelta pendiente, su «Estoy fuera» (D-228).
  */
 final class PeopleStage
 {
-    public function __construct(private readonly WorkScheduleVersions $schedules) {}
+    public function __construct(
+        private readonly WorkScheduleVersions $schedules,
+        private readonly WeeklyAway $away = new WeeklyAway,
+    ) {}
 
     public function run(WeeklySyncContext $context): void
     {
@@ -128,6 +134,8 @@ final class PeopleStage
                 }
             }
 
+            $this->away($context, $row, $user);
+
             $context->refs->put('user', $id, 'user', $user->id);
             $context->users[$id] = $user->id;
 
@@ -135,6 +143,31 @@ final class PeopleStage
                 $context->usersByEmail[$email] ??= $user->id;
             }
         }
+    }
+
+    /**
+     * El estado VACATION/ABSENT que sigue vigente pasa a «Estoy fuera» (D-228), con su vuelta, salvo
+     * que la cuenta de Audax ya tenga uno: quien está de vacaciones al migrar no recibe
+     * recordatorios ni pierde la exención.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function away(WeeklySyncContext $context, array $row, User $user): void
+    {
+        $reason = match (strtoupper(WeeklySyncContext::str($row['status'] ?? ''))) {
+            'VACATION' => WeeklyAwayReason::Vacation,
+            'ABSENT' => WeeklyAwayReason::Absent,
+            default => null,
+        };
+        $until = WeeklySyncContext::nullableStr($row['status_end_date'] ?? null);
+        $until = $until !== null ? substr($until, 0, 10) : null;
+
+        if ($reason === null || $user->weekly_away_reason !== null || ($until !== null && $until < WeeklyAway::today())) {
+            return;
+        }
+
+        $this->away->set($user, $reason, $until);
+        $context->report->warn("{$user->name} está fuera en WeeklySync ({$reason->label()}".($until !== null ? " hasta el {$until}" : '').'): queda «Estoy fuera» en Audax.');
     }
 
     private function create(string $name, string $email, ?string $position): User

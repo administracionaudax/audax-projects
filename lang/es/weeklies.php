@@ -21,6 +21,11 @@ return [
 
     // Avisos de las acciones de la entrega 10.2.
     'flash' => [
+        'away' => 'Listo: estás fuera. No te llegarán recordatorios de la weekly.',
+        'away_with_absence' => 'Listo: estás fuera y has solicitado la ausencia.',
+        'away_other' => ':name queda fuera: no le llegarán recordatorios de la weekly.',
+        'available' => 'Vuelves a estar disponible.',
+        'available_other' => ':name vuelve a estar disponible.',
         'opened' => 'Semana abierta: :label.',
         'deadline_updated' => 'Plazo actualizado.',
         'deadline_updated_notified' => '{1} Plazo actualizado. Se ha avisado a 1 persona pendiente.|[2,*] Plazo actualizado. Se ha avisado a :count personas pendientes.',
@@ -42,7 +47,7 @@ return [
         'saved' => 'Avisos de la weekly guardados.',
         'sent' => '{0} Nadie necesita el recordatorio: ya han enviado su weekly o están exentos.|{1} Recordatorio enviado a 1 persona.|[2,*] Recordatorio enviado a :count personas.',
         'reminded' => 'Recordatorio enviado a :name.',
-        'not_needed' => ':name no necesita el recordatorio: ya ha enviado su weekly o está exento.',
+        'not_needed' => ':name no necesita el recordatorio: ya ha enviado su weekly, está exento o está fuera hoy.',
         'duplicate' => 'Ya se le ha enviado un recordatorio hace un momento.',
         'no_channel' => 'No se ha enviado: :name tiene desactivados esos avisos.',
         'no_active' => 'No hay ninguna semana activa a la que recordar.',
@@ -63,7 +68,15 @@ return [
             'deadline_body' => 'El plazo de tu weekly de la :label es ahora el :deadline.',
             'deadline_mail' => "Hola {nombre},\n\nEl plazo de tu weekly de la {week_label} es ahora el :deadline.\n\nGracias.",
         ],
+        'away' => [
+            'absence_note' => 'Solicitada desde «Estoy fuera» de la Weekly.',
+        ],
+
         'validation' => [
+            'away_reason' => 'Elige si estás de vacaciones o ausente.',
+            'away_until' => 'La vuelta tiene que ser hoy o un día posterior.',
+            'away_absence_needs_until' => 'Para solicitar la ausencia, indica hasta cuándo.',
+            'away_absence_failed' => 'No se ha podido solicitar la ausencia.',
             'rules_max' => 'Como mucho :max reglas.',
             'time' => 'La hora tiene que ser HH:MM (de 00:00 a 23:59).',
             'day' => 'El día tiene que ser de lunes a domingo.',
@@ -242,6 +255,11 @@ return [
             'absence' => 'Ausencia',
             'manual' => 'Exención manual',
             'waived' => 'Sin exención',
+            'away' => 'Fuera',
+        ],
+        'away_reason' => [
+            'vacation' => 'De vacaciones',
+            'absent' => 'Ausente o de baja',
         ],
         'entry_source' => [
             'text' => 'Texto',

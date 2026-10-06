@@ -5,6 +5,7 @@ namespace App\Domain\Weeklies\Insights;
 use App\Domain\Weeklies\ProjectStatus\ProjectKindCode;
 use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
 use App\Domain\Weeklies\Report\WeeklyProjectStatus;
+use App\Domain\Weeklies\WeeklyAway;
 use App\Domain\Weeklies\WeeklyCalendar;
 use App\Domain\Weeklies\WeeklyClientSubscriptions;
 use App\Domain\Weeklies\WeeklyTeamStatus;
@@ -88,6 +89,8 @@ final class PersonInsights
                 'report_status' => $cycle === null ? null : ($status['status'] ?? WeeklyPersonStatus::NotRequired->value),
                 'submitted_at' => $status['submitted_at'] ?? null,
                 'absence' => self::absenceFor($absences[$user->id] ?? null, $viewer, $user),
+                // «Estoy fuera» de la Weekly (D-228), si sigue activo.
+                'away' => WeeklyAway::of($user, $now),
                 'client_ids' => $clients[$user->id] ?? [],
             ];
         }
@@ -172,6 +175,7 @@ final class PersonInsights
                 'role' => $person->getRoleNames()->first(),
             ],
             'absence' => self::absenceFor($absence, $viewer, $person),
+            'away' => WeeklyAway::of($person),
             'habits' => self::habits($submittedAt),
             'clients' => $this->clients($person),
             'last_reports' => array_values($lastByClient),

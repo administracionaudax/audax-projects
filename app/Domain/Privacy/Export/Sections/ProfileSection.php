@@ -25,9 +25,10 @@ final class ProfileSection extends Section
     protected function columnKeys(): array
     {
         return [
-            'id', 'name', 'email', 'department', 'roles', 'is_active', 'two_factor_enabled',
+            'id', 'name', 'email', 'department', 'job_title', 'roles', 'is_active', 'two_factor_enabled',
             'theme_preference', 'locale', 'notification_preferences', 'privacy_acknowledged_version',
             'privacy_acknowledged_at', 'email_verified_at', 'created_at',
+            'weekly_away_reason', 'weekly_away_since', 'weekly_away_until',
         ];
     }
 
@@ -41,6 +42,7 @@ final class ProfileSection extends Section
             'name' => $user->name,
             'email' => $user->email,
             'department' => $user->department?->name,
+            'job_title' => $user->job_title,
             'roles' => implode(', ', array_map(
                 fn (string $role): string => Role::tryFrom($role)?->label() ?? $role,
                 $user->getRoleNames()->values()->all(),
@@ -54,6 +56,10 @@ final class ProfileSection extends Section
             'privacy_acknowledged_at' => self::instant($user->privacy_acknowledged_at),
             'email_verified_at' => self::instant($user->email_verified_at),
             'created_at' => self::instant($user->created_at),
+            // «Estoy fuera» de la Weekly (D-228).
+            'weekly_away_reason' => $user->weekly_away_reason?->label(),
+            'weekly_away_since' => $user->weekly_away_since?->toDateString(),
+            'weekly_away_until' => $user->weekly_away_until?->toDateString(),
         ];
     }
 }

@@ -78,6 +78,8 @@ class TeamController extends Controller
                 'viewAi' => $canAi,
                 'manageUser' => $viewer->can('manage-users'),
                 'remind' => $cycle !== null && $viewer->can('remind', $cycle),
+                // «Estoy fuera» (D-228): la propia persona o quien gestiona la Weekly.
+                'markAway' => $user->is_active && ($viewer->is($user) || $viewer->can('manage-weeklies')),
             ],
         ]);
     }

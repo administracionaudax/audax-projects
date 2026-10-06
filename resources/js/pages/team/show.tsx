@@ -1,7 +1,9 @@
-import { Head, Link, setLayoutProps } from '@inertiajs/react';
+import { Head, Link, setLayoutProps, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     CalendarClock,
+    CalendarOff,
+    Palmtree,
     Pencil,
     ShieldCheck,
     Users,
@@ -12,8 +14,10 @@ import { UserAvatar } from '@/components/realtime/presence-indicator';
 import { Button } from '@/components/ui/button';
 import { AiSummaryPanel } from '@/components/weeklies/insights/ai-summary-panel';
 import { ProjectKindBadges } from '@/components/weeklies/insights/project-kind';
+import { AwayDialog } from '@/components/weeklies/away-dialog';
 import {
     AbsenceTodayBadge,
+    AwayBadge,
     CopyEmailButton,
 } from '@/components/weeklies/insights/team-ui';
 import {
@@ -27,6 +31,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { index as teamAbsences } from '@/routes/absences/team';
 import { edit as editUser } from '@/routes/admin/users';
 import { show as showClient } from '@/routes/clients';
 import { show as showProject } from '@/routes/projects';
@@ -134,6 +139,7 @@ function ClientList({
 export default function TeamShow({
     person,
     absence,
+    away,
     habits,
     clients,
     last_reports: lastReports,
@@ -144,6 +150,7 @@ export default function TeamShow({
     ai,
     can,
 }: TeamShowPageProps) {
+    const auth = usePage().props.auth;
     setLayoutProps({
         breadcrumbs: [
             { title: t('weeklies.team.title'), href: teamIndex() },
@@ -203,6 +210,7 @@ export default function TeamShow({
                                     </span>
                                 )}
                                 <AbsenceTodayBadge absence={absence} />
+                                <AwayBadge away={away} />
                                 {cycle && status ? (
                                     <span className="inline-flex items-center gap-2 text-sm">
                                         <span className="text-muted-foreground">
@@ -223,14 +231,43 @@ export default function TeamShow({
                             </div>
                         </div>
                     </div>
-                    {can.manageUser ? (
-                        <Button variant="outline" asChild>
-                            <Link href={editUser.url(person.id)}>
-                                <Pencil aria-hidden="true" />
-                                {t('weeklies.person.edit')}
-                            </Link>
-                        </Button>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {can.markAway ? (
+                            <AwayDialog
+                                person={person}
+                                current={away}
+                                self={auth?.user?.id === person.id}
+                                trigger={
+                                    <Button
+                                        variant="outline"
+                                        data-test="person-mark-away"
+                                    >
+                                        <Palmtree aria-hidden="true" />
+                                        {auth?.user?.id === person.id
+                                            ? t('weeklies.away.open_self')
+                                            : t('weeklies.away.mark_other')}
+                                    </Button>
+                                }
+                            />
+                        ) : null}
+                        {auth?.can?.viewTeamAbsences &&
+                        auth.user?.id !== person.id ? (
+                            <Button variant="outline" asChild>
+                                <Link href={teamAbsences.url()}>
+                                    <CalendarOff aria-hidden="true" />
+                                    {t('weeklies.person.register_absence')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {can.manageUser ? (
+                            <Button variant="outline" asChild>
+                                <Link href={editUser.url(person.id)}>
+                                    <Pencil aria-hidden="true" />
+                                    {t('weeklies.person.edit')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                    </div>
                 </header>
 
                 <section

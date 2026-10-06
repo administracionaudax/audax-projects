@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
@@ -8,13 +8,17 @@ import {
     CircleCheck,
     Clock,
     Minus,
+    Palmtree,
     PencilLine,
 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { AwayDialog } from '@/components/weeklies/away-dialog';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { index as absencesIndex } from '@/routes/absences';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import type { MyWeeklyStatus, WeeklyCycleSummary } from '@/types/weeklies';
 
@@ -123,6 +127,15 @@ export function MyWeeklyCallout({
     const Icon = variant.icon;
     const draft =
         me.submitted_at === null && me.entries_count > 0 && me.draft_saved_at;
+    const auth = usePage().props.auth;
+    const [awayOpen, setAwayOpen] = useState(false);
+    // «Estoy fuera» (D-228): con la weekly por hacer, o exento por estar fuera para cambiarlo.
+    const offerAway =
+        auth?.user != null &&
+        cycle.status === 'active' &&
+        (me.exemption_reason === 'away' ||
+            (me.exemption_reason === null &&
+                ['pending', 'overdue', 'upcoming'].includes(me.status)));
 
     return (
         <div
@@ -150,6 +163,51 @@ export function MyWeeklyCallout({
                                 date: formatDate(cycle.deadline_date),
                             })}
                         </p>
+                    ) : null}
+                    {me.exemption_reason && me.exemption_until ? (
+                        <p
+                            className="text-xs text-muted-foreground"
+                            data-test="my-weekly-exempt-until"
+                        >
+                            {t('weeklies.callout.exempt_until', {
+                                date: formatDate(me.exemption_until),
+                            })}
+                        </p>
+                    ) : null}
+                    {offerAway ? (
+                        <div
+                            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                            data-test="my-weekly-away"
+                        >
+                            {me.exemption_reason !== 'away' ? (
+                                <span className="text-muted-foreground">
+                                    {t('weeklies.callout.away_question')}
+                                </span>
+                            ) : null}
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-1 underline underline-offset-2"
+                                onClick={() => setAwayOpen(true)}
+                            >
+                                <Palmtree
+                                    aria-hidden="true"
+                                    className="size-3.5"
+                                />
+                                {me.exemption_reason === 'away'
+                                    ? t('weeklies.callout.away_change')
+                                    : t('weeklies.callout.away_mark')}
+                            </button>
+                            {auth?.can?.viewAbsences ? (
+                                <Link
+                                    href={absencesIndex.url({
+                                        query: { solicitar: 1 },
+                                    })}
+                                    className="underline underline-offset-2"
+                                >
+                                    {t('weeklies.callout.request_absence')}
+                                </Link>
+                            ) : null}
+                        </div>
                     ) : null}
                     {me.submitted_at ? (
                         <p className="text-xs text-muted-foreground">
@@ -187,6 +245,15 @@ export function MyWeeklyCallout({
                         <ArrowRight aria-hidden="true" />
                     </Link>
                 </Button>
+            ) : null}
+            {offerAway && auth?.user ? (
+                <AwayDialog
+                    person={auth.user}
+                    current={auth.user.weekly_away}
+                    self
+                    open={awayOpen}
+                    onOpenChange={setAwayOpen}
+                />
             ) : null}
         </div>
     );

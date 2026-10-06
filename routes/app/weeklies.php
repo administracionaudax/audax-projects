@@ -16,6 +16,7 @@ use App\Http\Controllers\Weeklies\SuggestionCommentController;
 use App\Http\Controllers\Weeklies\SuggestionController;
 use App\Http\Controllers\Weeklies\TeamController;
 use App\Http\Controllers\Weeklies\WeeklyAudioController;
+use App\Http\Controllers\Weeklies\WeeklyAwayController;
 use App\Http\Controllers\Weeklies\WeeklyClientSubscriptionController;
 use App\Http\Controllers\Weeklies\WeeklyCycleController;
 use App\Http\Controllers\Weeklies\WeeklyExemptionController;
@@ -60,6 +61,9 @@ Route::middleware('module:weeklies')->group(function () {
     Route::post('weeklies/{cycle}/exenciones', [WeeklyExemptionController::class, 'store'])->whereNumber('cycle')->name('weeklies.exemptions.store');
     Route::post('weeklies/{cycle}/exenciones/renuncia', [WeeklyExemptionController::class, 'waive'])->whereNumber('cycle')->name('weeklies.exemptions.waive');
     Route::delete('weeklies/{cycle}/exenciones/{exemption}', [WeeklyExemptionController::class, 'destroy'])->whereNumber(['cycle', 'exemption'])->name('weeklies.exemptions.destroy');
+    // «Estoy fuera» (10.9b, D-228): uno mismo o quien gestiona, con efecto inmediato.
+    Route::put('equipo/{user}/fuera', [WeeklyAwayController::class, 'update'])->whereNumber('user')->middleware('throttle:30,1,weeklies.away.update')->name('weeklies.away.update');
+    Route::delete('equipo/{user}/fuera', [WeeklyAwayController::class, 'destroy'])->whereNumber('user')->middleware('throttle:30,1,weeklies.away.destroy')->name('weeklies.away.destroy');
 
     // Avisos (10.5).
     Route::get('weeklies/avisos', [WeeklyReminderController::class, 'edit'])->name('weeklies.reminders.edit');

@@ -7,6 +7,9 @@ namespace App\Enums;
  * - absence: ausencia aprobada que cubre el plazo. Mientras la semana está activa se calcula al
  *   vuelo (WeeklyEligibility); al cerrar se congela con esta fila (F-092),
  * - manual: exención puesta por quien gestiona la weekly (F-038),
+ * - away: «Estoy fuera» con una vuelta posterior al plazo (o sin fecha), puesto por la persona o
+ *   por quien gestiona (10.9b, D-228). Como la ausencia: al vuelo con la semana activa y congelado
+ *   al cerrar,
  * - waived: la persona renuncia a la exención que le daba su ausencia y quiere enviar (F-053).
  */
 enum WeeklyExemptionReason: string
@@ -14,6 +17,7 @@ enum WeeklyExemptionReason: string
     case Absence = 'absence';
     case Manual = 'manual';
     case Waived = 'waived';
+    case Away = 'away';
 
     /** ¿Exime de enviar? Una renuncia no. */
     public function exempts(): bool

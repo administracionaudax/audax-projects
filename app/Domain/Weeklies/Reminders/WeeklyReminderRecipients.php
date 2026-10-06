@@ -2,11 +2,16 @@
 
 namespace App\Domain\Weeklies\Reminders;
 
+use App\Domain\Weeklies\WeeklyAway;
+use App\Domain\Weeklies\WeeklyCalendar;
 use App\Domain\Weeklies\WeeklyEligibility;
 use App\Enums\Role;
+use App\Enums\WeeklyExemptionReason;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use App\Models\WeeklyExemption;
 use App\Models\WeeklySubmission;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -16,9 +21,12 @@ use Illuminate\Database\Eloquent\Collection;
  * - pending(): los recordatorios (por reglas, manuales y «Recordar») y el plazo cambiado, solo a
  *   quien DEBE enviar la semana activa y aún no la ha enviado: internos activos de plantilla
  *   (nunca colaboradores externos ni clientes), dados de alta a tiempo, sin exención (manual o por
- *   una ausencia aprobada que cubre el plazo) ni renuncia pendiente (WeeklyEligibility). Un
- *   borrador sin enviar cuenta como pendiente. WeeklySync no miraba las exenciones (D-145): aquí
- *   un exento nunca recibe un recordatorio.
+ *   una ausencia aprobada que cubre el plazo, o «Estoy fuera» hasta el plazo) ni renuncia
+ *   pendiente (WeeklyEligibility). Un borrador sin enviar cuenta como pendiente. WeeklySync no
+ *   miraba las exenciones (D-145): aquí un exento nunca recibe un recordatorio. Y, como en el
+ *   original (`status = 'AVAILABLE'` al enviar), tampoco quien está fuera HOY aunque vuelva antes
+ *   del plazo: «Estoy fuera» activo o una ausencia aprobada de día completo (WeeklyAway, D-228),
+ *   salvo que haya renunciado a su exención esa semana para escribir.
  * - team(): «weekly cerrada» (F-095), a todo el equipo activo que escribe la weekly, como el
  *   `all_active` del original.
  *
@@ -26,7 +34,10 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class WeeklyReminderRecipients
 {
-    public function __construct(private readonly WeeklyEligibility $eligibility) {}
+    public function __construct(
+        private readonly WeeklyEligibility $eligibility,
+        private readonly WeeklyAway $away = new WeeklyAway,
+    ) {}
 
     /**
      * @param  list<int>|null  $onlyIds  limita a estas personas (envío manual o «Recordar»)
@@ -57,6 +68,19 @@ final class WeeklyReminderRecipients
             ->all();
 
         $ids = array_values(array_diff($expected, $submitted));
+        // Fuera hoy (D-228), salvo quien ha renunciado a su exención para escribir esta semana.
+        $away = $this->away->awayOn($ids, CarbonImmutable::now(WeeklyCalendar::TIMEZONE));
+
+        if ($away !== []) {
+            $waived = WeeklyExemption::query()
+                ->where('weekly_cycle_id', $cycle->id)
+                ->where('reason', WeeklyExemptionReason::Waived->value)
+                ->whereIn('user_id', $away)
+                ->pluck('user_id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+            $ids = array_values(array_diff($ids, array_diff($away, $waived)));
+        }
 
         if ($ids === []) {
             return new Collection;

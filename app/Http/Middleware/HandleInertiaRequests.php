@@ -10,6 +10,7 @@ use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Weeklies\AppModules;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\WeeklyAway;
 use App\Http\Resources\FinancialResource;
 use App\Models\Absence;
 use App\Models\ActiveTimer;
@@ -93,6 +94,8 @@ class HandleInertiaRequests extends Middleware
                 'is_client' => $user->isClient(),
                 // Colaborador externo (D-134): solo sus proyectos, sus tareas y sus chats.
                 'is_collaborator' => $user->isCollaborator(),
+                // «Estoy fuera» de la Weekly (D-228), si sigue activo: la insignia del avatar.
+                'weekly_away' => WeeklyAway::of($user),
             ] : null,
             'can' => [
                 'viewHourBanks' => $user ? Gate::forUser($user)->allows('view-hour-banks') : false,

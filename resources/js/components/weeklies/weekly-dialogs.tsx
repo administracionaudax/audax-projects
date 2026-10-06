@@ -1,4 +1,4 @@
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useId, useMemo, useState } from 'react';
@@ -16,18 +16,23 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { ClientIcon } from '@/components/weeklies/weekly-ui';
-import { addDays } from '@/lib/week';
+import { addDays, todayInMadrid } from '@/lib/week';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { update as updateDeadline } from '@/routes/weeklies/deadline';
+import { index as teamAbsences } from '@/routes/absences/team';
+import { update as updateAway } from '@/routes/weeklies/away';
 import { store as storeExemption } from '@/routes/weeklies/exemptions';
 import { join as joinClients } from '@/routes/weeklies/clients';
 import type { UserSummary } from '@/types';
 import type {
+    WeeklyAwayReason,
     WeeklyCycleSummary,
     WeeklyJoinableClient,
 } from '@/types/weeklies';
@@ -135,8 +140,12 @@ export function DeadlineDialog({
 }
 
 /**
- * Eximir a alguien de la weekly de esta semana (F-038, D-159): exención manual con una nota
- * opcional. Quien tiene una ausencia aprobada ya está exento solo (F-097).
+ * Eximir a alguien de la weekly (F-038, D-159 y D-228), como «Marcar ausencia» de WeeklySync:
+ * - «Solo esta semana»: exención manual con una nota opcional,
+ * - «De vacaciones» o «Ausente o de baja»: le marca fuera (WeeklyAway) hasta una fecha opcional, así
+ *   que queda exento de esta y de las siguientes semanas cuyo plazo caiga antes de su vuelta, y sin
+ *   recordatorios. Enlaza a «Ausencias del equipo» para registrar la ausencia de verdad.
+ * Quien tiene una ausencia aprobada que cubre el plazo ya está exento solo (F-097).
  */
 export function ExemptDialog({
     cycle,
@@ -148,8 +157,15 @@ export function ExemptDialog({
     trigger: ReactNode;
 }) {
     const id = useId();
+    const can = usePage().props.auth?.can;
     const [open, setOpen] = useState(false);
-    const form = useForm({ user_id: person.id, note: '' });
+    const form = useForm<{
+        user_id: number;
+        note: string;
+        mode: 'week' | WeeklyAwayReason;
+        until: string | null;
+    }>({ user_id: person.id, note: '', mode: 'week', until: null });
+    const week = form.data.mode === 'week';
 
     return (
         <Dialog
@@ -158,7 +174,12 @@ export function ExemptDialog({
                 setOpen(next);
 
                 if (next) {
-                    form.setData({ user_id: person.id, note: '' });
+                    form.setData({
+                        user_id: person.id,
+                        note: '',
+                        mode: 'week',
+                        until: null,
+                    });
                     form.clearErrors();
                 }
             }}
@@ -170,7 +191,25 @@ export function ExemptDialog({
                     noValidate
                     onSubmit={(event) => {
                         event.preventDefault();
-                        form.post(storeExemption.url(cycle.id), {
+
+                        if (week) {
+                            form.transform((data) => ({
+                                user_id: data.user_id,
+                                note: data.note,
+                            }));
+                            form.post(storeExemption.url(cycle.id), {
+                                preserveScroll: true,
+                                onSuccess: () => setOpen(false),
+                            });
+
+                            return;
+                        }
+
+                        form.transform((data) => ({
+                            reason: data.mode,
+                            until: data.until,
+                        }));
+                        form.put(updateAway.url(person.id), {
                             preserveScroll: true,
                             onSuccess: () => setOpen(false),
                         });
@@ -188,32 +227,111 @@ export function ExemptDialog({
                             })}
                         </DialogDescription>
                     </DialogHeader>
-                    <Field
-                        id={`${id}-note`}
-                        label={t('weeklies.exempt_dialog.note')}
-                        optional={t('weeklies.common.optional')}
-                        error={form.errors.note ?? form.errors.user_id}
-                    >
-                        <Textarea
-                            id={`${id}-note`}
-                            value={form.data.note}
-                            onChange={(event) =>
-                                form.setData('note', event.target.value)
+                    <fieldset className="grid gap-2">
+                        <legend className="mb-2 text-sm font-medium">
+                            {t('weeklies.exempt_dialog.mode')}
+                        </legend>
+                        <RadioGroup
+                            value={form.data.mode}
+                            onValueChange={(value) =>
+                                form.setData(
+                                    'mode',
+                                    value as 'week' | WeeklyAwayReason,
+                                )
                             }
-                            maxLength={500}
-                            placeholder={t(
-                                'weeklies.exempt_dialog.note_placeholder',
+                            className="grid gap-2"
+                        >
+                            {(['week', 'vacation', 'absent'] as const).map(
+                                (mode) => (
+                                    <label
+                                        key={mode}
+                                        className="flex items-start gap-2 text-sm"
+                                    >
+                                        <RadioGroupItem
+                                            value={mode}
+                                            className="mt-0.5"
+                                            data-test={`weekly-exempt-mode-${mode}`}
+                                        />
+                                        <span className="grid gap-0.5">
+                                            <span>
+                                                {t(
+                                                    `weeklies.exempt_dialog.mode_${mode}`,
+                                                )}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {t(
+                                                    mode === 'week'
+                                                        ? 'weeklies.exempt_dialog.mode_week_help'
+                                                        : 'weeklies.exempt_dialog.mode_away_help',
+                                                )}
+                                            </span>
+                                        </span>
+                                    </label>
+                                ),
                             )}
-                            aria-invalid={
-                                form.errors.note || form.errors.user_id
-                                    ? true
-                                    : undefined
+                        </RadioGroup>
+                        <InputError
+                            message={
+                                (form.errors as Record<string, string>).reason
                             }
-                            aria-describedby={describedBy(`${id}-note`, {
-                                error: form.errors.note ?? form.errors.user_id,
-                            })}
                         />
-                    </Field>
+                    </fieldset>
+                    {week ? (
+                        <Field
+                            id={`${id}-note`}
+                            label={t('weeklies.exempt_dialog.note')}
+                            optional={t('weeklies.common.optional')}
+                            error={form.errors.note ?? form.errors.user_id}
+                        >
+                            <Textarea
+                                id={`${id}-note`}
+                                value={form.data.note}
+                                onChange={(event) =>
+                                    form.setData('note', event.target.value)
+                                }
+                                maxLength={500}
+                                placeholder={t(
+                                    'weeklies.exempt_dialog.note_placeholder',
+                                )}
+                                aria-invalid={
+                                    form.errors.note || form.errors.user_id
+                                        ? true
+                                        : undefined
+                                }
+                                aria-describedby={describedBy(`${id}-note`, {
+                                    error:
+                                        form.errors.note ?? form.errors.user_id,
+                                })}
+                            />
+                        </Field>
+                    ) : (
+                        <Field
+                            id={`${id}-until`}
+                            label={t('weeklies.away.until')}
+                            optional={t('weeklies.common.optional')}
+                            error={form.errors.until}
+                            help={t('weeklies.away.until_hint')}
+                        >
+                            <DatePicker
+                                id={`${id}-until`}
+                                value={form.data.until}
+                                onChange={(value) =>
+                                    form.setData('until', value)
+                                }
+                                min={todayInMadrid()}
+                                invalid={Boolean(form.errors.until)}
+                            />
+                        </Field>
+                    )}
+                    {can?.viewTeamAbsences ? (
+                        <Link
+                            href={teamAbsences.url()}
+                            className="text-xs underline underline-offset-2"
+                            data-test="weekly-exempt-team-absences"
+                        >
+                            {t('weeklies.away.team_absences_link')}
+                        </Link>
+                    ) : null}
                     <DialogFooter className="gap-2">
                         <DialogClose asChild>
                             <Button
@@ -230,7 +348,9 @@ export function ExemptDialog({
                             data-test="weekly-exempt-confirm"
                         >
                             {form.processing && <Spinner />}
-                            {t('weeklies.exempt_dialog.confirm')}
+                            {week
+                                ? t('weeklies.exempt_dialog.confirm')
+                                : t('weeklies.exempt_dialog.confirm_away')}
                         </Button>
                     </DialogFooter>
                 </form>

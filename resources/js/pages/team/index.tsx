@@ -14,6 +14,7 @@ import {
 } from '@/components/weeklies/insights/project-status-view';
 import {
     AbsenceTodayBadge,
+    AwayBadge,
     CopyEmailButton,
 } from '@/components/weeklies/insights/team-ui';
 import { RemindButton } from '@/components/weeklies/reminders/remind-button';
@@ -328,6 +329,9 @@ export default function TeamIndex({
                                                     </Link>
                                                     <AbsenceTodayBadge
                                                         absence={row.absence}
+                                                    />
+                                                    <AwayBadge
+                                                        away={row.away}
                                                     />
                                                 </div>
                                             </div>

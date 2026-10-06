@@ -32,8 +32,21 @@ export type WeeklyPersonStatus =
     | 'exempt'
     | 'not_required';
 
-/** WeeklyExemptionReason (D-151): waived = renuncia a la exención por ausencia. */
-export type WeeklyExemptionReason = 'absence' | 'manual' | 'waived';
+/**
+ * WeeklyExemptionReason (D-151): waived = renuncia a la exención por ausencia; away = «Estoy
+ * fuera» hasta el plazo o después (D-228).
+ */
+export type WeeklyExemptionReason = 'absence' | 'manual' | 'waived' | 'away';
+
+/** «Estoy fuera» de la Weekly (D-228), WeeklyAway::of(): activo hoy. */
+export type WeeklyAwayReason = 'vacation' | 'absent';
+
+export type WeeklyAwayStatus = {
+    reason: WeeklyAwayReason;
+    since: string | null;
+    /** Vuelta (incluida); null = hasta que se quite. */
+    until: string | null;
+};
 
 export type WeeklyEntrySource = 'text' | 'dictation';
 
@@ -291,6 +304,8 @@ export type MyWeeklyStatus = {
     exemption_reason: Exclude<WeeklyExemptionReason, 'waived'> | null;
     /** Mi fila manual o de renuncia (para quitarla con weeklies.exemptions.destroy). */
     exemption_id: number | null;
+    /** Hasta cuándo dura (la vuelta de la ausencia o de «Estoy fuera»), con la semana activa. */
+    exemption_until?: string | null;
     waived: boolean;
     submission_id: number | null;
     submitted_at: string | null;

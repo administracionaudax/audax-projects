@@ -424,6 +424,13 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                                     `weeklies.exempt.title.${me.exemption_reason}`,
                                 )}
                             </p>
+                            {me.exemption_until ? (
+                                <p data-test="weekly-exempt-until">
+                                    {t('weeklies.exempt.until', {
+                                        date: formatDate(me.exemption_until),
+                                    })}
+                                </p>
+                            ) : null}
                             <p>{t('weeklies.exempt.locked')}</p>
                             <p>{t('weeklies.exempt.streak')}</p>
                         </div>
@@ -468,7 +475,9 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                     className="border border-dashed bg-muted/60 p-4 text-sm text-muted-foreground"
                     data-test="weekly-editor-empty"
                 >
-                    {t('weeklies.editor.nothing_sent')}
+                    {me.exemption_reason
+                        ? t('weeklies.editor.nothing_exempt')
+                        : t('weeklies.editor.nothing_sent')}
                 </p>
             ) : (
                 <div className="grid gap-3" data-test="weekly-entries">

@@ -4,6 +4,7 @@ use App\Domain\Import\WeeklySync\Stages\WeeksStage;
 use App\Domain\Import\WeeklySync\WeeklySyncImporter;
 use App\Domain\Import\WeeklySync\WeeklySyncImportReport;
 use App\Domain\Import\WeeklySync\WeeklySyncMappings;
+use App\Domain\Weeklies\WeeklyAway;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Enums\SuggestionReaction;
@@ -133,6 +134,9 @@ test('importa personas, clientes, semanas, envíos, borradores, exenciones y sat
         ->and($diego->job_title)->toBe('Redactor')
         ->and($diego->hasRole('employee'))->toBeTrue()
         ->and($this->carla->fresh()->job_title)->toBe('Diseñadora')
+        // De vacaciones en WeeklySync hasta el 16/10: «Estoy fuera» en Audax (D-228).
+        ->and(WeeklyAway::of($this->carla->fresh()))->toBe(['reason' => 'vacation', 'since' => '2026-10-07', 'until' => '2026-10-16'])
+        ->and(WeeklyAway::of($this->ana->fresh()))->toBeNull()
         ->and($this->ana->fresh()->job_title)->toBe('Directora')
         ->and(User::query()->where('email', 'elena@pendiente.test')->exists())->toBeFalse()
         ->and(User::query()->where('email', 'fede@pruebas.test')->exists())->toBeFalse();

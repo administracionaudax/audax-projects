@@ -22,7 +22,8 @@ use Illuminate\Support\Facades\DB;
  * - participan los internos ACTIVOS de plantilla (admin, responsables y empleados; nunca los
  *   colaboradores externos, D-134, ni los clientes) dados de alta antes del final del viernes,
  * - están exentos quienes tienen una ausencia APROBADA de día completo que cubre el día del plazo
- *   (start_date ≤ plazo ≤ end_date) y quienes tienen una exención manual,
+ *   (start_date ≤ plazo ≤ end_date), quienes se han marcado «Estoy fuera» hasta el plazo o después
+ *   (WeeklyAway, D-228) y quienes tienen una exención manual,
  * - una renuncia (waived, F-053) anula la exención por ausencia.
  *
  * Semana CERRADA (foto congelada con freeze() al cerrar, F-092):
@@ -30,7 +31,7 @@ use Illuminate\Support\Facades\DB;
  *   manual). Si una semana importada no trae la foto, se reconstruye con quien envió, los exentos
  *   guardados y los activos de entonces (aproximación; el importador debería traer la foto).
  *
- * Tres consultas como mucho (personas, ausencias y exenciones).
+ * Tres consultas como mucho (personas con su «Estoy fuera», ausencias y exenciones).
  */
 final class WeeklyEligibility
 {
@@ -42,10 +43,10 @@ final class WeeklyEligibility
             return $this->closedRoster($cycle, $rows);
         }
 
-        $candidates = $this->candidateIds($this->weekEnd($cycle));
+        [$candidates, $away] = $this->candidates($this->weekEnd($cycle), $cycle->deadline_date);
         $absences = $this->coveringAbsences($candidates, $cycle->deadline_date);
 
-        return self::resolve($candidates, $absences, $rows);
+        return self::resolve($candidates, $absences, $rows, $away);
     }
 
     /**
@@ -60,15 +61,15 @@ final class WeeklyEligibility
             return $this->closedRoster($cycle, $rows);
         }
 
-        $candidates = $this->candidateIds($this->weekEnd($cycle), $user->id);
+        [$candidates, $away] = $this->candidates($this->weekEnd($cycle), $cycle->deadline_date, $user->id);
         $absences = $this->coveringAbsences($candidates, $cycle->deadline_date);
 
-        return self::resolve($candidates, $absences, $rows);
+        return self::resolve($candidates, $absences, $rows, $away);
     }
 
     /**
      * Congela la foto al cerrar (F-092): guarda como exención `absence` a quien le eximía una
-     * ausencia y en expected_user_ids a quien debía enviar. Llamar dentro de la transacción del
+     * ausencia (y `away` a quien estaba fuera, D-228) y en expected_user_ids a quien debía enviar. Llamar dentro de la transacción del
      * cierre y ANTES de marcar la semana como cerrada.
      */
     public function freeze(WeeklyCycle $cycle): WeeklyRoster
@@ -77,13 +78,13 @@ final class WeeklyEligibility
 
         DB::transaction(function () use ($cycle, $roster): void {
             foreach ($roster->exemptions() as $userId => $reason) {
-                if ($reason !== WeeklyExemptionReason::Absence) {
+                if ($reason !== WeeklyExemptionReason::Absence && $reason !== WeeklyExemptionReason::Away) {
                     continue;
                 }
 
                 WeeklyExemption::query()->firstOrCreate(
                     ['weekly_cycle_id' => $cycle->id, 'user_id' => $userId],
-                    ['reason' => WeeklyExemptionReason::Absence, 'absence_id' => $roster->absenceFor($userId)],
+                    ['reason' => $reason, 'absence_id' => $roster->absenceFor($userId)],
                 );
             }
 
@@ -99,8 +100,9 @@ final class WeeklyEligibility
      * @param  list<int>  $candidates  internos activos de plantilla dados de alta a tiempo
      * @param  array<int, int>  $coveringAbsences  persona → ausencia aprobada que cubre el plazo
      * @param  array<int, array{reason: WeeklyExemptionReason, absence_id: int|null}>  $rows  filas de weekly_exemptions
+     * @param  array<int, true>  $away  personas con «Estoy fuera» que cubre el plazo (D-228)
      */
-    public static function resolve(array $candidates, array $coveringAbsences, array $rows): WeeklyRoster
+    public static function resolve(array $candidates, array $coveringAbsences, array $rows, array $away = []): WeeklyRoster
     {
         $exemptions = [];
         $absenceIds = [];
@@ -125,6 +127,12 @@ final class WeeklyEligibility
             if (isset($coveringAbsences[$userId])) {
                 $exemptions[$userId] = WeeklyExemptionReason::Absence;
                 $absenceIds[$userId] = $coveringAbsences[$userId];
+
+                continue;
+            }
+
+            if (isset($away[$userId])) {
+                $exemptions[$userId] = WeeklyExemptionReason::Away;
             }
         }
 
@@ -178,20 +186,49 @@ final class WeeklyEligibility
     }
 
     /**
+     * Los candidatos y, de ellos, quién está fuera el día del plazo (D-228), en una consulta.
+     *
+     * @return array{0: list<int>, 1: array<int, true>}
+     */
+    private function candidates(CarbonInterface $weekEnd, CarbonInterface $deadline, ?int $onlyUserId = null): array
+    {
+        $ids = [];
+        $away = [];
+
+        foreach ($this->candidateQuery($weekEnd, $onlyUserId)->get(['id', 'weekly_away_reason', 'weekly_away_since', 'weekly_away_until']) as $user) {
+            $ids[] = $user->id;
+
+            if (WeeklyAway::coversDay($user, $deadline)) {
+                $away[$user->id] = true;
+            }
+        }
+
+        return [$ids, $away];
+    }
+
+    /**
      * @return list<int>
      */
     private function candidateIds(CarbonInterface $weekEnd, ?int $onlyUserId = null): array
     {
-        return array_values(User::query()
+        return array_values($this->candidateQuery($weekEnd, $onlyUserId)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all());
+    }
+
+    /**
+     * @return Builder<User>
+     */
+    private function candidateQuery(CarbonInterface $weekEnd, ?int $onlyUserId = null): Builder
+    {
+        return User::query()
             ->when($onlyUserId !== null, fn (Builder $query) => $query->whereKey($onlyUserId))
             ->where('is_active', true)
             ->where('created_at', '<=', $weekEnd->utc())
             ->whereHas('roles', fn (Builder $roles) => $roles->whereIn('name', User::WEEKLY_ROLES))
             ->whereDoesntHave('roles', fn (Builder $roles) => $roles->whereIn('name', [Role::Collaborator->value, Role::Client->value]))
-            ->orderBy('id')
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all());
+            ->orderBy('id');
     }
 
     /**

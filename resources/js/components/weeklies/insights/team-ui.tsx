@@ -1,4 +1,4 @@
-import { CalendarOff, Copy } from 'lucide-react';
+import { CalendarOff, Copy, Palmtree } from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusBadge } from '@/components/styleguide/status-badges';
 import { useClipboard } from '@/hooks/use-clipboard';
@@ -6,7 +6,26 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { awayLabel } from '@/components/weeklies/away-dialog';
 import type { PersonAbsenceToday } from '@/types/weekly-insights';
+import type { WeeklyAwayStatus } from '@/types/weeklies';
+
+/** «Fuera: de vacaciones hasta el 16/10» («Estoy fuera» de la Weekly, D-228). */
+export function AwayBadge({
+    away,
+}: {
+    away: WeeklyAwayStatus | null | undefined;
+}) {
+    if (!away) {
+        return null;
+    }
+
+    return (
+        <StatusBadge tone="warning" icon={Palmtree}>
+            {t('weeklies.away.badge', { status: awayLabel(away) })}
+        </StatusBadge>
+    );
+}
 
 /**
  * «Ausente» de hoy (F-136, las insignias VACACIONES y AUSENTE de WeeklySync): el tipo solo si quien

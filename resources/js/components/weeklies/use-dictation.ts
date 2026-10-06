@@ -110,7 +110,9 @@ export function useDictation({
             return;
         }
 
-        setNotice(dictation.warning === 'cleanup_failed' ? 'cleanup_failed' : null);
+        setNotice(
+            dictation.warning === 'cleanup_failed' ? 'cleanup_failed' : null,
+        );
         deliver.current(text);
     }, []);
 

@@ -41,7 +41,7 @@ final class WeeklyOverview
         $cycles = WeeklyCycle::query()
             ->withCount([
                 'submissions' => fn (Builder $query) => $query->whereNotNull('submitted_at'),
-                'exemptions' => fn (Builder $query) => $query->whereIn('reason', [WeeklyExemptionReason::Absence->value, WeeklyExemptionReason::Manual->value]),
+                'exemptions' => fn (Builder $query) => $query->whereIn('reason', [WeeklyExemptionReason::Absence->value, WeeklyExemptionReason::Manual->value, WeeklyExemptionReason::Away->value]),
             ])
             ->orderByDesc('start_date')
             ->limit(self::HISTORY_LIMIT)
