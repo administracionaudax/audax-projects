@@ -153,7 +153,9 @@ final class SuggestionWriter
 
             if ($voted) {
                 try {
-                    SuggestionVote::query()->create(['suggestion_post_id' => $post->id, 'user_id' => $user->id]);
+                    // En un punto de guardado: en PostgreSQL, la violación del índice único abortaría
+                    // la transacción entera y el recuento de después fallaría.
+                    DB::transaction(fn () => SuggestionVote::query()->create(['suggestion_post_id' => $post->id, 'user_id' => $user->id]));
                 } catch (UniqueConstraintViolationException) {
                     // Dos clics a la vez: ya había voto.
                 }
@@ -295,11 +297,12 @@ final class SuggestionWriter
             }
 
             try {
-                SuggestionCommentReaction::query()->create([
+                // En un punto de guardado, para no abortar la transacción en PostgreSQL (como toggleVote).
+                DB::transaction(fn () => SuggestionCommentReaction::query()->create([
                     'suggestion_comment_id' => $comment->id,
                     'user_id' => $user->id,
                     'reaction' => $reaction,
-                ]);
+                ]));
             } catch (UniqueConstraintViolationException) {
                 // Dos clics a la vez.
             }
