@@ -112,6 +112,10 @@ test('crear una tarea en Mi espacio, escribir su nota, marcarla hecha y archivar
         await expect(page.getByRole('link', { name: title })).toBeVisible();
     });
 
+    // Los avisos apilados se atenúan mientras se animan: axe se mide sin ellos (falsos fallos de contraste).
+    await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, {
+        timeout: 15_000,
+    });
     await expectAccessible(page, 'tareas de Mi espacio');
 });
 
