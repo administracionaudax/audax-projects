@@ -276,6 +276,8 @@ export function RecipientsField({
                 ) : (
                     <MultiSelectFilter
                         label={t('deliveries.recipients.people')}
+                        labelInside={false}
+                        className="w-full"
                         emptyLabel={
                             people === null
                                 ? t('deliveries.recipients.people_loading')
