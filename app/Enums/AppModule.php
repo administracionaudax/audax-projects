@@ -4,6 +4,10 @@ namespace App\Enums;
 
 /**
  * Módulos activables (F-177, setting `modules`): con uno apagado, sus rutas dan 404 y la navegación lo oculta.
+ *
+ * Un módulo nuevo necesita una migración que lo añada **apagado** al ajuste ya guardado (como
+ * `add_day_plan_off_to_stored_modules`): si falta en él, cuenta como activo y se abriría a toda la
+ * plantilla al desplegar.
  */
 enum AppModule: string
 {

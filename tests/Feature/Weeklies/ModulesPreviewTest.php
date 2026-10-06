@@ -278,3 +278,16 @@ it('los canales en tiempo real de la Weekly y la ayuda siguen el modo de prueba'
     expect($authorize($this->ana, 'weeklies'))->toBe(200)
         ->and($authorize($this->ana, 'help'))->toBe(200);
 });
+
+it('la migración del plan del día lo deja apagado donde ya había módulos guardados, y no toca el resto', function () {
+    $migration = require database_path('migrations/2026_10_07_090001_add_day_plan_off_to_stored_modules.php');
+
+    Setting::set('modules', ['weeklies' => false, 'project_status' => false, 'help' => false, 'suggestions' => false, 'assistant' => false]);
+    $migration->up();
+    expect(AppModules::enabled(AppModule::DayPlan))->toBeFalse()
+        ->and(Setting::get('modules')['weeklies'])->toBeFalse();
+
+    Setting::set('modules', ['weeklies' => true, 'day_plan' => true]);
+    $migration->up();
+    expect(AppModules::enabled(AppModule::DayPlan))->toBeTrue();
+});
