@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { t } from '@/lib/i18n';
 import {
     destroy,
@@ -110,9 +111,13 @@ export function AllocationDialog({
     const staff = people.filter((person) => !person.collaborator);
     const collaborators = people.filter((person) => person.collaborator);
 
-    const setOpen = (next: boolean) => {
+    useResetOnOpen(open, () => {
+        form.setDefaults(initial(allocation, defaults));
         form.setData(initial(allocation, defaults));
         form.clearErrors();
+    });
+
+    const setOpen = (next: boolean) => {
         setInternalOpen(next);
         onOpenChange?.(next);
     };

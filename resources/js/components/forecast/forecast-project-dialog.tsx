@@ -23,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useAbilities } from '@/hooks/use-auth';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { t } from '@/lib/i18n';
 import { store, update } from '@/routes/forecast/projects';
 import type {
@@ -93,9 +94,15 @@ export function ForecastProjectDialog({
     // Un confirmado es siempre seguro (no vuelve a posible).
     const lockedFirm = forecast?.status === 'confirmed';
 
-    const setOpen = (next: boolean) => {
+    // Al abrir parte de los datos de ahora: guardar no vuelve a montar la página y, si no, «Editar»
+    // deshacía cambios hechos después («Hacer segura», la edición anterior).
+    useResetOnOpen(open, () => {
+        form.setDefaults(initial(forecast));
         form.setData(initial(forecast));
         form.clearErrors();
+    });
+
+    const setOpen = (next: boolean) => {
         setInternalOpen(next);
         onOpenChange?.(next);
     };

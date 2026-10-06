@@ -47,7 +47,10 @@ export function InvitePortalUserDialog({
             onOpenChange={(next) => {
                 setOpen(next);
                 if (next) {
-                    form.reset();
+                    // Vacío de verdad: tras invitar, Inertia guarda lo enviado como valores por
+                    // defecto y reset() traía a la persona anterior.
+                    form.setDefaults({ name: '', email: '' });
+                    form.setData({ name: '', email: '' });
                     form.clearErrors();
                 }
             }}
