@@ -80,5 +80,11 @@
     "error_page.500.title": "Algo ha salido mal",
     "error_page.500.description": "Ha ocurrido un error inesperado. Vuelve a intentarlo dentro de unos minutos.",
     "error_page.503.title": "Estamos haciendo mantenimiento",
-    "error_page.503.description": "La aplicación vuelve en unos minutos."
+    "error_page.503.description": "La aplicación vuelve en unos minutos.",
+    "nav.sections.projects": "Proyectos",
+    "nav.sections.people": "Personas",
+    "nav.sections.billing": "Facturación",
+    "nav.sections.admin": "Administración",
+    "nav.admin_panel": "Panel",
+    "nav.admin_settings": "Ajustes"
 }

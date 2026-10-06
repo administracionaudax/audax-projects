@@ -31,6 +31,8 @@ declare module '@inertiajs/core' {
             module_preview?: boolean;
             /** Google Sheets (Fase 9, D-142): si se ofrece y si la cuenta está conectada. */
             integrations?: IntegrationsSharedProps;
+            /** Secciones plegadas de la barra lateral de esta persona (D-260). */
+            navCollapsed?: string[];
             [key: string]: unknown;
         };
     }

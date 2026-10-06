@@ -1977,6 +1977,20 @@ Pedido por el propietario el 06/10: el informe de un proyecto exportado debe lle
 - **Para el cliente:** además, solo quien ve **todas** las horas del proyecto (un admin o quien lo gestiona). Así nadie manda al cliente un informe al que le faltan horas sin saberlo. Lo comprueban el documento al generar y `ReportAccess` al enviar y programar (403); un envío programado cuyo propietario pierde ese acceso se pausa, como los demás (D-141). En la página, el selector solo aparece a quien puede elegir.
 - **Selector:** en «Exportar ▾» del informe de proyecto, arriba, «Interno (completo)» / «Para el cliente» (elegirlo no cierra el menú); «Enviar por correo» y «Programar envío» parten de la versión elegida y la dejan cambiar. La lista y el detalle de los envíos programados enseñan la versión.
 
+### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
+Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
+- **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
+  - **Proyectos:** Mis tareas, Calendario, Proyectos, Clientes, Bolsas, Horas, Carga e Informes (con Envíos programados),
+  - **Weekly:** Mi espacio, Weeklies, Equipo, Asistente IA y Ayuda (D-239),
+  - **Personas** (nombre provisional del futuro módulo de RR. HH., el «Audax Woffu»): de momento, Ausencias y Ausencias del equipo,
+  - **Facturación:** preparada para el futuro módulo; hoy sin entradas, así que no se pinta,
+  - **Administración** (solo admins): Panel (`/admin`, activo solo en su URL), Usuarios (`manageUsers`) y Ajustes (`manageSettings`).
+- **Permisos y módulos:** cada entrada sigue saliendo según el rol y los módulos (D-134, D-145, D-151 y D-239). Una sección sin entradas visibles no se pinta, ni su línea: un colaborador externo solo ve Inicio, Chat y la sección Proyectos (Mis tareas, Calendario, Proyectos y Horas).
+- **Plegar:** el encabezado de cada sección es un botón con chevron, `aria-expanded` y `aria-controls` (el contenido plegado lleva `hidden`, fuera del orden de tabulación); Intro y espacio, como cualquier botón. El `<nav>` «Navegación principal» sigue siendo uno; cada sección, un grupo con nombre.
+- **Estado por persona y persistente:** por defecto, todas desplegadas. Se guarda en el servidor (`users.nav_collapsed`, lista de ids; `PUT /menu/secciones`, 204, abierta también al colaborador externo; prop compartida `navCollapsed`), para que la acompañe en cualquier dispositivo, y en el navegador (localStorage por usuario, con try/catch) por si el servidor falla. Lista blanca compartida en `tests/fixtures/nav-sections.json` (`App\Domain\Navigation\NavSections` y `NAV_SECTION_IDS` de `resources/js/hooks/use-nav-sections.ts`).
+- **Auto-despliegue:** al entrar en una página de una sección plegada (por la búsqueda, un enlace o la URL), la sección se despliega sola y se guarda así. Plegar la sección de la página en la que estás se respeta mientras sigas dentro de ella.
+- **Barra reducida a iconos:** sin encabezados ni nada que plegar; se ven todas las entradas con su tooltip y, al volver a desplegar la barra, cada sección recupera su estado. En el móvil (hoja lateral) las secciones funcionan igual.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1989,6 +2003,7 @@ Pedido por el propietario el 06/10: el informe de un proyecto exportado debe lle
 - Tareas y calendario: D-143 y D-144.
 - Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
+- Barra lateral con secciones plegables: D-260.
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.

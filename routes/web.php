@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeLayoutController;
+use App\Http\Controllers\NavSectionsController;
 use App\Http\Controllers\PortalAccess\BrandLogoController;
 use App\Http\Controllers\Reports\Delivery\ReportDownloadController;
 use App\Http\Controllers\SearchController;
@@ -71,6 +72,11 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
     Route::delete('inicio/orden', [HomeLayoutController::class, 'destroy'])
         ->middleware('throttle:60,1,home-layout')
         ->name('home.layout.destroy');
+
+    // Secciones plegadas de la barra lateral de cada persona (D-260): se guarda al plegar o desplegar.
+    Route::put('menu/secciones', [NavSectionsController::class, 'update'])
+        ->middleware('throttle:60,1,nav-sections')
+        ->name('nav.sections.update');
 
     // Una ruta por área (routes/app/*.php), de la Fase 1 a la 10 (weeklies: la Weekly, D-145).
     foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations', 'calendar', 'weeklies'] as $area) {

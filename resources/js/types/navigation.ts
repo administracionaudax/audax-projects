@@ -15,4 +15,6 @@ export type NavItem = {
     badge?: { count: number; label: string };
     /** Subpáginas de la sección (p. ej. «Ausencias del equipo» bajo «Ausencias»). */
     items?: NavItem[];
+    /** Activa solo en su propia URL, no en las de debajo (el panel de Administración, D-260). */
+    exact?: boolean;
 };

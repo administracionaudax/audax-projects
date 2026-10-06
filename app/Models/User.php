@@ -53,6 +53,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $locale
  * @property array<string, mixed>|null $notification_preferences
  * @property array<array-key, mixed>|null $home_layout Orden de Inicio (D-138); lo filtra HomeLayout::for()
+ * @property array<array-key, mixed>|null $nav_collapsed Secciones plegadas de la barra lateral (D-260); lo filtra NavSections::collapsedFor()
  * @property int|null $privacy_acknowledged_version
  * @property Carbon|null $privacy_acknowledged_at
  * @property string|null $avatar_path
@@ -140,6 +141,8 @@ class User extends Authenticatable
             'notification_preferences' => 'array',
             // Orden de las tarjetas de Inicio (D-138): App\Domain\Home\HomeLayout.
             'home_layout' => 'array',
+            // Secciones plegadas de la barra lateral (D-260): App\Domain\Navigation\NavSections.
+            'nav_collapsed' => 'array',
             'privacy_acknowledged_version' => 'integer',
             'privacy_acknowledged_at' => 'datetime',
             // «Estoy fuera» de la Weekly (D-228): App\Domain\Weeklies\WeeklyAway.

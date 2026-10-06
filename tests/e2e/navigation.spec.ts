@@ -1,3 +1,5 @@
+import AxeBuilder from '@axe-core/playwright';
+import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import {
     expectTheme,
@@ -68,6 +70,135 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
         await page.goto('/proyectos');
         await expect(page).toHaveURL(/\/login(?:\?|$)/);
     });
+});
+
+/** Deja todas las secciones desplegadas (el valor por defecto) para los demás specs. */
+async function expandAllSections(page: Page): Promise<void> {
+    await page.evaluate(async () => {
+        const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
+        await fetch('/menu/secciones', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                ...(match
+                    ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) }
+                    : {}),
+            },
+            body: JSON.stringify({ collapsed: [] }),
+        });
+    });
+}
+
+/**
+ * Secciones plegables de la barra lateral (D-260): por defecto desplegadas; el encabezado es un
+ * botón con aria-expanded y aria-controls; el estado se guarda por persona (sobrevive a recargar)
+ * y la sección de la página a la que se entra se despliega sola. Sin violaciones AA con una
+ * sección plegada, y en el móvil (375 px) sin scroll horizontal.
+ */
+test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan solas', async ({
+    page,
+}) => {
+    test.setTimeout(60_000);
+    await login(page, USERS.manager);
+    const nav = page.getByRole('navigation', { name: 'Navegación principal' });
+    const weekly = nav.getByRole('button', { name: 'Weekly' });
+
+    try {
+        await test.step('por defecto, todas desplegadas; Inicio y Chat, fijos', async () => {
+            for (const name of ['Proyectos', 'Weekly', 'Personas']) {
+                await expect(nav.getByRole('button', { name })).toHaveAttribute(
+                    'aria-expanded',
+                    'true',
+                );
+            }
+            await expect(
+                nav.getByRole('button', { name: 'Facturación' }),
+            ).toHaveCount(0);
+            await expect(
+                nav.getByRole('link', { name: 'Inicio' }),
+            ).toBeVisible();
+            await expect(nav.getByRole('link', { name: 'Chat' })).toBeVisible();
+        });
+
+        await test.step('plegar con el ratón oculta sus entradas', async () => {
+            await weekly.click();
+            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
+            await expect(
+                nav.getByRole('link', { name: 'Weeklies' }),
+            ).toBeHidden();
+            const controls = await weekly.getAttribute('aria-controls');
+            await expect(page.locator(`[id="${controls}"]`)).toBeHidden();
+        });
+
+        await test.step('sin violaciones AA con una sección plegada', async () => {
+            const results = await new AxeBuilder({ page })
+                .include('[data-sidebar="sidebar"]')
+                .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+                .analyze();
+            expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual(
+                [],
+            );
+        });
+
+        await test.step('el estado se guarda: sigue plegada al recargar', async () => {
+            await page.waitForLoadState('networkidle');
+            await page.reload();
+            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
+        });
+
+        await test.step('con el teclado: Intro despliega y pliega', async () => {
+            await weekly.focus();
+            await page.keyboard.press('Enter');
+            await expect(weekly).toHaveAttribute('aria-expanded', 'true');
+            await expect(
+                nav.getByRole('link', { name: 'Weeklies' }),
+            ).toBeVisible();
+            await page.keyboard.press('Enter');
+            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
+        });
+
+        await test.step('entrar en una página de la sección plegada la despliega', async () => {
+            await page.goto('/mi-espacio');
+            await expect(weekly).toHaveAttribute('aria-expanded', 'true');
+            await expect(
+                nav.getByRole('link', { name: 'Mi espacio' }),
+            ).toHaveAttribute('aria-current', 'page');
+        });
+
+        await test.step('en el móvil (375 px), las secciones funcionan y no hay scroll horizontal', async () => {
+            await page.setViewportSize({ width: 375, height: 812 });
+            await page.goto('/');
+            await page
+                .getByRole('button', {
+                    name: 'Mostrar u ocultar la barra lateral',
+                })
+                .first()
+                .click();
+            const sheet = page.getByRole('dialog');
+            const projects = sheet.getByRole('button', { name: 'Proyectos' });
+            await expect(projects).toHaveAttribute('aria-expanded', 'true');
+            await projects.click();
+            await expect(projects).toHaveAttribute('aria-expanded', 'false');
+            await expect(
+                sheet.getByRole('link', { name: 'Clientes' }),
+            ).toBeHidden();
+            await projects.click();
+            await expect(
+                sheet.getByRole('link', { name: 'Clientes' }),
+            ).toBeVisible();
+
+            const overflow = await page.evaluate(
+                () =>
+                    document.documentElement.scrollWidth -
+                    document.documentElement.clientWidth,
+            );
+            expect(overflow).toBeLessThanOrEqual(0);
+        });
+    } finally {
+        await expandAllSections(page);
+    }
 });
 
 /**
