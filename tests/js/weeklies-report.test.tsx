@@ -576,6 +576,8 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
     });
 
     it('una semana importada con solo el texto final lo enseña por secciones, con su índice (10.9b)', async () => {
+        const scroll = vi.fn();
+        Element.prototype.scrollIntoView = scroll;
         renderView(
             props(
                 {},
@@ -609,7 +611,7 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
         await userEvent.click(
             within(index).getByRole('link', { name: 'Acme' }),
         );
-        expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+        expect(scroll).toHaveBeenCalled();
     });
 
     it('con audio: el reproductor principal y uno en cada cliente con su sección (F-085 y F-086)', () => {
