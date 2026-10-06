@@ -182,7 +182,7 @@
     "forecast.form.start": "Inicio",
     "forecast.form.end": "Fin",
     "forecast.form.optional": "(opcional)",
-    "forecast.form.estimate": "Estimación total (horas)",
+    "forecast.form.estimate": "Horas estimadas",
     "forecast.form.amount": "Importe estimado (€)",
     "forecast.form.notes": "Notas",
     "forecast.form.create": "Crear previsto",

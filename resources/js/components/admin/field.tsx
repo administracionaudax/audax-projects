@@ -27,7 +27,7 @@ export function Field({
 }) {
     return (
         <div className={cn('grid content-start gap-2', className)}>
-            <Label htmlFor={id}>
+            <Label htmlFor={id} className="leading-snug">
                 {label}
                 {optional ? (
                     <span className="ml-1 font-normal text-muted-foreground">
