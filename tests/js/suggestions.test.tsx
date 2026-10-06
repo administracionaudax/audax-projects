@@ -538,7 +538,12 @@ describe('la pestaña Sugerencias', () => {
                     created_at: '2026-10-05T10:30:00Z',
                 },
             ],
-            can: { update: true, delete: true, moderate: false },
+            can: {
+                update: true,
+                delete: true,
+                moderate: false,
+                interact: true,
+            },
         };
 
         render(
@@ -583,6 +588,43 @@ describe('la pestaña Sugerencias', () => {
         );
     });
 
+    it('en un tablero oculto no se vota ni se comenta (D-226)', () => {
+        const detail: SuggestionPostDetail = {
+            ...post(1),
+            body: '<p>x</p>',
+            board: { id: 1, name: 'Oculto', slug: 'oculto' },
+            attachments: [],
+            voters: [],
+            comments: [],
+            status_events: [],
+            can: {
+                update: true,
+                delete: true,
+                moderate: true,
+                interact: false,
+            },
+        };
+
+        render(
+            <SuggestionsTab
+                data={data({ post: detail, feed: null })}
+                attachmentMaxMb={50}
+            />,
+        );
+
+        expect(
+            (
+                screen.getByRole('button', {
+                    name: /Votar/,
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(true);
+        expect(screen.getByTestId('suggestion-hidden-board')).toBeTruthy();
+        expect(
+            screen.queryByRole('button', { name: 'Publicar comentario' }),
+        ).toBeNull();
+    });
+
     it('quien gestiona cambia el estado con una nota oficial (F-167)', async () => {
         const user = userEvent.setup();
         const detail: SuggestionPostDetail = {
@@ -593,7 +635,7 @@ describe('la pestaña Sugerencias', () => {
             voters: [],
             comments: [],
             status_events: [],
-            can: { update: true, delete: true, moderate: true },
+            can: { update: true, delete: true, moderate: true, interact: true },
         };
 
         render(

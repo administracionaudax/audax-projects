@@ -62,12 +62,15 @@ export function VoteButton({
     count,
     voted,
     compact = false,
+    disabled = false,
 }: {
     postId: number;
     title: string;
     count: number;
     voted: boolean;
     compact?: boolean;
+    /** Tablero oculto (D-226): se ve el recuento, pero no se vota. */
+    disabled?: boolean;
 }) {
     const [optimistic, setOptimistic] = useState<{
         voted: boolean;
@@ -85,6 +88,7 @@ export function VoteButton({
     return (
         <button
             type="button"
+            disabled={disabled}
             aria-pressed={shown.voted}
             aria-label={t(
                 shown.voted ? 'suggestions.unvote' : 'suggestions.vote',

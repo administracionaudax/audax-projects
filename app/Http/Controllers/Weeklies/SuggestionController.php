@@ -29,8 +29,8 @@ class SuggestionController extends Controller
 {
     public function show(Request $request, SuggestionPost $post, HelpController $help, HelpCenter $center, SuggestionBoardView $suggestions): Response
     {
-        Gate::authorize('view', $post);
-        abort_unless($post->board()->where('is_active', true)->exists() || Gate::allows('manageBoards', SuggestionPost::class), 404);
+        // Un tablero oculto (D-210): 404 para quien no lo gestiona (SuggestionPostPolicy::view).
+        abort_unless(Gate::allows('view', $post), Gate::allows('viewAny', SuggestionPost::class) ? 404 : 403);
 
         return $help->page($request, $center, $suggestions, $post);
     }

@@ -50,6 +50,7 @@
     "suggestions.moderation.note_help": "Se verá en la actividad y le llegará a quien la propuso.",
     "suggestions.moderation.save": "Guardar estado",
     "suggestions.comments.add": "Añadir comentario",
+    "suggestions.hidden_board": "Este tablero está oculto: sus sugerencias no admiten votos, comentarios ni reacciones.",
     "suggestions.comments.placeholder": "Comparte feedback, contexto o una respuesta. Escribe @ para mencionar a alguien.",
     "suggestions.comments.submit": "Publicar comentario",
     "suggestions.comments.reply": "Responder",

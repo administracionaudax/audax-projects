@@ -683,7 +683,13 @@ export type SuggestionPostDetail = SuggestionPost & {
     voters: UserSummary[];
     comments: SuggestionComment[];
     status_events: SuggestionStatusEvent[];
-    can: { update: boolean; delete: boolean; moderate: boolean };
+    /** interact: votar, comentar y reaccionar (false en un tablero oculto, D-226). */
+    can: {
+        update: boolean;
+        delete: boolean;
+        moderate: boolean;
+        interact: boolean;
+    };
 };
 
 export type SuggestionRoadmapStatus = Exclude<

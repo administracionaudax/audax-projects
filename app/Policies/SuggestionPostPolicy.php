@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Gate;
  * - las ven, crean, votan y comentan los internos de plantilla (`use-weeklies`),
  * - las edita o borra su autor o quien gestiona (F-164),
  * - el estado, la nota oficial y el orden del roadmap, solo quien gestiona (F-167 y F-168), igual
- *   que los tableros y las categorías (F-160).
+ *   que los tableros y las categorías (F-160),
+ * - las de un tablero oculto (D-210) solo las ve quien gestiona, y nadie las vota ni las comenta
+ *   (D-226): tampoco se descargan sus adjuntos (AttachmentPolicy usa `view`).
  */
 class SuggestionPostPolicy
 {
@@ -22,7 +24,7 @@ class SuggestionPostPolicy
 
     public function view(User $user, SuggestionPost $post): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user) && (self::boardIsActive($post) || $this->manages($user));
     }
 
     public function create(User $user): bool
@@ -32,12 +34,12 @@ class SuggestionPostPolicy
 
     public function vote(User $user, SuggestionPost $post): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user) && self::boardIsActive($post);
     }
 
     public function comment(User $user, SuggestionPost $post): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user) && self::boardIsActive($post);
     }
 
     public function update(User $user, SuggestionPost $post): bool
@@ -60,6 +62,12 @@ class SuggestionPostPolicy
     public function manageBoards(User $user): bool
     {
         return $this->manages($user);
+    }
+
+    /** El tablero de la sugerencia está activo (D-210). */
+    public static function boardIsActive(SuggestionPost $post): bool
+    {
+        return (bool) $post->board()->value('is_active');
     }
 
     private function manages(User $user): bool

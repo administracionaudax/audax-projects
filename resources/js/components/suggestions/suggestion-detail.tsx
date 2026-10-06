@@ -208,6 +208,7 @@ export function SuggestionDetail({
                                 title={post.title}
                                 count={post.vote_count}
                                 voted={post.voted_by_me}
+                                disabled={!post.can.interact}
                             />
                             <div className="grid min-w-0 flex-1 gap-2">
                                 <h2
@@ -351,17 +352,26 @@ export function SuggestionDetail({
                                 )}
                             </ol>
                         )}
-                        <div className="grid gap-2 border-t pt-4">
-                            <h3 className="text-sm font-medium">
-                                {t('suggestions.comments.add')}
-                            </h3>
-                            <CommentForm
-                                postId={post.id}
-                                people={data.people}
-                                attachmentMaxMb={attachmentMaxMb}
-                                label={t('suggestions.comments.add')}
-                            />
-                        </div>
+                        {post.can.interact ? (
+                            <div className="grid gap-2 border-t pt-4">
+                                <h3 className="text-sm font-medium">
+                                    {t('suggestions.comments.add')}
+                                </h3>
+                                <CommentForm
+                                    postId={post.id}
+                                    people={data.people}
+                                    attachmentMaxMb={attachmentMaxMb}
+                                    label={t('suggestions.comments.add')}
+                                />
+                            </div>
+                        ) : (
+                            <p
+                                className="border-t pt-4 text-sm text-muted-foreground"
+                                data-test="suggestion-hidden-board"
+                            >
+                                {t('suggestions.hidden_board')}
+                            </p>
+                        )}
                     </section>
                 </div>
                 <aside className="grid content-start gap-4">

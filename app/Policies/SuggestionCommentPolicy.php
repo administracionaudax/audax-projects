@@ -22,8 +22,11 @@ class SuggestionCommentPolicy
         return $this->update($user, $comment) || Gate::forUser($user)->allows('manage-weeklies');
     }
 
+    /** En un tablero oculto (D-210) ya no se reacciona (D-226). */
     public function react(User $user, SuggestionComment $comment): bool
     {
-        return Gate::forUser($user)->allows('use-weeklies');
+        return Gate::forUser($user)->allows('use-weeklies')
+            && $comment->post !== null
+            && SuggestionPostPolicy::boardIsActive($comment->post);
     }
 }

@@ -381,6 +381,31 @@ it('una sugerencia de un tablero oculto solo la abre quien gestiona', function (
     $this->actingAs($this->manager)->get("/ayuda/sugerencias/{$post->id}")->assertOk();
 });
 
+it('en un tablero oculto nadie vota, comenta ni reacciona, y sus adjuntos solo los baja quien gestiona (D-226)', function () {
+    $board = SuggestionBoard::factory()->create(['is_active' => false]);
+    $post = ($this->post)(['suggestion_board_id' => $board->id]);
+    $comment = SuggestionComment::query()->create(['suggestion_post_id' => $post->id, 'author_id' => $this->elena->id, 'body' => '<p>x</p>']);
+    $file = Attachment::factory()->create(['user_id' => $this->elena->id, 'attachable_type' => $post->getMorphClass(), 'attachable_id' => $post->id, 'project_id' => null]);
+    Storage::disk('local')->put($file->path, 'contenido');
+    $url = AttachmentResource::downloadUrl($file);
+
+    foreach ([$this->pablo, $this->manager] as $user) {
+        $this->actingAs($user)->post("/ayuda/sugerencias/{$post->id}/voto")->assertForbidden();
+        $this->actingAs($user)->post("/ayuda/sugerencias/{$post->id}/comentarios", ['body' => '<p>+1</p>'])->assertForbidden();
+        $this->actingAs($user)->post("/ayuda/sugerencias/comentarios/{$comment->id}/reaccion", ['reaction' => 'rocket'])->assertForbidden();
+    }
+
+    $this->actingAs($this->pablo)->get($url)->assertForbidden();
+    $this->actingAs($this->manager)->get($url)->assertOk();
+    expect(SuggestionVote::query()->count())->toBe(0)
+        ->and(SuggestionComment::query()->count())->toBe(1);
+
+    // Al volver a mostrarlo, todo funciona de nuevo.
+    $board->update(['is_active' => true]);
+    $this->actingAs($this->pablo)->post("/ayuda/sugerencias/{$post->id}/voto")->assertRedirect();
+    $this->actingAs($this->pablo)->get($url)->assertOk();
+});
+
 it('tableros y categorías: crear, editar, ocultar, reordenar y proteger «Bugs» (F-160 y F-169)', function () {
     $this->actingAs($this->pablo)->post('/ayuda/sugerencias/tableros', ['name' => 'Ideas'])->assertForbidden();
 

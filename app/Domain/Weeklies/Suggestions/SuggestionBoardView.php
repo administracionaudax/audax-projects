@@ -72,6 +72,8 @@ final class SuggestionBoardView
                     'update' => $gate->allows('update', $post),
                     'delete' => $gate->allows('delete', $post),
                     'moderate' => $gate->allows('moderate', $post),
+                    // Votar, comentar y reaccionar: no en un tablero oculto (D-226).
+                    'interact' => $gate->allows('vote', $post),
                 ],
             ],
             'people' => self::mentionables(),
