@@ -60,12 +60,12 @@ export function MultiSelectFilter({
             <PopoverTrigger asChild>
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={`${label}: ${summary}`}
                     disabled={disabled}
-                    className="h-9 min-w-0 justify-between gap-2 font-normal"
+                    className="min-w-0 justify-between gap-2"
                 >
                     <span className="truncate">
                         <span className="text-muted-foreground">{label}:</span>{' '}

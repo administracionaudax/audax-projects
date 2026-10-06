@@ -20,6 +20,10 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary-text underline-offset-4 hover:underline",
+        // Disparador con aspecto de campo (selector de fecha, buscadores y comboboxes): borde gris de
+        // los campos, sin fondo propio y texto normal, igual que <Input> y <NativeSelect>.
+        field:
+          "border border-input bg-transparent px-3 font-normal text-foreground hover:bg-accent/40 has-[>svg]:px-3 [&_svg:not([class*='text-'])]:text-muted-foreground",
         // Botón sobre fondo oscuro o degradado de marca (SPEC §3.1): fondo blanco y texto azul AA.
         onDark:
           "bg-white text-on-dark-foreground hover:bg-white/90 focus-visible:ring-white",

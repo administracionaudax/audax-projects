@@ -73,7 +73,7 @@ export function ParentPicker({
             <PopoverTrigger asChild>
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={t('templates.editor.parent_label', {
@@ -84,7 +84,7 @@ export function ParentPicker({
                     aria-invalid={invalid || undefined}
                     aria-describedby={describedBy}
                     disabled={disabled}
-                    className="w-full justify-between border-input font-normal"
+                    className="w-full justify-between"
                 >
                     <span className="truncate">
                         {valueName ?? t('templates.editor.top_level')}
@@ -213,8 +213,8 @@ export function DependencyPicker({
             <PopoverTrigger asChild>
                 <Button
                     type="button"
-                    variant="outline"
-                    className="w-full justify-start font-normal"
+                    variant="field"
+                    className="w-full justify-start"
                     aria-label={t('templates.editor.depends_on_label', {
                         name,
                         value,

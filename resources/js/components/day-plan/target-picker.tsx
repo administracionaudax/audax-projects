@@ -65,10 +65,10 @@ export function TargetPicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between border-input font-normal text-foreground"
+                    className="w-full justify-between"
                     data-test="day-plan-target"
                 >
                     <span className="truncate">{label}</span>

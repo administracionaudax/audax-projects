@@ -367,13 +367,13 @@ export function AssigneePicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={ariaLabel}
                     disabled={disabled}
                     className={cn(
-                        'w-full justify-between border-input font-normal text-foreground',
+                        'w-full justify-between',
                         className,
                     )}
                 >

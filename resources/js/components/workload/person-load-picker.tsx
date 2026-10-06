@@ -79,7 +79,7 @@ export function PersonLoadPicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={ariaLabel}
@@ -87,7 +87,7 @@ export function PersonLoadPicker({
                     aria-invalid={invalid || undefined}
                     disabled={disabled}
                     className={cn(
-                        'w-full min-w-0 justify-between border-input font-normal text-foreground',
+                        'w-full min-w-0 justify-between',
                         className,
                     )}
                 >
