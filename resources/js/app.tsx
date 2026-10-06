@@ -3,6 +3,7 @@ import '@fontsource/dm-sans/latin-500.css';
 import '@fontsource/dm-sans/latin-600.css';
 import '@fontsource/dm-sans/latin-400-italic.css';
 import { createInertiaApp } from '@inertiajs/react';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -41,7 +42,8 @@ void createInertiaApp({
     withApp(app) {
         return (
             <TooltipProvider delayDuration={0}>
-                {app}
+                {/* Si una página falla al pintarse, «Recargar» en vez de una pantalla en blanco (F-017). */}
+                <ErrorBoundary>{app}</ErrorBoundary>
                 <Toaster />
             </TooltipProvider>
         );

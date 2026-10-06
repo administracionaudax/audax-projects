@@ -35,6 +35,8 @@ class ProfileController extends Controller
             'status' => $request->session()->get('status'),
             // Puesto (Fase 10, F-026): no va en las props compartidas.
             'jobTitle' => $user->job_title,
+            // Departamento y rol, de solo lectura (F-027, D-234): los cambia la administración.
+            'department' => $user->department?->name,
             // Estadísticas de la weekly (Fase 10, F-028): {submitted, on_time, streak}, diferidas;
             // null para quien no la escribe o con el módulo apagado.
             'weeklyStats' => $writes ? Inertia::defer(fn (): array => (fn (array $overview): array => [...$overview['summary'], 'consistency' => $overview['consistency']])(app(WeeklyStreaks::class)->overview($user))) : null,

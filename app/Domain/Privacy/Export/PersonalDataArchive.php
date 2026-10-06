@@ -4,6 +4,7 @@ namespace App\Domain\Privacy\Export;
 
 use App\Domain\Privacy\RetentionPolicy;
 use App\Domain\Reports\Export\TableExporter;
+use App\Domain\Users\AvatarStorage;
 use App\Models\User;
 use App\Support\LocalTime;
 use Illuminate\Support\Facades\Storage;
@@ -78,6 +79,11 @@ final class PersonalDataArchive
                 $zip->addFile($json, "{$section->key()}.json");
                 $zip->addFile($csv, "{$section->key()}.csv");
                 $files[] = ['section' => $section, 'rows' => $rows];
+            }
+
+            // La foto de perfil (D-234), tal como se guarda.
+            if ($user->avatar_path !== null && Storage::disk(AvatarStorage::DISK)->exists($user->avatar_path)) {
+                $zip->addFromString('foto-perfil.'.pathinfo($user->avatar_path, PATHINFO_EXTENSION), (string) Storage::disk(AvatarStorage::DISK)->get($user->avatar_path));
             }
 
             $zip->addFromString('LEEME.txt', $this->readme($user, $files));

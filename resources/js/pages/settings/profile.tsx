@@ -3,6 +3,8 @@ import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { AvatarField } from '@/components/settings/avatar-field';
+import { mainRole } from '@/components/user-info';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ import type { ProfilePageProps } from '@/types';
 export default function Profile({
     status,
     jobTitle = null,
+    department = null,
     weeklyStats,
 }: ProfilePageProps) {
     const user = useRequiredUser();
@@ -31,6 +34,7 @@ export default function Profile({
     // Cambiar el correo exige la contraseña actual (el backend la valida solo en ese caso).
     const emailChanged =
         email.trim().toLowerCase() !== user.email.toLowerCase();
+    const role = mainRole(user.roles ?? []);
 
     return (
         <>
@@ -48,6 +52,35 @@ export default function Profile({
                         {status}
                     </p>
                 )}
+
+                <AvatarField name={user.name} avatar={user.avatar} />
+
+                {!user.is_client ? (
+                    <div
+                        className="grid gap-3 border bg-card p-3 text-sm"
+                        data-test="profile-department"
+                    >
+                        <dl className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-0.5">
+                                <dt className="text-muted-foreground">
+                                    {t('profile.department')}
+                                </dt>
+                                <dd>
+                                    {department ?? t('profile.no_department')}
+                                </dd>
+                            </div>
+                            <div className="grid gap-0.5">
+                                <dt className="text-muted-foreground">
+                                    {t('profile.role')}
+                                </dt>
+                                <dd>{role ? t(`admin.roles.${role}`) : '—'}</dd>
+                            </div>
+                        </dl>
+                        <p className="text-xs text-muted-foreground">
+                            {t('profile.department_help')}
+                        </p>
+                    </div>
+                ) : null}
 
                 <Form
                     {...ProfileController.update.form()}

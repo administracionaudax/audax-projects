@@ -28,7 +28,7 @@ final class ProfileSection extends Section
             'id', 'name', 'email', 'department', 'job_title', 'roles', 'is_active', 'two_factor_enabled',
             'theme_preference', 'locale', 'notification_preferences', 'privacy_acknowledged_version',
             'privacy_acknowledged_at', 'email_verified_at', 'created_at',
-            'weekly_away_reason', 'weekly_away_since', 'weekly_away_until',
+            'weekly_away_reason', 'weekly_away_since', 'weekly_away_until', 'has_avatar',
         ];
     }
 
@@ -60,6 +60,8 @@ final class ProfileSection extends Section
             'weekly_away_reason' => $user->weekly_away_reason?->label(),
             'weekly_away_since' => $user->weekly_away_since?->toDateString(),
             'weekly_away_until' => $user->weekly_away_until?->toDateString(),
+            // La foto va aparte en el ZIP (foto-perfil.webp, D-234).
+            'has_avatar' => $user->avatar_path !== null,
         ];
     }
 }

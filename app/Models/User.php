@@ -609,8 +609,9 @@ class User extends Authenticatable
     }
 
     /**
-     * URL del avatar mediante ruta firmada (los ficheros nunca son públicos, SPEC §15), o null.
-     * La ruta avatars.show llega cuando se implemente la subida de avatares.
+     * URL del avatar mediante ruta firmada y relativa (los ficheros nunca son públicos, SPEC §15), o
+     * null (D-234). Caduca al final del día siguiente y lleva la versión del fichero: la misma URL
+     * todo el día (el navegador la guarda en caché) y otra en cuanto cambia la foto.
      *
      * @return Attribute<string|null, never>
      */
@@ -621,7 +622,12 @@ class User extends Authenticatable
                 return null;
             }
 
-            return URL::temporarySignedRoute('avatars.show', now()->addHour(), ['user' => $this->id]);
+            return URL::temporarySignedRoute(
+                'avatars.show',
+                now()->addDay()->endOfDay(),
+                ['user' => $this->id, 'v' => substr(md5($this->avatar_path), 0, 8)],
+                absolute: false,
+            );
         });
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\AppearanceController;
+use App\Http\Controllers\Settings\AvatarController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionsController;
@@ -14,6 +15,10 @@ Route::middleware(['auth', 'active', 'collaborator'])->group(function () {
 
     Route::get('ajustes/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('ajustes/perfil', [ProfileController::class, 'update'])->name('profile.update');
+    // Foto de perfil (F-029, D-234): recortada en el navegador; se sirve con URL firmada.
+    Route::post('ajustes/perfil/foto', [AvatarController::class, 'update'])->middleware('throttle:10,1,profile.avatar.update')->name('profile.avatar.update');
+    Route::delete('ajustes/perfil/foto', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
+    Route::get('avatares/{user}', [AvatarController::class, 'show'])->whereNumber('user')->middleware('signed:relative')->name('avatars.show');
 
     Route::get('ajustes/seguridad', [SecurityController::class, 'edit'])
         ->middleware(RequirePassword::class)

@@ -14,6 +14,13 @@ return [
     'collaborator_forbidden' => 'Esta sección no está disponible para colaboradores externos.',
     'two_factor_required' => 'Para seguir usando la aplicación, activa la verificación en dos pasos.',
     'profile_updated' => 'Perfil actualizado.',
+    // Foto de perfil (F-029, D-234).
+    'avatar' => [
+        'updated' => 'Foto de perfil actualizada.',
+        'removed' => 'Foto de perfil quitada.',
+        'invalid' => 'No se ha podido leer la imagen. Usa una foto JPG, PNG o WebP.',
+        'too_large' => 'La imagen pesa demasiado (como mucho :mb MB).',
+    ],
     'page_expired' => 'La página ha caducado. Vuelve a intentarlo.',
     'password_updated' => 'Contraseña actualizada.',
     'appearance_updated' => 'Tema actualizado.',

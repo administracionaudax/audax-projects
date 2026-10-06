@@ -17,6 +17,7 @@ use App\Models\TaskStatus;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -389,6 +390,21 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         ->and($files['LEEME.txt'])->toContain('- horas.json y horas.csv: Tus horas imputadas')
         ->and($files['LEEME.txt'])->toContain('Filas: 1.')
         ->and($files['LEEME.txt'])->toContain('caduca a los 7 días');
+});
+
+test('la foto de perfil va en el ZIP y el perfil dice que la tiene (D-234)', function () {
+    $this->actingAs($this->employee)->post('/ajustes/perfil/foto', ['avatar' => UploadedFile::fake()->image('yo.jpg', 400, 400)]);
+
+    Queue::fake();
+    $export = app(PersonalDataExporter::class)->request($this->employee->refresh(), $this->employee);
+    ($this->build)($export);
+
+    $files = ($this->zip)($export->refresh());
+    $photo = collect(array_keys($files))->first(fn (string $name): bool => str_starts_with($name, 'foto-perfil.'));
+
+    expect($photo)->not->toBeNull()
+        ->and(getimagesizefromstring($files[$photo])[0])->toBe(256)
+        ->and(json_decode($files['perfil.json'], true)[0]['has_avatar'])->toBeTrue();
 });
 
 test('los días para descargar salen del ajuste personal_data_export_days', function () {

@@ -47,6 +47,8 @@ export type ProfilePageProps = {
     status?: string | null;
     /** Puesto (Fase 10, F-026). */
     jobTitle?: string | null;
+    /** Departamento, de solo lectura (F-027, D-234). */
+    department?: string | null;
     /** Estadísticas de la weekly (F-028, prop diferida); null si no la escribe. */
     weeklyStats?: WeeklyStreakSummary | null;
 };

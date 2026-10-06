@@ -132,6 +132,7 @@ MD,
                     'weekly_away_reason' => 'Fuera en la Weekly',
                     'weekly_away_since' => 'Fuera desde',
                     'weekly_away_until' => 'Fuera hasta',
+                    'has_avatar' => 'Foto de perfil (en foto-perfil.webp)',
                 ],
             ],
             'schedules' => [
