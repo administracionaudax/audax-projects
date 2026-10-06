@@ -48,7 +48,7 @@ export function ForecastLegend({
                 <li className="inline-flex items-center gap-1.5">
                     <span
                         aria-hidden="true"
-                        className="h-0.5 w-4 bg-foreground"
+                        className="h-px w-4 bg-foreground/60"
                     />
                     {t('forecast.legend.capacity')}
                 </li>

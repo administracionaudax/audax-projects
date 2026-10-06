@@ -205,7 +205,8 @@ export function StackedCapacityColumns({
                     d={capacityPath}
                     fill="none"
                     stroke="var(--foreground)"
-                    strokeWidth={2}
+                    strokeOpacity={0.6}
+                    strokeWidth={1}
                 />
             </svg>
             {/* Zonas de foco y de ratón: todo el alto de cada semana. */}

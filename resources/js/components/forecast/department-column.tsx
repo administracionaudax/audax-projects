@@ -88,7 +88,8 @@ export function DepartmentColumn({
                 d={`M0,${capacityY} L${width},${capacityY}`}
                 fill="none"
                 stroke="var(--foreground)"
-                strokeWidth={2}
+                strokeOpacity={0.6}
+                strokeWidth={1}
                 strokeDasharray={cell.capacity > 0 ? undefined : '4 4'}
             />
         </svg>
