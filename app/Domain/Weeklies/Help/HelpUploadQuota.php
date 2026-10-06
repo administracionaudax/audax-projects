@@ -30,7 +30,11 @@ final class HelpUploadQuota
         $space = $this->disk->measure(Storage::disk(AttachmentStorage::DISK)->path(''));
         $minimum = max(0, (int) config('help.uploads.min_free_mb', 0)) * self::MB;
 
-        return $space !== null && $space->freeBytes - $bytes < $minimum ? __('help.quota.disk_full') : null;
+        if ($space !== null && $space->freeBytes - $bytes < $minimum) {
+            return __('help.quota.disk_full');
+        }
+
+        return null;
     }
 
     /** ¿Cabe un vídeo de `$bytes` entre los que están a medio subir (`$pendingBytes`)? */

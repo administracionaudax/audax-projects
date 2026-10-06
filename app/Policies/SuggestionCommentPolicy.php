@@ -26,7 +26,6 @@ class SuggestionCommentPolicy
     public function react(User $user, SuggestionComment $comment): bool
     {
         return Gate::forUser($user)->allows('use-weeklies')
-            && $comment->post !== null
             && SuggestionPostPolicy::boardIsActive($comment->post);
     }
 }
