@@ -7,14 +7,14 @@ import type { LoadCell } from '@/types/forecast';
 export const STACK_GAP = 2;
 
 /**
- * Un periodo de la fila de un departamento (D-290): la columna apilada (real abajo, seguro encima y
- * posible arriba, con trama) frente a la línea de capacidad, escalonada: un trazo horizontal a la
- * altura de su capacidad y un trazo vertical que la une con la del periodo anterior. La escala es la
- * del propio departamento (`yMax`). Presentacional: el texto va fuera.
+ * Un periodo de la fila de un departamento (D-290 y D-263): la columna apilada (real abajo, seguro
+ * encima y posible arriba, con trama) en **porcentaje de la capacidad de ese periodo**, frente a la
+ * línea del 100 %, recta en todos los periodos (el propietario la prefirió así a la capacidad en
+ * horas, que se escalonaba con los días laborables). `yMax` es la escala del departamento en
+ * proporción (1 = 100 %). Sin capacidad (festivos o ausencias), no hay columna. Presentacional.
  */
 export function DepartmentColumn({
     cell,
-    previousCapacity,
     yMax,
     width,
     height,
@@ -22,7 +22,6 @@ export function DepartmentColumn({
     layers,
 }: {
     cell: LoadCell;
-    previousCapacity: number | null;
     yMax: number;
     width: number;
     height: number;
@@ -36,13 +35,15 @@ export function DepartmentColumn({
             ? bottom
             : top + (bottom - top) * (1 - Math.min(value, yMax) / yMax);
     const x = (width - barWidth) / 2;
+    const share = (minutes: number) =>
+        cell.capacity > 0 ? minutes / cell.capacity : 0;
     let base = 0;
     const segments = LAYERS.filter(
-        (layer) => layers[layer] && cell[layer] > 0,
+        (layer) => layers[layer] && cell[layer] > 0 && cell.capacity > 0,
     ).map((layer, index) => {
         const from = y(base);
-        const to = y(base + cell[layer]);
-        base += cell[layer];
+        const to = y(base + share(cell[layer]));
+        base += share(cell[layer]);
 
         return {
             layer,
@@ -50,7 +51,7 @@ export function DepartmentColumn({
             height: Math.max(0, from - to - (index > 0 ? STACK_GAP : 0)),
         };
     });
-    const capacityY = y(cell.capacity);
+    const capacityY = y(1);
 
     return (
         <svg
@@ -82,15 +83,14 @@ export function DepartmentColumn({
                 stroke="var(--muted-foreground)"
                 strokeWidth={1}
             />
-            {cell.capacity > 0 || (previousCapacity ?? 0) > 0 ? (
-                <path
-                    data-test="capacity-line"
-                    d={`${previousCapacity !== null ? `M0,${y(previousCapacity)} L0,${capacityY}` : `M0,${capacityY}`} L${width},${capacityY}`}
-                    fill="none"
-                    stroke="var(--foreground)"
-                    strokeWidth={2}
-                />
-            ) : null}
+            <path
+                data-test="capacity-line"
+                d={`M0,${capacityY} L${width},${capacityY}`}
+                fill="none"
+                stroke="var(--foreground)"
+                strokeWidth={2}
+                strokeDasharray={cell.capacity > 0 ? undefined : '4 4'}
+            />
         </svg>
     );
 }

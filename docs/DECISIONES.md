@@ -2012,6 +2012,9 @@ Pedido por el propietario el 06/10, para enseñar la Previsión al equipo. El De
 - no duplica (falla si ya hay ejemplo) y `--borrar` lo quita todo, de forma definitiva y sin tocar nada más;
 - con el módulo `forecast` apagado solo lo ven los admins (modo de prueba). **Hay que borrarlo antes de abrir la Previsión a la plantilla**, para que nadie vea carga inventada en «Mi carga».
 
+### D-263 · La línea de capacidad de la Previsión, recta al 100 % **[cambia D-290]**
+El propietario (06/10) preguntó por las «líneas blancas que se escalonan» (la capacidad en horas de cada periodo, que sube y baja con los días laborables, los festivos, las ausencias y el periodo en curso) y eligió verlas rectas. En la fila de cada departamento, las columnas van en **porcentaje de la capacidad de su periodo** y la línea marca el 100 %, a la misma altura en todos; lo que la pasa es sobrecarga. Un periodo sin capacidad lleva la línea discontinua y sin columna. La leyenda dice «Capacidad (100 %)». Las horas siguen en el tooltip, el panel de la celda y «Ver como tabla».
+
 ## 06/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
 Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan). La Previsión (Nivel 2) no entra aquí.
 
@@ -2309,6 +2312,7 @@ Las pantallas definitivas de la Previsión con el diseño aprobado (D-290 a D-29
 - Acceso con Google: D-165 a D-168.
 - Barra lateral con secciones plegables: D-260 y D-261.
 - Datos de ejemplo de la Previsión: D-262.
+- Línea de capacidad recta en la Previsión: D-263.
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Dictado de la weekly con Gemini: D-243.

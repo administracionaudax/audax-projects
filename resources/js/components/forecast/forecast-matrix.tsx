@@ -792,11 +792,12 @@ function GroupRow({
 }) {
     const group = row.group;
     const name = groupName(group);
+    // En proporción de la capacidad (1 = 100 %): la línea del 100 % va recta (D-263).
     const yMax =
         Math.max(
             1,
             ...group.cells.map((cell) =>
-                Math.max(cell.capacity, cellLoad(cell, layers)),
+                cell.capacity > 0 ? cellLoad(cell, layers) / cell.capacity : 0,
             ),
         ) * 1.08;
     const Chevron = expanded ? ChevronDown : ChevronRight;
@@ -884,12 +885,6 @@ function GroupRow({
                         >
                             <DepartmentColumn
                                 cell={cell}
-                                previousCapacity={
-                                    index > 0
-                                        ? (group.cells[index - 1]?.capacity ??
-                                          null)
-                                        : null
-                                }
                                 yMax={yMax}
                                 width={columnWidth}
                                 height={DEPARTMENT_CHART}

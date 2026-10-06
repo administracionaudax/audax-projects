@@ -124,7 +124,7 @@
     "forecast.legend.layer.real": "Real",
     "forecast.legend.layer.firm": "Previsto seguro",
     "forecast.legend.layer.tentative": "Previsto posible (trama)",
-    "forecast.legend.capacity": "Capacidad",
+    "forecast.legend.capacity": "Capacidad (100 %)",
     "forecast.legend.gap": "Hueco sin persona",
     "forecast.legend.no_layers": "Marca al menos una capa para ver la carga",
     "forecast.legend.occupancy": "Ocupación",
