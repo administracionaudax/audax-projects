@@ -18,5 +18,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('tareas/{task}/dependencias/candidatas', DependencyCandidatesController::class)
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,planning.dependencies.candidates')
     ->name('planning.dependencies.candidates');

@@ -13,13 +13,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('proyectos/{project}/dependencias', [DependencyController::class, 'store'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,schedule.dependencies.store')
     ->name('schedule.dependencies.store');
 Route::delete('dependencias/{dependency}', [DependencyController::class, 'destroy'])->name('schedule.dependencies.destroy');
 
 Route::post('tareas/{task}/reprogramar/propuesta', [RescheduleController::class, 'preview'])
-    ->middleware('throttle:240,1')
+    ->middleware('throttle:240,1,schedule.reschedule.preview')
     ->name('schedule.reschedule.preview');
 Route::post('tareas/{task}/reprogramar', [RescheduleController::class, 'store'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,schedule.reschedule.store')
     ->name('schedule.reschedule.store');

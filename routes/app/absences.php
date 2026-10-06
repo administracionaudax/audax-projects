@@ -18,13 +18,13 @@ use Illuminate\Support\Facades\Route;
 
 // Mis ausencias: cada persona interna solicita y cancela las suyas.
 Route::get('ausencias', [MyAbsenceController::class, 'index'])->name('absences.index');
-Route::post('ausencias', [MyAbsenceController::class, 'store'])->middleware('throttle:30,1')->name('absences.store');
+Route::post('ausencias', [MyAbsenceController::class, 'store'])->middleware('throttle:30,1,absences.store')->name('absences.store');
 Route::post('ausencias/{absence}/cancelar', [MyAbsenceController::class, 'cancel'])->whereNumber('absence')->name('absences.cancel');
 
 // Ausencias del equipo: responsables (su departamento) y admins.
 Route::middleware('can:viewTeam,'.Absence::class)->group(function () {
     Route::get('ausencias/equipo', [TeamAbsenceController::class, 'index'])->name('absences.team.index');
-    Route::get('ausencias/equipo/pendientes', [TeamAbsenceController::class, 'pending'])->middleware('throttle:120,1')->name('absences.team.pending');
+    Route::get('ausencias/equipo/pendientes', [TeamAbsenceController::class, 'pending'])->middleware('throttle:120,1,absences.team.pending')->name('absences.team.pending');
     Route::post('ausencias/equipo', [TeamAbsenceController::class, 'store'])->name('absences.team.store');
     Route::post('ausencias/{absence}/aprobar', [TeamAbsenceController::class, 'approve'])->whereNumber('absence')->name('absences.approve');
     Route::post('ausencias/{absence}/rechazar', [TeamAbsenceController::class, 'reject'])->whereNumber('absence')->name('absences.reject');
@@ -38,6 +38,6 @@ Route::prefix('admin')->name('admin.')->middleware('can:manage-settings')->group
     Route::put('festivos/{holiday}', [HolidayController::class, 'update'])->whereNumber('holiday')->name('holidays.update');
     Route::delete('festivos/{holiday}', [HolidayController::class, 'destroy'])->whereNumber('holiday')->name('holidays.destroy');
     Route::post('festivos/nacionales', [HolidayController::class, 'national'])->name('holidays.national');
-    Route::post('festivos/importar/vista-previa', [HolidayController::class, 'preview'])->middleware('throttle:30,1')->name('holidays.preview');
+    Route::post('festivos/importar/vista-previa', [HolidayController::class, 'preview'])->middleware('throttle:30,1,holidays.preview')->name('holidays.preview');
     Route::post('festivos/importar', [HolidayController::class, 'import'])->name('holidays.import');
 });

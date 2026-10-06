@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('notificaciones', [NotificationController::class, 'index'])->name('notifications.index');
 Route::get('notificaciones/recientes', [NotificationController::class, 'recent'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,notifications.recent')
     ->name('notifications.recent');
 Route::post('notificaciones/leidas', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 Route::post('notificaciones/{notification}/abrir', [NotificationController::class, 'open'])

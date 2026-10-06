@@ -32,7 +32,7 @@ Route::get('proyectos/{project}/archivos', ProjectFilesController::class)->name(
 
 // Tareas.
 Route::post('proyectos/{project}/tareas', [TaskController::class, 'store'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,tasks.store')
     ->name('tasks.store');
 Route::patch('proyectos/{project}/tareas/masivo', TaskBulkController::class)->name('tasks.bulk');
 Route::get('tareas/{task}', [TaskController::class, 'show'])->name('tasks.show');
@@ -45,7 +45,7 @@ Route::delete('tareas/{task}/seguir', [TaskWatchController::class, 'destroy'])->
 
 // Comentarios y reacciones.
 Route::post('tareas/{task}/comentarios', [TaskCommentController::class, 'store'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,tasks.comments.store')
     ->name('tasks.comments.store');
 Route::patch('comentarios/{comment}', [TaskCommentController::class, 'update'])->name('tasks.comments.update');
 Route::delete('comentarios/{comment}', [TaskCommentController::class, 'destroy'])->name('tasks.comments.destroy');
@@ -53,7 +53,7 @@ Route::post('comentarios/{comment}/reacciones', CommentReactionController::class
 
 // Adjuntos: subida a una tarea, descarga y miniatura con URL firmada (relativa) + política, y borrado.
 Route::post('tareas/{task}/adjuntos', [AttachmentController::class, 'store'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,tasks.attachments.store')
     ->name('tasks.attachments.store');
 Route::get('adjuntos/{attachment}', [AttachmentController::class, 'show'])
     ->middleware('signed:relative')

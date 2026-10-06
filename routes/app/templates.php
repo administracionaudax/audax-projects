@@ -24,16 +24,16 @@ Route::prefix('admin')->group(function (): void {
     Route::get('plantillas', [TemplateController::class, 'index'])->name('templates.index');
     Route::get('plantillas/nueva', [TemplateController::class, 'create'])->name('templates.create');
     Route::post('plantillas', [TemplateController::class, 'store'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:60,1,templates.store')
         ->name('templates.store');
     Route::post('plantillas/importar', [TemplateTransferController::class, 'import'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle:20,1,templates.import')
         ->name('templates.import');
 
     Route::prefix('plantillas/{template}')->whereNumber('template')->group(function (): void {
         Route::get('editar', [TemplateController::class, 'edit'])->name('templates.edit');
         Route::put('/', [TemplateController::class, 'update'])
-            ->middleware('throttle:60,1')
+            ->middleware('throttle:60,1,templates.update')
             ->name('templates.update');
         Route::put('estado', [TemplateController::class, 'status'])->name('templates.status');
         Route::delete('/', [TemplateController::class, 'destroy'])->name('templates.destroy');
@@ -46,10 +46,10 @@ Route::prefix('admin')->group(function (): void {
 
 Route::prefix('proyectos/{project}')->whereNumber('project')->group(function (): void {
     Route::post('plantilla/aplicar', [ProjectTemplateController::class, 'apply'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle:20,1,templates.apply')
         ->name('templates.apply');
     Route::post('plantilla/guardar', [ProjectTemplateController::class, 'capture'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle:20,1,templates.capture')
         ->name('templates.capture');
 
     Route::post('tareas-recurrentes', [RecurringRuleController::class, 'store'])->name('recurring.store');

@@ -35,7 +35,7 @@ Route::get('informes/personas/{user}', PersonReportController::class)->middlewar
 // --- fin R1 ---
 
 Route::get('informes/opciones', ReportOptionsController::class)
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,reports.options')
     ->name('reports.options');
 
 // --- R2 ---
@@ -59,7 +59,7 @@ Route::get('informes/facturacion', BillingReportController::class)
 Route::get('proyectos/{project}/bolsas/{hourBank}/pdf', HourBankPdfController::class)
     ->whereNumber(['project', 'hourBank'])
     ->scopeBindings()
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,reports.hour-bank-pdf')
     ->name('reports.hour-bank-pdf');
 // --- fin R2 ---
 // --- R3 ---
@@ -68,10 +68,10 @@ Route::get('proyectos/{project}/bolsas/{hourBank}/pdf', HourBankPdfController::c
 Route::get('informes/detalle', DetailReportController::class)->middleware($exports)->name('reports.detail');
 
 Route::get('informes/horas/exportar', HoursExportController::class)
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,reports.hours.export')
     ->name('reports.hours.export');
 
 Route::get('proyectos/{project}/horas/exportar', [HoursExportController::class, 'project'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,projects.time.export')
     ->name('projects.time.export');
 // --- fin R3 ---

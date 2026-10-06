@@ -23,12 +23,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('clientes/{client}/portal')->whereNumber('client')->name('clients.portal.')->group(function () {
     Route::post('usuarios', [PortalUserController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,users.store')
         ->name('users.store');
 
     Route::scopeBindings()->whereNumber('portalUser')->group(function () {
         Route::post('usuarios/{portalUser}/invitacion', [PortalUserController::class, 'resend'])
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:10,1,clients.portal.users.invitation')
             ->name('users.invitation');
         Route::post('usuarios/{portalUser}/revocar', [PortalUserController::class, 'revoke'])->name('users.revoke');
         Route::post('usuarios/{portalUser}/reactivar', [PortalUserController::class, 'reactivate'])->name('users.reactivate');

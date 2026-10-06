@@ -15,6 +15,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('auditoria', [AuditController::class, 'index'])->name('audit.index');
     Route::get('auditoria/exportar', [AuditController::class, 'export'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:30,1,audit.export')
         ->name('audit.export');
 });

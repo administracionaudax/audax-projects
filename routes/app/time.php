@@ -32,13 +32,13 @@ Route::put('horas/entradas/{entry}', [TimeEntryController::class, 'update'])->na
 Route::delete('horas/entradas/{entry}', [TimeEntryController::class, 'destroy'])->name('time.entries.destroy');
 
 // JSON del diálogo de imputación: buscador de tareas y opciones (personas y ajustes).
-Route::get('horas/tareas', LoggableTaskController::class)->middleware('throttle:120,1')->name('time.tasks');
-Route::get('horas/opciones', EntryOptionsController::class)->middleware('throttle:120,1')->name('time.options');
+Route::get('horas/tareas', LoggableTaskController::class)->middleware('throttle:120,1,time.tasks')->name('time.tasks');
+Route::get('horas/opciones', EntryOptionsController::class)->middleware('throttle:120,1,time.options')->name('time.options');
 
 // Aprobaciones: responsables y admins (D-020).
 Route::middleware('can:approve-time')->group(function () {
     Route::get('horas/aprobaciones', [ApprovalController::class, 'index'])->name('time.approvals.index');
-    Route::get('horas/aprobaciones/{period}/entradas', [ApprovalController::class, 'entries'])->middleware('throttle:120,1')->name('time.approvals.entries');
+    Route::get('horas/aprobaciones/{period}/entradas', [ApprovalController::class, 'entries'])->middleware('throttle:120,1,time.approvals.entries')->name('time.approvals.entries');
     Route::post('horas/aprobaciones/aprobar', [ApprovalController::class, 'approveMany'])->name('time.approvals.approve-many');
     Route::post('horas/aprobaciones/{period}/aprobar', [ApprovalController::class, 'approve'])->name('time.approvals.approve');
     Route::post('horas/aprobaciones/{period}/devolver', [ApprovalController::class, 'sendBack'])->name('time.approvals.send-back');

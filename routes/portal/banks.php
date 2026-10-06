@@ -21,6 +21,6 @@ Route::prefix('bolsas/{bank}')->whereNumber('bank')->name('banks.')->group(funct
     Route::get('/', [PortalBankController::class, 'show'])->name('show');
     // PDF de consumo en modo portal (D-066): nunca importes.
     Route::get('pdf', PortalBankPdfController::class)
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:30,1,pdf')
         ->name('pdf');
 });

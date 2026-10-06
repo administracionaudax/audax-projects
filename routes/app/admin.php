@@ -31,7 +31,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::post('usuarios/{user}/invitacion', [UserInvitationController::class, 'store'])
             ->whereNumber('user')
-            ->middleware('throttle:10,1')
+            ->middleware('throttle:10,1,users.invitation')
             ->name('users.invitation');
 
         Route::get('usuarios/{user}/baja', [UserDeactivationController::class, 'create'])->whereNumber('user')->name('users.deactivation');

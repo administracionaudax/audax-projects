@@ -17,27 +17,27 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('informes/enviar', [ReportDeliveryController::class, 'store'])
-    ->middleware('throttle:20,1')
+    ->middleware('throttle:20,1,reports.deliveries.send')
     ->name('reports.deliveries.send');
 
 Route::get('informes/envios/personas', [ReportDeliveryController::class, 'people'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,reports.deliveries.people')
     ->name('reports.deliveries.people');
 
 Route::get('informes/envios', [ReportScheduleController::class, 'index'])->name('reports.schedules.index');
 Route::post('informes/envios', [ReportScheduleController::class, 'store'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,reports.schedules.store')
     ->name('reports.schedules.store');
 
 Route::prefix('informes/envios/{schedule}')->whereNumber('schedule')->group(function (): void {
     Route::get('/', [ReportScheduleController::class, 'show'])->name('reports.schedules.show');
     Route::put('/', [ReportScheduleController::class, 'update'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:30,1,reports.schedules.update')
         ->name('reports.schedules.update');
     Route::delete('/', [ReportScheduleController::class, 'destroy'])->name('reports.schedules.destroy');
     Route::post('pausar', [ReportScheduleController::class, 'pause'])->name('reports.schedules.pause');
     Route::post('reanudar', [ReportScheduleController::class, 'resume'])->name('reports.schedules.resume');
     Route::post('enviar-ahora', [ReportScheduleController::class, 'sendNow'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,reports.schedules.send-now')
         ->name('reports.schedules.send-now');
 });

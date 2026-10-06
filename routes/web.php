@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('invitacion/{token}', [InvitationController::class, 'show'])->name('invitation.show');
     Route::post('invitacion', [InvitationController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,invitation.store')
         ->name('invitation.store');
 
     // Entrar con Google (D-165). La URI del callback es exactamente la autorizada en Google Cloud
@@ -57,7 +57,7 @@ Route::get('marca/logo/{version}', BrandLogoController::class)
 // también un destinatario externo; solo con la firma de la URL, que caduca a los 7 días.
 Route::get('informes/descargas/{download}', ReportDownloadController::class)
     ->whereUuid('download')
-    ->middleware(['signed', 'throttle:30,1'])
+    ->middleware(['signed', 'throttle:30,1,reports.downloads.show'])
     ->name('reports.downloads.show');
 
 Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(function () {
@@ -81,7 +81,7 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
 
     // Búsqueda global (Ctrl/Cmd + K). Respeta los permisos de cada usuario.
     Route::get('buscar', SearchController::class)
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:60,1,search')
         ->name('search');
 });
 

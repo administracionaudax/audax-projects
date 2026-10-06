@@ -19,16 +19,16 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('privacidad', [PrivacyController::class, 'show'])->name('privacy.show');
 Route::post('privacidad/lectura', [PrivacyController::class, 'acknowledge'])
-    ->middleware('throttle:10,1')
+    ->middleware('throttle:10,1,privacy.acknowledge')
     ->name('privacy.acknowledge');
 
 Route::get('ajustes/mis-datos', [PersonalDataExportController::class, 'index'])->name('privacy.exports.index');
 Route::post('ajustes/mis-datos', [PersonalDataExportController::class, 'store'])
-    ->middleware('throttle:3,10')
+    ->middleware('throttle:3,10,privacy.exports.store')
     ->name('privacy.exports.store');
 Route::get('datos-personales/{export}/descargar', [PersonalDataExportController::class, 'download'])
     ->whereNumber('export')
-    ->middleware(['signed:relative', 'throttle:30,1'])
+    ->middleware(['signed:relative', 'throttle:30,1,privacy.exports.download'])
     ->name('privacy.exports.download');
 
 Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
@@ -37,6 +37,6 @@ Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function
 
     Route::post('usuarios/{user}/datos-personales', [UserPersonalDataExportController::class, 'store'])
         ->whereNumber('user')
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,admin.privacy.exports.store')
         ->name('privacy.exports.store');
 });

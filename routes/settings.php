@@ -20,7 +20,7 @@ Route::middleware(['auth', 'active', 'collaborator'])->group(function () {
         ->name('security.edit');
 
     Route::put('ajustes/contrasena', [SecurityController::class, 'update'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,user-password.update')
         ->name('user-password.update');
 
     Route::get('ajustes/apariencia', [AppearanceController::class, 'edit'])->name('appearance.edit');
@@ -30,7 +30,7 @@ Route::middleware(['auth', 'active', 'collaborator'])->group(function () {
         ->middleware(RequirePassword::class)
         ->name('sessions.index');
     Route::delete('ajustes/sesiones/otras', [SessionsController::class, 'destroyOthers'])
-        ->middleware([RequirePassword::class, 'throttle:6,1'])
+        ->middleware([RequirePassword::class, 'throttle:6,1,sessions.destroy-others'])
         ->name('sessions.destroy-others');
     Route::delete('ajustes/sesiones/{session}', [SessionsController::class, 'destroy'])->name('sessions.destroy');
 });

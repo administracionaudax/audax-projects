@@ -14,5 +14,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('ajustes/notificaciones', [NotificationSettingsController::class, 'edit'])->name('notification-settings.edit');
 Route::put('ajustes/notificaciones', [NotificationSettingsController::class, 'update'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:30,1,notification-settings.update')
     ->name('notification-settings.update');

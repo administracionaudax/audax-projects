@@ -17,5 +17,5 @@ Route::get('carga', WorkloadController::class)->name('workload.index');
 
 // Responsable, fechas y estimación (TaskPolicy + alcance de la vista, D-052; siempre con TaskWriter).
 Route::patch('carga/tareas/{task}', [WorkloadTaskController::class, 'update'])
-    ->middleware('throttle:120,1')
+    ->middleware('throttle:120,1,workload.tasks.update')
     ->name('workload.tasks.update');
