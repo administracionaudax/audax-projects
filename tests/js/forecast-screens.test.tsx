@@ -82,10 +82,10 @@ const cell = (
     tentative = 0,
 ): LoadCell => ({ capacity, real, firm, tentative });
 
-function person(
-    overrides: Partial<ForecastPerson> & Pick<ForecastPerson, 'id' | 'name'>,
-): ForecastPerson {
+function person(overrides: Partial<ForecastPerson>): ForecastPerson {
     return {
+        id: 0,
+        name: '',
         department_id: 1,
         avatar: null,
         collaborator: false,
