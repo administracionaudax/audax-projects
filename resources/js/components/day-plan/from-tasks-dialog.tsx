@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ListChecks } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
@@ -113,6 +114,8 @@ function FromTasksForm({ date, onDone }: { date: string; onDone: () => void }) {
                 preserveScroll: true,
                 preserveState: true,
                 errorBag: 'dayPlan',
+                // Que ningún error del servidor se pierda en silencio (D-310).
+                onError: toastVisitErrors,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
                 onSuccess: onDone,

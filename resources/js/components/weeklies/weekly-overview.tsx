@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     Building2,
     CalendarCog,
@@ -142,6 +143,7 @@ function NoActiveCycle({ canCreate }: { canCreate: boolean }) {
                             {
                                 onStart: () => setProcessing(true),
                                 onFinish: () => setProcessing(false),
+                                onError: toastVisitErrors,
                             },
                         )
                     }

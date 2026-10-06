@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { TriangleAlert, UserPlus } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { WorkloadPerson } from '@/components/workload/types';
@@ -159,6 +160,7 @@ export function AssignGapDialog({
             {
                 preserveScroll: true,
                 onSuccess: () => onOpenChange(false),
+                onError: toastVisitErrors,
                 onFinish: () => setSaving(false),
             },
         );

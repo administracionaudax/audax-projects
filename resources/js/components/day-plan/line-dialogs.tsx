@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
@@ -28,6 +29,8 @@ const VISIT = {
     preserveScroll: true,
     preserveState: true,
     errorBag: 'dayPlan',
+    // Que ningún error del servidor se pierda en silencio (D-310).
+    onError: toastVisitErrors,
 } as const;
 
 function firstError(errors: Record<string, string>): string {

@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { CalendarArrowUp, TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,8 @@ const VISIT = {
     preserveScroll: true,
     preserveState: true,
     errorBag: 'dayPlan',
+    // Que ningún error del servidor se pierda en silencio (D-310).
+    onError: toastVisitErrors,
 } as const;
 
 /**

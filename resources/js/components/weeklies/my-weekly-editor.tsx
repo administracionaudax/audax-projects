@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     ArrowLeft,
     CalendarOff,
@@ -297,6 +298,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                 preserveScroll: true,
                 onStart: () => setExemptionBusy(true),
                 onFinish: () => setExemptionBusy(false),
+                onError: toastVisitErrors,
             },
         );
 
@@ -314,6 +316,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                 preserveScroll: true,
                 onStart: () => setExemptionBusy(true),
                 onFinish: () => setExemptionBusy(false),
+                onError: toastVisitErrors,
             },
         );
     };

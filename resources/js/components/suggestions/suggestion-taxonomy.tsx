@@ -1,4 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
@@ -239,7 +240,11 @@ function DeleteItem({
                     onStart: () => setProcessing(true),
                     onFinish: () => setProcessing(false),
                     onSuccess: () => setOpen(false),
-                    onError: () => setOpen(false),
+                    // «El tablero tiene sugerencias»: se cierra, pero diciendo por qué.
+                    onError: (errors) => {
+                        setOpen(false);
+                        toastVisitErrors(errors);
+                    },
                 })
             }
         />

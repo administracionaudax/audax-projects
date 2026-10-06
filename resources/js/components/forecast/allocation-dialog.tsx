@@ -1,4 +1,8 @@
 import { router, useForm } from '@inertiajs/react';
+import {
+    toastUnshownErrors,
+    toastVisitErrors,
+} from '@/components/admin/visit-errors';
 import { Trash2 } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { useId, useState } from 'react';
@@ -82,6 +86,18 @@ function initial(
  * los cuatro modos (horas en total, al día, % de la jornada o al mes) y sus fechas. Solo el modo
  * mensual puede quedarse sin fin. Al editar, también se borra.
  */
+/** Campos con su error junto al control; el resto se avisa. */
+const ALLOCATION_FIELDS = [
+    'user_id',
+    'department_id',
+    'mode',
+    'minutes',
+    'percent',
+    'start_date',
+    'end_date',
+    'note',
+] as const;
+
 export function AllocationDialog({
     container,
     allocation,
@@ -147,6 +163,9 @@ export function AllocationDialog({
         const options = {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            // «La asignación está congelada» y otros sin campo: que se vean (D-310).
+            onError: (errors: Record<string, string>) =>
+                toastUnshownErrors(errors, ALLOCATION_FIELDS),
         };
 
         if (allocation) {
@@ -167,6 +186,7 @@ export function AllocationDialog({
         router.delete(destroy.url(allocation.id), {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            onError: toastVisitErrors,
             onFinish: () => setDeleting(false),
         });
     };

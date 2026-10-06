@@ -1,4 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     CalendarClock,
     MoreHorizontal,
@@ -143,7 +144,7 @@ export default function ForecastProjectShow({
         router.put(
             update.url(forecast.id),
             forecastPayload(forecast, confidence),
-            { preserveScroll: true },
+            { preserveScroll: true, onError: toastVisitErrors },
         );
 
     return (
@@ -246,7 +247,11 @@ export default function ForecastProjectShow({
                                                 router.post(
                                                     confirm.url(forecast.id),
                                                     {},
-                                                    { preserveScroll: true },
+                                                    {
+                                                        preserveScroll: true,
+                                                        onError:
+                                                            toastVisitErrors,
+                                                    },
                                                 )
                                             }
                                         >
@@ -273,7 +278,11 @@ export default function ForecastProjectShow({
                                                 router.post(
                                                     reopen.url(forecast.id),
                                                     {},
-                                                    { preserveScroll: true },
+                                                    {
+                                                        preserveScroll: true,
+                                                        onError:
+                                                            toastVisitErrors,
+                                                    },
                                                 )
                                             }
                                         >
@@ -285,7 +294,11 @@ export default function ForecastProjectShow({
                                             onSelect={() =>
                                                 router.delete(
                                                     unlink.url(forecast.id),
-                                                    { preserveScroll: true },
+                                                    {
+                                                        preserveScroll: true,
+                                                        onError:
+                                                            toastVisitErrors,
+                                                    },
                                                 )
                                             }
                                         >
@@ -746,7 +759,11 @@ export default function ForecastProjectShow({
                 title={t('forecast.actions.delete_title')}
                 description={t('forecast.actions.delete_description')}
                 confirmLabel={t('forecast.actions.delete')}
-                onConfirm={() => router.delete(destroy.url(forecast.id))}
+                onConfirm={() =>
+                    router.delete(destroy.url(forecast.id), {
+                        onError: toastVisitErrors,
+                    })
+                }
             />
         </>
     );

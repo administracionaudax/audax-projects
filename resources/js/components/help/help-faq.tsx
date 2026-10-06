@@ -1,4 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     ChevronDown,
     ListOrdered,
@@ -317,7 +318,11 @@ function DeleteButton({
                     onStart: () => setProcessing(true),
                     onFinish: () => setProcessing(false),
                     onSuccess: () => setOpen(false),
-                    onError: () => setOpen(false),
+                    // «La sección tiene preguntas»: se cierra, pero diciendo por qué.
+                    onError: (errors) => {
+                        setOpen(false);
+                        toastVisitErrors(errors);
+                    },
                 })
             }
         />

@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { toastUnshownErrors } from '@/components/admin/visit-errors';
 import type { FormEvent } from 'react';
 import { useId } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
@@ -120,6 +121,9 @@ export function LinkDialog({
         form.post(link.url(forecast.id), {
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
+            // «No se puede vincular» llega con la clave `forecast` (D-310).
+            onError: (errors) =>
+                toastUnshownErrors(errors, ['project_id', 'copy_allocations']),
         });
     };
 
@@ -280,7 +284,10 @@ export function CreateProjectDialog({
             due_date: data.due_date,
             copy_allocations: data.copy_allocations,
         }));
-        form.post(createProject.url(forecast.id));
+        form.post(createProject.url(forecast.id), {
+            onError: (errors) =>
+                toastUnshownErrors(errors, Object.keys(proposal())),
+        });
     };
 
     return (

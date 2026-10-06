@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { toastUnshownErrors } from '@/components/admin/visit-errors';
 import type { FormEvent, ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
@@ -138,6 +139,9 @@ export function ForecastProjectDialog({
         const options = {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            // «El previsto está congelado», «estado»…: sin campo donde pintarse (D-310).
+            onError: (errors: Record<string, string>) =>
+                toastUnshownErrors(errors, Object.keys(initial(forecast))),
         };
 
         if (forecast) {
