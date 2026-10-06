@@ -59,6 +59,9 @@ return [
         'driver' => env('TRANSCRIPTION_DRIVER', 'whisper'),
         'queue_connection' => env('TRANSCRIPTION_QUEUE_CONNECTION', 'redis-transcriptions'),
         'language' => env('TRANSCRIPTION_LANGUAGE', 'es'),
+        // Dictados de la weekly (D-243): `gemini` (en segundos, como WeeklySync) o `whisper` (el del
+        // chat, en el servidor). Sin clave de Gemini se usa Whisper.
+        'dictation_driver' => env('DICTATION_TRANSCRIPTION_DRIVER', 'gemini'),
         'whisper' => [
             'url' => env('WHISPER_URL', 'http://127.0.0.1:18091'),
             'model' => env('WHISPER_MODEL', 'small'),

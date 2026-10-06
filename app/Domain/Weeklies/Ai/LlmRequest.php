@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * como JSON (responseMimeType application/json) y llega decodificada en LlmResponse::$json.
  *
  * $user y $subject solo se usan para ai_usage (quién la pidió y sobre qué: una semana, un cliente…).
+ * $audio solo lo lleva la transcripción del dictado de la weekly (D-243).
  */
 final readonly class LlmRequest
 {
@@ -30,6 +31,7 @@ final readonly class LlmRequest
         public ?Model $subject = null,
         public string $operation = 'generate',
         public array $metadata = [],
+        public ?LlmAudio $audio = null,
     ) {}
 
     public function wantsJson(): bool

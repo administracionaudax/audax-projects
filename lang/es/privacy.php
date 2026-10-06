@@ -27,13 +27,14 @@ return [
 - las horas que imputas, tus tareas y tus comentarios,
 - tus ausencias: solo el tipo y las fechas, nunca diagnósticos ni justificantes médicos,
 - tus mensajes del chat y tus audios, con su transcripción, que se hace en el propio servidor de la empresa,
+- tus weeklies y sus dictados: el dictado se transcribe con Google Gemini y su audio se borra al transcribirlo,
 - los registros de acceso a la aplicación: fecha, dirección IP y navegador.
 
 **Quién los ve:**
 - Cada persona ve sus propios datos.
 - Tus responsables y los gestores de tus proyectos ven lo necesario para organizar el trabajo.
 - Los clientes solo ven, en su portal, las horas aprobadas de sus propios proyectos, y tu nombre únicamente si así se configura.
-- Nada se cede a terceros ni sale del servidor de la empresa, tampoco la transcripción de los audios.
+- Nada se cede a terceros. Solo las funciones de IA de la Weekly (el informe, su audio, la transcripción y la limpieza de los dictados) usan Google como encargado del tratamiento; los audios del chat se transcriben en el servidor de la empresa.
 
 **Cuánto tiempo se guardan:**
 - las horas, durante los plazos legales de conservación de la documentación contable y laboral,

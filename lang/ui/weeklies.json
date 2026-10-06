@@ -121,6 +121,7 @@
     "ai_usage.feature.satisfaction": "Satisfacción",
     "ai_usage.feature.audio_script": "Guion del audio",
     "ai_usage.feature.speech": "Locución",
+    "ai_usage.feature.dictation_transcription": "Transcripción del dictado",
     "ai_usage.feature.transcript_cleanup": "Limpieza del dictado",
     "ai_usage.feature.suggested_tasks": "Tareas sugeridas",
     "ai_usage.feature.client_summary": "Resumen del cliente",

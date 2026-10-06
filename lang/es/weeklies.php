@@ -297,6 +297,7 @@ return [
             'satisfaction' => 'Satisfacción',
             'audio_script' => 'Guion del audio',
             'speech' => 'Locución',
+            'dictation_transcription' => 'Transcripción del dictado',
             'transcript_cleanup' => 'Limpieza del dictado',
             'suggested_tasks' => 'Tareas sugeridas',
             'client_summary' => 'Resumen del cliente',

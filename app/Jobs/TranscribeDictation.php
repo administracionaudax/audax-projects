@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use App\Domain\Chat\Transcription\TranscriptionService;
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Dictation\DictationCleaner;
 use App\Domain\Weeklies\Dictation\DictationText;
+use App\Domain\Weeklies\Dictation\GeminiDictationTranscriber;
 use App\Enums\TranscriptionStatus;
 use App\Events\Weeklies\DictationUpdated;
 use App\Http\Controllers\Chat\Media\StoreMediaMessageRequest;
@@ -16,9 +18,11 @@ use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
- * Transcribe un dictado de la weekly (F-049, F-171, D-152) con el Whisper del servidor, en la misma
- * cola `transcriptions` que los audios del chat (un único proceso de baja prioridad). El audio no
- * sale del servidor y se borra al acabar, con éxito o sin él: el dictado es un borrador de texto.
+ * Transcribe un dictado de la weekly (F-049, F-171, D-152) y borra el audio al acabar, con éxito o
+ * sin él: el dictado es un borrador de texto.
+ * - Con Gemini (D-243, por defecto, como WeeklySync): en segundos, en la cola `ai-high`.
+ * - Con Whisper (sin clave de Gemini o con DICTATION_TRANSCRIPTION_DRIVER=whisper): en el servidor,
+ *   en la misma cola `transcriptions` que los audios del chat (un único proceso de baja prioridad).
  *
  * - Sin voz útil (silencio, muletillas o una alucinación típica de Whisper): queda hecho, sin texto
  *   y con el aviso `no_speech` (F-171).
@@ -38,8 +42,22 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 7200;
 
+    /** Con Gemini (D-243): se decide al encolar, para que el motor y la cola vayan juntos. */
+    public bool $viaGemini = false;
+
     public function __construct(public readonly int $dictationId)
     {
+        $this->viaGemini = GeminiDictationTranscriber::enabled();
+
+        if ($this->viaGemini) {
+            // En segundos: la cola prioritaria de la IA, no detrás de los audios largos del chat.
+            $this->onQueue(AiQueue::HIGH);
+            $this->timeout = AiQueue::TIMEOUT;
+            $this->backoff = [10, 30, 60];
+
+            return;
+        }
+
         $this->onConnection((string) config('services.transcription.queue_connection'));
         $this->onQueue('transcriptions');
     }
@@ -49,8 +67,10 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
         return 'dictation-'.$this->dictationId;
     }
 
-    public function handle(TranscriptionService $engine): void
+    public function handle(TranscriptionService $whisper, ?GeminiDictationTranscriber $gemini = null): void
     {
+        $gemini ??= app(GeminiDictationTranscriber::class);
+
         $dictation = Dictation::query()->find($this->dictationId);
 
         if ($dictation === null || $dictation->status === TranscriptionStatus::Done) {
@@ -71,12 +91,16 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
 
         $started = hrtime(true);
 
+        $path = Storage::disk($dictation->disk)->path($dictation->path);
+
         try {
-            $result = $engine->transcribe(
-                Storage::disk($dictation->disk)->path($dictation->path),
-                (string) config('services.transcription.language', 'es'),
-                StoreMediaMessageRequest::maxDurationMs(),
-            );
+            $result = $this->viaGemini
+                ? $gemini->transcribe($dictation, $path)
+                : $whisper->transcribe(
+                    $path,
+                    (string) config('services.transcription.language', 'es'),
+                    StoreMediaMessageRequest::maxDurationMs(),
+                );
         } catch (Throwable $e) {
             $dictation->forceFill(['last_error' => mb_substr($e->getMessage(), 0, 1000)])->save();
 
@@ -92,8 +116,8 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
             'raw_text' => $result->text,
             'text' => $meaningful ? ($clean ? null : $raw) : '',
             'warning' => $meaningful ? null : DictationText::WARNING_NO_SPEECH,
-            'engine' => $engine->engine(),
-            'model' => $engine->model(),
+            'engine' => $this->viaGemini ? GeminiDictationTranscriber::ENGINE : $whisper->engine(),
+            'model' => $this->viaGemini ? $gemini->model() : $whisper->model(),
             'audio_duration_ms' => $result->durationMs ?? $dictation->audio_duration_ms,
             'processing_ms' => (int) ((hrtime(true) - $started) / 1_000_000),
             'transcribed_at' => $clean ? null : now(),

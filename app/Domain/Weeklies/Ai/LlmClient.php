@@ -3,8 +3,8 @@
 namespace App\Domain\Weeklies\Ai;
 
 /**
- * Modelo de lenguaje para el TEXTO de la Weekly (D-146): informe, satisfacción, guion del audio,
- * tareas sugeridas, resúmenes, asistente y limpieza del dictado. El audio nunca pasa por aquí.
+ * Modelo de lenguaje de la Weekly (D-146): informe, satisfacción, guion del audio, tareas sugeridas,
+ * resúmenes, asistente, limpieza del dictado y, con su audio, la transcripción del dictado (D-243).
  *
  * - Se llama SIEMPRE desde un Job de la cola `ai` (AiQueue), nunca dentro de una petición web.
  * - Implementaciones: GeminiClient (producción) y FakeLlm (tests y local sin clave).

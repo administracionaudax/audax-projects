@@ -11,6 +11,7 @@ enum AiFeature: string
     case Satisfaction = 'satisfaction';
     case AudioScript = 'audio_script';
     case Speech = 'speech';
+    case DictationTranscription = 'dictation_transcription';
     case TranscriptCleanup = 'transcript_cleanup';
     case SuggestedTasks = 'suggested_tasks';
     case ClientSummary = 'client_summary';

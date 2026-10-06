@@ -1977,6 +1977,14 @@ Pedido por el propietario el 06/10: el informe de un proyecto exportado debe lle
 - **Para el cliente:** además, solo quien ve **todas** las horas del proyecto (un admin o quien lo gestiona). Así nadie manda al cliente un informe al que le faltan horas sin saberlo. Lo comprueban el documento al generar y `ReportAccess` al enviar y programar (403); un envío programado cuyo propietario pierde ese acceso se pausa, como los demás (D-141). En la página, el selector solo aparece a quien puede elegir.
 - **Selector:** en «Exportar ▾» del informe de proyecto, arriba, «Interno (completo)» / «Para el cliente» (elegirlo no cierra el menú); «Enviar por correo» y «Programar envío» parten de la versión elegida y la dejan cambiar. La lista y el detalle de los envíos programados enseñan la versión.
 
+### D-243 · El dictado de la weekly se transcribe con Gemini **[cambia D-152 y D-146; como WeeklySync]**
+Pedido por el propietario el 06/10 tras probarlo: un dictado de 7 s llevaba más de 6 minutos «Transcribiendo…». La CPU virtual del servidor solo tiene SSE2/SSE3 (D-116): Whisper `small` rellena cada audio a 30 s y, con 2 núcleos de baja prioridad y el servidor cargado, un audio corto tarda minutos.
+- **Motor:** el dictado de la weekly (y las notas de tareas) se transcribe con Gemini (`GeminiDictationTranscriber`), con el prompt de la primera pasada de `ws:transcribe-audio` (JSON `hasMeaningfulSpeech` / `transcription` / `reason`; sin voz útil, `no_speech`). La limpieza (D-146, F-172) sigue igual, después.
+- **Cola:** `ai-high` de Horizon (segundos), no la de Whisper, para no esperar detrás de los audios largos del chat. El motor se decide al encolar (`TranscribeDictation::$viaGemini`); `ai_usage` lo apunta como «Transcripción del dictado».
+- **Audio:** viaja en la petición (`inlineData`, máx. 14 MB) y se borra del servidor al transcribir, como antes. Google actúa como encargado del tratamiento; el borrador del texto RGPD lo dice.
+- **Interruptor:** `DICTATION_TRANSCRIPTION_DRIVER=gemini|whisper` (por defecto `gemini`). Sin clave de Gemini se usa Whisper.
+- **Los audios del chat siguen con Whisper** en el servidor (elección del propietario).
+
 ### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
 Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
 - **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
@@ -2006,6 +2014,7 @@ Pedido por el propietario el 06/10: «que los menús principales se puedan colap
 - Barra lateral con secciones plegables: D-260.
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
+- Dictado de la weekly con Gemini: D-243.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-243** (reservadas en otras ramas: D-250… Plan del día, D-260… menú, D-270… chat de ClickUp).
+La siguiente libre es **D-244** (reservadas en otras ramas: D-250… Plan del día, D-260… menú, D-270… chat de ClickUp).

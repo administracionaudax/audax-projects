@@ -65,6 +65,7 @@ export type AiFeature =
     | 'satisfaction'
     | 'audio_script'
     | 'speech'
+    | 'dictation_transcription'
     | 'transcript_cleanup'
     | 'suggested_tasks'
     | 'client_summary'

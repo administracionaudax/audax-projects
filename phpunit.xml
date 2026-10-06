@@ -28,6 +28,7 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="TRANSCRIPTION_DRIVER" value="fake"/>
+        <env name="DICTATION_TRANSCRIPTION_DRIVER" value="whisper" force="true"/>
         <env name="GEMINI_DRIVER" value="fake" force="true"/>
         <env name="GEMINI_API_KEY" value="" force="true"/>
         <env name="GOOGLE_TTS_DRIVER" value="fake" force="true"/>

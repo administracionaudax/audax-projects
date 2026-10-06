@@ -89,7 +89,13 @@ final class GeminiClient implements LlmClient
         ], fn (mixed $value): bool => $value !== null);
 
         return array_filter([
-            'contents' => [['role' => 'user', 'parts' => [['text' => $request->prompt]]]],
+            'contents' => [['role' => 'user', 'parts' => array_values(array_filter([
+                $request->audio === null ? null : ['inlineData' => [
+                    'mimeType' => $request->audio->mimeType,
+                    'data' => base64_encode($request->audio->bytes),
+                ]],
+                ['text' => $request->prompt],
+            ]))]],
             'systemInstruction' => $request->system === null ? null : ['parts' => [['text' => $request->system]]],
             'generationConfig' => $generation === [] ? null : $generation,
         ], fn (mixed $value): bool => $value !== null);

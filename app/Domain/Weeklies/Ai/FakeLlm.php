@@ -59,6 +59,11 @@ final class FakeLlm implements LlmClient
                 ]];
             }
 
+            // Transcripción del dictado con Gemini (D-243): siempre con voz.
+            if ($request->feature === AiFeature::DictationTranscription) {
+                return ['hasMeaningfulSpeech' => true, 'transcription' => 'Transcripción de prueba generada sin IA (GEMINI_DRIVER=fake).', 'reason' => 'OK'];
+            }
+
             if ($request->responseSchema === null) {
                 if (preg_match('/TRANSCRIPCIÓN BRUTA:\n(.*?)\n\nINSTRUCCIONES:/s', $request->prompt, $match) === 1) {
                     return trim($match[1]);
