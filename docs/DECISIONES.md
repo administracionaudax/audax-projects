@@ -2117,6 +2117,74 @@ Pedido por el propietario el 06/10.
 - La API solo deja leer los directos y grupos de quien es dueño del token: se importan los del propietario, con sus participantes.
 - Cualquier otra persona puede traer **los suyos** después: descarga con su token (`descargar-chat.py --solo-directos --token-file …`) e importación con `app:import-clickup-chat <volcado> --solo-directos` (solo directas y grupos). Ningún admin ve las directas (D-071).
 
+## 06/10/2026: Previsión (Nivel 2 de las cargas: entregas P1, P2 y el dominio de P4)
+Diseño en `docs/PLAN-CARGAS.md` (§5, §6.2 a §6.7, §7.2 a §7.5, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan: P4 a, P5 b, P6, P7 c y P8 b). Esta entrega es el backend y el contrato; las pantallas definitivas saldrán del diseño de los gráficos (rama `prevision-diseno`). Rama `prevision-datos`.
+
+### D-280 · Módulo `forecast`, apagado por defecto, y páginas provisionales **[amplía D-151 y D-239]**
+- **Módulo propio** `forecast` en `AppModule` y en `/admin/ajustes` → módulos. **Apagado por defecto** también en una instalación nueva (`Setting::DEFAULTS`): las pantallas son provisionales. La migración `add_forecast_off_to_stored_modules` lo añade **apagado** donde el ajuste `modules` ya está guardado (si faltara, contaría como activo y se abriría a toda la plantilla al desplegar). Apagado: todas sus rutas dan 404; en modo de prueba (D-239), los admins lo ven.
+- **Guardar los ajustes ya no enciende módulos por omisión:** los módulos que no llegan en el formulario conservan su valor (antes, uno que faltaba se guardaba encendido).
+- **Páginas provisionales** (`forecast/index`, `forecast/projects/index`, `forecast/projects/show` y `projects/planning`): tablas sencillas con los datos del contrato, sin enlace en la barra lateral ni pestaña en el proyecto. Se rehacen con el diseño.
+
+### D-281 · El proyecto previsto **[concreta PLAN-CARGAS §5.1, §5.2 y §7.2; cambia §6.5 por P5 b]**
+- **Tabla `forecast_projects`:** nombre, **cliente existente o nombre libre** (`prospect_name`; uno de los dos es obligatorio: con cliente, el nombre libre se borra), color de la paleta de proyectos, descripción, responsable (por defecto quien lo crea), fechas, estimación global opcional en minutos e importe estimado (`decimal`, solo con `view-financials`: sin el permiso ni se guarda ni se ve).
+- **Seguridad solo «segura» (`firm`) o «posible» (`tentative`)**, sin probabilidad ni ponderación (P5 b): se quitan del diseño `probability`, `forecast_default_probability` y el interruptor «Ponderar».
+- **Estados:** abierto → **confirmado** (se ha ganado; pasa a «segura» y ya no puede volver a «posible») · **perdido** (con motivo y fecha; deja de contar; «Reabrir» lo devuelve a abierto) · **vinculado** (tiene proyecto real). Solo se editan los abiertos y los confirmados; un vinculado no se borra.
+- **Sin horas estimadas por departamento en el previsto:** lo que se espera de cada departamento son sus huecos (asignaciones sin persona); la línea base lo resume por departamento (D-286).
+- Auditado (`LogsDomainActivity`, entidad «Previsión»), sin la foto de la línea base campo a campo.
+
+### D-282 · Asignaciones y su reparto **[concreta PLAN-CARGAS §5.1, §6.2 y §7.2]**
+- **Tabla `allocations`:** de un proyecto real **o** de un previsto; de una persona **o** de un departamento sin persona (**hueco**); modo, minutos o porcentaje, desde y hasta, nota y `copied_from_allocation_id`. Las reglas «de uno u otro» van como `CHECK` en PostgreSQL y, siempre, en `App\Domain\Forecast\AllocationWriter`, el único punto de escritura (crear, editar, borrar, «Asignar a…» y copiar). Se audita.
+- **Personas asignables:** solo la plantilla activa (admin, responsables y empleados). Nunca un colaborador externo ni un cliente. Como mucho tres años por asignación y el 200 % de dedicación.
+- **Reparto** (`AllocationPlanner`, por días): «día laborable» = capacidad > 0 en `Capacity` (jornada − festivos − ausencias aprobadas; las solicitadas no restan); de un hueco, un día en el que trabaja alguien de su departamento (sin nadie, la jornada por defecto sin festivos).
+  - `total`: a partes iguales entre los días laborables; los minutos que sobran, a los primeros días; sin días laborables, todo al primero (marcada «sin días»).
+  - `per_day`: esos minutos cada día laborable, aunque la jornada sea menor.
+  - `percent`: el % de la capacidad de ese día de la persona (una ausencia parcial la baja); de un hueco, el % de la jornada por defecto («0,5 personas»).
+  - `monthly`: cada mes natural, sus minutos repartidos como un total; un mes partido, a prorrata de días laborables. Sin fin: hasta el horizonte de quien lo mira (en un previsto o un proyecto sin fecha de fin, 12 meses desde el inicio).
+- **Restante en proyectos reales** (solo `total` de una persona): max(total − lo que esa persona imputó en ese proyecto dentro del rango, 0), desde max(hoy, inicio); con el fin pasado y restante, todo a hoy y «vencida» (como una tarea, D-051). Los demás modos, los huecos y los previstos son de plan fijo.
+- **Más allá de un año**, la jornada semanal vigente en el tope, sin festivos ni ausencias (D-051).
+- Casos compartidos en `tests/fixtures/allocations.json`.
+
+### D-283 · Qué cuenta en la carga de la previsión **[cambia PLAN-CARGAS §6.4 y §6.5 por P6 y P7]**
+- **Solo asignaciones** (P6 y P7): ni las horas estimadas de las tareas, ni las bolsas, ni los fees cuentan (para que cuenten se les crea una asignación, p. ej. «20 h al mes de Marketing»). Por eso no hace falta `projects.load_source` ni la regla «la asignación manda»: no se crea.
+- **Tres capas** (`LoadCombiner`): **real** (asignaciones de proyectos planificados o activos; los en pausa, completados, archivados o borrados no suman), **seguro** (previstos «seguros» abiertos o confirmados) y **posible** (previstos «posibles» abiertos). Los perdidos y los vinculados no cuentan nunca (el vinculado ya está en su real).
+- **Capacidad:** la de `Capacity` por persona; la de un departamento, la suma de su plantilla activa de hoy (R6). Los huecos suman a la carga de su departamento y salen aparte (`gaps`). Quien no tiene departamento va en «Sin departamento».
+- **`/carga`, el Calendario e Inicio no cambian todavía:** siguen con la carga por tareas (D-051). Integrarlos es parte de las pantallas (D-289).
+
+### D-284 · Quién ve y quién toca la previsión **[concreta PLAN-CARGAS §8 con P4 a y P8 b]**
+- **Permiso nuevo `manage-forecast`** (admins y responsables por defecto; migración para las instalaciones en uso): crear, editar, confirmar, dar por perdido, reabrir, borrar y vincular previstos y sus asignaciones. Un admin puede dárselo a otra persona.
+- **Gates:** `view-forecast` (la previsión global y los previstos: admins, todos los responsables, que ven a toda la plantilla, y quien tenga `manage-forecast`) y `use-forecast` (su propia carga, `/prevision/mi-carga`: toda la plantilla, también con los previstos posibles, P8 b). Los empleados no ven la previsión global.
+- **Pestaña Planificación de un proyecto real** (`ProjectPolicy::viewPlanning` y `manageAllocations`): quien gestiona el proyecto (admin, responsables y sus gestores, D-022), si no está archivado. No se limita a «personas de su departamento» (§8): un responsable ya gestiona cualquier proyecto (D-022). Un gestor de proyecto no toca los previstos.
+- **Crear el proyecto real** desde un previsto exige además poder crear proyectos (D-022); **vincular**, gestionar ese proyecto; **desvincular**, solo un admin.
+- **Siempre fuera:** colaboradores externos (D-134: sus rutas no están en `config/collaborators.php` y las gates los niegan) y clientes. Todo detrás del módulo `forecast`.
+
+### D-285 · Periodo, «desde hoy» e impacto «sin / con» **[concreta PLAN-CARGAS §5.3 y §6.3]**
+- **Periodo** de `/prevision`: de 1 a 12 meses (3 por defecto) desde `?desde=` (hoy), por meses naturales o por semanas ISO de lunes a domingo (`?por=semanas|meses`), y `?departamento=`.
+- **Cuenta de hoy en adelante:** los días pasados del periodo no tienen ni carga ni capacidad, para que la ocupación del mes en curso no salga baja (`counts_from` en el contrato).
+- **Impacto** de un previsto abierto o confirmado (`ForecastImpact`): por mes, de hoy hasta su última asignación (o 3 meses si no tiene fin; como mucho 12), la capacidad y la carga **sin** él (todas las capas: «la pregunta incómoda primero») y **con** él de cada departamento y de cada persona que toca. La ocupación y el semáforo (D-052) los calcula la interfaz (`lib/forecast.ts`).
+
+### D-286 · Vincular, copiar y congelar la línea base **[concreta PLAN-CARGAS §6.6 con P6]**
+- **Vincular** con un proyecto real (`ForecastLinker`): no archivado, que quien vincula gestione y sin otro previsto (uno por proyecto, índice único). Se toma la **foto congelada** (`forecast_projects.baseline`, `ForecastBaseline`): el plan completo de sus asignaciones en total, por persona, por departamento (el de la persona en ese momento o el del hueco), por mes y por departamento y mes, con las fechas previstas. El previsto pasa a «vinculado» y «seguro», y sus asignaciones quedan de solo lectura.
+- **Copiar las asignaciones** (por defecto, sí): el real recibe copias idénticas (`copied_from_allocation_id`), que son su plan vivo; las personas asignadas que no eran miembros entran como miembros (para poder imputar).
+- **Crear el proyecto real desde el previsto:** el alta de siempre (`StoreProjectRequest`, `ProjectCreator`, sin plantilla) con las personas asignadas como miembros, y se vincula. Si el previsto es de un cliente nuevo, primero se crea el cliente.
+- **Desvincular** (admin): vuelve a «confirmado», se borran el vínculo y la foto, y las copias del real se quedan.
+
+### D-287 · Estimado frente a real **[concreta PLAN-CARGAS §6.7 con P6]**
+- **Estimado:** la línea base congelada, nunca las asignaciones vivas ni las horas estimadas de las tareas. **Real:** todas las horas imputadas en el proyecto vinculado, sea cual sea su estado (el criterio del consumo y de D-081/D-084).
+- **Por persona, por departamento** (el real, con el departamento de la persona hoy; v1) **y por mes**, con los acumulados para la curva.
+- **Fechas:** inicio real = primera entrada; fin real = la última si el proyecto está completado; en curso, la proyección al ritmo de los últimos 28 días (días naturales).
+- **Desviación** = (real − estimado) / estimado, en % con un decimal (redondeo de PHP, igual en la interfaz); por debajo de medio punto, «Igual que lo estimado». Casos compartidos en `tests/fixtures/forecast-deviation.json`.
+- Se ve en la ficha del previsto vinculado y en la Planificación del real (petición aparte). El informe «Precisión de previsiones» queda para después (D-289).
+
+### D-288 · Contrato y rendimiento **[concreta PLAN-CARGAS §7.5 y R7]**
+- **Rutas** (`routes/app/forecast.php`, nombres en inglés): `GET /prevision` (`forecast.index`), `GET /prevision/mi-carga` (JSON), `/prevision/proyectos` (lista, alta), `/prevision/proyectos/{id}` (ficha, edición, borrado) y sus acciones `confirmar`, `perdido`, `reabrir`, `vincular`, `crear-proyecto`, `vinculo` y `asignaciones`; `PUT|DELETE /prevision/asignaciones/{id}` y `asignar`; `GET /proyectos/{id}/planificacion` y `POST /proyectos/{id}/asignaciones`.
+- **Props de cada página** en `resources/js/types/forecast.ts` (`ForecastIndexPageProps`, `ForecastProjectsPageProps`, `ForecastProjectPageProps`, `ProjectPlanningPageProps`, `MyForecastResponse`), con `AllocationResource` y `ForecastProjectResource`. El impacto, estimado frente a real y los selectores llegan diferidos (grupos `analysis` y `options`). Todo en minutos enteros.
+- **Rendimiento:** 30 personas × 12 meses en unos 120 ms (< 300 ms en el test) y las mismas consultas sea cual sea la plantilla: una de personas, una de departamentos, una de asignaciones, una de horas imputadas y las de `Capacity`. Los días laborables de cada persona se calculan una vez y nunca se lee un atributo de Eloquent por día.
+
+### D-289 · Lo que queda para las pantallas y P3, P4 y P5 **[concreta PLAN-CARGAS §9, §10 y §12]**
+- **Con el diseño:** las pantallas definitivas, la entrada en la barra lateral, la pestaña Planificación en la ficha del proyecto, los formularios de previstos y asignaciones y los E2E.
+- **Integración (P1 y P3):** «Mi carga» de Inicio, `/carga` y el Calendario con las asignaciones; la caché por versión (D-086).
+- **P4 y P5:** el informe «Precisión de previsiones», la exportación, los avisos de §9 (asignación nueva y previsto sin vincular a 7 días), el resumen de los lunes, la búsqueda global y los previstos abiertos en la ficha del cliente.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2135,6 +2203,7 @@ Pedido por el propietario el 06/10.
 - Dictado de la weekly con Gemini: D-243.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
+- Previsión: D-280 a D-289.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-280 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-290 en adelante, sin usar).

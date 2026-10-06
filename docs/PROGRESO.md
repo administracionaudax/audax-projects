@@ -146,6 +146,14 @@ Nivel 1 de `docs/PLAN-CARGAS.md` (entregas C1 a C3, D-250 a D-256), con las resp
 - **RGPD:** exportación de datos personales, retención (12 meses) y auditoría. **Pendiente del propietario:** que el asesor revise los párrafos del plan del día en el texto RGPD (D-256).
 - **Tests:** Pest (`tests/Feature/DayPlan`), Vitest (`tests/js/day-plan-*`) y E2E (`tests/e2e/day-plan.spec.ts`).
 
+### Previsión: datos y contrato (rama `prevision-datos`, sin desplegar)
+Nivel 2 de `docs/PLAN-CARGAS.md` (entregas P1, P2 y el dominio de P4; D-280 a D-289), con las respuestas del propietario (§15). Es el backend y el contrato: las pantallas definitivas saldrán del diseño de los gráficos (rama `prevision-diseno`).
+- **Tablas** `allocations` (persona o hueco de departamento, en un proyecto real o en un previsto; total, por día, % o por mes) y `forecast_projects` (cliente o nombre libre, segura o posible sin %, abierto, confirmado, perdido o vinculado, con la línea base congelada). Permiso `manage-forecast` (admins y responsables) y módulo `forecast`, **apagado** (también donde ya hay módulos guardados).
+- **Dominio** (`app/Domain/Forecast`): reparto por días con jornadas, festivos y ausencias (`AllocationPlanner`), carga real / segura / posible por persona y departamento, solo con asignaciones (`LoadCombiner`), impacto «sin / con» un previsto, vincular o crear el real (copiar asignaciones, congelar, desvincular) y estimado frente a real.
+- **Rutas y contrato:** `/prevision`, `/prevision/mi-carga`, `/prevision/proyectos`, `/prevision/proyectos/{id}`, `/proyectos/{id}/planificacion` y las acciones; props en `resources/js/types/forecast.ts`. Páginas provisionales (tablas), sin enlace en la barra lateral.
+- **Además:** guardar los ajustes ya no enciende un módulo que no llega en el formulario; auditoría; datos de ejemplo (asignaciones reales, un fee mensual y cuatro previstos: posible, seguro, vinculado y perdido).
+- **Tests:** Pest (`tests/Feature/Forecast`: reparto con casos compartidos, capas, permisos por rol, páginas y rendimiento de 30 personas × 12 meses) y Vitest (`tests/js/forecast-lib.test.ts`). **Pendiente:** pantallas, integración con `/carga`, Inicio y Calendario, avisos, informe de precisión y E2E (D-289).
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

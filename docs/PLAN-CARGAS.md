@@ -699,3 +699,11 @@ Hecho el 07/10/2026 en la rama `plan-del-dia` (D-250 a D-256 en `docs/DECISIONES
 - **C3 · Temporizador e integración:** ▶ desde la línea (tarea propia, elegida o nueva con su texto), `day_plan_item_id` en temporizadores y entradas, «¿Das por hecha la línea?», «Imputar lo previsto», vincular horas, «Añadir a mi día» en Mis tareas, «Autocompletar» de la Weekly y la vista Día del calendario.
 - **Además:** búsqueda global, RGPD (exportación, retención de 12 meses y mención en el texto del asesor), auditoría y datos de ejemplo de cuatro semanas.
 
+## P1, P2 y el dominio de P4 (datos y contrato, hecho)
+Hecho el 06/10/2026 en la rama `prevision-datos` (D-280 a D-289 en `docs/DECISIONES.md`), con las respuestas de §15. Cambios frente a este plan:
+- **P5 b:** sin `probability`, sin `forecast_default_probability` y sin «Ponderar por probabilidad» (§5.1, §6.5, §7.2 y §7.4). Seguridad `firm` / `tentative`; estados `open`, `confirmed`, `lost` y `linked`.
+- **P6 y P7:** la carga de la previsión sale **solo de las asignaciones**; sin `projects.load_source` ni la regla «la asignación manda» de §6.4, y sin la capa «Saldo de bolsas». `/carga`, el Calendario e Inicio siguen como están hasta las pantallas.
+- **§8:** la Planificación de un proyecto real la gestiona quien gestiona el proyecto (D-022), sin limitarse al departamento.
+- **Hecho:** `allocations`, `forecast_projects`, `AllocationPlanner`, `LoadCombiner`, `ForecastImpact`, `ForecastLinker` (con `ForecastBaseline`), `EstimateVsActual`, permisos y políticas, rutas, Resources, el contrato de props (`resources/js/types/forecast.ts`) y páginas provisionales. Módulo `forecast` apagado por defecto.
+- **Pendiente:** las pantallas (con el diseño de `prevision-diseno`), P3 (integración y caché), el informe «Precisión de previsiones», los avisos de §9, la búsqueda y los E2E.
+

@@ -110,7 +110,8 @@ export type AppModule =
     | 'help'
     | 'suggestions'
     | 'assistant'
-    | 'day_plan';
+    | 'day_plan'
+    | 'forecast';
 
 // --- Semanas, envíos e informe ----------------------------------------------------------------
 

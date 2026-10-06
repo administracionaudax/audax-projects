@@ -34,8 +34,8 @@ enum Role: string
     {
         return match ($this) {
             self::Admin => Permission::cases(),
-            // La Weekly la gestionan también los responsables de departamento (D-147).
-            self::DepartmentManager => [Permission::ManageWeeklies],
+            // La Weekly (D-147) y la Previsión (D-284) las gestionan también los responsables.
+            self::DepartmentManager => [Permission::ManageWeeklies, Permission::ManageForecast],
             default => [],
         };
     }

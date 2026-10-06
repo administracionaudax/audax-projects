@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -51,6 +52,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Collection<int, User> $managers
  * @property-read Collection<int, HourBank> $hourBanks
  * @property-read Collection<int, Task> $tasks
+ * @property-read Collection<int, Allocation> $allocations
+ * @property-read ForecastProject|null $forecastProject
  */
 #[Fillable([
     'client_id',
@@ -193,6 +196,26 @@ class Project extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);
+    }
+
+    /**
+     * Asignaciones de horas del proyecto (pestaña Planificación, D-282).
+     *
+     * @return HasMany<Allocation, $this>
+     */
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(Allocation::class)->orderBy('start_date')->orderBy('id');
+    }
+
+    /**
+     * El proyecto previsto del que viene, si se vinculó (como mucho uno, D-286).
+     *
+     * @return HasOne<ForecastProject, $this>
+     */
+    public function forecastProject(): HasOne
+    {
+        return $this->hasOne(ForecastProject::class);
     }
 
     public function isInternal(): bool
