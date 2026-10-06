@@ -1,9 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
+    Building2,
     CircleAlert,
     FileAudio,
     FolderKanban,
+    Hash,
     MessageSquare,
     MessagesSquare,
     Paperclip,
@@ -61,6 +63,8 @@ const CONVERSATION: Record<ChatConversationType, LucideIcon> = {
     project: FolderKanban,
     group: Users,
     direct: User,
+    client: Building2,
+    team: Hash,
 };
 
 /** Query string de /chat/buscar (URL en español). */
