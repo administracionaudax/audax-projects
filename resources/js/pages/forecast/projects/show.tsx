@@ -1,4 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { useLastDefined } from '@/hooks/use-last-defined';
 import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     CalendarClock,
@@ -121,8 +122,11 @@ export default function ForecastProjectShow({
     impact,
     estimate,
     history,
-    options,
+    options: optionsProp,
 }: ForecastProjectPageProps) {
+    // Las opciones diferidas siguen disponibles mientras se vuelven a pedir tras guardar: el
+    // diálogo de asignación ya no se desmonta con un error de validación (D-310).
+    const options = useLastDefined(optionsProp);
     const [editing, setEditing] = useState(false);
     const [allocationOpen, setAllocationOpen] = useState(false);
     const [editingAllocation, setEditingAllocation] =
@@ -530,6 +534,8 @@ export default function ForecastProjectShow({
                                 type="button"
                                 variant="outline"
                                 onClick={() => setAllocationOpen(true)}
+                                // Hasta que llegan las personas y departamentos no hay diálogo que abrir.
+                                disabled={!options}
                                 data-test="add-allocation"
                             >
                                 <Plus aria-hidden="true" />

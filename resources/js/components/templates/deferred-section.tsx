@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { useLastDefined } from '@/hooks/use-last-defined';
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -53,7 +54,11 @@ export function DeferredSection<T>({
 }) {
     const page = usePage();
     const rescued = (page as { rescuedProps?: string[] }).rescuedProps ?? [];
-    const data = (page.props as Record<string, unknown>)[prop] as T | undefined;
+    // Tras guardar otro bloque de la página, la prop vuelve a pedirse: mientras, lo último recibido
+    // (no el esqueleto, que desmontaba la sección y perdía lo escrito en ella).
+    const data = useLastDefined(
+        (page.props as Record<string, unknown>)[prop] as T | undefined,
+    );
 
     if (rescued.includes(prop)) {
         return <SectionError prop={prop} />;
