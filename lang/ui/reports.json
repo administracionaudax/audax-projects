@@ -72,5 +72,10 @@
     "reports.export.soon_description": "Esta opción llega en la próxima versión.",
     "reports.export.close": "Cerrar",
     "reports.export.table_hint": "Solo esta tabla",
-    "reports.export.report_hint": "El informe entero"
+    "reports.export.report_hint": "El informe entero",
+    "reports.export.version": "Versión",
+    "reports.version.interno": "Interno (completo)",
+    "reports.version.cliente": "Para el cliente",
+    "reports.version.interno_hint": "Todo: horas por tarea y persona, entradas, bolsas y, si puedes verlos, costes y margen. De uso interno.",
+    "reports.version.cliente_hint": "Solo las horas que vería en el portal (nunca borradores), sin costes, tarifas ni márgenes."
 }

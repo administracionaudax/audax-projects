@@ -15,7 +15,12 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
+import {
+    reportVersionOf,
+    withVersion,
+} from '@/components/reports/report-request';
 import { send } from '@/routes/reports/deliveries';
+import type { ReportVersion } from '@/types/report-deliveries';
 import type { ReportRequestData } from '@/types/reports';
 import type {
     DeliveryData,
@@ -27,6 +32,7 @@ import {
     MAX_RECIPIENTS,
     MessageFields,
     RecipientsField,
+    VersionField,
     withDraft,
 } from './delivery-fields';
 import { useDeliveryPeople } from './use-delivery-people';
@@ -47,17 +53,20 @@ function initialData(title: string): DeliveryData {
  * de la pantalla, en PDF, Excel o los dos, a personas de la app y a correos externos. Se genera en
  * la cola con los permisos de quien lo envía; al terminar, el aviso llega con el toast del servidor.
  * El formulario vive dentro del contenido del diálogo: cada vez que se abre empieza de cero.
+ * Con `versions` (informe de proyecto, D-240), se elige la versión: la interna o la del cliente.
  */
 export function SendReportDialog({
     open,
     onOpenChange,
     request,
     title,
+    versions,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     request: ReportRequestData;
     title: string;
+    versions?: readonly ReportVersion[];
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -68,6 +77,7 @@ export function SendReportDialog({
                 <SendReportForm
                     request={request}
                     title={title}
+                    versions={versions}
                     onDone={() => onOpenChange(false)}
                 />
             </DialogContent>
@@ -78,13 +88,19 @@ export function SendReportDialog({
 function SendReportForm({
     request,
     title,
+    versions,
     onDone,
 }: {
     request: ReportRequestData;
     title: string;
+    versions?: readonly ReportVersion[];
     onDone: () => void;
 }) {
     const id = useId();
+    const [version, setVersion] = useState<ReportVersion>(
+        reportVersionOf(request),
+    );
+    const choosesVersion = (versions?.length ?? 0) > 1;
     const form = useForm<DeliveryData>(initialData(title));
     const [draft, setDraft] = useState('');
     const [draftError, setDraftError] = useState<string | null>(null);
@@ -109,7 +125,7 @@ function SendReportForm({
         setDraftError(null);
         form.transform((data): DeliveryPayload => ({
             ...data,
-            request,
+            request: choosesVersion ? withVersion(request, version) : request,
             recipient_emails: emails,
         }));
         form.post(send.url(), {
@@ -133,6 +149,15 @@ function SendReportForm({
             </DialogHeader>
 
             <InputError message={generalError} />
+
+            {choosesVersion && versions ? (
+                <VersionField
+                    id={`${id}-version`}
+                    versions={versions}
+                    value={version}
+                    onChange={setVersion}
+                />
+            ) : null}
 
             <FormatsField
                 id={`${id}-formats`}

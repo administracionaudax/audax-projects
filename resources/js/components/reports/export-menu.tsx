@@ -12,7 +12,11 @@ import { ScheduleReportDialog } from '@/components/reports/delivery/schedule-rep
 import { SendReportDialog } from '@/components/reports/delivery/send-report-dialog';
 import { SheetsExportItem } from '@/components/reports/delivery/sheets-export-item';
 import { stripKeywords } from '@/components/keyword-text';
-import { reportRequestUrl } from '@/components/reports/report-request';
+import {
+    reportRequestUrl,
+    reportVersionOf,
+    withVersion,
+} from '@/components/reports/report-request';
 import type { ReportFormat } from '@/components/reports/report-request';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +24,14 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { t } from '@/lib/i18n';
 import type { ReportRequestData } from '@/types';
+import type { ReportVersion } from '@/types/report-deliveries';
 
 /**
  * Menú «Exportar ▾» de un informe (Fase 9, D-139 y D-140), con los filtros de la página
@@ -35,6 +42,8 @@ import type { ReportRequestData } from '@/types';
  * - «Enviar por correo…» y «Programar envío…» abren sus diálogos (9.3).
  * Con `scope="table"` es el menú de una tabla del informe (su `tabla=`): solo Excel, CSV y Google
  * Sheets, que son los formatos de una tabla; el PDF y el resto van en el menú del informe.
+ * Con `versions` (el informe de proyecto, D-240), arriba se elige la versión: «Interno
+ * (completo)» o «Para el cliente»; todo lo del menú (y los diálogos) sale en esa versión.
  */
 export function ExportMenu({
     request,
@@ -42,6 +51,7 @@ export function ExportMenu({
     label,
     scope = 'report',
     size = 'default',
+    versions,
 }: {
     request: ReportRequestData;
     /** Título legible del informe (para los diálogos de envío). */
@@ -49,9 +59,16 @@ export function ExportMenu({
     label?: string;
     scope?: 'report' | 'table';
     size?: 'default' | 'sm';
+    /** Versiones que se pueden elegir (D-240); con una o ninguna, sin selector. */
+    versions?: readonly ReportVersion[];
 }) {
     const [dialog, setDialog] = useState<'send' | 'schedule' | null>(null);
-    const url = (format: ReportFormat) => reportRequestUrl(request, format);
+    const [version, setVersion] = useState<ReportVersion>(
+        reportVersionOf(request),
+    );
+    const choosesVersion = (versions?.length ?? 0) > 1;
+    const current = choosesVersion ? withVersion(request, version) : request;
+    const url = (format: ReportFormat) => reportRequestUrl(current, format);
     const full = scope === 'report';
 
     return (
@@ -70,6 +87,34 @@ export function ExportMenu({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-56">
+                    {choosesVersion && versions ? (
+                        <>
+                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                {t('reports.export.version')}
+                            </DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                                value={version}
+                                onValueChange={(next) =>
+                                    setVersion(next as ReportVersion)
+                                }
+                            >
+                                {versions.map((item) => (
+                                    <DropdownMenuRadioItem
+                                        key={item}
+                                        value={item}
+                                        data-test={`export-version-${item}`}
+                                        // Elegir la versión no cierra el menú: después se elige el formato.
+                                        onSelect={(event) =>
+                                            event.preventDefault()
+                                        }
+                                    >
+                                        {t(`reports.version.${item}`)}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                        </>
+                    ) : null}
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                         {t(
                             full
@@ -97,7 +142,7 @@ export function ExportMenu({
                             </a>
                         </DropdownMenuItem>
                     ) : null}
-                    <SheetsExportItem request={request} />
+                    <SheetsExportItem request={current} />
                     {full ? (
                         <>
                             <DropdownMenuItem asChild>
@@ -133,16 +178,18 @@ export function ExportMenu({
                     <SendReportDialog
                         open={dialog === 'send'}
                         onOpenChange={(open) => setDialog(open ? 'send' : null)}
-                        request={request}
+                        request={current}
                         title={stripKeywords(title)}
+                        versions={versions}
                     />
                     <ScheduleReportDialog
                         open={dialog === 'schedule'}
                         onOpenChange={(open) =>
                             setDialog(open ? 'schedule' : null)
                         }
-                        request={request}
+                        request={current}
                         title={stripKeywords(title)}
+                        versions={versions}
                     />
                 </>
             ) : null}

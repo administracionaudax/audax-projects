@@ -137,5 +137,6 @@
     "deliveries.delivery_status.sent": "Enviado",
     "deliveries.delivery_status.failed": "Fallido",
     "deliveries.delivery_status.skipped": "Omitido",
-    "deliveries.index.description": "Los informes que se envían solos por correo: el del inicio de mes, uno semanal…"
+    "deliveries.index.description": "Los informes que se envían solos por correo: el del inicio de mes, uno semanal…",
+    "deliveries.version.label": "Versión del informe"
 }

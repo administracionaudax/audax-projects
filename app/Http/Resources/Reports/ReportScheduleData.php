@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\Reports;
 
+use App\Domain\Reports\Delivery\ReportKind;
+use App\Domain\Reports\Delivery\ReportVersion;
 use App\Models\ReportDelivery;
 use App\Models\ReportSchedule;
 use App\Models\User;
@@ -25,6 +27,9 @@ final class ReportScheduleData
             'id' => $schedule->id,
             'title' => $schedule->title,
             'kind' => $schedule->request['kind'],
+            // Versión del informe (D-240): interno o para el cliente; null en los que no la tienen.
+            'version' => ReportKind::tryFrom($schedule->request['kind']) === ReportKind::Project
+                ? ReportVersion::fromQuery($schedule->request['query'] ?? [])->value : null,
             'owner' => ['id' => $schedule->owner->id, 'name' => $schedule->owner->name],
             'formats' => $schedule->formats,
             'relative_period' => $schedule->relative_period->value,

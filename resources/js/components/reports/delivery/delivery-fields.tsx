@@ -8,9 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { t } from '@/lib/i18n';
-import type { DeliveryFormat, DeliveryPerson } from '@/types/report-deliveries';
+import type {
+    DeliveryFormat,
+    DeliveryPerson,
+    ReportVersion,
+} from '@/types/report-deliveries';
 import type { ReportRequestData } from '@/types/reports';
 
 /*
@@ -121,6 +126,61 @@ export function FormatsField({
                 ))}
             </div>
             <InputError id={`${id}-error`} message={error} />
+        </fieldset>
+    );
+}
+
+/**
+ * Versión del informe que se envía (D-240): la interna y completa o la del cliente (solo las horas
+ * que vería en el portal, sin costes ni tarifas). Solo en los informes que la tienen.
+ */
+export function VersionField({
+    id,
+    versions,
+    value,
+    onChange,
+}: {
+    id: string;
+    versions: readonly ReportVersion[];
+    value: ReportVersion;
+    onChange: (version: ReportVersion) => void;
+}) {
+    return (
+        <fieldset className="grid gap-2" data-test="report-version-field">
+            <legend className="mb-2 text-sm font-medium">
+                {t('deliveries.version.label')}
+            </legend>
+            <RadioGroup
+                value={value}
+                onValueChange={(next) => onChange(next as ReportVersion)}
+                className="grid gap-3"
+                aria-label={t('deliveries.version.label')}
+            >
+                {versions.map((version) => (
+                    <div key={version} className="flex items-start gap-2">
+                        <RadioGroupItem
+                            id={`${id}-${version}`}
+                            value={version}
+                            aria-describedby={`${id}-${version}-hint`}
+                            className="mt-0.5"
+                        />
+                        <div className="grid gap-0.5">
+                            <Label
+                                htmlFor={`${id}-${version}`}
+                                className="font-normal"
+                            >
+                                {t(`reports.version.${version}`)}
+                            </Label>
+                            <p
+                                id={`${id}-${version}-hint`}
+                                className="text-xs text-muted-foreground"
+                            >
+                                {t(`reports.version.${version}_hint`)}
+                            </p>
+                        </div>
+                    </div>
+                ))}
+            </RadioGroup>
         </fieldset>
     );
 }

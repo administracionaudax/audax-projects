@@ -7,6 +7,9 @@ import type { ReportRequestData } from '@/types/reports';
 
 export type DeliveryFormat = 'pdf' | 'xlsx';
 
+/** Versión de un informe exportado (D-240): la interna y completa o la del cliente. */
+export type ReportVersion = 'interno' | 'cliente';
+
 export type RelativePeriod = 'fixed' | 'current' | 'previous';
 
 export type ScheduleFrequency = 'once' | 'weekly' | 'monthly';
@@ -26,6 +29,8 @@ export type ReportScheduleRow = {
     id: number;
     title: string;
     kind: string;
+    /** Versión del informe (D-240); null en los informes que no la tienen. */
+    version: ReportVersion | null;
     owner: { id: number; name: string };
     formats: DeliveryFormat[];
     relative_period: RelativePeriod;

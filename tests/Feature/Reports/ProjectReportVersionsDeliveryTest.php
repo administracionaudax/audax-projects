@@ -6,6 +6,7 @@ use App\Models\ReportDelivery;
 use App\Models\ReportSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Feature\Reports\R2Scenario;
 
 /*
@@ -101,6 +102,12 @@ test('programar el envío de la versión para el cliente: se guarda y cada enví
 
     $schedule = ReportSchedule::query()->sole();
     expect($schedule->request['query'][ReportVersion::QUERY_KEY])->toBe('cliente');
+
+    // La lista y el detalle enseñan la versión.
+    $this->actingAs($this->s->gema)->get("/informes/envios/{$schedule->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('schedule.version', 'cliente')->where('schedule.request.query.version', 'cliente'));
+    $this->actingAs($this->s->gema)->get('/informes/envios')
+        ->assertInertia(fn (Assert $page) => $page->where('schedules.0.version', 'cliente'));
 
     // El lunes 28 a las 08:00 de Madrid: la semana anterior (21-27/09), en la versión para el cliente.
     $this->travelTo(CarbonImmutable::parse('2026-09-28 06:05', 'UTC'));
