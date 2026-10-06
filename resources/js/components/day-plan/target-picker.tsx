@@ -173,6 +173,15 @@ export function TargetPicker({
                                 ))}
                             </CommandGroup>
                         ) : null}
+                        {/* Clientes y proyectos llegan aparte (prop diferida): que se vea. */}
+                        {targets === undefined ? (
+                            <p
+                                role="status"
+                                className="px-3 py-2 text-sm text-muted-foreground"
+                            >
+                                {t('day_plan.targets.loading')}
+                            </p>
+                        ) : null}
                     </CommandList>
                 </Command>
             </PopoverContent>

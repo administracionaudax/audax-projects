@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { Search } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import type { RefObject } from 'react';
@@ -187,6 +188,14 @@ export function NewGroupDialog({
     const nameId = useId();
     const searchId = useId();
     const peopleId = useId();
+
+    // Cada apertura empieza vacía: cancelar dejaba el nombre, la selección y los errores (D-310).
+    useResetOnOpen(open, () => {
+        setName('');
+        setSearch('');
+        setSelected([]);
+        setErrors({});
+    });
 
     const needle = normalizeSearch(search.trim());
     const visible = (people ?? []).filter(

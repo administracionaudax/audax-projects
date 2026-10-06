@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -76,23 +76,38 @@ export function ClientHistoryDialog({
     const [next, setNext] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
+    const [failedPage, setFailedPage] = useState(1);
     const clientId = client?.id ?? null;
+    // Solo vale la respuesta de la última petición: abrir el histórico de otro cliente enseguida
+    // ya no mezcla la respuesta lenta del anterior (D-310).
+    const request = useRef(0);
 
     const load = useCallback(
         async (page: number) => {
+            const mine = ++request.current;
             setLoading(true);
             setFailed(false);
 
             try {
                 const data = await fetchPage(person.id, clientId, page);
+
+                if (mine !== request.current) {
+                    return;
+                }
+
                 setReports((current) =>
                     page === 1 ? data.reports : [...current, ...data.reports],
                 );
                 setNext(data.next_page);
             } catch {
-                setFailed(true);
+                if (mine === request.current) {
+                    setFailed(true);
+                    setFailedPage(page);
+                }
             } finally {
-                setLoading(false);
+                if (mine === request.current) {
+                    setLoading(false);
+                }
             }
         },
         [person.id, clientId],
@@ -170,9 +185,19 @@ export function ClientHistoryDialog({
                         </ul>
                     ) : null}
                     {failed ? (
-                        <p role="alert" className="text-sm">
-                            {t('weeklies.client.history_failed')}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p role="alert" className="text-sm">
+                                {t('weeklies.client.history_failed')}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void load(failedPage)}
+                            >
+                                {t('weeklies.join.retry')}
+                            </Button>
+                        </div>
                     ) : null}
                     {loading ? (
                         <p className="flex items-center gap-2 text-sm text-muted-foreground">

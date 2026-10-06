@@ -389,7 +389,7 @@ export function ForecastProjectDialog({
                                 invalid={Boolean(errors.estimated_minutes)}
                                 // La ayuda («= 1:30 h») va bajo la caja sin ocupar sitio: así las dos
                                 // columnas y el campo siguiente quedan alineados.
-                                className="relative [&>p]:absolute [&>p]:top-full [&>p]:mt-1"
+                                preview="overlay"
                             />
                         </Field>
                         {can.viewFinancials ? (
