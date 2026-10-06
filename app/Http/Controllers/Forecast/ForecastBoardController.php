@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * La previsión del equipo (`/prevision`, docs/PLAN-CARGAS.md §5.3, D-285): capacidad frente a
@@ -28,12 +29,20 @@ use Inertia\Response;
 class ForecastBoardController extends ForecastController
 {
     /** GET /prevision */
-    public function index(Request $request, LoadCombiner $combiner, ForecastBoardView $view, ForecastPresenter $presenter): Response
+    public function index(Request $request, LoadCombiner $combiner, ForecastBoardView $view, ForecastPresenter $presenter): Response|SymfonyResponse
     {
-        Gate::authorize('view-forecast');
-
         /** @var User $user */
         $user = $request->user();
+
+        // Quien usa la previsión pero no ve la global (un empleado, P4): el 403 dice por qué y le
+        // lleva a su carga (D-306).
+        if (! $user->can('view-forecast')) {
+            Gate::authorize('use-forecast');
+
+            return Inertia::render('error', ['status' => 403, 'reason' => 'forecast'])
+                ->toResponse($request)
+                ->setStatusCode(403);
+        }
         $period = $this->period($request);
         $departmentId = $request->query('departamento');
         $departmentId = is_string($departmentId) && ctype_digit($departmentId) && Department::query()->whereKey((int) $departmentId)->exists()

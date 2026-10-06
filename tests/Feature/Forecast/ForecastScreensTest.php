@@ -287,3 +287,9 @@ describe('crear el proyecto real de un cliente nuevo (D-308)', function () {
         $this->actingAs($this->manager)->post("/prevision/proyectos/{$withClient->id}/crear-proyecto", $data)->assertSessionHasErrors('create_client');
     });
 });
+
+it('un empleado en /prevision: un 403 que dice por qué y le lleva a su carga (D-306)', function () {
+    $this->actingAs($this->ana)->get('/prevision')
+        ->assertForbidden()
+        ->assertInertia(fn (Assert $page) => $page->component('error')->where('status', 403)->where('reason', 'forecast'));
+});

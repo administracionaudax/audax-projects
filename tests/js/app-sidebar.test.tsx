@@ -122,6 +122,14 @@ function titlesBySection(can: Abilities) {
 }
 
 describe('navegación principal', () => {
+    it('la Previsión va en Proyectos tras Carga, solo con viewForecast (D-306)', () => {
+        expect(titlesBySection(none).projects).not.toContain('Previsión');
+
+        const titles = titlesBySection({ ...none, viewForecast: true })
+            .projects as string[];
+        expect(titles.indexOf('Previsión')).toBe(titles.indexOf('Carga') + 1);
+    });
+
     it('agrupa las entradas en las secciones de D-260, con todos los permisos', () => {
         // Chat, fijo (a Inicio se va con el logotipo, D-261); «Ausencias», en Personas; Facturación,
         // sin entradas, no sale.

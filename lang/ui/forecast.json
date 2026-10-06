@@ -205,9 +205,9 @@
     "forecast.allocation.mode_per_day_help": "Esas horas cada día laborable del rango.",
     "forecast.allocation.mode_percent_help": "Un porcentaje de la jornada de cada día (en un hueco, de una jornada completa).",
     "forecast.allocation.mode_monthly_help": "Esas horas cada mes, repartidas entre sus días laborables. Puede no tener fin.",
-    "forecast.allocation.minutes_total": "Horas en total",
-    "forecast.allocation.minutes_per_day": "Horas al día",
-    "forecast.allocation.minutes_monthly": "Horas al mes",
+    "forecast.allocation.minutes_total": "Horas (en total)",
+    "forecast.allocation.minutes_per_day": "Horas cada día",
+    "forecast.allocation.minutes_monthly": "Horas cada mes",
     "forecast.allocation.percent": "Porcentaje de su jornada",
     "forecast.allocation.percent_gap": "Porcentaje de una jornada",
     "forecast.allocation.start": "Desde",
@@ -403,5 +403,6 @@
     "forecast.my.tasks_description": "La carga por tareas (estimación y fecha de entrega), para organizar el día a día.",
     "forecast.my.card_description": "Tus horas asignadas: esta semana, la que viene y las próximas 12, también las de proyectos previstos.",
     "forecast.show.estimate_total": "Estimación total",
-    "forecast.impact.and_comma": ","
+    "forecast.impact.and_comma": ",",
+    "forecast.errors.forbidden": "La previsión es información comercial: la ven los responsables y los administradores. Tu carga está en «Carga»."
 }

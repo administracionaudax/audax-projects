@@ -45,8 +45,19 @@ export function errorMessage(status: number): {
  * el tema de la app (App\Http\Responses\ErrorPage). Va sin el layout de la app: en un 404 de una
  * ruta que no existe no hay props compartidas (usuario, permisos…).
  */
-export default function ErrorPage({ status }: { status: number }) {
-    const { title, description } = errorMessage(status);
+export default function ErrorPage({
+    status,
+    reason,
+}: {
+    status: number;
+    /** «forecast»: la previsión global, que no ve un empleado (D-306); le lleva a su carga. */
+    reason?: 'forecast';
+}) {
+    const { title } = errorMessage(status);
+    const description =
+        reason === 'forecast'
+            ? t('forecast.errors.forbidden')
+            : errorMessage(status).description;
 
     return (
         <>
@@ -85,6 +96,13 @@ export default function ErrorPage({ status }: { status: number }) {
                                     {t('error_page.home')}
                                 </Link>
                             </Button>
+                            {reason === 'forecast' ? (
+                                <Button asChild variant="outline">
+                                    <Link href="/carga">
+                                        {t('forecast.my.open')}
+                                    </Link>
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 variant="ghost"
