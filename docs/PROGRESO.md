@@ -125,6 +125,12 @@ Tres mejoras pedidas por el propietario tras probar las tareas que vienen de Cli
 - **Interruptor** en `/admin/ajustes` (activado por defecto si hay credenciales).
 - **Pendiente del propietario:** añadir en Google Cloud la URI `https://projects.audaxstudio.com/login/google/callback` al cliente OAuth y desplegar (la migración añade `login_events.method`).
 
+### Informe de proyecto interno y para el cliente (rama `informes-proyecto`, 06/10, sin desplegar)
+- **Exportar ▾ del informe de proyecto** con selector «Interno (completo)» / «Para el cliente», también en «Enviar por correo» y «Programar envío» (va en el informe: `?version=`, sin migración; sin versión, el interno) (D-240 a D-242).
+- **Interno:** resumen del proyecto, horas por persona, estimado frente a real por tarea con subtareas y horas del periodo, matriz tarea × persona, semanas y meses, tipos, bolsas (`HourBankLedger`), todas las entradas con su franja y, con `view-financials`, costes y margen. El Excel es un libro con una hoja por sección.
+- **Para el cliente:** solo las horas que vería en el portal (nunca borradores), personas según su ajuste, bolsas con `PortalBankFigures` y ningún importe. Solo lo saca quien ve todas las horas del proyecto.
+- **Tests:** Pest (`ProjectReportVersionsTest`, `ProjectReportVersionsDeliveryTest` y presupuestos de consultas en `R2PerformanceTest`), Vitest (`report-versions.test.tsx`) y E2E `tests/e2e/project-report-versions.spec.ts` (ejecutado en local).
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

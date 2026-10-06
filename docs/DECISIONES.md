@@ -1958,6 +1958,25 @@ Pedido por el propietario el 06/10: la Weekly está desplegada con todos los mó
 - **Barra lateral:** las entradas de la Weekly (Mi espacio, Weeklies, Equipo, Asistente IA y Ayuda) van en su propio bloque al final, bajo una línea fina (el separador de la barra lateral, D-137) y con el encabezado discreto «Weekly», en modo de prueba y encendida. Sin ninguna entrada, no hay bloque ni línea. Sigue siendo un solo `<nav>` «Navegación principal»; el bloque es un grupo con nombre.
 - **Búsqueda global:** se añaden las cinco páginas de la Weekly, para quien usa la Weekly y con su módulo visible.
 
+### D-240 · Informe de proyecto «Interno (completo)» y versión al exportar **[amplía SPEC §10.3 y D-139]**
+Pedido por el propietario el 06/10: el informe de un proyecto exportado debe llevar mucha más información para uso interno (por ejemplo, las horas por tarea y persona) y poder escoger qué se exporta.
+- **Versión en la query del informe:** `?version=interno|cliente` (sin ella o con otro valor, la interna). Va en el `ReportRequest`, así que la descarga (Excel, CSV y PDF), la impresión, Google Sheets, el envío por correo y los envíos programados la llevan sin más y **sin migración**: un envío programado de antes es el interno. Solo el informe de proyecto la tiene (`ReportVersion::supports`); en otro informe, enviarla es un error de validación.
+- **Interno y completo** (por defecto): todo lo de la página más el resumen del proyecto (estado, facturación, fechas, presupuesto y su consumo, horas del periodo y de toda la vida, estimado frente a real y desviación; con `view-financials`, precio cerrado, tarifa, precio de las bolsas, ingreso, coste y margen), las horas por persona, el estimado frente a real por tarea con sus subtareas debajo (D-170 y D-171) y sus horas del periodo, la matriz tarea principal × persona, la evolución por semana y por mes, las horas por tipo, las bolsas con su consumo, exceso, saldo y estado de toda la vida (lo que guarda `HourBankLedger`) y sus horas del periodo, el listado de entradas (fecha, persona, tarea y tarea principal, franja de D-172 en hora de Madrid, duración, descripción, facturable y estado) y, **solo con `view-financials`**, los costes y el margen por persona (coste medio por hora de las instantáneas de coste, ingreso según la facturación del proyecto con `RevenueCalculator`, rentabilidad y %). Sin `view-financials` sale todo menos esa sección y los importes.
+- **Excel:** sin `?tabla=` es un libro con una hoja por sección (Resumen, Tareas, Estimado por tipo, Personas, Tarea x persona, Semanas, Meses, Tipos de tarea, Bolsas, Entradas y Costes y margen); con `?tabla=` (también las nuevas `resumen`, `matriz`, `meses`, `bolsas`, `entradas` y `costes`), solo esa tabla. El CSV es siempre una tabla: sin `?tabla=`, la de tareas, como antes. Google Sheets sube el libro entero.
+- **PDF:** apaisado; el estimado frente a real llega a 400 filas sin partir una tarea de sus subtareas, la matriz enseña las 8 personas con más horas (el resto en «Otros») y 150 tareas, y el listado, 1.500 entradas: lo demás, en Excel. La portada dice que es la versión interna.
+
+### D-241 · Versión del informe de proyecto «Para el cliente» **[amplía SPEC §10.3 y §11]**
+- **Lo que vería en el portal:** solo las horas en los estados que ve su cliente (`portal_entry_visibility`: por defecto aprobadas y bloqueadas; nunca borradores), con los filtros del informe; las personas con el nombre, las iniciales o «Equipo» según `portal_person_display` (con «Equipo», sin reparto por persona); y las bolsas con las cifras del portal (`PortalBankFigures`: dentro, exceso, saldo y estado repartidos solo entre las horas que ve, D-092 y D-093). Un proyecto interno usa lo que el portal tiene por defecto y no enseña bolsas.
+- **Nunca** costes, tarifas, precios, importes, márgenes, estimaciones, el estado de las entradas ni si son facturables.
+- **Contenido:** cifras clave (horas del periodo, acumuladas, consumo del presupuesto y saldo de las bolsas abiertas), bolsas, horas por tarea (cada tarea principal con las de sus subtareas y, debajo, las subtareas), por persona, por tipo, por mes y, en periodos de hasta 14 semanas, por semana, y el detalle de las horas con su franja. Excel: el mismo libro con esas hojas. Estilo de documento de Audax, en vertical.
+- No depende de `portal_show_task_hours`: lo genera y lo envía la plantilla a propósito; ese ajuste sigue mandando en el portal.
+- Para filtrar por estados, `ReportFilters` admite `statuses` (no sale de la URL) y `ReportScope::entries()` los aplica: la versión del cliente usa las mismas métricas (`Metrics`) que el resto, sin datos económicos.
+
+### D-242 · Quién saca cada versión del informe de proyecto **[concreta D-044 y D-141]**
+- **Interno:** quien ve el informe del proyecto (`viewReport`), con lo que puede ver (un responsable que no lo gestiona, las horas de su equipo) y los importes solo con `view-financials`.
+- **Para el cliente:** además, solo quien ve **todas** las horas del proyecto (un admin o quien lo gestiona). Así nadie manda al cliente un informe al que le faltan horas sin saberlo. Lo comprueban el documento al generar y `ReportAccess` al enviar y programar (403); un envío programado cuyo propietario pierde ese acceso se pausa, como los demás (D-141). En la página, el selector solo aparece a quien puede elegir.
+- **Selector:** en «Exportar ▾» del informe de proyecto, arriba, «Interno (completo)» / «Para el cliente» (elegirlo no cierra el menú); «Enviar por correo» y «Programar envío» parten de la versión elegida y la dejan cambiar. La lista y el detalle de los envíos programados enseñan la versión.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1971,6 +1990,7 @@ Pedido por el propietario el 06/10: la Weekly está desplegada con todos los mó
 - Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
+- Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-240**.
+La siguiente libre es **D-243** (reservadas en otras ramas: D-250… Plan del día, D-260… menú, D-270… chat de ClickUp).

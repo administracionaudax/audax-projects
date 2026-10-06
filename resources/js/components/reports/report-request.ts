@@ -17,6 +17,7 @@ import { exportMethod as exportHours } from '@/routes/reports/hours';
 import { exportMethod as exportProjectTime } from '@/routes/projects/time';
 import { pdf as weeklyReportPdf } from '@/routes/weeklies/report';
 import type { ReportRequestData } from '@/types';
+import type { ReportVersion } from '@/types/report-deliveries';
 import type { QueryParams } from '@/wayfinder';
 
 export type ReportFormat = 'xlsx' | 'csv' | 'pdf' | 'imprimir';
@@ -68,4 +69,25 @@ export function withTable(
     table: string,
 ): ReportRequestData {
     return { ...request, query: { ...request.query, tabla: table } };
+}
+
+/** Versiones del informe de proyecto (D-240), en el orden del selector. */
+export const REPORT_VERSIONS: readonly ReportVersion[] = ['interno', 'cliente'];
+
+/** Informes con versión para el cliente (ReportVersion::supports en el servidor). */
+export function supportsVersions(kind: string): boolean {
+    return kind === 'project';
+}
+
+/** La versión de un informe: la de su `version=` o, sin ella, la interna (D-240). */
+export function reportVersionOf(request: ReportRequestData): ReportVersion {
+    return request.query.version === 'cliente' ? 'cliente' : 'interno';
+}
+
+/** El mismo informe en otra versión (`version=` de la URL y del envío). */
+export function withVersion(
+    request: ReportRequestData,
+    version: ReportVersion,
+): ReportRequestData {
+    return { ...request, query: { ...request.query, version } };
 }

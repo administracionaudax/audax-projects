@@ -84,6 +84,9 @@ final class ReportScope
         if ($f->billable !== null) {
             $query->where('time_entries.is_billable', $f->billable);
         }
+        if ($f->statuses !== []) {
+            $query->whereIn('time_entries.status', $f->statuses);
+        }
 
         return $query;
     }

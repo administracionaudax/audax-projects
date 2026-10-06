@@ -42,7 +42,11 @@ final class ReportGenerator implements ReportFileGenerator
                 $file = new GeneratedReportFile($path, $pdf->filename.'.'.$this->engine->extension(), $format, $pdf->title);
             } else {
                 $table = $document->table($request, $as);
-                $this->exporter->write($path, $table->headers, $table->rows, $format->value);
+                if ($format === ExportFormat::Xlsx && $table->sheets !== []) {
+                    $this->exporter->writeWorkbook($path, $table->sheets);
+                } else {
+                    $this->exporter->write($path, $table->headers, $table->rows, $format->value);
+                }
                 $file = new GeneratedReportFile($path, TableExporter::filename($table->basename, $format->value), $format, $table->title);
             }
         } catch (Throwable $e) {

@@ -44,7 +44,11 @@ beforeEach(function () {
             'reports.client.export' => "/informes/clientes/{$client->id}?formato=xlsx&tabla=bolsas",
             'reports.project' => "/informes/proyectos/{$project->id}",
             'reports.project.year' => "/informes/proyectos/{$project->id}?{$year}&comparar=1",
+            // Sin ?tabla=, el libro completo (D-240); y el PDF interno y la versión para el cliente (D-241).
             'reports.project.export' => "/informes/proyectos/{$project->id}?formato=xlsx",
+            'reports.project.pdf' => "/informes/proyectos/{$project->id}?{$year}&formato=pdf",
+            'reports.project.client.pdf' => "/informes/proyectos/{$project->id}?{$year}&formato=pdf&version=cliente",
+            'reports.project.client.export' => "/informes/proyectos/{$project->id}?{$year}&formato=xlsx&version=cliente",
             'reports.billing' => "/informes/facturacion?cliente[]={$client->id}",
             'reports.billing.empty' => '/informes/facturacion',
             'reports.billing.export' => "/informes/facturacion?cliente[]={$client->id}&{$year}&formato=csv",
@@ -59,7 +63,13 @@ beforeEach(function () {
         'reports.client.export' => 37,
         'reports.project' => 43,
         'reports.project.year' => 52,
-        'reports.project.export' => 40,
+        // El libro completo y el PDF interno (D-240): la página más la matriz, los meses, las bolsas,
+        // las entradas (por bloques) y los costes.
+        'reports.project.export' => 56,
+        'reports.project.pdf' => 57,
+        // La versión para el cliente (D-241): sin importes ni caché, con las cifras del portal.
+        'reports.project.client.pdf' => 25,
+        'reports.project.client.export' => 25,
         'reports.billing' => 17,
         'reports.billing.empty' => 6,
         // Cuenta las entradas (límite de filas) y, en frío, calcula el resumen para que el total
@@ -166,7 +176,10 @@ test('cada página de R2 cabe en su presupuesto de consultas en frío, sin consu
     $problems = [];
     foreach ($results as $label => $result) {
         $billing = str_starts_with($label, 'reports.billing');
-        $expected = $employee || ($billing && $email !== 'admin@example.com') ? 403 : 200;
+        // La versión para el cliente, solo quien ve todas las horas del proyecto (D-242).
+        $client = str_starts_with($label, 'reports.project.client') && ! $user->isAdmin()
+            && ! $user->isManagerOf(Project::query()->where('code', 'ARR-WEB')->sole());
+        $expected = $employee || $client || ($billing && $email !== 'admin@example.com') ? 403 : 200;
 
         if ($result['status'] !== $expected) {
             $problems[] = "{$label}: estado {$result['status']} (se esperaba {$expected})";
@@ -177,7 +190,7 @@ test('cada página de R2 cabe en su presupuesto de consultas en frío, sin consu
         if ($result['repeats'] > 5) {
             $problems[] = "{$label}: la misma consulta {$result['repeats']} veces: {$result['repeated']}";
         }
-        $download = str_ends_with($label, '.export') || $label === 'reports.hour-bank-pdf';
+        $download = str_ends_with($label, '.export') || str_ends_with($label, '.pdf') || $label === 'reports.hour-bank-pdf';
         $maxMs = perfTimeLimit($download ? 2500 : 1000);
         if ($maxMs !== null && $result['ms'] > $maxMs) {
             $problems[] = "{$label}: ".round($result['ms'])." ms en frío (máximo {$maxMs})";

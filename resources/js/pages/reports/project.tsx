@@ -5,7 +5,10 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
-import { withTable } from '@/components/reports/report-request';
+import {
+    REPORT_VERSIONS,
+    withTable,
+} from '@/components/reports/report-request';
 import { R2BreakdownTable } from '@/components/reports/r2-breakdown-table';
 import {
     R2EstimateByType,
@@ -95,7 +98,17 @@ export default function ProjectReport({
                     })}
                     actions={
                         <>
-                            <ExportMenu request={reportRequest} title={title} />
+                            {/* Interno (completo) o para el cliente (D-240); la del cliente, solo
+                                quien ve todas las horas del proyecto (D-242). */}
+                            <ExportMenu
+                                request={reportRequest}
+                                title={title}
+                                versions={
+                                    scope.team_only
+                                        ? undefined
+                                        : REPORT_VERSIONS
+                                }
+                            />
                             <Button variant="outline" asChild>
                                 <Link href={urls.project(project.id)}>
                                     <FolderKanban aria-hidden="true" />

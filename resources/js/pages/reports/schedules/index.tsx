@@ -9,6 +9,7 @@ import {
     ScheduleActions,
     ScheduleStatusBadge,
 } from '@/components/reports/delivery/schedule-status';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -171,6 +172,14 @@ export default function ReportSchedulesIndex({
                                         >
                                             {schedule.title}
                                         </Link>
+                                        {schedule.version === 'cliente' ? (
+                                            <Badge
+                                                variant="outline"
+                                                className="ml-2"
+                                            >
+                                                {t('reports.version.cliente')}
+                                            </Badge>
+                                        ) : null}
                                     </TableCell>
                                     {sees_all ? (
                                         <TableCell>

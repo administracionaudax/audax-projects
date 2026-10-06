@@ -21,10 +21,15 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
+import {
+    reportVersionOf,
+    withVersion,
+} from '@/components/reports/report-request';
 import { store, update } from '@/routes/reports/schedules';
 import type {
     RelativePeriod,
     ReportScheduleDetail,
+    ReportVersion,
     ScheduleFrequency,
 } from '@/types/report-deliveries';
 import type { ReportRequestData } from '@/types/reports';
@@ -38,6 +43,7 @@ import {
     MAX_RECIPIENTS,
     MessageFields,
     RecipientsField,
+    VersionField,
     withDraft,
 } from './delivery-fields';
 import {
@@ -136,7 +142,8 @@ export function schedulePayload(
  * y hora) o cada mes (día 1-28 o el último, y hora), en hora de Madrid, con el periodo relativo
  * (el anterior, el en curso o fijo) y la frase en lenguaje natural de lo que va a pasar. Con
  * `schedule`, edita uno ya programado (desde /informes/envios). El formulario vive dentro del
- * contenido del diálogo: cada vez que se abre empieza de cero.
+ * contenido del diálogo: cada vez que se abre empieza de cero. Con `versions` (informe de
+ * proyecto, D-240), se elige la versión, que se guarda con el informe (su `version=`).
  */
 export function ScheduleReportDialog({
     open,
@@ -144,12 +151,14 @@ export function ScheduleReportDialog({
     request,
     title,
     schedule,
+    versions,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     request: ReportRequestData;
     title: string;
     schedule?: ReportScheduleDetail;
+    versions?: readonly ReportVersion[];
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -161,6 +170,7 @@ export function ScheduleReportDialog({
                     request={request}
                     title={title}
                     schedule={schedule}
+                    versions={versions}
                     onDone={() => onOpenChange(false)}
                 />
             </DialogContent>
@@ -172,11 +182,13 @@ function ScheduleReportForm({
     request,
     title,
     schedule,
+    versions,
     onDone,
 }: {
     request: ReportRequestData;
     title: string;
     schedule?: ReportScheduleDetail;
+    versions?: readonly ReportVersion[];
     onDone: () => void;
 }) {
     const id = useId();
@@ -189,6 +201,10 @@ function ScheduleReportForm({
     const errors = form.errors as DeliveryErrors;
     const data = form.data;
     const report = schedule?.request ?? request;
+    const [version, setVersion] = useState<ReportVersion>(
+        reportVersionOf(report),
+    );
+    const choosesVersion = (versions?.length ?? 0) > 1;
     const period = reportPeriodOf(report.query);
     const fixedOnly = WITHOUT_PERIOD.includes(report.kind);
 
@@ -209,7 +225,10 @@ function ScheduleReportForm({
 
         setDraftError(null);
         form.transform((current) =>
-            schedulePayload({ ...current, recipient_emails: emails }, report),
+            schedulePayload(
+                { ...current, recipient_emails: emails },
+                choosesVersion ? withVersion(report, version) : report,
+            ),
         );
 
         const visit = {
@@ -244,6 +263,15 @@ function ScheduleReportForm({
             </DialogHeader>
 
             <InputError message={generalError} />
+
+            {choosesVersion && versions ? (
+                <VersionField
+                    id={`${id}-version`}
+                    versions={versions}
+                    value={version}
+                    onChange={setVersion}
+                />
+            ) : null}
 
             <fieldset className="grid gap-4">
                 <legend className="mb-2 text-sm font-medium">

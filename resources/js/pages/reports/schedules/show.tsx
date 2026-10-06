@@ -7,6 +7,10 @@ import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ScheduleReportDialog } from '@/components/reports/delivery/schedule-report-dialog';
 import {
+    REPORT_VERSIONS,
+    supportsVersions,
+} from '@/components/reports/report-request';
+import {
     describeSchedule,
     reportPeriodOf,
 } from '@/components/reports/delivery/schedule-preview';
@@ -107,6 +111,11 @@ export default function ReportScheduleShow({
                         <Detail label={t('deliveries.detail.owner')}>
                             {schedule.owner.name}
                         </Detail>
+                        {schedule.version ? (
+                            <Detail label={t('deliveries.version.label')}>
+                                {t(`reports.version.${schedule.version}`)}
+                            </Detail>
+                        ) : null}
                         <Detail label={t('deliveries.detail.formats')}>
                             {schedule.formats
                                 .map((format) =>
@@ -213,6 +222,11 @@ export default function ReportScheduleShow({
                 request={schedule.request}
                 title={schedule.title}
                 schedule={schedule}
+                versions={
+                    supportsVersions(schedule.request.kind)
+                        ? REPORT_VERSIONS
+                        : undefined
+                }
             />
         </>
     );

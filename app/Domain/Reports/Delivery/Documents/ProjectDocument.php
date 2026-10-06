@@ -3,18 +3,21 @@
 namespace App\Domain\Reports\Delivery\Documents;
 
 use App\Domain\Reports\Delivery\ReportRequest;
+use App\Domain\Reports\Delivery\ReportVersion;
 use App\Domain\Reports\Dimension;
 use App\Domain\Reports\EstimateComparison;
 use App\Domain\Reports\Export\TableExporter;
 use App\Domain\Reports\Metrics;
 use App\Domain\Reports\Money;
 use App\Domain\Reports\Pdf\PdfFormat;
+use App\Domain\Reports\Project\ProjectReportSections;
 use App\Domain\Reports\ReportCache;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
 use App\Enums\BillingType;
 use App\Enums\TaskStatusCategory;
 use App\Http\Controllers\Reports\Concerns\BuildsReportScope;
+use App\Models\Client;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -26,7 +29,15 @@ use Illuminate\Database\Eloquent\Builder;
 /**
  * Informe de un proyecto (/informes/proyectos/{project}, SPEC §10.3; R2, D-044): el alcance, los
  * datos de la página (en caché), sus tablas de exportación (?tabla=tareas|estimado-por-tipo|
- * personas|tipos|semanas) y su PDF. Lo usan el controlador y el generador (D-139).
+ * personas|tipos|semanas|resumen|matriz|meses|bolsas|entradas|costes) y su PDF. Lo usan el
+ * controlador y el generador (D-139).
+ *
+ * Dos versiones (D-240, ?version=interno|cliente):
+ * - la interna y completa (por defecto): además de lo de la página, el resumen del proyecto, la
+ *   matriz tarea × persona, los meses, las bolsas (HourBankLedger), el listado de entradas y, con
+ *   view-financials, los costes y el margen. El Excel del informe entero (sin ?tabla=) es un libro
+ *   con una hoja por sección; el CSV, la tabla de tareas,
+ * - la del cliente (ProjectClientDocument, D-241): lo que vería en el portal, sin importes.
  *
  * @phpstan-type ProjectData array{summary: array<string, mixed>, by_person: list<array<string, mixed>>, by_type: list<array<string, mixed>>,
  *     weekly: list<array{week: string, logged_minutes: int, billable_minutes: int, in_bank_minutes: int, overage_minutes: int, income: string|null}>,
@@ -36,12 +47,12 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class ProjectDocument extends BaseDocument
 {
-    use BuildsReportScope, PdfPieces;
+    use BuildsReportScope, PdfPieces, ProjectFullPieces;
 
-    public const array TABLES = ['tareas', 'estimado-por-tipo', 'personas', 'tipos', 'semanas'];
+    public const array TABLES = ['tareas', 'estimado-por-tipo', 'personas', 'tipos', 'semanas', 'resumen', 'matriz', 'meses', 'bolsas', 'entradas', 'costes'];
 
-    /** Tareas del estimado frente a real en el PDF (las de más horas; la tabla entera, en Excel). */
-    public const int PDF_TASKS = 60;
+    /** Filas del estimado frente a real en el PDF (por tarea principal con sus subtareas; la tabla entera, en Excel). */
+    public const int PDF_TASKS = 400;
 
     private const array KPIS = ['logged', 'billable', 'billability', 'in_bank', 'overage', 'estimation', 'income', 'cost', 'margin'];
 
@@ -49,6 +60,8 @@ final class ProjectDocument extends BaseDocument
         private readonly Metrics $metrics,
         private readonly EstimateComparison $estimates,
         private readonly ReportCache $cache,
+        private readonly ProjectReportSections $sections,
+        private readonly ProjectClientDocument $client,
     ) {}
 
     /**
@@ -90,32 +103,71 @@ final class ProjectDocument extends BaseDocument
 
     public function title(ReportRequest $request, User $as): string
     {
+        if (self::forClient($request)) {
+            return $this->client->title($request, $as);
+        }
+
         [$project, $scope] = $this->authorized($request, $as);
 
         return $this->titleFor($project, $scope);
     }
 
+    /**
+     * Con ?tabla=, esa tabla; sin ella, el libro entero (una hoja por sección; el CSV, las tareas).
+     */
     public function table(ReportRequest $request, User $as): ExportTable
     {
-        [$project, $scope] = $this->authorized($request, $as);
+        if (self::forClient($request)) {
+            return $this->client->table($request, $as);
+        }
 
-        return $this->exportTable($project, $scope, $this->data($scope, $project), self::queryString($request, 'tabla'), $this->titleFor($project, $scope));
+        [$project, $scope] = $this->authorized($request, $as);
+        $data = $this->data($scope, $project);
+        $title = $this->titleFor($project, $scope);
+        $requested = self::queryString($request, 'tabla');
+        $tables = $this->tables($scope);
+
+        if ($requested !== null && in_array($requested, $tables, true)) {
+            [$headers, $rows] = $this->sheet($requested, $project, $scope, $data, in_array($requested, ['resumen', 'bolsas'], true) ? $this->sections->banks($scope, $project) : []);
+
+            return new ExportTable(self::t('reports.r2.project.export_name', ['project' => $project->code]).' '.$requested, $headers, $rows, $title);
+        }
+
+        $banks = $this->sections->banks($scope, $project);
+        [$headers, $rows] = $this->sheet('tareas', $project, $scope, $data, $banks);
+        $sheets = [];
+        foreach ($tables as $table) {
+            if ($table === 'bolsas' && $banks === []) {
+                continue;
+            }
+            [$sheetHeaders, $sheetRows] = $table === 'tareas' ? [$headers, $rows] : $this->sheet($table, $project, $scope, $data, $banks);
+            $sheets[] = new ExportSheet(self::t('reports.r2.project.sheets.'.$table), $sheetHeaders, $sheetRows);
+        }
+
+        return new ExportTable(self::t('reports.r2.project.export_full', ['project' => $project->code]), $headers, $rows, $title, $sheets);
     }
 
     public function pdf(ReportRequest $request, User $as): ReportPdf
     {
+        if (self::forClient($request)) {
+            return $this->client->pdf($request, $as);
+        }
+
         [$project, $scope] = $this->authorized($request, $as);
         $financials = $scope->canSeeFinancials();
         $data = $this->data($scope, $project);
         $banks = $project->billing_type === BillingType::HourBank;
-        $project->loadMissing(['client' => fn ($query) => $query->withTrashed()->select(['id', 'name'])]);
+        $client = $this->clientOf($project);
         $teamOnly = ! self::everyAssignee($as, $project);
+        $bankRows = $this->sections->banks($scope, $project);
+        $entryCount = $this->sections->entryCount($scope);
 
         $facts = self::filterFacts($scope->filters, ['proyecto', 'cliente']);
         array_splice($facts, 1, 0, [
-            [self::t('report_pdf.filters.cliente'), $project->client->name ?? self::t('report_pdf.internal_project')],
+            [self::t('report_pdf.filters.cliente'), $client->name ?? self::t('report_pdf.internal_project')],
             [self::t('report_pdf.project.billing'), $project->billing_type->label()],
             ...($project->budget_minutes !== null ? [[self::t('report_pdf.project.budget'), PdfFormat::minutes($project->budget_minutes)]] : []),
+            [self::t('report_pdf.project.version'), self::t('report_pdf.project.version_internal')],
         ]);
 
         return new ReportPdf(
@@ -126,12 +178,21 @@ final class ProjectDocument extends BaseDocument
                 'cover' => self::cover(self::t('report_pdf.kinds.project'), $project->code.' · '.$project->name, PdfFormat::period($scope->filters),
                     $facts, $as, $financials, $teamOnly ? self::t('report_pdf.team_only') : null),
                 'kpis' => self::kpis($data['summary'], $banks ? self::KPIS : array_values(array_diff(self::KPIS, ['in_bank'])), $financials),
+                'overview' => self::overviewPdf(self::overview($project, $client, $scope, $data['summary'], $data['estimates']['totals'], $bankRows, $financials)),
                 'estimates_by_type' => $this->estimatesByTypePdf($data['estimates']['by_type']),
-                'estimates' => $this->estimatesPdf($data['estimates']),
-                'estimates_more' => max(count($data['estimates']['tasks']) - self::PDF_TASKS, 0),
+                'estimates' => $estimatesTable = $this->estimatesPdf($data['estimates'], $this->sections->periodByTask($scope)),
+                'estimates_more' => max(count($data['estimates']['tasks']) - count($estimatesTable['rows']), 0),
                 'people' => $this->hoursPdf(self::t('report_pdf.columns.person'), $data['by_person'], $data['summary'], $banks, $financials),
+                'matrix' => self::matrixPdf($matrix = $this->sections->matrix($scope)),
+                'matrix_more' => max(count($matrix['tasks']) - self::PDF_MATRIX_TASKS, 0),
                 'types' => $this->hoursPdf(self::t('report_pdf.columns.type'), $data['by_type'], $data['summary'], $banks, $financials),
                 'weeks' => $this->weeksPdf($data['weekly'], $banks, $financials),
+                'months' => self::monthsPdf($this->sections->monthly($scope), $banks, $financials),
+                'banks' => $bankRows === [] ? null : self::banksPdf($bankRows, $financials),
+                'costs' => $financials ? self::costsPdf(self::costs($data['by_person'], $data['summary'])) : null,
+                'income_basis' => self::t('report_pdf.project.income_basis.'.$project->billing_type->value),
+                'entries' => self::entriesPdf($this->sections->entries($scope, self::PDF_ENTRIES), true),
+                'entries_more' => max($entryCount - self::PDF_ENTRIES, 0),
                 'status' => $this->statusPdf($data['tasks']),
                 'overdue_tasks' => $data['tasks']['overdue'],
                 'milestones' => PdfTable::make(
@@ -146,8 +207,38 @@ final class ProjectDocument extends BaseDocument
                 ),
                 'definitions' => self::definitions(['logged', 'billable', 'in_bank', 'overage', 'estimation', 'income', 'cost', 'margin'], $financials),
             ],
-            landscape: false,
+            landscape: true,
         );
+    }
+
+    /**
+     * ¿Pide la versión para el cliente? (D-241).
+     */
+    private static function forClient(ReportRequest $request): bool
+    {
+        return ReportVersion::fromQuery($request->query) === ReportVersion::Client;
+    }
+
+    /**
+     * Tablas que puede sacar quien mira: costes y margen, solo con view-financials.
+     *
+     * @return list<string>
+     */
+    private function tables(ReportScope $scope): array
+    {
+        $order = ['resumen', 'tareas', 'estimado-por-tipo', 'personas', 'matriz', 'semanas', 'meses', 'tipos', 'bolsas', 'entradas', 'costes'];
+
+        return $scope->canSeeFinancials() ? $order : array_slice($order, 0, -1);
+    }
+
+    /**
+     * El cliente del proyecto (también si está borrado), con su tarifa por defecto.
+     */
+    private function clientOf(Project $project): ?Client
+    {
+        $project->loadMissing(['client' => fn ($query) => $query->withTrashed()->select(['id', 'name', 'default_hourly_rate'])]);
+
+        return $project->client;
     }
 
     /**
@@ -200,29 +291,61 @@ final class ProjectDocument extends BaseDocument
     }
 
     /**
-     * Las tareas con más horas (estimadas o reales), con su desviación y el total.
+     * Estimado frente a real de cada tarea principal con sus subtareas debajo («↳»), en el orden de
+     * la página (las más desviadas primero), con las horas del periodo y el total. Como mucho
+     * PDF_TASKS filas, sin partir una tarea de sus subtareas.
      *
      * @param  array{tasks: list<array<string, mixed>>, totals: array<string, int>}  $estimates
+     * @param  array<int, int>  $period  minutos del periodo por tarea (ProjectReportSections::periodByTask)
      * @return array<string, mixed>
      */
-    private function estimatesPdf(array $estimates): array
+    private function estimatesPdf(array $estimates, array $period): array
     {
-        $tasks = $estimates['tasks'];
-        usort($tasks, fn (array $a, array $b): int => max((int) $b['actual_minutes'], (int) ($b['estimated_minutes'] ?? 0)) <=> max((int) $a['actual_minutes'], (int) ($a['estimated_minutes'] ?? 0)));
-        $tasks = array_slice($tasks, 0, self::PDF_TASKS);
+        $groups = [];
+        foreach ($estimates['tasks'] as $task) {
+            if ($task['parent_id'] === null || $groups === []) {
+                $groups[] = [$task];
+            } else {
+                $groups[array_key_last($groups)][] = $task;
+            }
+        }
+
+        $tasks = [];
+        foreach ($groups as $group) {
+            if ($tasks !== [] && count($tasks) + count($group) > self::PDF_TASKS) {
+                break;
+            }
+            $tasks = [...$tasks, ...$group];
+        }
+
+        // Las horas del periodo de una tarea principal llevan las de sus subtareas (SPEC §6).
+        $periodOf = function (array $task) use ($estimates, $period): int {
+            $minutes = $period[(int) $task['id']] ?? 0;
+            if ($task['parent_id'] === null) {
+                foreach ($estimates['tasks'] as $child) {
+                    if ($child['parent_id'] === $task['id']) {
+                        $minutes += $period[(int) $child['id']] ?? 0;
+                    }
+                }
+            }
+
+            return $minutes;
+        };
         $totals = $estimates['totals'];
 
         return PdfTable::make(
             [[self::t('report_pdf.columns.task')], [self::t('report_pdf.columns.status')], [self::t('report_pdf.columns.estimated'), true],
-                [self::t('report_pdf.columns.actual'), true], [self::t('report_pdf.columns.deviation'), true]],
+                [self::t('report_pdf.columns.actual'), true], [self::t('report_pdf.columns.deviation'), true], [self::t('report_pdf.columns.period_hours'), true]],
             array_map(fn (array $task): array => [
                 ($task['parent_id'] !== null ? '↳ ' : '').$task['title'],
                 $task['status']['name'],
                 $task['estimated_minutes'] === null ? '—' : PdfFormat::minutes((int) $task['estimated_minutes']),
                 PdfFormat::minutes((int) $task['actual_minutes']),
                 self::deviation($task['estimated_minutes'] === null ? null : (int) $task['estimated_minutes'], (int) $task['actual_minutes']),
+                PdfFormat::minutes($periodOf($task)),
             ], $tasks),
-            $tasks === [] ? null : [self::t('report_pdf.total'), '', PdfFormat::minutes($totals['estimated_minutes']), PdfFormat::minutes($totals['actual_minutes'] + $totals['other_minutes']), ''],
+            $tasks === [] ? null : [self::t('report_pdf.total'), '', PdfFormat::minutes($totals['estimated_minutes']), PdfFormat::minutes($totals['actual_minutes']), '',
+                PdfFormat::minutes(array_sum($period))],
             compact: true,
             empty: self::t('report_pdf.project.no_tasks'),
         );
@@ -390,16 +513,20 @@ final class ProjectDocument extends BaseDocument
     }
 
     /**
-     * @param  array{by_person: list<array<string, mixed>>, by_type: list<array<string, mixed>>, weekly: list<array<string, mixed>>,
+     * Cabecera y filas de una tabla del informe interno (la de ?tabla= o una hoja del libro).
+     *
+     * @param  array{summary: array<string, mixed>, by_person: list<array<string, mixed>>, by_type: list<array<string, mixed>>, weekly: list<array<string, mixed>>,
      *     estimates: array{tasks: list<array<string, mixed>>, by_type: list<array<string, mixed>>, totals: array<string, int>}}  $data
+     * @param  list<array{id: int, name: string, status: string, start_date: string, end_date: string|null, total_minutes: int,
+     *     consumed_minutes: int, in_bank_minutes: int, overage_minutes: int, remaining_minutes: int, consumed_ratio: float,
+     *     period_minutes: int, price_amount: string|null, hourly_rate: string|null}>  $bankRows
+     * @return array{0: list<string>, 1: iterable<array<int, string|int|float|bool|null>>}
      */
-    private function exportTable(Project $project, ReportScope $scope, array $data, mixed $table, string $title): ExportTable
+    private function sheet(string $table, Project $project, ReportScope $scope, array $data, array $bankRows): array
     {
-        $table = is_string($table) && in_array($table, self::TABLES, true) ? $table : 'tareas';
         $financials = $scope->canSeeFinancials();
         // «Dentro de bolsa» solo en proyectos de bolsas, como la página: en los demás sería lo imputado.
         $banks = $project->billing_type === BillingType::HourBank;
-        $name = self::t('reports.r2.project.export_name', ['project' => $project->code]).' '.$table;
         $c = fn (string $key): string => self::t('reports.r2.project.columns.'.$key);
         $deviation = fn (?int $estimated, int $actual): array => $estimated === null
             ? [null, null]
@@ -434,8 +561,8 @@ final class ProjectDocument extends BaseDocument
             $rows[] = [self::t('reports.r2.total'), '', '', '', TableExporter::hours($totals['estimated_minutes']), TableExporter::hours($totals['actual_minutes']), null, null,
                 $totals['estimated_minutes'], $totals['actual_minutes']];
 
-            return new ExportTable($name, [$c('task'), $c('parent'), $c('type'), $c('status'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct'),
-                $c('estimated_minutes'), $c('actual_minutes')], $rows, $title);
+            return [[$c('task'), $c('parent'), $c('type'), $c('status'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct'),
+                $c('estimated_minutes'), $c('actual_minutes')], $rows];
         }
 
         if ($table === 'estimado-por-tipo') {
@@ -446,7 +573,7 @@ final class ProjectDocument extends BaseDocument
                 ...$deviation($row['estimated_minutes'] > 0 ? $row['estimated_minutes'] : null, $row['actual_minutes']),
             ], $data['estimates']['by_type']);
 
-            return new ExportTable($name, [$c('type'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct')], $rows, $title);
+            return [[$c('type'), $c('estimated'), $c('actual'), $c('deviation'), $c('deviation_pct')], $rows];
         }
 
         if ($table === 'semanas') {
@@ -463,7 +590,35 @@ final class ProjectDocument extends BaseDocument
                 ...($financials ? [TableExporter::money($week['income'] ?? '0.00')] : []),
             ], $data['weekly']);
 
-            return new ExportTable($name, $headers, $rows, $title);
+            return [$headers, $rows];
+        }
+
+        if ($table === 'resumen') {
+            $overview = self::overview($project, $this->clientOf($project), $scope, $data['summary'], $data['estimates']['totals'], $bankRows, $financials);
+
+            return [[$c('concept'), $c('value')], array_map(fn (array $row): array => [$row[0], $row[2]], $overview)];
+        }
+
+        if ($table === 'matriz') {
+            return self::matrixSheet($this->sections->matrix($scope));
+        }
+
+        if ($table === 'meses') {
+            return self::monthsSheet($this->sections->monthly($scope), $banks, $financials);
+        }
+
+        if ($table === 'bolsas') {
+            return self::banksSheet($bankRows, $financials);
+        }
+
+        if ($table === 'costes') {
+            return self::costsSheet(self::costs($data['by_person'], $data['summary']));
+        }
+
+        if ($table === 'entradas') {
+            $limit = TableExporter::MAX_ROWS - 1;
+
+            return [self::entryHeaders(true), self::entrySheetRows($this->sections->entries($scope, $limit), $this->sections->entryCount($scope), $limit, true)];
         }
 
         // personas o tipos (horas del periodo).
@@ -481,6 +636,6 @@ final class ProjectDocument extends BaseDocument
             ...($financials ? [TableExporter::money($row['income']), TableExporter::money($row['cost'])] : []),
         ], $source);
 
-        return new ExportTable($name, $headers, $rows, $title);
+        return [$headers, $rows];
     }
 }

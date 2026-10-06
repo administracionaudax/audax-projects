@@ -7,6 +7,7 @@ use App\Domain\Reports\Delivery\ExportFormat;
 use App\Domain\Reports\Delivery\ReportAccess;
 use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Delivery\ReportRequest;
+use App\Domain\Reports\Delivery\ReportVersion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -17,7 +18,8 @@ use Illuminate\Validation\Validator;
  * - formato: PDF, Excel o los dos,
  * - destinatarios: personas activas de la plantilla (ids) y correos externos, como mucho
  *   DeliveryRecipients::MAX en total y al menos uno,
- * - asunto y mensaje opcionales.
+ * - asunto y mensaje opcionales,
+ * - la versión del informe en su query (?version=interno|cliente, D-240), en los que la tienen.
  * Que quien lo envía pueda ver el informe (403 si no) lo comprueba el controlador con
  * ReportAccess, ya con los datos validados.
  */
@@ -91,6 +93,12 @@ abstract class ReportDeliveryRequest extends FormRequest
                 }
 
                 if (strlen((string) json_encode($this->input('request.query', []))) > self::MAX_QUERY_BYTES) {
+                    $errors->add('request', $this->text('report_deliveries.errors.request'));
+                }
+
+                // La versión del informe (D-240): interno o cliente, y solo en los que la tienen.
+                $version = $this->input('request.query.'.ReportVersion::QUERY_KEY);
+                if ($version !== null && (! ReportVersion::supports($kind) || ! in_array($version, ReportVersion::values(), true))) {
                     $errors->add('request', $this->text('report_deliveries.errors.request'));
                 }
             }
