@@ -26,6 +26,7 @@ use App\Enums\WeeklyReminderChannel;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
+use App\Events\Weeklies\WeeklyChanged;
 use App\Models\Absence;
 use App\Models\Client;
 use App\Models\Conversation;
@@ -198,7 +199,8 @@ class DemoDataSeeder extends Seeder
             $this->comments($projects);
             $this->overloadedDay($projects);
             $this->collaborator();
-            $this->weeklies();
+            // Sin avisos de tiempo real (D-229): nadie está mirando.
+            WeeklyChanged::muted(fn () => $this->weeklies());
         });
 
         $this->chat();

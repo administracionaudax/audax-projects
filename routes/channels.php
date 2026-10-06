@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Gate;
 | - conversation.{conversation}: mensajes, «escribiendo…» (whisper del cliente), leídos y reacciones,
 | - weeklies.{cycle}: progreso del informe y del audio de una semana (Fase 10, D-190), para quien
 |   puede verla (WeeklyCyclePolicy::view),
+| - weeklies: cambios de las semanas de la Weekly (10.9b, D-229), para quien la usa (`use-weeklies`);
+|   el evento solo lleva el id de la semana, la página vuelve a pedir sus datos,
 | - help: cambios en el centro de ayuda y las sugerencias (Fase 10, F-170), para quien los usa
 |   (`use-weeklies`); el evento no lleva contenido, la página vuelve a pedir sus datos,
 | - online: presencia de la plantilla (en línea / ausente / desconectado). Un colaborador externo
@@ -27,6 +29,8 @@ Broadcast::channel('App.Models.User.{id}', fn (User $user, int $id): bool => $us
 Broadcast::channel('conversation.{conversation}', fn (User $user, Conversation $conversation): bool => Gate::forUser($user)->allows('view', $conversation));
 
 Broadcast::channel('weeklies.{cycle}', fn (User $user, WeeklyCycle $cycle): bool => Gate::forUser($user)->allows('view', $cycle));
+
+Broadcast::channel('weeklies', fn (User $user): bool => Gate::forUser($user)->allows('use-weeklies'));
 
 Broadcast::channel('help', fn (User $user): bool => Gate::forUser($user)->allows('use-weeklies'));
 

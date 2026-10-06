@@ -2,6 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import Heading from '@/components/heading';
 import { weekliesTabs } from '@/components/weeklies/insights/weeklies-tabs';
 import { WeeklyHistory } from '@/components/weeklies/weekly-history';
+import { useWeeklyLive } from '@/components/weeklies/use-weekly-live';
 import { WeeklyOverview } from '@/components/weeklies/weekly-overview';
 import { WeeklyTabs } from '@/components/weeklies/weekly-tabs';
 import { t } from '@/lib/i18n';
@@ -20,6 +21,8 @@ export default function WeekliesIndex(props: WeekliesIndexPageProps) {
         modules?.project_status !== false,
         props.can.reminders,
     );
+    // En vivo (D-229): el resumen, la tira del equipo y el histórico, de cualquier semana.
+    useWeeklyLive();
 
     return (
         <>
