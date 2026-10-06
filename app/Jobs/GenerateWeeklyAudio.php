@@ -9,16 +9,17 @@ use App\Domain\Weeklies\WeeklyJobProgress;
 use App\Enums\WeeklyJobState;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
 /**
- * Genera (o regenera) el audio del informe por secciones (F-084, D-146 y D-190), en la cola `ai`.
+ * Genera (o regenera) el audio del informe por secciones (F-084, D-146 y D-190), en la cola prioritaria `ai-high` (D-222).
  * También con la semana cerrada (en WeeklySync se podía regenerar el audio, no el texto). Un solo
  * intento: si falla, audio_state `failed` con el mensaje en audio_error, y el audio anterior sigue.
  */
-final class GenerateWeeklyAudio implements ShouldQueue
+final class GenerateWeeklyAudio implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -26,9 +27,17 @@ final class GenerateWeeklyAudio implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(public readonly int $cycleId, public readonly ?int $userId = null)
     {
-        $this->onQueue(AiQueue::NAME);
+        $this->onQueue(AiQueue::HIGH);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->cycleId;
     }
 
     public function handle(WeeklyAudioGenerator $generator): void

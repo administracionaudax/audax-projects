@@ -9,17 +9,18 @@ use App\Domain\Weeklies\WeeklyReportGenerator;
 use App\Enums\WeeklyJobState;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
 /**
- * Genera (o regenera) el informe de una semana con la IA (F-072, D-146 y D-190), en la cola `ai`.
+ * Genera (o regenera) el informe de una semana con la IA (F-072, D-146 y D-190), en la cola prioritaria `ai-high` (D-222).
  * Un solo intento: si falla, la semana queda con report_state `failed` y el mensaje en report_error,
  * y quien gestiona lo vuelve a pedir. Al terminar guarda el informe, su texto, cuántos envíos había
  * (para «Hay nuevos reportes») y quién y cuándo; una edición anterior a mano se pierde.
  */
-final class GenerateWeeklyReport implements ShouldQueue
+final class GenerateWeeklyReport implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -27,9 +28,17 @@ final class GenerateWeeklyReport implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(public readonly int $cycleId, public readonly ?int $userId = null)
     {
-        $this->onQueue(AiQueue::NAME);
+        $this->onQueue(AiQueue::HIGH);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->cycleId;
     }
 
     public function handle(WeeklyReportGenerator $generator): void

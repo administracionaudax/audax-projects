@@ -2,6 +2,8 @@
 
 namespace App\Domain\Weeklies\Insights;
 
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
+use App\Domain\Weeklies\Ai\AiDailyLimits;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmRequest;
 use App\Enums\AiSummaryKind;
@@ -33,6 +35,7 @@ final class AiSummaries
         private readonly LlmClient $llm,
         private readonly ClientInsights $clients,
         private readonly PersonInsights $people,
+        private readonly AiDailyLimits $limits = new AiDailyLimits,
     ) {}
 
     public function find(AiSummaryKind $kind, Model $subject): ?AiSummary
@@ -47,6 +50,8 @@ final class AiSummaries
 
     /**
      * Pide un resumen nuevo y lo encola. Si ya hay uno en marcha (y no atascado), no encola otro.
+     *
+     * @throws AiDailyLimitReached si quien lo pide ya ha llegado a su límite de hoy (D-222)
      */
     public function request(AiSummaryKind $kind, Model $subject, User $user): AiSummary
     {
@@ -59,6 +64,9 @@ final class AiSummaries
         if ($summary !== null && self::isBusy($summary)) {
             return $summary;
         }
+
+        // D-222: solo gasta del límite diario lo que de verdad se encola.
+        $this->limits->consume($user, AiDailyLimits::SUMMARIES);
 
         $summary ??= new AiSummary([
             'kind' => $kind,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Ai\FakeLlm;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmNotConfigured;
@@ -269,11 +270,11 @@ it('si el Job falla, la semana queda con el error y el informe anterior no se to
         ->and($cycle->report_error)->toBe('No se ha podido generar el informe. Inténtalo de nuevo.');
 });
 
-it('generar encola el Job en la cola ai y responde enseguida; no con la semana cerrada ni dos a la vez', function () {
+it('generar encola el Job en la cola prioritaria ai-high y responde enseguida; no con la semana cerrada ni dos a la vez', function () {
     Queue::fake();
 
     $this->actingAs($this->manager)->post("/weeklies/{$this->cycle->id}/informe")->assertRedirect();
-    Queue::assertPushedOn('ai', GenerateWeeklyReport::class, fn (GenerateWeeklyReport $job) => $job->cycleId === $this->cycle->id && $job->userId === $this->manager->id);
+    Queue::assertPushedOn(AiQueue::HIGH, GenerateWeeklyReport::class, fn (GenerateWeeklyReport $job) => $job->cycleId === $this->cycle->id && $job->userId === $this->manager->id);
     expect($this->cycle->refresh()->report_state)->toBe(WeeklyJobState::Queued);
 
     // Ya en marcha: no se encola otro.

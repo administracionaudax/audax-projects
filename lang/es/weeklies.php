@@ -371,7 +371,14 @@ return [
     ],
 
     // Asistente IA (10.6, F-146 y F-147, D-205 y D-206).
+    // Límites diarios de IA por persona (D-222).
+    'ai_limits' => [
+        'assistant' => 'Has llegado al límite de :limit preguntas al asistente por hoy. Mañana podrás seguir.',
+        'summaries' => 'Has llegado al límite de :limit resúmenes con IA por hoy. Mañana podrás pedir más.',
+        'suggested_tasks' => 'Has llegado al límite de :limit propuestas de tareas con IA por hoy. Mañana podrás pedir más.',
+    ],
     'assistant' => [
+        'busy' => 'Espera a que termine la respuesta anterior antes de preguntar otra cosa.',
         'question_required' => 'Escribe una pregunta.',
         'not_found' => 'Esa pregunta ya no está disponible.',
         'failed' => 'Lo siento, hubo un error al procesar tu consulta. Por favor intenta de nuevo.',

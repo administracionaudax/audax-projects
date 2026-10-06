@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Weeklies;
 
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
 use App\Domain\Weeklies\Insights\AiSummaries;
 use App\Domain\Weeklies\Insights\PersonInsights;
 use App\Domain\Weeklies\MyWeeklyStatus;
@@ -96,6 +97,12 @@ class TeamController extends Controller
         $viewer = $request->user();
         $busy = ($existing = $summaries->find($kind, $user)) !== null && AiSummaries::isBusy($existing);
 
-        return ClientInsightsController::respond($request, $summaries->request($kind, $user, $viewer), $busy);
+        try {
+            $summary = $summaries->request($kind, $user, $viewer);
+        } catch (AiDailyLimitReached $e) {
+            return ClientInsightsController::limitReached($request, $e);
+        }
+
+        return ClientInsightsController::respond($request, $summary, $busy);
     }
 }

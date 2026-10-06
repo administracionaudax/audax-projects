@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Weeklies;
 
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
 use App\Domain\Weeklies\Insights\AiSummaries;
 use App\Enums\AiSummaryKind;
 use App\Http\Controllers\Controller;
@@ -40,9 +41,26 @@ class ClientInsightsController extends Controller
         /** @var User $user */
         $user = $request->user();
         $busy = ($existing = $summaries->find($kind, $client)) !== null && AiSummaries::isBusy($existing);
-        $summary = $summaries->request($kind, $client, $user);
+
+        try {
+            $summary = $summaries->request($kind, $client, $user);
+        } catch (AiDailyLimitReached $e) {
+            return self::limitReached($request, $e);
+        }
 
         return self::respond($request, $summary, $busy);
+    }
+
+    /** D-222: 429 con el mensaje para quien lo pide en JSON; si no, vuelve con un aviso de error. */
+    public static function limitReached(Request $request, AiDailyLimitReached $e): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json(['message' => $e->getMessage()], 429);
+        }
+
+        Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+        return back();
     }
 
     /** JSON 202 para quien lo pide así; si no, vuelve a la ficha con un aviso. */

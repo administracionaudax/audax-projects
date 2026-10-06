@@ -8,6 +8,7 @@ use App\Domain\Weeklies\Insights\AiSummaries;
 use App\Enums\WeeklyJobState;
 use App\Models\AiSummary;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -16,7 +17,7 @@ use Throwable;
  * Genera un resumen con IA de una ficha (cliente o persona) en la cola `ai` (D-146 y D-194). Un solo
  * intento: si la IA falla, el resumen queda con el error y se puede volver a pedir.
  */
-final class GenerateAiSummary implements ShouldQueue
+final class GenerateAiSummary implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -24,11 +25,19 @@ final class GenerateAiSummary implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(
         public readonly int $summaryId,
         public readonly ?int $userId = null,
     ) {
         $this->onQueue(AiQueue::NAME);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->summaryId;
     }
 
     public function handle(AiSummaries $summaries): void

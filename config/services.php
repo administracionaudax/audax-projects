@@ -83,6 +83,13 @@ return [
         // Por intento; un Job de la cola `ai` puede durar hasta 600 s.
         'timeout' => (int) env('GEMINI_TIMEOUT', 120),
         'tries' => (int) env('GEMINI_TRIES', 3),
+        // Peticiones por persona y día (hora de Madrid) que llegan a Gemini (D-222, AiDailyLimits);
+        // 0 = sin límite. El informe semanal, su audio y la satisfacción del cierre no cuentan.
+        'daily_limits' => [
+            'assistant' => (int) env('AI_DAILY_LIMIT_ASSISTANT', 60),
+            'summaries' => (int) env('AI_DAILY_LIMIT_SUMMARIES', 30),
+            'suggested_tasks' => (int) env('AI_DAILY_LIMIT_SUGGESTED_TASKS', 10),
+        ],
         'pricing' => [
             'gemini-3.5-flash' => ['input' => '1.5', 'output' => '9.0'],
             'gemini-2.5-flash' => ['input' => '0.3', 'output' => '2.5'],

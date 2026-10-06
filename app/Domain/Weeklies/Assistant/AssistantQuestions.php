@@ -2,6 +2,9 @@
 
 namespace App\Domain\Weeklies\Assistant;
 
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
+use App\Domain\Weeklies\Ai\AiDailyLimits;
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmException;
 use App\Domain\Weeklies\Ai\LlmRequest;
@@ -10,6 +13,7 @@ use App\Enums\WeeklyJobState;
 use App\Events\Weeklies\AssistantAnswered;
 use App\Jobs\AnswerAssistantQuestion;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
@@ -22,7 +26,7 @@ use Throwable;
  * La pregunta y la respuesta viven en la caché una hora (QUESTION_TTL): la conversación es de la
  * sesión, como en WeeklySync, y la guarda el navegador (sessionStorage); el servidor no conserva
  * historial. Solo quien pregunta ve su pregunta. Cada llamada a Gemini queda en ai_usage (sin el
- * texto).
+ * texto). Cada persona tiene una pregunta en curso como mucho y un límite diario (D-222).
  */
 final class AssistantQuestions
 {
@@ -33,15 +37,31 @@ final class AssistantQuestions
     public function __construct(
         private readonly LlmClient $llm,
         private readonly AssistantContext $context,
+        private readonly AiDailyLimits $limits = new AiDailyLimits,
     ) {}
 
     /**
      * @param  list<array{role: string, content: string}>  $history
      * @return array{id: string, state: string, answer: string|null, error: string|null}
+     *
+     * @throws AssistantBusy si su pregunta anterior aún no tiene respuesta
+     * @throws AiDailyLimitReached si ya ha llegado al límite de hoy
      */
     public function ask(User $user, string $question, array $history = []): array
     {
+        // D-222: una pregunta en curso por persona y un límite diario.
+        $previous = Cache::get(self::inflightKey($user));
+
+        if (is_string($previous) && ($pending = $this->get($previous)) !== null
+            && in_array($pending['state'] ?? null, [WeeklyJobState::Queued->value, WeeklyJobState::Running->value], true)
+            && CarbonImmutable::parse((string) $pending['created_at'])->greaterThan(now()->subSeconds(AiQueue::UNIQUE_FOR))) {
+            throw new AssistantBusy;
+        }
+
+        $this->limits->consume($user, AiDailyLimits::ASSISTANT);
+
         $id = (string) Str::uuid();
+        Cache::put(self::inflightKey($user), $id, self::QUESTION_TTL);
 
         $this->put([
             'id' => $id,
@@ -189,5 +209,11 @@ final class AssistantQuestions
     private static function key(string $id): string
     {
         return 'assistant:question:'.$id;
+    }
+
+    /** La pregunta en curso de cada persona (D-222). */
+    private static function inflightKey(User $user): string
+    {
+        return 'assistant:inflight:'.$user->id;
     }
 }

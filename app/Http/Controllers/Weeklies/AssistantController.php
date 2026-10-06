@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Weeklies;
 
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
+use App\Domain\Weeklies\Assistant\AssistantBusy;
 use App\Domain\Weeklies\Assistant\AssistantContext;
 use App\Domain\Weeklies\Assistant\AssistantQuestions;
 use App\Http\Controllers\Controller;
@@ -10,6 +12,7 @@ use App\Models\WeeklyEntry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,7 +56,12 @@ class AssistantController extends Controller
             'content' => (string) $message['content'],
         ], $data['history'] ?? []));
 
-        $question = $questions->ask($user, trim((string) $data['question']), $history);
+        try {
+            $question = $questions->ask($user, trim((string) $data['question']), $history);
+        } catch (AssistantBusy|AiDailyLimitReached $e) {
+            // D-222: el mensaje llega a la conversación como cualquier error de validación.
+            throw ValidationException::withMessages(['question' => $e->getMessage()]);
+        }
 
         return response()->json(['question' => $question], 202);
     }

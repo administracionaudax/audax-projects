@@ -3,6 +3,8 @@
 namespace App\Domain\Weeklies\Tasks;
 
 use App\Domain\Tasks\TaskWriter;
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
+use App\Domain\Weeklies\Ai\AiDailyLimits;
 use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmRequest;
 use App\Enums\AiFeature;
@@ -43,6 +45,7 @@ final class TaskSuggester
         private readonly LlmClient $llm,
         private readonly MySpaceTasks $tasks,
         private readonly TaskWriter $writer,
+        private readonly AiDailyLimits $limits = new AiDailyLimits,
     ) {}
 
     /** La fuente: la última weekly cerrada (como `lastClosedWeek` del original, por fecha de fin). */
@@ -60,6 +63,7 @@ final class TaskSuggester
      * Pide una tanda nueva (sustituye a la anterior) y la encola. Con una en marcha, no encola otra.
      *
      * @throws ValidationException sin ninguna weekly cerrada
+     * @throws AiDailyLimitReached si ya ha llegado a su límite de hoy (D-222)
      */
     public function request(User $user): TaskSuggestionBatch
     {
@@ -74,6 +78,9 @@ final class TaskSuggester
         if ($batch !== null && self::isBusy($batch)) {
             return $batch;
         }
+
+        // D-222: solo gasta del límite diario lo que de verdad se encola.
+        $this->limits->consume($user, AiDailyLimits::SUGGESTED_TASKS);
 
         $batch ??= new TaskSuggestionBatch(['user_id' => $user->id]);
         $batch->fill(['weekly_cycle_id' => $cycle->id, 'state' => WeeklyJobState::Queued, 'items' => [], 'skipped' => 0, 'error' => null]);

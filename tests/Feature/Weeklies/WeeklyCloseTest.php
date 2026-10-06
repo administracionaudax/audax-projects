@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Ai\FakeLlm;
 use App\Domain\Weeklies\Ai\LlmRequest;
 use App\Domain\Weeklies\Ai\LlmUnavailable;
@@ -100,7 +101,7 @@ it('al cerrar: congela quién debía enviar y los exentos, marca quién cerró y
         ->and($next->start_date->toDateString())->toBe('2026-10-12')
         ->and(MyWeeklyStatus::activeSnapshot()['id'])->toBe($next->id);
 
-    Queue::assertPushedOn('ai', UpdateWeeklySatisfaction::class, fn (UpdateWeeklySatisfaction $job) => $job->cycleId === $cycle->id && $job->userId === $this->manager->id && $job->nextCycleId === $next->id);
+    Queue::assertPushedOn(AiQueue::HIGH, UpdateWeeklySatisfaction::class, fn (UpdateWeeklySatisfaction $job) => $job->cycleId === $cycle->id && $job->userId === $this->manager->id && $job->nextCycleId === $next->id);
 
     // Ya cerrada, no se vuelve a cerrar.
     $this->actingAs($this->manager)->postJson("/weeklies/{$cycle->id}/cerrar")->assertForbidden();

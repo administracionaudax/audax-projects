@@ -8,6 +8,7 @@ use App\Domain\Weeklies\Dictation\DictationText;
 use App\Enums\TranscriptionStatus;
 use App\Events\Weeklies\DictationUpdated;
 use App\Models\Dictation;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -17,7 +18,7 @@ use Throwable;
  * la IA no responde, el dictado se queda con la transcripción literal de Whisper. Siempre acaba en
  * `done`.
  */
-final class CleanDictation implements ShouldQueue
+final class CleanDictation implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -25,9 +26,17 @@ final class CleanDictation implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(public readonly int $dictationId)
     {
         $this->onQueue(AiQueue::NAME);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->dictationId;
     }
 
     public function handle(DictationCleaner $cleaner): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Weeklies;
 
 use App\Domain\Tasks\TaskWriter;
+use App\Domain\Weeklies\Ai\AiDailyLimitReached;
 use App\Domain\Weeklies\Tasks\TaskNotes;
 use App\Domain\Weeklies\Tasks\TaskSuggester;
 use App\Http\Controllers\Controller;
@@ -37,7 +38,11 @@ class MySpaceTaskController extends Controller
         $user = $request->user();
         $previous = $suggester->find($user);
         $busy = $previous !== null && TaskSuggester::isBusy($previous);
-        $batch = $suggester->request($user);
+        try {
+            $batch = $suggester->request($user);
+        } catch (AiDailyLimitReached $e) {
+            return ClientInsightsController::limitReached($request, $e);
+        }
 
         if ($request->expectsJson() && ! $request->header('X-Inertia')) {
             return response()->json(['suggestions' => TaskSuggester::present($batch)], 202);

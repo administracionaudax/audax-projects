@@ -245,8 +245,11 @@ return [
         ],
         'supervisor-ai' => [
             'connection' => 'redis',
-            'queue' => ['ai'],
-            'balance' => 'auto',
+            // D-222: primero `ai-high` (informe, audio y satisfacción del cierre) y después `ai`
+            // (asistente, resúmenes, tareas sugeridas y dictados). Sin balanceo, el único proceso
+            // atiende las colas en este orden, así que el informe nunca espera detrás del asistente.
+            'queue' => ['ai-high', 'ai'],
+            'balance' => false,
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
             'maxProcesses' => 1,

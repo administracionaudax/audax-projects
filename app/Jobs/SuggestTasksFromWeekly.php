@@ -7,6 +7,7 @@ use App\Domain\Weeklies\Ai\LlmException;
 use App\Domain\Weeklies\Tasks\TaskSuggester;
 use App\Enums\WeeklyJobState;
 use App\Models\TaskSuggestionBatch;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -15,7 +16,7 @@ use Throwable;
  * «Generar tareas con IA» (F-062, D-204) en la cola `ai` (D-146). Un solo intento: si la IA falla, la
  * tanda queda con el error y se puede volver a pedir. Solo propone: no crea ninguna tarea.
  */
-final class SuggestTasksFromWeekly implements ShouldQueue
+final class SuggestTasksFromWeekly implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -23,9 +24,17 @@ final class SuggestTasksFromWeekly implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(public readonly int $batchId)
     {
         $this->onQueue(AiQueue::NAME);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->batchId;
     }
 
     public function handle(TaskSuggester $suggester): void

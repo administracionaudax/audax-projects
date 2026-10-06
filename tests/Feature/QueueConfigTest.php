@@ -61,14 +61,16 @@ test('la cola mail tiene su propio supervisor de un proceso con 256 MB y default
             ->and($supervisors['supervisor-mail']['maxProcesses'])->toBe(1);
 
         // La cola `ai` de la Weekly (Fase 10, D-146): un proceso de 128 MB y 600 s por Job.
-        expect($supervisors['supervisor-ai']['queue'])->toBe([AiQueue::NAME], $environment)
+        // D-222: con prioridad, primero la cola del informe y el audio y después la del resto.
+        expect($supervisors['supervisor-ai']['queue'])->toBe([AiQueue::HIGH, AiQueue::NAME], $environment)
+            ->and($supervisors['supervisor-ai']['balance'])->toBeFalse()
             ->and($supervisors['supervisor-ai']['memory'])->toBe(128)
             ->and($supervisors['supervisor-ai']['maxProcesses'])->toBe(1)
             ->and($supervisors['supervisor-ai']['timeout'])->toBe(AiQueue::TIMEOUT);
 
         // Cada cola que se usa la atiende exactamente un supervisor (transcriptions va aparte).
         $queues = collect($supervisors)->flatMap(fn (array $supervisor) => (array) $supervisor['queue'])->sort()->values()->all();
-        expect($queues)->toBe(['ai', 'default', 'mail']);
+        expect($queues)->toBe(['ai', 'ai-high', 'default', 'mail']);
     }
 
     expect((int) config('queue.connections.redis.retry_after'))->toBeGreaterThan((int) config('horizon.defaults.supervisor-mail.timeout'))

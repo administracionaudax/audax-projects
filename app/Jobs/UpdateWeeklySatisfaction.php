@@ -7,6 +7,7 @@ use App\Domain\Weeklies\Satisfaction\SatisfactionUpdater;
 use App\Events\Weeklies\WeeklyCycleClosed;
 use App\Models\User;
 use App\Models\WeeklyCycle;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -17,7 +18,7 @@ use Throwable;
  * después, el evento WeeklyCycleClosed para el aviso «weekly cerrada». Si la IA falla, el evento
  * sale igualmente: el cierre ya está hecho.
  */
-final class UpdateWeeklySatisfaction implements ShouldQueue
+final class UpdateWeeklySatisfaction implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -25,12 +26,20 @@ final class UpdateWeeklySatisfaction implements ShouldQueue
 
     public int $timeout = AiQueue::TIMEOUT;
 
+    /** Único (D-222): no se encola otro igual mientras este espera o se ejecuta. */
+    public int $uniqueFor = AiQueue::UNIQUE_FOR;
+
     public function __construct(
         public readonly int $cycleId,
         public readonly ?int $userId = null,
         public readonly ?int $nextCycleId = null,
     ) {
-        $this->onQueue(AiQueue::NAME);
+        $this->onQueue(AiQueue::HIGH);
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->cycleId;
     }
 
     public function handle(SatisfactionUpdater $updater): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Weeklies\Ai\AiQueue;
 use App\Domain\Weeklies\Ai\FakeLlm;
 use App\Domain\Weeklies\Ai\FakeSpeechSynthesizer;
 use App\Domain\Weeklies\Ai\GoogleTtsSynthesizer;
@@ -172,13 +173,13 @@ it('si falla la locución, el audio anterior se conserva y el error dice que es 
     expect(Storage::disk('local')->allFiles("weeklies/{$cycle->id}/audio"))->toHaveCount(5);
 });
 
-it('el audio necesita el texto; se encola en la cola ai y no dos a la vez', function () {
+it('el audio necesita el texto; se encola en la cola prioritaria ai-high y no dos a la vez', function () {
     Queue::fake();
     $empty = WeeklyCycle::factory()->create();
 
     $this->actingAs($this->manager)->postJson("/weeklies/{$empty->id}/audio")->assertJsonValidationErrors(['audio' => 'Primero genera el texto del informe.']);
     $this->actingAs($this->manager)->post("/weeklies/{$this->cycle->id}/audio")->assertRedirect();
-    Queue::assertPushedOn('ai', GenerateWeeklyAudio::class);
+    Queue::assertPushedOn(AiQueue::HIGH, GenerateWeeklyAudio::class);
     $this->actingAs($this->manager)->postJson("/weeklies/{$this->cycle->id}/audio")->assertJsonValidationErrors(['audio' => 'El audio ya se está generando.']);
     $this->actingAs(userWithRole('employee'))->postJson("/weeklies/{$this->cycle->id}/audio")->assertForbidden();
 });
