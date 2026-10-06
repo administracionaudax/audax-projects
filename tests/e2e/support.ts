@@ -55,6 +55,54 @@ export const SIDEBAR_PATHS = [
     '/admin',
 ] as const;
 
+/** Secciones plegadas por defecto en la barra lateral (D-261): todas menos Proyectos. */
+export const DEFAULT_COLLAPSED_SECTIONS = [
+    'weekly',
+    'people',
+    'billing',
+    'admin',
+];
+
+/**
+ * Guarda en el servidor las secciones plegadas de quien ha iniciado sesión (PUT /menu/secciones) y
+ * recarga para que la barra lo pinte. Para dejar cada test en un estado conocido: lo plegado se
+ * recuerda por persona entre tests.
+ */
+export async function setNavSections(
+    page: Page,
+    collapsed: string[],
+): Promise<void> {
+    await page.evaluate(async (sections) => {
+        const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
+        await fetch('/menu/secciones', {
+            method: 'PUT',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                ...(match
+                    ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) }
+                    : {}),
+            },
+            body: JSON.stringify({ collapsed: sections }),
+        });
+    }, collapsed);
+    await page.reload();
+}
+
+/** Despliega una sección de la barra lateral si está plegada (D-261: nacen plegadas). */
+export async function openNavSection(page: Page, name: string): Promise<void> {
+    const button = page
+        .getByRole('navigation', { name: 'Navegación principal' })
+        .getByRole('button', { name, exact: true });
+
+    if ((await button.getAttribute('aria-expanded')) === 'false') {
+        await button.click();
+    }
+
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+}
+
 export async function login(
     page: Page,
     email: string,

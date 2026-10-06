@@ -2,9 +2,11 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import {
+    DEFAULT_COLLAPSED_SECTIONS,
     expectTheme,
     login,
     saveUserTheme,
+    setNavSections,
     SIDEBAR_PATHS,
     USERS,
 } from './support';
@@ -19,6 +21,9 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
     await expect(page).toHaveURL(/\/$/);
 
     await test.step('navegar por la barra lateral', async () => {
+        // Todas las secciones desplegadas para ver cada enlace (nacen plegadas, D-261).
+        await setNavSections(page, []);
+
         for (const path of SIDEBAR_PATHS) {
             await page.locator(`a[href$="${path}"]:visible`).first().click();
             await expect(page).toHaveURL(new RegExp(`${path}$`));
@@ -26,6 +31,8 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
                 page.locator('main, [data-slot="sidebar-inset"]').first(),
             ).toBeVisible();
         }
+
+        await setNavSections(page, DEFAULT_COLLAPSED_SECTIONS);
     });
 
     await test.step('cambiar el tema a oscuro y comprobar que se mantiene al recargar', async () => {
@@ -73,27 +80,6 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
 });
 
 /** Deja todas las secciones desplegadas (el valor por defecto) para los demás specs. */
-/** Deja la barra como por defecto (D-261: todo plegado menos Proyectos) para los demás tests. */
-async function resetSections(page: Page): Promise<void> {
-    await page.evaluate(async () => {
-        const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
-        await fetch('/menu/secciones', {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                ...(match
-                    ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) }
-                    : {}),
-            },
-            body: JSON.stringify({
-                collapsed: ['weekly', 'people', 'billing', 'admin'],
-            }),
-        });
-    });
-}
-
 /**
  * Secciones plegables de la barra lateral (D-260): por defecto solo Proyectos desplegada (D-261); el encabezado es un
  * botón con aria-expanded y aria-controls; el estado se guarda por persona (sobrevive a recargar)
@@ -107,6 +93,8 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
     await login(page, USERS.manager);
     const nav = page.getByRole('navigation', { name: 'Navegación principal' });
     const weekly = nav.getByRole('button', { name: 'Weekly' });
+    // Partir del plegado por defecto aunque otro test lo haya cambiado para esta persona.
+    await setNavSections(page, DEFAULT_COLLAPSED_SECTIONS);
 
     try {
         await test.step('por defecto, solo Proyectos desplegada; Chat fijo y sin «Inicio» (D-261)', async () => {
@@ -206,7 +194,7 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
             expect(overflow).toBeLessThanOrEqual(0);
         });
     } finally {
-        await resetSections(page);
+        await setNavSections(page, DEFAULT_COLLAPSED_SECTIONS);
     }
 });
 

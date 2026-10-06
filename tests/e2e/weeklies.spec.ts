@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
-import { login, USERS } from './support';
+import { login, USERS, openNavSection } from './support';
 
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
@@ -75,7 +75,7 @@ test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
             name: 'Navegación principal',
         });
         // La sección Weekly nace plegada (D-261): se despliega con su encabezado.
-        await nav.getByRole('button', { name: 'Weekly' }).click();
+        await openNavSection(page, 'Weekly');
         await expect(
             nav.getByRole('link', { name: 'Mi espacio' }),
         ).toBeVisible();
