@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previsión · matriz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .mx-wrap { border: 1px solid var(--border); background: var(--card); }
+    table.mx { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    table.mx th, table.mx td { padding: 0; }
+    .mx .namecol { position: sticky; left: 0; z-index: 2; background: var(--card); width: var(--name-w); min-width: var(--name-w); max-width: var(--name-w); border-right: 1px solid var(--border); text-align: left; font-weight: 400; }
+    .mx thead th { background: var(--neutral-soft); color: var(--muted-foreground); font-weight: 500; font-size: 12px; }
+    .mx thead .namecol { background: var(--neutral-soft); padding: 6px 12px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; vertical-align: bottom; }
+    .mx thead tr.months th.m { text-align: left; padding: 6px 8px 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; border-left: 1px solid var(--border); }
+    .mx thead tr.periods th.p { width: var(--col-w); min-width: var(--col-w); padding: 2px 6px 6px; text-align: left; line-height: 1.2; }
+    .mx thead tr.periods th.p .w { color: var(--foreground); font-size: 12px; }
+    .mx thead tr.periods th.p .d { font-size: 11px; font-weight: 400; }
+    .mx thead .hol { display: inline-flex; margin-left: 4px; vertical-align: -1px; color: var(--muted-foreground); }
+    .mx thead th.p.now { box-shadow: inset 0 -2px 0 var(--brand); }
+    .mx thead th.p.now .w { color: var(--primary-text); }
+    /* Fila de departamento: columnas apiladas frente a la capacidad (la vista B dentro de la matriz) */
+    .mx tr.dept > * { border-top: 1px solid var(--border); background: var(--card); }
+    .mx tr.dept .namecol { padding: 10px 12px; vertical-align: top; }
+    .dept-btn { all: unset; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; width: 100%; }
+    .dept-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .dept-btn .n { font-size: 15px; font-weight: 500; color: var(--foreground); }
+    .dept-btn .m { font-size: 12px; color: var(--muted-foreground); }
+    .dept-btn svg { margin-top: 2px; }
+    .dept-chart { position: relative; }
+    .dept-chart .hit { position: absolute; top: 0; bottom: 0; }
+    .dept-chart .hit:hover, .dept-chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); outline-offset: -2px; }
+    .dept-chart .lab { position: absolute; bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; color: var(--foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .dept-chart .lab.quiet { color: var(--muted-foreground); }
+    /* Celdas de persona: semáforo + barra de capas */
+    .mx tr.person > * { border-top: 1px solid var(--border); }
+    .mx tr.person .namecol { padding: 6px 12px; }
+    .pname { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .avatar { width: 24px; height: 24px; border-radius: 9999px; background: var(--neutral-soft); color: var(--foreground); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .avatar.gap { background: transparent; border: 1px dashed var(--muted-foreground); color: var(--muted-foreground); }
+    .pname .t { min-width: 0; }
+    .pname .nm { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pname .sb { display: block; font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    td.c { padding: 2px !important; }
+    .mc { position: relative; height: 40px; padding: 4px 5px; display: flex; flex-direction: column; justify-content: space-between; background: var(--lv-surface); cursor: pointer; }
+    .mc:hover, td.c:focus-visible .mc { box-shadow: inset 0 0 0 1px var(--foreground); }
+    td.c:focus-visible { outline: none; }
+    td.c:focus-visible .mc { box-shadow: inset 0 0 0 2px var(--ring); }
+    .mc .v { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 14px; white-space: nowrap; }
+    .mc .v svg { width: 12px; height: 12px; }
+    /* Capacidad reducida por una ausencia parcial: muesca en la esquina (no quita sitio a la cifra) */
+    .mc .red { position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 8px solid var(--muted-foreground); border-left: 8px solid transparent; }
+    .notch { display: inline-block; width: 0; height: 0; border-top: 9px solid var(--muted-foreground); border-left: 9px solid transparent; }
+    .mc.none .v { font-weight: 400; color: var(--muted-foreground); font-size: 11px; }
+    /* Barra de capas: pista = 0–150 % de la capacidad; marca en el 100 % */
+    .bar { position: relative; height: 6px; background: color-mix(in oklab, var(--card) 75%, transparent); display: flex; gap: 2px; overflow: hidden; }
+    .bar i { display: block; height: 100%; flex: none; }
+    .bar i.real { background: var(--layer-real); }
+    .bar i.seguro { background: var(--layer-previsto); }
+    .bar i.posible { background: var(--hatch); }
+    .bar-wrap { position: relative; }
+    .bar-wrap .cap { position: absolute; left: 66.67%; top: -3px; width: 2px; height: 12px; background: var(--capacity); }
+    .bar-wrap .more { position: absolute; right: -1px; top: -1px; width: 0; height: 0; border-left: 5px solid var(--foreground); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+    /* Huecos: demanda sin persona (borde discontinuo, como «sin responsable» en el Gantt) */
+    .mx tr.gap > * { border-top: 1px solid var(--border); }
+    .mx tr.gap .namecol { padding: 6px 12px; }
+    .gc { height: 40px; margin: 0; padding: 4px 5px; border: 1px dashed var(--muted-foreground); display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; }
+    .gc .v { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .gc .k { display: flex; gap: 2px; height: 6px; }
+    .gc .k i { display: block; height: 100%; flex: 1; }
+    .gc .k i.real { background: var(--layer-real); } .gc .k i.seguro { background: var(--layer-previsto); } .gc .k i.posible { background: var(--hatch); }
+    .gc.empty { border-color: transparent; }
+    .mx td.now-col { background: color-mix(in oklab, var(--brand) 4%, var(--card)); }
+    .side { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .side { grid-template-columns: minmax(0, 1fr); } }
+    .legend-block { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+    .legend-block .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: var(--muted-foreground); }
+    .legend-block .grp > span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-block .grp .ttl { color: var(--foreground); font-weight: 500; }
+    .mini-bar { display: inline-flex; width: 36px; }
+    .alt-nav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+    .alt-nav a[aria-current] { color: var(--foreground); font-weight: 500; text-decoration: none; }
+    @media (max-width: 640px) {
+        .hide-sm { display: none !important; }
+        .toolbar .field, .toolbar .seg { height: 32px; }
+    }
+</style>
+</head>
+<body>
+<main class="page" style="--name-w: 208px; --col-w: 64px">
+    <div class="note alt-nav"><b>Maqueta · Previsión</b><span>Alternativas:</span><a href="01-prevision-matriz.html" aria-current="page">A · Matriz de ocupación (recomendada)</a><a href="02-prevision-barras.html">B · Barras frente a capacidad</a><a href="03-prevision-cronograma.html">C · Cronograma por persona</a></div>
+
+    <div class="page-head">
+        <div>
+            <h1>Previsión del <span class="kw">equipo</span></h1>
+            <p>Capacidad frente a lo asignado en proyectos reales y previstos. Solo cuentan las asignaciones; las tareas y las bolsas, no.</p>
+        </div>
+        <div class="actions">
+            <button class="btn outline sm" type="button">Proyectos previstos <span class="badge" style="height:18px">5</span></button>
+            <button class="btn sm" type="button" id="new-btn"></button>
+        </div>
+    </div>
+
+    <div class="toolbar" role="group" aria-label="Filtros de la previsión">
+        <label class="field"><span class="lbl">Horizonte</span>
+            <select id="horizon" style="all:unset;cursor:pointer">
+                <option value="2">2 meses</option><option value="3" selected>3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+            </select>
+        </label>
+        <div class="seg" role="group" aria-label="Agrupar por"><button type="button" data-unit="week" aria-pressed="true">Semanas</button><button type="button" data-unit="month" aria-pressed="false">Meses</button></div>
+        <button class="field" type="button"><span class="lbl">Departamento</span>Todos <span id="chev-d"></span></button>
+        <button class="field hide-sm" type="button"><span id="ic-search"></span><span class="lbl">Buscar persona</span></button>
+        <span class="sep hide-sm"></span>
+        <div class="toolbar" role="group" aria-label="Capas que cuentan" id="layers"></div>
+    </div>
+
+    <section class="grid-tiles" id="kpis" aria-label="Resumen del horizonte"></section>
+
+    <section aria-labelledby="mx-title" style="display:grid;gap:12px;min-width:0">
+        <div class="card-head" style="margin:0">
+            <h2 class="section" id="mx-title">Ocupación por departamento y persona</h2>
+            <button class="btn ghost sm" type="button" id="table-btn"></button>
+        </div>
+        <div class="legend-block" id="legend"></div>
+        <div class="mx-wrap scroll-x" id="mx-scroll"><table class="mx" id="mx" role="grid" aria-labelledby="mx-title" aria-describedby="mx-help"></table></div>
+        <p id="mx-help" class="xs muted" style="margin:0">Flechas para moverte por la matriz, Intro para ver de qué proyectos sale cada hora. Cada celda dice su porcentaje y su nivel con texto e icono: el color nunca va solo.</p>
+    </section>
+
+    <div class="side">
+        <section class="card" aria-labelledby="gaps-title">
+            <div class="card-head"><div><div class="t" id="gaps-title">Huecos sin persona</div><div class="d">Demanda de un departamento que aún no tiene a nadie. Suma a la carga del departamento, no a la de nadie.</div></div></div>
+            <div class="scroll-x"><table class="data" id="gaps"></table></div>
+        </section>
+        <section class="card" aria-labelledby="fp-title">
+            <div class="card-head"><div><div class="t" id="fp-title">Proyectos previstos abiertos</div><div class="d">Seguros y posibles dentro del horizonte.</div></div><a href="04-ficha-previsto.html" class="sm">Ver todos</a></div>
+            <div class="scroll-x"><table class="data" id="fps"></table></div>
+        </section>
+    </div>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'prevision', crumbs: ['Proyectos', 'Previsión'] });
+const { icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, layers, loadOf } = UI;
+document.getElementById('new-btn').innerHTML = `${icon('plus')}Nuevo proyecto previsto`;
+document.getElementById('chev-d').innerHTML = icon('chevDown', 's14');
+document.getElementById('ic-search').innerHTML = icon('search', 's14');
+document.getElementById('table-btn').innerHTML = `${icon('table')}Ver como tabla`;
+
+const state = { months: 3, unit: 'week', open: { dis: true, dev: true, mkt: false, cue: false } };
+const qs = new URLSearchParams(location.search);
+if (qs.get('meses')) state.months = Number(qs.get('meses'));
+if (qs.get('por') === 'meses') state.unit = 'month';
+if (qs.get('abiertos')) { for (const k in state.open) state.open[k] = qs.get('abiertos').split(',').includes(k); }
+document.getElementById('horizon').value = String(state.months);
+
+const holidaysIn = (p) => { const n = Object.keys(PV.HOLIDAYS).filter((d) => d >= p.from && d <= p.to && PV.weekday(d) < 5).length; return n ? (n === 1 ? '1 festivo' : `${n} festivos`) : ''; };
+const initials = (n) => n.split(' ').map((w) => w[0]).slice(0, 2).join('');
+
+function periodsNow() {
+    return state.unit === 'week' ? PV.periods('week', Math.round(state.months * 4.345)) : PV.periods('month', state.months);
+}
+
+function layerChips() {
+    const el = document.getElementById('layers');
+    const defs = [['real', 'Real'], ['seguro', 'Previsto seguro'], ['posible', 'Previsto posible']];
+    el.innerHTML = defs.map(([k, l]) => `<button type="button" class="toggle-chip" data-layer="${k}" aria-pressed="${layers[k]}"><span class="check">${layers[k] ? icon('check') : ''}</span><span class="sw ${k}"></span>${l}</button>`).join('');
+    el.querySelectorAll('[data-layer]').forEach((b) => b.addEventListener('click', () => { layers[b.dataset.layer] = !layers[b.dataset.layer]; render(); }));
+}
+
+function legend() {
+    const lv = ['under', 'balanced', 'high', 'over', 'none'];
+    document.getElementById('legend').innerHTML = `
+        <div class="grp"><span class="ttl">Capas</span><span><span class="sw real"></span>Real</span><span><span class="sw seguro"></span>Previsto seguro</span><span><span class="sw posible"></span>Previsto posible (trama)</span><span><span class="sw cap"></span>Capacidad</span><span><span class="sw gap"></span>Hueco sin persona</span></div>
+        <div class="grp"><span class="ttl">Ocupación</span>${lv.map((l) => `<span><span class="sw status lv-${l}" style="background:var(--lv-surface)">${levelIcon(l, 's12')}</span><span>${LEVELS[l].label}<span class="hide-sm">: ${LEVELS[l].range}</span></span></span>`).join('')}<span>${icon('calMinus', 's12')}Semana con festivo (cabecera)</span><span><span class="notch"></span>Ausencia parcial</span></div>`;
+}
+
+function kpis(ps) {
+    let cap = 0, load = 0, realOnly = 0, overWeeks = 0;
+    const overPeople = new Set();
+    const wk = PV.periods('week', Math.round(state.months * 4.345));
+    for (const p of PV.PEOPLE) {
+        for (const per of ps) { const c = PV.cell(p.id, per); cap += c.cap; load += loadOf(c); realOnly += c.real; }
+        for (const per of wk) { const c = PV.cell(p.id, per); if (level(loadOf(c), c.cap) === 'over') { overWeeks++; overPeople.add(p.name.split(' ')[0]); } }
+    }
+    let gapTotal = 0; const gapBy = [];
+    for (const d of PV.DEPTS) { let g = 0; for (const per of ps) { const c = PV.cell(`hueco:${d.id}`, per); g += loadOf(c); } if (g > 0.5) gapBy.push(`${d.name} ${H(g)}`); gapTotal += g; }
+    const occ = loadPct(load, cap);
+    const lv = level(load, cap);
+    document.getElementById('kpis').innerHTML = `
+        <div class="tile"><div class="k">Ocupación del equipo</div><div class="v">${pct(occ)}</div><div class="s">${levelIcon(lv, 's12')}<span>${LEVELS[lv].label}. Solo real: ${pct(loadPct(realOnly, cap))}</span></div></div>
+        <div class="tile"><div class="k">Horas libres</div><div class="v">${H(Math.max(cap - load, 0))}</div><div class="s"><span>de ${H(cap)} de capacidad en ${state.months} meses</span></div></div>
+        <div class="tile"><div class="k">Semanas en sobrecarga</div><div class="v">${overWeeks}</div><div class="s">${levelIcon('over', 's12')}<span>${overPeople.size} personas: ${[...overPeople].slice(0, 4).join(', ')}</span></div></div>
+        <div class="tile"><div class="k">Huecos sin persona</div><div class="v">${H(gapTotal)}</div><div class="s"><span>${gapBy.join(' · ') || 'Ninguno'}</span></div></div>`;
+}
+
+function personCell(row, per, gap = false) {
+    const c = PV.cell(row, per);
+    const load = loadOf(c);
+    const title = `${gap ? `Sin persona · ${PV.DEPTS.find((d) => `hueco:${d.id}` === row).name}` : PV.personById[row].name} · ${per.long}`;
+    const foot = [];
+    if (!gap && c.holidays) foot.push(`<span>${c.holidays === 1 ? '1 festivo' : `${c.holidays} festivos`}</span>`);
+    if (!gap && c.absent && c.cap > 0) foot.push(`<span>Ausencia: ${c.absent} ${c.absent === 1 ? 'día' : 'días'}</span>`);
+    const tid = UI.tip(UI.tipHTML({ title, load, cap: c.cap, items: c.items, foot, gap }));
+    if (gap) {
+        if (load < 0.5) return `<td class="c" role="gridcell" tabindex="-1"><div class="gc empty"></div></td>`;
+        const kinds = ['real', 'seguro', 'posible'].filter((k) => layers[k] && c[k] > 0.01);
+        return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: ${H(load)} sin persona"><div class="gc"><span class="v">${H(load)}</span><span class="k">${kinds.map((k) => `<i class="${k}"></i>`).join('')}</span></div></td>`;
+    }
+    const lv = level(load, c.cap);
+    const p = loadPct(load, c.cap);
+    const reduced = c.cap > 0 && c.absent > 0; // los festivos van en la cabecera de la columna
+    if (lv === 'none') {
+        return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: sin capacidad, ausencia"><div class="mc none lv-none"><span class="v">${levelIcon('none', 's12')}</span><span class="v">${c.absent ? 'Ausencia' : 'Festivo'}</span></div></td>`;
+    }
+    const scale = (x) => (x / c.cap) * (100 / 1.5);
+    const segs = ['real', 'seguro', 'posible'].filter((k) => layers[k] && c[k] > 0.01).map((k) => `<i class="${k}" style="width:calc(${scale(c[k]).toFixed(2)}% - 2px)"></i>`).join('');
+    return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: ${pct(p)}, ${LEVELS[lv].label}, ${H(load)} de ${H(c.cap)}${reduced ? ', capacidad reducida por ausencia' : ''}"><div class="mc lv-${lv}">${reduced ? '<span class="red"></span>' : ''}<span class="v">${levelIcon(lv, 's12')}${pct(p)}</span><span class="bar-wrap"><span class="bar">${segs}</span><span class="cap"></span>${p > 150 ? '<span class="more"></span>' : ''}</span></div></td>`;
+}
+
+function deptRow(d, ps, colW) {
+    const people = PV.PEOPLE.filter((p) => p.dept === d.id);
+    const cells = ps.map((per) => PV.deptCell(d.id, per));
+    const yMax = Math.max(...cells.map((c) => Math.max(c.cap, c.real + c.seguro + c.posible))) * 1.08;
+    const H_ = 78;
+    const ch = UI.columns({ data: cells, width: ps.length * colW, height: H_, yMax, showPct: true, pctH: 18, barMax: state.unit === 'week' ? 20 : 28, padTop: 8 });
+    const hits = cells.map((c, i) => {
+        const load = loadOf(c);
+        const lv = level(load, c.cap);
+        const tid = UI.tip(UI.tipHTML({ title: `${d.name} · ${ps[i].long}`, load, cap: c.cap, items: c.items.slice(0, 7), foot: [c.gapH > 0.5 ? `<span>Incluye <b class="tabular">${H(c.gapH)}</b> de huecos sin persona</span>` : ''].filter(Boolean).concat(c.items.length > 7 ? [`<span>y ${c.items.length - 7} proyectos más</span>`] : []) }));
+        const p = loadPct(load, c.cap);
+        const strong = lv === 'high' || lv === 'over';
+        return `<span class="hit" role="gridcell" tabindex="-1" data-tip="${tid}" style="left:${i * colW}px;width:${colW}px" aria-label="${esc(d.name)}, ${esc(ps[i].long)}: ${pct(p)}, ${LEVELS[lv].label}"></span><span class="lab ${strong ? '' : 'quiet'}" style="left:${i * colW}px;width:${colW}px">${strong ? levelIcon(lv, 's12') : ''}${pct(p)}</span>`;
+    }).join('');
+    const capWeek = cells[0].cap;
+    const open = state.open[d.id];
+    return `<tr class="dept" role="row"><th class="namecol" scope="row" role="rowheader"><button class="dept-btn" type="button" aria-expanded="${open}" data-dept="${d.id}">${icon(open ? 'chevDown' : 'chevRight', 's14')}<span><span class="n">${d.name}</span><br><span class="m">${people.length} personas · ${H(capWeek)} ${state.unit === 'week' ? 'esta semana' : 'este mes'}</span></span></button></th><td colspan="${ps.length}" style="padding:4px 0 0"><div class="dept-chart" style="width:${ps.length * colW}px">${ch.svg}${hits}</div></td></tr>`;
+}
+
+function render() {
+    layerChips();
+    const ps = periodsNow();
+    const colW = state.unit === 'week' ? 64 : 88;
+    document.querySelector('main.page').style.setProperty('--col-w', `${colW}px`);
+    kpis(ps);
+    // cabecera
+    let months = '';
+    if (state.unit === 'week') {
+        let span = 0, label = ps[0].monthStart;
+        ps.forEach((p, i) => {
+            if (i > 0 && p.monthStart) { months += `<th class="m" colspan="${span}">${label}</th>`; span = 0; label = p.monthStart; }
+            span++;
+        });
+        months += `<th class="m" colspan="${span}">${label}</th>`;
+    }
+    const head = `<thead>${state.unit === 'week' ? `<tr class="months" role="row"><th class="namecol" rowspan="2" scope="col">Persona</th>${months}</tr>` : ''}<tr class="periods" role="row">${state.unit === 'week' ? '' : '<th class="namecol" scope="col">Persona</th>'}${ps.map((p) => `<th class="p${p.current ? ' now' : ''}" scope="col" role="columnheader"><span class="w">${p.label}</span>${holidaysIn(p) ? `<span class="hol" title="${holidaysIn(p)}">${icon('calMinus', 's12')}<span class="sr-only">${holidaysIn(p)}</span></span>` : ''}<br><span class="d">${p.sub}</span></th>`).join('')}</tr></thead>`;
+    let body = '<tbody>';
+    for (const d of PV.DEPTS) {
+        body += deptRow(d, ps, colW);
+        if (!state.open[d.id]) continue;
+        for (const p of PV.PEOPLE.filter((x) => x.dept === d.id)) {
+            body += `<tr class="person" role="row" data-person="${p.id}"><th class="namecol" scope="row" role="rowheader"><span class="pname"><span class="avatar">${initials(p.name)}</span><span class="t"><span class="nm">${p.name}</span><span class="sb">${p.hpd * 5} h/sem</span></span></span></th>${ps.map((per) => personCell(p.id, per)).join('')}</tr>`;
+        }
+        const anyGap = ps.some((per) => loadOf(PV.cell(`hueco:${d.id}`, per)) > 0.5);
+        if (anyGap) body += `<tr class="gap" role="row"><th class="namecol" scope="row" role="rowheader"><span class="pname"><span class="avatar gap">${icon('gap', 's12')}</span><span class="t"><span class="nm">Sin persona</span><span class="sb">Hueco de ${d.name}</span></span></span></th>${ps.map((per) => personCell(`hueco:${d.id}`, per, true)).join('')}</tr>`;
+    }
+    body += '</tbody>';
+    const mx = document.getElementById('mx');
+    mx.innerHTML = head + body;
+    mx.querySelectorAll('[data-dept]').forEach((b) => b.addEventListener('click', () => { state.open[b.dataset.dept] = !state.open[b.dataset.dept]; render(); }));
+    const first = mx.querySelector('[role="gridcell"]');
+    if (first) first.tabIndex = 0;
+    gapsTable();
+    fpTable();
+}
+
+// Rejilla con una sola parada de tabulación (patrón WAI-ARIA «data grid», como WorkloadMatrix).
+document.getElementById('mx').addEventListener('keydown', (e) => {
+    const cells = [...document.querySelectorAll('#mx tr')].map((tr) => [...tr.querySelectorAll('[role="gridcell"]')]).filter((r) => r.length);
+    let ri = cells.findIndex((r) => r.includes(document.activeElement));
+    if (ri < 0) return;
+    let ci = cells[ri].indexOf(document.activeElement);
+    const k = e.key;
+    if (k === 'ArrowRight') ci++; else if (k === 'ArrowLeft') ci--; else if (k === 'ArrowDown') ri++; else if (k === 'ArrowUp') ri--; else if (k === 'Home') ci = 0; else if (k === 'End') ci = 1e9; else return;
+    e.preventDefault();
+    ri = Math.max(0, Math.min(ri, cells.length - 1));
+    ci = Math.max(0, Math.min(ci, cells[ri].length - 1));
+    document.activeElement.tabIndex = -1;
+    const next = cells[ri][ci];
+    next.tabIndex = 0;
+    next.focus();
+});
+
+function gapsTable() {
+    const rows = [];
+    for (const d of PV.DEPTS) for (const g of PV.gapsOf(d.id)) {
+        const [, mode, hh, from, to] = g.alloc;
+        const how = mode === 'sem' ? `${hh} h/sem` : mode === 'total' ? `${hh} h en total` : mode === 'mes' ? `${hh} h/mes` : `${hh} %`;
+        rows.push(`<tr><td><div>${d.name}</div><div class="xs muted" style="display:flex;gap:6px;align-items:center;margin-top:2px">${UI.kindBadge(g.project.kind)}<span>${esc(g.project.name)}</span></div></td><td class="tabular" style="white-space:nowrap">${how}<div class="xs muted">${PV.dayMonth(from)} – ${PV.dayMonth(to)}</div></td><td class="r"><button class="btn outline sm" type="button">${icon('userPlus', 's14')}Asignar a…</button></td></tr>`);
+    }
+    document.getElementById('gaps').innerHTML = `<thead><tr><th>Hueco</th><th>Cuánto y cuándo</th><th class="r"><span class="sr-only">Acciones</span></th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+function fpTable() {
+    const fps = PV.PROJECTS.filter((p) => p.kind !== 'real');
+    document.getElementById('fps').innerHTML = `<thead><tr><th>Proyecto</th><th>Seguridad</th><th>Fechas</th></tr></thead><tbody>${fps.map((p) => `<tr><td><a href="04-ficha-previsto.html">${esc(p.name)}</a>${p.newClient ? '<div class="xs muted">Cliente nuevo</div>' : ''}</td><td>${UI.kindBadge(p.kind)}</td><td class="tabular" style="white-space:nowrap">${PV.dayMonth(p.from)} – ${PV.dayMonth(p.to)}</td></tr>`).join('')}</tbody>`;
+}
+
+document.getElementById('horizon').addEventListener('change', (e) => { state.months = Number(e.target.value); if (state.months > 3 && state.unit === 'week') setUnit('month'); else render(); });
+function setUnit(u) { state.unit = u; document.querySelectorAll('[data-unit]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.unit === u))); render(); }
+document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => setUnit(b.dataset.unit)));
+legend();
+setUnit(state.unit);
+if (matchMedia('(max-width: 640px)').matches) document.querySelector('main.page').style.setProperty('--name-w', '132px');
+</script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proyecto previsto · Hotel Mar Azul</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .facts { display: grid; grid-template-columns: repeat(5, minmax(0, auto)); gap: 8px 32px; margin: 0; justify-content: start; }
+    .facts dt { font-size: 12px; color: var(--muted-foreground); }
+    .facts dd { margin: 2px 0 0; }
+    @media (max-width: 1100px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .hero-line { font-size: 18px; line-height: 1.45; margin: 0 0 16px; max-width: 70ch; }
+    .hero-line b { font-weight: 500; }
+    .imp { display: grid; grid-template-columns: var(--lab-w) repeat(var(--n), var(--cw)); align-items: stretch; }
+    .imp > .h { font-size: 12px; color: var(--muted-foreground); padding: 0 6px 6px; line-height: 1.2; }
+    .imp > .h b { display: block; color: var(--foreground); font-weight: 500; }
+    .imp > .l { padding: 10px 12px 8px 0; border-top: 1px solid var(--border); position: sticky; left: 0; background: var(--card); z-index: 1; }
+    .imp > .l .n { display: flex; align-items: center; gap: 6px; }
+    .imp > .l .s { font-size: 12px; color: var(--muted-foreground); }
+    .imp > .c { border-top: 1px solid var(--border); padding: 8px 6px 6px; position: relative; }
+    .imp > .c .t { display: flex; align-items: center; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; margin-top: 4px; }
+    .imp > .c .t .from { color: var(--muted-foreground); }
+    .imp > .c .t.strong { font-weight: 500; }
+    .imp > .c .t svg { width: 12px; height: 12px; }
+    .imp > .grp { grid-column: 1 / -1; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-foreground); padding: 14px 0 6px; font-weight: 500; }
+    .sw.base { background: var(--ctx); }
+    :root { --ctx: color-mix(in oklab, var(--muted-foreground) 38%, var(--card)); }
+    .tlcell { position: relative; height: 18px; min-width: 220px; background: linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 50% 100%; }
+    .tlcell i { position: absolute; top: 3px; height: 12px; }
+    .tlcell i.posible { background: var(--hatch); }
+    .tlcell i.gap { outline: 1px dashed var(--muted-foreground); outline-offset: 1px; }
+    .tlscale { display: flex; justify-content: space-between; min-width: 220px; font-size: 11px; color: var(--muted-foreground); text-transform: none; letter-spacing: 0; }
+    .tlscale span { flex: 1; }
+    .warn { display: inline-flex; align-items: center; gap: 6px; }
+    .warn .lv-icon svg { width: 14px; height: 14px; }
+    .radio { display: inline-flex; border: 1px solid var(--input); }
+    .radio label { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 14px; }
+    .radio label + label { border-left: 1px solid var(--border); }
+    .radio input { accent-color: var(--primary); margin: 0; }
+    .radio label:has(input:checked) { background: var(--accent); }
+    .two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .two aside { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    @media (max-width: 800px) { .two aside { grid-template-columns: minmax(0, 1fr); } }
+    .hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13px; }
+    .hist li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="page-head">
+        <div style="min-width:0">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px"><span class="badge"><span class="kind"><span class="sw posible"></span>Posible</span></span><span class="badge">Cliente nuevo</span><span class="badge">Previsto · abierto</span></div>
+            <h1>Hotel Mar Azul · <span class="kw">Web y branding</span></h1>
+        </div>
+        <div class="actions">
+            <button class="btn outline sm" type="button">Pasar a seguro</button>
+            <button class="btn sm" type="button">Crear proyecto real</button>
+            <button class="btn ghost sm icon" type="button" aria-label="Más acciones: vincular con un proyecto existente, marcar como perdido" id="more"></button>
+        </div>
+    </div>
+
+    <dl class="facts card" style="padding:16px 20px">
+        <div><dt>Cliente</dt><dd>Hotel Mar Azul <span class="muted">(aún no existe)</span></dd></div>
+        <div><dt>Responsable</dt><dd>Beatriz Moreno</dd></div>
+        <div><dt>Fechas</dt><dd class="tabular">3 nov → 18 dic 2026</dd></div>
+        <div><dt>Estimación total</dt><dd class="tabular">320 h</dd></div>
+        <div><dt>Importe estimado</dt><dd class="tabular">22.400 € <span class="xs muted">solo con permiso de importes</span></dd></div>
+    </dl>
+
+    <section class="card" aria-labelledby="imp-title">
+        <div class="card-head">
+            <div><div class="t" id="imp-title">Impacto si se coge</div><div class="d">Ocupación de cada semana sin este proyecto y con él. «Sin» ya incluye lo real, lo seguro y los demás posibles.</div></div>
+            <button class="btn ghost sm" type="button" id="table-btn"></button>
+        </div>
+        <p class="hero-line" id="hero"></p>
+        <ul class="legend plain" style="margin-bottom:12px"><li><span class="sw base"></span>Sin este proyecto</li><li><span class="sw posible"></span>Lo que añade este proyecto</li><li><span class="sw cap"></span>Capacidad</li></ul>
+        <div class="scroll-x"><div class="imp" id="imp"></div></div>
+    </section>
+
+    <div class="two">
+        <section class="card" aria-labelledby="as-title">
+            <div class="card-head"><div><div class="t" id="as-title">Asignaciones</div><div class="d">Quién (una persona o un hueco de departamento), cuánto y cuándo. Sin tareas: la ejecución va en el proyecto real.</div></div><button class="btn outline sm" type="button" id="add-btn"></button></div>
+            <div class="scroll-x"><table class="data" id="allocs"></table></div>
+        </section>
+        <aside style="display:grid;gap:16px">
+            <section class="card">
+                <div class="t" style="font-weight:500;margin-bottom:8px">Seguridad</div>
+                <div class="radio" role="radiogroup" aria-label="Seguridad"><label><input type="radio" name="seg">Segura</label><label><input type="radio" name="seg" checked>Posible</label></div>
+                <p class="xs muted" style="margin:8px 0 0">Segura: firmado o casi. Posible: puede no salir; en las gráficas va con trama. Sin porcentajes (P5).</p>
+            </section>
+            <section class="card">
+                <div class="t" style="font-weight:500;margin-bottom:10px">Historial</div>
+                <ul class="hist"><li><span class="muted tabular">06/10</span><span>Beatriz Moreno lo crea como posible.</span></li><li><span class="muted tabular">06/10</span><span>Añade el hueco de Diseño (80 h) y a Luis Martín (50 %).</span></li><li><span class="muted tabular">07/10</span><span>Añade el hueco de Desarrollo (120 h).</span></li></ul>
+            </section>
+        </aside>
+    </div>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'prevision', crumbs: ['Previsión', 'Proyectos previstos', 'Hotel Mar Azul'] });
+const { icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, loadOf } = UI;
+document.getElementById('more').innerHTML = icon('dots');
+document.getElementById('add-btn').innerHTML = `${icon('plus')}Asignación`;
+document.getElementById('table-btn').innerHTML = `${icon('table')}Ver como tabla`;
+const FP = PV.projectById.marazul;
+const ps = PV.periods('week', 12).filter((p) => p.to >= FP.from && p.from <= FP.to);
+const mobile = matchMedia('(max-width: 640px)').matches;
+const CW = mobile ? 96 : 104;
+const LABW = mobile ? 116 : 200;
+
+function impactRow(label, sub, cells, isGapIcon) {
+    const yMax = Math.max(1.3, ...cells.map((c) => (c.cap ? (c.with / c.cap) * 1.08 : 0)));
+    let s = `<div class="l"><div class="n">${label}</div><div class="s">${sub}</div></div>`;
+    for (const c of cells) {
+        const without = c.with - c.mine;
+        const pFrom = loadPct(without, c.cap), pTo = loadPct(c.with, c.cap);
+        const lvTo = level(c.with, c.cap);
+        const W = CW - 12, Hh = 52;
+        const y = (v) => 4 + (Hh - 4) * (1 - Math.min(v / c.cap, yMax) / yMax);
+        const bw = 22, x = (W - bw) / 2;
+        let svg = `<svg width="${W}" height="${Hh}" viewBox="0 0 ${W} ${Hh}" aria-hidden="true" style="display:block;overflow:visible">`;
+        svg += `<rect x="${x}" y="${y(without)}" width="${bw}" height="${Hh - y(without)}" style="fill:var(--ctx)"/>`;
+        if (c.mine > 0.2) svg += `<rect x="${x}" y="${y(c.with)}" width="${bw}" height="${Math.max(0, y(without) - y(c.with) - 2)}" style="fill:url(#trama)"/>`;
+        svg += `<line x1="0" x2="${W}" y1="${y(c.cap)}" y2="${y(c.cap)}" style="stroke:var(--capacity)" stroke-width="2"/>`;
+        svg += `<line x1="0" x2="${W}" y1="${Hh}" y2="${Hh}" style="stroke:var(--muted-foreground)" stroke-width="1"/></svg>`;
+        const strong = c.mine > 0.2 && (lvTo === 'high' || lvTo === 'over');
+        const tid = UI.tip(`<div class="tt">${esc(label)} · ${esc(c.per.long)}</div><div class="head">${levelIcon(lvTo, '')}<span class="big tabular">${pct(pTo)}</span><span class="muted">con este proyecto</span></div><ul><li><span class="key" style="background:var(--ctx);height:8px"></span><span class="val">${H(without)}</span><span class="lab">sin este proyecto (${pct(pFrom)})</span></li><li><span class="key posible"></span><span class="val">${h(Math.round(c.mine))}</span><span class="lab">Hotel Mar Azul</span></li><li><span class="key cap"></span><span class="val">${H(c.cap)}</span><span class="lab">capacidad</span></li></ul>`);
+        s += `<div class="c" tabindex="0" data-tip="${tid}" aria-label="${esc(label)}, ${esc(c.per.long)}: del ${pct(pFrom)} al ${pct(pTo)}, ${LEVELS[lvTo].label}">${svg}<div class="t ${strong ? 'strong' : ''}">${c.mine > 0.2 ? `<span class="from">${pFrom}</span>${icon('arrowRight', 's12')}${strong ? levelIcon(lvTo, 's12') : ''}<span>${pct(pTo)}</span>` : `<span class="from">${pct(pFrom)}</span>`}</div></div>`;
+    }
+    return s;
+}
+
+const mineOf = (items) => items.filter((it) => it.project.id === 'marazul').reduce((a, it) => a + it.h, 0);
+let html = `<div class="h"></div>${ps.map((p) => `<div class="h"><b>${p.label}</b>${p.sub}</div>`).join('')}`;
+html += '<div class="grp">Departamentos</div>';
+let worst = null;
+for (const d of PV.DEPTS) {
+    const cells = ps.map((per) => { const c = PV.deptCell(d.id, per); return { per, cap: c.cap, with: loadOf(c), mine: mineOf(c.items) }; });
+    if (!cells.some((c) => c.mine > 0.2)) continue;
+    for (const c of cells) if (c.mine > 0.2 && (!worst || c.with / c.cap > worst.r)) worst = { r: c.with / c.cap, who: d.name, c };
+    html += impactRow(d.name, `${H(cells.reduce((a, c) => a + c.mine, 0))} de este proyecto`, cells);
+}
+html += '<div class="grp">Personas con nombre</div>';
+let worstP = null;
+for (const p of PV.PEOPLE) {
+    const cells = ps.map((per) => { const c = PV.cell(p.id, per); return { per, cap: c.cap, with: loadOf(c), mine: mineOf(c.items) }; });
+    if (!cells.some((c) => c.mine > 0.2)) continue;
+    for (const c of cells) if (c.mine > 0.2 && (!worstP || c.with / c.cap > worstP.r)) worstP = { r: c.with / c.cap, who: p.name, c };
+    html += impactRow(p.name, `${H(cells.reduce((a, c) => a + c.mine, 0))} de este proyecto`, cells);
+}
+const imp = document.getElementById('imp');
+imp.style.setProperty('--n', ps.length);
+imp.style.setProperty('--cw', `${CW}px`);
+imp.style.setProperty('--lab-w', `${LABW}px`);
+imp.innerHTML = html;
+const lvW = level(worst.c.with, worst.c.cap), lvP = level(worstP.c.with, worstP.c.cap);
+document.getElementById('hero').innerHTML = `Si se coge, <b>${worst.who}</b> pasa del ${pct(loadPct(worst.c.with - worst.c.mine, worst.c.cap))} al <b>${pct(loadPct(worst.c.with, worst.c.cap))}</b> la ${worst.c.per.long} <span class="warn">${levelIcon(lvW)}${LEVELS[lvW].label}</span>, y <b>${worstP.who}</b> llega al <b>${pct(loadPct(worstP.c.with, worstP.c.cap))}</b> <span class="warn">${levelIcon(lvP)}${LEVELS[lvP].label}</span>.`;
+
+// Asignaciones
+const months = ['nov', 'dic'];
+const span0 = PV.toMs('2026-11-01'), span1 = PV.toMs('2027-01-01');
+const xPct = (iso) => ((PV.toMs(iso) - span0) / (span1 - span0)) * 100;
+let total = 0;
+const rows = FP.allocs.map(([who, mode, hh, from, to]) => {
+    const gap = who.startsWith('hueco:');
+    const name = gap ? `${PV.DEPTS.find((d) => `hueco:${d.id}` === who).name}` : PV.personById[who].name;
+    let tot = 0; for (const per of PV.periods('month', 4)) for (const it of PV.cell(who, per).items) if (it.project.id === 'marazul') tot += it.h;
+    total += tot;
+    const how = mode === 'sem' ? `${hh} h/sem` : mode === 'total' ? `${hh} h en total` : `${hh}\u00a0% de su jornada`;
+    return `<tr><td><span style="display:inline-flex;gap:8px;align-items:center">${gap ? `<span class="avatar" style="width:22px;height:22px;border:1px dashed var(--muted-foreground);border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted-foreground)">${icon('gap', 's12')}</span>` : ''}<span>${name}${gap ? '<div class="xs muted">Hueco sin persona</div>' : ''}</span></span></td><td class="tabular" style="white-space:nowrap">${how}</td><td class="tabular" style="white-space:nowrap">${PV.dayMonth(from)} – ${PV.dayMonth(to)}</td><td class="r tabular">${H(tot)}</td><td><div class="tlcell"><i class="posible ${gap ? 'gap' : ''}" style="left:${xPct(from)}%;width:${xPct(PV.addDays(to, 1)) - xPct(from)}%"></i></div></td><td class="r">${gap ? `<button class="btn outline sm" type="button">${icon('userPlus', 's14')}Asignar a…</button>` : `<button class="btn ghost sm icon" type="button" aria-label="Editar">${icon('dots')}</button>`}</td></tr>`;
+});
+const est = 320;
+const diff = Math.round(total - est);
+document.getElementById('allocs').innerHTML = `<thead><tr><th>Quién</th><th>Cómo</th><th>Fechas</th><th class="r">Total</th><th><div class="tlscale">${months.map((m) => `<span>${m}</span>`).join('')}</div></th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody>${rows.join('')}</tbody><tfoot><tr><td colspan="3">Asignado frente a la estimación (${H(est)})</td><td class="r tabular">${H(total)}</td><td colspan="2"><span class="warn">${levelIcon(diff > 0 ? 'high' : 'balanced')}${diff > 0 ? `${H(diff)} más de lo estimado` : 'Dentro de lo estimado'}</span></td></tr></tfoot>`;
+</script>
+</body>
+</html>

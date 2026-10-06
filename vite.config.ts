@@ -49,6 +49,8 @@ export default defineConfig({
             'resources/js/components/ui/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
+            // Maquetas de diseño autocontenidas (no son código de la app, D-290).
+            'docs/diseno-prevision/**',
         ],
         options: {
             denyWarnings: true,
@@ -71,6 +73,8 @@ export default defineConfig({
             'deploy/whisper/compose-service.yml',
             'playwright-report/**',
             'test-results/**',
+            // Maquetas de diseño autocontenidas, generadas por fuente/construir.mjs (D-290).
+            'docs/diseno-prevision/**',
             '.github/**',
             'composer.json',
             'resources/js/components/ui/*',

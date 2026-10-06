@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estimado frente a real · Clínica Arbe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .chart { position: relative; }
+    .chart .ytick { position: absolute; left: 0; width: 40px; text-align: right; font-size: 11px; color: var(--muted-foreground); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+    .chart .xl { position: absolute; font-size: 11px; color: var(--muted-foreground); text-align: center; }
+    .chart .end { position: absolute; font-size: 12px; white-space: nowrap; transform: translateY(-50%); line-height: 1.25; }
+    .chart .end b { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .chart .hit { position: absolute; top: 0; }
+    .chart .hit:hover, .chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); }
+    .chart .today-l { position: absolute; font-size: 11px; color: var(--primary-text); transform: translateX(-50%); }
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+    .brow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 132px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+    .brow:first-of-type { border-top: 0; }
+    .brow .vals { font-size: 12px; color: var(--muted-foreground); text-align: right; font-variant-numeric: tabular-nums; }
+    .brow .vals b { color: var(--foreground); font-weight: 500; }
+    .btrack { position: relative; height: 28px; }
+    .btrack .real { position: absolute; left: 0; top: 8px; height: 12px; background: var(--layer-imputado); }
+    .btrack .proj { position: absolute; top: 8px; height: 12px; border: 1px dashed var(--layer-imputado); border-left: 0; background: color-mix(in oklab, var(--layer-imputado) 14%, var(--card)); }
+    .btrack .est { position: absolute; top: 2px; width: 3px; height: 24px; background: var(--layer-previsto); }
+    .btrack .grid { position: absolute; inset: 0; background: linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 25% 100%; }
+    .dev { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; color: var(--foreground); font-weight: 500; }
+    @media (max-width: 640px) { .brow { grid-template-columns: 84px minmax(0, 1fr); } .brow .vals { grid-column: 2; text-align: left; } }
+    .tile .cmp { display: flex; gap: 18px; margin-top: 6px; font-size: 13px; }
+    .tile .cmp span { display: block; font-size: 12px; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="page-head">
+        <div>
+            <div class="xs muted" style="margin-bottom:4px">ARBE-APP · vinculado al previsto «Clínica Arbe · App de citas»</div>
+            <h1>Estimado frente a <span class="kw">real</span></h1>
+            <p>La estimación del previsto quedó congelada al vincularlo el 2 de junio. Lo real son las horas imputadas en el proyecto, con el mismo criterio que la tabla «Estimado frente a real» del proyecto.</p>
+        </div>
+        <div class="actions"><button class="btn outline sm" type="button">Exportar CSV</button><button class="btn outline sm" type="button">PDF</button></div>
+    </div>
+
+    <section class="grid-tiles" id="tiles" aria-label="Resumen"></section>
+
+    <section class="card" aria-labelledby="cum-title">
+        <div class="card-head"><div><div class="t" id="cum-title">Horas acumuladas</div><div class="d">La línea base del previsto frente a lo imputado. Desde hoy, la previsión con lo que queda asignado en el proyecto.</div></div><button class="btn ghost sm" type="button" id="tb1"></button></div>
+        <ul class="legend plain" style="margin-bottom:12px"><li><span class="sw line-prev"></span>Estimado (línea base)</li><li><span class="sw line-imp"></span>Real (imputado)</li><li><span class="sw line-imp-proj"></span>Previsión al cerrar</li></ul>
+        <div class="scroll-x"><div class="chart" id="cum"></div></div>
+    </section>
+
+    <div class="grid2">
+        <section class="card" aria-labelledby="dep-title">
+            <div class="card-head"><div><div class="t" id="dep-title">Por departamento</div><div class="d">Barra: real hasta hoy y, con borde discontinuo, lo que se prevé hasta cerrar. Marca: lo estimado.</div></div></div>
+            <div id="deps"></div>
+            <ul class="legend plain" style="margin-top:10px"><li><span class="sw imputado"></span>Real</li><li><span class="sw" style="border:1px dashed var(--layer-imputado);background:color-mix(in oklab, var(--layer-imputado) 14%, var(--card))"></span>Previsión</li><li><span style="display:inline-block;width:3px;height:12px;background:var(--layer-previsto)"></span>Estimado</li></ul>
+        </section>
+        <section class="card" aria-labelledby="mon-title">
+            <div class="card-head"><div><div class="t" id="mon-title">Por mes</div><div class="d">Estimado y real de cada mes, uno junto al otro.</div></div></div>
+            <ul class="legend plain" style="margin-bottom:12px"><li><span class="sw seguro"></span>Estimado</li><li><span class="sw imputado"></span>Real</li><li><span class="sw" style="border:1px dashed var(--layer-imputado);background:color-mix(in oklab, var(--layer-imputado) 14%, var(--card))"></span>Previsión</li></ul>
+            <div class="scroll-x"><div class="chart" id="mon"></div></div>
+        </section>
+    </div>
+
+    <section class="card" aria-labelledby="per-title">
+        <div class="card-head"><div><div class="t" id="per-title">Por persona</div><div class="d">Departamento de cada persona hoy.</div></div></div>
+        <div class="scroll-x"><table class="data" id="per"></table></div>
+    </section>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'proyectos', crumbs: ['Proyectos', 'Clínica Arbe · App de citas', 'Estimado frente a real'] });
+const { icon, H, pct, esc, levelIcon } = UI;
+document.getElementById('tb1').innerHTML = `${icon('table')}Ver como tabla`;
+
+// ── Datos del ejemplo ─────────────────────────────────────────────────────────
+const EST_MONTH = { '2026-06': 90, '2026-07': 140, '2026-08': 60, '2026-09': 180, '2026-10': 50 }; // línea base: 1 jun → 2 oct
+const REAL_MONTH = { '2026-06': 58, '2026-07': 128, '2026-08': 44, '2026-09': 176, '2026-10': 15 }; // imputado: 8 jun → hoy
+const PEOPLE = [['javier', 230, 202], ['clara', 100, 76], ['alba', 150, 110], ['jorge', 40, 33]]; // [persona, estimado, real]
+const EST_START = '2026-06-01', EST_END = '2026-10-02', REAL_START = '2026-06-08';
+const isWd = (d) => PV.weekday(d) < 5 && !PV.HOLIDAYS[d];
+const days = []; for (let d = '2026-06-01'; d <= '2026-11-29'; d = PV.addDays(d, 1)) days.push(d);
+const inMonth = (m, from, to) => days.filter((d) => d.startsWith(m) && d >= from && d <= to && isWd(d));
+const estDay = {}, realDay = {}, projDay = {};
+for (const [m, v] of Object.entries(EST_MONTH)) { const ds = inMonth(m, EST_START, EST_END); ds.forEach((d) => (estDay[d] = v / ds.length)); }
+for (const [m, v] of Object.entries(REAL_MONTH)) { const ds = inMonth(m, REAL_START, PV.TODAY); ds.forEach((d) => (realDay[d] = v / ds.length)); }
+const projBy = {};
+for (const d of days) {
+    if (d <= PV.TODAY) continue;
+    for (const [pid] of PEOPLE) for (const it of PV.load[pid]?.[d] ?? []) if (it.p === 'arbe') { projDay[d] = (projDay[d] ?? 0) + it.h; projBy[pid] = (projBy[pid] ?? 0) + it.h; }
+}
+const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+const EST = sum(estDay), REAL = sum(realDay), PROJ = REAL + sum(projDay);
+const projEnd = Object.keys(projDay).sort().at(-1);
+const devP = Math.round(((PROJ - EST) / EST) * 100);
+
+document.getElementById('tiles').innerHTML = `
+    <div class="tile"><div class="k">Estimado</div><div class="v">${H(EST)}</div><div class="s">Línea base del previsto</div></div>
+    <div class="tile"><div class="k">Real hasta hoy</div><div class="v">${H(REAL)}</div><div class="s">${pct(Math.round((REAL / EST) * 100))} de lo estimado</div></div>
+    <div class="tile"><div class="k">Previsión al cerrar</div><div class="v">${H(PROJ)}</div><div class="s">${UI.devHTML(devP)}<span>· ${H(PROJ - EST)} más de lo estimado</span></div></div>
+    <div class="tile"><div class="k">Fechas</div><div class="cmp"><div><span>Inicio</span>${PV.dayMonth(REAL_START)} <span>+5 días lab.</span></div><div><span>Fin</span>${PV.dayMonth(projEnd)} <span>estimado ${PV.dayMonth(EST_END)} · +6 sem.</span></div></div></div>`;
+
+// ── Curva acumulada (un eje: horas) ───────────────────────────────────────────
+(function cumulative() {
+    const mobile = matchMedia('(max-width: 640px)').matches;
+    const n = days.length;
+    const W = mobile ? 560 : Math.min(980, document.getElementById('cum').parentElement.clientWidth - 150), Hh = 220, left = 44;
+    const yMax = 700, step = 100;
+    const x = (i) => (i / (n - 1)) * W;
+    const y = (v) => 8 + (Hh - 8) * (1 - v / yMax);
+    let e = 0, r = 0, pr = 0;
+    const est = [], real = [], proj = [];
+    days.forEach((d, i) => {
+        e += estDay[d] ?? 0;
+        est.push([x(i), y(e)]);
+        if (d <= PV.TODAY) { r += realDay[d] ?? 0; real.push([x(i), y(r)]); pr = r; if (d === PV.TODAY) proj.push([x(i), y(r)]); }
+        else if (d <= projEnd) { pr += projDay[d] ?? 0; proj.push([x(i), y(pr)]); }
+    });
+    const line = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('');
+    let s = `<svg width="${W}" height="${Hh}" style="position:absolute;left:${left}px;top:0;overflow:visible" aria-hidden="true">`;
+    for (let v = 0; v <= yMax; v += step) s += `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--border)"/>`;
+    s += `<path d="${line(est)}" style="fill:none;stroke:var(--layer-previsto)" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="${line(real)}" style="fill:none;stroke:var(--layer-imputado)" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="${line(proj)}" style="fill:none;stroke:var(--layer-imputado)" stroke-width="2" stroke-dasharray="5 4"/>`;
+    const ti = days.indexOf(PV.TODAY);
+    s += `<line x1="${x(ti)}" x2="${x(ti)}" y1="0" y2="${Hh}" style="stroke:var(--brand)" stroke-width="2"/>`;
+    s += `<circle cx="${real.at(-1)[0]}" cy="${real.at(-1)[1]}" r="4" style="fill:var(--layer-imputado);stroke:var(--card)" stroke-width="2"/>`;
+    s += `<circle cx="${proj.at(-1)[0]}" cy="${proj.at(-1)[1]}" r="4" style="fill:var(--card);stroke:var(--layer-imputado)" stroke-width="2"/>`;
+    s += `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--muted-foreground)"/></svg>`;
+    let html = s;
+    for (let v = 0; v <= yMax; v += step) html += `<span class="ytick" style="top:${y(v)}px">${v} h</span>`;
+    ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10-01', '2026-11-01'].forEach((d) => {
+        const i = days.indexOf(d);
+        html += `<span class="xl" style="left:${left + x(i) - 20}px;width:40px;top:${Hh + 6}px">${PV.MONTHS[Number(d.slice(5, 7)) - 1]}</span>`;
+    });
+    html += `<span class="today-l" style="left:${left + x(ti)}px;top:${Hh + 22}px">Hoy</span>`;
+    // Etiquetas directas al final de cada serie (con líneas guía si chocan).
+    const ei = days.indexOf(EST_END);
+    html += `<span class="end" style="left:${left + x(ei) - 112}px;top:${y(EST) - 14}px">Estimado <b>${H(EST)}</b></span>`;
+    html += `<span class="end" style="left:${left + real.at(-1)[0] + 8}px;top:${real.at(-1)[1] + 22}px">Real hoy <b>${H(REAL)}</b></span>`;
+    html += `<span class="end" style="left:${left + proj.at(-1)[0] + 10}px;top:${proj.at(-1)[1]}px">Previsión<br><b>${H(PROJ)}</b></span>`;
+    // Capa de hover: una franja por semana con estimado, real y previsión acumulados.
+    for (let i = 0; i < n; i += 7) {
+        const d = days[i];
+        let ce = 0, cr = 0, cp = 0;
+        days.slice(0, i + 7).forEach((dd) => { ce += estDay[dd] ?? 0; if (dd <= PV.TODAY) cr += realDay[dd] ?? 0; else cp += projDay[dd] ?? 0; });
+        const t = UI.tip(`<div class="tt">Hasta el ${PV.dayMonth(PV.addDays(d, 6))}</div><ul><li><span class="key seguro"></span><span class="val">${H(ce)}</span><span class="lab">estimado</span></li>${d <= PV.TODAY ? `<li><span class="key imputado"></span><span class="val">${H(cr)}</span><span class="lab">real</span></li>` : `<li><span class="key imputado"></span><span class="val">${H(cr + cp)}</span><span class="lab">previsión</span></li>`}</ul>`);
+        html += `<span class="hit" tabindex="0" data-tip="${t}" style="left:${left + x(i)}px;width:${x(7)}px;height:${Hh}px"></span>`;
+    }
+    const el = document.getElementById('cum');
+    el.style.width = `${left + W + 100}px`;
+    el.style.height = `${Hh + 40}px`;
+    el.innerHTML = html;
+})();
+
+// ── Por departamento (barra de bala: real + previsión frente a la marca de lo estimado) ──
+(function depts() {
+    const dep = {};
+    for (const [pid, e, r] of PEOPLE) {
+        const d = PV.personById[pid].dept;
+        dep[d] ??= { e: 0, r: 0, p: 0 };
+        dep[d].e += e; dep[d].r += r; dep[d].p += r + (projBy[pid] ?? 0);
+    }
+    const max = Math.max(...Object.values(dep).map((v) => Math.max(v.e, v.p))) * 1.1;
+    document.getElementById('deps').innerHTML = Object.entries(dep).map(([d, v]) => {
+        const dv = Math.round(((v.p - v.e) / v.e) * 100);
+        const t = UI.tip(`<div class="tt">${PV.DEPTS.find((x) => x.id === d).name}</div><ul><li><span class="key seguro"></span><span class="val">${H(v.e)}</span><span class="lab">estimado</span></li><li><span class="key imputado"></span><span class="val">${H(v.r)}</span><span class="lab">real hasta hoy</span></li><li><span class="key imputado" style="opacity:.5"></span><span class="val">${H(v.p)}</span><span class="lab">previsión al cerrar</span></li></ul><div class="foot"><span>Desviación prevista: <b>${dv > 0 ? '+' : ''}${dv} %</b></span></div>`);
+        return `<div class="brow"><span>${PV.DEPTS.find((x) => x.id === d).name}</span><div class="btrack" tabindex="0" data-tip="${t}"><span class="grid"></span><span class="real" style="width:${(v.r / max) * 100}%"></span><span class="proj" style="left:${(v.r / max) * 100}%;width:${((v.p - v.r) / max) * 100}%"></span><span class="est" style="left:${(v.e / max) * 100}%"></span></div><div class="vals"><b>${H(v.p)}</b> de ${H(v.e)}<br>${UI.devHTML(dv)}</div></div>`;
+    }).join('');
+})();
+
+// ── Por mes (columnas emparejadas) ────────────────────────────────────────────
+(function months() {
+    const ms = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11'];
+    const projM = (m) => Object.entries(projDay).filter(([d]) => d.startsWith(m)).reduce((a, [, v]) => a + v, 0);
+    const slot = 72, W = ms.length * slot, Hh = 180, left = 40, yMax = 200, step = 50;
+    const y = (v) => 6 + (Hh - 6) * (1 - v / yMax);
+    let s = `<svg width="${W}" height="${Hh}" style="position:absolute;left:${left}px;top:0" aria-hidden="true">`;
+    for (let v = 0; v <= yMax; v += step) s += `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--border)"/>`;
+    let hits = '';
+    ms.forEach((m, i) => {
+        const e = EST_MONTH[m] ?? 0, r = REAL_MONTH[m] ?? 0, p = projM(m);
+        const bw = 18, cx = i * slot + slot / 2;
+        if (e) s += `<rect x="${cx - bw - 1}" y="${y(e)}" width="${bw}" height="${y(0) - y(e)}" style="fill:var(--layer-previsto)"/>`;
+        if (r) s += `<rect x="${cx + 1}" y="${y(r)}" width="${bw}" height="${y(0) - y(r)}" style="fill:var(--layer-imputado)"/>`;
+        if (p) s += `<rect x="${cx + 1.5}" y="${y(r + p)}" width="${bw - 1}" height="${y(r) - y(r + p) - 2}" style="fill:color-mix(in oklab, var(--layer-imputado) 14%, var(--card));stroke:var(--layer-imputado)" stroke-dasharray="3 2"/>`;
+        const t = UI.tip(`<div class="tt">${PV.MONTHS_LONG[Number(m.slice(5)) - 1]} de 2026</div><ul><li><span class="key seguro"></span><span class="val">${H(e)}</span><span class="lab">estimado</span></li><li><span class="key imputado"></span><span class="val">${H(r)}</span><span class="lab">real</span></li>${p ? `<li><span class="key imputado" style="opacity:.5"></span><span class="val">${H(p)}</span><span class="lab">previsión</span></li>` : ''}</ul>`);
+        hits += `<span class="hit" tabindex="0" data-tip="${t}" style="left:${left + i * slot}px;width:${slot}px;height:${Hh}px"></span><span class="xl" style="left:${left + i * slot}px;width:${slot}px;top:${Hh + 6}px">${PV.MONTHS[Number(m.slice(5)) - 1]}</span>`;
+    });
+    s += `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--muted-foreground)"/></svg>`;
+    let ticks = ''; for (let v = 0; v <= yMax; v += step) ticks += `<span class="ytick" style="top:${y(v)}px;width:34px">${v} h</span>`;
+    const el = document.getElementById('mon');
+    el.style.width = `${left + W}px`;
+    el.style.height = `${Hh + 26}px`;
+    el.innerHTML = s + ticks + hits;
+})();
+
+// ── Por persona ───────────────────────────────────────────────────────────────
+document.getElementById('per').innerHTML = `<thead><tr><th>Persona</th><th>Departamento</th><th class="r">Estimado</th><th class="r">Real hasta hoy</th><th class="r">Previsión</th><th class="r">Desviación</th></tr></thead><tbody>${PEOPLE.map(([pid, e, r]) => {
+    const p = r + (projBy[pid] ?? 0); const dv = Math.round(((p - e) / e) * 100);
+    return `<tr><td>${PV.personById[pid].name}</td><td>${PV.DEPTS.find((d) => d.id === PV.personById[pid].dept).name}</td><td class="r tabular">${H(e)}</td><td class="r tabular">${H(r)}</td><td class="r tabular">${H(p)}</td><td class="r">${UI.devHTML(dv)}</td></tr>`;
+}).join('')}</tbody><tfoot><tr><td colspan="2">Total</td><td class="r tabular">${H(EST)}</td><td class="r tabular">${H(REAL)}</td><td class="r tabular">${H(PROJ)}</td><td class="r tabular">+${devP} %</td></tr></tfoot>`;
+</script>
+</body>
+</html>
