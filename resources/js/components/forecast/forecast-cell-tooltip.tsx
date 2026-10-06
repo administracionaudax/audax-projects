@@ -1,4 +1,8 @@
-import { LOAD_LEVELS, loadLevel, loadPercent } from '@/components/charts/thresholds';
+import {
+    LOAD_LEVELS,
+    loadLevel,
+    loadPercent,
+} from '@/components/charts/thresholds';
 import { LAYER_FILL } from '@/components/forecast/layer-swatch';
 import { formatHours, formatPercentValue, plural } from '@/lib/forecast';
 import type { CellItem, LayerToggles } from '@/lib/forecast';
@@ -51,9 +55,17 @@ export function ForecastCellTooltip({
         );
 
         if (load > capacity) {
-            lines.push(t('forecast.tooltip.over_by', { hours: formatHours(load - capacity) }));
+            lines.push(
+                t('forecast.tooltip.over_by', {
+                    hours: formatHours(load - capacity),
+                }),
+            );
         } else if (load < capacity) {
-            lines.push(t('forecast.tooltip.free', { hours: formatHours(capacity - load) }));
+            lines.push(
+                t('forecast.tooltip.free', {
+                    hours: formatHours(capacity - load),
+                }),
+            );
         }
     }
 
@@ -70,20 +82,31 @@ export function ForecastCellTooltip({
             <p className="mb-1.5 text-xs text-muted-foreground">{title}</p>
             {gap ? (
                 <p className="mb-2 flex items-baseline gap-2">
-                    <span className="tabular text-xl font-semibold">{formatHours(load)}</span>
-                    <span className="text-muted-foreground">{t('forecast.tooltip.unassigned')}</span>
+                    <span className="tabular text-xl font-semibold">
+                        {formatHours(load)}
+                    </span>
+                    <span className="text-muted-foreground">
+                        {t('forecast.tooltip.unassigned')}
+                    </span>
                 </p>
             ) : meta && Icon ? (
                 <p className="mb-2 flex items-center gap-2">
-                    <Icon aria-hidden="true" className={cn('size-4 shrink-0', meta.tone)} />
+                    <Icon
+                        aria-hidden="true"
+                        className={cn('size-4 shrink-0', meta.tone)}
+                    />
                     {level === 'none' ? (
                         <span>{meta.label}</span>
                     ) : (
                         <>
                             <span className="tabular text-xl font-semibold">
-                                {formatPercentValue(loadPercent(load, capacity ?? 0))}
+                                {formatPercentValue(
+                                    loadPercent(load, capacity ?? 0),
+                                )}
                             </span>
-                            <span className="text-muted-foreground">{meta.label}</span>
+                            <span className="text-muted-foreground">
+                                {meta.label}
+                            </span>
                         </>
                     )}
                 </p>
@@ -93,25 +116,37 @@ export function ForecastCellTooltip({
                     {shown.map((item) => (
                         <li
                             key={item.key}
-                            className={cn('flex items-start gap-2', !layers[item.layer] && 'opacity-45')}
+                            className={cn(
+                                'flex items-start gap-2',
+                                !layers[item.layer] && 'opacity-45',
+                            )}
                         >
                             <span
                                 aria-hidden="true"
-                                className={cn('mt-1.5 h-2 w-3 shrink-0', LAYER_FILL[item.layer])}
+                                className={cn(
+                                    'mt-1.5 h-2 w-3 shrink-0',
+                                    LAYER_FILL[item.layer],
+                                )}
                             />
-                            <span className="tabular shrink-0 font-medium">{formatHours(item.minutes)}</span>
+                            <span className="tabular shrink-0 font-medium">
+                                {formatHours(item.minutes)}
+                            </span>
                             <span className="min-w-0 text-muted-foreground">
                                 {item.title}
                                 {item.layer === 'real'
                                     ? ''
                                     : ` · ${t(`forecast.tooltip.layer.${item.layer}`)}`}
-                                {layers[item.layer] ? '' : ` (${t('forecast.tooltip.layer_off')})`}
+                                {layers[item.layer]
+                                    ? ''
+                                    : ` (${t('forecast.tooltip.layer_off')})`}
                             </span>
                         </li>
                     ))}
                 </ul>
             ) : (
-                <p className="text-muted-foreground">{t('forecast.tooltip.nothing')}</p>
+                <p className="text-muted-foreground">
+                    {t('forecast.tooltip.nothing')}
+                </p>
             )}
             {items.length > shown.length ? (
                 <p className="mt-1 text-xs text-muted-foreground">

@@ -35,11 +35,17 @@ export async function fetchAvailability(
     to: string,
     signal?: AbortSignal,
 ): Promise<AvailabilityPerson[]> {
-    const response = await fetch(availability.url({ query: { desde: from, hasta: to } }), {
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'same-origin',
-        signal,
-    });
+    const response = await fetch(
+        availability.url({ query: { desde: from, hasta: to } }),
+        {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            signal,
+        },
+    );
 
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -79,7 +85,9 @@ export function AssignGapDialog({
     showLoad?: boolean;
 }) {
     const id = useId();
-    const [candidates, setCandidates] = useState<AvailabilityPerson[] | null>(null);
+    const [candidates, setCandidates] = useState<AvailabilityPerson[] | null>(
+        null,
+    );
     const [failed, setFailed] = useState(false);
     const [userId, setUserId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
@@ -108,7 +116,9 @@ export function AssignGapDialog({
               id: person.id,
               name: person.name,
               department_id: person.department_id,
-              department: person.collaborator ? t('forecast.matrix.collaborators') : null,
+              department: person.collaborator
+                  ? t('forecast.matrix.collaborators')
+                  : null,
               planned: person.load,
               capacity: person.has_schedule ? person.capacity : 0,
               is_me: false,
@@ -123,11 +133,18 @@ export function AssignGapDialog({
     );
     const others = showLoad
         ? []
-        : (people ?? []).map((person) => ({ id: person.id, name: person.name, department: null }));
+        : (people ?? []).map((person) => ({
+              id: person.id,
+              name: person.name,
+              department: null,
+          }));
     const chosen = candidates?.find((person) => person.id === userId) ?? null;
     const after =
         chosen && chosen.has_schedule
-            ? loadPercent(chosen.load + allocation.planned_minutes, chosen.capacity)
+            ? loadPercent(
+                  chosen.load + allocation.planned_minutes,
+                  chosen.capacity,
+              )
             : null;
 
     const submit = () => {
@@ -149,13 +166,23 @@ export function AssignGapDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md" data-test="assign-gap-dialog">
+            <DialogContent
+                className="sm:max-w-md"
+                data-test="assign-gap-dialog"
+            >
                 <DialogHeader>
-                    <DialogTitle>{t('forecast.assign.title', { department: departmentName })}</DialogTitle>
+                    <DialogTitle>
+                        {t('forecast.assign.title', {
+                            department: departmentName,
+                        })}
+                    </DialogTitle>
                     <DialogDescription>
                         {t('forecast.assign.description', {
                             amount: allocationAmountLabel(allocation),
-                            dates: dateRange(allocation.start_date, allocation.end_date),
+                            dates: dateRange(
+                                allocation.start_date,
+                                allocation.end_date,
+                            ),
                             hours: formatHours(allocation.planned_minutes),
                         })}
                     </DialogDescription>
@@ -165,17 +192,37 @@ export function AssignGapDialog({
                         {t('forecast.assign.person')}
                     </label>
                     {showLoad && candidates === null && !failed ? (
-                        <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                        <p
+                            className="flex items-center gap-2 text-sm text-muted-foreground"
+                            role="status"
+                        >
                             <Spinner aria-hidden="true" />
                             {t('forecast.assign.loading')}
                         </p>
                     ) : (
-                        <PersonLoadPicker id={id} value={userId} onChange={setUserId} team={team} others={others} />
+                        <PersonLoadPicker
+                            id={id}
+                            value={userId}
+                            onChange={setUserId}
+                            team={team}
+                            others={others}
+                        />
                     )}
-                    {failed ? <p className="text-sm text-danger">{t('forecast.assign.error')}</p> : null}
+                    {failed ? (
+                        <p className="text-sm text-danger">
+                            {t('forecast.assign.error')}
+                        </p>
+                    ) : null}
                     {after !== null && after > 100 ? (
-                        <p className="flex items-start gap-1.5 text-sm" role="status" data-test="assign-overload">
-                            <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
+                        <p
+                            className="flex items-start gap-1.5 text-sm"
+                            role="status"
+                            data-test="assign-overload"
+                        >
+                            <TriangleAlert
+                                aria-hidden="true"
+                                className="mt-0.5 size-4 shrink-0 text-warning"
+                            />
                             {t('forecast.assign.overload', {
                                 name: chosen?.name ?? '',
                                 percent: formatPercentValue(after),
@@ -184,10 +231,18 @@ export function AssignGapDialog({
                     ) : null}
                 </div>
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
                         {t('forecast.actions.cancel')}
                     </Button>
-                    <Button type="button" onClick={submit} disabled={userId === null || saving}>
+                    <Button
+                        type="button"
+                        onClick={submit}
+                        disabled={userId === null || saving}
+                    >
                         <UserPlus aria-hidden="true" />
                         {t('forecast.assign.submit')}
                     </Button>

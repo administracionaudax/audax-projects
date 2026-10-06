@@ -1,3 +1,4 @@
+import type { MyForecast } from '@/types/forecast';
 /**
  * Contrato de la vista «Carga» (SPEC §9, D-051, D-052) con App\Http\Controllers\Workload y
  * App\Domain\Workload\{WorkloadBoard,CapacityExplainer,MyWorkload}. Todas las horas en minutos
@@ -214,6 +215,8 @@ export type WorkloadPageProps = {
     options: WorkloadOptions;
     trays: WorkloadTrays;
     cell: WorkloadCellPanelData | null;
+    /** Con la previsión, a quien solo ve su fila (D-305): «Mi carga» por asignaciones (diferida). */
+    my_forecast?: MyForecast | null;
 };
 
 /** «Mi carga» en Inicio (prop diferida `workload`, App\Domain\Workload\MyWorkload). */

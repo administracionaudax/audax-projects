@@ -337,7 +337,8 @@ export type ForecastHistoryEntry = {
     at: string | null;
     causer: string | null;
     subject: 'forecast' | 'allocation';
-    event: 'created' | 'updated' | 'deleted' | string;
+    /** «created», «updated» o «deleted» (o el evento propio de la auditoría). */
+    event: string;
     /** En una asignación: la persona o «hueco de Diseño». */
     who: string | null;
     /** Nombres de los campos cambiados (sin valores). */

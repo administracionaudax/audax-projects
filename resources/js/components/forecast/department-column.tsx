@@ -32,22 +32,24 @@ export function DepartmentColumn({
     const top = 4;
     const bottom = height - 1;
     const y = (value: number) =>
-        yMax <= 0 ? bottom : top + (bottom - top) * (1 - Math.min(value, yMax) / yMax);
+        yMax <= 0
+            ? bottom
+            : top + (bottom - top) * (1 - Math.min(value, yMax) / yMax);
     const x = (width - barWidth) / 2;
     let base = 0;
-    const segments = LAYERS.filter((layer) => layers[layer] && cell[layer] > 0).map(
-        (layer, index) => {
-            const from = y(base);
-            const to = y(base + cell[layer]);
-            base += cell[layer];
+    const segments = LAYERS.filter(
+        (layer) => layers[layer] && cell[layer] > 0,
+    ).map((layer, index) => {
+        const from = y(base);
+        const to = y(base + cell[layer]);
+        base += cell[layer];
 
-            return {
-                layer,
-                y: to,
-                height: Math.max(0, from - to - (index > 0 ? STACK_GAP : 0)),
-            };
-        },
-    );
+        return {
+            layer,
+            y: to,
+            height: Math.max(0, from - to - (index > 0 ? STACK_GAP : 0)),
+        };
+    });
     const capacityY = y(cell.capacity);
 
     return (
@@ -72,7 +74,14 @@ export function DepartmentColumn({
                     />
                 ) : null,
             )}
-            <line x1={0} x2={width} y1={bottom} y2={bottom} stroke="var(--muted-foreground)" strokeWidth={1} />
+            <line
+                x1={0}
+                x2={width}
+                y1={bottom}
+                y2={bottom}
+                stroke="var(--muted-foreground)"
+                strokeWidth={1}
+            />
             {cell.capacity > 0 || (previousCapacity ?? 0) > 0 ? (
                 <path
                     data-test="capacity-line"

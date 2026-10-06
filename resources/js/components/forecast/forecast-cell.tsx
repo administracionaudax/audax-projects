@@ -12,11 +12,7 @@ import {
 import type { LayerToggles } from '@/lib/forecast';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import type {
-    ForecastAbsence,
-    LoadCell,
-    LoadLayers,
-} from '@/types/forecast';
+import type { ForecastAbsence, LoadCell, LoadLayers } from '@/types/forecast';
 
 /** Por qué una celda no tiene capacidad (D-292): la semana entera ausente, festivo o sin jornada. */
 export type NoCapacityReason = 'absence' | 'holiday' | 'no_schedule' | 'none';
@@ -128,7 +124,10 @@ export function ForecastCell({
                 className="flex h-10 flex-col justify-between bg-neutral-soft px-1.5 py-1"
             >
                 <span className="tabular flex items-center gap-1 text-xs font-medium">
-                    <UserRoundX aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+                    <UserRoundX
+                        aria-hidden="true"
+                        className="size-3 shrink-0 text-muted-foreground"
+                    />
                     {load > 0 ? formatHours(load) : '—'}
                 </span>
                 <span className="truncate text-[0.6875rem] text-muted-foreground">
@@ -147,7 +146,10 @@ export function ForecastCell({
             >
                 <span className="flex items-center gap-1">
                     {load > 0 ? (
-                        <OctagonAlert aria-hidden="true" className="size-3 text-danger" />
+                        <OctagonAlert
+                            aria-hidden="true"
+                            className="size-3 text-danger"
+                        />
                     ) : (
                         <CalendarOff aria-hidden="true" className="size-3" />
                     )}
@@ -181,7 +183,10 @@ export function ForecastCell({
                 />
             ) : null}
             <span className="tabular flex items-center gap-1 text-xs leading-3.5 font-medium whitespace-nowrap">
-                <Icon aria-hidden="true" className={cn('size-3 shrink-0', meta.tone)} />
+                <Icon
+                    aria-hidden="true"
+                    className={cn('size-3 shrink-0', meta.tone)}
+                />
                 {formatPercentValue(loadPercent(load, cell.capacity))}
             </span>
             <LayerBar minutes={cell} capacity={cell.capacity} layers={layers} />
@@ -211,13 +216,18 @@ export function GapCell({
             data-test="gap-cell"
             className="flex h-10 flex-col justify-between border border-dashed border-muted-foreground px-1.5 py-1"
         >
-            <span className="tabular text-xs font-medium">{formatHours(load)}</span>
+            <span className="tabular text-xs font-medium">
+                {formatHours(load)}
+            </span>
             <span aria-hidden="true" className="flex h-1.5 gap-0.5">
-                {LAYERS.filter((layer) => layers[layer] && minutes[layer] > 0).map(
-                    (layer) => (
-                        <span key={layer} className={cn('block h-full flex-1', LAYER_FILL[layer])} />
-                    ),
-                )}
+                {LAYERS.filter(
+                    (layer) => layers[layer] && minutes[layer] > 0,
+                ).map((layer) => (
+                    <span
+                        key={layer}
+                        className={cn('block h-full flex-1', LAYER_FILL[layer])}
+                    />
+                ))}
             </span>
         </span>
     );

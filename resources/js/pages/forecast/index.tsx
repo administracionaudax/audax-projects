@@ -1,13 +1,28 @@
 import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
-import { ChartColumn, Plus, Search, Table2, TrendingUp, Users, X } from 'lucide-react';
+import {
+    ChartColumn,
+    Plus,
+    Search,
+    Table2,
+    TrendingUp,
+    Users,
+    X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ChartTable } from '@/components/charts/chart-frame';
 import type { ChartTableData } from '@/components/charts/chart-frame';
-import { LOAD_LEVELS, loadLevel, loadPercent } from '@/components/charts/thresholds';
+import {
+    LOAD_LEVELS,
+    loadLevel,
+    loadPercent,
+} from '@/components/charts/thresholds';
 import { EmptyState, HeroEmptyState } from '@/components/empty-state';
 import { ForecastCellPanel } from '@/components/forecast/forecast-cell-panel';
 import { ForecastLegend } from '@/components/forecast/forecast-legend';
-import { GapsList, OpenForecastsList } from '@/components/forecast/forecast-lists';
+import {
+    GapsList,
+    OpenForecastsList,
+} from '@/components/forecast/forecast-lists';
 import {
     ForecastMatrix,
     rowName,
@@ -17,7 +32,11 @@ import type { MatrixTarget } from '@/components/forecast/forecast-matrix';
 import { ForecastStat } from '@/components/forecast/forecast-stat';
 import { HatchDefs } from '@/components/forecast/layer-swatch';
 import { LayerToggles } from '@/components/forecast/layer-toggles';
-import { matrixGroups, matrixRows, rowCell } from '@/components/forecast/matrix-model';
+import {
+    matrixGroups,
+    matrixRows,
+    rowCell,
+} from '@/components/forecast/matrix-model';
 import { KeywordText } from '@/components/keyword-text';
 import { NativeSelect } from '@/components/admin/native-select';
 import { Button } from '@/components/ui/button';
@@ -49,9 +68,13 @@ const COLLAPSED_KEY = 'forecast.collapsed';
 
 function readCollapsed(): string[] {
     try {
-        const value: unknown = JSON.parse(window.localStorage.getItem(COLLAPSED_KEY) ?? '[]');
+        const value: unknown = JSON.parse(
+            window.localStorage.getItem(COLLAPSED_KEY) ?? '[]',
+        );
 
-        return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+        return Array.isArray(value)
+            ? value.filter((item): item is string => typeof item === 'string')
+            : [];
     } catch {
         return [];
     }
@@ -84,7 +107,9 @@ export default function ForecastIndex({
 }: ForecastIndexPageProps) {
     const page = usePage();
     const params = new URL(page.url, 'http://localhost').searchParams;
-    const [layers, setLayers] = useState<Toggles>(() => parseLayers(params.get('capas')));
+    const [layers, setLayers] = useState<Toggles>(() =>
+        parseLayers(params.get('capas')),
+    );
     const [search, setSearch] = useState(() => params.get('persona') ?? '');
     const [collapsed, setCollapsed] = useState<string[]>(() => readCollapsed());
     const [target, setTarget] = useState<MatrixTarget | null>(null);
@@ -93,7 +118,10 @@ export default function ForecastIndex({
     const granularity = board.period.granularity;
 
     const groups = useMemo(() => matrixGroups(board, search), [board, search]);
-    const figures = useMemo(() => boardFigures(board, layers, t('forecast.board.no_department')), [board, layers]);
+    const figures = useMemo(
+        () => boardFigures(board, layers, t('forecast.board.no_department')),
+        [board, layers],
+    );
     const unit = granularity === 'week' ? 'week' : 'month';
 
     const query = (overrides: Query = {}): Query => {
@@ -137,7 +165,11 @@ export default function ForecastIndex({
 
     // Lo que solo cambia en la interfaz se apunta en la URL sin pedir nada al servidor.
     const remember = (overrides: Query) =>
-        router.replace({ url: index.url({ query: query(overrides) }), preserveState: true, preserveScroll: true });
+        router.replace({
+            url: index.url({ query: query(overrides) }),
+            preserveState: true,
+            preserveScroll: true,
+        });
 
     const changeLayers = (next: Toggles) => {
         setLayers(next);
@@ -150,7 +182,9 @@ export default function ForecastIndex({
     };
 
     const toggleGroup = (key: string) => {
-        const next = collapsed.includes(key) ? collapsed.filter((item) => item !== key) : [...collapsed, key];
+        const next = collapsed.includes(key)
+            ? collapsed.filter((item) => item !== key)
+            : [...collapsed, key];
         setCollapsed(next);
         writeCollapsed(next);
     };
@@ -172,20 +206,28 @@ export default function ForecastIndex({
                         <h1 className="text-2xl font-normal tracking-tight">
                             <KeywordText text={t('forecast.index.title')} />
                         </h1>
-                        <p className="text-sm text-muted-foreground">{t('forecast.index.description')}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {t('forecast.index.description')}
+                        </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button asChild variant="outline">
                             <Link href={projectsIndex.url()}>
                                 {t('forecast.nav.projects')}
                                 {openForecasts !== undefined ? (
-                                    <span className="tabular border px-1.5 text-xs">{openForecasts.length}</span>
+                                    <span className="tabular border px-1.5 text-xs">
+                                        {openForecasts.length}
+                                    </span>
                                 ) : null}
                             </Link>
                         </Button>
                         {can.manage ? (
                             <Button asChild>
-                                <Link href={projectsIndex.url({ query: { nuevo: 1 } })}>
+                                <Link
+                                    href={projectsIndex.url({
+                                        query: { nuevo: 1 },
+                                    })}
+                                >
                                     <Plus aria-hidden="true" />
                                     {t('forecast.index.new')}
                                 </Link>
@@ -194,22 +236,34 @@ export default function ForecastIndex({
                     </div>
                 </header>
 
-                <div role="group" aria-label={t('forecast.filters.label')} className="flex flex-wrap items-center gap-2" data-test="forecast-filters">
+                <div
+                    role="group"
+                    aria-label={t('forecast.filters.label')}
+                    className="flex flex-wrap items-center gap-2"
+                    data-test="forecast-filters"
+                >
                     <label className="flex h-9 items-center gap-2 border border-input bg-card pl-3 text-sm">
-                        <span className="text-muted-foreground">{t('forecast.filters.horizon')}</span>
+                        <span className="text-muted-foreground">
+                            {t('forecast.filters.horizon')}
+                        </span>
                         <NativeSelect
                             aria-label={t('forecast.filters.horizon')}
                             value={filters.months}
                             onChange={(event) => {
                                 const months = Number(event.target.value);
                                 // Al pasar a 6 o 12 meses, por meses; se puede volver a semanas (D-294).
-                                visit({ meses: months, por: months > 3 ? 'meses' : 'semanas' });
+                                visit({
+                                    meses: months,
+                                    por: months > 3 ? 'meses' : 'semanas',
+                                });
                             }}
                             className="w-32 [&_select]:border-0"
                         >
                             {HORIZONS.map((months) => (
                                 <option key={months} value={months}>
-                                    {t('forecast.filters.months', { count: months })}
+                                    {t('forecast.filters.months', {
+                                        count: months,
+                                    })}
                                 </option>
                             ))}
                         </NativeSelect>
@@ -218,7 +272,16 @@ export default function ForecastIndex({
                         type="single"
                         variant="outline"
                         value={granularity}
-                        onValueChange={(value) => (value ? visit({ por: value === 'week' ? 'semanas' : 'meses' }) : null)}
+                        onValueChange={(value) =>
+                            value
+                                ? visit({
+                                      por:
+                                          value === 'week'
+                                              ? 'semanas'
+                                              : 'meses',
+                                  })
+                                : null
+                        }
                         aria-label={t('forecast.filters.group_by')}
                     >
                         <ToggleGroupItem value="week" className="px-3">
@@ -229,28 +292,44 @@ export default function ForecastIndex({
                         </ToggleGroupItem>
                     </ToggleGroup>
                     <label className="flex h-9 items-center gap-2 border border-input bg-card pl-3 text-sm">
-                        <span className="text-muted-foreground">{t('forecast.filters.department')}</span>
+                        <span className="text-muted-foreground">
+                            {t('forecast.filters.department')}
+                        </span>
                         <NativeSelect
                             aria-label={t('forecast.filters.department')}
                             value={filters.department_id ?? ''}
-                            onChange={(event) => visit({ departamento: event.target.value })}
+                            onChange={(event) =>
+                                visit({ departamento: event.target.value })
+                            }
                             className="w-40 [&_select]:border-0"
                         >
-                            <option value="">{t('forecast.filters.all')}</option>
+                            <option value="">
+                                {t('forecast.filters.all')}
+                            </option>
                             {departments.map((department) => (
-                                <option key={department.id} value={department.id}>
+                                <option
+                                    key={department.id}
+                                    value={department.id}
+                                >
                                     {department.name}
                                 </option>
                             ))}
                         </NativeSelect>
                     </label>
                     <label className="relative flex h-9 items-center">
-                        <span className="sr-only">{t('forecast.filters.search')}</span>
-                        <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
+                        <span className="sr-only">
+                            {t('forecast.filters.search')}
+                        </span>
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground"
+                        />
                         <Input
                             type="search"
                             value={search}
-                            onChange={(event) => changeSearch(event.target.value)}
+                            onChange={(event) =>
+                                changeSearch(event.target.value)
+                            }
                             placeholder={t('forecast.filters.search')}
                             className="w-48 pl-8"
                         />
@@ -258,17 +337,36 @@ export default function ForecastIndex({
                     <LayerToggles value={layers} onChange={changeLayers} />
                 </div>
 
-                <section aria-label={t('forecast.figures.label')} className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-test="forecast-figures">
+                <section
+                    aria-label={t('forecast.figures.label')}
+                    className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+                    data-test="forecast-figures"
+                >
                     <ForecastStat
                         label={t('forecast.figures.occupancy')}
-                        value={occupancy === null ? '—' : formatPercentValue(occupancy)}
+                        value={
+                            occupancy === null
+                                ? '—'
+                                : formatPercentValue(occupancy)
+                        }
                         detail={
                             <>
-                                <OccupancyIcon aria-hidden="true" className={cn('mt-px size-3 shrink-0', LOAD_LEVELS[occupancyLevel].tone)} />
+                                <OccupancyIcon
+                                    aria-hidden="true"
+                                    className={cn(
+                                        'mt-px size-3 shrink-0',
+                                        LOAD_LEVELS[occupancyLevel].tone,
+                                    )}
+                                />
                                 <span>
                                     {LOAD_LEVELS[occupancyLevel].label}.{' '}
                                     {t('forecast.figures.real_only', {
-                                        percent: formatPercentValue(loadPercent(figures.realOnly, figures.capacity)),
+                                        percent: formatPercentValue(
+                                            loadPercent(
+                                                figures.realOnly,
+                                                figures.capacity,
+                                            ),
+                                        ),
                                     })}
                                 </span>
                             </>
@@ -276,10 +374,16 @@ export default function ForecastIndex({
                     />
                     <ForecastStat
                         label={t('forecast.figures.free')}
-                        value={formatHours(Math.max(figures.capacity - figures.load, 0))}
+                        value={formatHours(
+                            Math.max(figures.capacity - figures.load, 0),
+                        )}
                         detail={t('forecast.figures.free_of', {
                             capacity: formatHours(figures.capacity),
-                            months: plural('forecast.filters.months_one', 'forecast.filters.months_other', filters.months),
+                            months: plural(
+                                'forecast.filters.months_one',
+                                'forecast.filters.months_other',
+                                filters.months,
+                            ),
                         })}
                     />
                     <ForecastStat
@@ -288,11 +392,21 @@ export default function ForecastIndex({
                         detail={
                             figures.overloadedPeople.length > 0 ? (
                                 <>
-                                    <OverIcon aria-hidden="true" className="mt-px size-3 shrink-0 text-danger" />
+                                    <OverIcon
+                                        aria-hidden="true"
+                                        className="mt-px size-3 shrink-0 text-danger"
+                                    />
                                     <span>
-                                        {plural('forecast.figures.people_one', 'forecast.figures.people_other', figures.overloadedPeople.length, {
-                                            names: figures.overloadedPeople.slice(0, 4).join(', '),
-                                        })}
+                                        {plural(
+                                            'forecast.figures.people_one',
+                                            'forecast.figures.people_other',
+                                            figures.overloadedPeople.length,
+                                            {
+                                                names: figures.overloadedPeople
+                                                    .slice(0, 4)
+                                                    .join(', '),
+                                            },
+                                        )}
                                     </span>
                                 </>
                             ) : (
@@ -305,27 +419,52 @@ export default function ForecastIndex({
                         value={formatHours(figures.gapMinutes)}
                         detail={
                             figures.gapsByDepartment.length > 0
-                                ? figures.gapsByDepartment.map((row) => `${row.name} ${formatHours(row.minutes)}`).join(' · ')
+                                ? figures.gapsByDepartment
+                                      .map(
+                                          (row) =>
+                                              `${row.name} ${formatHours(row.minutes)}`,
+                                      )
+                                      .join(' · ')
                                 : t('forecast.figures.no_gaps')
                         }
                     />
                 </section>
 
-                <section aria-labelledby="forecast-matrix-title" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
+                <section
+                    aria-labelledby="forecast-matrix-title"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3"
+                >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h2 id="forecast-matrix-title" className="flex items-center gap-2 text-lg">
+                        <h2
+                            id="forecast-matrix-title"
+                            className="flex items-center gap-2 text-lg"
+                        >
                             {t('forecast.matrix.title')}
                             {navigating ? (
-                                <span className="inline-flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                                <span
+                                    className="inline-flex items-center gap-2 text-sm text-muted-foreground"
+                                    role="status"
+                                >
                                     <Spinner aria-hidden="true" />
                                     {t('forecast.loading')}
                                 </span>
                             ) : null}
                         </h2>
                         {empty ? null : (
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setAsTable((value) => !value)}>
-                                {asTable ? <ChartColumn aria-hidden="true" /> : <Table2 aria-hidden="true" />}
-                                {asTable ? t('charts.view_chart') : t('charts.view_table')}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAsTable((value) => !value)}
+                            >
+                                {asTable ? (
+                                    <ChartColumn aria-hidden="true" />
+                                ) : (
+                                    <Table2 aria-hidden="true" />
+                                )}
+                                {asTable
+                                    ? t('charts.view_chart')
+                                    : t('charts.view_table')}
                             </Button>
                         )}
                     </div>
@@ -339,7 +478,11 @@ export default function ForecastIndex({
                         >
                             {can.manage ? (
                                 <Button asChild>
-                                    <Link href={projectsIndex.url({ query: { nuevo: 1 } })}>
+                                    <Link
+                                        href={projectsIndex.url({
+                                            query: { nuevo: 1 },
+                                        })}
+                                    >
                                         <Plus aria-hidden="true" />
                                         {t('forecast.index.new')}
                                     </Link>
@@ -347,14 +490,25 @@ export default function ForecastIndex({
                             ) : null}
                         </HeroEmptyState>
                     ) : filteredOut ? (
-                        <EmptyState icon={Users} title={t('forecast.empty.filtered')}>
-                            <Button type="button" variant="outline" size="sm" onClick={() => changeSearch('')}>
+                        <EmptyState
+                            icon={Users}
+                            title={t('forecast.empty.filtered')}
+                        >
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => changeSearch('')}
+                            >
                                 <X aria-hidden="true" />
                                 {t('forecast.empty.clear')}
                             </Button>
                         </EmptyState>
                     ) : asTable ? (
-                        <ChartTable table={matrixTable(board, groups, layers)} caption={t('forecast.matrix.title')} />
+                        <ChartTable
+                            table={matrixTable(board, groups, layers)}
+                            caption={t('forecast.matrix.title')}
+                        />
                     ) : (
                         <>
                             <ForecastLegend layers={layers} />
@@ -364,11 +518,17 @@ export default function ForecastIndex({
                                 layers={layers}
                                 isExpanded={(key) => !collapsed.includes(key)}
                                 onToggle={toggleGroup}
-                                openKey={target ? targetKey(target.row, target.index) : null}
+                                openKey={
+                                    target
+                                        ? targetKey(target.row, target.index)
+                                        : null
+                                }
                                 onOpen={setTarget}
                                 loading={navigating}
                             />
-                            <p className="text-xs text-muted-foreground">{t('forecast.matrix.keyboard_help')}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {t('forecast.matrix.keyboard_help')}
+                            </p>
                         </>
                     )}
                 </section>
@@ -377,13 +537,22 @@ export default function ForecastIndex({
                     <Deferred data="gaps" fallback={<GapsList />}>
                         <GapsList gaps={gaps} />
                     </Deferred>
-                    <Deferred data="open_forecasts" fallback={<OpenForecastsList />}>
+                    <Deferred
+                        data="open_forecasts"
+                        fallback={<OpenForecastsList />}
+                    >
                         <OpenForecastsList forecasts={openForecasts} />
                     </Deferred>
                 </div>
             </div>
 
-            <ForecastCellPanel board={board} target={target} layers={layers} gaps={gaps} onClose={() => setTarget(null)} />
+            <ForecastCellPanel
+                board={board}
+                target={target}
+                layers={layers}
+                gaps={gaps}
+                onClose={() => setTarget(null)}
+            />
         </>
     );
 }
@@ -411,7 +580,9 @@ export function matrixTable(
                 hours: formatHours(load),
                 capacity: gap ? '—' : formatHours(cell.capacity),
                 percent: percent === null ? '—' : formatPercentValue(percent),
-                level: gap ? t('forecast.table.gap') : LOAD_LEVELS[loadLevel(load, cell.capacity)].label,
+                level: gap
+                    ? t('forecast.table.gap')
+                    : LOAD_LEVELS[loadLevel(load, cell.capacity)].label,
             });
         });
     }
@@ -421,8 +592,16 @@ export function matrixTable(
             { key: 'who', label: t('forecast.table.who') },
             { key: 'period', label: t('forecast.table.period') },
             { key: 'hours', label: t('forecast.table.hours'), numeric: true },
-            { key: 'capacity', label: t('forecast.table.capacity'), numeric: true },
-            { key: 'percent', label: t('forecast.table.percent'), numeric: true },
+            {
+                key: 'capacity',
+                label: t('forecast.table.capacity'),
+                numeric: true,
+            },
+            {
+                key: 'percent',
+                label: t('forecast.table.percent'),
+                numeric: true,
+            },
             { key: 'level', label: t('forecast.table.level') },
         ],
         rows: data,

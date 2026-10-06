@@ -1,4 +1,9 @@
-import { CalendarMinus, ChevronDown, ChevronRight, UserRound } from 'lucide-react';
+import {
+    CalendarMinus,
+    ChevronDown,
+    ChevronRight,
+    UserRound,
+} from 'lucide-react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { LOAD_LEVELS, loadPercent } from '@/components/charts/thresholds';
@@ -16,7 +21,10 @@ import {
     rowCell,
     rowItems,
 } from '@/components/forecast/matrix-model';
-import type { MatrixGroup, MatrixRow } from '@/components/forecast/matrix-model';
+import type {
+    MatrixGroup,
+    MatrixRow,
+} from '@/components/forecast/matrix-model';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import {
     bucketLabel,
@@ -59,7 +67,13 @@ export function targetKey(row: MatrixRow, index: number): string {
     return `${row.key}@${index}`;
 }
 
-type Tip = { row: MatrixRow; index: number; x: number; y: number; above: boolean };
+type Tip = {
+    row: MatrixRow;
+    index: number;
+    x: number;
+    y: number;
+    above: boolean;
+};
 
 /**
  * Matriz de ocupación de la previsión (D-290): departamentos × semanas (o meses). La fila de cada
@@ -104,7 +118,10 @@ export function ForecastMatrix({
     const [tip, setTip] = useState<Tip | null>(null);
     const current: Position = {
         row: Math.min(active.row, Math.max(rows.length - 1, 0)),
-        col: Math.max(Math.min(active.col, buckets.length - 1), rows[active.row]?.kind === 'group' ? -1 : 0),
+        col: Math.max(
+            Math.min(active.col, buckets.length - 1),
+            rows[active.row]?.kind === 'group' ? -1 : 0,
+        ),
     };
     const labels = buckets.map((bucket) => bucketLabel(bucket, granularity));
 
@@ -120,7 +137,9 @@ export function ForecastMatrix({
     const focusCell = (position: Position) => {
         setActive(position);
         tableRef.current
-            ?.querySelector<HTMLElement>(`[data-cell="${position.row}:${position.col}"]`)
+            ?.querySelector<HTMLElement>(
+                `[data-cell="${position.row}:${position.col}"]`,
+            )
             ?.focus();
     };
 
@@ -133,12 +152,16 @@ export function ForecastMatrix({
 
         const box = wrapper.getBoundingClientRect();
         const cell = element.getBoundingClientRect();
-        const above = cell.bottom + 260 > window.innerHeight && cell.top - 260 > 0;
+        const above =
+            cell.bottom + 260 > window.innerHeight && cell.top - 260 > 0;
 
         setTip({
             row,
             index,
-            x: Math.min(Math.max(cell.left - box.left + cell.width / 2 - 144, 0), Math.max(box.width - 288, 0)),
+            x: Math.min(
+                Math.max(cell.left - box.left + cell.width / 2 - 144, 0),
+                Math.max(box.width - 288, 0),
+            ),
             y: above ? cell.top - box.top - 8 : cell.bottom - box.top + 8,
             above,
         });
@@ -154,7 +177,10 @@ export function ForecastMatrix({
         onToggle(row.group.key);
     };
 
-    const onKeyDown = (event: KeyboardEvent<HTMLElement>, position: Position) => {
+    const onKeyDown = (
+        event: KeyboardEvent<HTMLElement>,
+        position: Position,
+    ) => {
         const row = rows[position.row];
 
         if (event.key === 'Escape') {
@@ -214,8 +240,12 @@ export function ForecastMatrix({
 
     const cellHandlers = (row: MatrixRow, position: Position): CellProps => ({
         'data-cell': `${position.row}:${position.col}`,
-        tabIndex: current.row === position.row && current.col === position.col ? 0 : -1,
-        onKeyDown: (event: KeyboardEvent<HTMLElement>) => onKeyDown(event, position),
+        tabIndex:
+            current.row === position.row && current.col === position.col
+                ? 0
+                : -1,
+        onKeyDown: (event: KeyboardEvent<HTMLElement>) =>
+            onKeyDown(event, position),
         onFocus: (event: FocusEvent<HTMLElement>) => {
             setActive(position);
 
@@ -259,7 +289,11 @@ export function ForecastMatrix({
                             to: labels[labels.length - 1]?.long ?? '',
                         })}
                     </caption>
-                    <MatrixHead board={board} labels={labels} columnWidth={columnWidth} />
+                    <MatrixHead
+                        board={board}
+                        labels={labels}
+                        columnWidth={columnWidth}
+                    />
                     <tbody>
                         {rows.map((row, r) => (
                             <MatrixRowView
@@ -270,7 +304,10 @@ export function ForecastMatrix({
                                 layers={layers}
                                 labels={labels}
                                 columnWidth={columnWidth}
-                                expanded={row.kind === 'group' && isExpanded(row.group.key)}
+                                expanded={
+                                    row.kind === 'group' &&
+                                    isExpanded(row.group.key)
+                                }
                                 openKey={openKey}
                                 cellProps={cellHandlers}
                                 onOpen={(index) => onOpen({ row, index })}
@@ -290,7 +327,13 @@ export function ForecastMatrix({
                         transform: tip.above ? 'translateY(-100%)' : undefined,
                     }}
                 >
-                    <MatrixTooltip board={board} row={tip.row} index={tip.index} layers={layers} label={labels[tip.index]?.long ?? ''} />
+                    <MatrixTooltip
+                        board={board}
+                        row={tip.row}
+                        index={tip.index}
+                        layers={layers}
+                        label={labels[tip.index]?.long ?? ''}
+                    />
                 </div>
             ) : null}
         </div>
@@ -304,7 +347,9 @@ export function rowName(row: MatrixRow): string {
     }
 
     if (row.kind === 'gap') {
-        return t('forecast.matrix.gap_of', { department: groupName(row.group) });
+        return t('forecast.matrix.gap_of', {
+            department: groupName(row.group),
+        });
     }
 
     return groupName(row.group);
@@ -319,15 +364,24 @@ export function groupName(group: MatrixGroup): string {
 }
 
 /** Pie del tooltip y del panel: festivos de la columna y ausencias de la persona. */
-export function cellFooter(board: ForecastBoard, row: MatrixRow, index: number): string[] {
+export function cellFooter(
+    board: ForecastBoard,
+    row: MatrixRow,
+    index: number,
+): string[] {
     const lines: string[] = [];
     const holidays = board.holidays[index] ?? [];
 
     if (row.kind !== 'gap' && holidays.length > 0) {
         lines.push(
-            plural('forecast.tooltip.holidays_one', 'forecast.tooltip.holidays_other', holidays.length, {
-                names: holidays.map((holiday) => holiday.name).join(', '),
-            }),
+            plural(
+                'forecast.tooltip.holidays_one',
+                'forecast.tooltip.holidays_other',
+                holidays.length,
+                {
+                    names: holidays.map((holiday) => holiday.name).join(', '),
+                },
+            ),
         );
     }
 
@@ -337,10 +391,21 @@ export function cellFooter(board: ForecastBoard, row: MatrixRow, index: number):
         if (absence && absence.days > 0) {
             lines.push(
                 absence.type
-                    ? plural('forecast.tooltip.absence_type_one', 'forecast.tooltip.absence_type_other', absence.days, {
-                          type: t(`absences.type.${absence.type}` as 'absences.type.vacation'),
-                      })
-                    : plural('forecast.tooltip.absence_one', 'forecast.tooltip.absence_other', absence.days),
+                    ? plural(
+                          'forecast.tooltip.absence_type_one',
+                          'forecast.tooltip.absence_type_other',
+                          absence.days,
+                          {
+                              type: t(
+                                  `absences.type.${absence.type}` as 'absences.type.vacation',
+                              ),
+                          },
+                      )
+                    : plural(
+                          'forecast.tooltip.absence_one',
+                          'forecast.tooltip.absence_other',
+                          absence.days,
+                      ),
             );
 
             if (absence.partial) {
@@ -389,7 +454,13 @@ export function MatrixTooltip({
             items={rowItems(board, row, index)}
             layers={layers}
             footer={[
-                ...(noSchedule ? [t('forecast.cell.label_no_schedule', { load: formatHours(cellLoad(cell, layers)) })] : []),
+                ...(noSchedule
+                    ? [
+                          t('forecast.cell.label_no_schedule', {
+                              load: formatHours(cellLoad(cell, layers)),
+                          }),
+                      ]
+                    : []),
                 ...cellFooter(board, row, index),
             ]}
         />
@@ -417,7 +488,11 @@ function MatrixHead({
             if (last && last.key === month) {
                 last.span += 1;
             } else {
-                months.push({ key: month, label: monthShort(bucket.from), span: 1 });
+                months.push({
+                    key: month,
+                    label: monthShort(bucket.from),
+                    span: 1,
+                });
             }
         }
     }
@@ -464,23 +539,49 @@ function MatrixHead({
                                 'border-b-2 px-1.5 pt-0.5 pb-1 text-left leading-tight font-normal normal-case',
                                 now ? 'border-b-brand' : 'border-b-transparent',
                             )}
-                            style={{ width: columnWidth, minWidth: columnWidth }}
+                            style={{
+                                width: columnWidth,
+                                minWidth: columnWidth,
+                            }}
                         >
-                            <span className="sr-only">{labels[index]?.long}</span>
-                            <span aria-hidden="true" className={cn('flex items-center gap-1 text-xs tracking-normal', now ? 'text-primary-text' : 'text-foreground')}>
+                            <span className="sr-only">
+                                {labels[index]?.long}
+                            </span>
+                            <span
+                                aria-hidden="true"
+                                className={cn(
+                                    'flex items-center gap-1 text-xs tracking-normal',
+                                    now
+                                        ? 'text-primary-text'
+                                        : 'text-foreground',
+                                )}
+                            >
                                 {labels[index]?.short}
                                 {holidays.length > 0 ? (
-                                    <CalendarMinus className="size-3 text-muted-foreground" data-test="holiday-mark" />
+                                    <CalendarMinus
+                                        className="size-3 text-muted-foreground"
+                                        data-test="holiday-mark"
+                                    />
                                 ) : null}
                             </span>
-                            <span aria-hidden="true" className="block text-[0.6875rem] tracking-normal">
+                            <span
+                                aria-hidden="true"
+                                className="block text-[0.6875rem] tracking-normal"
+                            >
                                 {labels[index]?.sub}
                             </span>
                             {holidays.length > 0 ? (
                                 <span className="sr-only">
-                                    {plural('forecast.tooltip.holidays_one', 'forecast.tooltip.holidays_other', holidays.length, {
-                                        names: holidays.map((holiday) => holiday.name).join(', '),
-                                    })}
+                                    {plural(
+                                        'forecast.tooltip.holidays_one',
+                                        'forecast.tooltip.holidays_other',
+                                        holidays.length,
+                                        {
+                                            names: holidays
+                                                .map((holiday) => holiday.name)
+                                                .join(', '),
+                                        },
+                                    )}
                                 </span>
                             ) : null}
                         </th>
@@ -551,10 +652,16 @@ function MatrixRowView({
     const person = row.kind === 'person' ? row.person : null;
 
     return (
-        <tr data-test={row.kind === 'person' ? 'forecast-person-row' : 'forecast-gap-row'}>
+        <tr
+            data-test={
+                row.kind === 'person'
+                    ? 'forecast-person-row'
+                    : 'forecast-gap-row'
+            }
+        >
             <th
                 scope="row"
-                className="sticky left-0 z-10 w-[132px] min-w-[132px] max-w-[132px] border-t border-r bg-card px-3 py-1 text-left font-normal md:w-52 md:min-w-52 md:max-w-52"
+                className="sticky left-0 z-10 w-[132px] max-w-[132px] min-w-[132px] border-t border-r bg-card px-3 py-1 text-left font-normal md:w-52 md:max-w-52 md:min-w-52"
             >
                 <span className="flex min-w-0 items-center gap-2">
                     {person ? (
@@ -568,9 +675,17 @@ function MatrixRowView({
                         </span>
                     )}
                     <span className="min-w-0">
-                        <span className="block truncate">{person ? person.name : t('forecast.matrix.no_person')}</span>
+                        <span className="block truncate">
+                            {person
+                                ? person.name
+                                : t('forecast.matrix.no_person')}
+                        </span>
                         <span className="block truncate text-[0.6875rem] text-muted-foreground">
-                            {person ? personSubtitle(person) : t('forecast.matrix.gap_sub', { department: groupName(row.group) })}
+                            {person
+                                ? personSubtitle(person)
+                                : t('forecast.matrix.gap_sub', {
+                                      department: groupName(row.group),
+                                  })}
                         </span>
                     </span>
                 </span>
@@ -591,8 +706,22 @@ function MatrixRowView({
                         holidays: (board.holidays[index] ?? []).length,
                         hasSchedule: person.has_schedule,
                     });
-                    label = forecastCellLabel({ name, period: labels[index]?.long ?? '', cell, layers, absence, reason });
-                    content = <ForecastCell cell={cell} layers={layers} absence={absence} reason={reason} />;
+                    label = forecastCellLabel({
+                        name,
+                        period: labels[index]?.long ?? '',
+                        cell,
+                        layers,
+                        absence,
+                        reason,
+                    });
+                    content = (
+                        <ForecastCell
+                            cell={cell}
+                            layers={layers}
+                            absence={absence}
+                            reason={reason}
+                        />
+                    );
                 } else {
                     const load = cellLoad(cell, layers);
                     label = `${name}, ${labels[index]?.long ?? ''}: ${load > 0 ? t('forecast.matrix.gap_label', { hours: formatHours(load) }) : t('forecast.matrix.gap_empty')}`;
@@ -600,14 +729,22 @@ function MatrixRowView({
                 }
 
                 return (
-                    <td key={bucket.key} role="gridcell" className="border-t p-0.5">
+                    <td
+                        key={bucket.key}
+                        role="gridcell"
+                        className="border-t p-0.5"
+                    >
                         <button
                             type="button"
                             {...props}
                             aria-label={label}
                             aria-haspopup="dialog"
                             aria-expanded={open}
-                            data-test={row.kind === 'person' ? 'forecast-cell-button' : 'forecast-gap-button'}
+                            data-test={
+                                row.kind === 'person'
+                                    ? 'forecast-cell-button'
+                                    : 'forecast-gap-button'
+                            }
                             onClick={() => onOpen(index)}
                             className={cn(
                                 'block w-full text-left outline-none hover:ring-1 hover:ring-foreground hover:ring-inset focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
@@ -651,7 +788,12 @@ function GroupRow({
     const group = row.group;
     const name = groupName(group);
     const yMax =
-        Math.max(1, ...group.cells.map((cell) => Math.max(cell.capacity, cellLoad(cell, layers)))) * 1.08;
+        Math.max(
+            1,
+            ...group.cells.map((cell) =>
+                Math.max(cell.capacity, cellLoad(cell, layers)),
+            ),
+        ) * 1.08;
     const Chevron = expanded ? ChevronDown : ChevronRight;
     const headerPosition = { row: rowIndex, col: -1 };
     const headerProps = cellProps(row, headerPosition);
@@ -663,7 +805,7 @@ function GroupRow({
         <tr data-test="forecast-group-row" data-group={group.key}>
             <th
                 scope="row"
-                className="sticky left-0 z-10 w-[132px] min-w-[132px] max-w-[132px] border-t border-r bg-card px-3 py-2 text-left align-top font-normal md:w-52 md:min-w-52 md:max-w-52"
+                className="sticky left-0 z-10 w-[132px] max-w-[132px] min-w-[132px] border-t border-r bg-card px-3 py-2 text-left align-top font-normal md:w-52 md:max-w-52 md:min-w-52"
             >
                 <button
                     type="button"
@@ -671,13 +813,25 @@ function GroupRow({
                     aria-expanded={expanded}
                     data-test="forecast-group-toggle"
                     onClick={() => onToggle(headerPosition)}
-                    className={cn('flex w-full min-w-0 items-start gap-1.5 text-left', FOCUS_RING)}
+                    className={cn(
+                        'flex w-full min-w-0 items-start gap-1.5 text-left',
+                        FOCUS_RING,
+                    )}
                 >
-                    <Chevron aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+                    <Chevron
+                        aria-hidden="true"
+                        className="mt-0.5 size-3.5 shrink-0"
+                    />
                     <span className="min-w-0">
-                        <span className="block text-[0.9375rem] leading-snug font-medium break-words">{name}</span>
+                        <span className="block text-sm leading-snug font-medium break-words hyphens-auto md:text-[0.9375rem]">
+                            {name}
+                        </span>
                         <span className="block text-xs text-muted-foreground">
-                            {plural('forecast.matrix.people_one', 'forecast.matrix.people_other', group.size)}
+                            {plural(
+                                'forecast.matrix.people_one',
+                                'forecast.matrix.people_other',
+                                group.size,
+                            )}
                             {group.kind === 'department' && firstCapacity > 0
                                 ? ` · ${t(`forecast.matrix.capacity_${unit}`, { hours: formatHours(firstCapacity) })}`
                                 : ''}
@@ -698,12 +852,18 @@ function GroupRow({
                 const open = openKey === targetKey(row, index);
                 const label = `${name}, ${labels[index]?.long ?? ''}: ${
                     percent === null
-                        ? t('forecast.matrix.group_no_capacity', { load: formatHours(load) })
+                        ? t('forecast.matrix.group_no_capacity', {
+                              load: formatHours(load),
+                          })
                         : `${formatPercentValue(percent)}, ${meta.label}, ${t('forecast.cell.of', { load: formatHours(load), capacity: formatHours(cell.capacity) })}`
                 }`;
 
                 return (
-                    <td key={bucket.key} role="gridcell" className="border-t px-0 pt-1">
+                    <td
+                        key={bucket.key}
+                        role="gridcell"
+                        className="border-t px-0 pt-1"
+                    >
                         <button
                             type="button"
                             {...props}
@@ -719,7 +879,12 @@ function GroupRow({
                         >
                             <DepartmentColumn
                                 cell={cell}
-                                previousCapacity={index > 0 ? (group.cells[index - 1]?.capacity ?? null) : null}
+                                previousCapacity={
+                                    index > 0
+                                        ? (group.cells[index - 1]?.capacity ??
+                                          null)
+                                        : null
+                                }
                                 yMax={yMax}
                                 width={columnWidth}
                                 height={DEPARTMENT_CHART}
@@ -730,11 +895,19 @@ function GroupRow({
                                 aria-hidden="true"
                                 className={cn(
                                     'tabular flex h-[18px] items-center justify-center gap-0.5 text-[0.6875rem] whitespace-nowrap',
-                                    strong ? 'font-medium text-foreground' : 'text-muted-foreground',
+                                    strong
+                                        ? 'font-medium text-foreground'
+                                        : 'text-muted-foreground',
                                 )}
                             >
-                                {strong ? <Icon className={cn('size-3', meta.tone)} /> : null}
-                                {percent === null ? (load > 0 ? formatHours(load) : '') : formatPercentValue(percent)}
+                                {strong ? (
+                                    <Icon className={cn('size-3', meta.tone)} />
+                                ) : null}
+                                {percent === null
+                                    ? load > 0
+                                        ? formatHours(load)
+                                        : ''
+                                    : formatPercentValue(percent)}
                             </span>
                         </button>
                     </td>
@@ -744,9 +917,19 @@ function GroupRow({
     );
 }
 
-export function PersonAvatar({ person }: { person: Pick<ForecastPerson, 'name' | 'avatar'> }) {
+export function PersonAvatar({
+    person,
+}: {
+    person: Pick<ForecastPerson, 'name' | 'avatar'>;
+}) {
     if (person.avatar) {
-        return <img src={person.avatar} alt="" className="size-6 shrink-0 rounded-full object-cover" />;
+        return (
+            <img
+                src={person.avatar}
+                alt=""
+                className="size-6 shrink-0 rounded-full object-cover"
+            />
+        );
     }
 
     return (
@@ -762,11 +945,15 @@ export function PersonAvatar({ person }: { person: Pick<ForecastPerson, 'name' |
 export function personSubtitle(person: ForecastPerson): string {
     if (person.collaborator) {
         return person.has_schedule
-            ? t('forecast.matrix.collaborator_hours', { hours: formatHours(person.weekly_minutes) })
+            ? t('forecast.matrix.collaborator_hours', {
+                  hours: formatHours(person.weekly_minutes),
+              })
             : t('forecast.matrix.collaborator_no_schedule');
     }
 
-    return t('forecast.matrix.weekly_hours', { hours: formatHours(person.weekly_minutes) });
+    return t('forecast.matrix.weekly_hours', {
+        hours: formatHours(person.weekly_minutes),
+    });
 }
 
 export { COLLABORATORS_GROUP };

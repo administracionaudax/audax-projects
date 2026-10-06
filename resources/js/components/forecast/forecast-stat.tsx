@@ -20,14 +20,26 @@ export function ForecastStat({
     className?: string;
 }) {
     return (
-        <div className={cn('flex min-w-0 flex-col gap-1 border bg-card p-4', className)} data-test="forecast-stat">
+        <div
+            className={cn(
+                'flex min-w-0 flex-col gap-1 border bg-card p-4',
+                className,
+            )}
+            data-test="forecast-stat"
+        >
             <p className="text-sm text-muted-foreground">{label}</p>
             {loading ? (
                 <Skeleton className="h-8 w-20" />
             ) : (
-                <p className="tabular text-2xl font-semibold tracking-tight">{value}</p>
+                <p className="tabular text-2xl font-semibold tracking-tight">
+                    {value}
+                </p>
             )}
-            {detail ? <div className="flex min-w-0 items-start gap-1 text-xs text-muted-foreground">{detail}</div> : null}
+            {detail ? (
+                <div className="flex min-w-0 items-start gap-1 text-xs text-muted-foreground">
+                    {detail}
+                </div>
+            ) : null}
         </div>
     );
 }

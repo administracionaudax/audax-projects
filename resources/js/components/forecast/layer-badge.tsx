@@ -12,7 +12,12 @@ export function LayerBadge({
     className?: string;
 }) {
     return (
-        <span className={cn('inline-flex items-center gap-1.5 text-xs whitespace-nowrap', className)}>
+        <span
+            className={cn(
+                'inline-flex items-center gap-1.5 text-xs whitespace-nowrap',
+                className,
+            )}
+        >
             <LayerSwatch layer={layer} />
             {t(`forecast.badge.${layer}`)}
         </span>

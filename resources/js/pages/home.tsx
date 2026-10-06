@@ -52,6 +52,12 @@ import {
     MyWorkloadSkeleton,
 } from '@/components/workload/my-workload-card';
 import type { MyWorkloadData } from '@/components/workload/types';
+import { HatchDefs } from '@/components/forecast/layer-swatch';
+import {
+    MyForecastCard,
+    MyForecastSkeleton,
+} from '@/components/forecast/my-forecast';
+import type { MyForecast } from '@/types/forecast';
 import { Button } from '@/components/ui/button';
 import {
     HomeWeeklyCard,
@@ -83,6 +89,7 @@ export default function Home({
     indicators,
     absences,
     workload,
+    my_forecast: myForecast,
     milestones,
     chat_summary: chatSummary,
     home_layout: homeLayout,
@@ -93,6 +100,8 @@ export default function Home({
     indicators?: MyIndicators;
     absences?: MyAbsencesSummary;
     workload?: MyWorkloadData;
+    /** Con la previsión (D-305): «Mi carga» por asignaciones en lugar de por tareas. */
+    my_forecast?: MyForecast;
 }) {
     const user = useRequiredUser();
     // Un colaborador externo solo ve las tarjetas que le afectan (D-134).
@@ -355,15 +364,29 @@ export default function Home({
                             id="workload"
                             icon={CalendarClock}
                             title={t('home.cards.workload.title')}
-                            description={t('home.cards.workload.description')}
+                            description={t(
+                                can.useForecast === true
+                                    ? 'forecast.my.card_description'
+                                    : 'home.cards.workload.description',
+                            )}
                             wide
                         >
-                            <Deferred
-                                data="workload"
-                                fallback={<MyWorkloadSkeleton />}
-                            >
-                                <MyWorkload workload={workload} />
-                            </Deferred>
+                            {can.useForecast === true ? (
+                                <Deferred
+                                    data="my_forecast"
+                                    fallback={<MyForecastSkeleton />}
+                                >
+                                    <HatchDefs />
+                                    <MyForecastCard data={myForecast} />
+                                </Deferred>
+                            ) : (
+                                <Deferred
+                                    data="workload"
+                                    fallback={<MyWorkloadSkeleton />}
+                                >
+                                    <MyWorkload workload={workload} />
+                                </Deferred>
+                            )}
                         </PanelCard>
                     )}
 

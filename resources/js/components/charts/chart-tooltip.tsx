@@ -36,7 +36,7 @@ export function ChartTooltipCard({
                         {row.pattern === 'hatch' ? (
                             <span
                                 aria-hidden="true"
-                                className="bg-hatch-tentative h-2 w-3 shrink-0"
+                                className="h-2 w-3 shrink-0 bg-hatch-tentative"
                             />
                         ) : (
                             <span

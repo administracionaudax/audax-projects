@@ -27,7 +27,11 @@ export function LayerSwatch({
         <span
             aria-hidden="true"
             data-layer={layer}
-            className={cn('inline-block size-2.5 shrink-0', LAYER_FILL[layer], className)}
+            className={cn(
+                'inline-block size-2.5 shrink-0',
+                LAYER_FILL[layer],
+                className,
+            )}
         />
     );
 }

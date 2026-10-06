@@ -50,10 +50,7 @@ function normalize(text: string): string {
 }
 
 /** Los grupos de la matriz: los departamentos en su orden y, al final, los colaboradores. */
-export function matrixGroups(
-    board: ForecastBoard,
-    search = '',
-): MatrixGroup[] {
+export function matrixGroups(board: ForecastBoard, search = ''): MatrixGroup[] {
     const needle = normalize(search);
     const matches = (person: ForecastPerson) =>
         needle === '' || normalize(person.name).includes(needle);
@@ -62,8 +59,7 @@ export function matrixGroups(
     for (const department of board.departments) {
         const staff = board.people.filter(
             (person) =>
-                !person.collaborator &&
-                person.department_id === department.id,
+                !person.collaborator && person.department_id === department.id,
         );
         const people = staff.filter(matches);
 
@@ -111,7 +107,12 @@ export function matrixGroups(
 
 export type MatrixRow =
     | { kind: 'group'; key: string; group: MatrixGroup }
-    | { kind: 'person'; key: string; group: MatrixGroup; person: ForecastPerson }
+    | {
+          kind: 'person';
+          key: string;
+          group: MatrixGroup;
+          person: ForecastPerson;
+      }
     | { kind: 'gap'; key: string; group: MatrixGroup };
 
 /** ¿Tiene el grupo algún hueco con las capas encendidas? */
@@ -163,7 +164,8 @@ export function rowRef(row: MatrixRow): MatrixRowRef {
 
     return {
         kind: 'department',
-        departmentId: row.group.kind === 'department' ? row.group.departmentId : null,
+        departmentId:
+            row.group.kind === 'department' ? row.group.departmentId : null,
         members: row.group.people.map((person) => person.id),
     };
 }
@@ -175,7 +177,7 @@ export function rowCell(row: MatrixRow, index: number): LoadCell {
     }
 
     if (row.kind === 'gap') {
-        return { ...EMPTY, ...(row.group.gaps?.[index] ?? {}) };
+        return { ...EMPTY, ...row.group.gaps?.[index] };
     }
 
     return row.group.cells[index] ?? EMPTY;

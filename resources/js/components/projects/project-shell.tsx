@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
+import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
@@ -20,6 +21,7 @@ const TABS: Tab[] = [
     { id: 'gantt', label: 'project_tabs.gantt' },
     { id: 'bolsas', label: 'project_tabs.hour_banks' },
     { id: 'horas', label: 'project_tabs.time' },
+    { id: 'planificacion', label: 'project_tabs.planning' },
     { id: 'chat', label: 'project_tabs.chat' },
     { id: 'archivos', label: 'project_tabs.files' },
     { id: 'ajustes', label: 'project_tabs.settings' },
@@ -28,7 +30,8 @@ const TABS: Tab[] = [
 /**
  * Cabecera y pestañas de la ficha de proyecto (SPEC §6). Cada pestaña es su propia página
  * Inertia (/proyectos/{id}/{pestaña}) y envuelve su contenido con este componente.
- * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes, si puede gestionarlo. Un
+ * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes y Planificación (con la previsión),
+ * si puede gestionarlo. Un
  * colaborador externo (D-134) no tiene Bolsas ni Horas (las de todos): el servidor las cierra.
  */
 export function ProjectShell({
@@ -46,11 +49,14 @@ export function ProjectShell({
     children: ReactNode;
 }) {
     const collaborator = usePage().props.auth?.user?.is_collaborator ?? false;
+    // Planificación (D-296): quien gestiona el proyecto, con el módulo `forecast` visible.
+    const plans = useAbilities()?.useForecast === true && canManage;
     const tabs = TABS.filter(
         (item) =>
             (item.id !== 'bolsas' ||
                 (project.billing_type === 'hour_bank' && !collaborator)) &&
             (item.id !== 'horas' || !collaborator) &&
+            (item.id !== 'planificacion' || plans) &&
             (item.id !== 'ajustes' || canManage),
     );
 

@@ -207,7 +207,11 @@
     /* Previsión (D-291): fondo de la trama de lo «posible» (violeta de --chart-3 al 16 % sobre la
        tarjeta) y el gris de contexto del impacto «sin este proyecto». */
     --posible-bg: color-mix(in oklab, var(--chart-3) 16%, var(--card));
-    --context-mark: color-mix(in oklab, var(--muted-foreground) 38%, var(--card));
+    --context-mark: color-mix(
+        in oklab,
+        var(--muted-foreground) 38%,
+        var(--card)
+    );
 
     --sidebar: #ffffff;
     --sidebar-foreground: #0b1b33;
@@ -261,7 +265,11 @@
     --chart-5: #7685f8;
     --chart-6: #04729b;
     --posible-bg: color-mix(in oklab, var(--chart-3) 22%, var(--card));
-    --context-mark: color-mix(in oklab, var(--muted-foreground) 38%, var(--card));
+    --context-mark: color-mix(
+        in oklab,
+        var(--muted-foreground) 38%,
+        var(--card)
+    );
 
     --sidebar: #121c30;
     --sidebar-foreground: #f5f6f7;

@@ -278,12 +278,17 @@ export function bucketLabel(
 }
 
 /** ¿Es la columna de hoy? */
-export function isCurrentBucket(bucket: ForecastBucket, today: string): boolean {
+export function isCurrentBucket(
+    bucket: ForecastBucket,
+    today: string,
+): boolean {
     return bucket.from <= today && today <= bucket.to;
 }
 
 /** Nombre de un contenedor de una fuente: «Kiwi · App fase 2» (cliente y proyecto). */
-export function sourceTitle(source: Pick<LoadSource, 'project' | 'forecast' | 'client_name'>): string {
+export function sourceTitle(
+    source: Pick<LoadSource, 'project' | 'forecast' | 'client_name'>,
+): string {
     const name = source.project?.name ?? source.forecast?.name ?? '';
 
     return source.client_name ? `${source.client_name} · ${name}` : name;
@@ -298,7 +303,11 @@ export type CellItem = {
     href: string;
 };
 
-const LAYER_ORDER: Record<LoadLayer, number> = { real: 0, firm: 1, tentative: 2 };
+const LAYER_ORDER: Record<LoadLayer, number> = {
+    real: 0,
+    firm: 1,
+    tentative: 2,
+};
 
 /**
  * De qué proyectos sale la carga de una celda (persona, hueco de un departamento o departamento
@@ -341,7 +350,8 @@ export function cellItems(
 
     return [...byKey.values()].sort(
         (a, b) =>
-            LAYER_ORDER[a.layer] - LAYER_ORDER[b.layer] || b.minutes - a.minutes,
+            LAYER_ORDER[a.layer] - LAYER_ORDER[b.layer] ||
+            b.minutes - a.minutes,
     );
 }
 
@@ -351,14 +361,17 @@ export type MatrixRowRef =
     | { kind: 'gap'; departmentId: number }
     | { kind: 'department'; departmentId: number | null; members: number[] };
 
-export function sourceMatcher(row: MatrixRowRef): (source: LoadSource) => boolean {
+export function sourceMatcher(
+    row: MatrixRowRef,
+): (source: LoadSource) => boolean {
     if (row.kind === 'person') {
         return (source) => source.user_id === row.id;
     }
 
     if (row.kind === 'gap') {
         return (source) =>
-            source.user_id === null && source.department_id === row.departmentId;
+            source.user_id === null &&
+            source.department_id === row.departmentId;
     }
 
     const members = new Set(row.members);
@@ -408,7 +421,9 @@ export function boardFigures(
                 overloaded++;
 
                 if (!counted) {
-                    overloadedPeople.push(person.name.split(' ')[0] ?? person.name);
+                    overloadedPeople.push(
+                        person.name.split(' ')[0] ?? person.name,
+                    );
                     counted = true;
                 }
             }
@@ -466,7 +481,11 @@ export function impactWorst(
         row.cells.forEach((cell, index) => {
             const percent = loadPercent(cell.with, cell.capacity);
 
-            if (percent === null || cell.with === cell.without || percent <= worstPercent) {
+            if (
+                percent === null ||
+                cell.with === cell.without ||
+                percent <= worstPercent
+            ) {
                 return;
             }
 

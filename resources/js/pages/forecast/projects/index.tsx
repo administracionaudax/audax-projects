@@ -11,7 +11,11 @@ import { dateRange, formatHours } from '@/lib/forecast';
 import { t } from '@/lib/i18n';
 import { index as boardIndex } from '@/routes/forecast';
 import { index, show } from '@/routes/forecast/projects';
-import type { ForecastListFilter, ForecastProject, ForecastProjectsPageProps } from '@/types/forecast';
+import type {
+    ForecastListFilter,
+    ForecastProject,
+    ForecastProjectsPageProps,
+} from '@/types/forecast';
 
 const FILTERS: ForecastListFilter[] = ['active', 'lost', 'linked', 'all'];
 
@@ -38,13 +42,31 @@ function statusLine(forecast: ForecastProject): string {
  * asignado frente a la estimación y su estado. «Nuevo proyecto previsto» abre el formulario (también
  * con ?nuevo=1, desde /prevision).
  */
-export default function ForecastProjectsIndex({ projects, filters, clients, can }: ForecastProjectsPageProps) {
+export default function ForecastProjectsIndex({
+    projects,
+    filters,
+    clients,
+    can,
+}: ForecastProjectsPageProps) {
     const page = usePage();
-    const [creating, setCreating] = useState(() => can.create && wantsNew(page.url));
+    const [creating, setCreating] = useState(
+        () => can.create && wantsNew(page.url),
+    );
 
     useEffect(() => {
         if (wantsNew(page.url)) {
-            router.replace({ url: index.url({ query: { estado: filters.status === 'active' ? undefined : filters.status } }), preserveState: true, preserveScroll: true });
+            router.replace({
+                url: index.url({
+                    query: {
+                        estado:
+                            filters.status === 'active'
+                                ? undefined
+                                : filters.status,
+                    },
+                }),
+                preserveState: true,
+                preserveScroll: true,
+            });
         }
     }, [page.url, filters.status]);
 
@@ -57,7 +79,9 @@ export default function ForecastProjectsIndex({ projects, filters, clients, can 
                         <h1 className="text-2xl font-normal tracking-tight">
                             <KeywordText text={t('forecast.list.title')} />
                         </h1>
-                        <p className="text-sm text-muted-foreground">{t('forecast.list.description')}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {t('forecast.list.description')}
+                        </p>
                     </div>
                     {can.create ? (
                         <ForecastProjectDialog
@@ -79,71 +103,163 @@ export default function ForecastProjectsIndex({ projects, filters, clients, can 
                     variant="outline"
                     value={filters.status}
                     onValueChange={(value) =>
-                        value ? router.visit(index.url({ query: value === 'active' ? {} : { estado: value } }), { preserveScroll: true }) : null
+                        value
+                            ? router.visit(
+                                  index.url({
+                                      query:
+                                          value === 'active'
+                                              ? {}
+                                              : { estado: value },
+                                  }),
+                                  { preserveScroll: true },
+                              )
+                            : null
                     }
                     aria-label={t('forecast.list.filter')}
                     className="flex-wrap justify-start"
                 >
                     {FILTERS.map((filter) => (
-                        <ToggleGroupItem key={filter} value={filter} className="px-3">
+                        <ToggleGroupItem
+                            key={filter}
+                            value={filter}
+                            className="px-3"
+                        >
                             {t(`forecast.filters.${filter}`)}
                         </ToggleGroupItem>
                     ))}
                 </ToggleGroup>
 
                 {projects.length === 0 ? (
-                    <EmptyState icon={FolderSearch} title={t('forecast.list.empty')} />
+                    <EmptyState
+                        icon={FolderSearch}
+                        title={t('forecast.list.empty')}
+                    />
                 ) : (
                     <div className="overflow-x-auto border bg-card">
-                        <table className="w-full text-sm" data-test="forecast-projects-table">
+                        <table
+                            className="w-full text-sm"
+                            data-test="forecast-projects-table"
+                        >
                             <thead>
                                 <tr>
-                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.name')}</th>
-                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.confidence')}</th>
-                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.dates')}</th>
-                                    <th scope="col" className="px-3 py-2 text-right">{t('forecast.list.hours')}</th>
-                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.status')}</th>
+                                    <th
+                                        scope="col"
+                                        className="px-3 py-2 text-left"
+                                    >
+                                        {t('forecast.list.name')}
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-3 py-2 text-left"
+                                    >
+                                        {t('forecast.list.confidence')}
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-3 py-2 text-left"
+                                    >
+                                        {t('forecast.list.dates')}
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-3 py-2 text-right"
+                                    >
+                                        {t('forecast.list.hours')}
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-3 py-2 text-left"
+                                    >
+                                        {t('forecast.list.status')}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {projects.map((forecast) => {
                                     const over =
                                         forecast.estimated_minutes !== null &&
-                                        (forecast.allocated_minutes ?? 0) > forecast.estimated_minutes;
+                                        (forecast.allocated_minutes ?? 0) >
+                                            forecast.estimated_minutes;
 
                                     return (
-                                        <tr key={forecast.id} className="border-b last:border-0" data-test="forecast-project-row">
+                                        <tr
+                                            key={forecast.id}
+                                            className="border-b last:border-0"
+                                            data-test="forecast-project-row"
+                                        >
                                             <td className="px-3 py-2.5 align-top">
-                                                <Link href={show.url(forecast.id)} className="text-primary-text hover:underline">
+                                                <Link
+                                                    href={show.url(forecast.id)}
+                                                    className="text-primary-text hover:underline"
+                                                >
                                                     {forecast.name}
                                                 </Link>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {forecast.client_name ?? '—'}
-                                                    {forecast.client === null && forecast.prospect_name ? ` · ${t('forecast.badge.new_client')}` : ''}
+                                                    {forecast.client_name ??
+                                                        '—'}
+                                                    {forecast.client === null &&
+                                                    forecast.prospect_name
+                                                        ? ` · ${t('forecast.badge.new_client')}`
+                                                        : ''}
                                                 </p>
                                             </td>
                                             <td className="px-3 py-2.5 align-top">
-                                                <LayerBadge layer={forecast.confidence === 'firm' ? 'firm' : 'tentative'} />
+                                                <LayerBadge
+                                                    layer={
+                                                        forecast.confidence ===
+                                                        'firm'
+                                                            ? 'firm'
+                                                            : 'tentative'
+                                                    }
+                                                />
                                             </td>
                                             <td className="tabular px-3 py-2.5 align-top whitespace-nowrap">
-                                                {forecast.start_date ? dateRange(forecast.start_date, forecast.end_date) : t('forecast.dates.none')}
+                                                {forecast.start_date
+                                                    ? dateRange(
+                                                          forecast.start_date,
+                                                          forecast.end_date,
+                                                      )
+                                                    : t('forecast.dates.none')}
                                                 {forecast.starts_in_past ? (
                                                     <p className="flex items-center gap-1 text-xs">
-                                                        <CalendarClock aria-hidden="true" className="size-3 text-warning" />
-                                                        {t('forecast.list.starts_in_past')}
+                                                        <CalendarClock
+                                                            aria-hidden="true"
+                                                            className="size-3 text-warning"
+                                                        />
+                                                        {t(
+                                                            'forecast.list.starts_in_past',
+                                                        )}
                                                     </p>
                                                 ) : null}
                                             </td>
                                             <td className="tabular px-3 py-2.5 text-right align-top whitespace-nowrap">
-                                                {formatHours(forecast.allocated_minutes ?? 0)}
-                                                {forecast.estimated_minutes !== null ? (
+                                                {formatHours(
+                                                    forecast.allocated_minutes ??
+                                                        0,
+                                                )}
+                                                {forecast.estimated_minutes !==
+                                                null ? (
                                                     <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                                                        {over ? <TriangleAlert aria-hidden="true" className="size-3 text-warning" /> : null}
-                                                        {t('forecast.list.of_estimate', { hours: formatHours(forecast.estimated_minutes) })}
+                                                        {over ? (
+                                                            <TriangleAlert
+                                                                aria-hidden="true"
+                                                                className="size-3 text-warning"
+                                                            />
+                                                        ) : null}
+                                                        {t(
+                                                            'forecast.list.of_estimate',
+                                                            {
+                                                                hours: formatHours(
+                                                                    forecast.estimated_minutes,
+                                                                ),
+                                                            },
+                                                        )}
                                                     </p>
                                                 ) : null}
                                             </td>
-                                            <td className="px-3 py-2.5 align-top">{statusLine(forecast)}</td>
+                                            <td className="px-3 py-2.5 align-top">
+                                                {statusLine(forecast)}
+                                            </td>
                                         </tr>
                                     );
                                 })}

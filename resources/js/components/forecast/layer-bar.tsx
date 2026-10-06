@@ -45,7 +45,10 @@ export function LayerBar({
                     <span
                         key={layer}
                         data-layer={layer}
-                        className={cn('block h-full shrink-0', LAYER_FILL[layer])}
+                        className={cn(
+                            'block h-full shrink-0',
+                            LAYER_FILL[layer],
+                        )}
                         style={{
                             width: `${Math.min((minutes[layer] / capacity / BAR_TRACK) * 100, 100)}%`,
                         }}

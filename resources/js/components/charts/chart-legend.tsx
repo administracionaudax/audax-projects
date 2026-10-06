@@ -18,7 +18,10 @@ export function LegendSwatch({
         return (
             <span
                 aria-hidden="true"
-                className={cn('bg-hatch-tentative size-2.5 shrink-0', className)}
+                className={cn(
+                    'size-2.5 shrink-0 bg-hatch-tentative',
+                    className,
+                )}
             />
         );
     }
@@ -27,7 +30,10 @@ export function LegendSwatch({
         return (
             <span
                 aria-hidden="true"
-                className={cn('size-2.5 shrink-0 border border-dashed', className)}
+                className={cn(
+                    'size-2.5 shrink-0 border border-dashed',
+                    className,
+                )}
                 style={{ borderColor: color }}
             />
         );
