@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Domain\Import\ClickUp\Comments\TaskCommentImporter;
+use App\Domain\Import\ClickUp\PeopleFile;
 use Illuminate\Console\Command;
 use JsonException;
+use Throwable;
 
 /**
  * Importa los comentarios de las tareas de ClickUp (TaskCommentImporter). Repetible sin duplicar y
@@ -14,6 +16,7 @@ class ImportClickUpComments extends Command
 {
     protected $signature = 'app:import-clickup-comments
         {fichero : JSON de comentarios descargado de ClickUp ({id de tarea: [comentarios]})}
+        {--personas= : Fichero de personas de la importación de ClickUp (correo en ClickUp → correo en la app)}
         {--dry-run : Simula: no guarda nada}';
 
     protected $description = 'Importa los comentarios de las tareas de ClickUp (después de app:import-clickup)';
@@ -36,8 +39,22 @@ class ImportClickUpComments extends Command
             return self::FAILURE;
         }
 
+        $aliases = [];
+
+        if (is_string($peoplePath = $this->option('personas')) && $peoplePath !== '') {
+            try {
+                foreach (PeopleFile::load($peoplePath)->people as $person) {
+                    $aliases[$person->clickupEmail] = $person->email;
+                }
+            } catch (Throwable $e) {
+                $this->components->error('El fichero de personas no es válido: '.$e->getMessage());
+
+                return self::FAILURE;
+            }
+        }
+
         $dryRun = (bool) $this->option('dry-run');
-        $counts = $importer->import($dump, $dryRun);
+        $counts = $importer->import($dump, $dryRun, $aliases);
 
         $this->components->info($dryRun ? 'Simulación: nada se ha guardado.' : 'Comentarios importados.');
         $this->table(['Resultado', 'Comentarios'], [

@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * [comentarios de la API v2]}). Van después de `app:import-clickup`: la tarea se encuentra por
  * import_refs y el comentario queda registrado con el tipo `task_comment`, así que repetir no duplica.
  *
- * - Autor: la persona interna con el mismo email; los de ClickBot (avisos automáticos de «fecha
+ * - Autor: la persona interna con el mismo email, o el de su cuenta en la app según el fichero de
+ *   personas de la importación (antiguos empleados con otro correo); los de ClickBot (avisos automáticos de «fecha
  *   límite») y los de personas que no existen no se importan.
  * - Texto: párrafos, negrita, tachado, enlaces, menciones (como las de la app) y las imágenes y los
  *   marcadores, como enlace. Saneado con RichText, como lo que se escribe en la app.
@@ -34,14 +35,23 @@ final class TaskCommentImporter
 
     /**
      * @param  array<array-key, mixed>  $dump
+     * @param  array<string, string>  $aliases  correo en ClickUp → correo de la cuenta en la app
      * @return array{created: int, unchanged: int, bot: int, no_task: int, no_author: int, empty: int}
      */
-    public function import(array $dump, bool $dryRun = false): array
+    public function import(array $dump, bool $dryRun = false, array $aliases = []): array
     {
         $refs = new ImportRefs(ClickUpImporter::SOURCE);
         $refs->load();
         $this->usersByEmail = User::query()->whereNull('client_id')->pluck('id', 'email')
             ->mapWithKeys(fn (int $id, string $email): array => [mb_strtolower($email) => $id])->all();
+
+        foreach ($aliases as $clickUpEmail => $appEmail) {
+            $id = $this->usersByEmail[mb_strtolower($appEmail)] ?? null;
+
+            if ($id !== null) {
+                $this->usersByEmail[mb_strtolower($clickUpEmail)] ??= $id;
+            }
+        }
 
         $run = function () use ($dump, $refs, $dryRun): void {
             foreach ($dump as $clickUpTaskId => $comments) {

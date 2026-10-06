@@ -72,6 +72,21 @@ it('repetir no duplica y la simulación no guarda', function () {
     expect(TaskComment::query()->count())->toBe(1);
 });
 
+it('casa a los antiguos empleados por el fichero de personas (correo en ClickUp → correo en la app)', function () {
+    $old = User::factory()->create(['email' => 'ruben.antiguo@antiguos.audaxstudio.invalid']);
+    file_put_contents($this->path, json_encode(['cu-1' => [
+        ['id' => 'c-9', 'date' => '1753347151314', 'user' => ['email' => 'ruben@audaxstudio.com'], 'comment' => [['text' => 'Hecho']]],
+    ]]));
+
+    $counts = app(TaskCommentImporter::class)->import(
+        json_decode((string) file_get_contents($this->path), true),
+        aliases: ['ruben@audaxstudio.com' => 'ruben.antiguo@antiguos.audaxstudio.invalid'],
+    );
+
+    expect($counts['created'])->toBe(1)
+        ->and(TaskComment::query()->sole()->user_id)->toBe($old->id);
+});
+
 it('cuenta lo que no importa', function () {
     $counts = app(TaskCommentImporter::class)->import(json_decode((string) file_get_contents($this->path), true));
 
