@@ -13,6 +13,9 @@ return [
 
     'module_disabled' => 'Este módulo está desactivado.',
 
+    // Importación de WeeklySync (10.9b): una imagen del texto original sin dirección web.
+    'import_image' => 'Imagen',
+
     // Aviso de bienvenida al entrar (F-012).
     'welcome' => '¡Hola, :name! Bienvenido de nuevo.',
 
@@ -103,6 +106,7 @@ return [
     'pdf' => [
         'kind' => 'Weekly',
         'no_report' => 'Aún no se ha generado el informe de esta semana.',
+        'legacy_text' => 'Informe importado de WeeklySync: se conserva su texto final.',
         'global_summary' => 'Resumen global',
         'team_risks' => 'Riesgos detectados',
         'next_steps' => 'Siguientes pasos',
