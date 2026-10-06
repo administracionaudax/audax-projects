@@ -10,7 +10,12 @@ import type {
 } from '@/components/chat/media/types';
 import type { Project } from '@/types/domain';
 
-export type ChatConversationType = 'project' | 'direct' | 'group';
+export type ChatConversationType =
+    | 'project'
+    | 'direct'
+    | 'group'
+    | 'client'
+    | 'team';
 
 export type ChatMessageType = 'text' | 'audio' | 'file' | 'system';
 
@@ -28,6 +33,14 @@ export type ChatProjectSummary = {
     name: string;
     color: string;
     status: string;
+};
+
+/** Cliente de un canal de cliente o de un proyecto (D-271, D-273). */
+export type ChatClientSummary = {
+    id: number;
+    name: string;
+    icon: string | null;
+    is_active: boolean;
 };
 
 /** Mensaje de sistema: la interfaz pinta el aviso con su clave y sus datos. */
@@ -53,12 +66,18 @@ export type ChatConversationItem = {
     type: ChatConversationType;
     title: string;
     subtitle: string | null;
+    /** Emoji del canal de equipo o del cliente en su canal. */
+    icon: string | null;
     project: ChatProjectSummary | null;
+    /** Cliente del canal de cliente o del proyecto. */
+    client: ChatClientSummary | null;
     other_user: ChatUser | null;
     members_count: number;
+    /** Participa (los canales salen en la lista aunque no participe, D-273). */
+    is_participant: boolean;
     muted: boolean;
     unread: number;
-    /** Proyecto archivado: se lee pero no se escribe. */
+    /** Proyecto o canal archivado, o cliente desactivado: se lee pero no se escribe. */
     read_only: boolean;
     last_message: ChatLastMessage | null;
     last_activity_at: string | null;
@@ -68,7 +87,12 @@ export type ChatParticipant = ChatUser & {
     last_read_message_id: number | null;
 };
 
-export type ChatReadOnlyReason = 'archived' | 'not_participant' | 'inactive';
+export type ChatReadOnlyReason =
+    | 'archived'
+    | 'not_participant'
+    | 'inactive'
+    | 'client_inactive'
+    | 'channel_archived';
 
 /** Conversación abierta (cabecera, participantes y permisos). */
 export type ChatConversation = {
@@ -76,7 +100,9 @@ export type ChatConversation = {
     type: ChatConversationType;
     title: string;
     subtitle: string | null;
+    icon: string | null;
     project: ChatProjectSummary | null;
+    client: ChatClientSummary | null;
     other_user: ChatUser | null;
     participants: ChatParticipant[];
     muted: boolean;
@@ -88,11 +114,18 @@ export type ChatConversation = {
         moderate: boolean;
         create_task: boolean;
         mute: boolean;
-        /** Grupos (D-119): renombrar y añadir o quitar personas (quien lo creó o el admin). */
+        /**
+         * Grupos (D-119): renombrar y añadir o quitar personas (quien lo creó o el admin). Canales
+         * de equipo (D-272): nombre, emoji y archivado (los admins).
+         */
         manage: boolean;
-        /** Grupos: salir (quien participa). */
+        /** Grupos y canales: salir (quien participa). */
         leave: boolean;
+        /** Canales: entrar (quien lo ve sin participar). */
+        join: boolean;
     };
+    /** Canal de equipo archivado (D-272). */
+    archived: boolean;
     read_only_reason: ChatReadOnlyReason | null;
 };
 

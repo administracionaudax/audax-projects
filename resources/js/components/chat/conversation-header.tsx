@@ -1,16 +1,21 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     Bell,
     BellOff,
     ExternalLink,
+    LogIn,
+    LogOut,
     Settings2,
     ShieldCheck,
     Users,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { toast } from 'sonner';
+import { ChannelDialog } from '@/components/chat/channel-dialog';
 import { ChatAvatar, ConversationAvatar } from '@/components/chat/chat-avatar';
+import { ChatApiError, chatApi } from '@/components/chat/chat-api';
 import { GroupSettingsDialog } from '@/components/chat/group-settings-dialog';
 import { usePresence } from '@/components/chat/realtime-bridge';
 import { PresenceLabel } from '@/components/realtime';
@@ -26,9 +31,9 @@ import { urls } from '@/lib/urls';
 import type { ChatConversation } from '@/types/chat';
 
 /**
- * Cabecera de una conversación: nombre (proyecto, persona o grupo), a qué corresponde, los
- * participantes (inactivos marcados; presencia de C2), gestionar el grupo (D-119) y
- * silenciar/activar avisos. En el móvil, un botón vuelve a la lista (pantallas separadas).
+ * Cabecera de una conversación: nombre (proyecto, persona, grupo o canal), a qué corresponde, los
+ * participantes (inactivos marcados; presencia de C2), gestionar el grupo (D-119) o el canal de
+ * equipo (D-272), entrar en un canal o salir de él (D-270) y silenciar/activar avisos. En el móvil, un botón vuelve a la lista (pantallas separadas).
  * El título es enfocable: al abrir una conversación en el móvil el foco va a él.
  */
 export function ConversationHeader({
@@ -49,13 +54,44 @@ export function ConversationHeader({
 }) {
     const user = useRequiredUser();
     const [settings, setSettings] = useState(false);
+    const [joining, setJoining] = useState(false);
     const settingsButton = useRef<HTMLButtonElement>(null);
+    const channel =
+        conversation.type === 'client' || conversation.type === 'team';
+    const toggleMembership = async () => {
+        setJoining(true);
+
+        try {
+            if (conversation.can.join) {
+                await chatApi.joinChannel(conversation.id);
+                toast.success(t('chat.header.joined'));
+            } else {
+                await chatApi.leaveChannel(conversation.id);
+                toast.success(t('chat.header.left'));
+            }
+            router.reload({ only: ['conversation', 'conversations'] });
+        } catch (error) {
+            toast.error(
+                error instanceof ChatApiError
+                    ? error.firstError()
+                    : t('chat.errors.server'),
+            );
+        } finally {
+            setJoining(false);
+        }
+    };
     // Antes del primer dato de presencia, la directa dice solo que lo es.
     const { ready: presenceReady } = usePresence();
     const other = conversation.other_user;
     const subtitle =
         conversation.type === 'project' ? (
             conversation.subtitle
+        ) : conversation.type === 'client' ? (
+            t('chat.header.client_channel')
+        ) : conversation.type === 'team' ? (
+            t('chat.header.team_channel', {
+                count: conversation.participants.length,
+            })
         ) : conversation.type === 'group' ? (
             t('chat.header.members', {
                 count: conversation.participants.length,
@@ -97,7 +133,12 @@ export function ConversationHeader({
                             {t('chat.messages.inactive')}
                         </span>
                     ) : null}
-                    {!conversation.is_participant ? (
+                    {!conversation.is_participant && channel ? (
+                        <span>{t('chat.header.not_joined')}</span>
+                    ) : null}
+                    {!conversation.is_participant &&
+                    !channel &&
+                    conversation.can.moderate ? (
                         <span className="inline-flex items-center gap-1">
                             <ShieldCheck
                                 aria-hidden="true"
@@ -120,6 +161,43 @@ export function ConversationHeader({
                         <ExternalLink aria-hidden="true" />
                         {t('chat.header.open_project')}
                     </Link>
+                </Button>
+            ) : null}
+
+            {channel && (conversation.can.join || conversation.can.leave) ? (
+                <Button
+                    type="button"
+                    variant={conversation.can.join ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => void toggleMembership()}
+                    disabled={joining}
+                    title={
+                        conversation.can.join
+                            ? t('chat.header.join_help')
+                            : t('chat.header.leave_help')
+                    }
+                    data-test={
+                        conversation.can.join
+                            ? 'chat-channel-join'
+                            : 'chat-channel-leave'
+                    }
+                >
+                    {conversation.can.join ? (
+                        <LogIn aria-hidden="true" />
+                    ) : (
+                        <LogOut aria-hidden="true" />
+                    )}
+                    <span
+                        className={
+                            conversation.can.join
+                                ? ''
+                                : 'sr-only sm:not-sr-only'
+                        }
+                    >
+                        {conversation.can.join
+                            ? t('chat.header.join')
+                            : t('chat.header.leave')}
+                    </span>
                 </Button>
             ) : null}
 
@@ -193,6 +271,30 @@ export function ConversationHeader({
                         open={settings}
                         onOpenChange={setSettings}
                         currentUserId={user.id}
+                        returnFocus={settingsButton}
+                    />
+                </>
+            ) : null}
+
+            {conversation.type === 'team' && conversation.can.manage ? (
+                <>
+                    <Button
+                        ref={settingsButton}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-9"
+                        onClick={() => setSettings(true)}
+                        aria-label={t('chat.channel.open_settings')}
+                        title={t('chat.channel.open_settings')}
+                        data-test="chat-channel-settings-open"
+                    >
+                        <Settings2 aria-hidden="true" />
+                    </Button>
+                    <ChannelDialog
+                        conversation={conversation}
+                        open={settings}
+                        onOpenChange={setSettings}
                         returnFocus={settingsButton}
                     />
                 </>

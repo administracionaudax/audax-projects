@@ -60,7 +60,7 @@ final readonly class ConversationAbilities
     /**
      * Por qué no puede escribir, para explicarlo en lugar del editor (o null si puede).
      *
-     * @return 'archived'|'not_participant'|'inactive'|'client_inactive'|null
+     * @return 'archived'|'not_participant'|'inactive'|'client_inactive'|'channel_archived'|null
      */
     public function readOnlyReason(Conversation $conversation): ?string
     {
@@ -73,7 +73,8 @@ final readonly class ConversationAbilities
         }
 
         return match ($conversation->type) {
-            ConversationType::Project, ConversationType::Team => 'archived',
+            ConversationType::Project => 'archived',
+            ConversationType::Team => 'channel_archived',
             ConversationType::Client => 'client_inactive',
             default => 'inactive',
         };

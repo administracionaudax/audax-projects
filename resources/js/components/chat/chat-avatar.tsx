@@ -1,4 +1,4 @@
-import { FolderKanban, Users } from 'lucide-react';
+import { Building2, FolderKanban, Hash, Users } from 'lucide-react';
 import { usePresence } from '@/components/chat/realtime-bridge';
 import { PresenceDot } from '@/components/realtime';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,32 +49,67 @@ export function ChatAvatar({
     );
 }
 
-/** Icono de una conversación: la persona (directa, con su presencia), el color del proyecto o un grupo. */
+/**
+ * Icono de una conversación: la persona (directa, con su presencia), el color del proyecto, un
+ * grupo o, en los canales (D-270), su emoji (el del canal de equipo o el del cliente) o un icono.
+ */
 export function ConversationAvatar({
     conversation,
+    small = false,
 }: {
     conversation: Pick<
         ChatConversationItem,
         'type' | 'other_user' | 'project' | 'title'
-    >;
+    > &
+        Partial<Pick<ChatConversationItem, 'icon'>>;
+    small?: boolean;
 }) {
     if (conversation.type === 'direct' && conversation.other_user) {
         return (
             <ChatAvatar
                 user={conversation.other_user}
                 presenceOf={conversation.other_user.id}
+                small={small}
             />
         );
     }
 
-    const Icon = conversation.type === 'project' ? FolderKanban : Users;
+    const size = small ? 'size-6' : 'size-8';
+
+    if (conversation.icon) {
+        return (
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'flex shrink-0 items-center justify-center rounded-full bg-neutral-soft leading-none',
+                    size,
+                    small ? 'text-sm' : 'text-base',
+                )}
+                data-test="chat-conversation-icon"
+            >
+                {conversation.icon}
+            </span>
+        );
+    }
+
+    const Icon =
+        conversation.type === 'project'
+            ? FolderKanban
+            : conversation.type === 'team'
+              ? Hash
+              : conversation.type === 'client'
+                ? Building2
+                : Users;
 
     return (
         <span
             aria-hidden="true"
-            className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-soft text-foreground"
+            className={cn(
+                'relative flex shrink-0 items-center justify-center rounded-full bg-neutral-soft text-foreground',
+                size,
+            )}
         >
-            <Icon className="size-4" strokeWidth={1.5} />
+            <Icon className={small ? 'size-3.5' : 'size-4'} strokeWidth={1.5} />
             {conversation.project ? (
                 <span
                     className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background"

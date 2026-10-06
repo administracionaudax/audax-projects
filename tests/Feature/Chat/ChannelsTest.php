@@ -98,7 +98,7 @@ it('el admin renombra y archiva un canal de equipo: queda de solo lectura, con m
         ->assertJsonPath('conversation.title', 'Marketing y contenidos')
         ->assertJsonPath('conversation.archived', true)
         ->assertJsonPath('conversation.can.post', false)
-        ->assertJsonPath('conversation.read_only_reason', 'archived');
+        ->assertJsonPath('conversation.read_only_reason', 'channel_archived');
 
     $this->actingAs($this->ana)->postJson("/chat/{$channel->id}/mensajes", ['body' => 'Hola'])->assertForbidden();
     expect($channel->messages()->where('type', MessageType::System)->orderBy('id')->pluck('system_key')->all())
