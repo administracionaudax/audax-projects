@@ -26,7 +26,7 @@
     "task_filters.all_people": "Todas las personas",
     "task_filters.all_banks": "Todas las bolsas",
     "task_filters.all_types": "Todos los tipos",
-    "task_filters.all_priorities": "Todas las prioridades",
+    "task_filters.all_priorities": "Todas",
     "task_filters.all_statuses": "Todos los estados",
     "task_filters.clear": "Limpiar filtros",
     "task_filters.toggle": "Filtros",

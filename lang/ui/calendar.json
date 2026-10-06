@@ -40,7 +40,7 @@
     "team_calendar.filters.search_placeholder": "Título, código de proyecto o cliente",
     "team_calendar.filters.person": "Persona",
     "team_calendar.filters.department": "Departamento",
-    "team_calendar.filters.all_departments": "Todos los departamentos",
+    "team_calendar.filters.all_departments": "Todos",
     "team_calendar.filters.project": "Proyecto",
     "team_calendar.filters.client": "Cliente",
     "team_calendar.filters.type": "Tipo",
