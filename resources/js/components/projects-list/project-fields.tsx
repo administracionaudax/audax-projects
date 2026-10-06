@@ -133,7 +133,7 @@ export function ProjectFields({
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid min-w-0 grid-cols-1 gap-2">
+                    <div className="grid min-w-0 grid-cols-1 content-start gap-2">
                         <Label htmlFor={`${id}-billing`}>
                             {t('projects.form.billing_type')}
                         </Label>
@@ -169,7 +169,7 @@ export function ProjectFields({
                         <InputError message={errors.billing_type} />
                     </div>
 
-                    <div className="grid min-w-0 grid-cols-1 gap-2">
+                    <div className="grid min-w-0 grid-cols-1 content-start gap-2">
                         <Label htmlFor={internal ? undefined : `${id}-client`}>
                             {t('projects.form.client')}
                         </Label>
@@ -311,7 +311,7 @@ export function ProjectFields({
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {statusEditable ? (
-                        <div className="grid min-w-0 grid-cols-1 gap-2">
+                        <div className="grid min-w-0 grid-cols-1 content-start gap-2">
                             <Label htmlFor={`${id}-status`}>
                                 {t('projects.form.status')}
                             </Label>
@@ -342,7 +342,7 @@ export function ProjectFields({
                         </div>
                     ) : null}
 
-                    <div className="grid gap-2">
+                    <div className="grid content-start gap-2">
                         <Label htmlFor={`${id}-start`}>
                             {t('projects.form.start_date')}
                         </Label>
@@ -355,7 +355,7 @@ export function ProjectFields({
                         <InputError message={errors.start_date} />
                     </div>
 
-                    <div className="grid gap-2">
+                    <div className="grid content-start gap-2">
                         <Label htmlFor={`${id}-due`}>
                             {t('projects.form.due_date')}
                         </Label>

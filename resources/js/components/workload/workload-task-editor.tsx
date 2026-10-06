@@ -166,7 +166,7 @@ export function WorkloadTaskEditor({
         >
             <div className="grid gap-3 sm:grid-cols-2">
                 {showAssignee ? (
-                    <div className="grid gap-1 sm:col-span-2">
+                    <div className="grid content-start gap-1 sm:col-span-2">
                         <Label htmlFor={`${id}-assignee`}>
                             {t('workload_edit.assignee')}
                         </Label>
@@ -230,7 +230,7 @@ export function WorkloadTaskEditor({
                 ) : null}
 
                 {fields.includes('estimate') ? (
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-estimate`}>
                             {t('workload_edit.estimate')}
                         </Label>

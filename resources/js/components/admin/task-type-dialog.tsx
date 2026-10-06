@@ -194,7 +194,7 @@ export function TaskTypeDialog({
                                 }
                                 aria-describedby={`${id}-billable-help`}
                             />
-                            <div className="grid gap-1">
+                            <div className="grid content-start gap-1">
                                 <Label htmlFor={`${id}-billable`}>
                                     {t('admin.task_types.billable')}
                                 </Label>
@@ -215,7 +215,7 @@ export function TaskTypeDialog({
                                 }
                                 aria-describedby={`${id}-active-help`}
                             />
-                            <div className="grid gap-1">
+                            <div className="grid content-start gap-1">
                                 <Label htmlFor={`${id}-active`}>
                                     {t('admin.task_types.active')}
                                 </Label>

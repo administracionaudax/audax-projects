@@ -284,7 +284,7 @@ export function CreateTaskDialog({
                         ) : null}
 
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="grid gap-1.5">
+                            <div className="grid content-start gap-1.5">
                                 <Label htmlFor={assigneeId}>
                                     {t('chat.task.assignee')}
                                 </Label>
@@ -337,7 +337,7 @@ export function CreateTaskDialog({
                                 </Select>
                                 <InputError message={errors.assignee_user_id} />
                             </div>
-                            <div className="grid gap-1.5">
+                            <div className="grid content-start gap-1.5">
                                 <Label htmlFor={dueId}>
                                     {t('chat.task.due_date')}
                                 </Label>

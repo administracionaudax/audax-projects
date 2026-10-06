@@ -511,7 +511,7 @@ function TimeEntryForm({
                 ) : (
                     <div className="grid content-start gap-2">
                         <div className="grid grid-cols-2 gap-2">
-                            <div className="grid gap-2">
+                            <div className="grid content-start gap-2">
                                 <Label htmlFor={field('start')}>
                                     {t('hours.dialog.start_time')}
                                 </Label>
@@ -534,7 +534,7 @@ function TimeEntryForm({
                                     data-test="time-entry-start"
                                 />
                             </div>
-                            <div className="grid gap-2">
+                            <div className="grid content-start gap-2">
                                 <Label htmlFor={field('end')}>
                                     {t('hours.dialog.end_time')}
                                 </Label>
