@@ -130,6 +130,8 @@
     "weeklies.person.assign_clients": "Asignar clientes",
     "weeklies.person.assign_title": "Asignar clientes a :name",
     "weeklies.person.assign_description": "Saldrá en el equipo de esos clientes en la Weekly y se le propondrán en «Mi weekly». No le da acceso a sus proyectos: para eso, añádelo como miembro en cada proyecto.",
+    "weeklies.person.assign_confirm": "Asignar",
+    "weeklies.person.assign_confirm_count": "Asignar (:count)",
     "weeklies.person.unassign": "Quitar de :client",
     "weeklies.person.unassign_short": "Quitar",
     "weeklies.client.team_role_owner": "Responsable",

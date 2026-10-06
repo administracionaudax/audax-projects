@@ -306,6 +306,7 @@ export default function TeamShow({
                                 clients={assignableClients}
                                 propName="assignable_clients"
                                 submitUrl={assignClients.url(person.id)}
+                                assign
                                 title={t('weeklies.person.assign_title', {
                                     name: person.name,
                                 })}

@@ -371,9 +371,12 @@ export function JoinClientsDialog({
     submitUrl,
     title,
     description,
+    assign = false,
 }: {
     clients: WeeklyJoinableClient[] | undefined;
     trigger: ReactNode;
+    /** «Asignar» a otra persona desde su ficha (D-233) en vez de «Unirme». */
+    assign?: boolean;
     /** La prop opcional con la lista (para «Asignar clientes» de la ficha, D-233). */
     propName?: string;
     submitUrl?: string;
@@ -550,13 +553,21 @@ export function JoinClientsDialog({
                         <Button
                             type="submit"
                             disabled={processing || selected.size === 0}
+                            data-test="join-clients-confirm"
                         >
                             {processing && <Spinner />}
                             {selected.size > 0
-                                ? t('weeklies.join.confirm_count', {
-                                      count: selected.size,
-                                  })
-                                : t('weeklies.join.confirm')}
+                                ? t(
+                                      assign
+                                          ? 'weeklies.person.assign_confirm_count'
+                                          : 'weeklies.join.confirm_count',
+                                      { count: selected.size },
+                                  )
+                                : t(
+                                      assign
+                                          ? 'weeklies.person.assign_confirm'
+                                          : 'weeklies.join.confirm',
+                                  )}
                         </Button>
                     </DialogFooter>
                 </form>
