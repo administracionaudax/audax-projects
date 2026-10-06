@@ -1,16 +1,16 @@
 {
- "done": true,
- "messages": [
-  {
-   "id": "u-1",
-   "parent_channel": "c-unmapped",
-   "user_id": "101",
-   "date": 1788259200000,
-   "date_assigned": 1788259200000,
-   "type": "message",
-   "resolved": false,
-   "replies_count": 0,
-   "content": "Lead nuevo"
-  }
- ]
+    "done": true,
+    "messages": [
+        {
+            "id": "u-1",
+            "parent_channel": "c-unmapped",
+            "user_id": "101",
+            "date": 1788259200000,
+            "date_assigned": 1788259200000,
+            "type": "message",
+            "resolved": false,
+            "replies_count": 0,
+            "content": "Lead nuevo"
+        }
+    ]
 }

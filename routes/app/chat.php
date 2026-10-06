@@ -54,7 +54,7 @@ Route::post('chat/{conversation}/dejar', [ChannelController::class, 'leave'])
     ->name('chat.channels.leave');
 Route::get('chat/clientes/{client}', [ChannelController::class, 'client'])
     ->whereNumber('client')
-    ->middleware('throttle:60,1,chat-channels')
+    ->middleware('throttle:60,1,chat-client-channel')
     ->name('chat.channels.client');
 
 // Conversaciones que el admin modera sin participar (proyectos y grupos; nunca directas, D-071).

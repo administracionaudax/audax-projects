@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 
 it('cada ruta con un límite numérico tiene su propio contador (prefijo), sin compartirlo por accidente', function () {
     // Los prefijos compartidos a propósito (varias rutas de una misma acción).
-    $shared = ['home-layout', 'chat-conversations', 'chat-groups', 'google-oauth', 'push-write', 'realtime-viewing'];
+    $shared = ['home-layout', 'chat-conversations', 'chat-groups', 'chat-channels', 'google-oauth', 'push-write', 'realtime-viewing'];
     $prefixes = [];
 
     foreach (Route::getRoutes() as $route) {

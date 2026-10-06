@@ -1,14 +1,14 @@
 {
- "https://t1.p.clickup-attachments.com/t1/aa/foto.png": {
-  "path": "attachments/aa/foto.png",
-  "name": "foto.png",
-  "size": 0,
-  "type": "image/png"
- },
- "https://t1.p.clickup-attachments.com/t1/bb/video.mov": {
-  "path": "attachments/bb/video.mov",
-  "name": "video.mov",
-  "size": 4,
-  "type": "video/quicktime"
- }
+    "https://t1.p.clickup-attachments.com/t1/aa/foto.png": {
+        "path": "attachments/aa/foto.png",
+        "name": "foto.png",
+        "size": 0,
+        "type": "image/png"
+    },
+    "https://t1.p.clickup-attachments.com/t1/bb/video.mov": {
+        "path": "attachments/bb/video.mov",
+        "name": "video.mov",
+        "size": 4,
+        "type": "video/quicktime"
+    }
 }

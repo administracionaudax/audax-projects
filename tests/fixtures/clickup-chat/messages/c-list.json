@@ -1,16 +1,16 @@
 {
- "done": true,
- "messages": [
-  {
-   "id": "p-1",
-   "parent_channel": "c-list",
-   "user_id": "101",
-   "date": 1788257400000,
-   "date_assigned": 1788257400000,
-   "type": "message",
-   "resolved": false,
-   "replies_count": 0,
-   "content": "Subida la maqueta"
-  }
- ]
+    "done": true,
+    "messages": [
+        {
+            "id": "p-1",
+            "parent_channel": "c-list",
+            "user_id": "101",
+            "date": 1788257400000,
+            "date_assigned": 1788257400000,
+            "type": "message",
+            "resolved": false,
+            "replies_count": 0,
+            "content": "Subida la maqueta"
+        }
+    ]
 }

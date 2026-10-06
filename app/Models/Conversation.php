@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 
 /**
  * Conversación del chat (SPEC §4.5 y §12): de proyecto (una por proyecto, con sus miembros),
@@ -35,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['type', 'project_id', 'client_id', 'name', 'icon', 'direct_key', 'created_by', 'last_message_at', 'archived_at'])]
 class Conversation extends Model
 {
+    private const string PARTICIPANT_MEMO = 'conversation.participant.';
+
     /**
      * @return array<string, string>
      */
@@ -92,12 +95,23 @@ class Conversation extends Model
         return $this->hasMany(Message::class);
     }
 
-    /** @var array<int, bool> persona => participa (memoria de la petición, para las políticas) */
-    private array $participating = [];
-
     public function hasParticipant(User $user): bool
     {
-        return $this->participating[$user->id] ??= $this->activeParticipants()->where('user_id', $user->id)->exists();
+        $query = fn (): bool => $this->activeParticipants()->where('user_id', $user->id)->exists();
+        $request = app()->bound('request') ? app('request') : null;
+
+        // Dentro de una petición, una consulta por conversación y persona (las políticas lo
+        // preguntan varias veces); fuera (colas, consola, tests), siempre a la base.
+        if (! $request instanceof Request || $request->route() === null || ! $this->exists) {
+            return $query();
+        }
+
+        $key = self::PARTICIPANT_MEMO.$this->id.'.'.$user->id;
+        if (! $request->attributes->has($key)) {
+            $request->attributes->set($key, $query());
+        }
+
+        return (bool) $request->attributes->get($key);
     }
 
     /**
@@ -105,6 +119,16 @@ class Conversation extends Model
      */
     public function forgetParticipants(): void
     {
-        $this->participating = [];
+        $request = app()->bound('request') ? app('request') : null;
+        if (! $request instanceof Request) {
+            return;
+        }
+
+        $prefix = self::PARTICIPANT_MEMO.$this->id.'.';
+        foreach (array_keys($request->attributes->all()) as $key) {
+            if (str_starts_with((string) $key, $prefix)) {
+                $request->attributes->remove((string) $key);
+            }
+        }
     }
 }
