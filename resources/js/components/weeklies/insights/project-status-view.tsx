@@ -410,7 +410,7 @@ export function ProjectStatusView({
                                 </div>
                                 <ProjectKindBadges badges={group.badges} />
                             </header>
-                            <div className="grid gap-3 p-3 xl:grid-cols-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-3 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
                                 {group.projects.map((entry) => (
                                     <ProjectStatusCard
                                         key={entry.project_id}
