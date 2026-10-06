@@ -372,10 +372,7 @@ export function AssigneePicker({
                     aria-expanded={open}
                     aria-label={ariaLabel}
                     disabled={disabled}
-                    className={cn(
-                        'w-full justify-between',
-                        className,
-                    )}
+                    className={cn('w-full justify-between', className)}
                 >
                     {value === undefined ? (
                         <span className="text-muted-foreground">

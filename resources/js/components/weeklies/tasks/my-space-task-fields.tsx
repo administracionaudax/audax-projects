@@ -76,10 +76,7 @@ function SearchablePicker({
                     aria-label={props['aria-label']}
                     aria-invalid={invalid ? true : undefined}
                     disabled={props.disabled}
-                    className={cn(
-                        'w-full justify-between',
-                        props.className,
-                    )}
+                    className={cn('w-full justify-between', props.className)}
                     data-test={dataTest}
                 >
                     <span

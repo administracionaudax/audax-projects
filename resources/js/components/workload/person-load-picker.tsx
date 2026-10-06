@@ -86,10 +86,7 @@ export function PersonLoadPicker({
                     aria-describedby={describedBy}
                     aria-invalid={invalid || undefined}
                     disabled={disabled}
-                    className={cn(
-                        'w-full min-w-0 justify-between',
-                        className,
-                    )}
+                    className={cn('w-full min-w-0 justify-between', className)}
                 >
                     <span className="flex min-w-0 items-center gap-1.5">
                         <UserRound
