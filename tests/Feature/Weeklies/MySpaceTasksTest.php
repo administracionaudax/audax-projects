@@ -90,6 +90,7 @@ it('la pestaña Tareas trae mis tareas con su cliente, sin las de otros ni las d
                 && $byId[$mine->id]['notes_editable'] === true
                 && $byId[$mine->id]['archived'] === false
                 && $byId[$mine->id]['can'] === ['update' => true, 'delete' => true]
+                && $byId[$mine->id]['has_time'] === false
                 && $byId[$general->id]['client'] === null
                 && $byId[$general->id]['assigner'] === null
                 && $byId[$rich->id]['notes_editable'] === false;

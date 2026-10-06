@@ -1841,6 +1841,16 @@ Revisión de paridad 10.9b (P2).
 - **Weekly vacía:** WeeklySync dejaba enviarla (una semana sin trabajo de cliente quedaba como hecha, `ws:App.tsx:2062-2089`) y Audax la rechazaba («Escribe algo en al menos un cliente»). Ahora se puede: el envío queda con 0 apuntes, cuenta como enviado (a tiempo o con retraso) y en el informe no aporta nada. La interfaz pide confirmarlo («¿Enviar la weekly sin apuntes?») para que no se envíe vacía sin querer.
 - **Avisos del navegador:** WeeklySync pedía el permiso solo, a los 2 s del primer acceso. Audax no lo pide nunca sin un gesto (los navegadores castigan pedirlo de entrada y un «Bloquear» no tiene vuelta atrás fácil). En su lugar, un aviso amable «¿Te avisamos en el navegador?» con «Activar avisos» y «Ahora no» en «Mi weekly» tras enviar y en el resumen de `/weeklies`, solo si el navegador los admite, el servidor tiene Web Push y aún no se ha dado ni negado el permiso. «Ahora no» se recuerda en ese navegador. Sigue el interruptor de `/ajustes/notificaciones`.
 
+### D-231 · Tareas de Mi espacio: menos pasos y más claras **[concreta D-203 y D-204]**
+Revisión de paridad 10.9b (P2).
+- **«Generar tareas con IA» (F-062):** sigue siendo revisar antes de crear (D-204), pero al terminar la tanda sale un aviso («La IA ha propuesto N tareas: revísalas y crea las marcadas con un clic») y la revisión se pone a la vista con el foco en su título. Las propuestas con proyecto ya vienen marcadas, así que crearlas es un clic.
+- **Buscador** en los selectores de cliente y de proyecto a partir de 9 opciones (como el `searchable={clients.length > 8}` del original), también en la revisión de las propuestas.
+- **Clientes de «Nueva tarea» (F-058):** no se abren todos los clientes como en el original porque una tarea de Audax vive en un proyecto y crearla exige ser miembro o gestor (D-021, D-221). En su lugar, el diálogo explica que solo salen los clientes con proyectos abiertos en los que se participa y que, si falta alguno, se pide a quien lo gestiona; con enlace a la lista de clientes, que ya enseña el responsable de cada uno (D-232).
+- **Avisos** al crear una tarea, al marcarla hecha o pendiente y si falla, como los de WeeklySync.
+- **Notas (F-060):** debajo del campo, «Es la descripción de la tarea: la ve el equipo del proyecto», para que nadie la tome por privada.
+- **Eliminar con horas (F-061):** el botón ya no desaparece: queda desactivado con «Tiene horas registradas: no se puede eliminar, archívala» (`has_time`).
+- **Autocompletar (F-048):** cada tarea lleva sus notas en una línea («- Nota: …», hasta 300 caracteres), como el original.
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.

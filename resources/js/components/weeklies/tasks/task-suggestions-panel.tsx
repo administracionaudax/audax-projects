@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Bot, CircleAlert, Info, X } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { DatePicker } from '@/components/domain/date-picker';
 import InputError from '@/components/input-error';
 import { PrioritySelect } from '@/components/tasks/task-fields';
@@ -66,6 +67,32 @@ export function TaskSuggestionsPanel({
         (item) => edits[item.key] ?? suggestionDraft(item, projects),
     );
     const selected = drafts.filter((draft) => draft.selected);
+    const sectionRef = useRef<HTMLElement>(null);
+    const titleRef = useRef<HTMLHeadingElement>(null);
+    const wasBusy = useRef(busy);
+
+    // Al terminar de generar (10.9b, D-231): aviso con cuántas hay y la revisión a la vista, con
+    // el foco en su título, para que crearlas sea un clic.
+    useEffect(() => {
+        if (wasBusy.current && !busy && batch.state === 'done') {
+            if (batch.items.length > 0) {
+                toast.success(
+                    t('my_space.tasks.suggestions.ready', {
+                        count: batch.items.length,
+                    }),
+                );
+                sectionRef.current?.scrollIntoView?.({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
+                titleRef.current?.focus({ preventScroll: true });
+            } else {
+                toast.info(t('my_space.tasks.suggestions.none'));
+            }
+        }
+
+        wasBusy.current = busy;
+    }, [busy, batch.state, batch.items.length]);
 
     useEffect(() => {
         if (!busy) {
@@ -177,6 +204,7 @@ export function TaskSuggestionsPanel({
 
     return (
         <section
+            ref={sectionRef}
             aria-labelledby="task-suggestions-title"
             aria-busy={busy || processing}
             className="grid gap-3 border bg-card p-4"
@@ -186,7 +214,9 @@ export function TaskSuggestionsPanel({
                 <div className="grid min-w-0 gap-1">
                     <h2
                         id="task-suggestions-title"
-                        className="flex items-center gap-2 text-base font-normal"
+                        ref={titleRef}
+                        tabIndex={-1}
+                        className="flex items-center gap-2 text-base font-normal outline-none"
                     >
                         <Bot
                             aria-hidden="true"

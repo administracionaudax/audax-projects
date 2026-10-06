@@ -2,6 +2,7 @@
 
 namespace App\Domain\Weeklies;
 
+use App\Domain\Weeklies\Tasks\TaskNotes;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\Task;
@@ -11,6 +12,7 @@ use App\Models\WeeklyCycle;
 use App\Models\WeeklySubmission;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 /**
  * Los clientes de «Mi weekly» (D-150, F-033, F-044, F-045 y F-048):
@@ -88,6 +90,9 @@ final class MyWeeklyClients
         ];
     }
 
+    /** Caracteres de la nota de una tarea en «Autocompletar». */
+    public const int NOTE_LIMIT = 300;
+
     /**
      * Texto para «Autocompletar» por cliente (clave: id del cliente o «general»), una línea por tarea.
      *
@@ -123,7 +128,7 @@ final class MyWeeklyClients
                         ->orWhere(fn (Builder $due) => $due->whereNull('completed_at')->whereBetween('due_date', [$from, $to])))))
             ->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'client_id'])])
             ->orderBy('title')
-            ->get(['id', 'project_id', 'title', 'completed_at', 'deleted_at']);
+            ->get(['id', 'project_id', 'title', 'description', 'completed_at', 'deleted_at']);
 
         $lines = [];
 
@@ -134,6 +139,13 @@ final class MyWeeklyClients
 
             if ($minutes > 0) {
                 $line .= ' '.__('weeklies.autofill.time', ['time' => self::duration($minutes)]);
+            }
+
+            // Sus notas, en una línea, como « - Nota: …» de WeeklySync (F-048, 10.9b).
+            $note = trim((string) preg_replace('/\s+/u', ' ', TaskNotes::toPlain($task->description)));
+
+            if ($note !== '') {
+                $line .= ' '.__('weeklies.autofill.note', ['note' => Str::limit($note, self::NOTE_LIMIT)]);
             }
 
             $lines[$key][] = $line;

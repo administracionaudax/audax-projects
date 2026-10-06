@@ -184,6 +184,8 @@ final class MySpaceTasks
             'notes' => TaskNotes::toPlain($task->description),
             'notes_editable' => TaskNotes::isPlain($task->description),
             'archived' => $archived,
+            // Con horas no se borra (D-037): se archiva. La interfaz lo explica (10.9b).
+            'has_time' => (bool) $task->getAttribute('time_entries_exists'),
             'can' => [
                 'update' => $canUpdate,
                 'delete' => $canUpdate && ! (bool) $task->getAttribute('time_entries_exists'),

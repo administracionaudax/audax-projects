@@ -164,7 +164,7 @@ it('«Mi weekly» propone los clientes de mis proyectos y de mis horas de la sem
     $memberProject = Project::factory()->withMembers([$me])->create(['client_id' => $member->id, 'code' => 'BH01']);
     $loggedProject = Project::factory()->create(['client_id' => $logged->id]);
     Project::factory()->create(['client_id' => $other->id]);
-    $task = Task::factory()->create(['project_id' => $loggedProject->id, 'title' => 'Maquetar home']);
+    $task = Task::factory()->create(['project_id' => $loggedProject->id, 'title' => 'Maquetar home', 'description' => "<p>Falta el\npie</p><p>y el menú</p>"]);
     TimeEntry::factory()->forTask($task)->on('2026-10-06')->minutes(90)->create(['user_id' => $me->id]);
     TimeEntry::factory()->forTask($task)->on('2026-09-30')->minutes(60)->create(['user_id' => $me->id]);
 
@@ -178,7 +178,8 @@ it('«Mi weekly» propone los clientes de mis proyectos y de mis horas de la sem
         ->where('editor.clients.catalog', fn ($catalog) => collect($catalog)->pluck('name')->all() === ['Horas', 'Miembro', 'Otro'])
         ->where('editor.clients.catalog.1.projects.0.id', $memberProject->id)
         ->where('editor.clients.catalog.1.projects.0.is_mine', true)
-        ->where("editor.autofill.{$logged->id}", __('weeklies.autofill.pending', ['task' => 'Maquetar home']).' '.__('weeklies.autofill.time', ['time' => '1 h 30 min'])));
+        // Con las notas de la tarea en una línea (F-048, 10.9b).
+        ->where("editor.autofill.{$logged->id}", __('weeklies.autofill.pending', ['task' => 'Maquetar home']).' '.__('weeklies.autofill.time', ['time' => '1 h 30 min']).' - Nota: Falta el pie y el menú'));
 
     expect($inactive->id)->toBeInt();
 });

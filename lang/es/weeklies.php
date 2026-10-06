@@ -194,6 +194,7 @@ return [
         'done' => 'Hecho: :task',
         'pending' => 'En curso: :task',
         'time' => '(:time)',
+        'note' => '- Nota: :note',
     ],
 
     'errors' => [

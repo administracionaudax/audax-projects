@@ -1,7 +1,8 @@
-import { router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
+import { toast } from 'sonner';
 import { DatePicker } from '@/components/domain/date-picker';
 import InputError from '@/components/input-error';
 import { PrioritySelect } from '@/components/tasks/task-fields';
@@ -26,6 +27,7 @@ import {
 import { useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { defaultBank, projectsOfClient } from '@/lib/my-space-tasks';
+import { index as clientsIndex } from '@/routes/clients';
 import { store as storeTask, update as updateTask } from '@/routes/tasks';
 import type { TaskPriority } from '@/types';
 import type { MySpaceTask, MySpaceTaskProject } from '@/types/weeklies';
@@ -101,6 +103,7 @@ function NewTaskForm({
 }) {
     const id = useId();
     const user = useRequiredUser();
+    const viewClients = usePage().props.auth?.can?.viewClients === true;
     const [title, setTitle] = useState('');
     const [clientId, setClientId] = useState<number | null | undefined>(
         undefined,
@@ -168,7 +171,14 @@ function NewTaskForm({
                 only: MY_TASKS_RELOAD,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
-                onSuccess: () => onDone(),
+                onSuccess: () => {
+                    toast.success(
+                        t('my_space.tasks.toast.created', {
+                            task: title.trim(),
+                        }),
+                    );
+                    onDone();
+                },
                 onError: (server) =>
                     setErrors(serverErrors(server as Record<string, string>)),
             },
@@ -220,6 +230,25 @@ function NewTaskForm({
                         value={clientId}
                         onChange={chooseClient}
                     />
+                    <p
+                        className="text-xs text-muted-foreground"
+                        data-test="my-space-task-missing-client"
+                    >
+                        {t('my_space.tasks.field.missing_client')}
+                        {viewClients ? (
+                            <>
+                                {' '}
+                                <Link
+                                    href={clientsIndex.url()}
+                                    className="underline underline-offset-2"
+                                >
+                                    {t(
+                                        'my_space.tasks.field.missing_client_link',
+                                    )}
+                                </Link>
+                            </>
+                        ) : null}
+                    </p>
                 </div>
                 <div className="grid content-start gap-2">
                     <Label htmlFor={field('project')}>
@@ -367,7 +396,14 @@ function EditTaskForm({
                 only: MY_TASKS_RELOAD,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
-                onSuccess: () => onDone(),
+                onSuccess: () => {
+                    toast.success(
+                        t('my_space.tasks.toast.created', {
+                            task: title.trim(),
+                        }),
+                    );
+                    onDone();
+                },
                 onError: (server) =>
                     setErrors(serverErrors(server as Record<string, string>)),
             },

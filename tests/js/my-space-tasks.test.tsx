@@ -439,6 +439,91 @@ describe('MySpaceTasks (pestaña Tareas)', () => {
     });
 });
 
+describe('paridad 10.9b de las tareas de Mi espacio', () => {
+    const statuses = { open: 1, done: 3 };
+
+    it('con horas, el borrado queda desactivado y explicado', () => {
+        render(
+            <MySpaceTasks
+                tasks={[
+                    task({
+                        has_time: true,
+                        can: { update: true, delete: false },
+                    }),
+                ]}
+                projects={projects}
+                statuses={statuses}
+                suggestions={null}
+                source={null}
+            />,
+        );
+
+        const blocked = screen.getByTestId('my-space-task-delete-blocked');
+        expect((blocked as HTMLButtonElement).disabled).toBe(true);
+        expect(blocked.getAttribute('aria-label')).toBe(
+            'Tiene horas registradas: no se puede eliminar, archívala.',
+        );
+    });
+
+    it('la nota avisa de que la ve el equipo del proyecto', () => {
+        render(<TaskNotesField task={task()} />);
+
+        const notes = screen.getByRole('textbox', {
+            name: 'Notas de «Maquetar la home»',
+        });
+        expect(
+            document.getElementById(notes.getAttribute('aria-describedby')!)
+                ?.textContent,
+        ).toBe('Es la descripción de la tarea: la ve el equipo del proyecto.');
+    });
+
+    it('con más de 8 proyectos, el selector lleva buscador; y explica qué clientes salen', async () => {
+        const user = userEvent.setup();
+        const many: MySpaceTaskProject[] = Array.from(
+            { length: 10 },
+            (_, index) => ({
+                id: 100 + index,
+                code: `CLI${index}-WE1`,
+                name: `Web ${index}`,
+                client: {
+                    id: 200 + index,
+                    name: `Cliente ${index}`,
+                    icon: null,
+                },
+                uses_banks: false,
+                banks: [],
+            }),
+        );
+        render(
+            <MySpaceTasks
+                tasks={[]}
+                projects={many}
+                statuses={statuses}
+                suggestions={null}
+                source={null}
+            />,
+        );
+
+        await user.click(screen.getByTestId('my-space-tasks-new'));
+        expect(
+            screen.getByTestId('my-space-task-missing-client').textContent,
+        ).toContain('Solo salen los clientes con proyectos abiertos');
+        await user.click(screen.getByTestId('my-space-task-project'));
+        await user.type(
+            screen.getByPlaceholderText('Buscar por código o nombre…'),
+            'CLI7',
+        );
+        const options = screen.getAllByRole('option');
+        expect(options.map((option) => option.textContent)).toEqual([
+            'CLI7-WE1 · Web 7',
+        ]);
+        await user.click(options[0]);
+        expect(screen.getByTestId('my-space-task-project').textContent).toBe(
+            'CLI7-WE1 · Web 7',
+        );
+    });
+});
+
 describe('TaskSuggestionsPanel (F-062: revisar antes de crear)', () => {
     it('mientras se genera, recarga la tanda cada 3 s', () => {
         vi.useFakeTimers();

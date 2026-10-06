@@ -8,6 +8,7 @@ import {
     UserRound,
 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { PriorityBadge } from '@/components/domain/badges';
 import { Button } from '@/components/ui/button';
@@ -59,10 +60,25 @@ export function MySpaceTaskRow({
             return;
         }
 
+        const completing = !task.completed;
+
         router.patch(
             updateTask.url(task.id),
             { status_id: nextStatus },
-            options,
+            {
+                ...options,
+                // Aviso como en WeeklySync (10.9b): hecha o pendiente de nuevo, y si falla.
+                onSuccess: () =>
+                    toast.success(
+                        t(
+                            completing
+                                ? 'my_space.tasks.toast.done'
+                                : 'my_space.tasks.toast.reopened',
+                            { task: task.title },
+                        ),
+                    ),
+                onError: () => toast.error(t('my_space.tasks.toast.failed')),
+            },
         );
     };
 
@@ -222,6 +238,23 @@ export function MySpaceTaskRow({
                             })
                         }
                     />
+                ) : task.can.update && task.has_time ? (
+                    // Con horas no se borra (D-037): el botón queda, desactivado y explicado.
+                    <span
+                        className="inline-flex"
+                        title={t('my_space.tasks.delete.has_time')}
+                    >
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled
+                            aria-label={t('my_space.tasks.delete.has_time')}
+                            data-test="my-space-task-delete-blocked"
+                        >
+                            <Trash2 aria-hidden="true" />
+                        </Button>
+                    </span>
                 ) : null}
             </div>
 

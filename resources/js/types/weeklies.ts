@@ -918,6 +918,8 @@ export type MySpaceTask = {
     /** false: la descripción tiene formato y se edita en la tarea. */
     notes_editable: boolean;
     archived: boolean;
+    /** Tiene horas: no se puede borrar (D-037), se archiva. */
+    has_time?: boolean;
     can: { update: boolean; delete: boolean };
 };
 

@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
@@ -140,8 +141,18 @@ export function TaskNotesField({ task }: { task: MySpaceTask }) {
                 onChange={(event) => change(event.target.value)}
                 onBlur={() => void save()}
                 className="min-h-9 resize-none text-sm"
+                aria-describedby={`${id}-shared`}
                 data-test={`task-notes-${task.id}`}
             />
+            {/* Las notas son la descripción de la tarea (D-203): no son privadas (10.9b). */}
+            <p
+                id={`${id}-shared`}
+                className="flex items-center gap-1 text-xs text-muted-foreground"
+                data-test="task-notes-shared"
+            >
+                <Users aria-hidden="true" className="size-3 shrink-0" />
+                {t('my_space.tasks.notes.shared')}
+            </p>
             {task.can.update ? (
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <DictationButton
