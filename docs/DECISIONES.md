@@ -2342,4 +2342,4 @@ Los 52 diálogos de la app lo tenían así; la Previsión (`outline`), el canal 
 - Revisión de formularios: D-310 a D-312.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-313 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 en adelante, sin usar).
