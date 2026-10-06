@@ -190,7 +190,7 @@ export function WorkloadTaskEditor({
 
                 {fields.includes('dates') ? (
                     <>
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-start`}>
                                 {t('workload_edit.start')}
                             </Label>
@@ -208,7 +208,7 @@ export function WorkloadTaskEditor({
                             />
                             <InputError message={errors.start_date} />
                         </div>
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-due`}>
                                 {t('workload_edit.due')}
                             </Label>
