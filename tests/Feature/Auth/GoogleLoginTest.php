@@ -123,7 +123,7 @@ describe('salida hacia Google', function () {
             ->and($query['client_id'])->toBe(GoogleFakes::CLIENT_ID)
             ->and($query['redirect_uri'])->toBe(GOOGLE_LOGIN_CALLBACK)
             ->and($query['response_type'])->toBe('code')
-            ->and($query['scope'])->toBe('openid email profile')
+            ->and($query['scope'])->toBe('openid email')
             ->and($query['hd'])->toBe('audaxstudio.com')
             ->and($query['prompt'])->toBe('select_account')
             ->and($query['code_challenge_method'])->toBe('S256')

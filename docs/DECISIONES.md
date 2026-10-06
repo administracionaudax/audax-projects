@@ -1944,6 +1944,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - **Teclado:** el foco empieza en el título, Intro guarda y «Crear otra al guardar» deja el diálogo abierto, vacía el título y la estimación, conserva lo demás, devuelve el foco al título y anuncia «Creada «…»». Errores por campo, como el diálogo de horas.
 - **Tareas raíz:** el alta rápida de la lista y el kanban sigue creando con Intro y añade «Crear con más datos», que abre el mismo diálogo con lo escrito, el estado de la columna y, en un proyecto de bolsas, la bolsa (primero las del departamento).
 
+### D-238 · «Entrar con Google» sin el alcance `profile` **[cambia D-165]**
+En la vuelta de Google (`/login/google/callback`) el parámetro `scope` lleva `https://www.googleapis.com/auth/userinfo.profile`, y el WAF de Plesk (ModSecurity, Comodo, regla 210580 «OS File Access Attempt») lo toma por un intento de leer `.profile` y responde 403. Se piden solo `openid email`: el acceso casa por correo y no usa el nombre ni la foto de Google. Así no hay que tocar el WAF, que es común a todas las webs del servidor.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1959,4 +1962,4 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-237**.
+La siguiente libre es **D-239**.

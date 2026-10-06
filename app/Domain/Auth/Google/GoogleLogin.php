@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  * Acceso con Google (D-165): OpenID Connect con el mismo cliente OAuth de Google Sheets (D-142) y
  * el cliente HTTP de Laravel, sin dependencias nuevas.
  *
- * - Autorización con los alcances mínimos (`openid email profile`), `state` anti-CSRF, `nonce`,
+ * - Autorización con los alcances mínimos (`openid email`; sin `profile`: su «userinfo.profile» en la vuelta lo bloquea ModSecurity, regla 210580, D-238), `state` anti-CSRF, `nonce`,
  *   PKCE (S256), `prompt=select_account` y `hd` como pista si solo hay un dominio permitido.
  * - Vuelta: cambia el código por el id_token y lo valida en el servidor (emisor, audiencia,
  *   caducidad, `nonce`, correo verificado, dominio permitido y `hd` igual al dominio del correo:
@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
 final class GoogleLogin
 {
     /** @var list<string> */
-    public const array SCOPES = ['openid', 'email', 'profile'];
+    public const array SCOPES = ['openid', 'email'];
 
     /** ¿Se ofrece «Entrar con Google»? Con credenciales y el ajuste activado (por defecto, sí). */
     public static function available(): bool
