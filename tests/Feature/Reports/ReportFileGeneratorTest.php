@@ -239,7 +239,7 @@ test('imprimir: el mismo HTML del PDF en la pestaña, sin la app, con el diálog
         // Sin la app: ni Inertia ni Vite.
         ->and($html)->not->toContain('data-page=')
         ->not->toContain('/build/assets/')
-        ->toContain('class="report report--print"')
+        ->toContain('class="report report--landscape report--print"')
         ->and(reportHtmlText($html))->toContain('Estimado frente a real por tipo');
 
     $activity = Activity::query()->where('log_name', 'report-delivery')->sole();

@@ -73,7 +73,7 @@ final class ReportAccess
             ReportKind::Department => $gate->authorize('viewReport', $this->model(Department::class, $request, 'department')),
             ReportKind::Person => $gate->authorize('viewReport', $this->model(User::class, $request, 'user')),
             ReportKind::Client => $gate->authorize('viewReport', $this->model(Client::class, $request, 'client')),
-            ReportKind::Project => $gate->authorize('viewReport', $this->model(Project::class, $request, 'project')),
+            ReportKind::Project => $this->authorizeProject($request, $user),
             ReportKind::Billing => $gate->authorize('viewBilling', Client::class),
             ReportKind::Detail => $gate->authorize('viewDetailReport', TimeEntry::class),
             ReportKind::Hours => $gate->authorize('exportHours', TimeEntry::class),
@@ -83,6 +83,22 @@ final class ReportAccess
                 ? $gate->authorize('view', $this->model(WeeklyCycle::class, $request, 'cycle'))
                 : throw new AuthorizationException,
         };
+    }
+
+    /**
+     * El informe de un proyecto (viewReport) y, en su versión para el cliente (D-241 y D-242), solo
+     * quien ve todas sus horas: un admin o quien gestiona el proyecto.
+     *
+     * @throws AuthorizationException
+     */
+    private function authorizeProject(ReportRequest $request, User $user): void
+    {
+        $project = $this->model(Project::class, $request, 'project');
+        Gate::forUser($user)->authorize('viewReport', $project);
+
+        if (ReportVersion::fromQuery($request->query) === ReportVersion::Client && ! $user->isAdmin() && ! $user->isManagerOf($project)) {
+            throw new AuthorizationException;
+        }
     }
 
     /**

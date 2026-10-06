@@ -26,6 +26,8 @@ final readonly class ReportFilters
      * @param  list<int>  $projectIds
      * @param  list<int>  $bankIds
      * @param  list<int>  $taskTypeIds
+     * @param  list<string>  $statuses  estados de las horas (TimeEntryStatus); vacío, todos. No sale de la
+     *                                  URL: lo fija quien lo necesita (la versión para el cliente, D-241).
      */
     public function __construct(
         public ReportPeriod $period,
@@ -39,6 +41,7 @@ final readonly class ReportFilters
         public array $bankIds = [],
         public array $taskTypeIds = [],
         public ?bool $billable = null,
+        public array $statuses = [],
     ) {}
 
     /**
@@ -115,13 +118,24 @@ final readonly class ReportFilters
     public function withoutComparison(): self
     {
         return new self($this->period, $this->from, $this->to, false, $this->userIds, $this->departmentIds,
-            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable);
+            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable, $this->statuses);
     }
 
     public function withDates(CarbonImmutable $from, CarbonImmutable $to): self
     {
         return new self($this->period, $from, $to, $this->compare, $this->userIds, $this->departmentIds,
-            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable);
+            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable, $this->statuses);
+    }
+
+    /**
+     * Los mismos filtros, solo con las horas en esos estados (TimeEntryStatus). Añadido por D-241.
+     *
+     * @param  list<string>  $statuses
+     */
+    public function withStatuses(array $statuses): self
+    {
+        return new self($this->period, $this->from, $this->to, $this->compare, $this->userIds, $this->departmentIds,
+            $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable, $statuses);
     }
 
     /**
@@ -138,7 +152,8 @@ final readonly class ReportFilters
             $fixed['projectIds'] ?? $this->projectIds,
             $fixed['bankIds'] ?? $this->bankIds,
             $fixed['taskTypeIds'] ?? $this->taskTypeIds,
-            $this->billable);
+            $this->billable,
+            $this->statuses);
     }
 
     public function days(): int
@@ -186,7 +201,8 @@ final readonly class ReportFilters
     public function cacheKey(): string
     {
         return md5((string) json_encode([$this->from->toDateString(), $this->to->toDateString(), $this->userIds,
-            $this->departmentIds, $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable]));
+            $this->departmentIds, $this->clientIds, $this->projectIds, $this->bankIds, $this->taskTypeIds, $this->billable,
+            ...($this->statuses === [] ? [] : [$this->statuses])]));
     }
 
     private static function date(mixed $value): ?CarbonImmutable

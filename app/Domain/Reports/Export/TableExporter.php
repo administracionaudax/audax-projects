@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reports\Export;
 
+use App\Domain\Reports\Delivery\Documents\ExportSheet;
 use App\Support\LocalTime;
 use Illuminate\Support\Str;
 use OpenSpout\Common\Entity\Cell;
@@ -142,6 +143,56 @@ final class TableExporter
         $writer->close();
 
         return min($count, $this->maxRows);
+    }
+
+    /**
+     * Libro de Excel con varias hojas (D-240), cada una con su cabecera en negrita y como mucho
+     * maxRows() filas. Los nombres de hoja se limpian (31 caracteres, sin \ / ? * [ ] :) y no se
+     * repiten.
+     *
+     * @param  list<ExportSheet>  $sheets
+     */
+    public function writeWorkbook(string $path, array $sheets): void
+    {
+        $writer = new XlsxWriter;
+        $writer->openToFile($path);
+        $used = [];
+
+        foreach ($sheets as $index => $sheet) {
+            if ($index > 0) {
+                $writer->addNewSheetAndMakeItCurrent();
+            }
+
+            $writer->getCurrentSheet()->setName(self::sheetName($sheet->name, $index, $used));
+            $writer->addRow(self::row($sheet->headers, false, (new Style)->withFontBold(true)));
+
+            $count = 0;
+            foreach ($sheet->rows as $row) {
+                if (++$count > $this->maxRows) {
+                    break;
+                }
+                $writer->addRow(self::row(array_values($row), false));
+            }
+        }
+
+        $writer->close();
+    }
+
+    /**
+     * @param  array<string, true>  $used
+     */
+    private static function sheetName(string $name, int $index, array &$used): string
+    {
+        $clean = trim(mb_substr(str_replace(['\\', '/', '?', '*', '[', ']', ':'], ' ', $name), 0, 31));
+        $clean = $clean === '' ? 'Hoja '.($index + 1) : $clean;
+
+        $candidate = $clean;
+        for ($n = 2; isset($used[mb_strtolower($candidate)]); $n++) {
+            $candidate = mb_substr($clean, 0, 31 - strlen((string) $n) - 1).' '.$n;
+        }
+        $used[mb_strtolower($candidate)] = true;
+
+        return $candidate;
     }
 
     /**

@@ -46,7 +46,23 @@ return [
 
         'project' => [
             'export_name' => 'Informe de :project',
+            'export_full' => 'Informe completo de :project',
+            'export_client' => 'Informe para el cliente de :project',
             'other_tasks' => 'Otras tareas (movidas a otro proyecto)',
+            // Hojas del Excel del informe entero (D-240 y D-241).
+            'sheets' => [
+                'resumen' => 'Resumen',
+                'tareas' => 'Tareas',
+                'estimado-por-tipo' => 'Estimado por tipo',
+                'personas' => 'Personas',
+                'matriz' => 'Tarea x persona',
+                'semanas' => 'Semanas',
+                'meses' => 'Meses',
+                'tipos' => 'Tipos de tarea',
+                'bolsas' => 'Bolsas',
+                'entradas' => 'Entradas',
+                'costes' => 'Costes y margen',
+            ],
             'columns' => [
                 'task' => 'Tarea',
                 'parent' => 'Tarea principal',
@@ -67,6 +83,29 @@ return [
                 // D-081: los minutos (enteros) de las columnas de horas que se suman en el total.
                 'estimated_minutes' => 'Minutos estimados',
                 'actual_minutes' => 'Minutos reales',
+                // D-240 y D-241.
+                'concept' => 'Dato',
+                'value' => 'Valor',
+                'total_hours' => 'Total (horas)',
+                'month' => 'Mes',
+                'bank' => 'Bolsa',
+                'bank_status' => 'Estado',
+                'start' => 'Inicio',
+                'end' => 'Fin',
+                'contracted' => 'Horas contratadas',
+                'remaining' => 'Saldo restante',
+                'consumed_pct' => 'Consumo (%)',
+                'period_hours' => 'Horas en el periodo',
+                'bank_price' => 'Precio (€)',
+                'bank_rate' => 'Tarifa (€/h)',
+                'hourly_cost' => 'Coste medio (€/h)',
+                'margin' => 'Rentabilidad (€)',
+                'margin_pct' => 'Margen (%)',
+                'date' => 'Fecha',
+                'hours' => 'Horas',
+                'minutes' => 'Minutos',
+                'description' => 'Descripción',
+                'billable_flag' => 'Facturable',
             ],
         ],
 

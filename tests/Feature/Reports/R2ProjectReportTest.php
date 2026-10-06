@@ -220,7 +220,8 @@ test('los filtros de tipo y persona acotan las horas; el de tipo, también las t
 test('exporta el estimado frente a real y las horas por persona (con importes solo con permiso)', function () {
     $s = $this->s;
 
-    $tasks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk()->streamedContent());
+    // Con ?tabla=, solo esa tabla; sin ella, el libro completo (D-240, R2ProjectFullReportTest).
+    $tasks = ($this->xlsx)($this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'tareas']))->assertOk()->streamedContent());
     expect($tasks[0])->toBe(['Tarea', 'Tarea principal', 'Tipo', 'Estado', 'Horas estimadas', 'Horas reales', 'Desviación (horas)', 'Desviación (%)',
         'Minutos estimados', 'Minutos reales'])
         ->and($tasks[1])->toBe(['Diseño de la home', '', 'Diseño UI', 'Por hacer', 3.33, 6.5, 3.17, 95, 200, 390])
@@ -281,7 +282,7 @@ test('los títulos de tarea que empiezan por = no se exportan como fórmula', fu
     $s = $this->s;
     $s->t2->forceFill(['title' => '=cmd|\'/C calc\'!A0'])->save();
 
-    $content = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx']))->assertOk()->streamedContent();
+    $content = $this->actingAs($s->admin)->get(($this->url)(['formato' => 'xlsx', 'tabla' => 'tareas']))->assertOk()->streamedContent();
     $path = tempnam(sys_get_temp_dir(), 'r2').'.xlsx';
     file_put_contents($path, $content);
     $zip = new ZipArchive;
