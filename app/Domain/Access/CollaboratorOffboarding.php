@@ -70,7 +70,8 @@ final class CollaboratorOffboarding
 
     /**
      * Ha pasado a colaborador (administración o importación): suelta las tareas de los proyectos
-     * de los que no es miembro, deja de ser co-gestor y sale de sus directas y grupos.
+     * de los que no es miembro, deja de ser co-gestor y sale de sus directas, grupos y canales de
+     * equipo.
      */
     public function becameCollaborator(User $user): void
     {
@@ -82,7 +83,8 @@ final class CollaboratorOffboarding
         ConversationParticipant::query()
             ->where('user_id', $user->id)
             ->whereNull('left_at')
-            ->whereHas('conversation', fn (Builder $query) => $query->whereIn('type', [ConversationType::Direct->value, ConversationType::Group->value]))
+            // Y de los canales de equipo (D-272): un colaborador solo está en ellos si un admin lo añade.
+            ->whereHas('conversation', fn (Builder $query) => $query->whereIn('type', [ConversationType::Direct->value, ConversationType::Group->value, ConversationType::Team->value]))
             ->update(['left_at' => now()]);
 
         // Un colaborador externo no tiene Integraciones (D-134, D-142): su cuenta de Google se

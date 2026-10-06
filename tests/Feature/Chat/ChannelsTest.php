@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Access\CollaboratorOffboarding;
 use App\Domain\Chat\ChannelMembership;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
@@ -234,4 +235,14 @@ it('la búsqueda del chat encuentra los mensajes de los canales que se ven', fun
         ->and(collect($hits)->pluck('conversation.type')->all())->toBe(['client']);
 
     expect(app(MessageSource::class)->find($this->amparo, 'sprint', 10))->toBe([]);
+});
+
+it('quien pasa a colaborador sale de los canales de equipo', function () {
+    $channel = $this->directory->createTeam($this->admin, 'Daily', null);
+    expect($channel->hasParticipant($this->luis))->toBeTrue();
+
+    $this->luis->syncRoles(['collaborator']);
+    app(CollaboratorOffboarding::class)->becameCollaborator($this->luis->fresh());
+
+    $this->actingAs($this->luis->fresh())->get("/chat/{$channel->id}")->assertForbidden();
 });
