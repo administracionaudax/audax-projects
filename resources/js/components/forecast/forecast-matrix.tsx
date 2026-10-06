@@ -568,7 +568,12 @@ function MatrixHead({
                                 aria-hidden="true"
                                 className="block text-[0.6875rem] tracking-normal"
                             >
-                                {labels[index]?.sub}
+                                {/* Por meses, el año solo en la primera columna y en enero. */}
+                                {byWeek ||
+                                index === 0 ||
+                                bucket.from.slice(5, 7) === '01'
+                                    ? labels[index]?.sub
+                                    : '\u00a0'}
                             </span>
                             {holidays.length > 0 ? (
                                 <span className="sr-only">

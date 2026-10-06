@@ -110,7 +110,7 @@ export default function ProjectPlanning({
                     ) : null
                 }
             >
-                <div className="grid min-w-0 gap-6">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
                     {forecast ? (
                         <p
                             className="border-l-2 border-brand bg-card px-3 py-2 text-sm"
@@ -597,7 +597,7 @@ export default function ProjectPlanning({
                         <section
                             id="estimado"
                             aria-labelledby="estimate-title"
-                            className="grid scroll-mt-4 gap-3"
+                            className="grid min-w-0 scroll-mt-4 grid-cols-[minmax(0,1fr)] gap-3"
                         >
                             <h2 id="estimate-title" className="text-lg">
                                 <KeywordText

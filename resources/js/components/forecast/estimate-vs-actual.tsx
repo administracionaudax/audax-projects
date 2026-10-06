@@ -51,6 +51,11 @@ export function CumulativeChart({
     const ticks = hourTicks(max * 1.05, 5);
     const yMax = ticks[ticks.length - 1] || 1;
     const plotWidth = Math.max(width - PAD.left - PAD.right, 40);
+    // Una etiqueta de mes cada 32 px como poco (en el móvil, de dos en dos).
+    const labelEvery = Math.max(
+        1,
+        Math.ceil(32 / (plotWidth / Math.max(months.length, 1))),
+    );
     const x = (index: number) =>
         PAD.left + (plotWidth * index) / Math.max(months.length, 1);
     const y = (value: number) =>
@@ -169,17 +174,19 @@ export function CumulativeChart({
                         </text>
                     </g>
                 ))}
-                {months.map((row, index) => (
-                    <text
-                        key={row.month}
-                        x={x(index) + (x(index + 1) - x(index)) / 2}
-                        y={height - 8}
-                        textAnchor="middle"
-                        className="fill-muted-foreground text-[11px]"
-                    >
-                        {monthLabel(row.month)}
-                    </text>
-                ))}
+                {months.map((row, index) =>
+                    index % labelEvery !== 0 ? null : (
+                        <text
+                            key={row.month}
+                            x={x(index) + (x(index + 1) - x(index)) / 2}
+                            y={height - 8}
+                            textAnchor="middle"
+                            className="fill-muted-foreground text-[11px]"
+                        >
+                            {monthLabel(row.month)}
+                        </text>
+                    ),
+                )}
                 <path
                     d={estimated}
                     fill="none"
@@ -364,7 +371,10 @@ export function EstimateVsActualSection({
             : null;
 
     return (
-        <div className="grid gap-6" data-test="estimate-vs-actual">
+        <div
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6"
+            data-test="estimate-vs-actual"
+        >
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <ForecastStat
                     label={t('forecast.estimate.estimated')}
@@ -516,7 +526,7 @@ export function EstimateVsActualSection({
                 </ChartFrame>
             </section>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
                 <section className="border bg-card p-4">
                     <ChartFrame
                         title={t('forecast.estimate.by_department')}

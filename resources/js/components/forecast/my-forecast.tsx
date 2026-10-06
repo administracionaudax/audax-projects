@@ -323,7 +323,10 @@ export function MyForecastView({
     }
 
     return (
-        <div className="grid min-w-0 gap-6" data-test="my-forecast-view">
+        <div
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6"
+            data-test="my-forecast-view"
+        >
             {showHeader ? (
                 <div className="max-w-2xl space-y-1">
                     <h2 className="text-2xl font-normal tracking-tight">

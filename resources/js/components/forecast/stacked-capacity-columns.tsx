@@ -76,6 +76,7 @@ export function StackedCapacityColumns({
     const bar = Math.min(24, Math.max(3, slot * 0.6));
     const y = (amount: number) =>
         top + (height - top - bottom) * (1 - Math.min(amount, yMax) / yMax);
+    const every = Math.max(labelEvery, Math.ceil(36 / slot));
     const peak = loads.reduce(
         (best, load, index) => (load > (loads[best] ?? -1) ? index : best),
         0,
@@ -145,7 +146,8 @@ export function StackedCapacityColumns({
                     const strong = level === 'high' || level === 'over';
                     const showLabel = percent
                         ? index === peak && load > 0
-                        : strong || index % labelEvery === 0;
+                        : // Sin que se pisen: en un móvil, menos etiquetas (las fuertes, si caben).
+                          (strong && slot >= 34) || index % every === 0;
 
                     return (
                         <g key={buckets[index]?.key ?? index}>
