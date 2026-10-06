@@ -219,7 +219,7 @@ export function TemplateStartFields({
                             aria-describedby={`${id}-bank-help`}
                             className="grid gap-4 rounded-md border p-4 sm:col-span-2"
                         >
-                            <div className="grid gap-1">
+                            <div className="grid content-start gap-1">
                                 <p id={`${id}-bank`} className="font-medium">
                                     {t('templates.create.bank_title')}
                                 </p>

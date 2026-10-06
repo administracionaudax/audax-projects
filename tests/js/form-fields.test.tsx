@@ -46,4 +46,61 @@ describe('campos con aspecto de campo', () => {
 
         expect(offenders.map((file) => relative(ROOT, file))).toEqual([]);
     });
+
+    it('las celdas «grid» de las filas de varias columnas se alinean arriba (sin escalones)', () => {
+        // Una celda `grid gap-*` sin content-start se estira al alto de la vecina (ayuda o error en
+        // una columna) y reparte el hueco entre la etiqueta y la caja: la caja baja (D-310).
+        const offenders: string[] = [];
+
+        for (const file of sources(ROOT)) {
+            if (file.includes('/components/ui/')) {
+                continue;
+            }
+
+            const lines = readFileSync(file, 'utf8').split('\n');
+
+            lines.forEach((line, index) => {
+                if (
+                    !/<(div|fieldset|form)\s+className=.*\b(?:\w+:)?grid-cols-[2-6]\b/.test(
+                        line,
+                    ) ||
+                    /items-start/.test(line)
+                ) {
+                    return;
+                }
+
+                const indent = line.length - line.trimStart().length;
+
+                for (let next = index + 1; next < lines.length; next++) {
+                    const child = lines[next];
+
+                    if (child.trim() === '') {
+                        continue;
+                    }
+
+                    const childIndent = child.length - child.trimStart().length;
+
+                    if (childIndent <= indent) {
+                        break;
+                    }
+
+                    if (
+                        [indent + 4, indent + 8, indent + 12].includes(
+                            childIndent,
+                        ) &&
+                        /^\s*<div\s+className="[^"]*\bgrid\b[^"]*\bgap-[^"]*"/.test(
+                            child,
+                        ) &&
+                        !/content-start|self-start|content-between|items-start|grid-cols|col-span|\bborder\b/.test(
+                            child,
+                        )
+                    ) {
+                        offenders.push(`${relative(ROOT, file)}:${next + 1}`);
+                    }
+                }
+            });
+        }
+
+        expect(offenders).toEqual([]);
+    });
 });
