@@ -688,6 +688,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                                 type="button"
                                 variant="outline"
                                 size="icon"
+                                // h-8, como «Índice» a su lado.
+                                className="size-8"
                                 aria-label={t('weeklies.actions.more')}
                                 onClick={() => setActionsOpen(true)}
                                 data-test="weekly-actions-mobile"
@@ -745,6 +747,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                                     type="button"
                                     variant="outline"
                                     size="icon"
+                                    // h-8, como «Solo los míos» y «Exportar» a su lado.
+                                    className="size-8"
                                     aria-pressed={fullscreen}
                                     aria-label={
                                         fullscreen
