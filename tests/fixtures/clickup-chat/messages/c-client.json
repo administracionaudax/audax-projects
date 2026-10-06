@@ -1,0 +1,27 @@
+{
+ "done": true,
+ "messages": [
+  {
+   "id": "n-1",
+   "parent_channel": "c-client",
+   "user_id": "100",
+   "date": 1788256800000,
+   "date_assigned": 1788256800000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Entregado el folleto"
+  },
+  {
+   "id": "n-2",
+   "parent_channel": "c-client",
+   "user_id": "104",
+   "date": 1788256860000,
+   "date_assigned": 1788256860000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Gracias"
+  }
+ ]
+}

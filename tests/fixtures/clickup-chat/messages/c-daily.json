@@ -1,0 +1,68 @@
+{
+ "done": true,
+ "cursor": null,
+ "messages": [
+  {
+   "id": "m-4",
+   "parent_channel": "c-daily",
+   "user_id": "103",
+   "date": 1788255600000,
+   "date_assigned": 1788255600000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Hola, soy de fuera"
+  },
+  {
+   "id": "m-3",
+   "parent_channel": "c-daily",
+   "user_id": "100",
+   "date": 1788255000000,
+   "date_assigned": 1788255000000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 1,
+   "content": "## Plan del día\n- [x] **Audax:** Facturas\n- [ ] Revisar \\--- web\n*   Uno\n\nPara [@Luis Gil](#user_mention#101) y [@followers](#task_user_group_mention#followers_tag)",
+   "date_updated": 1788255300000
+  },
+  {
+   "id": "m-2",
+   "parent_channel": "c-daily",
+   "user_id": "102",
+   "date": 1788254400000,
+   "date_assigned": 1788254400000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "![foto.png](https://t1.p.clickup-attachments.com/t1/aa/foto.png)\n\nMirad la foto y el vídeo [video.mov](https://t1.p.clickup-attachments.com/t1/bb/video.mov)"
+  },
+  {
+   "id": "m-1",
+   "parent_channel": "c-daily",
+   "user_id": "101",
+   "date": 1788253800000,
+   "date_assigned": 1788253800000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Buenos días [\n\nwww.loom.com\n\nhttps://www.loom.com/share/abc\n\n](https://www.loom.com/share/abc)"
+  },
+  {
+   "id": "m-5",
+   "parent_channel": "c-daily",
+   "user_id": "100",
+   "date": 1788256200000,
+   "date_assigned": 1788256200000,
+   "type": "post",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Resumen de la semana",
+   "post_data": {
+    "subtype": {
+     "id": "1"
+    },
+    "title": "Semana 36"
+   }
+  }
+ ]
+}

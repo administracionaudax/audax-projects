@@ -1,0 +1,16 @@
+{
+ "done": true,
+ "messages": [
+  {
+   "id": "g-1",
+   "parent_channel": "gdm-1",
+   "user_id": "102",
+   "date": 1788261600000,
+   "date_assigned": 1788261600000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Me despido del equipo"
+  }
+ ]
+}

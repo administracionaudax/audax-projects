@@ -1,0 +1,16 @@
+{
+ "done": true,
+ "messages": [
+  {
+   "id": "s-1",
+   "parent_channel": "c-private",
+   "user_id": "100",
+   "date": 1788258600000,
+   "date_assigned": 1788258600000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "Tema delicado"
+  }
+ ]
+}

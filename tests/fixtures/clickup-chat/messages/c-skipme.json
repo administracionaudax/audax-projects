@@ -1,0 +1,16 @@
+{
+ "done": true,
+ "messages": [
+  {
+   "id": "k-1",
+   "parent_channel": "c-skipme",
+   "user_id": "100",
+   "date": 1788259800000,
+   "date_assigned": 1788259800000,
+   "type": "message",
+   "resolved": false,
+   "replies_count": 0,
+   "content": "No me importes"
+  }
+ ]
+}
