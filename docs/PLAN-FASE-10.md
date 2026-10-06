@@ -787,6 +787,12 @@ Nombres de quien falta al cerrar, color de la participación, un solo dictado a 
 - **Vitest:** `weeklies-away`, `weeklies-live`, `weeklies-push-prompt`, `error-boundary`, `avatar-field`, `rich-text-editor` y casos nuevos en `weeklies-dictation`, `weeklies-report`, `weeklies-editor`, `my-space-tasks`, `clients-pages` y `weeklies-insights`.
 - **E2E:** `weekly-parity.spec.ts` («Estoy fuera», ficha con constancia y asignar clientes, filtros del equipo y foto de perfil, con axe).
 
+### Resultados
+- Pest completo (`--parallel --processes=8`): 4.401 tests en verde (2 saltados). En la primera pasada, `ClientIsolationTest` pidió declarar la ruta de la foto (`/avatares/{user}`, firmada; un cliente del portal solo ve la suya).
+- PHPStan completo (`--memory-limit=2G`), Pint, `tsc --noEmit` y `vp check`: sin errores ni avisos.
+- Vitest completo: 1.601 tests en 136 ficheros.
+- `vp build` y la suite E2E completa con el servidor recién sembrado: **453 bien, 5 saltados y 0 fallos**. En las pasadas anteriores salieron tres fallos de test, ya arreglados: dos de la ayuda buscaban el campo por la etiqueta «Título», que ahora casa también con el botón «Título» del editor (se busca por su rol de cuadro de texto), el de la cartera chocaba con el `data-test="client-owner"` de la ficha (la celda nueva usa `client-row-owner`), y el de mover una sugerencia, además, pulsaba el enlace antes de que llegase la búsqueda con espera, que pisaba la visita (ahora espera a la búsqueda).
+
 ### Para desplegar (con el SSH)
 - **Dos migraciones:** `users.weekly_away_*` y `clients.owner_user_id`.
 - **Fotos de perfil** en `storage/app/private/avatars` (disco `local`, va en la copia nocturna con el resto de `storage`).
