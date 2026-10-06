@@ -134,7 +134,9 @@ final class WeeklyProjectStatus
     {
         return match (true) {
             $project->billing_type === BillingType::HourBank => self::KIND_HOUR_BANK,
-            $project->billing_type === BillingType::TimeAndMaterials && self::isMonthlyFee($project) => self::KIND_MONTHLY_FEE,
+            // Por la descripción («Fee mensual…», D-135) con horas por proyecto, o por el código
+            // FE (10.9b, como el prefijo de WeeklySync) con cualquier tipo que no sea de bolsas.
+            ($project->billing_type === BillingType::TimeAndMaterials && self::isMonthlyFee($project)) || self::hasFeeCode($project) => self::KIND_MONTHLY_FEE,
             $project->billing_type === BillingType::FixedPrice => self::KIND_FIXED_PRICE,
             default => self::KIND_HOURLY,
         };
@@ -142,7 +144,15 @@ final class WeeklyProjectStatus
 
     public static function isMonthlyFee(Project $project): bool
     {
-        return preg_match('/^\s*fee\s+mensual/iu', (string) $project->description) === 1;
+        return preg_match('/^\s*fee\s+mensual/iu', (string) $project->description) === 1 || self::hasFeeCode($project);
+    }
+
+    /** ¿El código acaba en FE (ACME-FE1)? El prefijo del fee mensual de WeeklySync. */
+    public static function hasFeeCode(Project $project): bool
+    {
+        $segments = explode('-', strtoupper(trim((string) $project->code)));
+
+        return preg_match('/^FE\d*$/', (string) end($segments)) === 1;
     }
 
     /** Minutos al mes del fee: budget_minutes o las horas de «Fee mensual de 20 h.» (D-135). */

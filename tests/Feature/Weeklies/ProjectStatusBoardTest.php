@@ -3,6 +3,7 @@
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Weeklies\ProjectStatus\ProjectKindCode;
 use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
+use App\Domain\Weeklies\Report\WeeklyProjectStatus;
 use App\Enums\BillingType;
 use App\Enums\ProjectStatus;
 use App\Models\Client;
@@ -118,6 +119,20 @@ it('el tipo de WeeklySync sale del código de ClickUp o, si no, del tipo de proy
     'BD no es de WeeklySync' => ['ACME-BD1', 'fixed_price', 'GE'],
     'sin guion' => ['WE1', 'fixed_price', 'WE'],
 ]);
+
+it('un fee se reconoce también por el código FE, aunque la descripción no diga «Fee mensual» (10.9b)', function () {
+    $byCode = Project::factory()->create(['code' => 'ACME-FE2', 'description' => 'Mantenimiento web', 'budget_minutes' => 1200, 'billing_type' => BillingType::FixedPrice]);
+    $byText = Project::factory()->create(['code' => 'ACME-MANT', 'description' => 'Fee mensual de 10 h.', 'billing_type' => BillingType::TimeAndMaterials]);
+    $plain = Project::factory()->create(['code' => 'ACME-WE1', 'description' => 'Web', 'billing_type' => BillingType::FixedPrice]);
+    $bank = Project::factory()->hourBank()->create(['code' => 'ACME-FE3']);
+    $status = app(WeeklyProjectStatus::class);
+
+    expect($status->kind($byCode))->toBe('monthly_fee')
+        ->and($status->kind($byText))->toBe('monthly_fee')
+        ->and($status->kind($plain))->toBe('fixed_price')
+        // Una bolsa sigue siendo bolsa aunque su código diga FE.
+        ->and($status->kind($bank))->toBe('hour_bank');
+});
 
 it('las insignias cuentan por grupo y en el orden de WeeklySync (las tres auditorías juntas)', function () {
     expect(ProjectKindCode::badges(['BH', 'AT', 'AD', 'PR', 'FE', 'BH']))->toBe([
