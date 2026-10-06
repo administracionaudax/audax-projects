@@ -2117,6 +2117,59 @@ Pedido por el propietario el 06/10.
 - La API solo deja leer los directos y grupos de quien es dueño del token: se importan los del propietario, con sus participantes.
 - Cualquier otra persona puede traer **los suyos** después: descarga con su token (`descargar-chat.py --solo-directos --token-file …`) e importación con `app:import-clickup-chat <volcado> --solo-directos` (solo directas y grupos). Ningún admin ve las directas (D-071).
 
+## 06/10/2026: Diseño de la Previsión (Nivel 2 de las cargas)
+Diseño completo en `docs/DISENO-PREVISION.md`; maquetas y capturas en `docs/diseno-prevision/`. Parte de las respuestas P4 a P8 (PLAN-CARGAS §15).
+
+### D-290 · `/prevision` es una matriz de ocupación
+- **Forma elegida:** la alternativa A. Departamentos × semanas (o meses): la fila del departamento son columnas apiladas frente a su capacidad y, al desplegarla, las personas en celdas con el semáforo de D-052 y una barra de capas. Debajo van los huecos sin persona y los previstos abiertos.
+- **Descartadas como vista principal:** B (una gráfica de barras por departamento), que queda como posible modo «Resumen», y C (cronograma por persona), que se reutiliza en «Mis asignaciones» y en las tablas de asignaciones.
+- **Las maquetas** están en `docs/diseno-prevision/`, con sus fuentes y su script de capturas, y fuera de lint y formato en `vite.config.ts` porque no son código de la app.
+
+### D-291 · Codificación de las capas: el color dice el tipo, la trama dice «posible»
+- Real `--chart-1`, previsto `--chart-3`, previsto posible `--chart-3` **con trama** a 45° e imputado `--chart-2`. La capacidad va con una línea de 2 px en tinta y el hueco, con borde discontinuo. Sin colores nuevos (D-012).
+- **Validador de la skill `dataviz`:**
+  - en claro pasa todo (peor par para el daltonismo: 15,6; en visión normal: 19,7);
+  - en oscuro, aviso de daltonismo de 7,6 entre previsto y real, legal porque hay codificación secundaria (separación de 2 px, orden fijo de apilado, trama, leyenda, tooltip y tabla);
+  - todas las marcas pasan 3:1 sobre la tarjeta.
+- **La trama va siempre puesta** (no es opcional) porque es un dato y el único canal que separa seguro de posible sin depender del color.
+
+### D-292 · Sobrecarga, festivos y ausencias en la previsión
+- Se usan los umbrales, tintes, iconos y textos del semáforo de D-052. Las barras no se pintan de rojo: el exceso se ve porque la columna cruza la capacidad, y el % lleva icono y texto.
+- Los festivos van en la cabecera de la columna; la ausencia parcial, como una muesca en la esquina de la celda (con su tipo solo para quien puede verlo, D-088); la semana entera ausente, como celda gris «Ausencia».
+
+### D-293 · Huecos sin persona
+- Una fila «Sin persona» por departamento (solo si hay huecos en el horizonte) con borde discontinuo y las horas, sin % ni capacidad. Suman a la fila del departamento.
+- La lista «Huecos sin persona» tiene «Asignar a…», que enseña la ocupación de cada candidato en esas fechas.
+
+### D-294 · Horizonte, agrupación y capas como filtro
+- **Horizonte:** 2, 3, 6 o 12 meses. Por semanas hasta 3 meses y por meses desde 6 (se puede cambiar).
+- **Capas:** tres casillas con su muestra, leyenda y filtro a la vez, todas marcadas por defecto. El % y el nivel los calcula el cliente sobre las capas marcadas.
+- Sin «Ponderar %» (P5). Por defecto se despliegan los departamentos con alguna semana alta o en sobrecarga; en móvil, ninguno.
+
+### D-295 · Impacto «sin / con» de un previsto
+- Una frase con el peor caso (departamento y persona), seguida de una rejilla de las semanas del proyecto por departamento afectado y por persona con nombre.
+- En cada celda, «sin este proyecto» en gris de contexto y lo que añade con la capa del previsto, frente a la capacidad, con «91 → 101 %» y el icono del nivel resultante. «Sin» incluye todas las capas marcadas.
+
+### D-296 · Plan frente a imputado en la Planificación
+- Por semana, el plan es una línea escalonada (las asignaciones) y lo imputado son columnas, en un solo eje. La semana en curso va atenuada, y una semana pasada en la que alguien con plan no imputó nada se marca con su nombre.
+- Por persona, una barra de bala (lo imputado frente al plan hasta hoy) y la desviación con flecha, con aviso por encima de ±10 %. No usa el semáforo de carga.
+- No hay selector de «fuente de la carga» (P6).
+
+### D-297 · Estimado frente a real
+- El estimado va en violeta (el color del previsto), lo real en turquesa (el de lo imputado) y la previsión en turquesa discontinuo.
+- **Previsión al cerrar** = lo real más lo que **queda asignado** en el proyecto real (P6), en lugar del «ritmo de las últimas 4 semanas» de PLAN-CARGAS §6.7. La fecha de fin prevista es la última con asignación.
+- Hay cuatro vistas: acumulado con etiquetas directas, barras de bala por departamento, columnas emparejadas por mes y tabla por persona.
+
+### D-298 · Cifras de la previsión
+- Horas redondeadas a la hora («24 h», «1.240 h») en lugar de h:mm. Los minutos exactos van en las exportaciones (D-081).
+- Espacio duro antes de «h» y de «%».
+- Columnas sin esquinas redondeadas (D-137). Se propone pasar `BAR_RADIUS` a 0 en todas las gráficas (pendiente del propietario).
+
+### D-299 · «Mi carga» del empleado
+- La tarjeta de Inicio añade las próximas 12 semanas en % de la jornada (con la trama de lo posible) y «Lo que viene», con los previstos posibles dichos en texto («puede no salir», P8).
+- `/carga` del empleado: columnas por semana frente a su jornada y «Mis asignaciones» en cronograma.
+- **Abierto:** si la tarjeta deja de contar las tareas en el corto plazo (P6) o enseña las dos cifras. Pregunta 2 de `DISENO-PREVISION.md` §8.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2135,6 +2188,7 @@ Pedido por el propietario el 06/10.
 - Dictado de la weekly con Gemini: D-243.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
+- Diseño de la previsión: D-290 a D-299.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-280 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269, D-280 a D-289 y D-300 en adelante, sin usar).
