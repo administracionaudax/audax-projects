@@ -12,6 +12,8 @@ enum Permission: string
     case ViewFinancials = 'view-financials';
     /** La Weekly (D-147): informe, audio, plazo, cierre, exenciones, avisos, ayuda y estados de las sugerencias. */
     case ManageWeeklies = 'manage-weeklies';
+    /** La Previsión (D-284): crear y editar proyectos previstos y sus asignaciones; admins y responsables. */
+    case ManageForecast = 'manage-forecast';
 
     public function label(): string
     {
@@ -20,6 +22,7 @@ enum Permission: string
             self::ManageSettings => 'Gestionar ajustes',
             self::ViewFinancials => 'Ver datos económicos',
             self::ManageWeeklies => 'Gestionar las weeklies',
+            self::ManageForecast => 'Gestionar la previsión',
         };
     }
 

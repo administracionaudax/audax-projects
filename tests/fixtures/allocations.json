@@ -1,0 +1,313 @@
+{
+  "_comment": "Reparto de asignaciones por modos (docs/PLAN-CARGAS.md §6.2, D-282). Lo comprueba tests/Feature/Forecast/AllocationPlannerTest.php. Jornada por defecto 8 h de lunes a viernes salvo 'schedule'.",
+  "cases": [
+    {
+      "name": "total: 40 h en una semana de cinco días laborables",
+      "allocation": {
+        "mode": "total",
+        "minutes": 2400,
+        "start": "2026-11-02",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-02": 480,
+        "2026-11-03": 480,
+        "2026-11-04": 480,
+        "2026-11-05": 480,
+        "2026-11-06": 480
+      }
+    },
+    {
+      "name": "total: los minutos que sobran van a los primeros días",
+      "allocation": {
+        "mode": "total",
+        "minutes": 100,
+        "start": "2026-11-02",
+        "end": "2026-11-04"
+      },
+      "expected": {
+        "2026-11-02": 34,
+        "2026-11-03": 33,
+        "2026-11-04": 33
+      }
+    },
+    {
+      "name": "total: el fin de semana no es laborable",
+      "allocation": {
+        "mode": "total",
+        "minutes": 600,
+        "start": "2026-11-06",
+        "end": "2026-11-09"
+      },
+      "expected": {
+        "2026-11-06": 300,
+        "2026-11-09": 300
+      }
+    },
+    {
+      "name": "total: un festivo no es laborable",
+      "holidays": [
+        "2026-11-04"
+      ],
+      "allocation": {
+        "mode": "total",
+        "minutes": 2400,
+        "start": "2026-11-02",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-02": 600,
+        "2026-11-03": 600,
+        "2026-11-05": 600,
+        "2026-11-06": 600
+      }
+    },
+    {
+      "name": "total: una ausencia aprobada de día completo no es laborable",
+      "absences": [
+        {
+          "from": "2026-11-05",
+          "to": "2026-11-06",
+          "partial": null,
+          "status": "approved"
+        }
+      ],
+      "allocation": {
+        "mode": "total",
+        "minutes": 1800,
+        "start": "2026-11-02",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-02": 600,
+        "2026-11-03": 600,
+        "2026-11-04": 600
+      }
+    },
+    {
+      "name": "total: una ausencia solicitada (sin aprobar) no resta",
+      "absences": [
+        {
+          "from": "2026-11-05",
+          "to": "2026-11-06",
+          "partial": null,
+          "status": "requested"
+        }
+      ],
+      "allocation": {
+        "mode": "total",
+        "minutes": 2400,
+        "start": "2026-11-02",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-02": 480,
+        "2026-11-03": 480,
+        "2026-11-04": 480,
+        "2026-11-05": 480,
+        "2026-11-06": 480
+      }
+    },
+    {
+      "name": "total: sin días laborables, todo al primer día",
+      "allocation": {
+        "mode": "total",
+        "minutes": 300,
+        "start": "2026-11-07",
+        "end": "2026-11-08"
+      },
+      "expected": {
+        "2026-11-07": 300
+      },
+      "unscheduled": true
+    },
+    {
+      "name": "per_day: cada día laborable, aunque la jornada sea menor",
+      "absences": [
+        {
+          "from": "2026-11-03",
+          "to": "2026-11-03",
+          "partial": 300,
+          "status": "approved"
+        }
+      ],
+      "holidays": [
+        "2026-11-04"
+      ],
+      "allocation": {
+        "mode": "per_day",
+        "minutes": 240,
+        "start": "2026-11-02",
+        "end": "2026-11-08"
+      },
+      "expected": {
+        "2026-11-02": 240,
+        "2026-11-03": 240,
+        "2026-11-05": 240,
+        "2026-11-06": 240
+      }
+    },
+    {
+      "name": "percent: el 50 % de la capacidad de cada día",
+      "absences": [
+        {
+          "from": "2026-11-03",
+          "to": "2026-11-03",
+          "partial": 240,
+          "status": "approved"
+        }
+      ],
+      "holidays": [
+        "2026-11-04"
+      ],
+      "allocation": {
+        "mode": "percent",
+        "percent": 50,
+        "start": "2026-11-02",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-02": 240,
+        "2026-11-03": 120,
+        "2026-11-05": 240,
+        "2026-11-06": 240
+      }
+    },
+    {
+      "name": "percent: con jornada intensiva",
+      "schedule": [
+        420,
+        420,
+        420,
+        420,
+        360,
+        0,
+        0
+      ],
+      "allocation": {
+        "mode": "percent",
+        "percent": 50,
+        "start": "2026-11-05",
+        "end": "2026-11-06"
+      },
+      "expected": {
+        "2026-11-05": 210,
+        "2026-11-06": 180
+      }
+    },
+    {
+      "name": "percent de un hueco: el % de la jornada por defecto («0,5 personas»)",
+      "allocation": {
+        "mode": "percent",
+        "percent": 50,
+        "start": "2026-11-02",
+        "end": "2026-11-03",
+        "gap": true,
+        "members": 2
+      },
+      "expected": {
+        "2026-11-02": 240,
+        "2026-11-03": 240
+      }
+    },
+    {
+      "name": "hueco: un día es laborable si alguien del departamento trabaja",
+      "allocation": {
+        "mode": "total",
+        "minutes": 960,
+        "start": "2026-11-02",
+        "end": "2026-11-03",
+        "gap": true,
+        "members": 2
+      },
+      "member_absences": [
+        {
+          "from": "2026-11-02",
+          "to": "2026-11-02",
+          "partial": null,
+          "status": "approved"
+        }
+      ],
+      "expected": {
+        "2026-11-02": 480,
+        "2026-11-03": 480
+      }
+    },
+    {
+      "name": "hueco: si no trabaja nadie del departamento, no es laborable",
+      "allocation": {
+        "mode": "total",
+        "minutes": 960,
+        "start": "2026-11-02",
+        "end": "2026-11-03",
+        "gap": true,
+        "members": 1
+      },
+      "member_absences": [
+        {
+          "from": "2026-11-02",
+          "to": "2026-11-02",
+          "partial": null,
+          "status": "approved"
+        }
+      ],
+      "expected": {
+        "2026-11-03": 960
+      }
+    },
+    {
+      "name": "monthly: 20 h en noviembre (21 días laborables)",
+      "allocation": {
+        "mode": "monthly",
+        "minutes": 1200,
+        "start": "2026-11-01",
+        "end": "2026-11-30"
+      },
+      "expected_total": 1200,
+      "expected_days": 21,
+      "expected_first": {
+        "2026-11-02": 58,
+        "2026-11-03": 58,
+        "2026-11-04": 58,
+        "2026-11-05": 57
+      }
+    },
+    {
+      "name": "monthly: un mes partido, a prorrata de días laborables",
+      "allocation": {
+        "mode": "monthly",
+        "minutes": 1200,
+        "start": "2026-11-16",
+        "end": "2026-11-30"
+      },
+      "expected_total": 629,
+      "expected_days": 11
+    },
+    {
+      "name": "monthly: sin fin, hasta el horizonte",
+      "horizon": "2026-12-31",
+      "allocation": {
+        "mode": "monthly",
+        "minutes": 1200,
+        "start": "2026-11-01",
+        "end": null
+      },
+      "expected_total": 2400,
+      "expected_days": 44
+    },
+    {
+      "name": "monthly: un festivo cambia el reparto, no el total del mes",
+      "holidays": [
+        "2026-12-08"
+      ],
+      "allocation": {
+        "mode": "monthly",
+        "minutes": 1200,
+        "start": "2026-12-01",
+        "end": "2026-12-31"
+      },
+      "expected_total": 1200,
+      "expected_days": 22
+    }
+  ]
+}

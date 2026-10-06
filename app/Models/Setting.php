@@ -70,7 +70,7 @@ class Setting extends Model
         'week_reminder_enabled' => true,
         // Fase 10 (D-151). Módulos activos (F-177): apagado, sus rutas dan 404 y no salen en la
         // navegación (App\Domain\Weeklies\AppModules).
-        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true, 'day_plan' => true],
+        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true, 'day_plan' => true, 'forecast' => false],
         // Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más, y
         // los procesos automáticos y los avisos a otras personas siguen como apagados.
         'modules_preview' => false,
