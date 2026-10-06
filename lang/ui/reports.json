@@ -15,6 +15,7 @@
     "reports.filters.none_found": "Sin resultados.",
     "reports.filters.loading_options": "Cargando opciones…",
     "reports.filters.options_error": "No se han podido cargar los filtros.",
+    "reports.filters.options_retry": "Reintentar",
     "reports.filters.persona": "Personas",
     "reports.filters.departamento": "Departamentos",
     "reports.filters.cliente": "Clientes",

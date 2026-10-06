@@ -15,7 +15,7 @@ import type {
 const inertia = vi.hoisted(() => ({
     props: {} as Record<string, unknown>,
     get: vi.fn(),
-    listeners: {} as Record<string, () => void>,
+    listeners: {} as Record<string, (event?: unknown) => void>,
 }));
 
 vi.mock('@inertiajs/react', async (importOriginal) => ({
@@ -388,7 +388,18 @@ describe('informe de cliente', () => {
     it('mientras se actualiza lo anuncia y atenúa el informe; si falla la red, ofrece reintentar', async () => {
         renderPage(<ClientReport {...clientProps(true)} />);
 
-        act(() => inertia.listeners.start?.());
+        // Una visita que vuelve a pedir este informe (no una precarga ni otra petición).
+        act(() =>
+            inertia.listeners.start?.({
+                detail: {
+                    visit: {
+                        id: 'v1',
+                        method: 'get',
+                        url: new URL(window.location.href),
+                    },
+                },
+            }),
+        );
         expect(screen.getByText('Actualizando el informe…')).toBeTruthy();
         expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 

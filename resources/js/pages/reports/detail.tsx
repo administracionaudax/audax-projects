@@ -1,4 +1,5 @@
 import { Head, router } from '@inertiajs/react';
+import { isReportPageVisit } from '@/components/reports/r1-report-state';
 import { Info, SearchX, WifiOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
@@ -43,19 +44,26 @@ export default function ReportDetail({
 
     // Estados de carga y de error de cualquier visita a esta página (barra de filtros o tabla).
     useEffect(() => {
-        const isThisPage = (url: URL) => url.pathname === path;
+        let pending: string | null = null;
         const offStart = router.on('start', (event) => {
-            if (isThisPage(event.detail.visit.url)) {
+            if (isReportPageVisit(event.detail.visit, path)) {
+                pending = event.detail.visit.id;
                 setLoading(true);
                 setFailed(false);
             }
         });
         const offFinish = router.on('finish', (event) => {
-            if (isThisPage(event.detail.visit.url)) {
+            if (event.detail.visit.id === pending) {
+                pending = null;
                 setLoading(false);
             }
         });
-        const offNetwork = router.on('networkError', () => setFailed(true));
+        // Solo si falla la visita de este informe (no cualquier petición de la app).
+        const offNetwork = router.on('networkError', () => {
+            if (pending !== null) {
+                setFailed(true);
+            }
+        });
 
         return () => {
             offStart();

@@ -575,7 +575,13 @@ describe('página del informe detallado', () => {
             </TooltipProvider>,
         );
         const visit = (path: string) => ({
-            detail: { visit: { url: new URL(`https://app.test${path}`) } },
+            detail: {
+                visit: {
+                    id: path,
+                    method: 'get',
+                    url: new URL(`https://app.test${path}`),
+                },
+            },
         });
 
         // Una visita a otra página no cambia nada.

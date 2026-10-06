@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { isReportPageVisit } from '@/components/reports/r1-report-state';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -17,14 +18,27 @@ export function useReportVisitState(): { loading: boolean; failed: boolean } {
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
-        const offStart = router.on('start', () => {
-            setLoading(true);
-            setFailed(false);
+        // Solo las visitas que vuelven a pedir este informe (no precargas del menú, envíos de
+        // diálogos ni el temporizador): antes cualquiera atenuaba el informe (D-310).
+        let pending: string | null = null;
+        const offStart = router.on('start', (event) => {
+            if (isReportPageVisit(event.detail.visit)) {
+                pending = event.detail.visit.id;
+                setLoading(true);
+                setFailed(false);
+            }
         });
-        const offFinish = router.on('finish', () => setLoading(false));
+        const offFinish = router.on('finish', (event) => {
+            if (event.detail.visit.id === pending) {
+                pending = null;
+                setLoading(false);
+            }
+        });
         const offError = router.on('networkError', () => {
-            setLoading(false);
-            setFailed(true);
+            if (pending !== null) {
+                setLoading(false);
+                setFailed(true);
+            }
         });
 
         return () => {
