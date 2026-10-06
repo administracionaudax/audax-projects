@@ -4,7 +4,17 @@
 @section('content')
 @include('reports.pdf.partials.kpis')
 
-@if ($report === null)
+@if ($report === null && ($legacy ?? null) !== null)
+<p class="lead">{{ __('weeklies.pdf.legacy_text') }}</p>
+@foreach ($legacy as $section)
+<section class="weekly-client">
+  @if ($section['title'] !== null)<h2>{{ $section['title'] }}</h2>@endif
+  @foreach ($section['lines'] as $line)
+  @if ($line['kind'] === 'text')<p class="weekly-text">{{ $line['text'] }}</p>@else<h3>{{ $line['text'] }}</h3>@endif
+  @endforeach
+</section>
+@endforeach
+@elseif ($report === null)
 <p class="empty">{{ __('weeklies.pdf.no_report') }}</p>
 @else
 <h2>{{ __('weeklies.pdf.global_summary') }}</h2>

@@ -95,6 +95,20 @@ it('sin informe, el PDF lo dice', function () {
         ->toContain('Aún no se ha generado el informe de esta semana.');
 });
 
+it('una semana importada con solo el texto final lo enseña por secciones, en el PDF y en el CSV (10.9b)', function () {
+    $legacy = WeeklyCycle::factory()->closed()->create();
+    $legacy->forceFill(['report' => null, 'report_text' => "# Semana 12\n\n## Resumen Global\nTodo según lo previsto.\n\n## Acme\n**Siguientes pasos:**\n- Enviar la propuesta"])->save();
+
+    $text = reportHtmlText($this->actingAs($this->employee)->get("/weeklies/{$legacy->id}/informe/pdf")->getContent());
+    expect($text)->not->toContain('Aún no se ha generado')
+        ->toContain('Informe importado de WeeklySync')
+        ->toContain('Resumen Global Todo según lo previsto.')
+        ->toContain('Acme Siguientes pasos: - Enviar la propuesta');
+
+    $csv = $this->actingAs($this->employee)->get("/weeklies/{$legacy->id}/informe/pdf?formato=csv")->streamedContent();
+    expect($csv)->toContain('Resumen Global')->toContain('Todo según lo previsto.')->toContain('Acme');
+});
+
 it('nadie de fuera de la plantilla lo descarga; con el módulo apagado, tampoco se envía', function () {
     $this->actingAs(User::factory()->collaborator()->create())->get("/weeklies/{$this->cycle->id}/informe/pdf")->assertForbidden();
 

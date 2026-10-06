@@ -10,6 +10,7 @@ use App\Domain\Weeklies\Report\WeeklyClientUpdate;
 use App\Domain\Weeklies\Report\WeeklyMilestone;
 use App\Domain\Weeklies\Report\WeeklyProjectSnapshot;
 use App\Domain\Weeklies\Report\WeeklyReport;
+use App\Domain\Weeklies\Report\WeeklyReportText;
 use App\Enums\AppModule;
 use App\Enums\WeeklyClientStatus;
 use App\Models\User;
@@ -51,6 +52,13 @@ final class WeeklyDocument extends BaseDocument
             $update->hasReports ? self::t('weeklies.pdf.yes') : self::t('weeklies.pdf.no'),
         ], $this->updates($request, $as, $cycle));
 
+        // Semana importada con solo el texto final (10.9b): una fila por sección.
+        if ($rows === [] && ($legacy = $this->legacy($cycle)) !== null) {
+            $rows = array_map(fn (array $section): array => [
+                $section['title'] ?? $cycle->label, '', implode("\n", array_column($section['lines'], 'text')), '', '', '', null, '',
+            ], $legacy);
+        }
+
         return new ExportTable(
             self::filename('weekly', $cycle->number),
             [$c('client'), $c('status'), $c('summary'), $c('next_steps'), $c('milestones'), $c('tags'), $c('satisfaction'), $c('reports')],
@@ -77,6 +85,7 @@ final class WeeklyDocument extends BaseDocument
             $facts[] = [self::t('weeklies.pdf.facts.filter'), self::t('weeklies.pdf.facts.only_mine')];
         }
 
+        $legacy = $report === null ? $this->legacy($cycle) : null;
         $count = fn (WeeklyClientStatus $status): int => count(array_filter($updates, fn (WeeklyClientUpdate $update): bool => $update->status === $status));
 
         return new ReportPdf(
@@ -85,7 +94,7 @@ final class WeeklyDocument extends BaseDocument
             filename: self::filename('weekly', $cycle->number, $mine ? 'mis proyectos' : ''),
             data: [
                 'cover' => self::cover(self::t('weeklies.pdf.kind'), $cycle->label, $cycle->number, $facts, $as,
-                    note: $report === null ? self::t('weeklies.pdf.no_report') : null),
+                    note: $report === null && $legacy === null ? self::t('weeklies.pdf.no_report') : null),
                 'kpis' => $report === null ? [] : [
                     ['label' => self::t('weeklies.pdf.kpis.clients'), 'value' => (string) count($updates), 'detail' => null],
                     ['label' => self::t('weeklies.pdf.kpis.with_news'), 'value' => (string) count(array_filter($updates, fn (WeeklyClientUpdate $update): bool => $update->hasReports)), 'detail' => null],
@@ -123,6 +132,7 @@ final class WeeklyDocument extends BaseDocument
                     ),
                 ], $updates),
                 'mine_empty' => $mine && $report !== null && $updates === [],
+                'legacy' => $legacy,
                 'definitions' => [],
             ],
         );
@@ -150,6 +160,20 @@ final class WeeklyDocument extends BaseDocument
         $mine = $as->projects()->whereNotNull('client_id')->pluck('client_id')->map(fn ($id): int => (int) $id)->flip()->all();
 
         return array_values(array_filter($report->clientUpdates, fn (WeeklyClientUpdate $update): bool => $update->clientId !== null && isset($mine[$update->clientId])));
+    }
+
+    /**
+     * Las secciones del texto final de una semana importada sin informe estructurado (10.9b).
+     *
+     * @return list<array{title: string|null, lines: list<array{kind: 'heading'|'subheading'|'text', text: string}>}>|null
+     */
+    private function legacy(WeeklyCycle $cycle): ?array
+    {
+        if ($cycle->report !== null || trim((string) $cycle->report_text) === '') {
+            return null;
+        }
+
+        return WeeklyReportText::sections((string) $cycle->report_text);
     }
 
     private function onlyMine(ReportRequest $request): bool

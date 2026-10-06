@@ -41,6 +41,10 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { ClientReportCard } from '@/components/weeklies/client-report-card';
+import {
+    LegacyReportText,
+    reportTextSections,
+} from '@/components/weeklies/legacy-report-text';
 import { ReportEditDialog } from '@/components/weeklies/report-edit-dialog';
 import { TeamStatusStrip } from '@/components/weeklies/team-status-strip';
 import {
@@ -205,6 +209,14 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
               )
             : all;
     }, [report, onlyMine, mine]);
+    // Semana importada de WeeklySync con solo el texto final (sin informe estructurado, 10.9b).
+    const legacy = useMemo(
+        () =>
+            !report && cycle.report_text?.trim()
+                ? reportTextSections(cycle.report_text)
+                : null,
+        [report, cycle.report_text],
+    );
     const sections = cycle.audio_sections ?? [];
     const sectionByKey = new Map(
         sections.map((section) => [section.key, section]),
@@ -273,6 +285,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
 
     const generateText = () =>
         router.post(storeReport.url(cycle.id), {}, { preserveScroll: true });
+    // Regenerar descarta la edición a mano (D-190): se avisa antes (10.9b).
+    const editedByHand = !!report && !!cycle.report_edited_at && !closed;
     const generateAudio = () =>
         router.post(storeAudio.url(cycle.id), {}, { preserveScroll: true });
 
@@ -289,7 +303,29 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
 
     const toc = (
         <nav aria-label={t('weeklies.report.index')} data-test="weekly-index">
-            {updates.length > 0 ? (
+            {legacy ? (
+                <ul className="grid gap-1">
+                    {legacy
+                        .filter((section) => section.title !== null)
+                        .map((section) => (
+                            <li key={section.anchor}>
+                                <a
+                                    href={`#${section.anchor}`}
+                                    className={cn(
+                                        'block truncate px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
+                                        FOCUS_RING,
+                                    )}
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        scrollTo(section.anchor);
+                                    }}
+                                >
+                                    {section.title}
+                                </a>
+                            </li>
+                        ))}
+                </ul>
+            ) : updates.length > 0 ? (
                 <ul className="grid gap-1">
                     {updates.map(({ update, anchor }) => (
                         <li key={anchor}>
@@ -347,26 +383,63 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                     {jobs.audio.error}
                 </p>
             ) : null}
-            <Button
-                type="button"
-                variant={
-                    props.stale && report && !closed ? 'default' : 'outline'
-                }
-                size="sm"
-                className="justify-start"
-                disabled={generating || closed}
-                onClick={generateText}
-                data-test="weekly-generate-text"
-            >
-                {isBusy(jobs.report.state) ? (
-                    <Loader2 aria-hidden="true" className="animate-spin" />
-                ) : props.stale && report ? (
-                    <RefreshCw aria-hidden="true" />
-                ) : (
-                    <Wand2 aria-hidden="true" />
-                )}
-                {textLabel}
-            </Button>
+            {editedByHand ? (
+                <ConfirmDialog
+                    trigger={
+                        <Button
+                            type="button"
+                            variant={
+                                props.stale && report && !closed
+                                    ? 'default'
+                                    : 'outline'
+                            }
+                            size="sm"
+                            className="justify-start"
+                            disabled={generating || closed}
+                            data-test="weekly-generate-text"
+                        >
+                            {isBusy(jobs.report.state) ? (
+                                <Loader2
+                                    aria-hidden="true"
+                                    className="animate-spin"
+                                />
+                            ) : props.stale && report ? (
+                                <RefreshCw aria-hidden="true" />
+                            ) : (
+                                <Wand2 aria-hidden="true" />
+                            )}
+                            {textLabel}
+                        </Button>
+                    }
+                    title={t('weeklies.report.regenerate_edited_title')}
+                    description={t(
+                        'weeklies.report.regenerate_edited_description',
+                    )}
+                    confirmLabel={textLabel}
+                    onConfirm={generateText}
+                />
+            ) : (
+                <Button
+                    type="button"
+                    variant={
+                        props.stale && report && !closed ? 'default' : 'outline'
+                    }
+                    size="sm"
+                    className="justify-start"
+                    disabled={generating || closed}
+                    onClick={generateText}
+                    data-test="weekly-generate-text"
+                >
+                    {isBusy(jobs.report.state) ? (
+                        <Loader2 aria-hidden="true" className="animate-spin" />
+                    ) : props.stale && report ? (
+                        <RefreshCw aria-hidden="true" />
+                    ) : (
+                        <Wand2 aria-hidden="true" />
+                    )}
+                    {textLabel}
+                </Button>
+            )}
             <Button
                 type="button"
                 variant="outline"
@@ -824,6 +897,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                                     );
                                 })}
                             </>
+                        ) : legacy ? (
+                            <LegacyReportText sections={legacy} />
                         ) : (
                             <div className="grid justify-items-center gap-2 py-16 text-center text-muted-foreground">
                                 <FileText

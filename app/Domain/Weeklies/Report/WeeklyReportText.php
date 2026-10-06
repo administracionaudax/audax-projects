@@ -55,4 +55,48 @@ final class WeeklyReportText
 
         return rtrim(implode("\n", $lines))."\n";
     }
+
+    /**
+     * Secciones del texto final de una semana sin informe estructurado (las importadas de
+     * WeeklySync, 10.9b): cada «## » abre una sección, como en el original; «# » y «### » son
+     * subtítulos y el resto, párrafos. Sin las marcas de negrita.
+     *
+     * @return list<array{title: string|null, lines: list<array{kind: 'heading'|'subheading'|'text', text: string}>}>
+     */
+    public static function sections(string $text): array
+    {
+        $plain = fn (string $line): string => (string) preg_replace(['/\*\*(.+?)\*\*/u', '/__(.+?)__/u'], '$1', $line);
+        $sections = [];
+        $current = ['title' => null, 'lines' => []];
+
+        foreach (explode("\n", str_replace(["\r\n", "\r"], "\n", $text)) as $raw) {
+            $line = rtrim($raw);
+
+            if (preg_match('/^##\s+(.+)$/u', $line, $match) === 1) {
+                if ($current['title'] !== null || $current['lines'] !== []) {
+                    $sections[] = $current;
+                }
+
+                $current = ['title' => $plain(trim($match[1])), 'lines' => []];
+
+                continue;
+            }
+
+            if (preg_match('/^(#|#{3,6})\s+(.+)$/u', $line, $match) === 1) {
+                $current['lines'][] = ['kind' => $match[1] === '#' ? 'heading' : 'subheading', 'text' => $plain(trim($match[2]))];
+
+                continue;
+            }
+
+            if (trim($line) !== '') {
+                $current['lines'][] = ['kind' => 'text', 'text' => $plain($line)];
+            }
+        }
+
+        if ($current['title'] !== null || $current['lines'] !== []) {
+            $sections[] = $current;
+        }
+
+        return $sections;
+    }
 }

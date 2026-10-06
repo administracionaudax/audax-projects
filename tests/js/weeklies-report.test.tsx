@@ -520,6 +520,62 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
         ).toBe('/weeklies/7/informe/pdf?formato=html');
     });
 
+    it('generar de nuevo un informe editado a mano pide confirmación (10.9b)', async () => {
+        renderView(props({}, { report_edited_at: '2026-10-08T10:00:00Z' }));
+
+        await userEvent.click(
+            screen.getAllByRole('button', { name: 'Regenerar texto' })[0],
+        );
+        expect(router.post).not.toHaveBeenCalled();
+        const dialog = screen.getByRole('dialog');
+        expect(within(dialog).getByText(/se editó a mano/)).toBeTruthy();
+        await userEvent.click(
+            within(dialog).getByRole('button', { name: 'Regenerar texto' }),
+        );
+        expect(router.post).toHaveBeenCalledWith(
+            '/weeklies/7/informe',
+            {},
+            { preserveScroll: true },
+        );
+    });
+
+    it('una semana importada con solo el texto final lo enseña por secciones, con su índice (10.9b)', async () => {
+        renderView(
+            props(
+                {},
+                {
+                    report: null,
+                    status: 'closed',
+                    report_text:
+                        '# Semana 12\n\n## Resumen Global\nTodo según lo previsto.\n\n## Acme\n**Siguientes pasos:**\n- Enviar la propuesta',
+                },
+            ),
+        );
+
+        expect(
+            screen.queryByText(
+                'El informe de esta semana aún no se ha generado.',
+            ),
+        ).toBeNull();
+        const text = document.querySelector<HTMLElement>(
+            '[data-test="weekly-legacy-text"]',
+        )!;
+        expect(
+            within(text).getByRole('heading', { name: 'Acme' }),
+        ).toBeTruthy();
+        expect(within(text).getByText('Siguientes pasos:')).toBeTruthy();
+        expect(within(text).getByText('- Enviar la propuesta')).toBeTruthy();
+        expect(within(text).getByText('Semana 12')).toBeTruthy();
+
+        const index = screen.getAllByRole('navigation', {
+            name: 'Índice de clientes',
+        })[0];
+        await userEvent.click(
+            within(index).getByRole('link', { name: 'Acme' }),
+        );
+        expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    });
+
     it('con audio: el reproductor principal y uno en cada cliente con su sección (F-085 y F-086)', () => {
         renderView(
             props(
