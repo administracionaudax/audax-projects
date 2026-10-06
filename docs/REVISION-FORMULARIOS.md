@@ -351,3 +351,14 @@ Una fila por formulario, diálogo, barra de filtros o desplegable. «Estado»: O
 | `tests/Feature/Weeklies/HelpCenterTest.php` | Errores con el nombre del campo en español. |
 
 ## Comprobaciones
+En el Mac, sobre la rama `revision-formularios` (06/10):
+- `vendor/bin/pint`: sin cambios.
+- `vendor/bin/phpstan analyse`: 0 errores.
+- `vendor/bin/pest --parallel`: 4730 correctos, 2 omitidos.
+- `npx tsc --noEmit`: sin errores.
+- `npx vp check`: sin errores ni avisos (se quitó un import sin usar de `navigation.spec.ts`).
+- `npx vp test run`: 1731 de 1731 (159 ficheros). Dos tests de tiempo fallaron una vez con el Mac cargado y pasaron al repetirlos.
+- `npx vp build`: correcto.
+- **E2E completos** contra `php artisan serve` en el 8060 con base nueva: 477 correctos y 5 omitidos (los de tiempo real sin Reverb), incluidos `form-review.spec.ts` y `navigation.spec.ts`.
+
+Capturas del recorrido (fuera de Git): `.revision/` del worktree (`antes-admin-light-1440/`, `shots/<rol>-<tema>-<ancho>/`, `flows/` y `antes-despues/`).
