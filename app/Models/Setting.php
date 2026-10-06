@@ -60,6 +60,7 @@ class Setting extends Model
         // La Weekly (10.5, D-202): el registro de avisos, un año; los dictados, tres meses.
         'retention_weekly_reminder_logs_months' => 12,
         'retention_dictations_months' => 3,
+        'retention_ai_usage_months' => 12,
         // Días que se puede descargar una exportación de datos personales (D-075).
         'personal_data_export_days' => 7,
         // Avisos al admin (D-076): disco por encima de este %, adjuntos por encima de estos GB (null = sin aviso).

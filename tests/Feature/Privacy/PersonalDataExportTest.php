@@ -332,6 +332,7 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         'dictados.json', 'dictados.csv',
         'weeklies-exenciones.json', 'weeklies-exenciones.csv',
         'resumenes-ia.json', 'resumenes-ia.csv',
+        'uso-ia.json', 'uso-ia.csv',
         'weeklies-avisos.json', 'weeklies-avisos.csv',
         'mi-espacio-tareas.json', 'mi-espacio-tareas.csv',
         'sugerencias.json', 'sugerencias.csv',

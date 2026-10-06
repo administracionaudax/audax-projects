@@ -10,7 +10,8 @@ export type RetentionType =
     | 'activity_log'
     | 'chat_messages'
     | 'weekly_reminder_logs'
-    | 'dictations';
+    | 'dictations'
+    | 'ai_usage';
 
 /** Plazo vigente de un tipo de dato, en meses (null = sin límite). */
 export type RetentionPeriod = {

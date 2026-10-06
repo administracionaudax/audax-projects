@@ -110,6 +110,9 @@ export function RetentionFields({
                             {field.type === 'chat_messages'
                                 ? ` ${t('privacy.admin.chat_messages_help')}`
                                 : null}
+                            {field.type === 'ai_usage'
+                                ? ` ${t('privacy.admin.ai_usage_help')}`
+                                : null}
                             {field.type === 'dictations'
                                 ? ` ${t('privacy.admin.dictations_help')}`
                                 : null}

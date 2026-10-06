@@ -292,6 +292,7 @@ return [
         'retention_chat_messages_months' => 'Conservación de los mensajes del chat',
         'retention_weekly_reminder_logs_months' => 'Conservación del registro de avisos de la Weekly',
         'retention_dictations_months' => 'Conservación de los dictados de la Weekly',
+        'retention_ai_usage_months' => 'Conservación de quién usó la IA y sobre qué',
         'personal_data_export_days' => 'Días para descargar los datos personales',
         'disk_warning_percent' => 'Aviso de disco',
         'attachments_warning_gb' => 'Aviso de adjuntos',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
+use App\Domain\Privacy\Export\Sections\AiUsageSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
 use App\Domain\Privacy\Export\Sections\MySpaceTasksSection;
 use App\Domain\Privacy\Export\Sections\WeeklyEntriesSection;
@@ -8,6 +9,7 @@ use App\Domain\Privacy\Export\Sections\WeeklyExemptionsSection;
 use App\Domain\Privacy\Export\Sections\WeeklyRemindersSection;
 use App\Domain\Privacy\Export\Sections\WeeklySubmissionsSection;
 use App\Domain\Privacy\RetentionPolicy;
+use App\Enums\AiFeature;
 use App\Enums\AiSummaryKind;
 use App\Enums\DictationContext;
 use App\Enums\TranscriptionStatus;
@@ -171,4 +173,46 @@ it('lo mío de las tareas de Mi espacio: las sugeridas sin crear y las que he ar
         ->and($rows[0])->toMatchArray(['title' => 'Revisar el banner', 'client' => 'Acme', 'week' => 'W41-26', 'author' => 'Raúl'])
         ->and($rows[1])->toMatchArray(['title' => 'Tarea compartida', 'kind' => 'Tarea archivada de mi lista'])
         ->and(json_encode($rows))->not->toContain('De otra persona');
+});
+
+it('el uso de la IA: lo que pedí y lo que trata sobre mí, sin lo de otras personas (D-225)', function () {
+    $usage = fn (?User $by, ?User $about, string $feature) => DB::table('ai_usage')->insertGetId([
+        'user_id' => $by?->id, 'provider' => 'gemini', 'model' => 'gemini-2.5-flash', 'feature' => $feature, 'status' => 'success',
+        'subject_type' => $about?->getMorphClass(), 'subject_id' => $about?->id,
+        'metadata' => $about === null ? null : json_encode(['target_user_id' => $about->id]), 'created_at' => '2026-10-01 10:00:00',
+    ]);
+    $mine = $usage($this->elena, null, 'assistant');
+    $about = $usage($this->other, $this->elena, 'person_performance');
+    $usage($this->other, null, 'assistant');
+
+    expect(config('privacy.export_sections'))->toContain(AiUsageSection::class);
+    $rows = ($this->rows)(new AiUsageSection, $this->elena);
+
+    expect(array_column($rows, 'id'))->toBe([$mine, $about])
+        ->and($rows[0]['relation'])->toBe(__('privacy.export.weeklies.ai_usage_relation.mine'))
+        ->and($rows[1]['relation'])->toBe(__('privacy.export.weeklies.ai_usage_relation.about'))
+        ->and($rows[0]['feature'])->toBe(AiFeature::Assistant->label());
+});
+
+it('app:prune-data anonimiza el uso de la IA pasado su plazo y conserva el coste (D-225)', function () {
+    $usage = fn (string $created) => DB::table('ai_usage')->insertGetId([
+        'user_id' => $this->other->id, 'provider' => 'gemini', 'model' => 'gemini-2.5-flash', 'feature' => 'person_performance', 'status' => 'success',
+        'subject_type' => $this->elena->getMorphClass(), 'subject_id' => $this->elena->id, 'estimated_cost_usd' => '0.012000',
+        'metadata' => json_encode(['target_user_id' => $this->elena->id]), 'created_at' => $created,
+    ]);
+    $old = $usage('2025-09-01 10:00:00');
+    $recent = $usage('2026-09-01 10:00:00');
+
+    expect(app(RetentionPolicy::class)->months(RetentionPolicy::AI_USAGE))->toBe(12);
+
+    $this->artisan('app:prune-data')->assertSuccessful();
+
+    $oldRow = DB::table('ai_usage')->find($old);
+    expect($oldRow->user_id)->toBeNull()
+        ->and($oldRow->subject_type)->toBeNull()
+        ->and($oldRow->subject_id)->toBeNull()
+        ->and($oldRow->metadata)->toBeNull()
+        ->and((float) $oldRow->estimated_cost_usd)->toBe(0.012)
+        ->and(DB::table('ai_usage')->find($recent)->user_id)->toBe($this->other->id)
+        ->and(DB::table('ai_usage')->count())->toBe(2);
 });

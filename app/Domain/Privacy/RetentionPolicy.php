@@ -28,6 +28,9 @@ final class RetentionPolicy
     /** Dictados de la Weekly (D-152 y D-202): borradores de texto que ya se copiaron al apunte. */
     public const string DICTATIONS = 'dictations';
 
+    /** Uso de la IA (D-225): pasado el plazo se anonimiza (quién y sobre qué), no se borra. */
+    public const string AI_USAGE = 'ai_usage';
+
     /** Ajuste de cada tipo de dato, en meses (null = sin límite). */
     public const array SETTINGS = [
         self::LOGIN_EVENTS => 'retention_login_events_months',
@@ -36,6 +39,7 @@ final class RetentionPolicy
         self::CHAT_MESSAGES => 'retention_chat_messages_months',
         self::WEEKLY_REMINDER_LOGS => 'retention_weekly_reminder_logs_months',
         self::DICTATIONS => 'retention_dictations_months',
+        self::AI_USAGE => 'retention_ai_usage_months',
     ];
 
     /** Mínimo en meses que se puede fijar (la auditoría, al menos un año). */
@@ -46,6 +50,7 @@ final class RetentionPolicy
         self::CHAT_MESSAGES => 1,
         self::WEEKLY_REMINDER_LOGS => 1,
         self::DICTATIONS => 1,
+        self::AI_USAGE => 1,
     ];
 
     /** Máximo en meses (10 años). */

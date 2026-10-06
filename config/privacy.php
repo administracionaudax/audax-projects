@@ -2,6 +2,7 @@
 
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
+use App\Domain\Privacy\Export\Sections\AiUsageSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
 use App\Domain\Privacy\Export\Sections\HelpLikesSection;
@@ -21,6 +22,7 @@ use App\Domain\Privacy\Export\Sections\WeeklyRemindersSection;
 use App\Domain\Privacy\Export\Sections\WeeklySubmissionsSection;
 use App\Domain\Privacy\Export\Sections\WorkSchedulesSection;
 use App\Domain\Privacy\Retention\ActivityLogPruner;
+use App\Domain\Privacy\Retention\AiUsagePruner;
 use App\Domain\Privacy\Retention\ChatMessagesPruner;
 use App\Domain\Privacy\Retention\DictationsPruner;
 use App\Domain\Privacy\Retention\LoginEventsPruner;
@@ -56,6 +58,7 @@ return [
         DictationsSection::class,
         WeeklyExemptionsSection::class,
         AiSummariesSection::class,
+        AiUsageSection::class,
         WeeklyRemindersSection::class,
         // Mi espacio (10.6, D-204): las tareas sugeridas sin crear y mi archivado personal.
         MySpaceTasksSection::class,
@@ -81,6 +84,7 @@ return [
         // La Weekly (10.5, D-202): el registro de avisos y los dictados (borradores de texto).
         RetentionPolicy::WEEKLY_REMINDER_LOGS => WeeklyReminderLogsPruner::class,
         RetentionPolicy::DICTATIONS => DictationsPruner::class,
+        RetentionPolicy::AI_USAGE => AiUsagePruner::class,
     ],
 
     // Filas por lote al borrar: cada lote es una sentencia corta, sin bloqueos largos.
