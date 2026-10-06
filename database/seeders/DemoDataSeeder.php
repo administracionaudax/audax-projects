@@ -12,6 +12,8 @@ use App\Domain\Weeklies\WeeklyCalendar;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BillingType;
+use App\Enums\DayPlanItemOrigin;
+use App\Enums\DayPlanItemStatus;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
 use App\Enums\ProjectStatus;
@@ -30,6 +32,9 @@ use App\Events\Weeklies\WeeklyChanged;
 use App\Models\Absence;
 use App\Models\Client;
 use App\Models\Conversation;
+use App\Models\DayPlan;
+use App\Models\DayPlanComment;
+use App\Models\DayPlanItem;
 use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\HourBank;
@@ -51,6 +56,7 @@ use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -201,6 +207,7 @@ class DemoDataSeeder extends Seeder
             $this->collaborator();
             // Sin avisos de tiempo real (D-229): nadie está mirando.
             WeeklyChanged::muted(fn () => $this->weeklies());
+            $this->dayPlans();
         });
 
         $this->chat();
@@ -1159,6 +1166,110 @@ class DemoDataSeeder extends Seeder
                 DB::table('messages')->where('id', $plan->id)->update(['pinned_at' => $timeline[4][1]->addMinutes(2)->utc()]);
             });
         }, [MessagePosted::class, MessageUpdated::class, ConversationRead::class]);
+    }
+
+    /**
+     * Plan del día (D-250, docs/PLAN-CARGAS.md §10): las cuatro últimas semanas de cada persona de
+     * plantilla, solo en sus días con jornada, con líneas hechas, no hechas y pasadas al día
+     * siguiente («↻ ×N»), algunas con proyecto o tarea y horas previstas, y un comentario de su
+     * responsable. Hoy: casi todos ya lo han escrito; Elena (empleado@example.com) no, y tiene dos
+     * pendientes de su último día con jornada (el aviso «Pasar a hoy» de los E2E); Lucía tampoco (sale
+     * «Sin plan» en «Equipo hoy»). Sin auditoría ni avisos.
+     */
+    private function dayPlans(): void
+    {
+        Model::withoutEvents(fn () => $this->writeDayPlans());
+    }
+
+    private function writeDayPlans(): void
+    {
+        $texts = ['Revisar textos de la landing', 'Creatividades de la campaña', 'Reunión de producción', 'Ajustes de diseño', 'Maquetar la home', 'Llamada con el cliente', 'Preparar presupuesto', 'Revisar incidencias', 'Planificación de la semana', 'Informe mensual', 'Moodboard', 'Optimizar imágenes', 'Publicaciones en redes', 'Responder correos'];
+        $capacity = app(Capacity::class);
+        $from = $this->today->subDays(27);
+        $people = array_filter($this->people, fn (User $user): bool => $user->writesWeeklies());
+
+        foreach ($people as $key => $user) {
+            $projects = Project::query()->whereHas('members', fn ($query) => $query->whereKey($user->id))->notArchived()->get(['id', 'client_id']);
+            $tasks = Task::query()->where('assignee_user_id', $user->id)->whereNull('completed_at')->where('is_milestone', false)->limit(12)->get(['id', 'project_id', 'title']);
+            $days = array_map('strval', array_keys(array_filter($capacity->forRange($user, $from, $this->today), fn (int $minutes): bool => $minutes > 0)));
+            $past = array_values(array_filter($days, fn (string $date): bool => $date < $this->today->toDateString()));
+            $lastPast = $past === [] ? null : $past[count($past) - 1];
+
+            foreach ($days as $index => $date) {
+                $isToday = $date === $this->today->toDateString();
+
+                if ($isToday && in_array($key, ['elena', 'lucia'], true)) {
+                    continue;
+                }
+
+                $plan = DayPlan::query()->firstOrCreate(['user_id' => $user->id, 'date' => $date]);
+                $plan->forceFill(['published_at' => CarbonImmutable::parse($date.' 08:'.str_pad((string) $this->random->getInt(0, 59), 2, '0', STR_PAD_LEFT), LocalTime::timezone())->utc()])->save();
+                $count = $this->random->getInt(3, 5);
+
+                for ($position = 0; $position < $count; $position++) {
+                    $task = $tasks->isNotEmpty() && $this->random->getInt(0, 3) === 0 ? $this->pick($tasks->all()) : null;
+                    $project = $task === null && $projects->isNotEmpty() && $this->random->getInt(0, 1) === 0 ? $this->pick($projects->all()) : null;
+                    $roll = $this->random->getInt(1, 10);
+                    $status = match (true) {
+                        // Las dos primeras de Elena en su último día con jornada, pendientes (E2E).
+                        $key === 'elena' && $date === $lastPast && $position < 2 => DayPlanItemStatus::Pending,
+                        $isToday => $roll <= 3 ? DayPlanItemStatus::Done : DayPlanItemStatus::Pending,
+                        $roll <= 7 => DayPlanItemStatus::Done,
+                        $roll === 8 => DayPlanItemStatus::NotDone,
+                        default => DayPlanItemStatus::Pending,
+                    };
+
+                    $item = new DayPlanItem([
+                        'day_plan_id' => $plan->id,
+                        'user_id' => $user->id,
+                        'date' => $date,
+                        'position' => $position,
+                        'text' => $task->title ?? $this->pick($texts),
+                        'client_id' => $task !== null ? Project::query()->whereKey($task->project_id)->value('client_id') : $project?->client_id,
+                        'project_id' => $task->project_id ?? $project?->id,
+                        'task_id' => $task?->id,
+                        'planned_minutes' => $this->random->getInt(0, 2) === 0 ? null : $this->pick([30, 45, 60, 90, 120, 180]),
+                        'status' => $status,
+                        'status_changed_at' => $status === DayPlanItemStatus::Pending ? null : CarbonImmutable::parse($date.' 17:30', LocalTime::timezone())->utc(),
+                        'not_done_reason' => $status === DayPlanItemStatus::NotDone ? $this->pick(['Sin respuesta del cliente', 'Surgió una urgencia', null]) : null,
+                        'created_by' => $user->id,
+                    ]);
+                    $item->saveQuietly();
+
+                    // Las pendientes de días pasados se pasaron al siguiente día con jornada, salvo las
+                    // del último (quedan para «Pasar a hoy»).
+                    $next = $days[$index + 1] ?? null;
+
+                    if ($status === DayPlanItemStatus::Pending && ! $isToday && $next !== null && $date !== $lastPast) {
+                        $item->forceFill(['status' => DayPlanItemStatus::Carried, 'status_changed_at' => CarbonImmutable::parse($next.' 08:15', LocalTime::timezone())->utc()])->saveQuietly();
+                        $nextPlan = DayPlan::query()->firstOrCreate(['user_id' => $user->id, 'date' => $next]);
+                        (new DayPlanItem([
+                            'day_plan_id' => $nextPlan->id,
+                            'user_id' => $user->id,
+                            'date' => $next,
+                            'position' => 20 + $position,
+                            'text' => $item->text,
+                            'client_id' => $item->client_id,
+                            'project_id' => $item->project_id,
+                            'task_id' => $item->task_id,
+                            'planned_minutes' => $item->planned_minutes,
+                            'status' => DayPlanItemStatus::Pending,
+                            'carried_from_id' => $item->id,
+                            'carry_count' => $item->carry_count + 1,
+                            'origin' => DayPlanItemOrigin::Carried,
+                            'created_by' => $user->id,
+                        ]))->saveQuietly();
+                    }
+                }
+            }
+        }
+
+        // Un comentario de su responsable en una línea de Lucía.
+        $line = DayPlanItem::query()->where('user_id', $this->people['lucia']->id)->orderByDesc('date')->first();
+
+        if ($line !== null) {
+            DayPlanComment::query()->create(['day_plan_item_id' => $line->id, 'user_id' => $this->people['raul']->id, 'body' => '¿Te ayudo con esto?']);
+        }
     }
 
     private function monthsAgo(int $months): CarbonImmutable

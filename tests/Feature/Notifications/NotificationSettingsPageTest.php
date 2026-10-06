@@ -36,11 +36,11 @@ test('cada persona interna ve la página con sus eventos', function (string $rol
             ->where('settings.push_available', false)
             ->where('settings.groups', fn ($value): bool => array_column(collect($value)->all(), 'key') === $groups));
 })->with([
-    'admin' => ['admin', ['tasks', 'time', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system']],
-    'responsable' => ['departmentManager', ['tasks', 'time', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports']],
+    'admin' => ['admin', ['tasks', 'time', 'day_plan', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system']],
+    'responsable' => ['departmentManager', ['tasks', 'time', 'day_plan', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports']],
     // Cualquiera puede programar envíos de informes: el aviso de pausa (D-141) es de todos. Los
     // avisos de la Weekly (10.5), quien la escribe.
-    'empleado' => ['employee', ['tasks', 'time', 'weeklies', 'suggestions', 'absences', 'chat', 'reports']],
+    'empleado' => ['employee', ['tasks', 'time', 'day_plan', 'weeklies', 'suggestions', 'absences', 'chat', 'reports']],
 ]);
 
 test('un cliente no entra: va a su portal y no se guarda nada', function () {
@@ -100,9 +100,9 @@ test('la página lleva cada evento con su texto, sus canales y si es obligatorio
                     'push' => ['offered' => false, 'enabled' => false],
                 ],
             ])
-            ->where('settings.groups.8.key', 'system')
-            ->where('settings.groups.8.events.1.kind', 'system.disk_space')
-            ->where('settings.groups.8.events.1.mandatory', true));
+            ->where('settings.groups.9.key', 'system')
+            ->where('settings.groups.9.events.1.kind', 'system.disk_space')
+            ->where('settings.groups.9.events.1.mandatory', true));
 });
 
 test('guardar cambia solo lo que difiere del catálogo, activa el resumen y avisa', function () {

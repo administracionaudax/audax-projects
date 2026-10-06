@@ -24,6 +24,8 @@ use Illuminate\Validation\ValidationException;
  *   en marcha: nada se pierde. Se puede parar indicando otra duración, otra tarea u otra
  *   descripción, o descartarlo. Si falla al iniciar otro, el error lleva además la clave
  *   `running_timer` para que la interfaz abra el diálogo de parar el que está en marcha.
+ * - plan del día (D-254): si se arrancó desde una línea, guarda `day_plan_item_id` y lo copia a las
+ *   entradas al parar (a las dos si cruza la medianoche).
  */
 final class TimerService
 {
@@ -37,19 +39,21 @@ final class TimerService
      *
      * @throws ValidationException
      */
-    public function start(User $user, Task $task, ?string $description = null): array
+    public function start(User $user, Task $task, ?string $description = null, ?int $dayPlanItemId = null): array
     {
         $task->loadMissing(['project' => fn ($query) => $query->withTrashed()]);
         $bank = $task->hour_bank_id !== null ? HourBank::query()->withTrashed()->with('department')->find($task->hour_bank_id) : null;
 
         $this->rules->assertCanStartTimer($user, $task, $task->project, $bank);
 
-        return DB::transaction(function () use ($user, $task, $description): array {
+        return DB::transaction(function () use ($user, $task, $description, $dayPlanItemId): array {
             $previous = [];
             $timer = ActiveTimer::query()->whereKey($user->id)->lockForUpdate()->first();
 
             if ($timer !== null) {
-                if ($timer->task_id === $task->id) {
+                // La misma tarea sigue en marcha; desde otra línea del plan del día, se para y se
+                // vuelve a iniciar para que cada línea tenga sus horas (D-254).
+                if ($timer->task_id === $task->id && ($dayPlanItemId === null || $timer->day_plan_item_id === $dayPlanItemId)) {
                     return [];
                 }
 
@@ -72,6 +76,7 @@ final class TimerService
                 'task_id' => $task->id,
                 'started_at' => now(),
                 'description' => $description,
+                'day_plan_item_id' => $dayPlanItemId,
             ]);
 
             return $previous;
@@ -165,6 +170,7 @@ final class TimerService
                 description: $description,
                 startedAt: $piece['started_at'],
                 endedAt: $piece['ended_at'],
+                dayPlanItemId: $timer->day_plan_item_id,
             ));
         }
 

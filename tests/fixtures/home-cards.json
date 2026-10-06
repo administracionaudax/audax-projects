@@ -3,6 +3,7 @@
     "cards": [
         "today-tasks",
         "timer",
+        "day-plan",
         "week-hours",
         "weekly",
         "workload",
@@ -12,5 +13,11 @@
         "milestones",
         "mentions"
     ],
-    "collaborator_hidden": ["weekly", "workload", "indicators", "absences"]
+    "collaborator_hidden": [
+        "weekly",
+        "workload",
+        "indicators",
+        "absences",
+        "day-plan"
+    ]
 }

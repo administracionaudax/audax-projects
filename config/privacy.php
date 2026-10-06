@@ -4,6 +4,8 @@ use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\AiUsageSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
+use App\Domain\Privacy\Export\Sections\DayPlanCommentsSection;
+use App\Domain\Privacy\Export\Sections\DayPlansSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
 use App\Domain\Privacy\Export\Sections\HelpLikesSection;
 use App\Domain\Privacy\Export\Sections\IntegrationsSection;
@@ -24,6 +26,7 @@ use App\Domain\Privacy\Export\Sections\WorkSchedulesSection;
 use App\Domain\Privacy\Retention\ActivityLogPruner;
 use App\Domain\Privacy\Retention\AiUsagePruner;
 use App\Domain\Privacy\Retention\ChatMessagesPruner;
+use App\Domain\Privacy\Retention\DayPlansPruner;
 use App\Domain\Privacy\Retention\DictationsPruner;
 use App\Domain\Privacy\Retention\LoginEventsPruner;
 use App\Domain\Privacy\Retention\ReadNotificationsPruner;
@@ -60,6 +63,9 @@ return [
         AiSummariesSection::class,
         AiUsageSection::class,
         WeeklyRemindersSection::class,
+        // Plan del día (D-256): mis líneas de cada día y los comentarios de mis líneas o que he escrito.
+        DayPlansSection::class,
+        DayPlanCommentsSection::class,
         // Mi espacio (10.6, D-204): las tareas sugeridas sin crear y mi archivado personal.
         MySpaceTasksSection::class,
         // Centro de ayuda y sugerencias (10.7, D-211): lo que has publicado, comentado, votado y
@@ -85,6 +91,8 @@ return [
         RetentionPolicy::WEEKLY_REMINDER_LOGS => WeeklyReminderLogsPruner::class,
         RetentionPolicy::DICTATIONS => DictationsPruner::class,
         RetentionPolicy::AI_USAGE => AiUsagePruner::class,
+        // Plan del día (D-256): las cabeceras de los días, con sus líneas y comentarios.
+        RetentionPolicy::DAY_PLANS => DayPlansPruner::class,
     ],
 
     // Filas por lote al borrar: cada lote es una sentencia corta, sin bloqueos largos.

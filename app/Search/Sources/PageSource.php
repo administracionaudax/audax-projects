@@ -64,6 +64,7 @@ class PageSource implements SearchSource
     protected function pages(): array
     {
         $always = fn (User $user): bool => true;
+        $dayPlan = fn (User $user): bool => Gate::forUser($user)->allows('use-day-plan');
 
         $pages = [
             ['route' => 'home', 'key' => 'home', 'allowed' => $always],
@@ -98,6 +99,10 @@ class PageSource implements SearchSource
             ['route' => 'team.index', 'key' => 'weekly_team', 'allowed' => self::weekly(AppModule::Weeklies)],
             ['route' => 'assistant.index', 'key' => 'assistant', 'allowed' => self::weekly(AppModule::Assistant)],
             ['route' => 'help.index', 'key' => 'help', 'allowed' => self::weekly(AppModule::Help)],
+            // Plan del día (D-250): la gate ya mira el módulo (visible para esa persona).
+            ['route' => 'day-plan.show', 'key' => 'day_plan', 'allowed' => $dayPlan],
+            ['route' => 'day-plan.team', 'key' => 'day_plan_team', 'allowed' => $dayPlan],
+            ['route' => 'day-plan.week', 'key' => 'day_plan_week', 'allowed' => $dayPlan],
         ];
 
         $translated = [];

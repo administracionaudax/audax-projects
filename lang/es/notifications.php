@@ -25,6 +25,7 @@ return [
     'groups' => [
         'tasks' => 'Tareas',
         'time' => 'Horas',
+        'day_plan' => 'Plan del día',
         'weeklies' => 'Weekly',
         'suggestions' => 'Sugerencias',
         'hour_banks' => 'Bolsas de horas',
@@ -47,6 +48,10 @@ return [
             'approved' => ['label' => 'Semana aprobada', 'description' => 'Cuando te aprueban la semana.'],
             'week_reminder' => ['label' => 'Recordatorio de los viernes', 'description' => 'Los viernes, si aún no has enviado la semana de horas o la weekly: un solo aviso con lo que te falte.'],
             'timer_long' => ['label' => 'Temporizador encendido demasiado tiempo', 'description' => 'Cuando tu temporizador lleva muchas horas en marcha.'],
+        ],
+        'day_plan' => [
+            'reminder' => ['label' => 'Recordatorio del plan del día', 'description' => 'A la hora límite (por defecto, las 8:30), si aún no has escrito tu plan de hoy. Solo los días que trabajas: nunca en festivos, ausencias ni con «Estoy fuera». También cuando tu responsable te lo recuerda.'],
+            'commented' => ['label' => 'Comentarios en tu plan del día', 'description' => 'Cuando tu responsable o un admin comenta una de tus líneas.'],
         ],
         'weeklies' => [
             'reminder' => ['label' => 'Recordatorios de la weekly', 'description' => 'Los que programa quien gestiona la Weekly y los «Recordar», si aún no has enviado la tuya. Cada recordatorio sale por el canal que elige quien lo programa; aquí puedes quitar los que no quieras.'],

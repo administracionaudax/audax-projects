@@ -33,6 +33,7 @@ return [
         'weekly_reminder' => 'Avisos de la Weekly',
         'help' => 'Centro de ayuda',
         'suggestion' => 'Sugerencias',
+        'day_plan' => 'Plan del día',
         'other' => 'Otros',
     ],
 
@@ -155,6 +156,17 @@ return [
 
     // Nombres legibles de los campos (lo que no está aquí se muestra con su nombre técnico).
     'fields' => [
+        // Plan del día (D-256).
+        'text' => 'Línea',
+        'planned_minutes' => 'Horas previstas',
+        'not_done_reason' => 'Motivo de «no hecha»',
+        'carried_from_id' => 'Pasada desde',
+        'carry_count' => 'Veces pasada',
+        'origin' => 'Origen',
+        'day_plan_id' => 'Plan del día',
+        'day_plan_item_id' => 'Línea del plan del día',
+        'published_at' => 'Plan escrito el',
+        'note' => 'Nota',
         'name' => 'Nombre',
         'title' => 'Título',
         'code' => 'Código',

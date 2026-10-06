@@ -2,6 +2,7 @@
  * Calendario del equipo (/calendario, D-144). Contrato con App\Http\Controllers\Calendar\
  * TeamCalendarController y App\Domain\Calendar\*. Fechas de tarea "YYYY-MM-DD" locales, sin zona.
  */
+import type { DayPlanLine } from './day-plan';
 import type { TaskPriority, TaskStatus, TaskType, UserSummary } from './domain';
 import type {
     ProjectTasksPageProps,
@@ -99,6 +100,8 @@ export type TeamCalendarData = {
     total: number;
     limit: number;
     rows: TeamCalendarRow[];
+    /** Plan del día (D-254): en la vista Día por personas, las líneas de cada una; null sin el módulo. */
+    day_plans?: Record<number, DayPlanLine[]> | null;
 };
 
 export type TeamCalendarOptions = {

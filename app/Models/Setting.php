@@ -70,7 +70,7 @@ class Setting extends Model
         'week_reminder_enabled' => true,
         // Fase 10 (D-151). Módulos activos (F-177): apagado, sus rutas dan 404 y no salen en la
         // navegación (App\Domain\Weeklies\AppModules).
-        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true],
+        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true, 'day_plan' => true],
         // Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más, y
         // los procesos automáticos y los avisos a otras personas siguen como apagados.
         'modules_preview' => false,
@@ -89,6 +89,15 @@ class Setting extends Model
         'weekly_dictation_cleanup' => true,
         // Entrar con Google (D-165): solo se ofrece si además hay credenciales de Google.
         'google_login_enabled' => true,
+        // Plan del día (D-250 a D-256). Hora límite de Madrid (HH:MM): a esa hora sale el recordatorio
+        // a quien aún no ha escrito su plan (D-252) y desde ella «Equipo hoy» marca «Sin plan» y las
+        // líneas añadidas después. Días con jornada hacia atrás en los que se puede cambiar el estado
+        // de una línea (D-253).
+        'day_plan_deadline' => '08:30',
+        'day_plan_reminder_enabled' => true,
+        'day_plan_editable_days' => 1,
+        // Retención del plan del día (D-256): datos de desempeño, un año por defecto.
+        'retention_day_plans_months' => 12,
     ];
 
     protected static function booted(): void

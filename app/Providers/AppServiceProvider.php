@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\DayPlan\DayPlanAccess;
 use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
@@ -93,6 +94,10 @@ class AppServiceProvider extends ServiceProvider
         // estado de proyectos, la ayuda, las sugerencias y el asistente) los internos de plantilla:
         // admin, responsables y empleados. Nunca un colaborador externo (D-134) ni un cliente.
         Gate::define('use-weeklies', fn (User $user): bool => $user->writesWeeklies());
+
+        // Plan del día (D-251): la plantilla interna (admin, responsables y empleados), nunca un
+        // colaborador externo ni un cliente, con el módulo day_plan visible para esa persona.
+        Gate::define('use-day-plan', fn (User $user): bool => DayPlanAccess::uses($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));

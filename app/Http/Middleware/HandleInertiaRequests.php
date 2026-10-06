@@ -119,6 +119,8 @@ class HandleInertiaRequests extends Middleware
                 'useWeeklies' => $user ? Gate::forUser($user)->allows('use-weeklies') : false,
                 'manageWeeklies' => $user ? Gate::forUser($user)->allows('manage-weeklies') : false,
                 'viewAiUsage' => $user ? Gate::forUser($user)->allows('view-ai-usage') : false,
+                // Plan del día (D-251): la plantilla interna con el módulo day_plan visible.
+                'useDayPlan' => $user ? Gate::forUser($user)->allows('use-day-plan') : false,
             ],
         ];
     }
@@ -212,7 +214,10 @@ class HandleInertiaRequests extends Middleware
     private function timer(User $user): ?array
     {
         $timer = ActiveTimer::query()
-            ->with(['task' => fn ($query) => $query->withTrashed()->select(['id', 'title', 'project_id'])->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])])])
+            ->with([
+                'task' => fn ($query) => $query->withTrashed()->select(['id', 'title', 'project_id'])->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])]),
+                'dayPlanItem' => fn ($query) => $query->select(['id', 'text']),
+            ])
             ->find($user->id);
 
         return $timer === null ? null : [
@@ -223,6 +228,8 @@ class HandleInertiaRequests extends Middleware
             'project_name' => $timer->task->project->name,
             'started_at' => $timer->started_at->toIso8601ZuluString(),
             'description' => $timer->description,
+            // Plan del día (D-254): la línea desde la que se arrancó («en «Creatividades…»»).
+            'day_plan_item' => $timer->dayPlanItem === null ? null : ['id' => $timer->dayPlanItem->id, 'text' => $timer->dayPlanItem->text],
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Domain\DayPlan\DayPlanCalendar;
 use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Http\Requests\Admin\Concerns\NormalizesInput;
@@ -86,6 +87,10 @@ class SettingsRequest extends FormRequest
             'weekly_dictation_cleanup' => ['sometimes', 'required', 'boolean'],
             // Opcional en la petición: quien no lo envía conserva el valor guardado (D-165).
             'google_login_enabled' => ['sometimes', 'required', 'boolean'],
+            // Plan del día (D-252 y D-253): hora límite y recordatorio, y días hacia atrás que se cierran.
+            'day_plan_deadline' => ['sometimes', 'required', 'date_format:H:i'],
+            'day_plan_reminder_enabled' => ['sometimes', 'required', 'boolean'],
+            'day_plan_editable_days' => ['sometimes', 'required', 'integer', 'between:0,'.DayPlanCalendar::MAX_EDITABLE_DAYS],
         ];
     }
 
@@ -127,6 +132,8 @@ class SettingsRequest extends FormRequest
             'default_work_minutes' => __('admin.attributes.default_work_minutes'),
             'occupancy_low_threshold' => __('reports.r3.settings.attributes.low'),
             'occupancy_high_threshold' => __('reports.r3.settings.attributes.high'),
+            'day_plan_deadline' => __('day_plan.attributes.deadline'),
+            'day_plan_editable_days' => __('day_plan.attributes.editable_days'),
         ];
     }
 
@@ -167,6 +174,9 @@ class SettingsRequest extends FormRequest
             ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
             ...($this->has('weekly_dictation_cleanup') ? ['weekly_dictation_cleanup' => $this->boolean('weekly_dictation_cleanup')] : []),
             ...($this->has('google_login_enabled') ? ['google_login_enabled' => $this->boolean('google_login_enabled')] : []),
+            ...($this->has('day_plan_deadline') ? ['day_plan_deadline' => $this->string('day_plan_deadline')->toString()] : []),
+            ...($this->has('day_plan_reminder_enabled') ? ['day_plan_reminder_enabled' => $this->boolean('day_plan_reminder_enabled')] : []),
+            ...($this->has('day_plan_editable_days') ? ['day_plan_editable_days' => $this->integer('day_plan_editable_days')] : []),
         ];
     }
 

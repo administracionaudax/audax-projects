@@ -1999,6 +1999,55 @@ Pedido por el propietario el 06/10: «que los menús principales se puedan colap
 - **Auto-despliegue:** al entrar en una página de una sección plegada (por la búsqueda, un enlace o la URL), la sección se despliega sola y se guarda así. Plegar la sección de la página en la que estás se respeta mientras sigas dentro de ella.
 - **Barra reducida a iconos:** sin encabezados ni nada que plegar; se ven todas las entradas con su tooltip y, al volver a desplegar la barra, cada sección recupera su estado. En el móvil (hoja lateral) las secciones funcionan igual.
 
+## 07/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
+Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan). La Previsión (Nivel 2) no entra aquí.
+
+### D-250 · El plan del día: módulo propio `day_plan`, «Mi día» y la tarjeta de Inicio **[amplía D-151; concreta PLAN-CARGAS §4 y §7]**
+- **Módulo propio** `day_plan` en `AppModule` (no es parte de la Weekly), **activado por defecto** (un módulo que falta en el ajuste `modules` está encendido). Se apaga en `/admin/ajustes` → «Weekly y módulos». Apagado: sus rutas dan 404, sin entrada en la barra lateral, ni tarjeta en Inicio, ni búsqueda, ni recordatorio. En modo de prueba (D-239) lo ven los admins y el recordatorio no sale (`AppModules::enabled`).
+- **Tablas** `day_plans` (cabecera por persona y día, `published_at` = la primera línea, `note`, `reminded_at`), `day_plan_items` (las líneas, con `carry_count` desnormalizado para la marca «↻ ×N» sin recorrer la cadena) y `day_plan_comments`; enlaces opcionales `active_timers.day_plan_item_id` y `time_entries.day_plan_item_id`. Migración solo aditiva.
+- **Escritura:** `App\Domain\DayPlan\DayPlanWriter` es el único punto (como `TimeEntryWriter`): añadir, editar, borrar (lógico), ordenar, cerrar, pasar, nota y «adoptar» la tarea. Tarea → fija proyecto y cliente; proyecto → fija cliente; nada = «General / Interno». Máximo 60 líneas al día.
+- **Pantallas:** «Mi día» (`/dia?fecha=`), con Intro para la siguiente línea, `@cliente`, `#proyecto` y `~1:30` (el parser de duración de siempre), arrastrar o «Subir/Bajar» para ordenar, «Desde mis tareas» y la nota del día. La entrada «Mi día» va en la barra lateral tras «Mis tareas»; la tarjeta «Mi día» de Inicio va tras el temporizador (las de siempre conservan su orden).
+- **Cifras de Mi día** (§6.1): previsto = horas previstas de las líneas no pasadas; imputado = todas las entradas de la persona ese día (también sin línea); hechas / líneas del día.
+
+### D-251 · Quién ve qué del plan del día **[concreta PLAN-CARGAS §8 y P1 a]**
+- **Lo usan** admin, responsables y empleados (gate `use-day-plan` = los de la Weekly, D-147, con el módulo visible para esa persona). Nunca un colaborador externo (sus rutas tampoco están en `config/collaborators.php`) ni un cliente.
+- **Textos y checks:** toda la plantilla ve los de todos (Equipo hoy y Semana).
+- **Cifras** (horas previstas e imputadas, jornada, cumplimiento, hora de publicación, temporizador en marcha) y **comentarios**: solo la propia persona, su responsable y los admins (`canSeeAbsencesOf`, D-088). Para el resto llegan a `null` en las props, no solo ocultas. El motivo de una ausencia, igual (D-088); el festivo, para todos.
+- **Nadie edita la línea de otro**, tampoco un admin (`DayPlanItemPolicy`). Sin ranking ni puntuación.
+
+### D-252 · Hora límite a las 8:30 y recordatorio **[concreta PLAN-CARGAS §9 y P2 (8:30, no 10:00)]**
+- **Un solo ajuste, `day_plan_deadline` (08:30, hora de Madrid):** es la hora del recordatorio y la hora desde la que «Equipo hoy» marca «Sin plan» y las líneas escritas después («añadida a las 12:40»). Se cambia en `/admin/ajustes` → «Plan del día», junto a `day_plan_reminder_enabled` (sí) y `day_plan_editable_days`.
+- **A quién:** la plantilla del plan del día sin ninguna línea ese día, solo en **sus días con jornada** (`Capacity` > 0: ni fin de semana según su horario, ni festivo, ni ausencia aprobada de día completo) y sin «Estoy fuera» (D-228). Una ausencia parcial o solo solicitada no lo quita.
+- **Cómo:** `day-plan:remind` cada 5 minutos; envía desde la hora límite y durante 3 horas (si el servidor estuvo parado a las 8:30, sale al volver, pero nunca a media tarde). **Una vez por persona y día local de Madrid**, aunque el comando se repita o cambie la hora: se reclama con `day_plans.reminded_at` en una actualización atómica (si el envío falla, se libera). Aviso `day_plan.reminder` del catálogo (grupo «Plan del día»): app y navegador por defecto, email opcional; sin canal activado no se reclama.
+- **«Recordar» a mano** en «Equipo hoy»: su responsable o un admin, con su nombre en el aviso y el mismo registro (tampoco dos el mismo día; el de las 8:30 ya no sale). Nada se avisa al responsable (P2 a).
+- **Modo de prueba o módulo apagado:** no sale nada (`AppModules::enabled`), tampoco el «Recordar» («Modo de prueba: no se avisa a nadie.»).
+
+### D-253 · Cerrar y pasar líneas: hoy y el último día con jornada **[concreta PLAN-CARGAS §4.4 y P3]**
+- **Escribir** (añadir, texto, cliente o proyecto, horas, borrar, ordenar, nota): hoy y cualquier día hasta el domingo de la semana que viene. El pasado no se reescribe.
+- **Cerrar** (hecha, no hecha con motivo, pendiente otra vez, pasar a otro día, imputar): además, los `day_plan_editable_days` últimos días **con jornada** (1 por defecto): el lunes aún se cierra el viernes; con el viernes de vacaciones, el jueves. Lo anterior es de solo lectura.
+- **«Pasar a hoy» con un clic** (P3 a): al abrir hoy, «Tienes 3 pendientes del lunes» con «Pasar todas a hoy», «Elegir…» y «Marcar como no hechas», con las pendientes de esos días que aún se cierran. Pasar crea una copia en el destino (`carried_from_id`, `carry_count` + 1, la marca «↻ ×N») y deja la original como «pasada». Nunca es automático. Borrar la copia la deshace (la original vuelve a pendiente). Una hecha no se pasa.
+- **Check con tarea:** si la línea tiene una tarea abierta, al marcarla hecha se pregunta «¿Marcar también la tarea como hecha?» («Solo la línea» o «También la tarea», con `TaskPolicy::update` y `TaskWriter`). Nunca al revés ni en silencio.
+
+### D-255 · Equipo hoy, la semana y los comentarios **[concreta PLAN-CARGAS §4.2 y §4.3]**
+- **Equipo hoy** (`/dia/equipo?fecha=&departamento=`): una fila por persona de la plantilla, desplegada, con su estado («Plan a las 09:12», «Sin plan» en rojo pasada la hora límite, «Aún no», «Ausente», «Festivo», «No trabaja»), su nota del día y sus líneas. A quien puede ver sus cifras: previsto frente a jornada (en rojo si se pasa), imputado, hechas, arrastradas y «Ahora: …» con el temporizador. Resumen del departamento: con plan, sin plan, fuera y, solo si se ven las cifras de todos, hechas y arrastradas.
+- **Filtros:** departamento en la URL (por defecto el de quien mira; `todos` para toda la plantilla) y persona en el navegador.
+- **Semana** (`/dia/semana?semana=2026-W41`): personas × días (de lunes a viernes, y el fin de semana si alguien trabaja o planifica); clic en un día para ver sus líneas. «Hechas/planificadas» por celda y el total de la semana, solo con las cifras.
+- **Comentarios** (`day_plan_comments`): los dejan su responsable y los admins; la persona contesta desde Mi día. Los ven solo ellos. Avisan a la dueña de la línea (`day_plan.commented`, en la app). Cada uno borra los suyos. Auditados.
+
+### D-254 · Las horas de una línea: siempre en una tarea **[concreta PLAN-CARGAS §6.1.4 y §10; amplía D-035 y D-172]**
+- **Nunca se relaja `task_id`** (R8): `active_timers.task_id` y `time_entries.task_id` siguen obligatorios. La línea resuelve una tarea y las horas llevan además el enlace opcional `day_plan_item_id` (en `TimeEntryData`; `TimeEntryWriter` solo lo guarda, sin tocar ninguna regla de bolsas, aprobación ni bloqueo).
+- **▶ desde la línea** (`App\Domain\DayPlan\DayPlanTime`): con tarea, esa; si no, «¿En qué tarea?» con las tareas del proyecto de la línea (las abiertas y las mías primero: `/horas/tareas?project_id=`) o las de siempre (incluido el proyecto interno), y «Crear la tarea «<texto>» en <proyecto>» (`TaskWriter`, asignada a quien la crea; en un proyecto de bolsas, la bolsa abierta de su departamento, si no la única sin departamento o la única abierta; si no se puede decidir, se pide elegir una tarea). Todo en una transacción: si el temporizador no puede arrancar (reglas de siempre), no se crea la tarea. La tarea queda en la línea (con su proyecto y cliente) para la próxima vez.
+- **`TimerService`** guarda `day_plan_item_id` y lo copia a las entradas al parar (a las dos si cruza la medianoche). La misma tarea desde otra línea para y vuelve a empezar (cada línea con sus horas); sin línea, como siempre.
+- **Al parar** (cabecera, Inicio o Mi día) una línea aún pendiente: aviso «¿Das por hecha «…»?» con «Marcar como hecha» (prop flash `day_plan_prompt`), sin bloquear. La cabecera enseña «en «<línea>»».
+- **Imputar a mano** desde la línea: el diálogo de horas de siempre (D-172) con la tarea, el día y lo previsto rellenos; la línea sin tarea se queda con la de sus horas. **«Imputar lo previsto»**: una línea hecha con tarea y horas previstas y sin horas imputa esas horas en su día (borrador, `TimeEntryWriter`); en bloque, «Imputar lo previsto de N líneas hechas sin horas» (cada línea por su cuenta: si una no se puede, las demás sí). **«Vincular horas»**: mis entradas de ese día sin línea (`TimeEntryWriter::linkDayPlanItem`, sin tocar minutos; nunca las bloqueadas al facturar).
+- **Integración:** «Añadir a mi día» (o a mañana) en Mis tareas y «Desde mis tareas» en Mi día; el «Autocompletar» de «Mi weekly» trae primero las líneas de mi plan de la semana por cliente («Creatividades campaña otoño (hecha, 2 h 10 min)», sin las pasadas; sus tareas no se repiten) con el módulo visible; la vista Día por personas del calendario del equipo lleva un desplegable «Plan del día» de cada persona con los permisos de D-251.
+
+### D-256 · RGPD, retención y auditoría del plan del día **[concreta PLAN-CARGAS §10 y R2; amplía D-075 y D-074]**
+- **Es un dato de desempeño.** Exportación de datos personales: «plan-del-dia» (mis líneas, con la nota de cada día y las borradas) y «comentarios-plan-del-dia» (los de mis líneas y los que he escrito).
+- **Retención** `retention_day_plans_months` (12 meses por defecto, de 1 a 120, en `/admin/privacidad`): `app:prune-data` borra los días anteriores con sus líneas y comentarios; las horas no se borran nunca, solo pierden el enlace.
+- **Auditoría:** `day_plans`, `day_plan_items` y `day_plan_comments` (entidad «Plan del día» en `/admin/auditoria`), sin el orden de las líneas ni la hora del recordatorio.
+- **Texto RGPD pendiente del asesor (D-030):** el borrador ya lo menciona (para qué, qué datos y quién ve qué: textos para la plantilla; cifras y comentarios, la persona, su responsable y la administración; sin clasificaciones). **Pendiente del propietario:** que el asesor revise esos tres párrafos con el resto del texto.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2015,6 +2064,7 @@ Pedido por el propietario el 06/10: «que los menús principales se puedan colap
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Dictado de la weekly con Gemini: D-243.
-- Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
+- Plan del día: D-250 a D-256.
+- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas en otras ramas: D-250… Plan del día, D-260… menú, D-270… chat de ClickUp).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión, D-270… chat de ClickUp).

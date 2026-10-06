@@ -98,6 +98,14 @@ Schedule::command('weeklies:remind')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Recordatorio del plan del día (D-252): cada 5 minutos; el comando solo envía a la hora límite de
+// Madrid (08:30) y en las tres horas siguientes, a quien aún no ha escrito su plan en un día con
+// jornada, una vez por persona y día (también si cambia la hora). Nada con el módulo apagado.
+Schedule::command('day-plan:remind')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
 Schedule::command('app:prune-data')
     ->dailyAt('03:10')

@@ -37,5 +37,7 @@ export function retentionLabel(type: RetentionType): string {
             return t('privacy.retention.types.dictations');
         case 'ai_usage':
             return t('privacy.retention.types.ai_usage');
+        case 'day_plans':
+            return t('privacy.retention.types.day_plans');
     }
 }

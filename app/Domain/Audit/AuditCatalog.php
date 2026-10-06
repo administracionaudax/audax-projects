@@ -52,6 +52,8 @@ final class AuditCatalog
         // (manual y soporte); los tableros, las categorías, las sugerencias y sus cambios de estado.
         'help' => ['help_releases', 'help_manual_updates', 'help_tutorials', 'help_faq_sections', 'help_faqs', 'help'],
         'suggestion' => ['suggestion_boards', 'suggestion_categories', 'suggestion_posts', 'suggestions'],
+        // Plan del día (D-256): las cabeceras de cada día, las líneas y los comentarios.
+        'day_plan' => ['day_plans', 'day_plan_items', 'day_plan_comments'],
     ];
 
     /**

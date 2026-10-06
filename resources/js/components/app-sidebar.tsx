@@ -16,6 +16,7 @@ import {
     SlidersHorizontal,
     Sparkles,
     UserCog,
+    Sun,
     ClipboardCheck,
     Users,
     Wallet,
@@ -47,6 +48,7 @@ import { index as helpIndex } from '@/routes/help';
 import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
+import { show as dayPlanShow } from '@/routes/day-plan';
 import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import { index as teamIndex } from '@/routes/team';
@@ -94,6 +96,12 @@ export function pinnedNavItems(
 export function projectsNavItems(can: Abilities): NavItem[] {
     const items: (NavItem | false | undefined)[] = [
         { title: t('nav.my_tasks'), href: myTasksIndex(), icon: ListChecks },
+        // Plan del día (D-250): la plantilla interna con el módulo day_plan visible.
+        can.useDayPlan === true && {
+            title: t('day_plan.nav'),
+            href: dayPlanShow(),
+            icon: Sun,
+        },
         { title: t('nav.calendar'), href: calendarIndex(), icon: CalendarDays },
         { title: t('nav.projects'), href: projectsIndex(), icon: FolderKanban },
         can.viewClients && {

@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { CalendarCheck2, History, ListFilter, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { PriorityBadge, TaskStatusBadge } from '@/components/domain/badges';
+import { AddToMyDayButton } from '@/components/day-plan/add-to-my-day';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
 import {
@@ -21,7 +22,7 @@ import {
 import { TimerButton } from '@/components/time/timer-button';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { useRequiredUser } from '@/hooks/use-auth';
+import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
 import { usePersistedQuery } from '@/hooks/use-persisted-query';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
@@ -53,6 +54,7 @@ function MyTaskRow({
 }) {
     // Registrado total: lo propio y lo de sus subtareas (D-170).
     const logged = totalLoggedMinutes(task);
+    const can = useAbilities();
 
     return (
         <li
@@ -148,6 +150,12 @@ function MyTaskRow({
                             </span>
                         ) : null}
                     </span>
+                ) : null}
+                {/* Plan del día (D-254): «Añadir a mi día» (o a mañana). */}
+                {can.useDayPlan === true &&
+                !task.is_milestone &&
+                !task.is_completed ? (
+                    <AddToMyDayButton task={task} />
                 ) : null}
                 {!task.is_milestone && !task.is_completed ? (
                     <TimerButton task={task} />

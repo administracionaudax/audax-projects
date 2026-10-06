@@ -53,6 +53,7 @@ import {
 } from '@/components/planning/calendar-dates';
 import { RescheduleDialog } from '@/components/planning/reschedule-dialog';
 import { useReschedule } from '@/components/planning/use-reschedule';
+import { CalendarDayPlan } from '@/components/day-plan/calendar-day-plan';
 import { UserAvatar } from '@/components/tasks/task-fields';
 import {
     weekdayLongLabel,
@@ -1122,6 +1123,19 @@ function PeopleGrid({
                                             <InProgressList
                                                 tasks={inProgress(mine, date)}
                                                 context={context}
+                                            />
+                                        ) : null}
+                                        {/* Plan del día (D-254), en la vista Día. */}
+                                        {single &&
+                                        row.person &&
+                                        calendar.day_plans ? (
+                                            <CalendarDayPlan
+                                                lines={
+                                                    calendar.day_plans[
+                                                        row.person.id
+                                                    ]
+                                                }
+                                                name={row.person.name}
                                             />
                                         ) : null}
                                     </DayCell>

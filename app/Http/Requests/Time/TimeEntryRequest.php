@@ -41,6 +41,8 @@ class TimeEntryRequest extends TimeRequest
             'end_time' => ['nullable', 'required_with:start_time', 'date_format:H:i'],
             'description' => ['nullable', 'string', 'max:2000'],
             'is_billable' => ['nullable', 'boolean'],
+            // Plan del día (D-254): la línea de la que salen las horas (solo al crear).
+            'day_plan_item_id' => ['nullable', 'integer'],
         ];
     }
 
@@ -103,6 +105,7 @@ class TimeEntryRequest extends TimeRequest
             startedAt: $this->range?->startedAt,
             endedAt: $this->range?->endedAt,
             isBillable: $this->has('is_billable') && $this->input('is_billable') !== null ? $this->boolean('is_billable') : null,
+            dayPlanItemId: $entry === null && $this->filled('day_plan_item_id') ? $this->integer('day_plan_item_id') : null,
         );
     }
 }

@@ -17,6 +17,9 @@ export type ProjectTab =
 export const urls = {
     home: () => '/',
     myTasks: () => '/mis-tareas',
+    /** Plan del día (D-250): Mi día y «Añadir a mi día» desde otras áreas. */
+    myDay: (date?: string) => (date ? `/dia?fecha=${date}` : '/dia'),
+    dayPlanFromTasks: () => '/dia/desde-tareas',
     clients: () => '/clientes',
     client: (id: number) => `/clientes/${id}`,
     /**

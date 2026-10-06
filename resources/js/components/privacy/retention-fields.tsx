@@ -116,6 +116,9 @@ export function RetentionFields({
                             {field.type === 'dictations'
                                 ? ` ${t('privacy.admin.dictations_help')}`
                                 : null}
+                            {field.type === 'day_plans'
+                                ? ` ${t('privacy.admin.day_plans_help')}`
+                                : null}
                         </p>
                         <InputError id={errorId} message={error} />
                     </div>
