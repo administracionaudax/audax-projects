@@ -53,7 +53,7 @@ $PHP artisan migrate --force --no-interaction
 $PHP artisan horizon:terminate >/dev/null 2>&1 || true
 if [ "$tests" = 1 ]; then
   # Salida completa en storage/logs/pest-despliegue.log; aquí, el resumen y el nombre de lo que falle.
-  sh scripts/heavy.sh timeout 75m $PHP -d memory_limit=1536M vendor/bin/pest --colors=never > storage/logs/pest-despliegue.log 2>&1 || true
+  sh scripts/heavy.sh timeout 75m $PHP -d memory_limit=1536M -d opcache.enable_cli=1 vendor/bin/pest --colors=never > storage/logs/pest-despliegue.log 2>&1 || true
   tail -5 storage/logs/pest-despliegue.log
   # Una batería cortada (memoria, tiempo) no deja la línea «Tests:»: avisarlo bien alto.
   grep -q "^  Tests:" storage/logs/pest-despliegue.log || echo "!! LA BATERÍA NO TERMINÓ (sin línea «Tests:»): revisa storage/logs/pest-despliegue.log"
