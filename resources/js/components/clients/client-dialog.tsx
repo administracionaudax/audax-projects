@@ -133,6 +133,8 @@ export function ClientDialog({
             optional?: boolean;
             placeholder?: string;
             help?: string;
+            /** La ayuda la pinta quien llama, a todo el ancho bajo la fila (D-310). */
+            helpOutside?: boolean;
         } = {},
     ) => {
         const inputId = `${id}-${key}`;
@@ -144,7 +146,7 @@ export function ClientDialog({
                 optional={
                     props.optional ? t('clients.form.optional') : undefined
                 }
-                help={props.help}
+                help={props.helpOutside ? undefined : props.help}
                 error={errors[key]}
             >
                 <Input
@@ -203,7 +205,16 @@ export function ClientDialog({
                             maxLength: 16,
                             placeholder: '🍷',
                             help: t('clients.form.icon_help'),
+                            helpOutside: true,
                         })}
+                        {/* Bajo la fila Nombre/Icono, a todo el ancho: en la columna del icono dejaba
+                            un hueco bajo el nombre. */}
+                        <p
+                            id={`${id}-icon-help`}
+                            className="-mt-3 text-sm text-muted-foreground sm:col-span-2"
+                        >
+                            {t('clients.form.icon_help')}
+                        </p>
                         {text('tax_id', t('clients.form.tax_id'), {
                             optional: true,
                             maxLength: 32,

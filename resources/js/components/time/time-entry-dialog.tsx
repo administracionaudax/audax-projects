@@ -561,6 +561,12 @@ function TimeEntryForm({
                                 />
                             </div>
                         </div>
+                    </div>
+                )}
+                {mode === 'range' ? (
+                    // La ayuda y los errores de la franja, a todo el ancho bajo la fila: en la columna
+                    // de Inicio/Fin ocupaban 4-5 líneas y dejaban un hueco bajo la Fecha (D-310).
+                    <div className="grid gap-1 sm:col-span-2">
                         <p
                             id={field('range-preview')}
                             className="text-xs text-muted-foreground"
@@ -583,7 +589,7 @@ function TimeEntryForm({
                         {/* Reglas del día (más de 24 h…) que el servidor devuelve en la duración. */}
                         <InputError message={errors.minutes} />
                     </div>
-                )}
+                ) : null}
             </div>
 
             <div className="grid gap-2">

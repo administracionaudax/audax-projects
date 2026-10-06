@@ -132,7 +132,6 @@ export function TaskTypeDialog({
                         <Field
                             id={`${id}-department`}
                             label={t('admin.task_types.department')}
-                            help={t('admin.task_types.department_help')}
                             error={errors.department_id}
                         >
                             <NativeSelect
@@ -165,6 +164,13 @@ export function TaskTypeDialog({
                                 ))}
                             </NativeSelect>
                         </Field>
+                        {/* Ayuda a todo el ancho: bajo el departamento dejaba un hueco bajo el nombre. */}
+                        <p
+                            id={`${id}-department-help`}
+                            className="-mt-3 text-sm text-muted-foreground sm:col-span-2"
+                        >
+                            {t('admin.task_types.department_help')}
+                        </p>
                     </div>
 
                     <ColorPicker
