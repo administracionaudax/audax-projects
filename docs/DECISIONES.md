@@ -2288,6 +2288,24 @@ Las pantallas definitivas de la Previsión con el diseño aprobado (D-290 a D-29
 - Cada semana pasada dice **quién tenía plan y no imputó nada** en el proyecto.
 - **Previsión al cerrar** = lo real más lo que **queda asignado** en el proyecto real de hoy en adelante, por persona, departamento y mes; el **fin previsto** es el último día con algo asignado (sin nada asignado, el ritmo de las últimas 4 semanas, como antes).
 
+### D-310 · Revisión de formularios: patrones comunes **[revisión del 06/10; detalle en docs/REVISION-FORMULARIOS.md]**
+Pedido por el propietario el 06/10: que todos los desplegables, selectores y formularios funcionen. Lo que se generaliza:
+- **Props diferidas:** `installDeferredPropsGuard` (`lib/deferred-props.ts`) vuelve a pedir, al terminar cualquier visita, las diferidas de la página que una visita a otra ruta canceló antes de llegar. Tras guardar, los diálogos y secciones que dependen de una diferida usan lo último recibido (`useLastDefined`). Nunca se cambia la URL (`router.replace`) al montar una página antes de que lleguen sus diferidas.
+- **Formularios en diálogos:** se reinician cada vez que el diálogo pasa a abierto, también si lo abre el padre (`useResetOnOpen`); con Inertia 3 la página no se vuelve a montar al guardar.
+- **Confirmaciones:** `ConfirmDialog` sin `open` se cierra sola al terminar la acción (`processing` de true a false) y su botón se desactiva mientras tanto.
+- **Errores:** ninguna acción sin `onError` (aviso con `toastVisitErrors`); los errores sin campo donde pintarse, con `toastUnshownErrors`. Los mensajes genéricos nombran el campo en español (`lang/es/validation.php`).
+- **Campos:** los disparadores que hacen de campo (selector de fecha, comboboxes, buscadores) usan la variante `field` de `Button` (borde gris, sin fondo), nunca `outline`. `NativeSelect` no tiene fondo propio y, dentro de un recuadro con etiqueta, va con `bare`. En oscuro, `color-scheme: dark`.
+- **Filas de varias columnas:** cada celda `grid` lleva `content-start` (si no, se estira y la caja baja: escalón). Lo vigila un test estático.
+- **Filtros de la URL:** el selector muestra lo elegido mientras llega la respuesta (`useOptimisticValue`).
+
+### D-311 · «Cancelar» de los diálogos, siempre secundario
+Los 52 diálogos de la app lo tenían así; la Previsión (`outline`), el canal del chat y reprogramar (`ghost`) pasan a `secondary`. Las confirmaciones en línea (dentro de una fila o de un panel) pueden seguir en `ghost`.
+
+### D-312 · Ayudas de los campos en filas de dos columnas
+- **Larga** (más de una línea en su columna): a todo el ancho bajo la fila (`sm:col-span-2`), para no dejar un hueco bajo la otra columna. Si la fila no la tiene, se empareja con un campo que también la tenga o el campo va a todo el ancho.
+- **Corta** (una línea, o la vista previa «= 1:30» de la duración): se queda bajo su campo, cerca de lo que explica; las cajas ya quedan alineadas. En la fila del previsto la vista previa va superpuesta (`DurationInput preview="overlay"`).
+- En los filtros, el valor «sin filtro» es corto («Todas», «Todos») para que no se corte en la caja.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2309,6 +2327,7 @@ Las pantallas definitivas de la Previsión con el diseño aprobado (D-290 a D-29
 - Previsión: D-280 a D-289.
 - Diseño de la previsión: D-290 a D-299.
 - Pantallas de la previsión: D-300 a D-309.
+- Revisión de formularios: D-310 a D-312.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-310 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-313 en adelante, sin usar).
