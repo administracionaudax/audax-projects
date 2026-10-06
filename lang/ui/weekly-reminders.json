@@ -97,6 +97,7 @@
     "weekly_reminders.info.once": "Cada recordatorio llega una sola vez a cada persona.",
     "weekly_reminders.info.preferences": "Cada persona puede quitar los canales que no quiera en sus preferencias de notificación.",
     "weekly_reminders.info.push": "Para recibir avisos en el navegador, cada persona los activa en sus preferencias de notificación.",
+    "weekly_reminders.info.digest": "Quien tiene activado el resumen diario por email no recibe el email al momento: le llega en la campana y en su resumen de las 08:00 del día siguiente (en el registro sale «en cola»).",
     "weekly_reminders.info.preferences_link": "Mis preferencias de notificación",
     "weekly_reminders.remind": "Recordar",
     "weekly_reminders.remind_person": "Recordar a :name que envíe su weekly",

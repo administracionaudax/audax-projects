@@ -28,7 +28,8 @@ use Illuminate\Database\Eloquent\Collection;
  * | Plazo cambiado       | pendientes                | app, email y navegador          | deadline:{semana}:{fecha}            |
  *
  * En todos, cada persona decide en /ajustes/notificaciones qué canales quiere (por defecto: los
- * recordatorios en la app y por email; «weekly cerrada» igual; el plazo, en la app). El manual y
+ * recordatorios en la app, por email y en el navegador si lo ha activado; «weekly cerrada» en la app
+ * y por email; el plazo, en la app). El manual y
  * «Recordar» se deduplican por minuto: dos clics seguidos no mandan dos.
  */
 final class WeeklyReminders

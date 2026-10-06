@@ -267,6 +267,7 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
                         <li>{t('weekly_reminders.info.once')}</li>
                         <li>{t('weekly_reminders.info.preferences')}</li>
                         <li>{t('weekly_reminders.info.push')}</li>
+                        <li>{t('weekly_reminders.info.digest')}</li>
                     </ul>
                     <Link
                         href={notificationSettings.url()}

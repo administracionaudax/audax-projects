@@ -91,7 +91,8 @@ final class NotificationCatalog
 
             // La Weekly (Fase 10, entrega 10.5, D-199 a D-201). Los recordatorios por reglas salen por
             // el canal de cada regla (y solo si la persona no lo ha desactivado aquí); por defecto,
-            // en la app y por email, como el email de WeeklySync. «Weekly cerrada» con el enlace al
+            // en la app, por email (como WeeklySync) y en el navegador, que solo llega a quien lo ha
+            // activado (10.9b: se aclara el comentario, el valor ya era este). «Weekly cerrada» con el enlace al
             // informe (F-095) y el plazo cambiado, a quien aún debe enviarla.
             new NotificationEvent('weeklies.reminder', 'weeklies', $all, [$app, $email, $push], self::AUDIENCE_WEEKLIES),
             new NotificationEvent('weeklies.closed', 'weeklies', $all, [$app, $email], self::AUDIENCE_WEEKLIES),
