@@ -524,13 +524,17 @@ final class ChatImporter
             $local = $this->dump->attachment($attachment['url']);
             $extension = $local === null ? null : mb_strtolower(pathinfo($local['name'], PATHINFO_EXTENSION));
 
-            if ($local !== null && $extension !== null && array_key_exists($extension, AttachmentStorage::EXTENSIONS)) {
+            $tooBig = $local !== null && (int) filesize($local['file']) > AttachmentStorage::maxKilobytes() * 1024;
+
+            if ($local !== null && ! $tooBig && $extension !== null && array_key_exists($extension, AttachmentStorage::EXTENSIONS)) {
                 $files[] = [...$attachment, ...$local];
             } else {
                 $body = trim($body."\n📎 [{$attachment['name']}]({$attachment['url']})");
-                $this->report->warn($local === null
-                    ? 'Adjuntos sin descargar: quedan como enlace a ClickUp.'
-                    : 'Adjuntos de un tipo que el chat no admite (vídeos, HEIC…): quedan como enlace a ClickUp.');
+                $this->report->warn(match (true) {
+                    $local === null => 'Adjuntos sin descargar: quedan como enlace a ClickUp.',
+                    $tooBig => 'Adjuntos de más del máximo de la app (max_attachment_mb): quedan como enlace a ClickUp.',
+                    default => 'Adjuntos de un tipo que el chat no admite (vídeos, HEIC…): quedan como enlace a ClickUp.',
+                });
             }
         }
 
