@@ -13,8 +13,9 @@ mkdirSync(dir, { recursive: true });
 // [fichero, nombre, query, acción antes de capturar (selector a sobrevolar), página completa]
 const SHOTS = [
     ['01-prevision-matriz.html', '01-matriz', '', null],
-    ['01-prevision-matriz.html', '01-matriz-tooltip', '', { hover: '[data-person="luis"] td.c:nth-of-type(6)' }],
+    ['01-prevision-matriz.html', '01-matriz-tooltip', '?abiertos=dis', { hover: '[data-person="luis"] td.c:nth-of-type(6)' }],
     ['01-prevision-matriz.html', '01-matriz-12-meses', '?meses=12&por=meses&abiertos=dis', null],
+    ['01-prevision-matriz.html', '01-matriz-desplegada', '?abiertos=dis,dev', null],
     ['02-prevision-barras.html', '02-barras', '', null],
     ['03-prevision-cronograma.html', '03-cronograma', '', null],
     ['04-ficha-previsto.html', '04-ficha-previsto', '', null],

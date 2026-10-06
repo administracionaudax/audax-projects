@@ -154,6 +154,8 @@ const state = { months: 3, unit: 'week', open: { dis: true, dev: true, mkt: fals
 const qs = new URLSearchParams(location.search);
 if (qs.get('meses')) state.months = Number(qs.get('meses'));
 if (qs.get('por') === 'meses') state.unit = 'month';
+// En móvil, todos plegados por defecto (DISENO-PREVISION.md §4.1).
+if (!qs.get('abiertos') && matchMedia('(max-width: 640px)').matches) { for (const k in state.open) state.open[k] = false; }
 if (qs.get('abiertos')) { for (const k in state.open) state.open[k] = qs.get('abiertos').split(',').includes(k); }
 document.getElementById('horizon').value = String(state.months);
 
