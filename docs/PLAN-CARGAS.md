@@ -687,9 +687,10 @@ Máximo 8. Cada una con opciones y la recomendada (★).
 - **P3, pendientes:** a) «Pasar a hoy» con un clic, todas o una a una, con la marca «↻ ×N».
 - **P4, quién crea y ve los previstos:** a) Crean y editan los admins y los responsables (`manage-forecast`); todos los responsables ven toda la previsión; los empleados no ven la previsión global.
 - **P5, seguridad:** b) **solo segura o posible, sin %.**
-- **P6, qué manda en la carga:** las horas estimadas de las tareas **no se tienen en cuenta** en la previsión. La carga de un proyecto real sale de él, de las horas asignadas a sus personas, y el proyecto estimado va aparte como línea base para comparar lo estimado con lo real. Pendiente de confirmar la interpretación con el propietario.
+- **P6, qué manda en la carga:** las horas estimadas de las tareas **no se tienen en cuenta** en la previsión. La carga de un proyecto real sale de él, de las horas asignadas a sus personas, y el proyecto estimado va aparte como línea base para comparar lo estimado con lo real. **Confirmado por el propietario el 06/10.**
 - **P7, bolsas y fees:** c) **no entran:** solo asignaciones.
 - **P8, «Mi carga» del empleado:** b) **todo**, también los previstos posibles.
+- **Diseño (06/10):** «trabájate bien la parte visual de cómo se verán esos gráficos de cargas; es importante, ya que somos una empresa de UX/UI».
 
 ## C1-C3 (hecho)
 Hecho el 07/10/2026 en la rama `plan-del-dia` (D-250 a D-256 en `docs/DECISIONES.md`), con las respuestas de §15:
