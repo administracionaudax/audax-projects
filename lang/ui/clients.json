@@ -80,6 +80,12 @@
     "clients.columns.projects": "Proyectos",
     "clients.columns.last_report": "Último reporte",
     "clients.columns.satisfaction": "Satisfacción",
+    "clients.columns.team": "Responsable y equipo",
+    "clients.team_label": "Equipo del cliente (:count personas)",
+    "clients.team_more": "+:count",
+    "clients.form.owner": "Responsable",
+    "clients.form.owner_auto": "Automático: quien gestiona más proyectos abiertos",
+    "clients.form.owner_help": "Si no eliges a nadie, es quien gestiona más proyectos abiertos del cliente.",
     "clients.no_reports": "Sin reportes",
     "clients.form.icon": "Icono",
     "clients.form.icon_help": "Un emoji para reconocerlo en la cartera y en la Weekly."

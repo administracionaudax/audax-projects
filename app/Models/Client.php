@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $id
  * @property string $name
  * @property string|null $icon Emoji del cliente (F-126, Fase 10)
+ * @property int|null $owner_user_id Responsable elegido a mano (D-232); null = se deduce de los proyectos
  * @property string|null $tax_id
  * @property string|null $contact_name
  * @property string|null $contact_email
@@ -38,6 +40,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
+ * @property-read User|null $owner
  * @property-read Collection<int, Project> $projects
  * @property-read Collection<int, User> $portalUsers
  * @property-read Collection<int, ClientSatisfactionSnapshot> $satisfactionSnapshots
@@ -45,6 +48,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'name',
     'icon',
+    'owner_user_id',
     'tax_id',
     'contact_name',
     'contact_email',
@@ -88,6 +92,16 @@ class Client extends Model
             'portal_entry_visibility' => PortalEntryVisibility::class,
             'portal_notify_thresholds' => 'boolean',
         ];
+    }
+
+    /**
+     * Responsable elegido a mano (D-232). Mejor con ClientInsights::ownerOf(), que lo deduce si no.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
     }
 
     /**

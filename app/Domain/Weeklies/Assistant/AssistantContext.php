@@ -139,12 +139,12 @@ final class AssistantContext
     private function clients(): array
     {
         return array_values(Client::query()->active()
-            ->with(['projects' => fn ($query) => $query->select(['id', 'client_id', 'owner_user_id', 'status']), 'projects.owner:id,name'])
+            ->with(['projects' => fn ($query) => $query->select(['id', 'client_id', 'owner_user_id', 'status']), 'projects.owner:id,name', 'owner:id,name,is_active'])
             ->orderBy('name')
-            ->get(['id', 'name', 'satisfaction_score'])
+            ->get(['id', 'name', 'owner_user_id', 'satisfaction_score'])
             ->map(fn (Client $client): array => [
                 'name' => $client->name,
-                'owner' => ClientInsights::mainOwner($client->projects)?->name,
+                'owner' => ClientInsights::ownerOf($client, $client->projects)?->name,
                 'satisfaction' => $client->satisfaction_score,
             ])->all());
     }

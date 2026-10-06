@@ -44,6 +44,25 @@ final class ClientInsights
     ) {}
 
     /**
+     * Responsable del cliente: el elegido a mano si sigue activo (D-232) y, si no, el deducido de sus
+     * proyectos (mainOwner).
+     *
+     * @param  iterable<Project>  $projects  con owner cargado
+     */
+    public static function ownerOf(Client $client, iterable $projects): ?User
+    {
+        if ($client->owner_user_id !== null) {
+            $owner = $client->relationLoaded('owner') ? $client->owner : $client->owner()->first();
+
+            if ($owner !== null && $owner->is_active) {
+                return $owner;
+            }
+        }
+
+        return self::mainOwner($projects);
+    }
+
+    /**
      * Responsable del cliente (D.1 del inventario): quien gestiona más proyectos abiertos del cliente;
      * a igualdad, el del proyecto más antiguo. Sin proyectos abiertos, el de cualquiera no archivado.
      *
@@ -150,8 +169,8 @@ final class ClientInsights
     public function team(Client $client): array
     {
         $projects = $this->openProjects($client);
-        $owner = self::mainOwner($projects);
-        $members = $this->teamMembers($client, $projects);
+        $owner = self::ownerOf($client, $projects);
+        $members = $this->teamMembers($client, $projects, $owner);
         $entries = $this->entries($client, limit: InsightPrompts::CLIENT_MAX_ENTRY_ROWS);
         $cycles = WeeklyCycle::query()->whereKey(array_values(array_unique(array_column($entries, 'cycle_id'))))->get(['id', 'number', 'label', 'start_date', 'end_date', 'status'])->keyBy('id');
         $reports = [];
@@ -333,8 +352,8 @@ final class ClientInsights
     public function summaryContext(Client $client): array
     {
         $projects = $this->openProjects($client);
-        $owner = self::mainOwner($projects);
-        $collaborators = array_values($this->teamMembers($client, $projects)
+        $owner = self::ownerOf($client, $projects);
+        $collaborators = array_values($this->teamMembers($client, $projects, $owner)
             ->reject(fn (User $user): bool => $user->id === $owner?->id)
             ->map(fn (User $user): string => $user->name)
             ->all());
@@ -394,10 +413,11 @@ final class ClientInsights
      * @param  Collection<int, Project>  $projects
      * @return Collection<int, User>
      */
-    public function teamMembers(Client $client, Collection $projects): Collection
+    public function teamMembers(Client $client, Collection $projects, ?User $owner = null): Collection
     {
         $ids = $projects->flatMap(fn (Project $project): array => [$project->owner_user_id, ...$project->members->modelKeys()])
             ->merge($this->subscriptions->userIds($client))
+            ->merge($owner !== null ? [$owner->id] : [])
             ->unique()
             ->values()
             ->all();

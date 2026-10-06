@@ -196,9 +196,12 @@ export default function ClientShow({
     owner = null,
     kindBadges = [],
     weekly = null,
+    people = null,
 }: ClientShowProps & {
     /** Acceso al portal (Fase 5, D-063): null para quien no lo gestiona. */
     portal?: ClientPortalAccess | null;
+    /** Para elegir el responsable (D-232): diferida, con la Weekly y quien edita. */
+    people?: { id: number; name: string }[] | null;
 }) {
     const page = usePage();
     const showFinancials = page.props.auth?.can?.viewFinancials === true;
@@ -326,6 +329,7 @@ export default function ClientShow({
                                     <ClientDialog
                                         client={client}
                                         showFinancials={showFinancials}
+                                        people={people ?? undefined}
                                         trigger={
                                             <Button variant="outline">
                                                 <Pencil aria-hidden="true" />

@@ -82,9 +82,18 @@ export function SatisfactionTrend({
             className={cn('tabular inline-flex items-center gap-1', className)}
             data-test="client-satisfaction"
         >
+            {/* Color por tramo, como WeeklySync (10.9b): ≥80 verde, ≥50 ámbar, <50 rojo. */}
             <Smile
                 aria-hidden="true"
-                className="size-4 text-muted-foreground"
+                className={cn(
+                    'size-4',
+                    score >= 80
+                        ? 'text-success'
+                        : score >= 50
+                          ? 'text-warning'
+                          : 'text-danger',
+                )}
+                data-tier={score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low'}
                 strokeWidth={1.5}
             />
             <span>{t('weeklies.client.satisfaction_value', { score })}</span>

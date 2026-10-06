@@ -4,6 +4,7 @@ namespace App\Http\Requests\Clients;
 
 use App\Http\Requests\Admin\Concerns\NormalizesInput;
 use App\Models\Client;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -72,6 +73,14 @@ class ClientRequest extends FormRequest
             $rules['default_hourly_rate'] = ['nullable', 'decimal:0,2', 'min:0', 'max:99999999.99'];
         }
 
+        // Responsable del cliente (D-232): alguien activo de la plantilla que escribe la Weekly; vacío,
+        // se deduce de los proyectos.
+        $rules['owner_user_id'] = ['nullable', 'integer', function (string $attribute, mixed $value, \Closure $fail): void {
+            if ($value !== null && ! User::query()->whereKey((int) $value)->where('is_active', true)->role(User::WEEKLY_ROLES)->exists()) {
+                $fail(__('clients.errors.owner'));
+            }
+        }];
+
         return $rules;
     }
 
@@ -101,6 +110,10 @@ class ClientRequest extends FormRequest
 
         foreach (['name', 'tax_id', 'contact_name', 'contact_email', 'phone', 'icon'] as $key) {
             $data[$key] = $this->filled($key) ? $this->string($key)->toString() : null;
+        }
+
+        if ($this->has('owner_user_id')) {
+            $data['owner_user_id'] = $this->filled('owner_user_id') ? $this->integer('owner_user_id') : null;
         }
 
         $notes = $this->input('notes');

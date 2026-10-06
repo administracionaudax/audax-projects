@@ -61,6 +61,8 @@ export type Client = {
     icon?: string | null;
     /** Satisfacción actual 0-100 (Fase 10, F-096). */
     satisfaction_score?: number;
+    /** Responsable elegido a mano (D-232); null = se deduce de los proyectos. */
+    owner_user_id?: number | null;
     tax_id: string | null;
     contact_name: string | null;
     contact_email: string | null;

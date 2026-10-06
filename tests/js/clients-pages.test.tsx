@@ -283,6 +283,80 @@ describe('listado de clientes', () => {
         );
     });
 
+    it('con la Weekly, cada fila trae el responsable y el equipo con «+N» (D-232)', () => {
+        const person = (id: number, name: string) => ({
+            id,
+            name,
+            avatar: null,
+            department_id: null,
+            is_active: true,
+        });
+        render(
+            <TooltipProvider>
+                <ClientsIndex
+                    {...indexProps([
+                        row({
+                            satisfaction_score: 40,
+                            portfolio_team: {
+                                owner: person(7, 'Raúl Gestor'),
+                                team: [
+                                    person(7, 'Raúl Gestor'),
+                                    person(8, 'Ana Díaz'),
+                                    person(9, 'Bruno Ruiz'),
+                                ],
+                                team_count: 5,
+                            },
+                        }),
+                    ])}
+                    weekly
+                />
+            </TooltipProvider>,
+        );
+
+        const cell = document.querySelector<HTMLElement>(
+            '[data-test="client-team"]',
+        )!;
+        expect(
+            cell
+                .querySelector('[data-test="client-owner"]')
+                ?.getAttribute('href'),
+        ).toBe('/equipo/7');
+        const team = within(cell).getByRole('list', {
+            name: 'Equipo del cliente (5 personas)',
+        });
+        expect(within(team).getAllByRole('link')).toHaveLength(3);
+        expect(within(team).getByText('+2')).toBeTruthy();
+        expect(
+            document
+                .querySelector('[data-test="client-satisfaction"] svg')
+                ?.getAttribute('data-tier'),
+        ).toBe('low');
+    });
+
+    it('el diálogo deja elegir el responsable con la Weekly (D-232)', async () => {
+        const user = userEvent.setup();
+        withAbilities({ createClients: true });
+        render(
+            <TooltipProvider>
+                <ClientsIndex
+                    {...indexProps([])}
+                    people={[{ id: 7, name: 'Raúl Gestor' }]}
+                    weekly
+                />
+            </TooltipProvider>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Nuevo cliente' }));
+        expect(
+            screen.getByText(
+                'Si no eliges a nadie, es quien gestiona más proyectos abiertos del cliente.',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole('combobox', { name: /Responsable/ }).textContent,
+        ).toContain('Automático');
+    });
+
     it('sin clientes, un estado vacío', () => {
         render(<ClientsIndex {...indexProps([])} />);
 

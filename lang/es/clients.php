@@ -14,6 +14,7 @@ return [
     'errors' => [
         'name_taken' => 'Ya hay un cliente con este nombre.',
         'icon' => 'El icono tiene que ser un solo emoji.',
+        'owner' => 'El responsable tiene que ser alguien activo de la plantilla.',
     ],
 
     'attributes' => [
@@ -25,5 +26,6 @@ return [
         'notes' => 'notas',
         'default_hourly_rate' => 'tarifa por hora',
         'icon' => 'icono',
+        'owner_user_id' => 'responsable',
     ],
 ];

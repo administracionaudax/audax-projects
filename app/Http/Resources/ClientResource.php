@@ -23,6 +23,8 @@ class ClientResource extends FinancialResource
             // Icono (emoji) y satisfacción actual 0-100 (Fase 10, F-096 y F-126).
             'icon' => $this->icon,
             'satisfaction_score' => $this->satisfaction_score,
+            // Responsable elegido a mano (D-232); null = se deduce de los proyectos.
+            'owner_user_id' => $this->owner_user_id,
             'tax_id' => $this->tax_id,
             'contact_name' => $this->contact_name,
             'contact_email' => $this->contact_email,

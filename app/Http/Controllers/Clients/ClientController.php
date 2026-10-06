@@ -7,6 +7,7 @@ use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\Portal\Access\ClientPortalAccess;
 use App\Domain\Weeklies\AppModules;
 use App\Domain\Weeklies\Insights\ClientInsights;
+use App\Domain\Weeklies\Insights\ClientPortfolioTeams;
 use App\Domain\Weeklies\Insights\ClientWeeklyTabs;
 use App\Domain\Weeklies\ProjectStatus\ProjectKindCode;
 use App\Domain\Weeklies\ProjectStatus\ProjectStatusBoard;
@@ -116,6 +117,12 @@ class ClientController extends Controller
         $prefixes = $kinds ?? $board->prefixesByClient(array_values(array_map(intval(...), $clients->getCollection()->modelKeys())));
         $clients->getCollection()->each(fn (Client $client) => $client->setAttribute('kind_badges', ProjectKindCode::badges($prefixes[$client->id] ?? [])));
 
+        // Responsable y equipo de cada fila (10.9b, D-232): tres consultas para la página.
+        if ($weekly) {
+            $teams = app(ClientPortfolioTeams::class)->for($clients->getCollection());
+            $clients->getCollection()->each(fn (Client $client) => $client->setAttribute('portfolio_team', $teams[$client->id] ?? null));
+        }
+
         return Inertia::render('clients/index', [
             'clients' => ClientRowResource::collection($clients),
             'filters' => [
@@ -129,17 +136,28 @@ class ClientController extends Controller
             ],
             // Personas para el filtro (F-123): la plantilla activa que escribe la weekly. Diferida: no
             // pesa en la carga de la lista.
-            'people' => Inertia::defer(fn (): array => User::query()
-                ->where('is_active', true)
-                ->role(User::WEEKLY_ROLES)
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (User $person): array => ['id' => $person->id, 'name' => $person->name])
-                ->values()
-                ->all()),
+            'people' => Inertia::defer(fn (): array => self::people()),
             // Columnas de la Weekly (último reporte y satisfacción): con el módulo y quien la usa.
             'weekly' => $weekly,
         ]);
+    }
+
+    /**
+     * La plantilla activa que escribe la weekly: el filtro por persona (F-123) y el responsable del
+     * cliente (D-232).
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    private static function people(): array
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->role(User::WEEKLY_ROLES)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $person): array => ['id' => $person->id, 'name' => $person->name])
+            ->values()
+            ->all();
     }
 
     /** Pestañas de la ficha con la Weekly (F-129 a F-132). */
@@ -273,7 +291,7 @@ class ClientController extends Controller
         $yearEnd = LocalTime::today()->endOfYear()->toDateString();
 
         // Responsable (F-128) e insignias por tipo de proyecto (F-120), con los proyectos ya cargados.
-        $owner = ClientInsights::mainOwner($projects);
+        $owner = ClientInsights::ownerOf($client, $projects);
         $openProjects = $projects->filter(fn (Project $project): bool => in_array($project->status, ProjectStatusBoard::OPEN_STATUSES, true));
 
         return Inertia::render('clients/show', [
@@ -296,6 +314,8 @@ class ClientController extends Controller
             // Acceso al portal (Fase 5, D-063 y D-064): diferida, no pesa en la carga; null para
             // quien no lo gestiona. Sus acciones recargan solo esta prop.
             'portal' => Inertia::defer(fn (): ?array => app(ClientPortalAccess::class)->for($client, $request->user()), 'portal', true),
+            // Para elegir el responsable al editar (D-232): con la Weekly y quien puede editar.
+            'people' => $weekly && ($request->user()?->can('update', $client) ?? false) ? Inertia::defer(fn (): array => self::people(), 'people') : null,
             'can' => [
                 'update' => $request->user()?->can('update', $client) ?? false,
                 // Informe del cliente (Fase 2, R2; D-044): enlace «Ver informe».

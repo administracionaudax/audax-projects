@@ -14,6 +14,13 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { t } from '@/lib/i18n';
@@ -29,7 +36,11 @@ type ClientForm = {
     phone: string;
     notes: string;
     default_hourly_rate: string;
+    /** Responsable (D-232): '' = automático. */
+    owner_user_id: string;
 };
+
+const AUTO = '__auto';
 
 function initialData(client?: Client): ClientForm {
     return {
@@ -43,6 +54,9 @@ function initialData(client?: Client): ClientForm {
         default_hourly_rate: client?.default_hourly_rate
             ? client.default_hourly_rate.replace('.', ',')
             : '',
+        owner_user_id: client?.owner_user_id
+            ? String(client.owner_user_id)
+            : '',
     };
 }
 
@@ -55,10 +69,13 @@ export function ClientDialog({
     client,
     showFinancials,
     trigger,
+    people,
 }: {
     client?: Client;
     showFinancials: boolean;
     trigger: ReactNode;
+    /** Con la Weekly: la plantilla, para elegir el responsable (D-232). Sin ella, no se ofrece. */
+    people?: { id: number; name: string }[] | null;
 }) {
     const id = useId();
     const [open, setOpen] = useState(false);
@@ -68,11 +85,21 @@ export function ClientDialog({
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
         form.transform((data) => {
-            const { default_hourly_rate: rate, ...rest } = data;
+            const {
+                default_hourly_rate: rate,
+                owner_user_id: owner,
+                ...rest
+            } = data;
+            const withOwner = people
+                ? {
+                      ...rest,
+                      owner_user_id: owner === '' ? null : Number(owner),
+                  }
+                : rest;
 
             return showFinancials
-                ? { ...rest, default_hourly_rate: rate }
-                : rest;
+                ? { ...withOwner, default_hourly_rate: rate }
+                : withOwner;
         });
         const options = {
             preserveScroll: true,
@@ -204,6 +231,57 @@ export function ClientDialog({
                               )
                             : null}
                     </div>
+
+                    {people ? (
+                        <Field
+                            id={`${id}-owner`}
+                            label={t('clients.form.owner')}
+                            optional={t('clients.form.optional')}
+                            help={t('clients.form.owner_help')}
+                            error={errors.owner_user_id}
+                        >
+                            <Select
+                                value={form.data.owner_user_id || AUTO}
+                                onValueChange={(value) =>
+                                    form.setData(
+                                        'owner_user_id',
+                                        value === AUTO ? '' : value,
+                                    )
+                                }
+                            >
+                                <SelectTrigger
+                                    id={`${id}-owner`}
+                                    className="w-full"
+                                    aria-invalid={
+                                        errors.owner_user_id ? true : undefined
+                                    }
+                                    aria-describedby={describedBy(
+                                        `${id}-owner`,
+                                        {
+                                            help: true,
+                                            error: errors.owner_user_id,
+                                        },
+                                    )}
+                                    data-test="client-owner-select"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={AUTO}>
+                                        {t('clients.form.owner_auto')}
+                                    </SelectItem>
+                                    {people.map((person) => (
+                                        <SelectItem
+                                            key={person.id}
+                                            value={String(person.id)}
+                                        >
+                                            {person.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                    ) : null}
 
                     <Field
                         id={`${id}-notes`}

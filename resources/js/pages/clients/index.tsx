@@ -5,6 +5,7 @@ import { NativeSelect } from '@/components/admin/native-select';
 import { Pagination } from '@/components/admin/pagination';
 import { useListFilters } from '@/components/admin/use-list-filters';
 import { ClientDialog } from '@/components/clients/client-dialog';
+import { ClientTeamCell } from '@/components/clients/client-team-cell';
 import { ClientStatusBadge } from '@/components/clients/client-status-badge';
 import { EmptyState } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
@@ -143,6 +144,7 @@ export default function ClientsIndex({
                     {can?.createClients ? (
                         <ClientDialog
                             showFinancials={can.viewFinancials}
+                            people={weekly ? people : undefined}
                             trigger={
                                 <Button data-test="new-client">
                                     <Plus aria-hidden="true" />
@@ -284,7 +286,7 @@ export default function ClientsIndex({
                         aria-label={t('clients.table_label')}
                         tabIndex={0}
                     >
-                        <table className="w-full min-w-[48rem] text-sm">
+                        <table className="w-full min-w-[56rem] text-sm">
                             <caption className="sr-only">
                                 {t('clients.table_label')}
                             </caption>
@@ -308,6 +310,15 @@ export default function ClientsIndex({
                                     </th>
                                     {weekly ? (
                                         <>
+                                            <th
+                                                scope="col"
+                                                className={cn(
+                                                    STICKY_TH,
+                                                    'px-3 py-2 font-medium',
+                                                )}
+                                            >
+                                                {t('clients.columns.team')}
+                                            </th>
                                             <SortHeader
                                                 column="ultimo_reporte"
                                                 label={t(
@@ -406,6 +417,13 @@ export default function ClientsIndex({
                                         </td>
                                         {weekly ? (
                                             <>
+                                                <td className="px-3 py-2">
+                                                    <ClientTeamCell
+                                                        team={
+                                                            client.portfolio_team
+                                                        }
+                                                    />
+                                                </td>
                                                 <td
                                                     className="tabular px-3 py-2 whitespace-nowrap"
                                                     data-test="client-last-report"

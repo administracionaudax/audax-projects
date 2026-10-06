@@ -242,6 +242,55 @@ it('el responsable es quien gestiona más proyectos abiertos; a igualdad, el del
     expect(ClientInsights::mainOwner($this->acme->projects()->with('owner')->get())?->id)->toBe($other->id);
 });
 
+it('la cartera trae el responsable y hasta tres personas del equipo con el total (D-232)', function () {
+    $people = collect(range(1, 4))->map(fn (int $i) => userWithRole('employee', ['name' => "Persona {$i}", 'created_at' => '2026-08-01']));
+    $people->each(fn (User $user) => $this->web->addMember($user->id));
+    $subscriber = userWithRole('employee', ['name' => 'Zoe Suscrita']);
+    DB::table('weekly_client_subscriptions')->insert(['client_id' => $this->acme->id, 'user_id' => $subscriber->id, 'created_at' => now(), 'updated_at' => now()]);
+    userWithRole('employee', ['name' => 'De baja', 'is_active' => false])->id;
+
+    $this->actingAs($this->ana)->get('/clientes')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('clients.data.0.portfolio_team.owner.name', 'Raúl Gestor')
+            ->where('clients.data.0.portfolio_team.team.0.name', 'Raúl Gestor')
+            ->has('clients.data.0.portfolio_team.team', 3)
+            // Raúl, Ana, las cuatro personas y Zoe.
+            ->where('clients.data.0.portfolio_team.team_count', 7));
+});
+
+it('se puede elegir el responsable del cliente; sin elegir, se deduce de los proyectos (D-232)', function () {
+    $chosen = userWithRole('employee', ['name' => 'Elena Elegida', 'created_at' => '2026-08-01']);
+
+    $this->actingAs($this->owner)
+        ->put("/clientes/{$this->acme->id}", ['name' => 'Acme', 'owner_user_id' => $chosen->id])
+        ->assertSessionHasNoErrors();
+
+    expect($this->acme->refresh()->owner_user_id)->toBe($chosen->id);
+
+    $this->actingAs($this->ana)->get("/clientes/{$this->acme->id}")->assertInertia(fn (Assert $page) => $page
+        ->where('owner.id', $chosen->id)
+        ->where('client.owner_user_id', $chosen->id));
+    $this->actingAs($this->ana)->get('/clientes')->assertInertia(fn (Assert $page) => $page
+        ->where('clients.data.0.portfolio_team.owner.id', $chosen->id));
+
+    // De baja, vuelve a mandar el de los proyectos.
+    $chosen->forceFill(['is_active' => false])->save();
+    expect(ClientInsights::ownerOf($this->acme->refresh(), $this->acme->projects()->with('owner')->get())?->id)->toBe($this->owner->id);
+
+    // Solo la plantilla activa; vacío, automático.
+    $this->actingAs($this->owner)
+        ->putJson("/clientes/{$this->acme->id}", ['name' => 'Acme', 'owner_user_id' => User::factory()->collaborator()->create()->id])
+        ->assertJsonValidationErrors(['owner_user_id' => __('clients.errors.owner')]);
+    $this->actingAs($this->owner)->put("/clientes/{$this->acme->id}", ['name' => 'Acme', 'owner_user_id' => null])->assertSessionHasNoErrors();
+    expect($this->acme->refresh()->owner_user_id)->toBeNull();
+
+    // La ficha ofrece la plantilla para elegirlo a quien edita.
+    $this->actingAs($this->owner)->get("/clientes/{$this->acme->id}")->assertInertia(fn (Assert $page) => $page
+        ->missing('people')
+        ->loadDeferredProps('people', fn (Assert $reload) => $reload->where('people.0.name', 'Ana Díaz')));
+    $this->actingAs($this->ana)->get("/clientes/{$this->acme->id}")->assertInertia(fn (Assert $page) => $page->where('people', null));
+});
+
 // --- Resúmenes con IA del cliente ------------------------------------------------------------
 
 it('pedir el resumen lo encola en la cola ai una sola vez mientras se genera; atascado, se puede volver a pedir', function () {
@@ -411,7 +460,8 @@ it('la cartera y las pestañas de la ficha no crecen con el histórico ni con el
         return $count;
     };
     $pages = [
-        'cartera' => ['/clientes?orden=ultimo_reporte', null, 12],
+        // El responsable y el equipo de cada fila (D-232) caben en el margen que había: +1.
+        'cartera' => ['/clientes?orden=ultimo_reporte', null, 13],
         'ficha' => ["/clientes/{$this->acme->id}", null, 18],
         'resumen' => ["/clientes/{$this->acme->id}", 'weekly', 14],
         'historial' => ["/clientes/{$this->acme->id}?pestana=historial", 'weekly', 14],

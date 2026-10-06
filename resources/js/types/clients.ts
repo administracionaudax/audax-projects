@@ -3,7 +3,7 @@
  * Contrato con app/Http/Controllers/Clients/ClientController y app/Http/Resources/Clients/*.
  */
 import type { AdminPaginated } from './admin';
-import type { Client, HourBank, Project } from './domain';
+import type { Client, HourBank, Project, UserSummary } from './domain';
 import type {
     ClientOwner,
     ClientTab,
@@ -23,6 +23,15 @@ export type ClientListItem = Client & {
     satisfaction_trend: number | null;
     /** Proyectos abiertos por tipo (F-120). */
     kind_badges: ProjectKindBadge[];
+    /** Responsable y equipo (con la Weekly, D-232). */
+    portfolio_team?: ClientPortfolioTeam | null;
+};
+
+/** ClientPortfolioTeams: el responsable y hasta tres personas del equipo, con el total. */
+export type ClientPortfolioTeam = {
+    owner: UserSummary | null;
+    team: UserSummary[];
+    team_count: number;
 };
 
 /** Orden de la lista (F-124). */

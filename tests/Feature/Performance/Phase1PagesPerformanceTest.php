@@ -82,7 +82,9 @@ const PERF_BUDGETS = [
     'projects.hour-banks.index' => 17,
     'projects.hour-banks.show' => 34,
     'hour-banks.index' => 16,
-    'clients.index' => 8,
+    // + el responsable y el equipo de cada fila con la Weekly (D-232): proyectos con sus miembros,
+    // suscripciones y personas, fijas para la página.
+    'clients.index' => 10,
     'clients.show' => 16,
     'clients.options' => 7,
     // Mis tareas con filtros (D-143): + la tarea responsable, las opciones (proyectos con su cliente y

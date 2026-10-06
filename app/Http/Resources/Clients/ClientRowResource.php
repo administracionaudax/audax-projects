@@ -33,6 +33,8 @@ class ClientRowResource extends ClientResource
                 ? null
                 : $this->resource->satisfaction_score - (int) $this->resource->getAttribute('satisfaction_previous'),
             'kind_badges' => $this->resource->getAttribute('kind_badges') ?? [],
+            // Responsable y equipo (10.9b, D-232): solo con la Weekly (ClientPortfolioTeams).
+            'portfolio_team' => $this->resource->getAttribute('portfolio_team'),
         ];
     }
 
