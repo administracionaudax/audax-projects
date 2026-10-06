@@ -56,6 +56,8 @@ final class TimeEntryWriter
                 'is_billable' => $this->billable($task, $project, $data->isBillable),
                 'status' => TimeEntryStatus::Draft,
                 'created_by' => $actor->id,
+                // Plan del día (D-254): solo el enlace con la línea; las reglas no cambian.
+                'day_plan_item_id' => $data->dayPlanItemId,
             ]);
             $entry->save();
 
@@ -144,6 +146,32 @@ final class TimeEntryWriter
 
             $current->delete();
         });
+    }
+
+    /**
+     * Enlaza (o desenlaza, con null) una entrada propia con una línea del plan del día (D-254, «Vincular
+     * horas»). Es solo un enlace: no cambia minutos, fecha, tarea ni bolsa, así que no pasa por las
+     * reglas de imputación (vale también con la semana enviada). Una entrada bloqueada al facturar no
+     * se toca nunca (D-034).
+     *
+     * @throws ValidationException
+     */
+    public function linkDayPlanItem(User $actor, TimeEntry $entry, ?int $dayPlanItemId): TimeEntry
+    {
+        if ($entry->user_id !== $actor->id) {
+            throw ValidationException::withMessages(['entry_ids' => __('day_plan.errors.entry_not_yours')]);
+        }
+
+        if ($entry->isLocked()) {
+            throw ValidationException::withMessages(['entry_ids' => __('day_plan.errors.entry_locked')]);
+        }
+
+        if ($entry->day_plan_item_id !== $dayPlanItemId) {
+            $entry->day_plan_item_id = $dayPlanItemId;
+            $entry->save();
+        }
+
+        return $entry;
     }
 
     /**

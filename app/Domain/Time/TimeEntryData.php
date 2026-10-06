@@ -19,5 +19,7 @@ final readonly class TimeEntryData
         public ?CarbonImmutable $startedAt = null,
         public ?CarbonImmutable $endedAt = null,
         public ?bool $isBillable = null,
+        /** Línea del plan del día de la que sale (D-254): solo un enlace, no cambia ninguna regla. */
+        public ?int $dayPlanItemId = null,
     ) {}
 }

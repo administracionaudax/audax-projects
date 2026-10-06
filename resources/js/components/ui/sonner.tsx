@@ -1,3 +1,4 @@
+import { useDayPlanPrompt } from '@/hooks/use-day-plan-prompt';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 import { useAppearance } from '@/hooks/use-appearance';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
@@ -7,6 +8,8 @@ function Toaster({ ...props }: ToasterProps) {
     const { appearance } = useAppearance();
 
     useFlashToast();
+    // Plan del día (D-254): «¿Das por hecha la línea?» al parar su temporizador.
+    useDayPlanPrompt();
 
     return (
         <Sonner

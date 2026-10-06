@@ -18,6 +18,7 @@ return [
 - organizar los proyectos y las tareas de la agencia,
 - registrar las horas que dedicas a cada proyecto y facturarlas a los clientes,
 - planificar la carga de trabajo del equipo teniendo en cuenta jornadas, festivos y ausencias,
+- organizar el día con el plan del día: lo que cada persona prevé hacer y si lo ha hecho,
 - comunicarnos con el chat interno.
 
 **Base legal:** la ejecución de tu contrato de trabajo y el interés legítimo de la empresa en organizar el trabajo, dentro de las facultades de control del artículo 20.3 del Estatuto de los Trabajadores.
@@ -25,6 +26,7 @@ return [
 **Qué datos se tratan:**
 - tus datos de identificación y de contacto profesionales,
 - las horas que imputas, tus tareas y tus comentarios,
+- tu plan del día: las líneas que escribes, si las haces, las horas que prevés y los comentarios de tu responsable,
 - tus ausencias: solo el tipo y las fechas, nunca diagnósticos ni justificantes médicos,
 - tus mensajes del chat y tus audios, con su transcripción, que se hace en el propio servidor de la empresa,
 - los registros de acceso a la aplicación: fecha, dirección IP y navegador.
@@ -32,6 +34,7 @@ return [
 **Quién los ve:**
 - Cada persona ve sus propios datos.
 - Tus responsables y los gestores de tus proyectos ven lo necesario para organizar el trabajo.
+- El texto y el estado de las líneas de tu plan del día los ve el resto de la plantilla; las horas previstas, el cumplimiento y los comentarios, solo tú, tu responsable y la administración. No se hacen clasificaciones entre personas.
 - Los clientes solo ven, en su portal, las horas aprobadas de sus propios proyectos, y tu nombre únicamente si así se configura.
 - Nada se cede a terceros ni sale del servidor de la empresa, tampoco la transcripción de los audios.
 
@@ -76,6 +79,7 @@ MD,
             'weekly_reminder_logs' => 'Registro de avisos de la Weekly',
             'dictations' => 'Dictados de la Weekly',
             'ai_usage' => 'Uso de la IA (quién y sobre qué)',
+            'day_plans' => 'Plan del día',
         ],
     ],
 
@@ -253,6 +257,38 @@ MD,
                     'source' => 'Origen',
                     'created_at' => 'Escrito el',
                     'updated_at' => 'Modificado el',
+                ],
+            ],
+            'day_plans' => [
+                'description' => 'Tu plan del día: cada línea con su día, texto, cliente, proyecto, tarea, horas previstas, estado y si se pasó de otro día, y la nota de cada día. Tus horas imputadas van en su propia sección.',
+                'columns' => [
+                    'id' => 'Id',
+                    'date' => 'Día',
+                    'position' => 'Orden',
+                    'text' => 'Línea',
+                    'client' => 'Cliente',
+                    'project' => 'Proyecto',
+                    'task' => 'Tarea',
+                    'planned_minutes' => 'Horas previstas (min)',
+                    'status' => 'Estado',
+                    'not_done_reason' => 'Motivo de «no hecha»',
+                    'carry_count' => 'Veces pasada de un día a otro',
+                    'note' => 'Nota del día',
+                    'deleted' => 'Borrada',
+                    'created_at' => 'Escrita el',
+                    'status_changed_at' => 'Estado cambiado el',
+                ],
+            ],
+            'day_plan_comments' => [
+                'description' => 'Los comentarios del plan del día: los que te han dejado en tus líneas y los que has escrito tú.',
+                'columns' => [
+                    'id' => 'Id',
+                    'date' => 'Día',
+                    'line' => 'Línea',
+                    'line_owner' => 'Plan de',
+                    'author' => 'Autor',
+                    'body' => 'Comentario',
+                    'created_at' => 'Escrito el',
                 ],
             ],
             'dictations' => [

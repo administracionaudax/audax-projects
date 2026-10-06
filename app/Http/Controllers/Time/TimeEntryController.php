@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers\Time;
 
+use App\Domain\DayPlan\DayPlanWriter;
 use App\Domain\Time\Messages;
 use App\Domain\Time\TimeEntryWriter;
 use App\Http\Requests\Time\TimeEntryRequest;
+use App\Models\DayPlanItem;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\Duration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Entrada manual y hoja semanal (SPEC §7): crear, editar y borrar SIEMPRE con TimeEntryWriter,
@@ -24,6 +27,7 @@ class TimeEntryController extends TimeController
 {
     public function __construct(
         private readonly TimeEntryWriter $writer,
+        private readonly DayPlanWriter $dayPlans,
     ) {}
 
     /**
@@ -35,8 +39,15 @@ class TimeEntryController extends TimeController
         /** @var User $actor */
         $actor = $request->user();
         $task = $this->task($request->integer('task_id'));
+        $data = $request->toData($actor);
+        $line = $this->dayPlanLine($data->userId, $data->dayPlanItemId);
 
-        $result = $this->writer->create($actor, $request->toData($actor));
+        $result = $this->writer->create($actor, $data);
+
+        // Plan del día (D-254): una línea sin tarea se queda con la de sus horas.
+        if ($line !== null) {
+            $this->dayPlans->adoptTask($line, $task);
+        }
 
         $this->success($request, Messages::get('time.flash.entry_created', [
             'minutes' => Duration::format($result->entry->minutes),
@@ -90,6 +101,29 @@ class TimeEntryController extends TimeController
         if (! $request->boolean('quiet')) {
             $this->toast($message);
         }
+    }
+
+    /**
+     * La línea del plan del día de las horas: de la persona de la entrada, sin pasar y en un día que
+     * aún se puede cerrar (D-254).
+     *
+     * @throws ValidationException
+     */
+    private function dayPlanLine(int $userId, ?int $lineId): ?DayPlanItem
+    {
+        if ($lineId === null) {
+            return null;
+        }
+
+        $line = DayPlanItem::query()->find($lineId);
+
+        if ($line === null) {
+            throw ValidationException::withMessages(['day_plan_item_id' => __('day_plan.errors.not_yours')]);
+        }
+
+        $this->dayPlans->assertLoggable(User::query()->findOrFail($userId), $line);
+
+        return $line;
     }
 
     private function task(int $id): Task

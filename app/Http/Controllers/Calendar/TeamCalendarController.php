@@ -7,6 +7,7 @@ use App\Domain\Calendar\CalendarNewTaskProjects;
 use App\Domain\Calendar\CalendarPeople;
 use App\Domain\Calendar\CalendarRange;
 use App\Domain\Calendar\TeamCalendar;
+use App\Domain\DayPlan\CalendarDayPlans;
 use App\Domain\Tasks\TaskOptions;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Tasks\Plain;
@@ -31,6 +32,7 @@ use Inertia\Response;
  * (CalendarFilters).
  * - `calendar` (TeamCalendar y, en «Personas», CalendarPeople::rows) se recarga sola al cambiar
  *   de fecha o de filtros, y tras mover o editar una tarea (TASK_RELOAD la incluye),
+ * - en la vista Día por personas, el plan del día de cada una (`calendar.day_plans`, D-254),
  * - ?tarea={id} abre el panel de la tarea sin salir del calendario: `panel` y `panelLookups` (lo
  *   que el panel necesita de su proyecto) con una recarga parcial,
  * - `creatable` (proyectos donde puede crear, con sus bolsas) y `moveTargets` solo si se piden.
@@ -69,10 +71,18 @@ class TeamCalendarController extends Controller
 
         return Inertia::render('calendar/index', [
             'filters' => $filters->toArray(),
-            'calendar' => fn (): array => [
-                ...$this->calendar->build($user, $filters, $range),
-                'rows' => $filters->people ? $this->people->rows($user, $filters, $range) : [],
-            ],
+            'calendar' => function () use ($user, $filters, $range): array {
+                $rows = $filters->people ? $this->people->rows($user, $filters, $range) : [];
+
+                return [
+                    ...$this->calendar->build($user, $filters, $range),
+                    'rows' => $rows,
+                    // Plan del día (D-254): en la vista Día por personas, sus líneas de ese día.
+                    'day_plans' => $filters->people && $filters->view === CalendarFilters::DAY
+                        ? app(CalendarDayPlans::class)->for($user, array_values(array_filter(array_map(fn (array $row): ?int => $row['person']['id'] ?? null, $rows))), $range->from)
+                        : null,
+                ];
+            },
             'statuses' => fn (): array => Plain::of(TaskStatusResource::collection($this->options->statuses())),
             'options' => fn (): array => [
                 ...$this->people->options($user),

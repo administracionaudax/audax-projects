@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  * @property-read Task $task
+ * @property-read DayPlanItem|null $dayPlanItem
  */
 #[Fillable(['user_id', 'task_id', 'started_at', 'description', 'warned_at', 'day_plan_item_id'])]
 class ActiveTimer extends Model
@@ -54,6 +55,14 @@ class ActiveTimer extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class)->withTrashed();
+    }
+
+    /**
+     * @return BelongsTo<DayPlanItem, $this>
+     */
+    public function dayPlanItem(): BelongsTo
+    {
+        return $this->belongsTo(DayPlanItem::class)->withTrashed();
     }
 
     /**

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DayPlan\DayPlanCommentController;
 use App\Http\Controllers\DayPlan\DayPlanItemController;
+use App\Http\Controllers\DayPlan\DayPlanTimeController;
 use App\Http\Controllers\DayPlan\MyDayController;
 use App\Http\Controllers\DayPlan\TeamDayController;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +36,17 @@ Route::middleware(['module:day_plan', 'can:use-day-plan'])->group(function () {
         Route::post('dia/desde-tareas', [DayPlanItemController::class, 'fromTasks'])->name('day-plan.from-tasks');
         Route::post('dia/lineas/{item}/comentarios', [DayPlanCommentController::class, 'store'])->name('day-plan.items.comments.store');
         Route::delete('dia/comentarios/{comment}', [DayPlanCommentController::class, 'destroy'])->name('day-plan.comments.destroy');
+
+        // Las horas de una línea (D-254): temporizador, imputar lo previsto y vincular horas.
+        Route::post('dia/lineas/{item}/temporizador', [DayPlanTimeController::class, 'start'])->name('day-plan.items.timer');
+        Route::post('dia/lineas/{item}/imputar-previsto', [DayPlanTimeController::class, 'logPlanned'])->name('day-plan.items.log-planned');
+        Route::post('dia/imputar-previsto', [DayPlanTimeController::class, 'logPlannedDay'])->name('day-plan.log-planned');
+        Route::post('dia/lineas/{item}/vincular', [DayPlanTimeController::class, 'link'])->name('day-plan.items.link');
     });
+
+    Route::get('dia/lineas/{item}/entradas', [DayPlanTimeController::class, 'entries'])
+        ->middleware('throttle:120,1,day-plan.entries')
+        ->name('day-plan.items.entries');
 
     Route::post('dia/equipo/{person}/recordar', [TeamDayController::class, 'remind'])
         ->middleware('throttle:30,1,day-plan.remind')

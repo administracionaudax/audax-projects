@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * GET /horas/tareas?q=&user_id= → {"tasks": LoggableTask[]}: buscador de tareas donde la persona
+ * GET /horas/tareas?q=&user_id=&project_id= → {"tasks": LoggableTask[]}: buscador de tareas donde la persona
  * puede imputar (miembro del proyecto o proyecto interno, D-033), sin hitos ni proyectos
  * archivados. Sin texto, propone sus tareas abiertas, las que ha imputado hace poco y las del
  * proyecto interno. Si se imputa por otra persona, solo en los proyectos donde quien busca puede
@@ -38,6 +38,8 @@ class LoggableTaskController extends TimeController
         $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'user_id' => ['nullable', 'integer'],
+            // Plan del día (D-254): «¿En qué tarea?» propone primero las del proyecto de la línea.
+            'project_id' => ['nullable', 'integer'],
         ]);
 
         /** @var User $actor */
@@ -68,9 +70,20 @@ class LoggableTaskController extends TimeController
 
         $search = trim($request->string('q')->toString());
 
-        $tasks = $search === ''
-            ? $this->suggestions($query, $target, $restricted)
-            : $this->search($query, $search);
+        if ($request->filled('project_id')) {
+            $query->where('project_id', $request->integer('project_id'));
+        }
+
+        $tasks = match (true) {
+            $search !== '' => $this->search($query, $search),
+            $request->filled('project_id') => $query
+                ->orderByRaw('CASE WHEN completed_at IS NULL THEN 0 ELSE 1 END')
+                ->orderByRaw('CASE WHEN assignee_user_id = ? THEN 0 ELSE 1 END', [$target->id])
+                ->orderBy('title')
+                ->limit(self::LIMIT)
+                ->get(),
+            default => $this->suggestions($query, $target, $restricted),
+        };
 
         return response()->json(['tasks' => LoggableTaskResource::collection($tasks)->resolve($request)]);
     }

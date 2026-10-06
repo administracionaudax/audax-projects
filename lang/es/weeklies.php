@@ -202,6 +202,15 @@ return [
         'pending' => 'En curso: :task',
         'time' => '(:time)',
         'note' => '- Nota: :note',
+        // Plan del día (D-254): una línea de mi plan de la semana.
+        'plan_line' => ':text (:status)',
+        'plan_line_time' => ':text (:status, :time)',
+        'plan_status' => [
+            'pending' => 'pendiente',
+            'done' => 'hecha',
+            'not_done' => 'no hecha',
+            'carried' => 'pasada',
+        ],
     ],
 
     'errors' => [

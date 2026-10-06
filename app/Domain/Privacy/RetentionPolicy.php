@@ -9,7 +9,8 @@ use Carbon\CarbonImmutable;
  * Plazos de retención configurables (SPEC §15, D-075). Los aplica el comando diario
  * app:prune-data. NUNCA se borran horas, bolsas, tareas ni proyectos: solo registros de acceso,
  * notificaciones leídas, auditoría antigua, mensajes del chat (si se fija un plazo), el registro de
- * avisos y los dictados de la Weekly (D-202) y exportaciones de datos personales caducadas. Las
+ * avisos y los dictados de la Weekly (D-202), el plan del día (D-256) y exportaciones de datos
+ * personales caducadas. Las
  * weeklies (envíos y apuntes) no caducan: son el histórico del equipo, como las horas.
  */
 final class RetentionPolicy
@@ -31,6 +32,9 @@ final class RetentionPolicy
     /** Uso de la IA (D-225): pasado el plazo se anonimiza (quién y sobre qué), no se borra. */
     public const string AI_USAGE = 'ai_usage';
 
+    /** Plan del día (D-256): datos de desempeño; las horas enlazadas se conservan sin el enlace. */
+    public const string DAY_PLANS = 'day_plans';
+
     /** Ajuste de cada tipo de dato, en meses (null = sin límite). */
     public const array SETTINGS = [
         self::LOGIN_EVENTS => 'retention_login_events_months',
@@ -40,6 +44,7 @@ final class RetentionPolicy
         self::WEEKLY_REMINDER_LOGS => 'retention_weekly_reminder_logs_months',
         self::DICTATIONS => 'retention_dictations_months',
         self::AI_USAGE => 'retention_ai_usage_months',
+        self::DAY_PLANS => 'retention_day_plans_months',
     ];
 
     /** Mínimo en meses que se puede fijar (la auditoría, al menos un año). */
@@ -51,6 +56,7 @@ final class RetentionPolicy
         self::WEEKLY_REMINDER_LOGS => 1,
         self::DICTATIONS => 1,
         self::AI_USAGE => 1,
+        self::DAY_PLANS => 1,
     ];
 
     /** Máximo en meses (10 años). */

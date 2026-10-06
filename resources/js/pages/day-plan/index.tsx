@@ -1,9 +1,21 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, ListChecks, Sun } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    ListChecks,
+    Sun,
+    Timer,
+} from 'lucide-react';
 import { useId, useState } from 'react';
 import { DayPlanNav } from '@/components/day-plan/day-plan-nav';
 import { FromTasksDialog } from '@/components/day-plan/from-tasks-dialog';
 import { LineComposer } from '@/components/day-plan/line-composer';
+import {
+    LineLogDialog,
+    LineTimeActions,
+    LineTimerButton,
+    LinkEntriesDialog,
+} from '@/components/day-plan/line-time';
 import { MyDayList } from '@/components/day-plan/my-day-list';
 import { PendingBanner } from '@/components/day-plan/pending-banner';
 import { EmptyState } from '@/components/empty-state';
@@ -15,8 +27,12 @@ import { formatMinutes, formatTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { addDays } from '@/lib/week';
-import { note as noteRoute, show } from '@/routes/day-plan';
-import type { MyDayPageProps } from '@/types/day-plan';
+import {
+    logPlanned as logPlannedDay,
+    note as noteRoute,
+    show,
+} from '@/routes/day-plan';
+import type { DayPlanLine, MyDayPageProps } from '@/types/day-plan';
 
 /**
  * «Mi día» (docs/PLAN-CARGAS.md §4.3, D-250): lo que voy a hacer hoy (o el día que elija) en líneas de
@@ -26,6 +42,9 @@ import type { MyDayPageProps } from '@/types/day-plan';
  */
 export default function MyDayPage({ day, targets }: MyDayPageProps) {
     const [fromTasks, setFromTasks] = useState(false);
+    const [logging, setLogging] = useState<DayPlanLine | null>(null);
+    const [linking, setLinking] = useState<DayPlanLine | null>(null);
+    const [loggingPlanned, setLoggingPlanned] = useState(false);
     const isToday = day.date === day.today;
     const previous = addDays(day.date, -1);
     const next = addDays(day.date, 1);
@@ -191,6 +210,22 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                             horizonEnd={day.horizon_end}
                             canWrite={day.can.write}
                             canClose={day.can.close}
+                            renderTimer={
+                                isToday
+                                    ? (line) => <LineTimerButton line={line} />
+                                    : undefined
+                            }
+                            renderActions={
+                                day.can.close
+                                    ? (line) => (
+                                          <LineTimeActions
+                                              line={line}
+                                              onLog={() => setLogging(line)}
+                                              onLink={() => setLinking(line)}
+                                          />
+                                      )
+                                    : undefined
+                            }
                         />
                     ) : null}
                     {day.can.write ? (
@@ -202,18 +237,49 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                     ) : null}
                 </section>
 
-                {day.can.write ? (
+                {day.can.write ||
+                (day.can.close && day.summary.loggable > 0) ? (
                     <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setFromTasks(true)}
-                            data-test="day-plan-from-tasks"
-                        >
-                            <ListChecks aria-hidden="true" />
-                            {t('day_plan.from_tasks.open')}
-                        </Button>
+                        {day.can.close && day.summary.loggable > 0 ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                disabled={loggingPlanned}
+                                onClick={() =>
+                                    router.post(
+                                        logPlannedDay.url(),
+                                        { date: day.date },
+                                        {
+                                            preserveScroll: true,
+                                            preserveState: true,
+                                            errorBag: 'dayPlan',
+                                            onStart: () =>
+                                                setLoggingPlanned(true),
+                                            onFinish: () =>
+                                                setLoggingPlanned(false),
+                                        },
+                                    )
+                                }
+                                data-test="day-plan-log-planned-all"
+                            >
+                                <Timer aria-hidden="true" />
+                                {t('day_plan.time.log_planned_all', {
+                                    count: day.summary.loggable,
+                                })}
+                            </Button>
+                        ) : null}
+                        {day.can.write ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setFromTasks(true)}
+                                data-test="day-plan-from-tasks"
+                            >
+                                <ListChecks aria-hidden="true" />
+                                {t('day_plan.from_tasks.open')}
+                            </Button>
+                        ) : null}
                     </div>
                 ) : null}
                 <FromTasksDialog
@@ -221,6 +287,22 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                     open={fromTasks}
                     onOpenChange={setFromTasks}
                 />
+                {logging ? (
+                    <LineLogDialog
+                        line={logging}
+                        onOpenChange={(open) =>
+                            open ? null : setLogging(null)
+                        }
+                    />
+                ) : null}
+                {linking ? (
+                    <LinkEntriesDialog
+                        line={linking}
+                        onOpenChange={(open) =>
+                            open ? null : setLinking(null)
+                        }
+                    />
+                ) : null}
             </div>
         </>
     );

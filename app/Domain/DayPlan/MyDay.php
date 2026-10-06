@@ -73,6 +73,11 @@ final class MyDay
                 'logged_minutes' => (int) TimeEntry::query()->where('user_id', $user->id)->where('date', $day)->sum('minutes'),
                 'done' => $items->where('status', DayPlanItemStatus::Done)->count(),
                 'total' => $items->count(),
+                // «Imputar lo previsto de N líneas hechas sin horas» (D-254).
+                'loggable' => $items->filter(fn (DayPlanItem $item): bool => $item->status === DayPlanItemStatus::Done
+                    && $item->task_id !== null
+                    && $item->planned_minutes !== null
+                    && ($logged[$item->id] ?? 0) === 0)->count(),
             ],
             // Las pendientes de días anteriores, solo al mirar hoy (P3: «Pasar a hoy» con un clic).
             'pending' => $day === $today->toDateString() ? $this->pending($user, $today) : [],

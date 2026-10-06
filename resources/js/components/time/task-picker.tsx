@@ -46,6 +46,7 @@ export function TaskPicker({
     'aria-describedby': describedBy,
     'aria-label': ariaLabel,
     trigger,
+    projectId,
 }: {
     value: PickedTask | null;
     onChange: (task: LoggableTask) => void;
@@ -60,12 +61,15 @@ export function TaskPicker({
     'aria-label'?: string;
     /** Botón propio que abre el buscador (p. ej. «Iniciar temporizador» de la cabecera). */
     trigger?: ReactElement;
+    /** Solo las tareas de este proyecto (la línea del plan del día, D-254). */
+    projectId?: number;
 }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const { status, tasks } = useLoggableTasks(query, {
         userId,
         enabled: open,
+        projectId,
     });
     const groups = groupByProject(tasks);
 

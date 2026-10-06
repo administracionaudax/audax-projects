@@ -72,6 +72,8 @@ export type MyDayData = {
         logged_minutes: number;
         done: number;
         total: number;
+        /** Líneas hechas con tarea y horas previstas y sin horas («Imputar lo previsto», D-254). */
+        loggable: number;
     };
     pending: DayPlanPendingLine[];
     running_item_id: number | null;

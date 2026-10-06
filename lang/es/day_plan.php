@@ -51,6 +51,15 @@ return [
         'task' => 'Esa tarea no existe o no puedes verla.',
         'project' => 'Ese proyecto no existe o no puedes verlo.',
         'client' => 'Ese cliente no existe.',
+        'choose_task' => 'Elige en qué tarea van las horas de esta línea.',
+        'no_project' => 'Para crear la tarea, la línea necesita un proyecto. Elige una tarea.',
+        'cannot_create_task' => 'No puedes crear tareas en :project. Elige una tarea.',
+        'no_bank' => ':project tiene varias bolsas: elige una tarea para saber en cuál van las horas.',
+        'log_planned' => 'Solo se imputa lo previsto de una línea hecha, con tarea y horas previstas.',
+        'already_logged' => 'Esta línea ya tiene horas imputadas.',
+        'entry_not_yours' => 'Solo puedes vincular tus horas.',
+        'entry_locked' => 'Esas horas están bloqueadas (facturadas): no se pueden vincular.',
+        'entry_not_linkable' => 'Solo se vinculan tus horas de ese día que no estén en otra línea.',
     ],
 
     'flash' => [
@@ -61,6 +70,10 @@ return [
         'from_tasks' => '{1} 1 tarea añadida a tu día (:date).|[2,*] :count tareas añadidas a tu día (:date).',
         'from_tasks_none' => 'Esas tareas ya estaban en tu plan de ese día.',
         'commented' => 'Comentario publicado.',
+        'logged' => 'Imputadas :time en «:text».',
+        'logged_many' => '{0} No había líneas hechas con horas previstas por imputar.|{1} Imputada 1 línea (:time).|[2,*] Imputadas :count líneas (:time).',
+        'logged_partial' => 'Imputadas :logged líneas. No se han podido imputar: :failed',
+        'linked' => '{0} La línea se ha quedado sin horas vinculadas.|{1} 1 entrada de horas vinculada a la línea.|[2,*] :count entradas de horas vinculadas a la línea.',
         'comment_deleted' => 'Comentario borrado.',
     ],
 

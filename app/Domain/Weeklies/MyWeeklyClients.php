@@ -2,8 +2,12 @@
 
 namespace App\Domain\Weeklies;
 
+use App\Domain\DayPlan\DayPlanPresenter;
 use App\Domain\Weeklies\Tasks\TaskNotes;
+use App\Enums\AppModule;
+use App\Enums\DayPlanItemStatus;
 use App\Models\Client;
+use App\Models\DayPlanItem;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
@@ -21,8 +25,9 @@ use Illuminate\Support\Str;
  *   semana (de lunes a domingo), más los que ya tienen un apunte en mi weekly,
  * - catálogo para «Añadir otro cliente»: los clientes activos, con sus proyectos abiertos (el
  *   proyecto del apunte es opcional), más los inactivos que ya tengan un apunte,
- * - «Autocompletar desde mis tareas y horas» (F-048): por cliente, las tareas en las que he imputado
- *   esa semana (con el tiempo) y mis tareas asignadas que he terminado o que vencen esa semana.
+ * - «Autocompletar desde mis tareas y horas» (F-048): por cliente, las líneas de mi plan del día de
+ *   la semana (D-254, primero) y las tareas en las que he imputado esa semana (con el tiempo) y mis
+ *   tareas asignadas que he terminado o que vencen esa semana (sin repetir las de las líneas).
  * «General / Interno» (client_id nulo) va siempre aparte, en la interfaz.
  */
 final class MyWeeklyClients
@@ -130,9 +135,15 @@ final class MyWeeklyClients
             ->orderBy('title')
             ->get(['id', 'project_id', 'title', 'description', 'completed_at', 'deleted_at']);
 
-        $lines = [];
+        // Plan del día (D-254): las líneas de mi plan de la semana van primero, por cliente, y sus
+        // tareas no se repiten abajo.
+        [$lines, $planTaskIds] = $this->planLines($user, $from, $to);
 
         foreach ($tasks as $task) {
+            if (isset($planTaskIds[$task->id])) {
+                continue;
+            }
+
             $key = $task->project->client_id === null ? 'general' : (string) $task->project->client_id;
             $minutes = $minutesByTask[$task->id] ?? 0;
             $line = __($task->completed_at !== null ? 'weeklies.autofill.done' : 'weeklies.autofill.pending', ['task' => $task->title]);
@@ -152,6 +163,45 @@ final class MyWeeklyClients
         }
 
         return array_map(fn (array $rows): string => implode("\n", $rows), $lines);
+    }
+
+    /**
+     * Las líneas de mi plan del día de la semana (sin las pasadas a otro día: cuenta dónde acabaron),
+     * por cliente: «Creatividades campaña otoño (hecha, 2 h 10 min)». Con el módulo `day_plan` visible.
+     *
+     * @return array{0: array<int|string, list<string>>, 1: array<int, true>} líneas por cliente y tareas que ya salen
+     */
+    private function planLines(User $user, string $from, string $to): array
+    {
+        if (! AppModules::visibleTo($user, AppModule::DayPlan)) {
+            return [[], []];
+        }
+
+        $items = DayPlanItem::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$from, $to])
+            ->where('status', '!=', DayPlanItemStatus::Carried->value)
+            ->orderBy('date')
+            ->orderBy('position')
+            ->get(['id', 'client_id', 'task_id', 'text', 'status', 'date']);
+        $logged = DayPlanPresenter::loggedByItem(array_values($items->modelKeys()));
+        $lines = [];
+        $taskIds = [];
+
+        foreach ($items as $item) {
+            $key = $item->client_id === null ? 'general' : (string) $item->client_id;
+            $status = __("weeklies.autofill.plan_status.{$item->status->value}");
+            $minutes = $logged[$item->id] ?? 0;
+            $lines[$key][] = $minutes > 0
+                ? __('weeklies.autofill.plan_line_time', ['text' => $item->text, 'status' => $status, 'time' => self::duration($minutes)])
+                : __('weeklies.autofill.plan_line', ['text' => $item->text, 'status' => $status]);
+
+            if ($item->task_id !== null) {
+                $taskIds[$item->task_id] = true;
+            }
+        }
+
+        return [$lines, $taskIds];
     }
 
     /** «1 h 30 min», «45 min», «2 h». */

@@ -97,12 +97,28 @@ export function TimerChip({
                     'hidden max-w-[14rem] min-w-0 truncate rounded-sm hover:underline lg:block',
                     FOCUS_RING,
                 )}
-                title={`${timer.project_code} · ${timer.task_title}`}
+                title={
+                    timer.day_plan_item
+                        ? `${timer.project_code} · ${timer.task_title} · ${t('day_plan.timer.from_line', { text: timer.day_plan_item.text })}`
+                        : `${timer.project_code} · ${timer.task_title}`
+                }
             >
                 <span className="text-muted-foreground">
                     {timer.project_code}
                 </span>{' '}
                 {timer.task_title}
+                {/* Plan del día (D-254): la línea desde la que se arrancó. */}
+                {timer.day_plan_item ? (
+                    <span
+                        className="text-muted-foreground"
+                        data-test="timer-chip-line"
+                    >
+                        {' · '}
+                        {t('day_plan.timer.from_line', {
+                            text: timer.day_plan_item.text,
+                        })}
+                    </span>
+                ) : null}
             </Link>
             <time
                 className="tabular px-1 font-medium"

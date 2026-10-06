@@ -32,6 +32,7 @@ import {
     HomeDayPlanCard,
     HomeDayPlanSkeleton,
 } from '@/components/day-plan/home-day-plan-card';
+import { LineTimerButton } from '@/components/day-plan/line-time';
 import { HomePanels, PanelCard } from '@/components/home/home-panels';
 import { KeywordText } from '@/components/keyword-text';
 import { R1MyIndicators } from '@/components/reports/r1-my-indicators';
@@ -245,7 +246,12 @@ export default function Home({
                                 fallback={<HomeDayPlanSkeleton />}
                             >
                                 {dayPlan ? (
-                                    <HomeDayPlanCard card={dayPlan} />
+                                    <HomeDayPlanCard
+                                        card={dayPlan}
+                                        renderTimer={(line) => (
+                                            <LineTimerButton line={line} />
+                                        )}
+                                    />
                                 ) : (
                                     <HomeDayPlanSkeleton />
                                 )}

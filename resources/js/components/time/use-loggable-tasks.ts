@@ -16,8 +16,13 @@ async function fetchTasks(
     query: string,
     userId: number | undefined,
     signal: AbortSignal,
+    projectId?: number,
 ): Promise<LoggableTask[]> {
     const params: Record<string, string | number> = {};
+
+    if (projectId !== undefined) {
+        params.project_id = projectId;
+    }
 
     if (query !== '') {
         params.q = query;
@@ -52,10 +57,10 @@ async function fetchTasks(
  */
 export function useLoggableTasks(
     rawQuery: string,
-    options: { userId?: number; enabled: boolean },
+    options: { userId?: number; enabled: boolean; projectId?: number },
 ): { status: Status; tasks: LoggableTask[] } {
     const query = rawQuery.trim();
-    const key = `${options.userId ?? ''}|${query}`;
+    const key = `${options.userId ?? ''}|${options.projectId ?? ''}|${query}`;
     const [completed, setCompleted] = useState<Completed | null>(null);
 
     useEffect(() => {
@@ -65,7 +70,12 @@ export function useLoggableTasks(
 
         const controller = new AbortController();
         const timer = window.setTimeout(() => {
-            fetchTasks(query, options.userId, controller.signal)
+            fetchTasks(
+                query,
+                options.userId,
+                controller.signal,
+                options.projectId,
+            )
                 .then((tasks) =>
                     setCompleted({ key, status: 'success', tasks }),
                 )
@@ -80,7 +90,7 @@ export function useLoggableTasks(
             window.clearTimeout(timer);
             controller.abort();
         };
-    }, [key, query, options.userId, options.enabled]);
+    }, [key, query, options.userId, options.enabled, options.projectId]);
 
     if (!options.enabled) {
         return { status: 'idle', tasks: [] };

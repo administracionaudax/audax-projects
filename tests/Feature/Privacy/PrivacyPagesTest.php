@@ -25,6 +25,7 @@ beforeEach(function () {
         'retention_weekly_reminder_logs_months' => 12,
         'retention_dictations_months' => 3,
         'retention_ai_usage_months' => 12,
+        'retention_day_plans_months' => 12,
         'personal_data_export_days' => 7,
         'disk_warning_percent' => 85,
         'attachments_warning_gb' => null,
@@ -84,6 +85,7 @@ test('/privacidad muestra el texto, su versión, la lectura pendiente y los plaz
                 ['type' => 'weekly_reminder_logs', 'months' => 12],
                 ['type' => 'dictations', 'months' => 3],
                 ['type' => 'ai_usage', 'months' => 12],
+                ['type' => 'day_plans', 'months' => 12],
             ])
             ->where('exportDays', 7)
             ->where('privacy.needs_acknowledgement', true));
@@ -140,6 +142,7 @@ test('/admin/privacidad muestra el texto con su versión, quién lo ha leído y 
                 'retention_weekly_reminder_logs_months' => 12,
                 'retention_dictations_months' => 3,
                 'retention_ai_usage_months' => 12,
+                'retention_day_plans_months' => 12,
                 'personal_data_export_days' => 7,
                 'disk_warning_percent' => 85,
                 'attachments_warning_gb' => null,

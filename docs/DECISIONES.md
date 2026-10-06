@@ -1993,6 +1993,20 @@ Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las 
 - **Semana** (`/dia/semana?semana=2026-W41`): personas × días (de lunes a viernes, y el fin de semana si alguien trabaja o planifica); clic en un día para ver sus líneas. «Hechas/planificadas» por celda y el total de la semana, solo con las cifras.
 - **Comentarios** (`day_plan_comments`): los dejan su responsable y los admins; la persona contesta desde Mi día. Los ven solo ellos. Avisan a la dueña de la línea (`day_plan.commented`, en la app). Cada uno borra los suyos. Auditados.
 
+### D-254 · Las horas de una línea: siempre en una tarea **[concreta PLAN-CARGAS §6.1.4 y §10; amplía D-035 y D-172]**
+- **Nunca se relaja `task_id`** (R8): `active_timers.task_id` y `time_entries.task_id` siguen obligatorios. La línea resuelve una tarea y las horas llevan además el enlace opcional `day_plan_item_id` (en `TimeEntryData`; `TimeEntryWriter` solo lo guarda, sin tocar ninguna regla de bolsas, aprobación ni bloqueo).
+- **▶ desde la línea** (`App\Domain\DayPlan\DayPlanTime`): con tarea, esa; si no, «¿En qué tarea?» con las tareas del proyecto de la línea (las abiertas y las mías primero: `/horas/tareas?project_id=`) o las de siempre (incluido el proyecto interno), y «Crear la tarea «<texto>» en <proyecto>» (`TaskWriter`, asignada a quien la crea; en un proyecto de bolsas, la bolsa abierta de su departamento, si no la única sin departamento o la única abierta; si no se puede decidir, se pide elegir una tarea). Todo en una transacción: si el temporizador no puede arrancar (reglas de siempre), no se crea la tarea. La tarea queda en la línea (con su proyecto y cliente) para la próxima vez.
+- **`TimerService`** guarda `day_plan_item_id` y lo copia a las entradas al parar (a las dos si cruza la medianoche). La misma tarea desde otra línea para y vuelve a empezar (cada línea con sus horas); sin línea, como siempre.
+- **Al parar** (cabecera, Inicio o Mi día) una línea aún pendiente: aviso «¿Das por hecha «…»?» con «Marcar como hecha» (prop flash `day_plan_prompt`), sin bloquear. La cabecera enseña «en «<línea>»».
+- **Imputar a mano** desde la línea: el diálogo de horas de siempre (D-172) con la tarea, el día y lo previsto rellenos; la línea sin tarea se queda con la de sus horas. **«Imputar lo previsto»**: una línea hecha con tarea y horas previstas y sin horas imputa esas horas en su día (borrador, `TimeEntryWriter`); en bloque, «Imputar lo previsto de N líneas hechas sin horas» (cada línea por su cuenta: si una no se puede, las demás sí). **«Vincular horas»**: mis entradas de ese día sin línea (`TimeEntryWriter::linkDayPlanItem`, sin tocar minutos; nunca las bloqueadas al facturar).
+- **Integración:** «Añadir a mi día» (o a mañana) en Mis tareas y «Desde mis tareas» en Mi día; el «Autocompletar» de «Mi weekly» trae primero las líneas de mi plan de la semana por cliente («Creatividades campaña otoño (hecha, 2 h 10 min)», sin las pasadas; sus tareas no se repiten) con el módulo visible; la vista Día por personas del calendario del equipo lleva un desplegable «Plan del día» de cada persona con los permisos de D-251.
+
+### D-256 · RGPD, retención y auditoría del plan del día **[concreta PLAN-CARGAS §10 y R2; amplía D-075 y D-074]**
+- **Es un dato de desempeño.** Exportación de datos personales: «plan-del-dia» (mis líneas, con la nota de cada día y las borradas) y «comentarios-plan-del-dia» (los de mis líneas y los que he escrito).
+- **Retención** `retention_day_plans_months` (12 meses por defecto, de 1 a 120, en `/admin/privacidad`): `app:prune-data` borra los días anteriores con sus líneas y comentarios; las horas no se borran nunca, solo pierden el enlace.
+- **Auditoría:** `day_plans`, `day_plan_items` y `day_plan_comments` (entidad «Plan del día» en `/admin/auditoria`), sin el orden de las líneas ni la hora del recordatorio.
+- **Texto RGPD pendiente del asesor (D-030):** el borrador ya lo menciona (para qué, qué datos y quién ve qué: textos para la plantilla; cifras y comentarios, la persona, su responsable y la administración; sin clasificaciones). **Pendiente del propietario:** que el asesor revise esos tres párrafos con el resto del texto.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2006,7 +2020,7 @@ Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las 
 - Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
-- Plan del día: D-250… (D-240 a D-249, en otras ramas).
+- Plan del día: D-250 a D-256 (D-240 a D-249, en otras ramas).
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-240**.
+La siguiente libre es **D-257** (D-240 a D-249 las usan otras ramas).

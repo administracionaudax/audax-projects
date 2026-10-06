@@ -52,6 +52,8 @@ export type TimeEntryDialogProps = {
     minutes?: number | null;
     /** Imputar en nombre de otra persona (gestores, responsables y admin, SPEC §7). */
     userId?: number;
+    /** Línea del plan del día de la que salen las horas (D-254). */
+    dayPlanItemId?: number;
 };
 
 type Errors = Partial<
@@ -162,6 +164,7 @@ export function TimeEntryDialog({
     date,
     minutes,
     userId,
+    dayPlanItemId,
 }: TimeEntryDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -173,6 +176,7 @@ export function TimeEntryDialog({
                         date={date}
                         minutes={minutes}
                         userId={userId}
+                        dayPlanItemId={dayPlanItemId}
                         onDone={() => onOpenChange(false)}
                     />
                 ) : null}
@@ -187,6 +191,7 @@ function TimeEntryForm({
     date,
     minutes: proposedMinutes,
     userId,
+    dayPlanItemId,
     onDone,
 }: Omit<TimeEntryDialogProps, 'open' | 'onOpenChange'> & {
     onDone: () => void;
@@ -298,6 +303,9 @@ function TimeEntryForm({
             description: description.trim() === '' ? null : description.trim(),
             ...(billable !== null && !internal
                 ? { is_billable: billable }
+                : {}),
+            ...(dayPlanItemId && !entry
+                ? { day_plan_item_id: dayPlanItemId }
                 : {}),
         };
 
