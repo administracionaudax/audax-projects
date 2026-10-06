@@ -88,6 +88,25 @@ Va **después** de `app:import-clickup` (clientes, proyectos y cuentas). Todo co
 
 **Directos de otra persona** (opt-in): con su volcado, `app:import-clickup-chat <volcado> --solo-directos` (mismo procedimiento: copia, simulación, importación y borrado).
 
-## 4. Simulación local con el volcado real
+## 4. Simulación local con el volcado real (06/10/2026)
 
-Ver la sección «Simulación» al final de este documento (recuentos del ensayo).
+Base SQLite local con el `DemoDataSeeder` (como la de E2E), `app:import-clickup` con el export v2 (69 s, 82 MB) y después el chat con el volcado real descargado ese día (todo salvo las reacciones, que seguían bajando: 1.400 de ~33.000 mensajes revisados).
+
+| Tipo | Creados | Omitidos |
+|---|---:|---:|
+| Canales de equipo | 17 | — |
+| Canales de cliente | 53 (+1 carpeta archivada del mismo cliente) | — |
+| Chats de proyecto | 10 | — |
+| Grupos (2 grupos y 2 canales privados) | 4 | — |
+| Mensajes directos | 17 | 1 (notas «contigo mismo») |
+| Mensajes | 31.640 | 612 vacíos en la API |
+| Respuestas (hilos) | 417 | 1 |
+| Menciones | 3.449 | — |
+| Reacciones | 9 (parcial) | — |
+| Adjuntos | 856 (1,1 GB en el disco) | 53 de tipos no admitidos y 22 de más de 50 MB, como enlace; 17 sin descargar |
+
+- 38 canales vacíos no se importan. Tres canales sin correspondencia van a equipo con aviso: «Leads y presupuestos» y «Sprint semana» (espacio personal de Alfredo) y la carpeta «Audax Interno».
+- Firman como «Usuario de ClickUp»: ClickBot, los agentes de IA de ClickUp («Answers», «Respuestas», «Informe diario», «Supervisor Semanal de Proyectos»), un invitado (Beto Geres) y cinco ids que ya no existen.
+- Tiempos: simulación 28 s (68 MB); importación real 85 s (85 MB de memoria de PHP), con los adjuntos; segunda ejecución 18 s, todo «sin cambios».
+- Lista del chat del propietario tras importar: 96 conversaciones (17 de equipo, 53 de cliente, 5 de proyecto, 4 grupos y 17 directas) en 12 consultas y 143 ms, sin no leídos.
+- **Disco en el servidor:** el volcado ocupa 4,4 GB (sobre todo vídeos, que no se importan); lo que se guarda son ~1,1 GB de adjuntos. Comprobar el espacio libre antes de importar.

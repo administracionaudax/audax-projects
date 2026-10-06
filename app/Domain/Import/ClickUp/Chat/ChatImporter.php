@@ -177,15 +177,17 @@ final class ChatImporter
     {
         $id = ChatDump::str($channel['id'] ?? null);
         $messages = $this->dump->messages($id);
+
+        if ($messages === []) {
+            $this->report->warn('Canales vacíos en ClickUp: no se importan.');
+
+            return;
+        }
+
         $members = $this->memberIds($id);
         [$kind, $target] = $this->classify($channel, $members);
 
-        if ($kind === 'skip' || $messages === []) {
-            if ($kind !== 'skip' && $kind !== null) {
-                $this->report->count($kind, ImportReport::SKIPPED);
-                $this->report->warn('Canales vacíos en ClickUp: no se importan.');
-            }
-
+        if ($kind === 'skip' || $kind === null) {
             return;
         }
 

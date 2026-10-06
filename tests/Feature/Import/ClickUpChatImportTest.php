@@ -73,7 +73,7 @@ it('lleva cada canal a su sitio y deja fuera los vacíos, los excluidos y las no
         ->and($report->get('project', ImportReport::CREATED))->toBe(1)
         ->and($report->get('group', ImportReport::CREATED))->toBe(2)
         ->and($report->get('direct', ImportReport::CREATED))->toBe(1)
-        ->and($report->get('team', ImportReport::SKIPPED))->toBe(1)
+        ->and(array_keys($report->warnings()))->toContain('Canales vacíos en ClickUp: no se importan.')
         ->and(array_keys($report->warnings()))->toContain('Mensajes directos contigo mismo (notas): no se importan.')
         ->and(collect(array_keys($report->warnings()))->contains(fn (string $warning): bool => str_contains($warning, 'Leads')))->toBeTrue();
 
