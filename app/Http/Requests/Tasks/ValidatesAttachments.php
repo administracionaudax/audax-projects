@@ -3,40 +3,41 @@
 namespace App\Http\Requests\Tasks;
 
 use App\Domain\Tasks\AttachmentStorage;
-use App\Models\Attachment;
 use Closure;
 use Illuminate\Http\UploadedFile;
 
 /**
  * Reglas de los adjuntos (SPEC §15, D-037): tamaño máximo del ajuste max_attachment_mb, tipo real
  * dentro de Attachment::ALLOWED_MIMES (regla mimetypes, que lee el contenido con fileinfo) y una
- * extensión que case con ese tipo.
+ * extensión que case con ese tipo. Con $videos (las sugerencias, D-235), también MP4, MOV y WebM.
  */
 trait ValidatesAttachments
 {
     /**
      * @return array<string, mixed>
      */
-    protected function attachmentRules(bool $required): array
+    protected function attachmentRules(bool $required, bool $videos = false): array
     {
+        $allowed = AttachmentStorage::allowedMimes($videos);
+
         return [
             'files' => [$required ? 'required' : 'nullable', 'array', 'max:'.AttachmentStorage::MAX_FILES],
             'files.*' => [
                 'file',
                 'max:'.AttachmentStorage::maxKilobytes(),
-                'mimetypes:'.implode(',', Attachment::ALLOWED_MIMES),
-                function (string $attribute, mixed $value, Closure $fail): void {
+                'mimetypes:'.implode(',', $allowed),
+                function (string $attribute, mixed $value, Closure $fail) use ($allowed, $videos): void {
                     if (! $value instanceof UploadedFile) {
                         return;
                     }
 
-                    if (AttachmentStorage::extensionOf($value) === null) {
+                    if (AttachmentStorage::extensionOf($value, $videos) === null) {
                         $fail(__('tasks.errors.attachment_name'));
 
                         return;
                     }
 
-                    if (in_array((string) $value->getMimeType(), Attachment::ALLOWED_MIMES, true) && ! AttachmentStorage::extensionMatches($value)) {
+                    if (in_array((string) $value->getMimeType(), $allowed, true) && ! AttachmentStorage::extensionMatches($value, $videos)) {
                         $fail(__('tasks.errors.attachment_extension', ['name' => AttachmentStorage::cleanName($value->getClientOriginalName())]));
                     }
                 },

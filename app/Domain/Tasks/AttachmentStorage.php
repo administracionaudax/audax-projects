@@ -77,6 +77,18 @@ final class AttachmentStorage
     ];
 
     /**
+     * Vídeos de las sugerencias (D-235): extensión → tipos reales admitidos.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array VIDEO_EXTENSIONS = [
+        'mp4' => ['video/mp4', 'application/mp4'],
+        'm4v' => ['video/mp4', 'application/mp4'],
+        'mov' => ['video/quicktime'],
+        'webm' => ['video/webm'],
+    ];
+
+    /**
      * Audios del chat (Fase 6): extensión → tipos reales admitidos. Solo para mensajes de audio.
      *
      * @var array<string, list<string>>
@@ -117,21 +129,32 @@ final class AttachmentStorage
     /**
      * ¿La extensión del nombre casa con el tipo real detectado?
      */
-    public static function extensionMatches(UploadedFile $file): bool
+    public static function extensionMatches(UploadedFile $file, bool $videos = false): bool
     {
-        $extension = self::extensionOf($file);
+        $extension = self::extensionOf($file, $videos);
         $mime = (string) $file->getMimeType();
+        $map = $videos ? [...self::EXTENSIONS, ...self::VIDEO_EXTENSIONS] : self::EXTENSIONS;
 
         return $extension !== null
-            && in_array($mime, Attachment::ALLOWED_MIMES, true)
-            && in_array($mime, self::EXTENSIONS[$extension] ?? [], true);
+            && in_array($mime, self::allowedMimes($videos), true)
+            && in_array($mime, $map[$extension] ?? [], true);
     }
 
-    public static function extensionOf(UploadedFile $file): ?string
+    public static function extensionOf(UploadedFile $file, bool $videos = false): ?string
     {
         $extension = mb_strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
 
-        return array_key_exists($extension, self::EXTENSIONS) ? $extension : null;
+        return array_key_exists($extension, self::EXTENSIONS) || ($videos && array_key_exists($extension, self::VIDEO_EXTENSIONS)) ? $extension : null;
+    }
+
+    /**
+     * Tipos admitidos: los de siempre y, en las sugerencias, también los vídeos (D-235).
+     *
+     * @return list<string>
+     */
+    public static function allowedMimes(bool $videos = false): array
+    {
+        return $videos ? [...Attachment::ALLOWED_MIMES, ...Attachment::SUGGESTION_VIDEO_MIMES] : Attachment::ALLOWED_MIMES;
     }
 
     /**
@@ -140,9 +163,11 @@ final class AttachmentStorage
      */
     public function store(UploadedFile $file, Task|TaskComment|Message|SuggestionPost|SuggestionComment $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
     {
+        // Los vídeos solo en las sugerencias y sus comentarios (D-235).
+        $videos = $attachable instanceof SuggestionPost || $attachable instanceof SuggestionComment;
         $extension = $audio
             ? (self::audioMatches($file) ? mb_strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION)) : throw new RuntimeException('Audio no admitido.'))
-            : (self::extensionOf($file) ?? throw new RuntimeException('Extensión no admitida.'));
+            : (self::extensionOf($file, $videos) ?? throw new RuntimeException('Extensión no admitida.'));
         $mime = (string) $file->getMimeType();
         $uuid = (string) Str::uuid();
         $directory = match (true) {

@@ -31,7 +31,7 @@
     "suggestions.back_feedback": "Volver a Feedback",
     "suggestions.attachments": "Adjuntos",
     "suggestions.attach": "Adjuntar",
-    "suggestions.attach_help": "Elige archivos o pégalos en el texto (hasta :max MB cada uno).",
+    "suggestions.attach_help": "Elige archivos o pégalos en el texto (hasta :max MB cada uno): imágenes, documentos o un vídeo de la pantalla (MP4, MOV o WebM).",
     "suggestions.file_too_big": "«:name» pasa de :max MB y no se adjunta.",
     "suggestions.remove_attachment": "Quitar el adjunto «:name»",
     "suggestions.remove_file": "Quitar «:name»",

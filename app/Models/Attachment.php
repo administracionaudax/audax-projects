@@ -59,6 +59,13 @@ class Attachment extends Model
     ];
 
     /**
+     * Vídeos de las sugerencias y los bugs (10.9b, D-235): grabaciones de pantalla (MP4, MOV y WebM).
+     * Solo en el centro de ayuda; en las tareas y el chat, no. Según la versión de libmagic, un MP4 se
+     * detecta como application/mp4.
+     */
+    public const array SUGGESTION_VIDEO_MIMES = ['video/mp4', 'application/mp4', 'video/quicktime', 'video/webm'];
+
+    /**
      * Audios del chat (Fase 6): lo que graba MediaRecorder (webm/opus en Chrome y Firefox,
      * mp4/aac en Safari) y los formatos habituales. Se sirven con su tipo para reproducirlos.
      */

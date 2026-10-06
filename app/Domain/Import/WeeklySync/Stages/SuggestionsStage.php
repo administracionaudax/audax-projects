@@ -7,6 +7,7 @@ use App\Domain\Import\WeeklySync\WeeklySyncDump;
 use App\Domain\Import\WeeklySync\WeeklySyncFiles;
 use App\Domain\Import\WeeklySync\WeeklySyncImportReport as Report;
 use App\Domain\Import\WeeklySync\WeeklySyncText;
+use App\Domain\Tasks\AttachmentStorage;
 use App\Enums\SuggestionReaction;
 use App\Enums\SuggestionStatus;
 use App\Models\Attachment;
@@ -321,7 +322,8 @@ final class SuggestionsStage
                     continue;
                 }
 
-                if (! in_array($copy['mime'], Attachment::ALLOWED_MIMES, true)) {
+                // Con vídeos (grabaciones de pantalla de un bug, D-235).
+                if (! in_array($copy['mime'], AttachmentStorage::allowedMimes(videos: true), true)) {
                     $context->report->skip('suggestion_attachments', 'Adjuntos de un tipo que Audax no admite');
 
                     continue;

@@ -4,6 +4,7 @@ use App\Enums\SuggestionReaction;
 use App\Enums\SuggestionStatus;
 use App\Http\Resources\Tasks\AttachmentResource;
 use App\Models\Attachment;
+use App\Models\Project;
 use App\Models\Setting;
 use App\Models\SuggestionBoard;
 use App\Models\SuggestionCategory;
@@ -12,6 +13,8 @@ use App\Models\SuggestionCommentReaction;
 use App\Models\SuggestionPost;
 use App\Models\SuggestionStatusEvent;
 use App\Models\SuggestionVote;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use App\Notifications\Suggestions\SuggestionMentioned;
 use App\Notifications\Suggestions\SuggestionReplied;
@@ -80,6 +83,43 @@ it('crea una sugerencia con formato saneado, adjuntos y slug único; avisa a qui
     $url = AttachmentResource::downloadUrl($post->attachments->first());
     $this->actingAs($this->pablo)->get($url)->assertOk();
     $this->actingAs(User::factory()->collaborator()->create())->get($url)->assertForbidden();
+});
+
+it('una sugerencia o un bug lleva vídeos de la pantalla (MP4, MOV y WebM); las tareas, no (D-235)', function () {
+    $mp4 = "\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom".str_repeat("\x00", 64);
+    $mov = "\x00\x00\x00\x14ftypqt  \x00\x00\x00\x00qt  ".str_repeat("\x00", 64);
+    $webm = "\x1A\x45\xDF\xA3\x9F\x42\x86\x81\x01\x42\xF7\x81\x01\x42\xF2\x81\x04\x42\xF3\x81\x08\x42\x82\x84webm\x42\x87\x81\x04\x42\x85\x81\x02".str_repeat("\x00", 32);
+
+    $this->actingAs($this->elena)->post('/ayuda/sugerencias', [
+        'title' => 'Falla el guardado',
+        'body' => '<p>Mira el vídeo</p>',
+        'suggestion_board_id' => $this->board->id,
+        'files' => [
+            UploadedFile::fake()->createWithContent('pantalla.mp4', $mp4),
+            UploadedFile::fake()->createWithContent('pantalla.mov', $mov),
+            UploadedFile::fake()->createWithContent('pantalla.webm', $webm),
+        ],
+    ])->assertSessionHasNoErrors();
+
+    $post = SuggestionPost::query()->with('attachments')->firstOrFail();
+    expect($post->attachments->pluck('mime')->map(fn ($mime) => $mime === 'application/mp4' ? 'video/mp4' : $mime)->sort()->values()->all())->toBe(['video/mp4', 'video/quicktime', 'video/webm'])
+        ->and($post->attachments->pluck('path')->map(fn ($path) => pathinfo($path, PATHINFO_EXTENSION))->sort()->values()->all())->toBe(['mov', 'mp4', 'webm']);
+
+    // Un comentario también.
+    $this->actingAs($this->pablo)->post("/ayuda/sugerencias/{$post->id}/comentarios", ['body' => '<p>Me pasa</p>', 'files' => [UploadedFile::fake()->createWithContent('yo.mp4', $mp4)]])
+        ->assertSessionHasNoErrors();
+
+    // Una extensión de vídeo que no es de las admitidas, no.
+    $this->actingAs($this->elena)->post('/ayuda/sugerencias', ['title' => 'x', 'body' => '<p>x</p>', 'suggestion_board_id' => $this->board->id, 'files' => [UploadedFile::fake()->createWithContent('pantalla.avi', $mp4)]])
+        ->assertSessionHasErrors('files.0');
+
+    // En una tarea, un vídeo no se admite (D-037).
+    TaskStatus::ensureDefaults();
+    $project = Project::factory()->create();
+    $project->addMember($this->elena);
+    $task = Task::factory()->create(['project_id' => $project->id]);
+    $this->actingAs($this->elena)->from('/')->post("/tareas/{$task->id}/adjuntos", ['files' => [UploadedFile::fake()->createWithContent('pantalla.mp4', $mp4)]])
+        ->assertSessionHasErrors('files.0');
 });
 
 it('valida el tablero, la categoría y el detalle', function () {

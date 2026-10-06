@@ -50,7 +50,8 @@ class SuggestionCommentRequest extends FormRequest
             'parent_id' => ['nullable', 'integer'],
             'remove_attachment_ids' => ['nullable', 'array', 'max:50'],
             'remove_attachment_ids.*' => ['integer'],
-            ...$this->attachmentRules(required: false),
+            // Con vídeos: una grabación de pantalla de un bug (D-235).
+            ...$this->attachmentRules(required: false, videos: true),
         ];
     }
 

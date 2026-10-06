@@ -1873,6 +1873,12 @@ Revisión de paridad 10.9b (P2).
 - **Departamento (F-027):** WeeklySync dejaba cambiarse el departamento a uno mismo. En Audax **no**: el departamento decide quién aprueba las horas y las ausencias (D-020 y D-049) y la capacidad, así que cambiarlo uno mismo dejaría elegirse el aprobador. El perfil lo enseña de solo lectura, con el rol, y explica que los cambia la administración.
 - **Pantalla de error del navegador (F-017):** si una página de React falla al pintarse, en vez de quedarse en blanco sale «Algo ha fallado al mostrar esta página» con «Recargar» e «Ir al inicio» (`ErrorBoundary` en `app.tsx`). Se rearma al navegar. El error va a la consola del navegador; no se envía a terceros.
 
+### D-235 · Vídeos en las sugerencias y los bugs **[amplía D-210 y D-219; concreta F-161 y F-165]**
+Revisión de paridad 10.9b (P2): WeeklySync aceptaba cualquier fichero en las sugerencias, y lo que más se adjunta al reportar un bug es una **grabación de la pantalla**. Audax solo admitía imágenes, ofimática, texto y ZIP (D-037), y la importación los omitía.
+- **Se admiten vídeos MP4, MOV y WebM** (`video/mp4` o `application/mp4`, `video/quicktime` y `video/webm`, con su extensión casando con el tipo real, como siempre) en las sugerencias, los bugs y sus comentarios (`attachmentRules(videos: true)` y `AttachmentStorage::allowedMimes`). **Solo ahí**: en las tareas y el chat sigue la lista de D-037.
+- **Con los límites de D-223:** el tamaño por fichero de `max_attachment_mb` (50 MB por defecto, hasta 200 en `/admin/ajustes`), 10 por envío, 250 MB por persona entre todas sus sugerencias y comentarios y 5 GB libres en el disco. Se descargan con su URL firmada, como el resto de adjuntos.
+- **Importación (D-219):** los vídeos adjuntos de WeeklySync ya no se omiten; el resto de tipos que Audax no admite, sí (con su recuento en el informe).
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
