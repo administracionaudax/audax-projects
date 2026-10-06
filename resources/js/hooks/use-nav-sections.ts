@@ -19,6 +19,14 @@ export const NAV_SECTION_IDS = [
 
 export type NavSectionId = (typeof NAV_SECTION_IDS)[number];
 
+/** Plegadas mientras la persona no toque nada (D-261): todas menos Proyectos. */
+export const DEFAULT_COLLAPSED: NavSectionId[] = [
+    'weekly',
+    'people',
+    'billing',
+    'admin',
+];
+
 /** Clave del navegador para las secciones plegadas de esta persona. */
 export function navSectionsStorageKey(userId: number | null | undefined) {
     return `audax.nav.collapsed.${userId ?? 'guest'}`;
@@ -87,7 +95,7 @@ export function resetNavSectionsMemory() {
 
 /**
  * Estado plegado o desplegado de las secciones de la barra lateral, por persona y persistente
- * (D-260): por defecto todas desplegadas; se guarda en el servidor (`navCollapsed`, prop
+ * (D-260): por defecto solo Proyectos desplegada (D-261); se guarda en el servidor (`navCollapsed`, prop
  * compartida) y en el navegador (localStorage, por si no hay servidor o falla). Al entrar en una
  * página de una sección plegada, la sección se despliega sola; plegar la sección de la página
  * actual se respeta hasta que se entra en otra.
@@ -104,7 +112,7 @@ export function useNavSections(activeSection: string | null) {
 
         const collapsed = fromServer
             ? normalizeCollapsed(props.navCollapsed)
-            : (readStored(key) ?? []);
+            : (readStored(key) ?? DEFAULT_COLLAPSED);
 
         return { collapsed, active: null };
     });

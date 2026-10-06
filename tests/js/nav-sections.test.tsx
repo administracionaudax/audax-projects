@@ -146,29 +146,30 @@ describe('secciones plegables de la barra lateral (D-260)', () => {
         expect([...NAV_SECTION_IDS]).toEqual(fixture.sections);
     });
 
-    it('por defecto todas desplegadas; Inicio y Chat quedan fijos, fuera de las secciones', () => {
+    it('por defecto solo Proyectos desplegada (D-261); Chat queda fijo y no hay entrada «Inicio»', () => {
         render(tree());
 
-        for (const name of [
-            'Proyectos',
-            'Weekly',
-            'Personas',
-            'Administración',
-        ]) {
+        const expected: Record<string, string> = {
+            Proyectos: 'true',
+            Weekly: 'false',
+            Personas: 'false',
+            Administración: 'false',
+        };
+
+        for (const [name, open] of Object.entries(expected)) {
             const button = toggle(name);
-            expect(button.getAttribute('aria-expanded')).toBe('true');
+            expect(button.getAttribute('aria-expanded')).toBe(open);
             const content = document.getElementById(
                 button.getAttribute('aria-controls') ?? '',
             );
             expect(content).not.toBeNull();
-            expect(content?.hidden).toBe(false);
+            expect(content?.hidden).toBe(open === 'false');
         }
 
-        for (const name of ['Inicio', 'Chat']) {
-            expect(
-                nav().getByRole('link', { name }).closest('[role="group"]'),
-            ).toBeNull();
-        }
+        expect(
+            nav().getByRole('link', { name: 'Chat' }).closest('[role="group"]'),
+        ).toBeNull();
+        expect(nav().queryByRole('link', { name: 'Inicio' })).toBeNull();
     });
 
     it('una sección sin entradas visibles no se pinta (Facturación, todavía vacía)', () => {
@@ -210,7 +211,7 @@ describe('secciones plegables de la barra lateral (D-260)', () => {
 
         expect(toggle('Proyectos').getAttribute('aria-expanded')).toBe('false');
         expect(nav().queryByRole('link', { name: 'Clientes' })).toBeNull();
-        expect(nav().getByRole('link', { name: 'Mi espacio' })).toBeTruthy();
+        expect(nav().getByRole('link', { name: 'Chat' })).toBeTruthy();
 
         await ue.click(toggle('Proyectos'));
 
@@ -224,11 +225,12 @@ describe('secciones plegables de la barra lateral (D-260)', () => {
 
         toggle('Weekly').focus();
         await ue.keyboard('{Enter}');
-        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('false');
-        expect(nav().queryByRole('link', { name: 'Weeklies' })).toBeNull();
+        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('true');
+        expect(nav().getByRole('link', { name: 'Weeklies' })).toBeTruthy();
 
         await ue.keyboard(' ');
-        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('true');
+        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('false');
+        expect(nav().queryByRole('link', { name: 'Weeklies' })).toBeNull();
     });
 
     it('guarda el estado en el navegador por persona y lo recupera al volver', async () => {
@@ -242,7 +244,7 @@ describe('secciones plegables de la barra lateral (D-260)', () => {
             JSON.parse(
                 window.localStorage.getItem(navSectionsStorageKey(7)) ?? '',
             ),
-        ).toEqual(['projects', 'admin']);
+        ).toEqual(['projects', 'weekly', 'people', 'billing']);
         // Sin la prop del servidor no se le manda nada.
         expect(navRequests()).toEqual([]);
 
@@ -252,9 +254,9 @@ describe('secciones plegables de la barra lateral (D-260)', () => {
 
         expect(toggle('Proyectos').getAttribute('aria-expanded')).toBe('false');
         expect(toggle('Administración').getAttribute('aria-expanded')).toBe(
-            'false',
+            'true',
         );
-        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('true');
+        expect(toggle('Weekly').getAttribute('aria-expanded')).toBe('false');
     });
 
     it('parte de lo guardado en el servidor y le manda cada cambio', async () => {

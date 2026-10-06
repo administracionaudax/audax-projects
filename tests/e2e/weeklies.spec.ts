@@ -74,6 +74,8 @@ test('escribir el borrador, enviarlo y verlo en el estado del equipo', async ({
         const nav = page.getByRole('navigation', {
             name: 'Navegación principal',
         });
+        // La sección Weekly nace plegada (D-261): se despliega con su encabezado.
+        await nav.getByRole('button', { name: 'Weekly' }).click();
         await expect(
             nav.getByRole('link', { name: 'Mi espacio' }),
         ).toBeVisible();

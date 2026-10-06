@@ -73,7 +73,8 @@ test('iniciar sesión, navegar por la barra lateral, cambiar el tema y cerrar se
 });
 
 /** Deja todas las secciones desplegadas (el valor por defecto) para los demás specs. */
-async function expandAllSections(page: Page): Promise<void> {
+/** Deja la barra como por defecto (D-261: todo plegado menos Proyectos) para los demás tests. */
+async function resetSections(page: Page): Promise<void> {
     await page.evaluate(async () => {
         const match = /(?:^|;\s*)XSRF-TOKEN=([^;]*)/.exec(document.cookie);
         await fetch('/menu/secciones', {
@@ -86,13 +87,15 @@ async function expandAllSections(page: Page): Promise<void> {
                     ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) }
                     : {}),
             },
-            body: JSON.stringify({ collapsed: [] }),
+            body: JSON.stringify({
+                collapsed: ['weekly', 'people', 'billing', 'admin'],
+            }),
         });
     });
 }
 
 /**
- * Secciones plegables de la barra lateral (D-260): por defecto desplegadas; el encabezado es un
+ * Secciones plegables de la barra lateral (D-260): por defecto solo Proyectos desplegada (D-261); el encabezado es un
  * botón con aria-expanded y aria-controls; el estado se guarda por persona (sobrevive a recargar)
  * y la sección de la página a la que se entra se despliega sola. Sin violaciones AA con una
  * sección plegada, y en el móvil (375 px) sin scroll horizontal.
@@ -106,33 +109,28 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
     const weekly = nav.getByRole('button', { name: 'Weekly' });
 
     try {
-        await test.step('por defecto, todas desplegadas; Inicio y Chat, fijos', async () => {
-            for (const name of ['Proyectos', 'Weekly', 'Personas']) {
+        await test.step('por defecto, solo Proyectos desplegada; Chat fijo y sin «Inicio» (D-261)', async () => {
+            await expect(
+                nav.getByRole('button', { name: 'Proyectos' }),
+            ).toHaveAttribute('aria-expanded', 'true');
+            for (const name of ['Weekly', 'Personas']) {
                 await expect(nav.getByRole('button', { name })).toHaveAttribute(
                     'aria-expanded',
-                    'true',
+                    'false',
                 );
             }
             await expect(
                 nav.getByRole('button', { name: 'Facturación' }),
             ).toHaveCount(0);
-            await expect(
-                nav.getByRole('link', { name: 'Inicio' }),
-            ).toBeVisible();
+            await expect(nav.getByRole('link', { name: 'Inicio' })).toHaveCount(
+                0,
+            );
             await expect(nav.getByRole('link', { name: 'Chat' })).toBeVisible();
-        });
-
-        await test.step('plegar con el ratón oculta sus entradas', async () => {
-            await weekly.click();
-            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
-            await expect(
-                nav.getByRole('link', { name: 'Weeklies' }),
-            ).toBeHidden();
             const controls = await weekly.getAttribute('aria-controls');
             await expect(page.locator(`[id="${controls}"]`)).toBeHidden();
         });
 
-        await test.step('sin violaciones AA con una sección plegada', async () => {
+        await test.step('sin violaciones AA con secciones plegadas', async () => {
             const results = await new AxeBuilder({ page })
                 .include('[data-sidebar="sidebar"]')
                 .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -142,21 +140,32 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
             );
         });
 
-        await test.step('el estado se guarda: sigue plegada al recargar', async () => {
-            await page.waitForLoadState('networkidle');
-            await page.reload();
-            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
-        });
-
-        await test.step('con el teclado: Intro despliega y pliega', async () => {
-            await weekly.focus();
-            await page.keyboard.press('Enter');
+        await test.step('desplegar con el ratón muestra sus entradas', async () => {
+            await weekly.click();
             await expect(weekly).toHaveAttribute('aria-expanded', 'true');
             await expect(
                 nav.getByRole('link', { name: 'Weeklies' }),
             ).toBeVisible();
+        });
+
+        await test.step('el estado se guarda: sigue desplegada al recargar', async () => {
+            await page.waitForLoadState('networkidle');
+            await page.reload();
+            await expect(weekly).toHaveAttribute('aria-expanded', 'true');
+        });
+
+        await test.step('con el teclado: Intro pliega y despliega', async () => {
+            await weekly.focus();
             await page.keyboard.press('Enter');
             await expect(weekly).toHaveAttribute('aria-expanded', 'false');
+            await expect(
+                nav.getByRole('link', { name: 'Weeklies' }),
+            ).toBeHidden();
+            await page.keyboard.press('Enter');
+            await expect(weekly).toHaveAttribute('aria-expanded', 'true');
+            await page.keyboard.press('Enter');
+            await expect(weekly).toHaveAttribute('aria-expanded', 'false');
+            await page.waitForLoadState('networkidle');
         });
 
         await test.step('entrar en una página de la sección plegada la despliega', async () => {
@@ -197,7 +206,7 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
             expect(overflow).toBeLessThanOrEqual(0);
         });
     } finally {
-        await expandAllSections(page);
+        await resetSections(page);
     }
 });
 

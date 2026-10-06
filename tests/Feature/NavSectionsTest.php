@@ -17,17 +17,22 @@ beforeEach(function () {
 it('la lista blanca es la del contrato compartido con la interfaz', function () {
     $fixture = json_decode((string) file_get_contents(base_path('tests/fixtures/nav-sections.json')), true);
 
-    expect(NavSections::SECTIONS)->toBe($fixture['sections']);
+    expect(NavSections::SECTIONS)->toBe($fixture['sections'])
+        ->and(NavSections::DEFAULT_COLLAPSED)->toBe($fixture['default_collapsed']);
 });
 
 it('la ruta tiene su nombre', function () {
     expect(route('nav.sections.update', absolute: false))->toBe('/menu/secciones');
 });
 
-it('por defecto no hay ninguna sección plegada', function () {
+it('por defecto solo Proyectos va desplegada (D-261); si la persona lo despliega todo, se respeta', function () {
     $this->actingAs($this->user)
         ->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('navCollapsed', []));
+        ->assertInertia(fn (Assert $page) => $page->where('navCollapsed', ['weekly', 'people', 'billing', 'admin']));
+
+    $this->putJson('/menu/secciones', ['collapsed' => []])->assertNoContent();
+
+    $this->get('/')->assertInertia(fn (Assert $page) => $page->where('navCollapsed', []));
 });
 
 it('guarda las secciones plegadas en el orden de la barra y le llegan en las props', function () {
@@ -42,14 +47,23 @@ it('guarda las secciones plegadas en el orden de la barra y le llegan en las pro
         ->assertInertia(fn (Assert $page) => $page->where('navCollapsed', ['projects', 'admin']));
 });
 
-it('una lista vacía las despliega todas (vuelve a null)', function () {
+it('una lista vacía las despliega todas y se guarda como tal, no como «sin tocar» (D-261)', function () {
     $this->user->forceFill(['nav_collapsed' => ['weekly']])->save();
 
     $this->actingAs($this->user)
         ->putJson('/menu/secciones', ['collapsed' => []])
         ->assertNoContent();
 
-    expect($this->user->fresh()->nav_collapsed)->toBeNull();
+    expect($this->user->fresh()->nav_collapsed)->toBe([]);
+});
+
+it('la migración de D-261 devuelve a todos al plegado por defecto', function () {
+    $this->user->forceFill(['nav_collapsed' => []])->save();
+
+    (require database_path('migrations/2026_10_07_100000_reset_nav_collapsed_to_default.php'))->up();
+
+    expect($this->user->fresh()->nav_collapsed)->toBeNull()
+        ->and(NavSections::collapsedFor($this->user->fresh()))->toBe(NavSections::DEFAULT_COLLAPSED);
 });
 
 it('ignora en las props una sección guardada que ya no existe', function () {

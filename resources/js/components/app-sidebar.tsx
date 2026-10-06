@@ -7,7 +7,6 @@ import {
     CalendarRange,
     Clock,
     FolderKanban,
-    House,
     LifeBuoy,
     ListChecks,
     MessagesSquare,
@@ -62,8 +61,8 @@ import { index as workloadIndex } from '@/routes/workload';
 import type { Abilities, NavItem } from '@/types';
 
 /**
- * Entradas fijas de arriba, fuera de las secciones plegables (D-260): Inicio y Chat, con el total
- * de mensajes sin leer (Fase 6). La búsqueda global va en la cabecera.
+ * Entradas fijas de arriba, fuera de las secciones plegables (D-260): Chat, con el total de mensajes
+ * sin leer (Fase 6). A Inicio se va con el logotipo (D-261); la búsqueda global va en la cabecera.
  */
 export function pinnedNavItems(
     counters: { chatUnread?: number } = {},
@@ -71,7 +70,6 @@ export function pinnedNavItems(
     const chatUnread = counters.chatUnread ?? 0;
 
     return [
-        { title: t('nav.home'), href: home(), icon: House },
         {
             title: t('nav.chat'),
             href: chatIndex(),

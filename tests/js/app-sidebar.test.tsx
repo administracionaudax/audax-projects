@@ -52,7 +52,13 @@ const user: User = {
 };
 
 function setAbilities(can: Abilities) {
-    page.props = { auth: { user, can }, sidebarOpen: true, name: 'Audax' };
+    // Todo desplegado (navCollapsed vacío) para ver todas las entradas.
+    page.props = {
+        auth: { user, can },
+        sidebarOpen: true,
+        name: 'Audax',
+        navCollapsed: [],
+    };
 }
 
 function renderSidebar() {
@@ -117,7 +123,8 @@ function titlesBySection(can: Abilities) {
 
 describe('navegación principal', () => {
     it('agrupa las entradas en las secciones de D-260, con todos los permisos', () => {
-        // Inicio y Chat, fijos; «Ausencias», en Personas; Facturación, sin entradas, no sale.
+        // Chat, fijo (a Inicio se va con el logotipo, D-261); «Ausencias», en Personas; Facturación,
+        // sin entradas, no sale.
         expect(
             titlesBySection({
                 ...none,
@@ -129,7 +136,7 @@ describe('navegación principal', () => {
                 manageSettings: true,
             }),
         ).toEqual({
-            main: ['Inicio', 'Chat'],
+            main: ['Chat'],
             projects: [
                 'Mis tareas',
                 'Calendario',
@@ -247,19 +254,16 @@ describe('navegación principal', () => {
         ).toBe('page');
     });
 
-    it('marca Inicio como la página actual', () => {
+    it('a Inicio se va con el logotipo, sin entrada propia en el menú (D-261)', () => {
         const nav = renderSidebar();
 
+        expect(nav.queryByRole('link', { name: 'Inicio' })).toBeNull();
         expect(
-            nav
-                .getByRole('link', { name: 'Inicio' })
-                .getAttribute('aria-current'),
-        ).toBe('page');
-        expect(
-            nav
-                .getByRole('link', { name: 'Proyectos' })
-                .getAttribute('aria-current'),
-        ).toBeNull();
+            screen
+                .getByRole('img', { name: 'AUDAX' })
+                .closest('a')
+                ?.getAttribute('href'),
+        ).toBe('/');
     });
 
     it('muestra el logotipo oficial de AUDAX (SVG accesible), sin enlaces externos', () => {
@@ -277,10 +281,10 @@ describe('navegación principal', () => {
 });
 
 describe('navegación de un colaborador externo (D-134)', () => {
-    it('solo tiene Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat', () => {
+    it('solo tiene Mis tareas, Calendario, Proyectos, Horas y Chat', () => {
         // Sin Weekly, Personas ni Administración: esas secciones no se pintan.
         expect(titlesBySection(collaborator)).toEqual({
-            main: ['Inicio', 'Chat'],
+            main: ['Chat'],
             projects: ['Mis tareas', 'Calendario', 'Proyectos', 'Horas'],
         });
     });
