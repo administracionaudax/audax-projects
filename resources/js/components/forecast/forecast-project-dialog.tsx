@@ -257,6 +257,19 @@ export function ForecastProjectDialog({
                                         {client.name}
                                     </option>
                                 ))}
+                                {/* El cliente del previsto ya inactivo: que se vea (D-310). */}
+                                {forecast?.client &&
+                                clients !== undefined &&
+                                !clients.some(
+                                    (client) =>
+                                        client.id === forecast.client?.id,
+                                ) ? (
+                                    <option value={forecast.client.id} disabled>
+                                        {t('forecast.form.client_unavailable', {
+                                            name: forecast.client.name,
+                                        })}
+                                    </option>
+                                ) : null}
                             </NativeSelect>
                         ) : (
                             <Input

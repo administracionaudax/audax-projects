@@ -299,6 +299,19 @@ export function AllocationDialog({
                                         ))}
                                     </optgroup>
                                 ) : null}
+                                {/* La persona guardada que ya no se puede asignar: que se vea quién es
+                                    (si no, el selector mostraba «Elige…» y se enviaba otra cosa). */}
+                                {allocation?.user &&
+                                !people.some(
+                                    (person) =>
+                                        person.id === allocation.user?.id,
+                                ) ? (
+                                    <option value={allocation.user.id} disabled>
+                                        {t('forecast.allocation.unavailable', {
+                                            name: allocation.user.name,
+                                        })}
+                                    </option>
+                                ) : null}
                             </NativeSelect>
                         ) : (
                             <NativeSelect

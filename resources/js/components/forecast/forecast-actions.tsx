@@ -372,6 +372,18 @@ export function CreateProjectDialog({
                                         {client.name}
                                     </option>
                                 ))}
+                                {forecast.client &&
+                                clients !== undefined &&
+                                !clients.some(
+                                    (client) =>
+                                        client.id === forecast.client?.id,
+                                ) ? (
+                                    <option value={forecast.client.id} disabled>
+                                        {t('forecast.form.client_unavailable', {
+                                            name: forecast.client.name,
+                                        })}
+                                    </option>
+                                ) : null}
                             </NativeSelect>
                         )}
                         <InputError

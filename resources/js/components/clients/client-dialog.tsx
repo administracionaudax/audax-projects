@@ -42,7 +42,18 @@ type ClientForm = {
 
 const AUTO = '__auto';
 
-function initialData(client?: Client): ClientForm {
+function initialData(
+    client?: Client,
+    people?: { id: number }[] | null,
+): ClientForm {
+    // Un responsable que ya no se puede elegir (desactivado o sin la Weekly) no está en la lista: el
+    // selector salía vacío y guardar fallaba en un campo que nadie había tocado. Pasa a «Automático»,
+    // que es lo que se ve (D-310).
+    const owner = client?.owner_user_id ?? null;
+    const ownerAvailable =
+        owner !== null &&
+        (!people || people.some((person) => person.id === owner));
+
     return {
         name: client?.name ?? '',
         icon: client?.icon ?? '',
@@ -54,9 +65,7 @@ function initialData(client?: Client): ClientForm {
         default_hourly_rate: client?.default_hourly_rate
             ? client.default_hourly_rate.replace('.', ',')
             : '',
-        owner_user_id: client?.owner_user_id
-            ? String(client.owner_user_id)
-            : '',
+        owner_user_id: ownerAvailable ? String(owner) : '',
     };
 }
 
@@ -163,7 +172,7 @@ export function ClientDialog({
             onOpenChange={(next) => {
                 setOpen(next);
                 if (next) {
-                    form.setData(initialData(client));
+                    form.setData(initialData(client, people));
                     form.clearErrors();
                 }
             }}
