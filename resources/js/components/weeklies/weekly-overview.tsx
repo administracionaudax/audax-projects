@@ -20,6 +20,7 @@ import { UserAvatar } from '@/components/realtime/presence-indicator';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { MyWeeklyCallout } from '@/components/weeklies/my-weekly-callout';
+import { PushPrompt } from '@/components/weeklies/push-prompt';
 import { RemindButton } from '@/components/weeklies/reminders/remind-button';
 import { TeamStatusStrip } from '@/components/weeklies/team-status-strip';
 import {
@@ -89,6 +90,7 @@ export function WeeklyOverview(props: WeekliesIndexPageProps) {
                     </div>
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                         {me ? <MyWeeklyCallout cycle={active} me={me} /> : null}
+                        {me ? <PushPrompt /> : null}
                         <div
                             className="grid content-center gap-1 border bg-card p-4 text-sm"
                             data-test="weekly-streak-card"

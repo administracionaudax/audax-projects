@@ -386,6 +386,55 @@ describe('Mi weekly: una caja por cliente con autoguardado (F-044 y F-051)', () 
         ).toBeTruthy();
     });
 
+    it('sin apuntes se puede enviar, tras confirmarlo (D-230)', () => {
+        render(<MyWeeklyEditor editor={editor({ autofill: {} })} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Enviar weekly' }));
+        expect(router.post).not.toHaveBeenCalled();
+
+        const dialog = screen.getByRole('dialog', {
+            name: '¿Enviar la weekly sin apuntes?',
+        });
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: 'Enviar weekly' }),
+        );
+        expect(router.post).toHaveBeenCalledWith(
+            '/mi-espacio/weeklies/12/enviar',
+            { entries: [] },
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    it('exento por estar fuera: dice hasta cuándo y no habla en pasado (D-228)', () => {
+        render(
+            <MyWeeklyEditor
+                editor={editor({
+                    me: {
+                        ...me,
+                        status: 'exempt',
+                        must_submit: false,
+                        exemption_reason: 'away',
+                        exemption_until: '2026-10-16',
+                    },
+                    read_only: true,
+                    can: { write: false, waive: true, undo_waiver: false },
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('Estás exento de esta weekly: estás fuera'),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Tu exención está activa hasta el 16/10/2026 (incluido).',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen.queryByText('No escribiste nada en esta weekly.'),
+        ).toBeNull();
+    });
+
     it('exento: aviso con la racha y «Quitar mi exención y escribir» (F-032, F-053 y F-054)', () => {
         render(
             <MyWeeklyEditor

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\WeeklyDraftData;
 use App\Domain\Weeklies\WeeklyRuleViolation;
 use App\Domain\Weeklies\WeeklySubmissionWriter;
@@ -202,11 +203,16 @@ it('enviar redirige a mi weekly con aviso; reenviar avisa distinto (F-052)', fun
     expect(WeeklySubmission::query()->sole()->resubmitted_at)->not->toBeNull();
 });
 
-it('regla 7: sin apuntes con texto no se envía, pero el borrador vacío sí se guarda', function () {
+it('se puede enviar sin apuntes, como en WeeklySync (D-230); el borrador vacío también se guarda', function () {
     $this->actingAs($this->me)
-        ->postJson("/mi-espacio/weeklies/{$this->cycle->id}/enviar", ['entries' => [['client_id' => null, 'body' => '  ']]])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['entries' => __('weeklies.validation.empty_submission')]);
+        ->post("/mi-espacio/weeklies/{$this->cycle->id}/enviar", ['entries' => [['client_id' => null, 'body' => '  ']]])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.message', __('weeklies.flash.submitted'));
+
+    $submission = WeeklySubmission::query()->sole();
+    expect($submission->submitted_at)->not->toBeNull()
+        ->and($submission->entries()->count())->toBe(0)
+        ->and(app(MyWeeklyStatus::class)->pendingCount($this->me))->toBe(0);
 
     $this->actingAs($this->me)
         ->putJson("/mi-espacio/weeklies/{$this->cycle->id}", ['entries' => []])

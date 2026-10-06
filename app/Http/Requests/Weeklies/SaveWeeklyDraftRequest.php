@@ -9,13 +9,12 @@ use App\Models\WeeklySubmission;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 
 /**
  * Mi weekly de una semana (F-044 a F-052): el borrador autoguardado y el envío. Solo la propia
  * persona y con la semana activa (WeeklySubmissionPolicy::create); el resto de reglas (que le toque
- * y no esté exenta) las aplica WeeklySubmissionWriter. Al enviar hace falta al menos un apunte con
- * texto (regla 7 del contrato).
+ * y no esté exenta) las aplica WeeklySubmissionWriter. Se puede enviar sin apuntes, como en
+ * WeeklySync (10.9b, D-230: cambia la regla 7 del contrato); la interfaz pide confirmarlo.
  */
 final class SaveWeeklyDraftRequest extends FormRequest
 {
@@ -46,20 +45,6 @@ final class SaveWeeklyDraftRequest extends FormRequest
     }
 
     /**
-     * @return list<\Closure(Validator): void>
-     */
-    public function after(): array
-    {
-        return [
-            function (Validator $validator): void {
-                if ($this->isSubmit() && ! $validator->errors()->any() && $this->draft()->isEmpty()) {
-                    $validator->errors()->add('entries', __('weeklies.validation.empty_submission'));
-                }
-            },
-        ];
-    }
-
-    /**
      * @return array<string, string>
      */
     public function messages(): array
@@ -78,10 +63,5 @@ final class SaveWeeklyDraftRequest extends FormRequest
         $entries = $this->input('entries', []);
 
         return WeeklyDraftData::fromArray(is_array($entries) ? $entries : []);
-    }
-
-    private function isSubmit(): bool
-    {
-        return $this->routeIs('my-weekly.submit');
     }
 }

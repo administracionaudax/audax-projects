@@ -172,7 +172,6 @@ return [
         'entries' => 'La weekly no tiene un formato válido.',
         'client' => 'Uno de los clientes ya no existe.',
         'body_too_long' => 'Cada apunte puede tener como mucho :max caracteres.',
-        'empty_submission' => 'Escribe algo en al menos un cliente antes de enviar.',
         'person' => 'Elige a una persona que participe en la weekly de esta semana.',
         'note_too_long' => 'La nota puede tener como mucho 500 caracteres.',
         'not_exempt' => 'No estás exento esta semana.',

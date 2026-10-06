@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { weekdayLongLabel } from '@/components/time/week-days';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { PushPrompt } from '@/components/weeklies/push-prompt';
 import {
     Command,
     CommandEmpty,
@@ -620,24 +622,61 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                             />
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                            <Button
-                                type="button"
-                                onClick={submit}
-                                disabled={submitting || dictating}
-                                data-test="weekly-submit"
-                            >
-                                {submitting ? (
-                                    <Loader2
-                                        aria-hidden="true"
-                                        className="animate-spin"
-                                    />
-                                ) : (
-                                    <Send aria-hidden="true" />
-                                )}
-                                {submitted
-                                    ? t('weeklies.editor.update')
-                                    : t('weeklies.editor.submit')}
-                            </Button>
+                            {reportedCount === 0 ? (
+                                <ConfirmDialog
+                                    trigger={
+                                        <Button
+                                            type="button"
+                                            disabled={submitting || dictating}
+                                            data-test="weekly-submit"
+                                        >
+                                            {submitting ? (
+                                                <Loader2
+                                                    aria-hidden="true"
+                                                    className="animate-spin"
+                                                />
+                                            ) : (
+                                                <Send aria-hidden="true" />
+                                            )}
+                                            {submitted
+                                                ? t('weeklies.editor.update')
+                                                : t('weeklies.editor.submit')}
+                                        </Button>
+                                    }
+                                    title={t(
+                                        'weeklies.editor.empty_submit_title',
+                                    )}
+                                    description={t(
+                                        'weeklies.editor.empty_submit_description',
+                                    )}
+                                    confirmLabel={
+                                        submitted
+                                            ? t('weeklies.editor.update')
+                                            : t('weeklies.editor.submit')
+                                    }
+                                    destructive={false}
+                                    onConfirm={submit}
+                                />
+                            ) : (
+                                <Button
+                                    type="button"
+                                    onClick={submit}
+                                    disabled={submitting || dictating}
+                                    data-test="weekly-submit"
+                                >
+                                    {submitting ? (
+                                        <Loader2
+                                            aria-hidden="true"
+                                            className="animate-spin"
+                                        />
+                                    ) : (
+                                        <Send aria-hidden="true" />
+                                    )}
+                                    {submitted
+                                        ? t('weeklies.editor.update')
+                                        : t('weeklies.editor.submit')}
+                                </Button>
+                            )}
                             {dictating ? (
                                 <span className="text-xs text-muted-foreground">
                                     {t('weeklies.editor.wait_dictation')}
@@ -647,6 +686,8 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                     </div>
                 </div>
             ) : null}
+
+            {submitted ? <PushPrompt /> : null}
 
             {submitted && submission?.submitted_at ? (
                 <p className="text-xs text-muted-foreground">
