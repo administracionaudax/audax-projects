@@ -257,7 +257,7 @@ export default function ForecastIndex({
                                     por: months > 3 ? 'meses' : 'semanas',
                                 });
                             }}
-                            className="w-32 [&_select]:border-0"
+                            className="h-full w-32 [&_select]:h-full [&_select]:border-0 [&_select]:bg-transparent"
                         >
                             {HORIZONS.map((months) => (
                                 <option key={months} value={months}>
@@ -301,7 +301,7 @@ export default function ForecastIndex({
                             onChange={(event) =>
                                 visit({ departamento: event.target.value })
                             }
-                            className="w-40 [&_select]:border-0"
+                            className="h-full w-40 [&_select]:h-full [&_select]:border-0 [&_select]:bg-transparent"
                         >
                             <option value="">
                                 {t('forecast.filters.all')}
