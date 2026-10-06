@@ -101,6 +101,20 @@ describe('/admin/plantillas', SLOW, () => {
         ...overrides,
     });
 
+    it('en la papelera no ofrece «Quitar filtros» por un estado que no se aplica (D-310)', () => {
+        render(
+            <TemplatesIndex
+                {...props({
+                    filters: { q: '', estado: 'inactivas', papelera: true },
+                })}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: /Quitar filtros/ }),
+        ).toBeNull();
+    });
+
     it('lista las plantillas con sus cifras y su estado con texto', () => {
         render(<TemplatesIndex {...props()} />);
 

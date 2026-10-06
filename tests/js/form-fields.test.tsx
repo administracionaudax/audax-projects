@@ -103,4 +103,42 @@ describe('campos con aspecto de campo', () => {
 
         expect(offenders).toEqual([]);
     });
+
+    it('las acciones del plan del día no pierden los errores del servidor', () => {
+        // Bolsa de errores `dayPlan` sin onError: la casilla volvía atrás sin decir nada (D-310).
+        const offenders: string[] = [];
+
+        for (const file of sources(ROOT)) {
+            const lines = readFileSync(file, 'utf8').split('\n');
+
+            lines.forEach((line, index) => {
+                if (!line.includes("errorBag: 'dayPlan'")) {
+                    return;
+                }
+
+                // Hasta el cierre del objeto de opciones (la primera línea menos sangrada).
+                const indent = line.length - line.trimStart().length;
+                let handled = false;
+
+                for (let next = index + 1; next < lines.length; next++) {
+                    const other = lines[next];
+
+                    if (
+                        other.trim() !== '' &&
+                        other.length - other.trimStart().length < indent
+                    ) {
+                        break;
+                    }
+
+                    handled ||= other.includes('onError');
+                }
+
+                if (!handled) {
+                    offenders.push(`${relative(ROOT, file)}:${index + 1}`);
+                }
+            });
+        }
+
+        expect(offenders).toEqual([]);
+    });
 });
