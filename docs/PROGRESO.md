@@ -146,6 +146,9 @@ Nivel 1 de `docs/PLAN-CARGAS.md` (entregas C1 a C3, D-250 a D-256), con las resp
 - **RGPD:** exportación de datos personales, retención (12 meses) y auditoría. **Pendiente del propietario:** que el asesor revise los párrafos del plan del día en el texto RGPD (D-256).
 - **Tests:** Pest (`tests/Feature/DayPlan`), Vitest (`tests/js/day-plan-*`) y E2E (`tests/e2e/day-plan.spec.ts`).
 
+### Facturación: investigación (rama `investigacion-facturacion`, 06/10, solo documentación)
+Inventario de Holded (`docs/HOLDED-INVENTARIO.md`, H-001 a H-146) y propuesta con el estado legal, el encaje, la migración y las entregas F0 a F8 (`docs/PLAN-FACTURACION.md`). **Pendiente del propietario:** preguntas P1 a P8 del plan. VeriFactu: el aplazamiento a octubre de 2028 es un anuncio del 05/10/2026, sin norma en el BOE; la fecha legal sigue siendo el 01/01/2027.
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.
