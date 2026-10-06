@@ -121,7 +121,7 @@ it('/proyectos/{id}/planificacion: plan, imputado, restante, semanas y el previs
             ->where('forecast.id', $this->forecast->id)
             ->where('can.manage', true)
             ->has('weeks')
-            ->where('weeks.0', ['key' => '2026-W44', 'from' => '2026-10-26', 'to' => '2026-11-01', 'planned' => 0, 'logged' => 0])
+            ->where('weeks.0', ['key' => '2026-W44', 'from' => '2026-10-26', 'to' => '2026-11-01', 'planned' => 0, 'logged' => 0, 'missing' => []])
             ->where('weeks.1.logged', 600)
             ->where('totals.logged_minutes', 600)
             ->loadDeferredProps('analysis', fn (Assert $reload) => $reload->where('estimate.totals.actual', 600)));

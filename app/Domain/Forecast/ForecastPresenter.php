@@ -2,6 +2,7 @@
 
 namespace App\Domain\Forecast;
 
+use App\Domain\Audit\AuditValues;
 use App\Domain\Time\CapacityPlan;
 use App\Enums\ForecastStatus;
 use App\Http\Resources\Forecast\AllocationResource;
@@ -18,6 +19,7 @@ use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Spatie\Activitylog\Models\Activity;
 
 /**
  * Datos de las páginas de la previsión (contrato: resources/js/types/forecast.ts): la lista y la
@@ -107,7 +109,7 @@ final class ForecastPresenter
      * en el proyecto dentro del rango) y lo que queda desde hoy, y «plan frente a imputado» por
      * semana del proyecto.
      *
-     * @return array{allocations: list<array<array-key, mixed>>, months: list<string>, weeks: list<array{key: string, from: string, to: string, planned: int, logged: int}>, totals: array{planned_minutes: int, logged_minutes: int, remaining_minutes: int}}
+     * @return array{allocations: list<array<array-key, mixed>>, months: list<string>, weeks: list<array{key: string, from: string, to: string, planned: int, logged: int, missing: list<string>}>, totals: array{planned_minutes: int, planned_to_date_minutes: int, logged_minutes: int, remaining_minutes: int}}
      */
     public function planning(User $viewer, Project $project): array
     {
@@ -142,9 +144,18 @@ final class ForecastPresenter
                 }
             }
 
+            $toDate = 0;
+            foreach ($plan->days[$allocation->id] ?? [] as $day => $minutes) {
+                if ($day < $today) {
+                    $toDate += $minutes;
+                }
+            }
+
             $figures[$allocation->id] = [
                 'logged_minutes' => $logged,
                 'remaining_minutes' => array_sum($forward->days[$allocation->id] ?? []),
+                // Plan hasta hoy (D-296): lo que ya debería estar hecho, para la desviación.
+                'planned_to_date_minutes' => $toDate,
                 'overdue' => in_array($allocation->id, $forward->overdue, true),
             ];
         }
@@ -154,13 +165,75 @@ final class ForecastPresenter
         return [
             'allocations' => $rows,
             'months' => $months,
-            'weeks' => $this->weeks($allocations, $plan, $byDay, $horizon),
+            'weeks' => $this->weeks($allocations, $plan, $byDay, $horizon, $entries, $today),
             'totals' => [
                 'planned_minutes' => $total,
+                'planned_to_date_minutes' => (int) array_sum(array_column($figures, 'planned_to_date_minutes')),
                 'logged_minutes' => (int) array_sum(array_map(fn (array $figure): int => (int) $figure['logged_minutes'], $figures)),
                 'remaining_minutes' => (int) array_sum(array_column($figures, 'remaining_minutes')),
             ],
         ];
+    }
+
+    /** Entradas como mucho del historial de la ficha. */
+    public const int HISTORY_LIMIT = 30;
+
+    /** Campos del historial que no se nombran (ruido técnico o la foto de la línea base). */
+    private const array HISTORY_HIDDEN = ['id', 'created_at', 'updated_at', 'deleted_at', 'baseline', 'forecast_project_id', 'project_id', 'created_by', 'copied_from_allocation_id'];
+
+    /**
+     * Historial de un previsto (D-307): sus cambios y los de sus asignaciones, de la auditoría
+     * (LogsDomainActivity), del más reciente al más antiguo. Solo los nombres de los campos
+     * cambiados, nunca sus valores; el importe estimado ni se nombra sin view-financials.
+     *
+     * @return list<array{id: int, at: string|null, causer: string|null, subject: string, event: string, who: string|null, fields: list<string>}>
+     */
+    public function history(User $viewer, ForecastProject $forecast): array
+    {
+        $allocations = Allocation::withTrashed()
+            ->where('forecast_project_id', $forecast->id)
+            ->with(['user:id,name', 'department:id,name'])
+            ->get(['id', 'user_id', 'department_id', 'forecast_project_id']);
+        $who = [];
+        foreach ($allocations as $allocation) {
+            $gap = $allocation->department === null ? null : __('forecast.history.gap', ['department' => $allocation->department->name]);
+            $who[$allocation->id] = $allocation->user !== null ? $allocation->user->name : (is_string($gap) ? $gap : null);
+        }
+
+        $forecastType = $forecast->getMorphClass();
+        $allocationType = (new Allocation)->getMorphClass();
+        $financials = $viewer->can('view-financials');
+        $labels = app(AuditValues::class);
+
+        return array_values(Activity::query()
+            ->where(fn (Builder $query) => $query
+                ->where(fn (Builder $own) => $own->where('subject_type', $forecastType)->where('subject_id', $forecast->id))
+                ->orWhere(fn (Builder $children) => $children->where('subject_type', $allocationType)->whereIn('subject_id', array_keys($who) === [] ? [0] : array_keys($who))))
+            ->with('causer')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(self::HISTORY_LIMIT)
+            ->get()
+            ->map(function (Activity $activity) use ($forecastType, $who, $financials, $labels): array {
+                $changes = $activity->attribute_changes?->toArray() ?? [];
+                $fields = array_keys(is_array($changes['attributes'] ?? null) ? $changes['attributes'] : []);
+                $fields = array_values(array_filter($fields, fn (string $field): bool => ! in_array($field, self::HISTORY_HIDDEN, true)
+                    && ($financials || $field !== 'estimated_amount')));
+                $isForecast = $activity->subject_type === $forecastType;
+                $causer = $activity->causer;
+
+                return [
+                    'id' => (int) $activity->id,
+                    'at' => $activity->created_at?->toIso8601String(),
+                    'causer' => $causer instanceof User ? $causer->name : null,
+                    'subject' => $isForecast ? 'forecast' : 'allocation',
+                    'event' => (string) $activity->event,
+                    'who' => $isForecast ? null : ($who[(int) $activity->subject_id] ?? null),
+                    'fields' => $activity->event === 'updated'
+                        ? array_values(array_unique(array_map(fn (string $field): string => $labels->label($field, $activity->log_name), $fields)))
+                        : [],
+                ];
+            })->all());
     }
 
     /**
@@ -268,9 +341,10 @@ final class ForecastPresenter
      *
      * @param  Collection<int, Allocation>  $allocations
      * @param  array<int, int>  $logged  día → minutos imputados en el proyecto
-     * @return list<array{key: string, from: string, to: string, planned: int, logged: int}>
+     * @param  array<int, array<int, int>>  $byUser  persona → día → minutos imputados
+     * @return list<array{key: string, from: string, to: string, planned: int, logged: int, missing: list<string>}>
      */
-    private function weeks(Collection $allocations, AllocationPlan $plan, array $logged, int $horizon): array
+    private function weeks(Collection $allocations, AllocationPlan $plan, array $logged, int $horizon, array $byUser = [], ?int $today = null): array
     {
         if ($allocations->isEmpty()) {
             return [];
@@ -291,13 +365,32 @@ final class ForecastPresenter
         $planned = [];
         $done = [];
 
-        foreach ($plan->days as $days) {
+        $users = $allocations->keyBy('id');
+        /** @var array<int, array<int, true>> $plannedBy semana → personas con plan */
+        $plannedBy = [];
+        foreach ($plan->days as $allocationId => $days) {
+            $userId = $users->get($allocationId)?->user_id;
             foreach ($days as $day => $minutes) {
                 if (isset($map[$day])) {
                     $planned[$map[$day]] = ($planned[$map[$day]] ?? 0) + $minutes;
+
+                    if ($userId !== null && $minutes > 0) {
+                        $plannedBy[$map[$day]][$userId] = true;
+                    }
                 }
             }
         }
+
+        // Quién tenía plan una semana ya pasada y no imputó nada en el proyecto (D-296).
+        $loggedBy = [];
+        foreach ($byUser as $userId => $days) {
+            foreach ($days as $day => $minutes) {
+                if (isset($map[$day]) && $minutes > 0) {
+                    $loggedBy[$map[$day]][$userId] = true;
+                }
+            }
+        }
+        $names = $allocations->pluck('user.name', 'user_id')->filter()->all();
 
         foreach ($logged as $day => $minutes) {
             if (isset($map[$day])) {
@@ -307,7 +400,17 @@ final class ForecastPresenter
 
         $weeks = [];
         foreach ($period->buckets() as $index => $bucket) {
-            $weeks[] = [...$bucket, 'planned' => $planned[$index] ?? 0, 'logged' => $done[$index] ?? 0];
+            $missing = [];
+            if ($today !== null && CapacityPlan::day($bucket['to']) < $today) {
+                foreach (array_keys($plannedBy[$index] ?? []) as $userId) {
+                    if (! isset($loggedBy[$index][$userId]) && isset($names[$userId])) {
+                        $missing[] = (string) $names[$userId];
+                    }
+                }
+                sort($missing);
+            }
+
+            $weeks[] = [...$bucket, 'planned' => $planned[$index] ?? 0, 'logged' => $done[$index] ?? 0, 'missing' => $missing];
         }
 
         return $weeks;

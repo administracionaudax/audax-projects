@@ -190,16 +190,17 @@ test('los datos de ejemplo traen la Weekly: las tres semanas anteriores cerradas
         ->and(WeeklyReminderRule::query()->orderBy('position')->get()->map(fn (WeeklyReminderRule $rule): string => "{$rule->channel->value} {$rule->day_of_week} {$rule->time}")->all())->toBe(['app 4 10:00', 'email 5 16:00']);
 });
 
-test('los datos de ejemplo traen la previsión: asignaciones reales y cuatro previstos, uno vinculado con su línea base (D-280)', function () {
+test('los datos de ejemplo traen la previsión: asignaciones reales, de la colaboradora y seis previstos, uno vinculado con su línea base (D-280 y D-300)', function () {
     $this->seed(DatabaseSeeder::class);
 
     $statuses = ForecastProject::query()->orderBy('id')->get()->map(fn (ForecastProject $forecast): string => "{$forecast->status->value} {$forecast->confidence->value}")->all();
     $linked = ForecastProject::query()->where('status', 'linked')->sole();
 
-    expect($statuses)->toBe(['open tentative', 'open firm', 'linked firm', 'lost tentative'])
+    expect($statuses)->toBe(['open tentative', 'open firm', 'linked firm', 'lost tentative', 'open firm', 'open tentative'])
         ->and($linked->project?->code)->toBe('SON-APP')
         ->and($linked->baseline['allocated_minutes'] ?? 0)->toBeGreaterThan(0)
-        ->and(Allocation::query()->whereNotNull('project_id')->whereNull('copied_from_allocation_id')->count())->toBe(5)
+        ->and(Allocation::query()->whereNotNull('project_id')->whereNull('copied_from_allocation_id')->count())->toBe(15)
+        ->and(Allocation::query()->whereHas('user', fn ($user) => $user->where('email', DemoDataSeeder::COLLABORATOR_EMAIL))->count())->toBe(1)
         ->and(Allocation::query()->whereNotNull('copied_from_allocation_id')->count())->toBe(2)
         ->and(Allocation::query()->whereNull('user_id')->where('mode', 'monthly')->whereNull('end_date')->count())->toBe(1);
 });

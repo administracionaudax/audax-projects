@@ -17,6 +17,7 @@ import {
     UserCog,
     Sun,
     ClipboardCheck,
+    TrendingUp,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ import { index as calendarIndex } from '@/routes/calendar';
 import { index as chatIndex } from '@/routes/chat';
 import { index as clientsIndex } from '@/routes/clients';
 import { show as dayPlanShow } from '@/routes/day-plan';
+import { index as forecastIndex } from '@/routes/forecast';
 import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import { index as teamIndex } from '@/routes/team';
@@ -88,7 +90,7 @@ export function pinnedNavItems(
 /**
  * Sección «Proyectos» (D-260): la gestión de proyectos en el orden del SPEC §3. El calendario del
  * equipo va tras Mis tareas (D-144). Bolsas depende de `auth.can.viewHourBanks` (responsables y
- * gestores); Clientes, Carga e Informes no aparecen a un colaborador externo (D-134), que solo
+ * gestores); la Previsión, con `auth.can.viewForecast` (D-306); Clientes, Carga e Informes no aparecen a un colaborador externo (D-134), que solo
  * tiene Mis tareas, Calendario, Proyectos y Horas. El servidor vuelve a comprobarlo en la ruta.
  */
 export function projectsNavItems(can: Abilities): NavItem[] {
@@ -117,6 +119,12 @@ export function projectsNavItems(can: Abilities): NavItem[] {
             title: t('nav.workload'),
             href: workloadIndex(),
             icon: CalendarRange,
+        },
+        // Previsión (D-306): la global, con el módulo `forecast` visible y view-forecast.
+        can.viewForecast === true && {
+            title: t('forecast.title'),
+            href: forecastIndex(),
+            icon: TrendingUp,
         },
         can.viewReports && {
             title: t('nav.reports'),

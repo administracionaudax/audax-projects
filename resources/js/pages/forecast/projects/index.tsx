@@ -1,119 +1,155 @@
-import { Head, Link } from '@inertiajs/react';
-import { formatDate, formatMinutes } from '@/lib/format';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { CalendarClock, FolderSearch, Plus, TriangleAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { EmptyState } from '@/components/empty-state';
+import { ForecastProjectDialog } from '@/components/forecast/forecast-project-dialog';
+import { LayerBadge } from '@/components/forecast/layer-badge';
+import { KeywordText } from '@/components/keyword-text';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { dateRange, formatHours } from '@/lib/forecast';
 import { t } from '@/lib/i18n';
 import { index as boardIndex } from '@/routes/forecast';
 import { index, show } from '@/routes/forecast/projects';
-import type {
-    ForecastListFilter,
-    ForecastProjectsPageProps,
-} from '@/types/forecast';
+import type { ForecastListFilter, ForecastProject, ForecastProjectsPageProps } from '@/types/forecast';
 
 const FILTERS: ForecastListFilter[] = ['active', 'lost', 'linked', 'all'];
 
+function wantsNew(url: string): boolean {
+    return new URL(url, 'http://localhost').searchParams.get('nuevo') === '1';
+}
+
+/** Estado del previsto en una línea: «Abierto», «Perdido · Precio», «Vinculado a ARR-WEB». */
+function statusLine(forecast: ForecastProject): string {
+    if (forecast.status === 'linked' && forecast.project) {
+        return t('forecast.show.linked_to', { project: forecast.project.code });
+    }
+
+    if (forecast.status === 'lost' && forecast.lost_reason) {
+        return `${t('forecast.status.lost')} · ${forecast.lost_reason}`;
+    }
+
+    return t(`forecast.status.${forecast.status}`);
+}
+
 /**
- * Proyectos previstos (`/prevision/proyectos`, D-281). PROVISIONAL: una tabla con los datos del
- * contrato (ForecastProjectsPageProps).
+ * Proyectos previstos (`/prevision/proyectos`, D-281 y D-302): abiertos y confirmados por defecto,
+ * perdidos, vinculados o todos; cada uno con su seguridad (con la trama si es posible), fechas, lo
+ * asignado frente a la estimación y su estado. «Nuevo proyecto previsto» abre el formulario (también
+ * con ?nuevo=1, desde /prevision).
  */
-export default function ForecastProjectsIndex({
-    projects,
-}: ForecastProjectsPageProps) {
-    const title = t('forecast.nav.projects');
+export default function ForecastProjectsIndex({ projects, filters, clients, can }: ForecastProjectsPageProps) {
+    const page = usePage();
+    const [creating, setCreating] = useState(() => can.create && wantsNew(page.url));
+
+    useEffect(() => {
+        if (wantsNew(page.url)) {
+            router.replace({ url: index.url({ query: { estado: filters.status === 'active' ? undefined : filters.status } }), preserveState: true, preserveScroll: true });
+        }
+    }, [page.url, filters.status]);
 
     return (
         <>
-            <Head title={title} />
-            <div className="flex w-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <header className="space-y-1">
-                    <h1 className="text-2xl font-normal tracking-tight">
-                        {title}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {t('forecast.provisional')}
-                    </p>
-                    <nav className="flex flex-wrap gap-4 text-sm">
-                        {FILTERS.map((filter) => (
-                            <Link
-                                key={filter}
-                                href={index.url({ query: { estado: filter } })}
-                            >
-                                {t(`forecast.filters.${filter}`)}
-                            </Link>
-                        ))}
-                        <Link href={boardIndex.url()}>
-                            {t('forecast.nav.board')}
-                        </Link>
-                    </nav>
+            <Head title={t('forecast.nav.projects')} />
+            <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
+                <header className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="max-w-2xl space-y-1">
+                        <h1 className="text-2xl font-normal tracking-tight">
+                            <KeywordText text={t('forecast.list.title')} />
+                        </h1>
+                        <p className="text-sm text-muted-foreground">{t('forecast.list.description')}</p>
+                    </div>
+                    {can.create ? (
+                        <ForecastProjectDialog
+                            clients={clients}
+                            open={creating}
+                            onOpenChange={setCreating}
+                            trigger={
+                                <Button type="button">
+                                    <Plus aria-hidden="true" />
+                                    {t('forecast.index.new')}
+                                </Button>
+                            }
+                        />
+                    ) : null}
                 </header>
 
+                <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    value={filters.status}
+                    onValueChange={(value) =>
+                        value ? router.visit(index.url({ query: value === 'active' ? {} : { estado: value } }), { preserveScroll: true }) : null
+                    }
+                    aria-label={t('forecast.list.filter')}
+                    className="flex-wrap justify-start"
+                >
+                    {FILTERS.map((filter) => (
+                        <ToggleGroupItem key={filter} value={filter} className="px-3">
+                            {t(`forecast.filters.${filter}`)}
+                        </ToggleGroupItem>
+                    ))}
+                </ToggleGroup>
+
                 {projects.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        {t('forecast.list.empty')}
-                    </p>
+                    <EmptyState icon={FolderSearch} title={t('forecast.list.empty')} />
                 ) : (
-                    <table className="text-sm">
-                        <thead>
-                            <tr>
-                                <th className="px-2 py-1 text-left font-normal">
-                                    {t('forecast.list.name')}
-                                </th>
-                                <th className="px-2 py-1 text-left font-normal">
-                                    {t('forecast.list.client')}
-                                </th>
-                                <th className="px-2 py-1 text-left font-normal">
-                                    {t('forecast.list.confidence')}
-                                </th>
-                                <th className="px-2 py-1 text-left font-normal">
-                                    {t('forecast.list.dates')}
-                                </th>
-                                <th className="px-2 py-1 text-right font-normal">
-                                    {t('forecast.list.hours')}
-                                </th>
-                                <th className="px-2 py-1 text-left font-normal">
-                                    {t('forecast.list.status')}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {projects.map((project) => (
-                                <tr key={project.id}>
-                                    <td className="px-2 py-1">
-                                        <Link href={show.url(project.id)}>
-                                            {project.name}
-                                        </Link>
-                                    </td>
-                                    <td className="px-2 py-1">
-                                        {project.client
-                                            ? project.client.name
-                                            : t('forecast.list.new_client', {
-                                                  name:
-                                                      project.prospect_name ??
-                                                      '',
-                                              })}
-                                    </td>
-                                    <td className="px-2 py-1">
-                                        {t(
-                                            `forecast.confidence.${project.confidence}`,
-                                        )}
-                                    </td>
-                                    <td className="px-2 py-1">
-                                        {formatDate(project.start_date)} –{' '}
-                                        {formatDate(project.end_date)}
-                                    </td>
-                                    <td className="px-2 py-1 text-right tabular-nums">
-                                        {formatMinutes(
-                                            project.allocated_minutes ?? 0,
-                                        )}
-                                    </td>
-                                    <td className="px-2 py-1">
-                                        {t(`forecast.status.${project.status}`)}
-                                        {project.project
-                                            ? ` → ${project.project.code}`
-                                            : ''}
-                                    </td>
+                    <div className="overflow-x-auto border bg-card">
+                        <table className="w-full text-sm" data-test="forecast-projects-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.name')}</th>
+                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.confidence')}</th>
+                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.dates')}</th>
+                                    <th scope="col" className="px-3 py-2 text-right">{t('forecast.list.hours')}</th>
+                                    <th scope="col" className="px-3 py-2 text-left">{t('forecast.list.status')}</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {projects.map((forecast) => {
+                                    const over =
+                                        forecast.estimated_minutes !== null &&
+                                        (forecast.allocated_minutes ?? 0) > forecast.estimated_minutes;
+
+                                    return (
+                                        <tr key={forecast.id} className="border-b last:border-0" data-test="forecast-project-row">
+                                            <td className="px-3 py-2.5 align-top">
+                                                <Link href={show.url(forecast.id)} className="text-primary-text hover:underline">
+                                                    {forecast.name}
+                                                </Link>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {forecast.client_name ?? '—'}
+                                                    {forecast.client === null && forecast.prospect_name ? ` · ${t('forecast.badge.new_client')}` : ''}
+                                                </p>
+                                            </td>
+                                            <td className="px-3 py-2.5 align-top">
+                                                <LayerBadge layer={forecast.confidence === 'firm' ? 'firm' : 'tentative'} />
+                                            </td>
+                                            <td className="tabular px-3 py-2.5 align-top whitespace-nowrap">
+                                                {forecast.start_date ? dateRange(forecast.start_date, forecast.end_date) : t('forecast.dates.none')}
+                                                {forecast.starts_in_past ? (
+                                                    <p className="flex items-center gap-1 text-xs">
+                                                        <CalendarClock aria-hidden="true" className="size-3 text-warning" />
+                                                        {t('forecast.list.starts_in_past')}
+                                                    </p>
+                                                ) : null}
+                                            </td>
+                                            <td className="tabular px-3 py-2.5 text-right align-top whitespace-nowrap">
+                                                {formatHours(forecast.allocated_minutes ?? 0)}
+                                                {forecast.estimated_minutes !== null ? (
+                                                    <p className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                                                        {over ? <TriangleAlert aria-hidden="true" className="size-3 text-warning" /> : null}
+                                                        {t('forecast.list.of_estimate', { hours: formatHours(forecast.estimated_minutes) })}
+                                                    </p>
+                                                ) : null}
+                                            </td>
+                                            <td className="px-3 py-2.5 align-top">{statusLine(forecast)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </>

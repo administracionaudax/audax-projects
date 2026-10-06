@@ -46,6 +46,7 @@ class AllocationResource extends JsonResource
             'months' => (object) ($this->figures['months'] ?? []),
             'logged_minutes' => $this->figures['logged_minutes'] ?? null,
             'remaining_minutes' => $this->figures['remaining_minutes'] ?? null,
+            'planned_to_date_minutes' => $this->figures['planned_to_date_minutes'] ?? null,
             'overdue' => (bool) ($this->figures['overdue'] ?? false),
             'unscheduled' => (bool) ($this->figures['unscheduled'] ?? false),
             'can' => $this->can,

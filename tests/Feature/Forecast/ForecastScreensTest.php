@@ -1,13 +1,19 @@
 <?php
 
+use App\Domain\Forecast\AllocationWriter;
 use App\Domain\Forecast\ForecastPeriod;
+use App\Domain\Forecast\ForecastPresenter;
+use App\Domain\Forecast\ForecastProjectWriter;
 use App\Domain\Forecast\LoadCombiner;
 use App\Models\Absence;
 use App\Models\Allocation;
+use App\Models\Client;
 use App\Models\Department;
 use App\Models\ForecastProject;
 use App\Models\Holiday;
 use App\Models\Project;
+use App\Models\Task;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
@@ -216,5 +222,68 @@ describe('barra lateral y búsqueda (D-306)', function () {
 
         enableForecast(false);
         expect($titles($this->manager, 'primavera'))->not->toContain('Campaña de primavera');
+    });
+});
+
+describe('Planificación y ficha (D-296 y D-307)', function () {
+    it('el plan hasta hoy de cada asignación y quién no imputó una semana pasada con plan', function () {
+        $this->travelTo(CarbonImmutable::parse('2026-11-18 09:00:00', 'Europe/Madrid'));
+        $task = Task::factory()->create(['project_id' => $this->project->id]);
+        Allocation::factory()->forProject($this->project)->forUser($this->ana)->perDay(240)->between('2026-11-02', '2026-11-27')->create();
+        Allocation::factory()->forProject($this->project)->forUser($this->marta)->perDay(120)->between('2026-11-02', '2026-11-27')->create();
+        TimeEntry::factory()->forTask($task)->on('2026-11-03')->minutes(300)->create(['user_id' => $this->ana->id]);
+
+        $this->actingAs($this->manager)->get("/proyectos/{$this->project->id}/planificacion")
+            ->assertInertia(fn (Assert $page) => $page
+                // 12 días laborables antes del 18: 12 × 240.
+                ->where('allocations.0.planned_to_date_minutes', 12 * 240)
+                ->where('totals.planned_to_date_minutes', 12 * 360)
+                ->where('weeks.0.key', '2026-W45')
+                ->where('weeks.0.missing', ['Marta'])
+                ->where('weeks.1.missing', ['Ana', 'Marta'])
+                ->where('weeks.2.missing', []));
+    });
+
+    it('el historial: los cambios del previsto y de sus asignaciones, sin el importe para quien no lo ve', function () {
+        $forecast = app(ForecastProjectWriter::class)->create(['name' => 'Web', 'prospect_name' => 'Hotel', 'estimated_amount' => '1000'], $this->manager);
+        app(AllocationWriter::class)->create($forecast, ['user_id' => $this->ana->id, 'mode' => 'total', 'minutes' => 600, 'start_date' => '2026-11-02', 'end_date' => '2026-11-06'], $this->manager);
+        app(ForecastProjectWriter::class)->update($forecast, ['name' => 'Web nueva', 'estimated_amount' => '2000'], $this->manager);
+
+        $history = app(ForecastPresenter::class)->history($this->manager, $forecast->fresh());
+
+        expect(collect($history)->pluck('event')->all())->toContain('created', 'updated')
+            ->and(collect($history)->firstWhere('subject', 'allocation'))->toMatchArray(['event' => 'created', 'who' => 'Ana'])
+            ->and(collect($history)->firstWhere('event', 'updated')['fields'])->not->toContain('Importe estimado');
+    });
+});
+
+describe('crear el proyecto real de un cliente nuevo (D-308)', function () {
+    it('crea primero el cliente con el nombre libre y vincula', function () {
+        $forecast = ForecastProject::factory()->create(['client_id' => null, 'prospect_name' => 'Hotel Mar Azul', 'owner_user_id' => $this->manager->id]);
+        Allocation::factory()->forForecast($forecast)->forUser($this->ana)->total(600)->between('2026-11-02', '2026-11-06')->create();
+
+        $this->actingAs($this->manager)->post("/prevision/proyectos/{$forecast->id}/crear-proyecto", [
+            'create_client' => true, 'name' => 'Web y branding', 'color' => '#0171FF', 'billing_type' => 'time_and_materials', 'status' => 'planned',
+        ])->assertRedirect();
+
+        $client = Client::query()->where('name', 'Hotel Mar Azul')->sole();
+        $forecast->refresh();
+
+        expect($forecast->status->value)->toBe('linked')
+            ->and($forecast->client_id)->toBe($client->id)
+            ->and($forecast->prospect_name)->toBeNull()
+            ->and($forecast->project?->client_id)->toBe($client->id)
+            ->and($forecast->project?->hasMember($this->ana))->toBeTrue();
+    });
+
+    it('no si ya hay un cliente con ese nombre, ni si el previsto ya tiene cliente', function () {
+        Client::factory()->create(['name' => 'Hotel Mar Azul']);
+        $forecast = ForecastProject::factory()->create(['client_id' => null, 'prospect_name' => 'Hotel Mar Azul', 'owner_user_id' => $this->manager->id]);
+        $data = ['create_client' => true, 'name' => 'Web', 'color' => '#0171FF', 'billing_type' => 'time_and_materials', 'status' => 'planned'];
+
+        $this->actingAs($this->manager)->post("/prevision/proyectos/{$forecast->id}/crear-proyecto", $data)->assertSessionHasErrors('create_client');
+
+        $withClient = ForecastProject::factory()->create(['client_id' => Client::factory()->create()->id, 'prospect_name' => null, 'owner_user_id' => $this->manager->id]);
+        $this->actingAs($this->manager)->post("/prevision/proyectos/{$withClient->id}/crear-proyecto", $data)->assertSessionHasErrors('create_client');
     });
 });

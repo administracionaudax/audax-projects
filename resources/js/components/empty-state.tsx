@@ -86,11 +86,14 @@ export function HeroEmptyState({
     phase,
     children,
     className,
+    titleAs: Title = 'h1',
 }: {
     icon?: LucideIcon;
     eyebrow?: string;
     /** Admite palabras clave con [[…]]. */
     title: string;
+    /** Nivel del título: h1 si es la página entera; h2 si va dentro de una página con su h1. */
+    titleAs?: 'h1' | 'h2';
     description?: string;
     phase?: Phase;
     children?: ReactNode;
@@ -118,12 +121,12 @@ export function HeroEmptyState({
                         {eyebrow}
                     </p>
                 )}
-                <h1 className="text-3xl leading-tight font-normal text-balance sm:text-4xl">
+                <Title className="text-3xl leading-tight font-normal text-balance sm:text-4xl">
                     <KeywordText
                         text={title}
                         keywordClassName="text-on-gradient-keyword"
                     />
-                </h1>
+                </Title>
                 {description && (
                     <p className="max-w-xl text-base text-on-gradient-muted">
                         {description}

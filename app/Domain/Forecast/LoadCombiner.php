@@ -52,7 +52,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
  *
  * @phpstan-type Cell array{capacity: int, real: int, firm: int, tentative: int}
  * @phpstan-type Layers array{real: int, firm: int, tentative: int}
- * @phpstan-type Source array{allocation_id: int, layer: string, user_id: int|null, department_id: int|null, mode: string, project: array{id: int, code: string, name: string, color: string}|null, forecast: array{id: int, name: string, color: string}|null, minutes: list<int>}
+ * @phpstan-type Source array{allocation_id: int, layer: string, user_id: int|null, department_id: int|null, mode: string, project: array{id: int, code: string, name: string, color: string}|null, forecast: array{id: int, name: string, color: string}|null, client_name: string|null, minutes: list<int>}
  * @phpstan-type Absences array{days: int, partial: bool, type: string|null}
  * @phpstan-type Person array{id: int, name: string, department_id: int|null, avatar: string|null, collaborator: bool, has_schedule: bool, weekly_minutes: int, cells: list<Cell>, absences: list<Absences|null>}
  * @phpstan-type Board array{
@@ -458,8 +458,10 @@ final class LoadCombiner
                 ->whereIn('user_id', $userIds)
                 ->when(! isset($options['user_ids']), fn (Builder $gaps) => $gaps->orWhereIn('department_id', $departmentIds)))
             ->with([
-                'project:id,name,code,color,status',
-                'forecastProject:id,name,color,confidence,status',
+                'project:id,name,code,color,status,client_id',
+                'project.client:id,name',
+                'forecastProject:id,name,color,confidence,status,client_id,prospect_name',
+                'forecastProject.client:id,name',
             ])
             ->orderBy('id')
             ->get()
@@ -519,6 +521,8 @@ final class LoadCombiner
                 'name' => $allocation->forecastProject->name,
                 'color' => $allocation->forecastProject->color,
             ],
+            // El cliente, para el tooltip («24 h · Kiwi · App fase 2»).
+            'client_name' => $allocation->project !== null ? $allocation->project->client?->name : $allocation->forecastProject?->clientName(),
             'minutes' => $minutes,
         ];
     }

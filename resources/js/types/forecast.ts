@@ -36,8 +36,33 @@ export type LoadSource = {
     mode: AllocationMode;
     project: { id: number; code: string; name: string; color: string } | null;
     forecast: { id: number; name: string; color: string } | null;
+    client_name: string | null;
     /** Minutos por columna, en el orden de `buckets`. */
     minutes: number[];
+};
+
+/** Días de ausencia aprobada de una persona en una columna (D-301); el tipo, solo si puede verlo. */
+export type ForecastAbsence = {
+    days: number;
+    partial: boolean;
+    type: string | null;
+};
+
+export type ForecastHoliday = { date: string; name: string };
+
+export type ForecastPerson = {
+    id: number;
+    name: string;
+    department_id: number | null;
+    avatar: string | null;
+    /** Colaborador externo (D-300): aparte y sin sumar a su departamento. */
+    collaborator: boolean;
+    /** Un colaborador sin jornada no tiene capacidad («sin jornada»). */
+    has_schedule: boolean;
+    /** Jornada semanal de hoy, en minutos. */
+    weekly_minutes: number;
+    cells: LoadCell[];
+    absences: (ForecastAbsence | null)[];
 };
 
 export type ForecastBoard = {
@@ -50,12 +75,9 @@ export type ForecastBoard = {
         counts_from: string;
     };
     buckets: ForecastBucket[];
-    people: {
-        id: number;
-        name: string;
-        department_id: number | null;
-        cells: LoadCell[];
-    }[];
+    /** Festivos de cada columna, de hoy en adelante. */
+    holidays: ForecastHoliday[][];
+    people: ForecastPerson[];
     /** Capacidad = suma de su plantilla activa; la carga incluye sus huecos (también en `gaps`). `id` null = sin departamento. */
     departments: {
         id: number | null;
@@ -99,6 +121,8 @@ export type Allocation = {
     logged_minutes: number | null;
     /** Solo en proyectos reales: lo que cuenta en la carga de hoy en adelante. */
     remaining_minutes: number | null;
+    /** Solo en proyectos reales: el plan de los días ya pasados (D-296). */
+    planned_to_date_minutes: number | null;
     overdue: boolean;
     unscheduled: boolean;
     can: { update: boolean; assign: boolean };
@@ -145,6 +169,19 @@ export type PersonOption = {
     id: number;
     name: string;
     department_id: number | null;
+    /** Colaborador externo (D-300). */
+    collaborator?: boolean;
+};
+
+/** GET /prevision/disponibilidad (D-303): la carga de cada persona asignable en unas fechas. */
+export type AvailabilityPerson = {
+    id: number;
+    name: string;
+    department_id: number | null;
+    collaborator: boolean;
+    has_schedule: boolean;
+    capacity: number;
+    load: number;
 };
 export type DepartmentOption = { id: number; name: string; color: string };
 export type ClientOption = { id: number; name: string };
@@ -156,6 +193,8 @@ export type ImpactCell = { capacity: number; without: number; with: number };
 /** Impacto «sin / con» un previsto, por mes y de hoy en adelante (ForecastImpact). */
 export type ForecastImpact = {
     buckets: ForecastBucket[];
+    /** Por semanas si el previsto dura hasta 16; si no, por meses (D-304). */
+    granularity: ForecastGranularity;
     layer: LoadLayer;
     departments: {
         id: number | null;
@@ -174,8 +213,12 @@ export type ForecastImpact = {
 export type EstimateRow = {
     estimated: number;
     actual: number;
+    /** Previsión al cerrar (D-297): lo real más lo que queda asignado en el proyecto real. */
+    projected: number;
     /** (real − estimado) / estimado en %, con un decimal; null sin estimado. */
     deviation_percent: number | null;
+    /** (previsión − estimado) / estimado en %. */
+    projected_deviation_percent: number | null;
 };
 
 /** Estimado (línea base congelada) frente a real (horas imputadas), D-287. */
@@ -188,20 +231,27 @@ export type EstimateVsActual = {
         estimated_end: string | null;
         actual_start: string | null;
         actual_end: string | null;
-        /** En curso: el fin al ritmo de las últimas 4 semanas. */
+        /** En curso: el último día con algo asignado o, sin nada, al ritmo de las últimas 4 semanas. */
         projected_end: string | null;
     };
     by_department: ({
         department_id: number | null;
         name: string | null;
     } & EstimateRow)[];
-    by_user: ({ user_id: number; name: string } & EstimateRow)[];
+    by_user: ({
+        user_id: number;
+        name: string;
+        department_id: number | null;
+    } & EstimateRow)[];
     by_month: {
         month: string;
         estimated: number;
         actual: number;
+        /** Lo que queda asignado ese mes, de hoy en adelante. */
+        remaining: number;
         cumulative_estimated: number;
         cumulative_actual: number;
+        cumulative_projected: number;
     }[];
     by_department_month: {
         department_id: number | null;
@@ -222,6 +272,22 @@ export type ForecastIndexPageProps = {
     };
     departments: DepartmentOption[];
     can: { manage: boolean };
+    /** Diferida (grupo «lists», D-302): huecos sin persona del periodo. */
+    gaps?: ForecastGap[];
+    /** Diferida (grupo «lists»): previstos abiertos o confirmados que tocan el periodo. */
+    open_forecasts?: ForecastProject[];
+};
+
+/** Un hueco sin persona con su contenedor (proyecto real o previsto). */
+export type ForecastGap = {
+    allocation: Allocation;
+    container: {
+        kind: 'project' | 'forecast';
+        id: number;
+        name: string;
+        client_name: string | null;
+        layer: LoadLayer;
+    };
 };
 
 export type ForecastListFilter = 'active' | 'lost' | 'linked' | 'all';
@@ -250,6 +316,8 @@ export type ForecastProjectPageProps = {
     impact?: ForecastImpact | null;
     /** Diferida (grupo «analysis»); null si no está vinculado. */
     estimate?: EstimateVsActual | null;
+    /** Diferida (grupo «analysis», D-307): cambios del previsto y de sus asignaciones. */
+    history?: ForecastHistoryEntry[];
     /** Diferida (grupo «options»). */
     options?: {
         people: PersonOption[];
@@ -264,15 +332,33 @@ export type ForecastProjectPageProps = {
     };
 };
 
+export type ForecastHistoryEntry = {
+    id: number;
+    at: string | null;
+    causer: string | null;
+    subject: 'forecast' | 'allocation';
+    event: 'created' | 'updated' | 'deleted' | string;
+    /** En una asignación: la persona o «hueco de Diseño». */
+    who: string | null;
+    /** Nombres de los campos cambiados (sin valores). */
+    fields: string[];
+};
+
 /** `projects/planning` (GET /proyectos/{id}/planificacion). */
 export type ProjectPlanningPageProps = {
     project: Project;
     allocations: Allocation[];
     months: string[];
     /** Plan completo e imputado de todo el proyecto por semana (como mucho 52). */
-    weeks: (ForecastBucket & { planned: number; logged: number })[];
+    weeks: (ForecastBucket & {
+        planned: number;
+        logged: number;
+        /** Semana pasada: quién tenía plan y no imputó nada en el proyecto (D-296). */
+        missing: string[];
+    })[];
     totals: {
         planned_minutes: number;
+        planned_to_date_minutes: number;
         logged_minutes: number;
         remaining_minutes: number;
     };
@@ -292,3 +378,27 @@ export type ProjectPlanningPageProps = {
 
 /** GET /prevision/mi-carga (JSON, P8): la carga propia por semanas; `departments` va vacío. */
 export type MyForecastResponse = ForecastBoard;
+
+/** Una asignación propia en «Mi carga» (D-305). */
+export type MyAllocation = {
+    id: number;
+    layer: LoadLayer;
+    mode: AllocationMode;
+    minutes: number | null;
+    percent: number | null;
+    start_date: string;
+    end_date: string | null;
+    note: string | null;
+    container: {
+        kind: 'project' | 'forecast';
+        id: number;
+        name: string;
+        client_name: string | null;
+    };
+};
+
+/** «Mi carga» (prop diferida `my_forecast` de Inicio y de /carga, D-305): 26 semanas y mis asignaciones. */
+export type MyForecast = {
+    board: ForecastBoard;
+    allocations: MyAllocation[];
+};
