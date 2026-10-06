@@ -150,14 +150,13 @@ class ClientController extends Controller
      */
     private static function people(): array
     {
-        return User::query()
+        return array_values(User::query()
             ->where('is_active', true)
             ->role(User::WEEKLY_ROLES)
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn (User $person): array => ['id' => $person->id, 'name' => $person->name])
-            ->values()
-            ->all();
+            ->all());
     }
 
     /** Pestañas de la ficha con la Weekly (F-129 a F-132). */

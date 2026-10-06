@@ -34,6 +34,8 @@ it('sube la foto: cuadrada, de 256 px, en el disco privado y con URL firmada', f
     expect($this->me->avatar_url)->toBe($url);
     $this->actingAs(userWithRole('employee'))->get($url)->assertOk()->assertHeader('Cache-Control', 'max-age=86400, private');
     $this->actingAs(userWithRole('employee'))->get("/avatares/{$this->me->id}")->assertForbidden();
+    // Un cliente del portal no ve las fotos de la plantilla, ni con la firma.
+    $this->actingAs(userWithRole('client'))->get($url)->assertForbidden();
 
     $this->actingAs($this->me)->get('/ajustes/perfil')->assertInertia(fn (Assert $page) => $page->where('auth.user.avatar', $url));
 });

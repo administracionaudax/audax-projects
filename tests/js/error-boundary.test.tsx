@@ -41,7 +41,7 @@ describe('pantalla de error del navegador (F-017)', () => {
         const reload = vi.fn();
         Object.defineProperty(window, 'location', {
             configurable: true,
-            value: { ...window.location, reload },
+            value: { href: window.location.href, reload },
         });
 
         const { rerender } = render(

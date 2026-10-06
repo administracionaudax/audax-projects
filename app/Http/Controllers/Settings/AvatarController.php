@@ -58,9 +58,13 @@ class AvatarController extends Controller
         return back();
     }
 
-    /** La foto de una persona, con la URL firmada de User::avatar_url. */
-    public function show(User $user): StreamedResponse
+    /**
+     * La foto de una persona, con la URL firmada de User::avatar_url. Un cliente del portal solo ve
+     * la suya (el portal no enseña a la plantilla con foto).
+     */
+    public function show(Request $request, User $user): StreamedResponse
     {
+        abort_if($request->user()?->isClient() === true && ! $request->user()->is($user), 403);
         abort_if($user->avatar_path === null || ! Storage::disk(AvatarStorage::DISK)->exists($user->avatar_path), 404);
 
         return Storage::disk(AvatarStorage::DISK)->response($user->avatar_path, null, [

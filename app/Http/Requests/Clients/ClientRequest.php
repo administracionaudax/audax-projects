@@ -102,7 +102,9 @@ class ClientRequest extends FormRequest
     }
 
     /**
-     * @return array<string, string|null>
+     * Los datos del cliente para guardar: textos y, si llega, el responsable (su id, D-232).
+     *
+     * @return array<string, string|int|null>
      */
     public function clientData(): array
     {

@@ -104,7 +104,7 @@ final class ClientPortfolioTeams
 
             $result[$clientId] = [
                 'owner' => $owner === null ? null : (new UserSummaryResource($owner))->resolve(),
-                'team' => $team->take(self::MAX)->map(fn (User $user): array => (new UserSummaryResource($user))->resolve())->all(),
+                'team' => array_values($team->take(self::MAX)->map(fn (User $user): array => (new UserSummaryResource($user))->resolve())->all()),
                 'team_count' => $team->count(),
             ];
         }

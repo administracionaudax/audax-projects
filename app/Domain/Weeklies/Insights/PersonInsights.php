@@ -247,13 +247,13 @@ final class PersonInsights
         $cycles = WeeklyCycle::query()->whereKey($rows->pluck('weekly_cycle_id')->unique()->values()->all())->get(['id', 'number', 'label', 'start_date', 'end_date', 'status'])->keyBy('id');
 
         return [
-            'reports' => $rows->map(fn (object $row): array => [
+            'reports' => array_values($rows->map(fn (object $row): array => [
                 'id' => (int) $row->id,
                 'cycle' => ClientInsights::cycleRef($cycles[(int) $row->weekly_cycle_id]),
                 'body' => (string) $row->body,
                 'submitted_at' => CarbonImmutable::parse($row->submitted_at, 'UTC')->toIso8601String(),
                 'project' => $row->project_id === null ? null : ['id' => (int) $row->project_id, 'code' => $row->project_code === null ? null : (string) $row->project_code],
-            ])->values()->all(),
+            ])->all()),
             'next_page' => $more ? $page + 1 : null,
         ];
     }

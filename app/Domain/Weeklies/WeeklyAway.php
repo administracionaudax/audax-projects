@@ -81,15 +81,18 @@ final class WeeklyAway
         }
 
         $day = $deadline->toDateString();
+        $covered = [];
 
-        return User::query()
+        foreach (User::query()
             ->whereIn('id', $userIds)
             ->whereNotNull('weekly_away_reason')
             ->where(fn ($query) => $query->whereNull('weekly_away_since')->orWhereDate('weekly_away_since', '<=', $day))
             ->where(fn ($query) => $query->whereNull('weekly_away_until')->orWhereDate('weekly_away_until', '>=', $day))
-            ->pluck('id')
-            ->mapWithKeys(fn ($id): array => [(int) $id => true])
-            ->all();
+            ->pluck('id') as $id) {
+            $covered[(int) $id] = true;
+        }
+
+        return $covered;
     }
 
     /**
@@ -120,7 +123,7 @@ final class WeeklyAway
             ->whereDate('end_date', '>=', $date)
             ->pluck('user_id');
 
-        return $away->merge($absent)->map(fn ($id): int => (int) $id)->unique()->sort()->values()->all();
+        return array_values($away->merge($absent)->map(fn (mixed $id): int => (int) $id)->unique()->sort()->all());
     }
 
     /** Marca a $person fuera desde hoy (la propia persona o quien gestiona). */

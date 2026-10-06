@@ -35,7 +35,11 @@ final class WeeklyChanged implements ShouldBroadcastNow, ShouldRescue
         public readonly string $reason,
     ) {}
 
-    /** Lo dispara salvo que esté silenciado. */
+    /**
+     * Lo dispara salvo que esté silenciado.
+     *
+     * @param  'submission'|'exemption'|'cycle'|'report'|'satisfaction'  $reason
+     */
     public static function notify(?int $cycleId, string $reason): void
     {
         if (! self::$muted) {
