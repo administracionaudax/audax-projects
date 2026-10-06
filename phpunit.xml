@@ -40,6 +40,8 @@
         <env name="GOOGLE_LOGIN_DOMAINS" value="audaxstudio.com" force="true"/>
         <env name="TRANSCRIPTION_QUEUE_CONNECTION" value="sync"/>
         <env name="REPORTS_PDF_DRIVER" value="html"/>
+        <!-- Cuota de subidas (D-223): sin mínimo de disco libre salvo en los tests que lo ponen. -->
+        <env name="HELP_UPLOADS_MIN_FREE_MB" value="0"/>
         <!-- Previsualización de enlaces del chat: sin red en los tests (los suyos la activan con Http::fake). -->
         <env name="LINK_PREVIEWS_ENABLED" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>

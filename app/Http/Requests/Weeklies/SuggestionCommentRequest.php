@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class SuggestionCommentRequest extends FormRequest
 {
-    use ValidatesAttachments;
+    use ChecksSuggestionUploadQuota, ValidatesAttachments;
 
     /** Comentar, quien puede ver la sugerencia; editar, el autor del comentario. */
     public function authorize(): bool
@@ -60,6 +60,8 @@ class SuggestionCommentRequest extends FormRequest
             if (! $validator->errors()->has('body') && $this->body() === '' && $this->files() === [] && $this->route('suggestionComment') === null) {
                 $validator->errors()->add('body', __('help.suggestions.comment_required'));
             }
+
+            $this->checkUploadQuota($validator);
         });
     }
 

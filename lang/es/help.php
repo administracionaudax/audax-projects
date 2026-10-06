@@ -38,6 +38,12 @@ return [
         'deleted' => 'Actualización puntual eliminada.',
     ],
 
+    // Cuotas de las subidas (D-223).
+    'quota' => [
+        'disk_full' => 'Ahora mismo no queda espacio para subir archivos. Avisa a quien administra Audax.',
+        'tutorials_busy' => 'Hay demasiados vídeos subiéndose a la vez. Espera a que terminen y vuelve a intentarlo.',
+        'suggestions_full' => 'Has llegado al máximo de :limit MB en adjuntos de sugerencias. Quita alguno que ya no haga falta.',
+    ],
     'tutorials' => [
         'created' => 'Tutorial creado.',
         'updated' => 'Tutorial actualizado.',

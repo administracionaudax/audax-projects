@@ -24,6 +24,8 @@ use RuntimeException;
  *      (fileinfo), lo mueve a help/tutorials y crea su Attachment; el anterior se borra.
  * Lo que está a medias vive en help/uploads (disco privado) con su ficha JSON. Solo lo continúa
  * quien lo empezó. `prune()` borra lo abandonado (más de un día), cada noche (help:prune-uploads).
+ * Cuotas (D-223, HelpUploadQuota): una subida abierta por persona, un tope de lo que está a medio
+ * subir entre todas y un mínimo de espacio libre en el disco.
  */
 final class TutorialVideoUploads
 {
@@ -51,7 +53,10 @@ final class TutorialVideoUploads
         'video/x-m4v' => 'm4v',
     ];
 
-    public function __construct(private readonly AttachmentStorage $attachments) {}
+    public function __construct(
+        private readonly AttachmentStorage $attachments,
+        private readonly HelpUploadQuota $quota,
+    ) {}
 
     /**
      * @return array{upload: string, chunk_size: int, received: int}
@@ -60,6 +65,22 @@ final class TutorialVideoUploads
     {
         if ($size < 1 || $size > self::MAX_BYTES) {
             throw ValidationException::withMessages(['size' => __('help.tutorials.too_big')]);
+        }
+
+        // D-223: una subida abierta por persona (empezar otra descarta la anterior) y un tope de lo
+        // que está a medio subir entre todas, con espacio libre en el disco.
+        $pending = 0;
+
+        foreach ($this->openUploads() as $openId => $open) {
+            if ($open['user_id'] === $user->id) {
+                $this->discard($openId);
+            } else {
+                $pending += $open['size'];
+            }
+        }
+
+        if (($problem = $this->quota->tutorialProblem($pending, $size)) !== null) {
+            throw ValidationException::withMessages(['size' => $problem]);
         }
 
         $id = (string) Str::uuid();
@@ -96,6 +117,10 @@ final class TutorialVideoUploads
 
         if ($offset !== $received || $offset + $length > $meta['size']) {
             throw ValidationException::withMessages(['offset' => __('help.tutorials.chunk_out_of_order', ['received' => $received])]);
+        }
+
+        if (($problem = $this->quota->diskProblem($length)) !== null) {
+            throw ValidationException::withMessages(['chunk' => $problem]);
         }
 
         $target = fopen($path, 'ab');
@@ -213,6 +238,29 @@ final class TutorialVideoUploads
         }
 
         return $count;
+    }
+
+    /**
+     * Las subidas abiertas: id => {user_id, size}.
+     *
+     * @return array<string, array{user_id: int, size: int}>
+     */
+    private function openUploads(): array
+    {
+        $disk = $this->disk();
+        $open = [];
+
+        foreach ($disk->files(self::DIRECTORY) as $file) {
+            if (! str_ends_with($file, '.json')) {
+                continue;
+            }
+
+            /** @var array{user_id?: int, size?: int} $meta */
+            $meta = (array) json_decode((string) $disk->get($file), true);
+            $open[basename($file, '.json')] = ['user_id' => (int) ($meta['user_id'] ?? 0), 'size' => (int) ($meta['size'] ?? 0)];
+        }
+
+        return $open;
     }
 
     /**

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
  */
 class SuggestionPostRequest extends FormRequest
 {
-    use ValidatesAttachments;
+    use ChecksSuggestionUploadQuota, ValidatesAttachments;
 
     public function authorize(): bool
     {
@@ -64,6 +64,8 @@ class SuggestionPostRequest extends FormRequest
             if (! $validator->errors()->has('body') && $this->body() === null) {
                 $validator->errors()->add('body', __('help.suggestions.body_required'));
             }
+
+            $this->checkUploadQuota($validator);
         });
     }
 

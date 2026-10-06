@@ -149,14 +149,14 @@ Route::middleware(['module:help', 'module:suggestions'])->group(function () {
     Route::post('ayuda/sugerencias', [SuggestionController::class, 'store'])->middleware('throttle:30,1,suggestions.store')->name('suggestions.store');
     Route::get('ayuda/sugerencias/similares', [SuggestionController::class, 'similar'])->middleware('throttle:120,1,suggestions.similar')->name('suggestions.similar');
     Route::get('ayuda/sugerencias/{post}', [SuggestionController::class, 'show'])->whereNumber('post')->name('suggestions.show');
-    Route::put('ayuda/sugerencias/{post}', [SuggestionController::class, 'update'])->whereNumber('post')->name('suggestions.update');
+    Route::put('ayuda/sugerencias/{post}', [SuggestionController::class, 'update'])->whereNumber('post')->middleware('throttle:30,1,suggestions.update')->name('suggestions.update');
     Route::delete('ayuda/sugerencias/{post}', [SuggestionController::class, 'destroy'])->whereNumber('post')->name('suggestions.destroy');
     Route::post('ayuda/sugerencias/{post}/voto', [SuggestionController::class, 'vote'])->whereNumber('post')->middleware('throttle:60,1,suggestions.vote')->name('suggestions.vote');
     Route::put('ayuda/sugerencias/{post}/estado', [SuggestionController::class, 'status'])->whereNumber('post')->name('suggestions.status.update');
     Route::put('ayuda/sugerencias/{post}/orden', [SuggestionController::class, 'position'])->whereNumber('post')->name('suggestions.position.update');
 
     Route::post('ayuda/sugerencias/{post}/comentarios', [SuggestionCommentController::class, 'store'])->whereNumber('post')->middleware('throttle:60,1,suggestions.comments.store')->name('suggestions.comments.store');
-    Route::put('ayuda/sugerencias/comentarios/{suggestionComment}', [SuggestionCommentController::class, 'update'])->whereNumber('suggestionComment')->name('suggestions.comments.update');
+    Route::put('ayuda/sugerencias/comentarios/{suggestionComment}', [SuggestionCommentController::class, 'update'])->whereNumber('suggestionComment')->middleware('throttle:60,1,suggestions.comments.update')->name('suggestions.comments.update');
     Route::delete('ayuda/sugerencias/comentarios/{suggestionComment}', [SuggestionCommentController::class, 'destroy'])->whereNumber('suggestionComment')->name('suggestions.comments.destroy');
     Route::post('ayuda/sugerencias/comentarios/{suggestionComment}/reaccion', [SuggestionCommentController::class, 'react'])->whereNumber('suggestionComment')->middleware('throttle:60,1,suggestions.comments.react')->name('suggestions.comments.react');
 
