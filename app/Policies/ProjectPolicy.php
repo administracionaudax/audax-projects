@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Domain\Forecast\ForecastAccess;
 use App\Models\Project;
 use App\Models\User;
 
@@ -81,6 +82,23 @@ class ProjectPolicy
     public function viewReport(User $user, Project $project): bool
     {
         return $this->viewAllTime($user, $project);
+    }
+
+    /**
+     * Pestaña Planificación (asignaciones del proyecto, D-284): quien lo gestiona (D-022), con el
+     * módulo `forecast` visible. Nunca un colaborador externo.
+     */
+    public function viewPlanning(User $user, Project $project): bool
+    {
+        return ForecastAccess::plansProject($user, $project);
+    }
+
+    /**
+     * Crear asignaciones en el proyecto: quien lo gestiona, si no está archivado (D-284).
+     */
+    public function manageAllocations(User $user, Project $project): bool
+    {
+        return ForecastAccess::allocatesProject($user, $project);
     }
 
     /**

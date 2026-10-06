@@ -41,14 +41,15 @@ final class AllocationPlanner
     public function __construct(private readonly Capacity $capacity) {}
 
     /**
-     * @param  list<Allocation>  $allocations
-     * @param  int  $horizonEnd  Día hasta el que llegan las mensuales sin fin.
+     * @param  array<array-key, Allocation>  $allocations
+     * @param  int|array<int, int>  $horizonEnd  Día hasta el que llegan las mensuales sin fin (uno para
+     *                                           todas o asignación → día; las que falten, el mayor).
      * @param  int|null  $today  null: plan completo; si no, carga desde ese día.
      * @param  array<int, int>  $logged  asignación → minutos imputados (restante del modo total).
      * @param  array{users?: list<int>, departments?: list<int>, from?: int, to?: int, members?: array<int, list<int>>}  $calendar
      *                                                                                                                              Personas, departamentos y días que el calendario de capacidad debe cubrir además de los de las asignaciones.
      */
-    public function plan(array $allocations, int $horizonEnd, ?int $today = null, array $logged = [], array $calendar = []): AllocationPlan
+    public function plan(array $allocations, int|array $horizonEnd, ?int $today = null, array $logged = [], array $calendar = []): AllocationPlan
     {
         $base = $today ?? CapacityPlan::day(LocalTime::todayString());
         $limit = $base + self::MAX_DAYS_AHEAD;
@@ -158,10 +159,15 @@ final class AllocationPlanner
     /**
      * Días de inicio y fin de una asignación (las mensuales sin fin, hasta el horizonte).
      *
+     * @param  int|array<int, int>  $horizonEnd
      * @return array{0: int, 1: int}
      */
-    public function range(Allocation $allocation, int $horizonEnd): array
+    public function range(Allocation $allocation, int|array $horizonEnd): array
     {
+        if (is_array($horizonEnd)) {
+            $horizonEnd = $horizonEnd[$allocation->id] ?? ($horizonEnd === [] ? 0 : max($horizonEnd));
+        }
+
         $start = CapacityPlan::day($allocation->start_date->toDateString());
         $end = $allocation->end_date === null ? $horizonEnd : CapacityPlan::day($allocation->end_date->toDateString());
 
@@ -169,9 +175,10 @@ final class AllocationPlanner
     }
 
     /**
+     * @param  int|array<int, int>  $horizonEnd
      * @return array<int, int> día → minutos
      */
-    private function distribute(Allocation $allocation, CapacityCalendar $capacity, int $horizonEnd, ?int $today, int $logged, AllocationPlan $plan): array
+    private function distribute(Allocation $allocation, CapacityCalendar $capacity, int|array $horizonEnd, ?int $today, int $logged, AllocationPlan $plan): array
     {
         [$start, $end] = $this->range($allocation, $horizonEnd);
 

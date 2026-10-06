@@ -37,6 +37,8 @@ const MODULES: AppModule[] = [
     'assistant',
     // Plan del día (D-250): módulo propio, no es parte de la Weekly.
     'day_plan',
+    // Previsión (D-280): asignaciones y proyectos previstos; apagado por defecto.
+    'forecast',
 ];
 
 /** Máximo de umbrales de alerta de las bolsas. */

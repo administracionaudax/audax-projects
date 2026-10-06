@@ -1,0 +1,59 @@
+{
+    "_comment": "Desviación de «estimado frente a real» (D-287): EstimateVsActual::deviation (PHP) y deviationPercent/deviationKind (resources/js/lib/forecast.ts). Por debajo de medio punto, «igual».",
+    "cases": [
+        {
+            "estimated": 0,
+            "actual": 120,
+            "percent": null,
+            "kind": "none"
+        },
+        {
+            "estimated": 25200,
+            "actual": 29160,
+            "percent": 15.7,
+            "kind": "over"
+        },
+        {
+            "estimated": 9600,
+            "actual": 9000,
+            "percent": -6.3,
+            "kind": "under"
+        },
+        {
+            "estimated": 400,
+            "actual": 391,
+            "percent": -2.3,
+            "kind": "under"
+        },
+        {
+            "estimated": 1000,
+            "actual": 1004,
+            "percent": 0.4,
+            "kind": "same"
+        },
+        {
+            "estimated": 1000,
+            "actual": 996,
+            "percent": -0.4,
+            "kind": "same"
+        },
+        {
+            "estimated": 1000,
+            "actual": 1005,
+            "percent": 0.5,
+            "kind": "over"
+        },
+        {
+            "estimated": 600,
+            "actual": 600,
+            "percent": 0.0,
+            "kind": "same"
+        },
+        {
+            "estimated": 480,
+            "actual": 0,
+            "percent": -100.0,
+            "kind": "under"
+        }
+    ]
+}

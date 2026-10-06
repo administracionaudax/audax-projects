@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\DayPlan\DayPlanAccess;
+use App\Domain\Forecast\ForecastAccess;
 use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
@@ -35,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         'manage-help',
         'view-ai-usage',
         'view-person-ai-summary',
+        'manage-forecast',
+        'view-forecast',
+        'use-forecast',
     ];
 
     /**
@@ -98,6 +102,11 @@ class AppServiceProvider extends ServiceProvider
         // Plan del día (D-251): la plantilla interna (admin, responsables y empleados), nunca un
         // colaborador externo ni un cliente, con el módulo day_plan visible para esa persona.
         Gate::define('use-day-plan', fn (User $user): bool => DayPlanAccess::uses($user));
+
+        // Previsión (D-284), detrás del módulo forecast: la propia carga la ve toda la plantilla (P8),
+        // la previsión global los admins, los responsables y quien tenga manage-forecast (P4).
+        Gate::define('use-forecast', fn (User $user): bool => ForecastAccess::enabledFor($user));
+        Gate::define('view-forecast', fn (User $user): bool => ForecastAccess::views($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));
