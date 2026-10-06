@@ -29,7 +29,10 @@ export const COLLABORATOR_USER =
 export const PRIVACY_PENDING_USER =
     process.env.E2E_PRIVACY_PENDING_EMAIL ?? 'daniel.ortega@example.com';
 
-/** Rutas de la barra lateral (URLs en español, contrato de routes/web.php). */
+/**
+ * Rutas de la barra lateral (URLs en español, contrato de routes/web.php), de todas sus secciones
+ * (D-260): las fijas, Proyectos, Weekly, Personas y Administración.
+ */
 export const SIDEBAR_PATHS = [
     '/mis-tareas',
     '/mi-espacio',
@@ -46,6 +49,8 @@ export const SIDEBAR_PATHS = [
     '/chat',
     '/ia',
     '/ayuda',
+    '/admin/usuarios',
+    '/admin',
 ] as const;
 
 export async function login(
