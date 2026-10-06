@@ -57,3 +57,21 @@ it('un error no enseña la clave y rechaza nombres de tabla raros', function () 
 
     expect(fn () => iterator_to_array($source->rows('clients; drop table x')))->toThrow(RuntimeException::class);
 });
+
+it('una tabla sin columna id se lee sin orden si cabe en una página; si no, avisa', function () {
+    Http::fake(function (Request $request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $q);
+        if (isset($q['order'])) {
+            return Http::response(['code' => '42703', 'message' => 'column t.id does not exist'], 400);
+        }
+
+        return str_contains($request->url(), '/grande')
+            ? Http::response(array_fill(0, RestWeeklySyncSource::PAGE, ['a' => 1]))
+            : Http::response([['client_id' => 1, 'user_id' => 2]]);
+    });
+
+    $source = new RestWeeklySyncSource('https://demo.supabase.co', 'sb_secret_prueba');
+
+    expect(iterator_to_array($source->rows('client_team_members'), false))->toBe([['client_id' => 1, 'user_id' => 2]])
+        ->and(fn () => iterator_to_array($source->rows('grande'), false))->toThrow(RuntimeException::class, 'no tiene columna id');
+});

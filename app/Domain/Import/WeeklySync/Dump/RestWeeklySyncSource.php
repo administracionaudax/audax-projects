@@ -54,29 +54,55 @@ final class RestWeeklySyncSource implements WeeklySyncSource
     {
         self::guard($table);
 
+        $first = $this->send($table, ['select' => '*', 'order' => 'id.asc', 'limit' => self::PAGE, 'offset' => 0]);
+
+        // Tablas sin columna id (clave compuesta, p. ej. client_team_members): sin orden, y solo si
+        // caben en una página; paginar sin orden estable podría saltarse o repetir filas.
+        if ($first->status() === 400 && str_contains($first->body(), '42703')) {
+            $page = $this->page($table, $this->send($table, ['select' => '*', 'limit' => self::PAGE, 'offset' => 0]));
+
+            if (count($page) >= self::PAGE) {
+                throw new RuntimeException("La tabla {$table} no tiene columna id y tiene ".self::PAGE.' filas o más: no se puede paginar con un orden estable por la API.');
+            }
+
+            yield from $page;
+
+            return;
+        }
+
+        $response = $first;
+
         for ($offset = 0; ; $offset += self::PAGE) {
-            $response = $this->send($table, ['select' => '*', 'order' => 'id.asc', 'limit' => self::PAGE, 'offset' => $offset]);
-
-            if (! $response->successful()) {
-                throw new RuntimeException("No se ha podido leer la tabla {$table} por la API (HTTP {$response->status()}).");
+            if ($offset > 0) {
+                $response = $this->send($table, ['select' => '*', 'order' => 'id.asc', 'limit' => self::PAGE, 'offset' => $offset]);
             }
 
-            $page = $response->json();
+            $page = $this->page($table, $response);
 
-            if (! is_array($page)) {
-                throw new RuntimeException("La API ha devuelto algo que no es una lista al leer la tabla {$table}.");
-            }
-
-            foreach ($page as $row) {
-                if (is_array($row)) {
-                    yield $row;
-                }
-            }
+            yield from $page;
 
             if (count($page) < self::PAGE) {
                 return;
             }
         }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function page(string $table, Response $response): array
+    {
+        if (! $response->successful()) {
+            throw new RuntimeException("No se ha podido leer la tabla {$table} por la API (HTTP {$response->status()}).");
+        }
+
+        $page = $response->json();
+
+        if (! is_array($page)) {
+            throw new RuntimeException("La API ha devuelto algo que no es una lista al leer la tabla {$table}.");
+        }
+
+        return array_values(array_filter($page, 'is_array'));
     }
 
     public function close(): void
