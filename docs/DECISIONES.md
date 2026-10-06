@@ -2238,6 +2238,56 @@ Diseño completo en `docs/DISENO-PREVISION.md`; maquetas y capturas en `docs/dis
 - `/carga` del empleado: columnas por semana frente a su jornada y «Mis asignaciones» en cronograma.
 - **Abierto:** si la tarjeta deja de contar las tareas en el corto plazo (P6) o enseña las dos cifras. Pregunta 2 de `DISENO-PREVISION.md` §8.
 
+## 06/10/2026: Pantallas de la Previsión
+Las pantallas definitivas de la Previsión con el diseño aprobado (D-290 a D-299) y las decisiones del propietario del 06/10: solo la vista A (sin modo «Resumen» ni arrastre), un equipo de 9 personas más una colaboradora externa, «Mi carga» solo con asignaciones y estilo plano también en las gráficas.
+
+### D-300 · Los colaboradores externos en la previsión **[cambia D-282 y D-283]**
+- **Se les pueden asignar horas** (personas o «Asignar a…»): el equipo es pequeño y hay colaboradores fijos. Siguen sin ver la previsión (D-134) y entran como miembros al vincular o crear el proyecto real.
+- **En `/prevision` van en su propio grupo, «Colaboradores externos»**, al final, solo si tienen carga en el periodo. No suman a su departamento ni al total del equipo.
+- **Capacidad:** la de su jornada (`WorkSchedule`); **sin jornada, sin capacidad**: la celda dice sus horas y «Sin jornada», nunca un % inventado.
+
+### D-301 · Lo que la matriz sabe de cada persona y columna
+- El tablero (`LoadCombiner`) añade por persona el avatar, la jornada semanal de hoy y, por columna, los días laborables de **ausencia aprobada** (con «parcial»), y por columna sus **festivos**. Consultas fijas, sea cual sea la plantilla (R7).
+- El **tipo de ausencia** solo llega a quien puede ver las ausencias de esa persona (ella, su responsable y los admins, D-088); al resto, vacío («Ausencia»).
+- La fuente de cada hora lleva el nombre del cliente, para el tooltip («24 h · Kiwi · App fase 2»).
+
+### D-302 · `/prevision`: matriz, cifras y listas
+- **Por semanas hasta 3 meses y por meses desde 6** cuando no se pide otra cosa (D-294).
+- **Todos los departamentos desplegados** por defecto, sin lógica de auto-despliegue: con ~10 personas cabe todo. Lo que cada persona pliega se recuerda **en su navegador** (`localStorage`, `forecast.collapsed`).
+- Las capas (`?capas=`) y la búsqueda de persona (`?persona=`) se calculan en la interfaz y quedan en la URL sin pedir nada al servidor; horizonte, agrupación y departamento son visitas.
+- Debajo, **«Huecos sin persona»** y **«Proyectos previstos abiertos»** del periodo, en una petición aparte (grupo `lists`). El panel de una celda es de la interfaz (sin `?celda=`): todo lo que dice ya está en el tablero.
+
+### D-303 · «Asignar a…» con la ocupación de cada candidato
+- `GET /prevision/disponibilidad?desde=&hasta=` (quien ve la previsión) da la capacidad y lo asignado de cada persona asignable en esas fechas (como mucho un año). El diálogo usa `PersonLoadPicker` y avisa si alguien pasaría del 100 %.
+- En la Planificación, un gestor de proyecto que no ve la previsión global elige solo por nombre: nunca ve la carga de los demás (P4).
+
+### D-304 · El impacto «sin / con», por semanas
+- Por semanas si el previsto dura hasta 16 semanas (se lee mejor «la semana 47»); si no, por meses. El contrato añade `granularity`.
+
+### D-305 · «Mi carga» cuenta solo las asignaciones **[resuelve DISENO-PREVISION §8.2 y D-299]**
+- **Con el módulo `forecast` visible**, la tarjeta «Mi carga» de Inicio y la vista de `/carga` de quien solo ve su fila salen de sus asignaciones (P6), también las de previstos seguros y posibles (P8): esta semana, la que viene, las próximas 12 semanas en % de la jornada, «Lo que viene» y, en `/carga`, 26 semanas y «Mis asignaciones».
+- En `/carga`, debajo sigue la carga por tareas («Tus tareas de las próximas semanas») para el día a día. Quien ve a su equipo sigue con la matriz por tareas.
+- **Sin el módulo**, todo como antes (D-051): no cambia nada en el servidor mientras siga apagado.
+
+### D-306 · Entrada, búsqueda y permiso
+- **«Previsión»** va en la sección Proyectos de la barra lateral, tras Carga, con `auth.can.viewForecast` (módulo y `view-forecast`); `useForecast` decide «Mi carga» y la pestaña Planificación. Las páginas de la previsión despliegan su sección como las demás.
+- **Búsqueda global:** las páginas «Previsión» y «Proyectos previstos» y un grupo «Proyectos previstos» (por nombre, nombre libre o cliente), solo para quien ve la previsión.
+- **Un empleado en `/prevision`:** un 403 que explica que la previsión es información comercial y le lleva a su carga.
+- El módulo **sigue apagado** en el servidor: ninguna migración lo enciende; en modo de prueba lo ven los admins.
+
+### D-307 · Estilo plano también en las gráficas e historial de la ficha **[resuelve DISENO-PREVISION §8.5]**
+- `BAR_RADIUS = 0` en todas las gráficas (las columnas de Recharts sin esquinas) y el tooltip sin sombra (D-137).
+- **Historial** de un previsto: sus cambios y los de sus asignaciones, de la auditoría (`LogsDomainActivity`), con quién y qué campos cambió, nunca sus valores; el importe estimado ni se nombra sin `view-financials`.
+
+### D-308 · Crear el proyecto real de un cliente nuevo **[concreta D-286]**
+- Desde la ficha, «Crear proyecto real» pide lo mínimo (nombre, cliente, facturación por horas o precio cerrado, estado, fechas y código opcional); bolsas y lo demás, después, en el proyecto.
+- Si el previsto es de un cliente nuevo, **«Crear el cliente «…»»** lo crea con su nombre libre en la misma transacción y el previsto pasa a tenerlo. No si ya hay un cliente con ese nombre (se elige de la lista) ni sin permiso para crear clientes.
+
+### D-309 · Cifras de la Planificación y de estimado frente a real **[cambia D-287 por D-297]**
+- **Plan hasta hoy** de cada asignación (el plan de los días ya pasados) y del proyecto: la **desviación hasta hoy** es lo imputado frente a él, con flecha y aviso por encima de ±10 % (D-296).
+- Cada semana pasada dice **quién tenía plan y no imputó nada** en el proyecto.
+- **Previsión al cerrar** = lo real más lo que **queda asignado** en el proyecto real de hoy en adelante, por persona, departamento y mes; el **fin previsto** es el último día con algo asignado (sin nada asignado, el ritmo de las últimas 4 semanas, como antes).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2258,6 +2308,7 @@ Diseño completo en `docs/DISENO-PREVISION.md`; maquetas y capturas en `docs/dis
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Previsión: D-280 a D-289.
 - Diseño de la previsión: D-290 a D-299.
+- Pantallas de la previsión: D-300 a D-309.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-300 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-310 en adelante, sin usar).

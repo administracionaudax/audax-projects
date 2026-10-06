@@ -299,3 +299,12 @@ El % y el nivel los calcula el cliente con `loadPercent` y `loadLevel` sobre las
 3. **¿Qué departamentos se despliegan por defecto?** La propuesta es desplegar los que tengan alguna semana «Alta» o «Sobrecarga» en el horizonte. La alternativa es recordar lo que dejó abierto cada cual.
 4. **¿Se puede arrastrar para cambiar fechas en la Previsión?** Solo tiene sentido en la forma C (cronograma). En A, se edita desde el panel de la celda.
 5. **Columnas sin esquinas redondeadas** también en las gráficas que ya existen (pasar `BAR_RADIUS` a 0, por D-137). ¿Se cambia en todas a la vez?
+
+---
+
+## 9. Respuestas del propietario (06/10) e implementación
+- **§8.1:** solo la vista A; ni modo «Resumen» (B) ni arrastre de fechas (C).
+- **§8.2:** «Mi carga» cuenta solo las asignaciones (D-305).
+- **§8.3:** el equipo es pequeño (9 personas y una colaboradora externa): todos los departamentos desplegados y lo plegado se recuerda en el navegador (D-302); los colaboradores, en su grupo (D-300).
+- **§8.5:** columnas sin esquinas en todas las gráficas (D-307).
+- Pantallas hechas en la rama `prevision-pantallas` (D-300 a D-309).
