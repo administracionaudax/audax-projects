@@ -503,7 +503,7 @@ describe('dashboard de dirección', () => {
         const { act } = await import('@testing-library/react');
         act(() => {
             inertia.listeners.start({
-                detail: { visit: { method: 'get', url: visit } },
+                detail: { visit: { id: 'v1', method: 'get', url: visit } },
             });
         });
         expect(
@@ -513,7 +513,7 @@ describe('dashboard de dirección', () => {
         const event = new Event('httpException', { cancelable: true });
         act(() => {
             inertia.listeners.httpException(event);
-            inertia.listeners.finish({});
+            inertia.listeners.finish({ detail: { visit: { id: 'v1' } } });
         });
 
         expect(event.defaultPrevented).toBe(true);

@@ -44,16 +44,38 @@ export function loadReportOptions(): Promise<ReportOptions> {
     cachedOptions ??= fetch(reportOptions.url(), {
         headers: { Accept: 'application/json' },
         credentials: 'same-origin',
-    }).then((response) => {
-        if (!response.ok) {
-            cachedOptions = null;
-            throw new Error(`HTTP ${response.status}`);
-        }
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
 
-        return response.json() as Promise<ReportOptions>;
-    });
+            return response.json() as Promise<ReportOptions>;
+        })
+        .catch((error: unknown) => {
+            // Cualquier fallo (también sin red) se olvida: el siguiente intento vuelve a pedirlas.
+            cachedOptions = null;
+            throw error;
+        });
 
     return cachedOptions;
+}
+
+/**
+ * Cambio de una fecha del rango: si queda al revés que la otra, la otra se arrastra a la misma
+ * fecha. Antes el servidor descartaba un rango invertido y volvía a «Mes» sin avisar (D-310).
+ */
+export function rangePatch(
+    field: 'desde' | 'hasta',
+    value: string,
+    from: string,
+    to: string,
+): { desde?: string; hasta?: string } {
+    if (field === 'desde') {
+        return value > to ? { desde: value, hasta: value } : { desde: value };
+    }
+
+    return value < from ? { desde: value, hasta: value } : { hasta: value };
 }
 
 /** Solo para tests. */
@@ -87,6 +109,8 @@ export function ReportFilterBar({
     const query = filters.query;
     const needsOptions = show.some((key) => key !== 'facturable');
 
+    const [attempt, setAttempt] = useState(0);
+
     useEffect(() => {
         if (!needsOptions) {
             return;
@@ -100,7 +124,7 @@ export function ReportFilterBar({
         return () => {
             alive = false;
         };
-    }, [needsOptions]);
+    }, [needsOptions, attempt]);
 
     const visit = (next: ReportQuery) =>
         router.get(url ?? window.location.pathname, next, {
@@ -213,7 +237,15 @@ export function ReportFilterBar({
                                 value={query.desde ?? filters.from}
                                 clearable={false}
                                 onChange={(value) =>
-                                    value && update({ desde: value })
+                                    value &&
+                                    update(
+                                        rangePatch(
+                                            'desde',
+                                            value,
+                                            query.desde ?? filters.from,
+                                            query.hasta ?? filters.to,
+                                        ),
+                                    )
                                 }
                                 className="w-40"
                             />
@@ -227,7 +259,15 @@ export function ReportFilterBar({
                                 value={query.hasta ?? filters.to}
                                 clearable={false}
                                 onChange={(value) =>
-                                    value && update({ hasta: value })
+                                    value &&
+                                    update(
+                                        rangePatch(
+                                            'hasta',
+                                            value,
+                                            query.desde ?? filters.from,
+                                            query.hasta ?? filters.to,
+                                        ),
+                                    )
                                 }
                                 className="w-40"
                             />
@@ -367,8 +407,20 @@ export function ReportFilterBar({
                     </span>
                 ) : null}
                 {failed ? (
-                    <span className="text-xs text-danger">
+                    <span className="flex items-center gap-2 text-xs text-danger">
                         {t('reports.filters.options_error')}
+                        <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs"
+                            onClick={() => {
+                                setFailed(false);
+                                setAttempt((value) => value + 1);
+                            }}
+                        >
+                            {t('reports.filters.options_retry')}
+                        </Button>
                     </span>
                 ) : null}
             </div>

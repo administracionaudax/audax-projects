@@ -70,16 +70,13 @@ function SearchablePicker({
                 <Button
                     id={props.id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={props['aria-label']}
                     aria-invalid={invalid ? true : undefined}
                     disabled={props.disabled}
-                    className={cn(
-                        'w-full justify-between border-input font-normal text-foreground',
-                        props.className,
-                    )}
+                    className={cn('w-full justify-between', props.className)}
                     data-test={dataTest}
                 >
                     <span

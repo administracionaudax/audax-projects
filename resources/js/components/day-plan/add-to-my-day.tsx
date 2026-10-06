@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { CalendarPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ export function AddToMyDayButton({
                 preserveScroll: true,
                 preserveState: true,
                 errorBag: 'dayPlan',
+                // Que ningún error del servidor se pierda en silencio (D-310).
+                onError: toastVisitErrors,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
             },

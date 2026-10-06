@@ -153,7 +153,12 @@ export function LineComments({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            onClick={() => setOpen(false)}
+                            onClick={() => {
+                                // Cancelar descarta lo escrito y el error (D-310).
+                                setOpen(false);
+                                setBody('');
+                                setError(null);
+                            }}
                         >
                             {t('common.cancel')}
                         </Button>

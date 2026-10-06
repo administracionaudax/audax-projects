@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     ArrowLeft,
     CalendarOff,
@@ -275,11 +276,22 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
 
     const submit = () => {
         setSubmitError(null);
-        autosave.cancel();
+        // Si el envío falla, lo escrito no está guardado: se vuelve a autoguardar (D-310).
+        const resume = autosave.cancel();
+        let sent = false;
         router.post(submitRoute.url(cycle.id), draft, {
             preserveScroll: true,
             onStart: () => setSubmitting(true),
-            onFinish: () => setSubmitting(false),
+            onSuccess: () => {
+                sent = true;
+            },
+            onFinish: () => {
+                setSubmitting(false);
+
+                if (!sent) {
+                    resume();
+                }
+            },
             onError: (errors) =>
                 setSubmitError(
                     errors.entries ??
@@ -297,6 +309,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                 preserveScroll: true,
                 onStart: () => setExemptionBusy(true),
                 onFinish: () => setExemptionBusy(false),
+                onError: toastVisitErrors,
             },
         );
 
@@ -314,6 +327,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                 preserveScroll: true,
                 onStart: () => setExemptionBusy(true),
                 onFinish: () => setExemptionBusy(false),
+                onError: toastVisitErrors,
             },
         );
     };
@@ -656,6 +670,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                                             : t('weeklies.editor.submit')
                                     }
                                     destructive={false}
+                                    processing={submitting}
                                     onConfirm={submit}
                                 />
                             ) : (

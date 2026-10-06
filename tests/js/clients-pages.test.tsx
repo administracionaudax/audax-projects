@@ -133,6 +133,20 @@ const indexProps = (
 });
 
 describe('listado de clientes', () => {
+    it('mientras llega la lista de personas, el filtro dice que carga y no «Todas» (D-310)', () => {
+        render(
+            <ClientsIndex
+                {...indexProps([row()], { persona: '12' })}
+                people={undefined}
+            />,
+        );
+
+        const select = document.querySelector<HTMLSelectElement>(
+            '[data-test="client-filter-person"] select, select[data-test="client-filter-person"]',
+        );
+        expect(select?.selectedOptions[0]?.textContent).toBe('Cargando…');
+    });
+
     it('muestra proyectos activos, horas del mes en h:mm y estado con texto', () => {
         render(
             <ClientsIndex

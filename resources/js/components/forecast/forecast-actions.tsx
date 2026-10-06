@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { toastUnshownErrors } from '@/components/admin/visit-errors';
 import type { FormEvent } from 'react';
 import { useId } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
@@ -19,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { t } from '@/lib/i18n';
 import { createProject, link, lose } from '@/routes/forecast/projects';
 import type { ClientOption, ForecastProject } from '@/types/forecast';
@@ -33,6 +35,10 @@ type DialogProps = {
 export function LoseDialog({ forecast, open, onOpenChange }: DialogProps) {
     const id = useId();
     const form = useForm({ reason: '' });
+    useResetOnOpen(open, () => {
+        form.setData({ reason: '' });
+        form.clearErrors();
+    });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -72,7 +78,7 @@ export function LoseDialog({ forecast, open, onOpenChange }: DialogProps) {
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}
@@ -101,6 +107,10 @@ export function LinkDialog({
 }) {
     const id = useId();
     const form = useForm({ project_id: '', copy_allocations: true });
+    useResetOnOpen(open, () => {
+        form.setData({ project_id: '', copy_allocations: true });
+        form.clearErrors();
+    });
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -111,6 +121,9 @@ export function LinkDialog({
         form.post(link.url(forecast.id), {
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
+            // «No se puede vincular» llega con la clave `forecast` (D-310).
+            onError: (errors) =>
+                toastUnshownErrors(errors, ['project_id', 'copy_allocations']),
         });
     };
 
@@ -166,7 +179,7 @@ export function LinkDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}
@@ -233,7 +246,8 @@ export function CreateProjectDialog({
     const id = useId();
     const prospect =
         forecast.client === null && forecast.prospect_name !== null;
-    const form = useForm({
+    // Lo que se propone sale del previsto de ahora (puede haberse editado tras cargar la ficha).
+    const proposal = () => ({
         name: forecast.name,
         code: '',
         create_client: prospect,
@@ -244,6 +258,11 @@ export function CreateProjectDialog({
         start_date: forecast.start_date,
         due_date: forecast.end_date,
         copy_allocations: true,
+    });
+    const form = useForm(proposal());
+    useResetOnOpen(open, () => {
+        form.setData(proposal());
+        form.clearErrors();
     });
     const errors = form.errors as Record<string, string | undefined>;
 
@@ -265,7 +284,10 @@ export function CreateProjectDialog({
             due_date: data.due_date,
             copy_allocations: data.copy_allocations,
         }));
-        form.post(createProject.url(forecast.id));
+        form.post(createProject.url(forecast.id), {
+            onError: (errors) =>
+                toastUnshownErrors(errors, Object.keys(proposal())),
+        });
     };
 
     return (
@@ -350,6 +372,18 @@ export function CreateProjectDialog({
                                         {client.name}
                                     </option>
                                 ))}
+                                {forecast.client &&
+                                clients !== undefined &&
+                                !clients.some(
+                                    (client) =>
+                                        client.id === forecast.client?.id,
+                                ) ? (
+                                    <option value={forecast.client.id} disabled>
+                                        {t('forecast.form.client_unavailable', {
+                                            name: forecast.client.name,
+                                        })}
+                                    </option>
+                                ) : null}
                             </NativeSelect>
                         )}
                         <InputError
@@ -470,7 +504,7 @@ export function CreateProjectDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}

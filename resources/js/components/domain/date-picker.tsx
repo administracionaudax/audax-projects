@@ -26,6 +26,8 @@ type DatePickerProps = {
     min?: string;
     className?: string;
     'aria-label'?: string;
+    /** Ayuda y error del campo (`describedBy` de Field), como en Input. */
+    'aria-describedby'?: string;
 };
 
 function toDate(value: string): Date {
@@ -68,13 +70,14 @@ export function DatePicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     disabled={disabled}
                     aria-invalid={invalid || undefined}
                     aria-label={aria['aria-label']}
+                    aria-describedby={aria['aria-describedby']}
                     // Con el aspecto de un campo de texto, como el resto del formulario.
                     className={cn(
-                        'w-full justify-start border-input bg-transparent px-3 font-normal text-foreground hover:bg-accent/40 aria-invalid:border-destructive [&_svg]:text-muted-foreground',
+                        'w-full justify-start',
                         !value && 'text-muted-foreground',
                         className,
                     )}

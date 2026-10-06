@@ -164,6 +164,9 @@ export function UserFormFields({
                 id={ids.jobTitle}
                 label={t('admin.users.fields.job_title')}
                 error={errors.job_title}
+                // Con datos económicos, a todo el ancho: así «Coste» y «Tarifa», con ayudas de largo
+                // parecido, quedan juntos en su fila (antes el coste dejaba un hueco bajo el puesto).
+                className={showFinancials ? 'sm:col-span-2' : undefined}
             >
                 <Input
                     id={ids.jobTitle}

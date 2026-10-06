@@ -6,6 +6,7 @@ import {
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import type { Announcements, DragEndEvent } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -77,6 +78,8 @@ export function MyDayList({
                 preserveScroll: true,
                 preserveState: true,
                 errorBag: 'dayPlan',
+                // Que ningún error del servidor se pierda en silencio (D-310).
+                onError: toastVisitErrors,
                 onFinish: () => setOrder(null),
             },
         );

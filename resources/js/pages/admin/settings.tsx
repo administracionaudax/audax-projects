@@ -1017,7 +1017,7 @@ export default function AdminSettings({
                         >
                             <NativeSelect
                                 id={`${id}-day-plan-days`}
-                                className="w-48"
+                                className="w-full sm:w-80"
                                 value={form.data.day_plan_editable_days}
                                 onChange={(event) =>
                                     form.setData(

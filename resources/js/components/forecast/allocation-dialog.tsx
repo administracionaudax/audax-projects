@@ -1,4 +1,8 @@
 import { router, useForm } from '@inertiajs/react';
+import {
+    toastUnshownErrors,
+    toastVisitErrors,
+} from '@/components/admin/visit-errors';
 import { Trash2 } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { useId, useState } from 'react';
@@ -22,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { t } from '@/lib/i18n';
 import {
     destroy,
@@ -81,6 +86,18 @@ function initial(
  * los cuatro modos (horas en total, al día, % de la jornada o al mes) y sus fechas. Solo el modo
  * mensual puede quedarse sin fin. Al editar, también se borra.
  */
+/** Campos con su error junto al control; el resto se avisa. */
+const ALLOCATION_FIELDS = [
+    'user_id',
+    'department_id',
+    'mode',
+    'minutes',
+    'percent',
+    'start_date',
+    'end_date',
+    'note',
+] as const;
+
 export function AllocationDialog({
     container,
     allocation,
@@ -110,9 +127,13 @@ export function AllocationDialog({
     const staff = people.filter((person) => !person.collaborator);
     const collaborators = people.filter((person) => person.collaborator);
 
-    const setOpen = (next: boolean) => {
+    useResetOnOpen(open, () => {
+        form.setDefaults(initial(allocation, defaults));
         form.setData(initial(allocation, defaults));
         form.clearErrors();
+    });
+
+    const setOpen = (next: boolean) => {
         setInternalOpen(next);
         onOpenChange?.(next);
     };
@@ -142,6 +163,9 @@ export function AllocationDialog({
         const options = {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            // «La asignación está congelada» y otros sin campo: que se vean (D-310).
+            onError: (errors: Record<string, string>) =>
+                toastUnshownErrors(errors, ALLOCATION_FIELDS),
         };
 
         if (allocation) {
@@ -162,6 +186,7 @@ export function AllocationDialog({
         router.delete(destroy.url(allocation.id), {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            onError: toastVisitErrors,
             onFinish: () => setDeleting(false),
         });
     };
@@ -273,6 +298,19 @@ export function AllocationDialog({
                                             </option>
                                         ))}
                                     </optgroup>
+                                ) : null}
+                                {/* La persona guardada que ya no se puede asignar: que se vea quién es
+                                    (si no, el selector mostraba «Elige…» y se enviaba otra cosa). */}
+                                {allocation?.user &&
+                                !people.some(
+                                    (person) =>
+                                        person.id === allocation.user?.id,
+                                ) ? (
+                                    <option value={allocation.user.id} disabled>
+                                        {t('forecast.allocation.unavailable', {
+                                            name: allocation.user.name,
+                                        })}
+                                    </option>
                                 ) : null}
                             </NativeSelect>
                         ) : (
@@ -423,7 +461,7 @@ export function AllocationDialog({
                             error={errors.end_date}
                             optional={
                                 form.data.mode === 'monthly'
-                                    ? t('forecast.allocation.end_optional')
+                                    ? t('forecast.form.optional')
                                     : undefined
                             }
                         >
@@ -473,7 +511,7 @@ export function AllocationDialog({
                         <span className="flex flex-col-reverse gap-2 sm:flex-row">
                             <Button
                                 type="button"
-                                variant="outline"
+                                variant="secondary"
                                 onClick={() => setOpen(false)}
                             >
                                 {t('forecast.actions.cancel')}

@@ -341,7 +341,6 @@ export function AbsenceDialog({
                             <Field
                                 id={`${id}-minutes`}
                                 label={t('absences.form.partial_minutes')}
-                                help={t('absences.form.partial_help')}
                                 error={errors.partial_minutes}
                             >
                                 <DurationInput
@@ -361,6 +360,14 @@ export function AbsenceDialog({
                                     )}
                                 />
                             </Field>
+                            {/* La ayuda, a todo el ancho bajo la fila (en la columna de las horas
+                                ocupaba 2-3 líneas y dejaba un hueco bajo el día). D-310. */}
+                            <p
+                                id={`${id}-minutes-help`}
+                                className="text-sm text-muted-foreground sm:col-span-2"
+                            >
+                                {t('absences.form.partial_help')}
+                            </p>
                         </div>
                     ) : (
                         <div className="grid gap-2">

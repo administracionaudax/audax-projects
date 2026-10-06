@@ -28,6 +28,7 @@ import {
     destroy as clearAway,
     update as updateAway,
 } from '@/routes/weeklies/away';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import type { WeeklyAwayReason, WeeklyAwayStatus } from '@/types/weeklies';
 
 type AwayForm = {
@@ -84,12 +85,13 @@ export function AwayDialog({
     });
     const form = useForm<AwayForm>(initial());
 
-    const setOpen = (next: boolean) => {
-        if (next) {
-            form.setData(initial());
-            form.clearErrors();
-        }
+    // También cuando lo abre el menú o el aviso (controlado): parte del estado de ahora.
+    useResetOnOpen(open, () => {
+        form.setData(initial());
+        form.clearErrors();
+    });
 
+    const setOpen = (next: boolean) => {
         setInnerOpen(next);
         onOpenChange?.(next);
     };
@@ -191,7 +193,16 @@ export function AwayDialog({
                         <DatePicker
                             id={`${id}-until`}
                             value={form.data.until}
-                            onChange={(value) => form.setData('until', value)}
+                            onChange={(value) =>
+                                // Sin fecha no se puede pedir la ausencia: se desmarca.
+                                form.setData((data) => ({
+                                    ...data,
+                                    until: value,
+                                    request_absence: value
+                                        ? data.request_absence
+                                        : false,
+                                }))
+                            }
                             min={today}
                             invalid={Boolean(form.errors.until)}
                         />

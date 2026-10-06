@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { toastUnshownErrors } from '@/components/admin/visit-errors';
 import type { FormEvent, ReactNode } from 'react';
 import { useId, useState } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
@@ -23,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useAbilities } from '@/hooks/use-auth';
+import { useResetOnOpen } from '@/hooks/use-reset-on-open';
 import { t } from '@/lib/i18n';
 import { store, update } from '@/routes/forecast/projects';
 import type {
@@ -93,9 +95,15 @@ export function ForecastProjectDialog({
     // Un confirmado es siempre seguro (no vuelve a posible).
     const lockedFirm = forecast?.status === 'confirmed';
 
-    const setOpen = (next: boolean) => {
+    // Al abrir parte de los datos de ahora: guardar no vuelve a montar la página y, si no, «Editar»
+    // deshacía cambios hechos después («Hacer segura», la edición anterior).
+    useResetOnOpen(open, () => {
+        form.setDefaults(initial(forecast));
         form.setData(initial(forecast));
         form.clearErrors();
+    });
+
+    const setOpen = (next: boolean) => {
         setInternalOpen(next);
         onOpenChange?.(next);
     };
@@ -131,6 +139,9 @@ export function ForecastProjectDialog({
         const options = {
             preserveScroll: true,
             onSuccess: () => setOpen(false),
+            // «El previsto está congelado», «estado»…: sin campo donde pintarse (D-310).
+            onError: (errors: Record<string, string>) =>
+                toastUnshownErrors(errors, Object.keys(initial(forecast))),
         };
 
         if (forecast) {
@@ -246,6 +257,19 @@ export function ForecastProjectDialog({
                                         {client.name}
                                     </option>
                                 ))}
+                                {/* El cliente del previsto ya inactivo: que se vea (D-310). */}
+                                {forecast?.client &&
+                                clients !== undefined &&
+                                !clients.some(
+                                    (client) =>
+                                        client.id === forecast.client?.id,
+                                ) ? (
+                                    <option value={forecast.client.id} disabled>
+                                        {t('forecast.form.client_unavailable', {
+                                            name: forecast.client.name,
+                                        })}
+                                    </option>
+                                ) : null}
                             </NativeSelect>
                         ) : (
                             <Input
@@ -365,7 +389,7 @@ export function ForecastProjectDialog({
                                 invalid={Boolean(errors.estimated_minutes)}
                                 // La ayuda («= 1:30 h») va bajo la caja sin ocupar sitio: así las dos
                                 // columnas y el campo siguiente quedan alineados.
-                                className="relative [&>p]:absolute [&>p]:top-full [&>p]:mt-1"
+                                preview="overlay"
                             />
                         </Field>
                         {can.viewFinancials ? (
@@ -414,7 +438,7 @@ export function ForecastProjectDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => setOpen(false)}
                         >
                             {t('forecast.actions.cancel')}

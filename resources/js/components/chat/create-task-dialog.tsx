@@ -248,6 +248,7 @@ export function CreateTaskDialog({
                                     >
                                         <SelectTrigger
                                             id={bankId}
+                                            className="w-full"
                                             aria-invalid={
                                                 errors.hour_bank_id
                                                     ? true
@@ -284,7 +285,7 @@ export function CreateTaskDialog({
                         ) : null}
 
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="grid gap-1.5">
+                            <div className="grid content-start gap-1.5">
                                 <Label htmlFor={assigneeId}>
                                     {t('chat.task.assignee')}
                                 </Label>
@@ -292,7 +293,10 @@ export function CreateTaskDialog({
                                     value={assignee}
                                     onValueChange={setAssignee}
                                 >
-                                    <SelectTrigger id={assigneeId}>
+                                    <SelectTrigger
+                                        id={assigneeId}
+                                        className="w-full"
+                                    >
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -337,7 +341,7 @@ export function CreateTaskDialog({
                                 </Select>
                                 <InputError message={errors.assignee_user_id} />
                             </div>
-                            <div className="grid gap-1.5">
+                            <div className="grid content-start gap-1.5">
                                 <Label htmlFor={dueId}>
                                     {t('chat.task.due_date')}
                                 </Label>

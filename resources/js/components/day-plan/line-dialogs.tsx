@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
+import { DurationInput } from '@/components/domain/duration-input';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,8 +18,6 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { carryOptions, dayLabel } from '@/lib/day-plan';
-import { parseDuration } from '@/lib/duration';
-import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { carry, status, update } from '@/routes/day-plan/items';
 import { TargetPicker } from './target-picker';
@@ -28,6 +28,8 @@ const VISIT = {
     preserveScroll: true,
     preserveState: true,
     errorBag: 'dayPlan',
+    // Que ningún error del servidor se pierda en silencio (D-310).
+    onError: toastVisitErrors,
 } as const;
 
 function firstError(errors: Record<string, string>): string {
@@ -76,10 +78,13 @@ function EditLineForm({
         client_id: line.client?.id ?? null,
         project_id: line.project?.id ?? null,
     });
-    const [planned, setPlanned] = useState(
-        line.planned_minutes ? formatMinutes(line.planned_minutes) : '',
+    // Horas con el campo de duración de toda la app (vista previa «= 1:30» y no válido marcado).
+    const [planned, setPlanned] = useState<number | null>(
+        line.planned_minutes ?? null,
     );
-    const [error, setError] = useState<string | null>(null);
+    const [plannedText, setPlannedText] = useState(false);
+    // Cada error junto a su campo (antes, todos juntos al pie). D-310.
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
     const current = line.project
         ? `${line.project.code} · ${line.project.name}`
@@ -87,16 +92,18 @@ function EditLineForm({
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        const minutes = planned.trim() === '' ? null : parseDuration(planned);
+        const minutes = planned;
 
         if (text.trim() === '') {
-            setError(t('day_plan.composer.errors.text'));
+            setErrors({ text: t('day_plan.composer.errors.text') });
 
             return;
         }
 
-        if (planned.trim() !== '' && minutes === null) {
-            setError(t('day_plan.composer.errors.duration'));
+        if (plannedText && minutes === null) {
+            setErrors({
+                planned_minutes: t('day_plan.composer.errors.duration'),
+            });
 
             return;
         }
@@ -125,10 +132,21 @@ function EditLineForm({
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
                 onSuccess: onDone,
-                onError: (errors) => setError(firstError(errors)),
+                onError: (next) => setErrors(next),
             },
         );
     };
+    const targetError = errors.project_id ?? errors.client_id ?? errors.task_id;
+    const otherError = Object.entries(errors).find(
+        ([key]) =>
+            ![
+                'text',
+                'planned_minutes',
+                'project_id',
+                'client_id',
+                'task_id',
+            ].includes(key),
+    )?.[1];
 
     return (
         <form onSubmit={submit} className="grid gap-4" noValidate>
@@ -143,8 +161,10 @@ function EditLineForm({
                     value={text}
                     maxLength={200}
                     onChange={(event) => setText(event.target.value)}
+                    aria-invalid={errors.text ? true : undefined}
                     data-test="day-plan-edit-text"
                 />
+                <InputError message={errors.text} />
             </div>
             <div className="grid gap-1.5">
                 <Label htmlFor={`${id}-target`}>
@@ -157,6 +177,7 @@ function EditLineForm({
                     current={current}
                     onChange={setTarget}
                 />
+                <InputError message={targetError} />
                 {line.task ? (
                     <p className="text-xs text-muted-foreground">
                         {t('day_plan.edit.task_hint', {
@@ -169,16 +190,21 @@ function EditLineForm({
                 <Label htmlFor={`${id}-planned`}>
                     {t('day_plan.edit.planned')}
                 </Label>
-                <Input
+                <DurationInput
                     id={`${id}-planned`}
                     value={planned}
-                    inputMode="decimal"
+                    max={1440}
                     placeholder="1:30"
-                    className="tabular w-32"
-                    onChange={(event) => setPlanned(event.target.value)}
+                    className="w-40"
+                    invalid={Boolean(errors.planned_minutes)}
+                    onChange={(minutes) => setPlanned(minutes)}
+                    onTextChange={(value) =>
+                        setPlannedText(value.trim() !== '')
+                    }
                 />
+                <InputError message={errors.planned_minutes} />
             </div>
-            <InputError message={error ?? undefined} />
+            <InputError message={otherError} />
             <DialogFooter className="gap-2">
                 <DialogClose asChild>
                     <Button

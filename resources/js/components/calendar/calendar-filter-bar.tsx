@@ -118,6 +118,7 @@ export function CalendarFilterBar({
                     testId="team-search"
                 />
                 <MultiSelectFilter
+                    size="sm"
                     label={t('team_calendar.filters.person')}
                     options={options.people}
                     value={filters.persons}
@@ -168,6 +169,7 @@ export function CalendarFilterBar({
                     </div>
                 ) : null}
                 <MultiSelectFilter
+                    size="sm"
                     label={t('team_calendar.filters.project')}
                     options={options.projects.map((project) => ({
                         id: project.id,
@@ -178,6 +180,7 @@ export function CalendarFilterBar({
                 />
                 {options.clients.length > 0 ? (
                     <MultiSelectFilter
+                        size="sm"
                         label={t('team_calendar.filters.client')}
                         options={options.clients}
                         value={filters.clients}
@@ -185,6 +188,7 @@ export function CalendarFilterBar({
                     />
                 ) : null}
                 <MultiSelectFilter
+                    size="sm"
                     label={t('team_calendar.filters.type')}
                     options={options.types.map((type) => ({
                         id: type.id,

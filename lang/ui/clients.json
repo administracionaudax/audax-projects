@@ -76,6 +76,8 @@
     "clients.filter_kind_all": "Todos los tipos",
     "clients.filter_person": "Persona",
     "clients.filter_person_all": "Todas las personas",
+    "clients.filter_person_loading": "Cargando…",
+    "clients.filter_person_unknown": "Otra persona",
     "clients.filter_mine": "Mis proyectos",
     "clients.columns.projects": "Proyectos",
     "clients.columns.last_report": "Último reporte",

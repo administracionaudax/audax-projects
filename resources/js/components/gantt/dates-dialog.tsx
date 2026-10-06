@@ -109,7 +109,7 @@ function DatesForm({
 
             <div className="grid gap-3 sm:grid-cols-2">
                 {task.is_milestone ? null : (
-                    <div className="grid gap-1.5">
+                    <div className="grid content-start gap-1.5">
                         <Label htmlFor={startId}>
                             {t('gantt.column.start')}
                         </Label>
@@ -123,7 +123,7 @@ function DatesForm({
                         />
                     </div>
                 )}
-                <div className="grid gap-1.5">
+                <div className="grid content-start gap-1.5">
                     <Label htmlFor={dueId}>{t('gantt.column.due')}</Label>
                     <DatePicker
                         id={dueId}

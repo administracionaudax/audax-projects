@@ -1,4 +1,5 @@
 import { Deferred, Head, Link } from '@inertiajs/react';
+import { useLastDefined } from '@/hooks/use-last-defined';
 import { MoreHorizontal, Plus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { ChartFrame } from '@/components/charts/chart-frame';
@@ -52,9 +53,12 @@ export default function ProjectPlanning({
     totals,
     forecast,
     estimate,
-    options,
+    options: optionsProp,
     can,
 }: ProjectPlanningPageProps) {
+    // Las opciones diferidas siguen disponibles mientras se vuelven a pedir tras guardar: el
+    // diálogo de asignación ya no se desmonta con un error de validación (D-310).
+    const options = useLastDefined(optionsProp);
     const abilities = useAbilities();
     const [adding, setAdding] = useState(false);
     const [editing, setEditing] = useState<Allocation | null>(null);
@@ -102,6 +106,8 @@ export default function ProjectPlanning({
                             type="button"
                             variant="outline"
                             onClick={() => setAdding(true)}
+                            // Hasta que llegan las personas y departamentos no hay diálogo que abrir.
+                            disabled={!options}
                             data-test="add-allocation"
                         >
                             <Plus aria-hidden="true" />

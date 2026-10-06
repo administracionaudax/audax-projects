@@ -30,6 +30,9 @@ export function MultiSelectFilter({
     onChange,
     disabled,
     emptyLabel,
+    size = 'default',
+    labelInside = true,
+    className,
 }: {
     label: string;
     options: FilterOption[];
@@ -38,6 +41,14 @@ export function MultiSelectFilter({
     disabled?: boolean;
     /** Resumen sin nada elegido (por defecto, «Todos», como en los filtros). */
     emptyLabel?: string;
+    /** `sm` (h-8) en las barras de filtros compactas (Mis tareas, calendario), como sus vecinos. */
+    size?: 'sm' | 'default';
+    /**
+     * «Etiqueta: resumen» dentro de la caja (filtros). En un formulario con la etiqueta encima, false:
+     * solo el resumen (antes salía «Personas de Audax» dos veces). D-310.
+     */
+    labelInside?: boolean;
+    className?: string;
 }) {
     const [open, setOpen] = useState(false);
     const selected = options.filter((option) => value.includes(option.id));
@@ -60,15 +71,22 @@ export function MultiSelectFilter({
             <PopoverTrigger asChild>
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="field"
+                    size={size}
                     role="combobox"
                     aria-expanded={open}
                     aria-label={`${label}: ${summary}`}
                     disabled={disabled}
-                    className="h-9 min-w-0 justify-between gap-2 font-normal"
+                    className={cn('min-w-0 justify-between gap-2', className)}
                 >
                     <span className="truncate">
-                        <span className="text-muted-foreground">{label}:</span>{' '}
+                        {labelInside ? (
+                            <>
+                                <span className="text-muted-foreground">
+                                    {label}:
+                                </span>{' '}
+                            </>
+                        ) : null}
                         {summary}
                     </span>
                     <ChevronsUpDown aria-hidden="true" className="opacity-50" />

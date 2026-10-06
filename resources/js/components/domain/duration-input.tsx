@@ -20,6 +20,14 @@ type DurationInputProps = {
     max?: number;
     'aria-label'?: string;
     'aria-describedby'?: string;
+    /** El texto tal cual (p. ej. para distinguir «vacío» de «no válido», que dan null los dos). */
+    onTextChange?: (text: string) => void;
+    /**
+     * Dónde va la vista previa («= 1:30»): `reserve` (por defecto) reserva su línea bajo la caja;
+     * `overlay` la pone bajo la caja sin ocupar sitio, para filas de dos columnas, y se oculta si
+     * el campo tiene un error del servidor (que ocupa ese sitio).
+     */
+    preview?: 'reserve' | 'overlay';
 };
 
 /**
@@ -37,6 +45,8 @@ export function DurationInput({
     className,
     autoFocus,
     max,
+    onTextChange,
+    preview = 'reserve',
     ...aria
 }: DurationInputProps) {
     const previewId = useId();
@@ -58,7 +68,13 @@ export function DurationInput({
     const isInvalid = invalid || (hasText && parsed === null);
 
     return (
-        <div className={cn('grid gap-1', className)}>
+        <div
+            className={cn(
+                'grid gap-1',
+                preview === 'overlay' && 'relative',
+                className,
+            )}
+        >
             <Input
                 id={id}
                 name={name}
@@ -75,6 +91,7 @@ export function DurationInput({
                     .join(' ')}
                 onChange={(event) => {
                     setText(event.target.value);
+                    onTextChange?.(event.target.value);
                     const minutes = parseDuration(event.target.value, max);
                     setLastValue(minutes);
                     onChange(minutes);
@@ -88,7 +105,13 @@ export function DurationInput({
             <p
                 id={previewId}
                 aria-live="polite"
-                className="min-h-4 text-xs text-muted-foreground"
+                className={cn(
+                    'text-xs text-muted-foreground',
+                    preview === 'overlay'
+                        ? 'absolute top-full left-0 mt-1'
+                        : 'min-h-4',
+                    preview === 'overlay' && invalid && 'sr-only',
+                )}
             >
                 {hasText
                     ? parsed === null

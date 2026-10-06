@@ -37,7 +37,7 @@ export function LayerToggles({
                     data-test={`layer-${layer}`}
                     onClick={() => toggle(layer)}
                     className={cn(
-                        'inline-flex h-9 items-center gap-2 border border-input bg-card px-3 text-sm text-foreground hover:bg-muted',
+                        'inline-flex h-9 items-center gap-2 border border-input px-3 text-sm text-foreground hover:bg-muted',
                         FOCUS_RING,
                     )}
                 >

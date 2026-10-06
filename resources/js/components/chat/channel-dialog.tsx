@@ -151,9 +151,10 @@ export function ChannelDialog({
                                         ref={iconButton}
                                         id={iconId}
                                         type="button"
-                                        variant="outline"
+                                        // Parte del campo: borde gris, como la caja del nombre.
+                                        variant="field"
                                         size="icon"
-                                        className="size-9 shrink-0 text-lg"
+                                        className="size-9 shrink-0 px-0 text-lg"
                                         aria-label={
                                             icon
                                                 ? t(
@@ -223,7 +224,7 @@ export function ChannelDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('chat.channel.cancel')}

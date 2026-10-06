@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 05/10/2026_
+_Última actualización: 06/10/2026_
 
 ## Hecho
 
@@ -162,6 +162,12 @@ Las pantallas definitivas con el diseño aprobado (`docs/DISENO-PREVISION.md`, D
 - **Mi carga:** por asignaciones en Inicio y en `/carga` del empleado (con el módulo). Entrada «Previsión» en la barra lateral, búsqueda global y 403 explicativo para los empleados. Columnas sin esquinas en todas las gráficas.
 - **Datos de ejemplo:** todo el equipo con plan de tres meses, la colaboradora con una asignación y dos previstos más.
 - **Tests:** Pest (`tests/Feature/Forecast/ForecastScreensTest.php` y los ajustes de los existentes), Vitest (`tests/js/forecast-screens.test.tsx`) y E2E (`tests/e2e/forecast.spec.ts`: el flujo completo, AA en claro y oscuro y móvil a 375 px). **Pendiente:** el Calendario con las asignaciones, la caché por versión (D-086), avisos de §9, informe «Precisión de previsiones», exportación y previstos en la ficha del cliente (D-289).
+
+### Revisión de formularios (rama `revision-formularios`, 06/10, sin desplegar)
+Pedida por el propietario: que todos los desplegables, selectores y formularios funcionen. Detalle, inventario y preguntas en `docs/REVISION-FORMULARIOS.md` (D-310 a D-312).
+- **Revisión:** todo `resources/js` por áreas y un recorrido con Playwright (4 roles, claro y oscuro, 1440 y 375 px) que abre cada diálogo y desplegable, mide alturas, bordes y escalones y hace capturas.
+- **Arreglado:** props diferidas que se cancelaban o se perdían al guardar, formularios que partían de datos viejos (la edición del previsto deshacía cambios), confirmaciones que no se cerraban (borrar una semana podía borrar otra), errores del servidor que no se veían, envíos dobles, valores fuera de las opciones, campos con borde de botón, selectores con fondo propio, escalones y ayudas que dejaban huecos.
+- **Tests:** Vitest (`form-fields`, `deferred-props`, `confirm-dialog`, `form-review-*` y otros), E2E `tests/e2e/form-review.spec.ts` y Pest (`HelpCenterTest`).
 
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.

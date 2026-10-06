@@ -55,7 +55,7 @@ export default function TemplatesIndex({
 }: TemplatesIndexProps) {
     const id = useId();
     const trash = initialFilters.papelera;
-    const { filters, update, reset } = useListFilters(
+    const { filters, update, updateMany } = useListFilters(
         templatesIndex.url(),
         {
             q: initialFilters.q,
@@ -65,7 +65,9 @@ export default function TemplatesIndex({
         { estado: 'todas' },
         ['templates', 'filters', 'trashedCount'],
     );
-    const filtered = filters.q !== '' || filters.estado !== 'todas';
+    // En la papelera no hay filtro de estado (el servidor lo ignora), y limpiar no saca de ella.
+    const filtered = filters.q !== '' || (!trash && filters.estado !== 'todas');
+    const reset = () => updateMany({ q: '', estado: 'todas' });
     const empty = templates.meta.total === 0;
 
     return (

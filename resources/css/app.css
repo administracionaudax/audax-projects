@@ -224,6 +224,9 @@
 }
 
 .dark {
+    /* Controles nativos (lista de un <select>, barras de desplazamiento, casillas del sistema) en
+       oscuro: sin esto el desplegable de los selectores nativos se abría en claro. */
+    color-scheme: dark;
     /* Tema oscuro según las pantallas oscuras de la hoja de Audax (D-137): base #0B1526 (la de la
        imagen de portada), superficies algo más claras y poco saturadas, texto #F5F6F7, secundario
        blanco al 70 % y separadores blanco al 14 %. El navy de marca #001B39 queda para la marca. */

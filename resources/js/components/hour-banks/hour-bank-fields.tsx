@@ -221,7 +221,7 @@ export function HourBankFields({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
+                <div className="grid content-start gap-2">
                     <Label htmlFor={`${id}-start`}>
                         {t('hour_banks.form.start_date')}
                     </Label>
@@ -234,7 +234,7 @@ export function HourBankFields({
                     />
                     <InputError message={errors.start_date} />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid content-start gap-2">
                     <Label htmlFor={`${id}-end`}>
                         {t('hour_banks.form.end_date')}
                     </Label>

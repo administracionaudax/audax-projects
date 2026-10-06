@@ -1,4 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useOptimisticValue } from '@/hooks/use-optimistic-value';
 import { BellOff, CheckCheck, SlidersHorizontal } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import Heading from '@/components/heading';
@@ -17,6 +18,7 @@ export default function Notifications({
 }: NotificationsPageProps) {
     const { data, meta, links } = items;
     const empty = data.length === 0;
+    const [shownFilter, setShownFilter] = useOptimisticValue(filter);
 
     return (
         <>
@@ -60,12 +62,14 @@ export default function Notifications({
                 <ToggleGroup
                     type="single"
                     variant="outline"
-                    value={filter}
+                    value={shownFilter}
                     aria-label={t('notifications.filter.label')}
                     onValueChange={(value) => {
                         if (!value) {
                             return;
                         }
+
+                        setShownFilter(value as typeof filter);
 
                         router.get(
                             notificationsIndex.url({

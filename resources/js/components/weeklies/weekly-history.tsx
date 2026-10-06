@@ -234,6 +234,7 @@ export function WeeklyHistory({
         <div className="grid min-w-0 gap-8">
             {active ? (
                 <HighlightedCard
+                    key={active.id}
                     cycle={active}
                     title={t('weeklies.history.current')}
                     can={can}
@@ -242,6 +243,7 @@ export function WeeklyHistory({
 
             {latestClosed ? (
                 <HighlightedCard
+                    key={latestClosed.id}
                     cycle={latestClosed}
                     title={t('weeklies.history.latest_closed')}
                     hint={t('weeklies.history.latest_closed_hint')}

@@ -123,7 +123,7 @@ export default function BillingReport({
                         {t('reports_r2.billing.client')}
                     </Label>
                     <Select
-                        value={client ? String(client.id) : undefined}
+                        value={client ? String(client.id) : ''}
                         onValueChange={chooseClient}
                     >
                         <SelectTrigger id={`${id}-client`} className="w-full">

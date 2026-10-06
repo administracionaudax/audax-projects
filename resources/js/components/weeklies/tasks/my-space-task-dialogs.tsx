@@ -230,25 +230,6 @@ function NewTaskForm({
                         value={clientId}
                         onChange={chooseClient}
                     />
-                    <p
-                        className="text-xs text-muted-foreground"
-                        data-test="my-space-task-missing-client"
-                    >
-                        {t('my_space.tasks.field.missing_client')}
-                        {viewClients ? (
-                            <>
-                                {' '}
-                                <Link
-                                    href={clientsIndex.url()}
-                                    className="underline underline-offset-2"
-                                >
-                                    {t(
-                                        'my_space.tasks.field.missing_client_link',
-                                    )}
-                                </Link>
-                            </>
-                        ) : null}
-                    </p>
                 </div>
                 <div className="grid content-start gap-2">
                     <Label htmlFor={field('project')}>
@@ -267,8 +248,28 @@ function NewTaskForm({
                     />
                     <InputError message={errors.project} />
                 </div>
+                {/* La ayuda larga, bajo la fila Cliente/Proyecto a todo el ancho: en la columna de
+                    Cliente dejaba un gran hueco bajo Proyecto (D-310). */}
+                <p
+                    className="text-xs text-muted-foreground sm:col-span-2"
+                    data-test="my-space-task-missing-client"
+                >
+                    {t('my_space.tasks.field.missing_client')}
+                    {viewClients ? (
+                        <>
+                            {' '}
+                            <Link
+                                href={clientsIndex.url()}
+                                className="underline underline-offset-2"
+                            >
+                                {t('my_space.tasks.field.missing_client_link')}
+                            </Link>
+                        </>
+                    ) : null}
+                </p>
                 {project?.uses_banks ? (
-                    <div className="grid content-start gap-2">
+                    // A todo el ancho: así Prioridad y Entrega siguen juntas en su fila.
+                    <div className="grid content-start gap-2 sm:col-span-2">
                         <Label htmlFor={field('bank')}>
                             {t('my_space.tasks.field.bank')}
                         </Label>
@@ -398,7 +399,7 @@ function EditTaskForm({
                 onFinish: () => setProcessing(false),
                 onSuccess: () => {
                     toast.success(
-                        t('my_space.tasks.toast.created', {
+                        t('my_space.tasks.toast.updated', {
                             task: title.trim(),
                         }),
                     );

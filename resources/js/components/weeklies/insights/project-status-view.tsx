@@ -346,7 +346,7 @@ export function ProjectStatusView({
                 <div
                     role="group"
                     aria-label={t('weeklies.project_status.view_label')}
-                    className="inline-flex border"
+                    className="inline-flex h-9 items-stretch border border-input"
                 >
                     {(['cards', 'table'] as const).map((option) => (
                         <button
@@ -355,7 +355,8 @@ export function ProjectStatusView({
                             aria-pressed={view === option}
                             onClick={() => setView(option)}
                             className={cn(
-                                'px-3 py-1.5 text-sm',
+                                // h-9: a la altura de los filtros de su fila (D-310).
+                                'px-3 text-sm',
                                 view === option
                                     ? 'bg-accent text-accent-foreground'
                                     : 'text-muted-foreground hover:text-foreground',
@@ -409,7 +410,7 @@ export function ProjectStatusView({
                                 </div>
                                 <ProjectKindBadges badges={group.badges} />
                             </header>
-                            <div className="grid gap-3 p-3 xl:grid-cols-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-3 xl:grid-cols-[repeat(2,minmax(0,1fr))]">
                                 {group.projects.map((entry) => (
                                     <ProjectStatusCard
                                         key={entry.project_id}

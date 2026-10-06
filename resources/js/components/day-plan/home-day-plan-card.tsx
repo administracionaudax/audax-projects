@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { Sun } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -112,6 +113,8 @@ function HomeLine({ line, timer }: { line: DayPlanLine; timer?: ReactNode }) {
                             preserveScroll: true,
                             preserveState: true,
                             errorBag: 'dayPlan',
+                            // Que ningún error del servidor se pierda en silencio (D-310).
+                            onError: toastVisitErrors,
                             only: ['day_plan'],
                             onStart: () => setProcessing(true),
                             onFinish: () => setProcessing(false),

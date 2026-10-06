@@ -65,10 +65,10 @@ export function TargetPicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between border-input font-normal text-foreground"
+                    className="w-full justify-between"
                     data-test="day-plan-target"
                 >
                     <span className="truncate">{label}</span>
@@ -172,6 +172,15 @@ export function TargetPicker({
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
+                        ) : null}
+                        {/* Clientes y proyectos llegan aparte (prop diferida): que se vea. */}
+                        {targets === undefined ? (
+                            <p
+                                role="status"
+                                className="px-3 py-2 text-sm text-muted-foreground"
+                            >
+                                {t('day_plan.targets.loading')}
+                            </p>
                         ) : null}
                     </CommandList>
                 </Command>

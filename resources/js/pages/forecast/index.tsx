@@ -242,7 +242,7 @@ export default function ForecastIndex({
                     className="flex flex-wrap items-center gap-2"
                     data-test="forecast-filters"
                 >
-                    <label className="flex h-9 items-center gap-2 border border-input bg-card pl-3 text-sm">
+                    <label className="flex h-9 items-center gap-2 border border-input pl-3 text-sm">
                         <span className="text-muted-foreground">
                             {t('forecast.filters.horizon')}
                         </span>
@@ -257,7 +257,8 @@ export default function ForecastIndex({
                                     por: months > 3 ? 'meses' : 'semanas',
                                 });
                             }}
-                            className="h-full w-32 [&_select]:h-full [&_select]:border-0 [&_select]:bg-transparent"
+                            bare
+                            className="w-32"
                         >
                             {HORIZONS.map((months) => (
                                 <option key={months} value={months}>
@@ -291,7 +292,7 @@ export default function ForecastIndex({
                             {t('forecast.filters.by_months')}
                         </ToggleGroupItem>
                     </ToggleGroup>
-                    <label className="flex h-9 items-center gap-2 border border-input bg-card pl-3 text-sm">
+                    <label className="flex h-9 items-center gap-2 border border-input pl-3 text-sm">
                         <span className="text-muted-foreground">
                             {t('forecast.filters.department')}
                         </span>
@@ -301,7 +302,8 @@ export default function ForecastIndex({
                             onChange={(event) =>
                                 visit({ departamento: event.target.value })
                             }
-                            className="h-full w-40 [&_select]:h-full [&_select]:border-0 [&_select]:bg-transparent"
+                            bare
+                            className="w-40"
                         >
                             <option value="">
                                 {t('forecast.filters.all')}

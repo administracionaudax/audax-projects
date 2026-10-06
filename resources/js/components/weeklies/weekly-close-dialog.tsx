@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { CircleAlert, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,8 @@ export function CloseWeekDialog({
                                     onStart: () => setProcessing(true),
                                     onFinish: () => setProcessing(false),
                                     onSuccess: () => setOpen(false),
+                                    // Bloqueos de última hora (otra persona envió): que se vean.
+                                    onError: toastVisitErrors,
                                 },
                             )
                         }

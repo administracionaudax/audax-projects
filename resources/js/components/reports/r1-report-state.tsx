@@ -6,6 +6,30 @@ import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
+/**
+ * ¿Es una visita que vuelve a pedir el informe (cambio de filtros o de periodo)? No lo son las
+ * precargas del menú, las peticiones asíncronas ni las recargas parciales (props diferidas como la
+ * carga futura): con ellas el informe entero se atenuaba con «Actualizando…» (D-310).
+ */
+export function isReportPageVisit(
+    visit: {
+        method: string;
+        url: URL;
+        prefetch?: boolean;
+        async?: boolean;
+        only?: string[];
+    },
+    path: string = window.location.pathname,
+): boolean {
+    return (
+        visit.method === 'get' &&
+        visit.url.pathname === path &&
+        !visit.prefetch &&
+        !visit.async &&
+        (visit.only?.length ?? 0) === 0
+    );
+}
+
 export type ReportVisitState = {
     /** Hay una visita en curso a esta misma página (cambio de filtros o de periodo). */
     loading: boolean;
@@ -24,17 +48,16 @@ export function useReportVisit(): ReportVisitState {
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const pending = useRef<string | null>(null);
+    const pendingId = useRef<string | null>(null);
     const lastFailed = useRef<string | null>(null);
 
     useEffect(() => {
         const offStart = router.on('start', (event) => {
             const { visit } = event.detail;
 
-            if (
-                visit.method === 'get' &&
-                visit.url.pathname === window.location.pathname
-            ) {
+            if (isReportPageVisit(visit)) {
                 pending.current = visit.url.href;
+                pendingId.current = visit.id;
                 setLoading(true);
                 setFailed(false);
             }
@@ -52,9 +75,14 @@ export function useReportVisit(): ReportVisitState {
 
         const offHttp = router.on('httpException', fail);
         const offNetwork = router.on('networkError', fail);
-        const offFinish = router.on('finish', () => {
-            if (pending.current !== null) {
+        // Solo el final de la misma visita apaga el indicador (no el de una precarga u otra petición).
+        const offFinish = router.on('finish', (event) => {
+            if (
+                pending.current !== null &&
+                event.detail.visit.id === pendingId.current
+            ) {
                 pending.current = null;
+                pendingId.current = null;
                 setLoading(false);
             }
         });

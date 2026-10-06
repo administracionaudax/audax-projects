@@ -286,8 +286,17 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
         setIndexOpen(false);
     };
 
+    const [requestingText, setRequestingText] = useState(false);
     const generateText = () =>
-        router.post(storeReport.url(cycle.id), {}, { preserveScroll: true });
+        router.post(
+            storeReport.url(cycle.id),
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setRequestingText(true),
+                onFinish: () => setRequestingText(false),
+            },
+        );
     // Regenerar descarta la edición a mano (D-190): se avisa antes (10.9b).
     const editedByHand = !!report && !!cycle.report_edited_at && !closed;
     const generateAudio = () =>
@@ -419,6 +428,7 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                         'weeklies.report.regenerate_edited_description',
                     )}
                     confirmLabel={textLabel}
+                    processing={requestingText}
                     onConfirm={generateText}
                 />
             ) : (
@@ -678,6 +688,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                                 type="button"
                                 variant="outline"
                                 size="icon"
+                                // h-8, como «Índice» a su lado.
+                                className="size-8"
                                 aria-label={t('weeklies.actions.more')}
                                 onClick={() => setActionsOpen(true)}
                                 data-test="weekly-actions-mobile"
@@ -735,6 +747,8 @@ export function WeeklyReportView(props: WeeklyShowPageProps) {
                                     type="button"
                                     variant="outline"
                                     size="icon"
+                                    // h-8, como «Solo los míos» y «Exportar» a su lado.
+                                    className="size-8"
                                     aria-pressed={fullscreen}
                                     aria-label={
                                         fullscreen

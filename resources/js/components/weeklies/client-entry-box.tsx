@@ -165,7 +165,8 @@ export function ClientEntryBox({
                                 data-test="weekly-entry-text"
                             />
                         </div>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                        {/* Abajo: «Dictar» a la altura de la caja del proyecto, no de su etiqueta. */}
+                        <div className="flex flex-wrap items-end justify-between gap-3">
                             <DictationButton
                                 cycleId={cycleId}
                                 clientId={clientId}

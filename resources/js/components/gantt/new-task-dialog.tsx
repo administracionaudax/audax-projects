@@ -306,7 +306,7 @@ function NewTaskForm({
 
             <div className="grid gap-3 sm:grid-cols-2">
                 {milestone ? null : (
-                    <div className="grid gap-1.5">
+                    <div className="grid content-start gap-1.5">
                         <Label htmlFor={`${id}-start`}>
                             {t('gantt.column.start')}
                         </Label>
@@ -318,7 +318,7 @@ function NewTaskForm({
                         {errorText('start_date')}
                     </div>
                 )}
-                <div className="grid gap-1.5">
+                <div className="grid content-start gap-1.5">
                     <Label htmlFor={`${id}-due`}>{t('gantt.column.due')}</Label>
                     <DatePicker
                         id={`${id}-due`}

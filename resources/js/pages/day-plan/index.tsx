@@ -1,4 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { toastVisitErrors } from '@/components/admin/visit-errors';
 import {
     ChevronLeft,
     ChevronRight,
@@ -86,7 +87,6 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                         <Button
                             asChild
                             variant="outline"
-                            size="sm"
                             aria-current={isToday ? 'date' : undefined}
                         >
                             <Link href={show.url()}>{t('day_plan.today')}</Link>
@@ -253,6 +253,8 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                                             preserveScroll: true,
                                             preserveState: true,
                                             errorBag: 'dayPlan',
+                                            // Que ningún error del servidor se pierda en silencio (D-310).
+                                            onError: toastVisitErrors,
                                             onStart: () =>
                                                 setLoggingPlanned(true),
                                             onFinish: () =>
@@ -370,6 +372,8 @@ function DayNote({
                                 preserveScroll: true,
                                 preserveState: true,
                                 errorBag: 'dayPlan',
+                                // Que ningún error del servidor se pierda en silencio (D-310).
+                                onError: toastVisitErrors,
                             },
                         );
                     }

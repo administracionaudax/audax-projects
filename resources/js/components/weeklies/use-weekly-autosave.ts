@@ -19,7 +19,11 @@ export type WeeklyAutosave = {
     /** Guarda ya lo pendiente (p. ej. al reintentar). */
     flush: () => Promise<void>;
     /** Olvida lo pendiente (p. ej. antes de enviar, que ya guarda). */
-    cancel: () => void;
+    /**
+     * Para el autoguardado (p. ej. antes de enviar) dando lo escrito por guardado. Devuelve cómo
+     * deshacerlo si el envío falla: lo escrito vuelve a contar como pendiente y se guarda.
+     */
+    cancel: () => () => void;
 };
 
 /**
@@ -205,8 +209,14 @@ export function useWeeklyAutosave({
         flush: run,
         cancel: () => {
             clearTimer();
+            const previous = lastSaved.current;
             lastSaved.current = latest.current;
             setStatus('idle');
+
+            return () => {
+                lastSaved.current = previous;
+                void run();
+            };
         },
     };
 }

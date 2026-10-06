@@ -237,6 +237,19 @@ export default function ClientsIndex({
                                     {person.name}
                                 </option>
                             ))}
+                            {/* Mientras llega la lista (prop diferida), o si la persona de la URL ya
+                                no está en ella, el selector sigue diciendo qué se está filtrando. */}
+                            {filters.persona &&
+                            !(people ?? []).some(
+                                (person) =>
+                                    String(person.id) === filters.persona,
+                            ) ? (
+                                <option value={filters.persona} disabled>
+                                    {people === undefined
+                                        ? t('clients.filter_person_loading')
+                                        : t('clients.filter_person_unknown')}
+                                </option>
+                            ) : null}
                         </NativeSelect>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 lg:h-9">

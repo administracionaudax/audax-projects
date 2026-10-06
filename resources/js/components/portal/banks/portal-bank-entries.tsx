@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { useOptimisticValue } from '@/hooks/use-optimistic-value';
 import { Clock, RotateCw, TriangleAlert } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { NativeSelect } from '@/components/admin/native-select';
@@ -79,6 +80,8 @@ export function PortalBankEntries({
         });
     };
 
+    const [shownMonth, setShownMonth] = useOptimisticValue(month ?? '');
+
     return (
         <div className="grid min-w-0 gap-4">
             {months.length > 0 ? (
@@ -89,10 +92,11 @@ export function PortalBankEntries({
                         </Label>
                         <NativeSelect
                             id={selectId}
-                            value={month ?? ''}
-                            onChange={(event) =>
-                                changeMonth(event.target.value)
-                            }
+                            value={shownMonth}
+                            onChange={(event) => {
+                                setShownMonth(event.target.value);
+                                changeMonth(event.target.value);
+                            }}
                             data-test="portal-entries-month"
                         >
                             <option value="">

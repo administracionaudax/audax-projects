@@ -203,6 +203,7 @@
     "hours.locks.reference_help": "Opcional: el número de factura o lo que te ayude a identificarlo.",
     "hours.locks.preview": "Ver qué se bloquea",
     "hours.locks.preview_title": "Vista previa",
+    "hours.locks.stale": "Has cambiado el cliente, el proyecto o las fechas: vuelve a pulsar «Ver qué se bloquea» para bloquear con los datos nuevos.",
     "hours.locks.lockable": "Se bloquearán :count entradas aprobadas (:minutes h).",
     "hours.locks.already_locked": "Otras :count ya estaban bloqueadas.",
     "hours.locks.pending_title": "Hay horas sin aprobar en ese rango",

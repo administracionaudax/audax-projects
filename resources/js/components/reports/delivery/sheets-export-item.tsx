@@ -90,6 +90,12 @@ function openPendingWindow(): Window | null {
 }
 
 /**
+ * Hojas que se están creando, por informe y filtros. Vive fuera del menú (que se desmonta al elegir
+ * la opción): al reabrirlo, la opción sigue desactivada y no se crea una segunda hoja (D-310).
+ */
+const creating = new Set<string>();
+
+/**
  * «Google Sheets» del menú «Exportar ▾» (Fase 9, D-142). Sin credenciales en el servidor, o para un
  * colaborador externo, no aparece (prop compartida `integrations.google_sheets`). Sin la cuenta
  * conectada, abre un diálogo que lleva a Ajustes → Integraciones; con ella, crea la hoja y la abre
@@ -98,7 +104,8 @@ function openPendingWindow(): Window | null {
 export function SheetsExportItem({ request }: { request: ReportRequestData }) {
     const integrations = usePage().props.integrations;
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [pending, setPending] = useState(false);
+    const key = JSON.stringify(request);
+    const [pending, setPending] = useState(() => creating.has(key));
 
     if (!integrations?.google_sheets) {
         return null;
@@ -107,11 +114,18 @@ export function SheetsExportItem({ request }: { request: ReportRequestData }) {
     const goToSettings = () => router.visit(editIntegrations.url());
 
     const exportToSheets = async () => {
+        if (creating.has(key)) {
+            return;
+        }
+
+        creating.add(key);
         const popup = openPendingWindow();
         const toastId = toast.loading(t('integrations.sheets.creating'));
         setPending(true);
 
-        const result = await createSheet(request);
+        const result = await createSheet(request).finally(() =>
+            creating.delete(key),
+        );
 
         setPending(false);
 

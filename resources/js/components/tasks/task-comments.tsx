@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import { MessageSquarePlus, Pencil, SmilePlus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { RichTextContent } from '@/components/rich-text/rich-text-content';
@@ -316,13 +316,21 @@ function CommentComposer({ panel }: { panel: TaskPanelData }) {
     // Clave del editor: al publicar se vacía montando uno nuevo.
     const [round, setRound] = useState(0);
 
+    // Ctrl/⌘+Intro dos veces seguidas publicaba el comentario dos veces (D-310).
+    const sending = useRef(false);
+
     const submit = () => {
+        if (sending.current) {
+            return;
+        }
+
         if (isBlank(body) && files.length === 0) {
             toast.error(t('task_comments.empty'));
 
             return;
         }
 
+        sending.current = true;
         router.post(
             storeComment.url(panel.task.id),
             { body, files },
@@ -347,7 +355,10 @@ function CommentComposer({ panel }: { panel: TaskPanelData }) {
 
                     return false;
                 },
-                onFinish: () => setProcessing(false),
+                onFinish: () => {
+                    sending.current = false;
+                    setProcessing(false);
+                },
             },
         );
     };

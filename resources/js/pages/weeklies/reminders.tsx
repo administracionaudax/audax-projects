@@ -64,8 +64,12 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
     const user = useRequiredUser();
     const { config, module_preview: preview } = usePage().props;
     const modules = config?.modules;
-    const form = useForm<RemindersForm>({
-        rules: rules.map((rule) => ({
+    const editable = (source: {
+        rules: typeof rules;
+        templates: typeof templates;
+        friday: typeof friday;
+    }): RemindersForm => ({
+        rules: source.rules.map((rule) => ({
             id: rule.id,
             channel: rule.channel,
             day_of_week: rule.day_of_week,
@@ -73,12 +77,13 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
             enabled: rule.enabled,
         })),
         templates: {
-            automatic: pick(templates.automatic),
-            manual: pick(templates.manual),
-            weekly_closed: pick(templates.weekly_closed),
+            automatic: pick(source.templates.automatic),
+            manual: pick(source.templates.manual),
+            weekly_closed: pick(source.templates.weekly_closed),
         },
-        friday_reminder: friday.weekly,
+        friday_reminder: source.friday.weekly,
     });
+    const form = useForm<RemindersForm>(editable({ rules, templates, friday }));
     const errors = form.errors as Record<string, string | undefined>;
     const origin = typeof window === 'undefined' ? '' : window.location.origin;
     const previewValues = (template: WeeklyEditableTemplate) => ({
@@ -126,7 +131,22 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
                     noValidate
                     onSubmit={(event) => {
                         event.preventDefault();
-                        form.put(update.url(), { preserveScroll: true });
+                        form.put(update.url(), {
+                            preserveScroll: true,
+                            // Las reglas nuevas ya tienen id: sin esto, cada «Guardar» las borraba y
+                            // las volvía a crear (y llenaba la auditoría). D-310.
+                            onSuccess: (page) => {
+                                const next = editable(
+                                    page.props as unknown as {
+                                        rules: typeof rules;
+                                        templates: typeof templates;
+                                        friday: typeof friday;
+                                    },
+                                );
+                                form.setDefaults(next);
+                                form.setData(next);
+                            },
+                        });
                     }}
                 >
                     <Panel

@@ -289,7 +289,8 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                 />
             </div>
             <EstimateField key={task.id} panel={panel} disabled={disabled} />
-            <div className="flex flex-col justify-end gap-3">
+            {/* En su propia fila: junto a «Estimación» quedaban pegados a su etiqueta (D-310). */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:col-span-2">
                 <div className="flex items-center gap-3">
                     <Switch
                         id={ids.billable}
@@ -323,7 +324,7 @@ export function TaskPanelFields({ panel }: { panel: TaskPanelData }) {
                 {milestoneBlocked ? (
                     <p
                         id={ids.milestoneHelp}
-                        className="text-xs text-muted-foreground"
+                        className="basis-full text-xs text-muted-foreground"
                     >
                         {t('planning.milestone.has_time')}
                     </p>

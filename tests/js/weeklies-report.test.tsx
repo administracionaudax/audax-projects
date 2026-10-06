@@ -338,7 +338,7 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
         expect(router.post).toHaveBeenCalledWith(
             '/weeklies/7/informe',
             {},
-            { preserveScroll: true },
+            expect.objectContaining({ preserveScroll: true }),
         );
 
         view.unmount();
@@ -571,7 +571,7 @@ describe('el informe de la weekly (F-072 a F-091)', () => {
         expect(router.post).toHaveBeenCalledWith(
             '/weeklies/7/informe',
             {},
-            { preserveScroll: true },
+            expect.objectContaining({ preserveScroll: true }),
         );
     });
 

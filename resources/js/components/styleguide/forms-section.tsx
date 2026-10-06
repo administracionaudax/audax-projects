@@ -1,10 +1,11 @@
 import { CircleAlert, Kanban, List } from 'lucide-react';
 import { useId, useState } from 'react';
-import { parseDuration } from '@/lib/duration';
+import { DurationInput } from '@/components/domain/duration-input';
 import { Section, Specimen } from '@/components/styleguide/section';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -12,48 +13,24 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { formatMinutes } from '@/lib/format';
-import { cn } from '@/lib/utils';
 
-/** Mismo aspecto que <Input> para el textarea (el kit no trae uno propio). */
-const TEXTAREA =
-    'flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm';
-
+/** El campo de duración de la app (DurationInput): acepta varios formatos y confirma en vivo. */
 function DurationField() {
     const id = useId();
-    const [value, setValue] = useState('1:30');
-    const minutes = parseDuration(value);
-    const invalid = value.trim() !== '' && minutes === null;
+    const [minutes, setMinutes] = useState<number | null>(90);
 
     return (
         <div className="grid gap-2">
             <Label htmlFor={id}>Duración</Label>
-            <Input
+            <DurationInput
                 id={id}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                inputMode="decimal"
-                autoComplete="off"
-                className="tabular w-32"
-                aria-invalid={invalid || undefined}
-                aria-describedby={`${id}-ayuda`}
+                value={minutes}
+                onChange={setMinutes}
+                className="w-40"
             />
-            <p
-                id={`${id}-ayuda`}
-                className={cn(
-                    'text-sm',
-                    invalid
-                        ? 'text-destructive-foreground'
-                        : 'text-muted-foreground',
-                )}
-            >
-                {invalid
-                    ? 'Escribe la duración como 1:30, 1,5, 90m o 1h30 (máximo 24 h).'
-                    : minutes !== null
-                      ? `Se guardará como ${formatMinutes(minutes)} (${minutes} minutos).`
-                      : 'Acepta 1:30, 1,5, 90m o 1h30.'}
-            </p>
         </div>
     );
 }
@@ -78,9 +55,8 @@ export function FormsSection() {
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="sg-description">Descripción</Label>
-                        <textarea
+                        <Textarea
                             id="sg-description"
-                            className={TEXTAREA}
                             placeholder="Opcional"
                             rows={3}
                         />
@@ -180,28 +156,27 @@ export function FormsSection() {
                         <legend className="mb-1 text-sm font-medium">
                             Facturable
                         </legend>
-                        {[
-                            {
-                                value: 'yes',
-                                label: 'Sí, hereda del tipo de tarea',
-                            },
-                            { value: 'no', label: 'No facturable' },
-                        ].map((option) => (
-                            <label
-                                key={option.value}
-                                className="flex items-center gap-2 text-sm"
-                            >
-                                <input
-                                    type="radio"
-                                    name="sg-billable"
-                                    value={option.value}
-                                    checked={billable === option.value}
-                                    onChange={() => setBillable(option.value)}
-                                    className="size-4 accent-[var(--primary)]"
-                                />
-                                {option.label}
-                            </label>
-                        ))}
+                        <RadioGroup
+                            value={billable}
+                            onValueChange={setBillable}
+                            className="gap-2"
+                        >
+                            {[
+                                {
+                                    value: 'yes',
+                                    label: 'Sí, hereda del tipo de tarea',
+                                },
+                                { value: 'no', label: 'No facturable' },
+                            ].map((option) => (
+                                <label
+                                    key={option.value}
+                                    className="flex items-center gap-2 text-sm"
+                                >
+                                    <RadioGroupItem value={option.value} />
+                                    {option.label}
+                                </label>
+                            ))}
+                        </RadioGroup>
                     </fieldset>
 
                     <div className="grid gap-2">
@@ -230,10 +205,12 @@ export function FormsSection() {
                         </ToggleGroup>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                        El kit todavía no incluye un interruptor (switch);
-                        mientras tanto se usa la casilla.
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <Switch id="sg-switch" defaultChecked />
+                        <Label htmlFor="sg-switch" className="font-normal">
+                            Recordatorio de los viernes
+                        </Label>
+                    </div>
                 </div>
             </Specimen>
         </Section>

@@ -79,17 +79,14 @@ export function PersonLoadPicker({
                 <Button
                     id={id}
                     type="button"
-                    variant="outline"
+                    variant="field"
                     role="combobox"
                     aria-expanded={open}
                     aria-label={ariaLabel}
                     aria-describedby={describedBy}
                     aria-invalid={invalid || undefined}
                     disabled={disabled}
-                    className={cn(
-                        'w-full min-w-0 justify-between border-input font-normal text-foreground',
-                        className,
-                    )}
+                    className={cn('w-full min-w-0 justify-between', className)}
                 >
                     <span className="flex min-w-0 items-center gap-1.5">
                         <UserRound

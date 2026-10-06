@@ -1,7 +1,7 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { describedBy, Field } from '@/components/admin/field';
 import { DatePicker } from '@/components/domain/date-picker';
 import { Button } from '@/components/ui/button';
@@ -390,10 +390,42 @@ export function JoinClientsDialog({
     const [selected, setSelected] = useState<Set<number>>(() => new Set());
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // La lista recibida se guarda aquí: una recarga en vivo de la página (useWeeklyLive) no trae
+    // la prop opcional y la borraba con el diálogo abierto («No hay clientes…»). D-310.
+    const [loaded, setLoaded] = useState<WeeklyJoinableClient[] | undefined>(
+        undefined,
+    );
+    const [loadFailed, setLoadFailed] = useState(false);
+    const request = useRef(0);
+    const list = loaded ?? clients;
+
+    const load = () => {
+        const mine = ++request.current;
+        let ok = false;
+        setLoading(true);
+        setLoadFailed(false);
+        router.reload({
+            only: [propName],
+            onSuccess: (page) => {
+                const value = (page.props as Record<string, unknown>)[propName];
+
+                if (mine === request.current && Array.isArray(value)) {
+                    ok = true;
+                    setLoaded(value as WeeklyJoinableClient[]);
+                }
+            },
+            onFinish: () => {
+                if (mine === request.current) {
+                    setLoading(false);
+                    setLoadFailed(!ok);
+                }
+            },
+        });
+    };
 
     const shown = useMemo(
-        () => filterJoinableClients(clients ?? [], query),
-        [clients, query],
+        () => filterJoinableClients(list ?? [], query),
+        [list, query],
     );
 
     const toggle = (clientId: number, checked: boolean) =>
@@ -419,11 +451,7 @@ export function JoinClientsDialog({
                     setQuery('');
                     setSelected(new Set());
                     setError(null);
-                    setLoading(true);
-                    router.reload({
-                        only: [propName],
-                        onFinish: () => setLoading(false),
-                    });
+                    load();
                 }
             }}
         >
@@ -476,14 +504,30 @@ export function JoinClientsDialog({
                         className="max-h-80 min-w-0 overflow-y-auto border"
                         aria-busy={loading}
                     >
-                        {loading && clients === undefined ? (
+                        {loading && list === undefined ? (
                             <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
                                 <Spinner />
                                 {t('weeklies.join.loading')}
                             </p>
+                        ) : loadFailed && list === undefined ? (
+                            <div className="grid justify-items-start gap-2 p-3">
+                                <p role="alert" className="text-sm text-danger">
+                                    {t('weeklies.join.load_failed')}
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={load}
+                                >
+                                    {t('weeklies.join.retry')}
+                                </Button>
+                            </div>
                         ) : shown.length === 0 ? (
                             <p className="p-3 text-sm text-muted-foreground">
-                                {t('weeklies.join.empty')}
+                                {(list ?? []).length > 0 && query.trim() !== ''
+                                    ? t('weeklies.join.no_match')
+                                    : t('weeklies.join.empty')}
                             </p>
                         ) : (
                             <ul className="grid">

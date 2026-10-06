@@ -88,7 +88,7 @@ export function TaskPicker({
                     <Button
                         id={id}
                         type="button"
-                        variant="outline"
+                        variant="field"
                         role="combobox"
                         aria-expanded={open}
                         aria-invalid={invalid || undefined}
@@ -96,7 +96,7 @@ export function TaskPicker({
                         aria-label={ariaLabel}
                         disabled={disabled}
                         className={cn(
-                            'w-full justify-between font-normal',
+                            'w-full justify-between',
                             !value && 'text-muted-foreground',
                             className,
                         )}

@@ -64,7 +64,7 @@ export default function TimeLocks({
     const [processing, setProcessing] = useState(false);
     const [confirm, setConfirm] = useState(false);
 
-    const params = () => ({
+    const params = (): Record<string, string> => ({
         ...(scope === 'client'
             ? { client_id: clientId }
             : { project_id: projectId }),
@@ -73,20 +73,51 @@ export default function TimeLocks({
         ...(reference.trim() !== '' ? { reference: reference.trim() } : {}),
     });
 
+    // Lo que se previsualizó (lo que devuelve el servidor): es lo que se bloquea, aunque después se
+    // toquen los campos. Si el formulario ya no coincide, hay que volver a ver la vista previa.
+    const previewed: Record<string, string> = {
+        ...(filters.project_id !== null
+            ? { project_id: String(filters.project_id) }
+            : { client_id: String(filters.client_id ?? '') }),
+        date_from: filters.date_from ?? '',
+        date_to: filters.date_to ?? '',
+    };
+    const current = params();
+    const stale =
+        preview !== null &&
+        (current.client_id !== previewed.client_id ||
+            current.project_id !== previewed.project_id ||
+            current.date_from !== previewed.date_from ||
+            current.date_to !== previewed.date_to);
+
     const showPreview = (event: FormEvent) => {
         event.preventDefault();
-        router.get(previewRoute.url(), params(), { preserveScroll: true });
+        router.get(previewRoute.url(), params(), {
+            preserveScroll: true,
+            // Con un error de validación se vuelve a la página sin parámetros: se conserva lo escrito.
+            preserveState: (page) =>
+                Object.keys(page.props.errors ?? {}).length > 0,
+        });
     };
 
     const lock = () => {
-        router.post(store.url(), params(), {
-            preserveScroll: true,
-            onStart: () => setProcessing(true),
-            onFinish: () => {
-                setProcessing(false);
-                setConfirm(false);
+        router.post(
+            store.url(),
+            {
+                ...previewed,
+                ...(reference.trim() !== ''
+                    ? { reference: reference.trim() }
+                    : {}),
             },
-        });
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => {
+                    setProcessing(false);
+                    setConfirm(false);
+                },
+            },
+        );
     };
 
     const field = (name: string) => `${id}-${name}`;
@@ -413,7 +444,17 @@ export default function TimeLocks({
                             />
                         )}
 
-                        {(lockable?.count ?? 0) > 0 ? (
+                        {stale ? (
+                            <p
+                                role="status"
+                                className="text-sm text-warning"
+                                data-test="lock-preview-stale"
+                            >
+                                {t('hours.locks.stale')}
+                            </p>
+                        ) : null}
+
+                        {(lockable?.count ?? 0) > 0 && !stale ? (
                             <div>
                                 <ConfirmDialog
                                     open={confirm}

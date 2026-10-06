@@ -158,6 +158,7 @@ export function ReportEditDialog({
                         onChange={(values) =>
                             form.setData('team_risks', values)
                         }
+                        errorFor={(i) => error(`team_risks.${i}`)}
                     />
 
                     {form.data.client_updates.map((client, index) => (
@@ -232,6 +233,11 @@ export function ReportEditDialog({
                                 onChange={(values) =>
                                     setClient(index, { next_steps: values })
                                 }
+                                errorFor={(i) =>
+                                    error(
+                                        `client_updates.${index}.next_steps.${i}`,
+                                    )
+                                }
                             />
 
                             <fieldset className="grid gap-2">
@@ -239,81 +245,93 @@ export function ReportEditDialog({
                                     {t('weeklies.report.milestones')}
                                 </legend>
                                 {client.milestones.map((milestone, m) => (
-                                    <div
-                                        key={m}
-                                        className="flex flex-col gap-2 sm:flex-row"
-                                    >
-                                        <Input
-                                            className="sm:w-32"
-                                            aria-label={t(
-                                                'weeklies.edit.milestone_date',
-                                                { n: m + 1 },
-                                            )}
-                                            placeholder={t(
-                                                'weeklies.edit.date_placeholder',
-                                            )}
-                                            value={milestone.date}
-                                            onChange={(event) =>
-                                                setClient(index, {
-                                                    milestones:
-                                                        client.milestones.map(
-                                                            (item, i) =>
-                                                                i === m
-                                                                    ? {
-                                                                          ...item,
-                                                                          date: event
-                                                                              .target
-                                                                              .value,
-                                                                      }
-                                                                    : item,
-                                                        ),
-                                                })
+                                    <div key={m} className="grid gap-1">
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <Input
+                                                className="sm:w-32"
+                                                maxLength={40}
+                                                aria-label={t(
+                                                    'weeklies.edit.milestone_date',
+                                                    { n: m + 1 },
+                                                )}
+                                                placeholder={t(
+                                                    'weeklies.edit.date_placeholder',
+                                                )}
+                                                value={milestone.date}
+                                                onChange={(event) =>
+                                                    setClient(index, {
+                                                        milestones:
+                                                            client.milestones.map(
+                                                                (item, i) =>
+                                                                    i === m
+                                                                        ? {
+                                                                              ...item,
+                                                                              date: event
+                                                                                  .target
+                                                                                  .value,
+                                                                          }
+                                                                        : item,
+                                                            ),
+                                                    })
+                                                }
+                                            />
+                                            <Input
+                                                className="flex-1"
+                                                maxLength={2000}
+                                                aria-label={t(
+                                                    'weeklies.edit.milestone_label',
+                                                    { n: m + 1 },
+                                                )}
+                                                value={milestone.label}
+                                                onChange={(event) =>
+                                                    setClient(index, {
+                                                        milestones:
+                                                            client.milestones.map(
+                                                                (item, i) =>
+                                                                    i === m
+                                                                        ? {
+                                                                              ...item,
+                                                                              label: event
+                                                                                  .target
+                                                                                  .value,
+                                                                          }
+                                                                        : item,
+                                                            ),
+                                                    })
+                                                }
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="self-end sm:self-auto"
+                                                aria-label={t(
+                                                    'weeklies.edit.remove_milestone',
+                                                    { n: m + 1 },
+                                                )}
+                                                onClick={() =>
+                                                    setClient(index, {
+                                                        milestones:
+                                                            client.milestones.filter(
+                                                                (_, i) =>
+                                                                    i !== m,
+                                                            ),
+                                                    })
+                                                }
+                                            >
+                                                <X aria-hidden="true" />
+                                            </Button>
+                                        </div>
+                                        <InputError
+                                            message={
+                                                error(
+                                                    `client_updates.${index}.milestones.${m}.date`,
+                                                ) ??
+                                                error(
+                                                    `client_updates.${index}.milestones.${m}.label`,
+                                                )
                                             }
                                         />
-                                        <Input
-                                            className="flex-1"
-                                            aria-label={t(
-                                                'weeklies.edit.milestone_label',
-                                                { n: m + 1 },
-                                            )}
-                                            value={milestone.label}
-                                            onChange={(event) =>
-                                                setClient(index, {
-                                                    milestones:
-                                                        client.milestones.map(
-                                                            (item, i) =>
-                                                                i === m
-                                                                    ? {
-                                                                          ...item,
-                                                                          label: event
-                                                                              .target
-                                                                              .value,
-                                                                      }
-                                                                    : item,
-                                                        ),
-                                                })
-                                            }
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="self-end sm:self-auto"
-                                            aria-label={t(
-                                                'weeklies.edit.remove_milestone',
-                                                { n: m + 1 },
-                                            )}
-                                            onClick={() =>
-                                                setClient(index, {
-                                                    milestones:
-                                                        client.milestones.filter(
-                                                            (_, i) => i !== m,
-                                                        ),
-                                                })
-                                            }
-                                        >
-                                            <X aria-hidden="true" />
-                                        </Button>
                                     </div>
                                 ))}
                                 <Button
@@ -365,41 +383,49 @@ function StringList({
     addLabel,
     removeLabel,
     onChange,
+    errorFor,
 }: {
     legend: string;
     values: string[];
     addLabel: string;
     removeLabel: (n: number) => string;
     onChange: (values: string[]) => void;
+    /** Error del servidor de cada fila (p. ej. `team_risks.2`), junto a su caja. */
+    errorFor?: (index: number) => string | undefined;
 }) {
     return (
         <fieldset className="grid gap-2">
             <legend className="mb-1 text-sm">{legend}</legend>
             {values.map((value, index) => (
-                <div key={index} className="flex gap-2">
-                    <Input
-                        className="flex-1"
-                        aria-label={`${legend} ${index + 1}`}
-                        value={value}
-                        onChange={(event) =>
-                            onChange(
-                                values.map((item, i) =>
-                                    i === index ? event.target.value : item,
-                                ),
-                            )
-                        }
-                    />
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={removeLabel(index + 1)}
-                        onClick={() =>
-                            onChange(values.filter((_, i) => i !== index))
-                        }
-                    >
-                        <X aria-hidden="true" />
-                    </Button>
+                <div key={index} className="grid gap-1">
+                    <div className="flex gap-2">
+                        <Input
+                            className="flex-1"
+                            aria-label={`${legend} ${index + 1}`}
+                            aria-invalid={errorFor?.(index) ? true : undefined}
+                            maxLength={2000}
+                            value={value}
+                            onChange={(event) =>
+                                onChange(
+                                    values.map((item, i) =>
+                                        i === index ? event.target.value : item,
+                                    ),
+                                )
+                            }
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={removeLabel(index + 1)}
+                            onClick={() =>
+                                onChange(values.filter((_, i) => i !== index))
+                            }
+                        >
+                            <X aria-hidden="true" />
+                        </Button>
+                    </div>
+                    <InputError message={errorFor?.(index)} />
                 </div>
             ))}
             <Button

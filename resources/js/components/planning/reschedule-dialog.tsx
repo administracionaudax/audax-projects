@@ -142,7 +142,7 @@ export function RescheduleDialog({
                 <DialogFooter className="gap-2 sm:flex-wrap">
                     <Button
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         disabled={saving}
                         onClick={onCancel}
                     >
