@@ -13,6 +13,11 @@ return [
 
     'module_disabled' => 'Este módulo está desactivado.',
 
+    // Modo de prueba (D-239): un admin usa un módulo apagado, sin avisar a nadie.
+    'preview' => [
+        'no_notices' => 'Modo de prueba: no se avisa a nadie.',
+    ],
+
     // Importación de WeeklySync (10.9b): una imagen del texto original sin dirección web.
     'import_image' => 'Imagen',
 

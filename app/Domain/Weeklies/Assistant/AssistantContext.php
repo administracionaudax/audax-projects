@@ -64,9 +64,9 @@ final class AssistantContext
     public static function scope(User $user): array
     {
         return [
-            'weeklies' => AppModules::enabled(AppModule::Weeklies),
+            'weeklies' => AppModules::visibleTo($user, AppModule::Weeklies),
             'clients' => Gate::forUser($user)->allows('viewAny', Client::class),
-            'project_status' => AppModules::enabled(AppModule::ProjectStatus) && ! $user->isCollaborator(),
+            'project_status' => AppModules::visibleTo($user, AppModule::ProjectStatus) && ! $user->isCollaborator(),
             'hours' => $user->isAdmin() ? 'all' : ($user->isDepartmentManager() && $user->managedDepartmentIds() !== [] ? 'team' : 'own'),
             'financials' => Gate::forUser($user)->allows('view-financials'),
         ];

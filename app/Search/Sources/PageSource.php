@@ -3,6 +3,8 @@
 namespace App\Search\Sources;
 
 use App\Domain\Access\CollaboratorAccess;
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Absence;
 use App\Models\User;
 use App\Search\SearchResult;
@@ -89,6 +91,13 @@ class PageSource implements SearchSource
             // Solo internos, como toda la búsqueda (D-073).
             ['route' => 'notification-settings.edit', 'key' => 'notification_settings', 'allowed' => fn (User $user): bool => $user->isInternal()],
             ['route' => 'sessions.index', 'key' => 'sessions', 'allowed' => $always],
+            // La Weekly (Fase 10, D-239): para quien la usa y con el módulo visible para él (encendido
+            // o, en modo de prueba, solo para los admins).
+            ['route' => 'my-space.index', 'key' => 'my_space', 'allowed' => self::weekly(AppModule::Weeklies)],
+            ['route' => 'weeklies.index', 'key' => 'weeklies', 'allowed' => self::weekly(AppModule::Weeklies)],
+            ['route' => 'team.index', 'key' => 'weekly_team', 'allowed' => self::weekly(AppModule::Weeklies)],
+            ['route' => 'assistant.index', 'key' => 'assistant', 'allowed' => self::weekly(AppModule::Assistant)],
+            ['route' => 'help.index', 'key' => 'help', 'allowed' => self::weekly(AppModule::Help)],
         ];
 
         $translated = [];
@@ -104,6 +113,14 @@ class PageSource implements SearchSource
         }
 
         return $translated;
+    }
+
+    /**
+     * @return Closure(User): bool
+     */
+    private static function weekly(AppModule $module): Closure
+    {
+        return fn (User $user): bool => AppModules::visibleTo($user, $module) && Gate::forUser($user)->allows('use-weeklies');
     }
 
     private static function text(string $key, string $field): string

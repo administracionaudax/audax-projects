@@ -31,7 +31,7 @@ final class HomeWeeklyCard
      */
     public function for(User $user, ?CarbonInterface $now = null): ?array
     {
-        if (! $user->writesWeeklies() || $user->isCollaborator() || ! AppModules::enabled(AppModule::Weeklies)) {
+        if (! $user->writesWeeklies() || $user->isCollaborator() || ! AppModules::visibleTo($user, AppModule::Weeklies)) {
             return null;
         }
 

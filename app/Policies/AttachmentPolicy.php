@@ -131,7 +131,7 @@ class AttachmentPolicy
      */
     private function viewInHelp(User $user, Attachment $attachment): bool
     {
-        if (! Gate::forUser($user)->allows('use-weeklies') || ! AppModules::enabled(AppModule::Help)) {
+        if (! Gate::forUser($user)->allows('use-weeklies') || ! AppModules::visibleTo($user, AppModule::Help)) {
             return false;
         }
 
@@ -139,7 +139,7 @@ class AttachmentPolicy
             return HelpTutorial::query()->whereKey($attachment->attachable_id)->exists();
         }
 
-        if (! AppModules::enabled(AppModule::Suggestions)) {
+        if (! AppModules::visibleTo($user, AppModule::Suggestions)) {
             return false;
         }
 

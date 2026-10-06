@@ -80,6 +80,8 @@ export type AppConfig = {
     max_audio_seconds?: number;
     /** Fase 10 (F-177): módulos activos; apagado, sus rutas dan 404 y no salen en la navegación. */
     modules?: Record<AppModule, boolean>;
+    /** Modo de prueba (D-239): módulos apagados que esta persona (un admin) ve solo por la prueba. */
+    modules_preview?: AppModule[];
     /** Fase 10 (F-178): aviso global en todas las páginas internas. */
     global_banner?: GlobalBanner | null;
 };

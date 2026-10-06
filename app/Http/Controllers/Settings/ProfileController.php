@@ -28,7 +28,7 @@ class ProfileController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $writes = $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::enabled(AppModule::Weeklies);
+        $writes = $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::visibleTo($user, AppModule::Weeklies);
 
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,

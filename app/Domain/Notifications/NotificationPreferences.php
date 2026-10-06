@@ -212,9 +212,9 @@ final class NotificationPreferences
 
         return match ($event->audience) {
             NotificationCatalog::AUDIENCE_ADMINS => $user->isAdmin(),
-            NotificationCatalog::AUDIENCE_WEEKLIES => $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::enabled(AppModule::Weeklies),
+            NotificationCatalog::AUDIENCE_WEEKLIES => $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::visibleTo($user, AppModule::Weeklies),
             NotificationCatalog::AUDIENCE_SUGGESTIONS => $user->writesWeeklies() && ! $user->isCollaborator()
-                && AppModules::enabled(AppModule::Help) && AppModules::enabled(AppModule::Suggestions),
+                && AppModules::visibleTo($user, AppModule::Help) && AppModules::visibleTo($user, AppModule::Suggestions),
             NotificationCatalog::AUDIENCE_APPROVERS => $user->isAdmin() || $user->isDepartmentManager(),
             NotificationCatalog::AUDIENCE_MANAGERS => $user->isAdmin() || $user->isDepartmentManager()
                 || ($managesProjects ??= ProjectMember::query()->where('user_id', $user->id)->where('is_manager', true)->exists()),

@@ -71,6 +71,9 @@ class Setting extends Model
         // Fase 10 (D-151). Módulos activos (F-177): apagado, sus rutas dan 404 y no salen en la
         // navegación (App\Domain\Weeklies\AppModules).
         'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true],
+        // Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más, y
+        // los procesos automáticos y los avisos a otras personas siguen como apagados.
+        'modules_preview' => false,
         // Aviso global (F-178) en todas las páginas internas: null o {message, tone: info|warning}.
         'global_banner' => null,
         // Plantillas de aviso de la weekly (F-104 y F-105): null = las de lang/es/weeklies.php; si

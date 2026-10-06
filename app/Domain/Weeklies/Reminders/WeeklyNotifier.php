@@ -4,6 +4,8 @@ namespace App\Domain\Weeklies\Reminders;
 
 use App\Domain\Notifications\NotificationCatalog;
 use App\Domain\Notifications\NotificationPreferences;
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Enums\WeeklyReminderChannel;
 use App\Enums\WeeklyReminderStatus;
 use App\Enums\WeeklyReminderTemplate;
@@ -31,6 +33,8 @@ use InvalidArgumentException;
  * 3. Una notificación por persona con los canales reclamados (AppNotification::$onlyChannels) y las
  *    filas que tiene que cerrar: «en cola» hasta que el canal la entrega (enviada) o falla (con el
  *    error, MarkWeeklyReminderFailed).
+ *
+ * Con el módulo apagado (modo de prueba de un admin, D-239), solo puede salir hacia quien envía.
  *
  * Consultas acotadas sea cual sea el número de personas: suscripciones, filas ya reclamadas,
  * inserción y lectura de las nuevas.
@@ -65,8 +69,14 @@ final class WeeklyNotifier
         $event = $this->catalog->find($kind) ?? throw new InvalidArgumentException("El aviso {$kind} no está en el catálogo.");
         $people = [];
 
+        // Con la Weekly apagada (también en modo de prueba, D-239) no se avisa a nadie más: como mucho,
+        // a quien lo envía, si estaba entre los destinatarios.
+        $live = AppModules::enabled(AppModule::Weeklies);
+
         foreach ($users as $user) {
-            $people[$user->id] = $user;
+            if ($live || $user->id === $sender?->id) {
+                $people[$user->id] = $user;
+            }
         }
 
         if ($people === [] || $channels === []) {

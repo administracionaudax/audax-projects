@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Conversation;
 use App\Models\User;
 use App\Models\WeeklyCycle;
@@ -22,17 +24,22 @@ use Illuminate\Support\Facades\Gate;
 | - online: presencia de la plantilla (en línea / ausente / desconectado). Un colaborador externo
 |   (D-134) no entra: vería a toda la plantilla; conversation.{conversation} ya lo limita a sus
 |   proyectos (ConversationPolicy::view).
+| Los de la Weekly y la ayuda, además, con el módulo visible para quien se suscribe (encendido o, en
+| modo de prueba, D-239, solo para los admins).
 */
 
 Broadcast::channel('App.Models.User.{id}', fn (User $user, int $id): bool => $user->id === $id);
 
 Broadcast::channel('conversation.{conversation}', fn (User $user, Conversation $conversation): bool => Gate::forUser($user)->allows('view', $conversation));
 
-Broadcast::channel('weeklies.{cycle}', fn (User $user, WeeklyCycle $cycle): bool => Gate::forUser($user)->allows('view', $cycle));
+Broadcast::channel('weeklies.{cycle}', fn (User $user, WeeklyCycle $cycle): bool => AppModules::visibleTo($user, AppModule::Weeklies)
+    && Gate::forUser($user)->allows('view', $cycle));
 
-Broadcast::channel('weeklies', fn (User $user): bool => Gate::forUser($user)->allows('use-weeklies'));
+Broadcast::channel('weeklies', fn (User $user): bool => AppModules::visibleTo($user, AppModule::Weeklies)
+    && Gate::forUser($user)->allows('use-weeklies'));
 
-Broadcast::channel('help', fn (User $user): bool => Gate::forUser($user)->allows('use-weeklies'));
+Broadcast::channel('help', fn (User $user): bool => AppModules::visibleTo($user, AppModule::Help)
+    && Gate::forUser($user)->allows('use-weeklies'));
 
 Broadcast::channel('online', fn (User $user): array|false => $user->isInternal() && $user->is_active && ! $user->isCollaborator()
     ? ['id' => $user->id, 'name' => $user->name, 'avatar' => $user->avatar_url]

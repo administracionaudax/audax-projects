@@ -3,6 +3,8 @@
 namespace App\Domain\Weeklies\Suggestions;
 
 use App\Domain\Tasks\AttachmentStorage;
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Enums\SuggestionReaction;
 use App\Enums\SuggestionStatus;
 use App\Models\Attachment;
@@ -552,7 +554,8 @@ final class SuggestionWriter
      */
     private function recipients(array $ids): array
     {
-        if ($ids === []) {
+        // Modo de prueba (D-239): con la ayuda o las sugerencias apagadas no se avisa a nadie.
+        if ($ids === [] || ! AppModules::enabled(AppModule::Help) || ! AppModules::enabled(AppModule::Suggestions)) {
             return [];
         }
 

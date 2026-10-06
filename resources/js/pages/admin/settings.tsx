@@ -77,6 +77,7 @@ type SettingsForm = {
     max_audio_seconds: string;
     week_reminder_enabled: boolean;
     modules: Record<AppModule, boolean>;
+    modules_preview: boolean;
     banner_message: string;
     banner_tone: 'info' | 'warning';
     weekly_dictation_cleanup: boolean;
@@ -218,6 +219,7 @@ export default function AdminSettings({
                 settings.modules?.[module] ?? true,
             ]),
         ) as Record<AppModule, boolean>,
+        modules_preview: settings.modules_preview ?? false,
         banner_message: settings.global_banner?.message ?? '',
         banner_tone: settings.global_banner?.tone ?? 'info',
         weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? true,
@@ -851,6 +853,19 @@ export default function AdminSettings({
                                     error={errors[`modules.${module}`]}
                                 />
                             ))}
+                            {/* Modo de prueba (D-239): los admins ven los módulos apagados. */}
+                            <Toggle
+                                id={`${id}-modules-preview`}
+                                label={t('weeklies.settings.modules_preview')}
+                                help={t(
+                                    'weeklies.settings.modules_preview_help',
+                                )}
+                                checked={form.data.modules_preview}
+                                onChange={(checked) =>
+                                    form.setData('modules_preview', checked)
+                                }
+                                error={errors.modules_preview}
+                            />
                         </fieldset>
                         <div className="grid gap-1 text-sm">
                             <Link

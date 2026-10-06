@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => fn (): array => $this->auth($request, $user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            ...($user !== null && $user->isInternal() ? $this->internalProps($user) : []),
+            ...($user !== null && $user->isInternal() ? $this->internalProps($request, $user) : []),
             // Portal (Fase 5, D-067): identidad de la empresa y proyectos abiertos al portal.
             ...($user !== null && $user->isClient() ? ['portal' => fn (): array => app(PortalShell::class)->for($user)] : []),
         ];
@@ -129,7 +129,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, Closure>
      */
-    private function internalProps(User $user): array
+    private function internalProps(Request $request, User $user): array
     {
         return [
             'timer' => fn (): ?array => $this->timer($user),
@@ -142,8 +142,11 @@ class HandleInertiaRequests extends Middleware
                 // Chat (Fase 6): límites de los adjuntos y de los audios que se graban.
                 'max_attachment_mb' => (int) Setting::get('max_attachment_mb', 50),
                 'max_audio_seconds' => (int) Setting::get('max_audio_seconds', 300),
-                // Fase 10 (D-151): módulos activos (F-177) y aviso global (F-178).
-                'modules' => AppModules::map(),
+                // Fase 10 (D-151): módulos activos (F-177) y aviso global (F-178). Los módulos, los que
+                // ve esta persona: en modo de prueba (D-239), un admin ve también los apagados, que
+                // van en modules_preview.
+                'modules' => AppModules::mapFor($user),
+                'modules_preview' => AppModules::previewedBy($user),
                 'global_banner' => Setting::get('global_banner'),
             ],
             // Aviso de privacidad pendiente de leer (D-075): sin consultas (ajustes en caché).
@@ -151,6 +154,9 @@ class HandleInertiaRequests extends Middleware
                 'needs_acknowledgement' => app(PrivacyNotice::class)->needsAcknowledgement($user),
             ],
             'realtime' => fn (): ?array => $this->realtime(),
+            // Modo de prueba (D-239): la página es de un módulo apagado que solo ve un admin (lo marca
+            // el middleware `module:…`, que ya ha pasado cuando se resuelve el closure).
+            'module_preview' => fn (): bool => (bool) $request->attributes->get(EnsureModuleEnabled::PREVIEW_ATTRIBUTE, false),
             // Chat (Fase 6, C1): total sin leer de la entrada Chat de la navegación (una consulta).
             'chat' => fn (): array => ['unread' => app(ConversationDirectory::class)->unreadTotal($user)],
             // La Weekly (Fase 10, F-003): mi weekly pendiente de la semana activa, para el contador de

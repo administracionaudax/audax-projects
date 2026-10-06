@@ -139,8 +139,8 @@ test('los textos de las secciones salen de lang/es/search.php', function () {
     })->all();
 
     // 17 de las Fases 1 a 6, 5 de la Fase 7 (preferencias de notificación, auditoría, privacidad del admin, privacidad y mis datos)
-    // y el calendario del equipo (Fase 9, D-144).
-    expect($pages)->toHaveCount(23);
+    // el calendario del equipo (Fase 9, D-144) y 5 de la Weekly (Fase 10, D-239).
+    expect($pages)->toHaveCount(28);
 
     foreach ($pages as $page) {
         foreach (['title', 'subtitle', 'keywords'] as $field) {

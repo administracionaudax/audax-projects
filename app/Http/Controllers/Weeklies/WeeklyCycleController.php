@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Weeklies;
 
 use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Delivery\ReportRequest;
+use App\Domain\Weeklies\AppModules;
 use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\Reminders\WeeklyReminders;
 use App\Domain\Weeklies\WeeklyClientSubscriptions;
@@ -15,6 +16,7 @@ use App\Domain\Weeklies\WeeklyReportState;
 use App\Domain\Weeklies\WeeklyRuleViolation;
 use App\Domain\Weeklies\WeeklyStreaks;
 use App\Domain\Weeklies\WeeklyTeamStatus;
+use App\Enums\AppModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Weeklies\UpdateWeeklyDeadlineRequest;
 use App\Http\Resources\UserSummaryResource;
@@ -143,7 +145,7 @@ class WeeklyCycleController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $notified > 0
             ? trans_choice('weeklies.flash.deadline_updated_notified', $notified, ['count' => $notified])
-            : __('weeklies.flash.deadline_updated')]);
+            : __('weeklies.flash.deadline_updated').self::previewNote($user)]);
 
         return back();
     }
@@ -160,7 +162,7 @@ class WeeklyCycleController extends Controller
         $user = $request->user();
         $next = $closer->close($cycle, $user);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.closed', ['label' => $cycle->label, 'next' => $next->label])]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.closed', ['label' => $cycle->label, 'next' => $next->label]).self::previewNote($user)]);
 
         return back();
     }
@@ -285,5 +287,11 @@ class WeeklyCycleController extends Controller
         };
 
         return ['owned' => $sort($groups['owned']), 'member' => $sort($groups['member'])];
+    }
+
+    /** «Modo de prueba: no se avisa a nadie.» tras el aviso, si quien actúa usa la Weekly en modo de prueba (D-239). */
+    private static function previewNote(User $user): string
+    {
+        return AppModules::previewing($user, AppModule::Weeklies) ? ' '.__('weeklies.preview.no_notices') : '';
     }
 }

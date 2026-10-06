@@ -77,6 +77,8 @@ class SettingsRequest extends FormRequest
             // Opcionales en la petición (Fase 10, D-151): módulos activos (F-177) y aviso global (F-178).
             'modules' => ['sometimes', 'required', 'array:'.implode(',', AppModule::values())],
             'modules.*' => ['required', 'boolean'],
+            // Opcional (D-239): modo de prueba de los módulos apagados, solo para los admins.
+            'modules_preview' => ['sometimes', 'required', 'boolean'],
             'global_banner' => ['sometimes', 'nullable', 'array:message,tone'],
             'global_banner.message' => ['required_with:global_banner', 'string', 'max:300'],
             'global_banner.tone' => ['required_with:global_banner', 'in:info,warning'],
@@ -161,6 +163,7 @@ class SettingsRequest extends FormRequest
             'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
             ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
             ...($this->has('modules') ? ['modules' => AppModules::normalize((array) $this->input('modules'))] : []),
+            ...($this->has('modules_preview') ? ['modules_preview' => $this->boolean('modules_preview')] : []),
             ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
             ...($this->has('weekly_dictation_cleanup') ? ['weekly_dictation_cleanup' => $this->boolean('weekly_dictation_cleanup')] : []),
             ...($this->has('google_login_enabled') ? ['google_login_enabled' => $this->boolean('google_login_enabled')] : []),

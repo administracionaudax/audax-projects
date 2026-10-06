@@ -183,7 +183,7 @@ final class WeeklyDocument extends BaseDocument
 
     private function authorized(ReportRequest $request, User $as): WeeklyCycle
     {
-        if (! AppModules::enabled(AppModule::Weeklies)) {
+        if (! AppModules::visibleTo($as, AppModule::Weeklies)) {
             throw new AuthorizationException(self::t('report_pdf.errors.missing'));
         }
 

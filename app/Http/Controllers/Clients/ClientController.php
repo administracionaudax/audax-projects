@@ -168,7 +168,7 @@ class ClientController extends Controller
     /** ¿Ve quien mira lo de la Weekly en los clientes? (módulo encendido y use-weeklies). */
     public static function weeklyEnabled(?User $user): bool
     {
-        return $user !== null && AppModules::enabled(AppModule::Weeklies) && $user->can('use-weeklies');
+        return $user !== null && AppModules::visibleTo($user, AppModule::Weeklies) && $user->can('use-weeklies');
     }
 
     /**

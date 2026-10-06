@@ -100,7 +100,7 @@ final class MyWeeklyStatus
      */
     public function pendingCount(User $user): int
     {
-        if (! $user->writesWeeklies() || $user->isCollaborator() || ! AppModules::enabled(AppModule::Weeklies)) {
+        if (! $user->writesWeeklies() || $user->isCollaborator() || ! AppModules::visibleTo($user, AppModule::Weeklies)) {
             return 0;
         }
 

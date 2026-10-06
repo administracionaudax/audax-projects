@@ -40,5 +40,11 @@ return [
         'privacy_admin' => ['title' => 'Privacidad (administración)', 'subtitle' => 'Texto informativo, conservación de datos y avisos', 'keywords' => 'rgpd retencion conservacion texto informativo disco copias'],
         'privacy' => ['title' => 'Privacidad', 'subtitle' => 'Cómo se tratan tus datos', 'keywords' => 'rgpd proteccion de datos personales aviso'],
         'my_data' => ['title' => 'Mis datos', 'subtitle' => 'Ajustes', 'keywords' => 'ajustes exportar descargar datos personales rgpd copia'],
+        // La Weekly (Fase 10, D-239).
+        'my_space' => ['title' => 'Mi espacio', 'subtitle' => 'Weekly', 'keywords' => 'weekly mi weekly semana escribir enviar dictado'],
+        'weeklies' => ['title' => 'Weeklies', 'subtitle' => 'Weekly', 'keywords' => 'weekly semanas informe historico cerrar'],
+        'weekly_team' => ['title' => 'Equipo', 'subtitle' => 'Weekly', 'keywords' => 'weekly plantilla personas estado envios racha'],
+        'assistant' => ['title' => 'Asistente IA', 'subtitle' => 'Weekly', 'keywords' => 'weekly ia inteligencia artificial preguntas asistente'],
+        'help' => ['title' => 'Ayuda', 'subtitle' => 'Weekly', 'keywords' => 'weekly ayuda tutoriales preguntas frecuentes manual novedades sugerencias'],
     ],
 ];

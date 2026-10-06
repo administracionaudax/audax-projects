@@ -62,7 +62,8 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
     } = props;
     const id = useId();
     const user = useRequiredUser();
-    const modules = usePage().props.config?.modules;
+    const { config, module_preview: preview } = usePage().props;
+    const modules = config?.modules;
     const form = useForm<RemindersForm>({
         rules: rules.map((rule) => ({
             id: rule.id,
@@ -238,6 +239,15 @@ export default function WeekliesReminders(props: WeeklyRemindersPageProps) {
                                       })}
                         </p>
                     </div>
+                    {/* Modo de prueba (D-239): ni el envío ni «Recordar» avisan a nadie. */}
+                    {preview === true ? (
+                        <p
+                            className="text-sm text-muted-foreground"
+                            data-test="reminders-preview"
+                        >
+                            {t('weeklies.preview.no_notices')}
+                        </p>
+                    ) : null}
                 </Panel>
 
                 <Panel

@@ -48,7 +48,7 @@ class HelpController extends Controller
         /** @var User $user */
         $user = $request->user();
         $manage = Gate::allows('manage-help');
-        $suggestionsOn = AppModules::enabled(AppModule::Suggestions);
+        $suggestionsOn = AppModules::visibleTo($user, AppModule::Suggestions);
         $tab = $request->string('pestana')->toString();
         $tab = in_array($tab, self::TABS, true) && ($tab !== 'sugerencias' || $suggestionsOn) ? $tab : 'general';
         $tab = $post !== null ? 'sugerencias' : $tab;

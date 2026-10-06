@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Weeklies;
 
 use App\Domain\Notifications\NotificationPreferences;
+use App\Domain\Weeklies\AppModules;
 use App\Domain\Weeklies\Reminders\WeeklyReminderRecipients;
 use App\Domain\Weeklies\Reminders\WeeklyReminders;
 use App\Domain\Weeklies\Reminders\WeeklyTemplates;
+use App\Enums\AppModule;
 use App\Enums\WeeklyReminderChannel;
 use App\Enums\WeeklyReminderStatus;
 use App\Enums\WeeklyReminderTemplate;
@@ -147,10 +149,12 @@ class WeeklyReminderController extends Controller
             ])
             ->log('reminders_sent');
 
-        Inertia::flash('toast', [
-            'type' => $result->notified > 0 ? 'success' : 'info',
-            'message' => trans_choice('weeklies.reminders.sent', $result->notified, ['count' => $result->notified]),
-        ]);
+        Inertia::flash('toast', AppModules::previewing($user, AppModule::Weeklies)
+            ? ['type' => 'info', 'message' => __('weeklies.preview.no_notices')]
+            : [
+                'type' => $result->notified > 0 ? 'success' : 'info',
+                'message' => trans_choice('weeklies.reminders.sent', $result->notified, ['count' => $result->notified]),
+            ]);
 
         return back();
     }
@@ -172,6 +176,8 @@ class WeeklyReminderController extends Controller
         $result = $reminders->remindOne($cycle, $person, $user);
 
         [$type, $message] = match (true) {
+            // Modo de prueba (D-239): WeeklyNotifier no avisa a nadie más que a quien envía.
+            AppModules::previewing($user, AppModule::Weeklies) && $person->id !== $user->id => ['info', __('weeklies.preview.no_notices')],
             $result === null => ['info', __('weeklies.reminders.not_needed', ['name' => $person->name])],
             $result->notified > 0 => ['success', __('weeklies.reminders.reminded', ['name' => $person->name])],
             $result->duplicates > 0 => ['info', __('weeklies.reminders.duplicate')],

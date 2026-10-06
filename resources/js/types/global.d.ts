@@ -27,6 +27,8 @@ declare module '@inertiajs/core' {
             privacy?: { needs_acknowledgement: boolean };
             /** La Weekly (Fase 10, F-003): mi weekly pendiente de la semana activa (0 o 1). */
             weeklies?: { pending: number };
+            /** Modo de prueba (D-239): la página es de un módulo apagado que solo ve un admin. */
+            module_preview?: boolean;
             /** Google Sheets (Fase 9, D-142): si se ofrece y si la cuenta está conectada. */
             integrations?: IntegrationsSharedProps;
             [key: string]: unknown;

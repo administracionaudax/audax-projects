@@ -79,6 +79,7 @@ final class ReportAccess
             ReportKind::Hours => $gate->authorize('exportHours', TimeEntry::class),
             ReportKind::ProjectHours => $gate->authorize('view', $this->model(Project::class, $request, 'project')),
             ReportKind::HourBank => $gate->authorize('downloadPdf', $this->hourBank($request)),
+            // Encendida de verdad: en modo de prueba (D-239) la Weekly no se envía ni se programa.
             ReportKind::Weekly => AppModules::enabled(AppModule::Weeklies)
                 ? $gate->authorize('view', $this->model(WeeklyCycle::class, $request, 'cycle'))
                 : throw new AuthorizationException,

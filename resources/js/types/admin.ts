@@ -186,6 +186,8 @@ export type AdminSettings = {
     week_reminder_enabled: boolean;
     /** Módulos activos (Fase 10, F-177). */
     modules?: Record<AppModule, boolean>;
+    /** Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más. */
+    modules_preview?: boolean;
     /** Aviso global para toda la plantilla (F-178); null = sin aviso. */
     global_banner?: GlobalBanner | null;
     /** Limpieza con IA del dictado de la weekly (F-172, D-158); apagada por defecto. */
