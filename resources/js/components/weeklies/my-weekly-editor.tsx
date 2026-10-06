@@ -276,11 +276,22 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
 
     const submit = () => {
         setSubmitError(null);
-        autosave.cancel();
+        // Si el envío falla, lo escrito no está guardado: se vuelve a autoguardar (D-310).
+        const resume = autosave.cancel();
+        let sent = false;
         router.post(submitRoute.url(cycle.id), draft, {
             preserveScroll: true,
             onStart: () => setSubmitting(true),
-            onFinish: () => setSubmitting(false),
+            onSuccess: () => {
+                sent = true;
+            },
+            onFinish: () => {
+                setSubmitting(false);
+
+                if (!sent) {
+                    resume();
+                }
+            },
             onError: (errors) =>
                 setSubmitError(
                     errors.entries ??

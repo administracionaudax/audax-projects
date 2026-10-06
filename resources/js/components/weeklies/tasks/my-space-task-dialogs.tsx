@@ -398,7 +398,7 @@ function EditTaskForm({
                 onFinish: () => setProcessing(false),
                 onSuccess: () => {
                     toast.success(
-                        t('my_space.tasks.toast.created', {
+                        t('my_space.tasks.toast.updated', {
                             task: title.trim(),
                         }),
                     );

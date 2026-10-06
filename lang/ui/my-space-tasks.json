@@ -45,6 +45,7 @@
     "my_space.tasks.field.project_placeholder": "Elige un proyecto",
     "my_space.tasks.field.no_projects": "No hay proyectos en los que puedas crear tareas",
     "my_space.tasks.toast.created": "Tarea creada: «:task».",
+    "my_space.tasks.toast.updated": "Tarea guardada: «:task».",
     "my_space.tasks.toast.done": "Tarea completada: «:task».",
     "my_space.tasks.toast.reopened": "Tarea pendiente de nuevo: «:task».",
     "my_space.tasks.toast.failed": "No se ha podido actualizar la tarea.",
