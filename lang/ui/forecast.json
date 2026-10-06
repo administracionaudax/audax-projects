@@ -214,7 +214,6 @@
     "forecast.allocation.percent_gap": "Porcentaje de una jornada",
     "forecast.allocation.start": "Desde",
     "forecast.allocation.end": "Hasta",
-    "forecast.allocation.end_optional": "(opcional en las mensuales)",
     "forecast.allocation.note": "Nota",
     "forecast.allocation.create": "Añadir asignación",
     "forecast.allocation.add": "Asignación",

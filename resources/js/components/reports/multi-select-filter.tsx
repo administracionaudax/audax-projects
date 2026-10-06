@@ -30,6 +30,7 @@ export function MultiSelectFilter({
     onChange,
     disabled,
     emptyLabel,
+    size = 'default',
 }: {
     label: string;
     options: FilterOption[];
@@ -38,6 +39,8 @@ export function MultiSelectFilter({
     disabled?: boolean;
     /** Resumen sin nada elegido (por defecto, «Todos», como en los filtros). */
     emptyLabel?: string;
+    /** `sm` (h-8) en las barras de filtros compactas (Mis tareas, calendario), como sus vecinos. */
+    size?: 'sm' | 'default';
 }) {
     const [open, setOpen] = useState(false);
     const selected = options.filter((option) => value.includes(option.id));
@@ -61,6 +64,7 @@ export function MultiSelectFilter({
                 <Button
                     type="button"
                     variant="field"
+                    size={size}
                     role="combobox"
                     aria-expanded={open}
                     aria-label={`${label}: ${summary}`}

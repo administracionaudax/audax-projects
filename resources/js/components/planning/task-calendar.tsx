@@ -1053,6 +1053,8 @@ export function TaskCalendar({
                 <ToggleGroup
                     type="single"
                     variant="outline"
+                    // Mismo alto (h-8) que «Anterior», «Hoy» y «Siguiente».
+                    size="sm"
                     value={calendar.mode}
                     onValueChange={(next) => {
                         if (

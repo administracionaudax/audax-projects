@@ -248,6 +248,7 @@ export function CreateTaskDialog({
                                     >
                                         <SelectTrigger
                                             id={bankId}
+                                            className="w-full"
                                             aria-invalid={
                                                 errors.hour_bank_id
                                                     ? true
@@ -292,7 +293,10 @@ export function CreateTaskDialog({
                                     value={assignee}
                                     onValueChange={setAssignee}
                                 >
-                                    <SelectTrigger id={assigneeId}>
+                                    <SelectTrigger
+                                        id={assigneeId}
+                                        className="w-full"
+                                    >
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>

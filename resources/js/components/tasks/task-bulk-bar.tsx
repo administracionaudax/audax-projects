@@ -94,12 +94,8 @@ export function TaskBulkBar({
             </div>
             <Popover open={datesOpen} onOpenChange={setDatesOpen}>
                 <PopoverTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={processing}
-                    >
+                    {/* Mismo alto y borde que los selectores de la barra (h-9). */}
+                    <Button type="button" variant="field" disabled={processing}>
                         <CalendarDays aria-hidden="true" />
                         {t('task_bulk.dates')}
                     </Button>
@@ -169,7 +165,6 @@ export function TaskBulkBar({
             <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={onClear}
                 className="ml-auto"
             >

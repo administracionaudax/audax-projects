@@ -265,6 +265,7 @@ export function MyTaskFilterBar({
             >
                 <SearchField value={filters.q} onSearch={(q) => set({ q })} />
                 <MultiSelectFilter
+                    size="sm"
                     label={t('my_tasks.filters.project')}
                     options={options.projects.map((project) => ({
                         id: project.id,
@@ -275,6 +276,7 @@ export function MyTaskFilterBar({
                 />
                 {options.clients.length > 0 ? (
                     <MultiSelectFilter
+                        size="sm"
                         label={t('my_tasks.filters.client')}
                         options={options.clients}
                         value={filters.clients}
@@ -282,6 +284,7 @@ export function MyTaskFilterBar({
                     />
                 ) : null}
                 <MultiSelectFilter
+                    size="sm"
                     label={t('my_tasks.filters.status')}
                     options={statuses.map((status) => ({
                         id: status.id,
@@ -291,6 +294,7 @@ export function MyTaskFilterBar({
                     onChange={(statusIds) => set({ statuses: statusIds })}
                 />
                 <MultiSelectFilter
+                    size="sm"
                     label={t('my_tasks.filters.type')}
                     options={options.types.map((type) => ({
                         id: type.id,

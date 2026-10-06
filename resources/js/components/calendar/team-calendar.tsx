@@ -1441,6 +1441,8 @@ export function TeamCalendar({
                     <ToggleGroup
                         type="single"
                         variant="outline"
+                        // Mismo alto (h-8) que «Anterior», «Hoy» y «Siguiente».
+                        size="sm"
                         value={view}
                         disabled={reschedule.busy}
                         onValueChange={(next) => {

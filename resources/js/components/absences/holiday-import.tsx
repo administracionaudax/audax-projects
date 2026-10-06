@@ -177,15 +177,13 @@ export function HolidayImport({
                 </p>
             </div>
 
-            <form
-                onSubmit={requestPreview}
-                className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-                noValidate
-            >
-                <div className="grid gap-2">
-                    <Label htmlFor={`${id}-file`}>
-                        {t('holidays.import.file')}
-                    </Label>
+            <form onSubmit={requestPreview} className="grid gap-2" noValidate>
+                <Label htmlFor={`${id}-file`}>
+                    {t('holidays.import.file')}
+                </Label>
+                {/* Caja y botón en la misma fila; la ayuda y el error debajo, a todo el ancho (antes el
+                    botón se alineaba con un margen fijo que no cuadraba con ayudas de varias líneas). */}
+                <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
                         ref={fileInput}
                         id={`${id}-file`}
@@ -201,27 +199,31 @@ export function HolidayImport({
                             error,
                         })}
                     />
-                    <p
-                        id={`${id}-file-help`}
-                        className="text-sm text-muted-foreground"
+                    <Button
+                        type="submit"
+                        variant="outline"
+                        disabled={processing}
+                        className="shrink-0"
                     >
-                        {t('holidays.import.file_help', {
-                            kb: limits.max_kilobytes,
-                            rows: limits.max_rows,
-                        })}{' '}
-                        {t('holidays.import.recurring_help', { year })}
-                    </p>
-                    <InputError id={`${id}-file-error`} message={error} />
+                        {processing ? (
+                            <Spinner />
+                        ) : (
+                            <Upload aria-hidden="true" />
+                        )}
+                        {t('holidays.import.preview')}
+                    </Button>
                 </div>
-                <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={processing}
-                    className="sm:mb-7"
+                <p
+                    id={`${id}-file-help`}
+                    className="text-sm text-muted-foreground"
                 >
-                    {processing ? <Spinner /> : <Upload aria-hidden="true" />}
-                    {t('holidays.import.preview')}
-                </Button>
+                    {t('holidays.import.file_help', {
+                        kb: limits.max_kilobytes,
+                        rows: limits.max_rows,
+                    })}{' '}
+                    {t('holidays.import.recurring_help', { year })}
+                </p>
+                <InputError id={`${id}-file-error`} message={error} />
             </form>
 
             {result ? (

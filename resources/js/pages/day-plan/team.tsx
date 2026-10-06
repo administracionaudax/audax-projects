@@ -107,7 +107,7 @@ export default function TeamDayPage(props: TeamDayPageProps) {
                                 <ChevronLeft aria-hidden="true" />
                             </Link>
                         </Button>
-                        <Button asChild variant="outline" size="sm">
+                        <Button asChild variant="outline">
                             <Link
                                 href={teamRoute.url({
                                     query: {

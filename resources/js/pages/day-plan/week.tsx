@@ -99,7 +99,6 @@ export default function TeamWeekPage(props: TeamWeekPageProps) {
                         <Button
                             asChild
                             variant="outline"
-                            size="sm"
                             aria-current={
                                 week === props.current_week ? 'date' : undefined
                             }

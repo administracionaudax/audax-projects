@@ -87,7 +87,6 @@ export default function MyDayPage({ day, targets }: MyDayPageProps) {
                         <Button
                             asChild
                             variant="outline"
-                            size="sm"
                             aria-current={isToday ? 'date' : undefined}
                         >
                             <Link href={show.url()}>{t('day_plan.today')}</Link>

@@ -461,7 +461,7 @@ export function AllocationDialog({
                             error={errors.end_date}
                             optional={
                                 form.data.mode === 'monthly'
-                                    ? t('forecast.allocation.end_optional')
+                                    ? t('forecast.form.optional')
                                     : undefined
                             }
                         >
