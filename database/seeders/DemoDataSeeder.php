@@ -5,6 +5,9 @@ namespace Database\Seeders;
 use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
+use App\Domain\Forecast\AllocationWriter;
+use App\Domain\Forecast\ForecastLinker;
+use App\Domain\Forecast\ForecastProjectWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
@@ -36,6 +39,7 @@ use App\Models\DayPlan;
 use App\Models\DayPlanComment;
 use App\Models\DayPlanItem;
 use App\Models\Department;
+use App\Models\ForecastProject;
 use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Message;
@@ -208,6 +212,7 @@ class DemoDataSeeder extends Seeder
             // Sin avisos de tiempo real (D-229): nadie está mirando.
             WeeklyChanged::muted(fn () => $this->weeklies());
             $this->dayPlans();
+            $this->forecast();
         });
 
         $this->chat();
@@ -1270,6 +1275,57 @@ class DemoDataSeeder extends Seeder
         if ($line !== null) {
             DayPlanComment::query()->create(['day_plan_item_id' => $line->id, 'user_id' => $this->people['raul']->id, 'body' => '¿Te ayudo con esto?']);
         }
+    }
+
+    /**
+     * Previsión (D-280 a D-289): asignaciones en proyectos reales (personas, un fee mensual de
+     * Marketing y un hueco de Desarrollo en el proyecto planificado) y cuatro previstos: uno posible
+     * de un cliente que aún no existe, uno seguro de un cliente actual, uno vinculado con su proyecto
+     * real (con su línea base congelada y las asignaciones copiadas) y uno perdido.
+     */
+    private function forecast(): void
+    {
+        $writer = app(AllocationWriter::class);
+        $forecasts = app(ForecastProjectWriter::class);
+        $p = $this->people;
+        $raul = $p['raul'];
+        $monday = $this->today->startOfWeek();
+        $date = fn (CarbonImmutable $day): string => $day->toDateString();
+        $projects = Project::query()->whereIn('code', ['ARR-WEB', 'FER-PORTAL', 'SON-SEO', 'MON-MICRO', 'SON-APP'])->get()->keyBy('code');
+        $allocate = function (Project|ForecastProject $container, array $data) use ($writer, $raul): void {
+            $writer->create($container, $data, $raul);
+        };
+
+        // Proyectos reales: el plan de trabajo sin tareas (pestaña Planificación).
+        $allocate($projects['ARR-WEB'], ['user_id' => $p['elena']->id, 'mode' => 'per_day', 'minutes' => 180, 'start_date' => $date($monday->subWeeks(2)), 'end_date' => $date($monday->addWeeks(6)->subDays(3))]);
+        $allocate($projects['ARR-WEB'], ['user_id' => $p['lucia']->id, 'mode' => 'total', 'minutes' => 60 * 60, 'start_date' => $date($monday), 'end_date' => $date($monday->addWeeks(4)->subDays(3)), 'note' => 'Diseño de las fichas de vino']);
+        $allocate($projects['FER-PORTAL'], ['user_id' => $p['pablo']->id, 'mode' => 'percent', 'percent' => 50, 'start_date' => $date($monday), 'end_date' => $date($monday->addMonths(3))]);
+        $allocate($projects['SON-SEO'], ['department_id' => $this->departments['Marketing']->id, 'mode' => 'monthly', 'minutes' => 20 * 60, 'start_date' => $date($this->today->startOfMonth()), 'end_date' => null, 'note' => 'Fee de SEO local']);
+        $allocate($projects['MON-MICRO'], ['department_id' => $this->departments['Desarrollo']->id, 'mode' => 'total', 'minutes' => 80 * 60, 'start_date' => $date($this->today->addMonthNoOverflow()->startOfMonth()), 'end_date' => $date($this->today->addMonthNoOverflow()->endOfMonth())]);
+
+        // Posible, de un cliente que aún no existe.
+        $start = $this->today->addMonthNoOverflow()->startOfMonth()->startOfWeek();
+        $hotel = $forecasts->create(['name' => 'Web y branding', 'prospect_name' => 'Hotel Mar Azul', 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(7)->subDays(3)), 'estimated_minutes' => 250 * 60, 'description' => 'Propuesta enviada; decisión a final de mes.'], $raul);
+        $allocate($hotel, ['department_id' => $this->departments['Diseño']->id, 'mode' => 'total', 'minutes' => 80 * 60, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(4)->subDays(3))]);
+        $allocate($hotel, ['user_id' => $p['lucia']->id, 'mode' => 'percent', 'percent' => 50, 'start_date' => $date($start->addWeek()), 'end_date' => $date($start->addWeeks(7)->subDays(3))]);
+        $allocate($hotel, ['department_id' => $this->departments['Desarrollo']->id, 'mode' => 'total', 'minutes' => 120 * 60, 'start_date' => $date($start->addWeeks(4)), 'end_date' => $date($start->addWeeks(7)->subDays(3))]);
+
+        // Seguro, de un cliente actual.
+        $spring = $this->today->addMonthsNoOverflow(3)->startOfMonth();
+        $arrieta = $forecasts->create(['name' => 'Campaña de primavera', 'client_id' => Client::query()->where('name', 'Bodegas Arrieta')->value('id'), 'confidence' => 'firm', 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(3)->subDay())], $p['nuria']);
+        $allocate($arrieta, ['user_id' => $p['irene']->id, 'mode' => 'monthly', 'minutes' => 30 * 60, 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(3)->subDay())]);
+        $allocate($arrieta, ['user_id' => $p['daniel']->id, 'mode' => 'per_day', 'minutes' => 120, 'start_date' => $date($spring), 'end_date' => $date($spring->addMonth()->subDay())]);
+
+        // Vinculado: la app de Sonrisas salió de un previsto (línea base y asignaciones copiadas).
+        $app = $forecasts->create(['name' => 'App de citas', 'client_id' => $projects['SON-APP']->client_id, 'confidence' => 'firm', 'start_date' => $date($this->today->subMonthsNoOverflow(4)->startOfMonth()), 'end_date' => $date($this->today->addMonthNoOverflow()->endOfMonth()), 'estimated_minutes' => 420 * 60], $p['marta']);
+        $allocate($app, ['user_id' => $p['pablo']->id, 'mode' => 'total', 'minutes' => 260 * 60, 'start_date' => $date($this->today->subMonthsNoOverflow(4)->startOfMonth()), 'end_date' => $date($this->today->addMonthNoOverflow()->endOfMonth())]);
+        $allocate($app, ['user_id' => $p['sergio']->id, 'mode' => 'total', 'minutes' => 160 * 60, 'start_date' => $date($this->today->subMonthsNoOverflow(3)->startOfMonth()), 'end_date' => $date($this->today->endOfMonth())]);
+        app(ForecastLinker::class)->link($app, $projects['SON-APP'], $p['marta']);
+
+        // Perdido, con su motivo.
+        $lamas = $forecasts->create(['name' => 'App de obra', 'client_id' => Client::query()->where('name', 'Construcciones Lamas')->value('id'), 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(2))], $p['marta']);
+        $allocate($lamas, ['department_id' => $this->departments['Desarrollo']->id, 'mode' => 'total', 'minutes' => 200 * 60, 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(2))]);
+        $forecasts->lose($lamas, 'Precio');
     }
 
     private function monthsAgo(int $months): CarbonImmutable
