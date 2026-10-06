@@ -10,7 +10,17 @@ import {
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import type { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
-import { Bold, Italic, Link2, List, ListOrdered, Quote } from 'lucide-react';
+import {
+    Bold,
+    Heading3,
+    Heading4,
+    Italic,
+    Link2,
+    List,
+    ListOrdered,
+    Minus,
+    Quote,
+} from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MentionList } from '@/components/rich-text/mention-list';
@@ -347,6 +357,8 @@ export default function RichTextEditor({
         selector: ({ editor: current }) => ({
             bold: current?.isActive('bold') ?? false,
             italic: current?.isActive('italic') ?? false,
+            title: current?.isActive('heading', { level: 3 }) ?? false,
+            subtitle: current?.isActive('heading', { level: 4 }) ?? false,
             bulletList: current?.isActive('bulletList') ?? false,
             orderedList: current?.isActive('orderedList') ?? false,
             blockquote: current?.isActive('blockquote') ?? false,
@@ -385,6 +397,33 @@ export default function RichTextEditor({
                     >
                         <Italic aria-hidden="true" className="size-4" />
                     </ToolbarButton>
+                    {/* Título, Subtítulo y Divisor (F-154, 10.9b), como la barra de WeeklySync. */}
+                    <ToolbarButton
+                        label={t('rich_text.title')}
+                        active={state?.title}
+                        onClick={() =>
+                            editor
+                                .chain()
+                                .focus()
+                                .toggleHeading({ level: 3 })
+                                .run()
+                        }
+                    >
+                        <Heading3 aria-hidden="true" className="size-4" />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        label={t('rich_text.subtitle')}
+                        active={state?.subtitle}
+                        onClick={() =>
+                            editor
+                                .chain()
+                                .focus()
+                                .toggleHeading({ level: 4 })
+                                .run()
+                        }
+                    >
+                        <Heading4 aria-hidden="true" className="size-4" />
+                    </ToolbarButton>
                     <ToolbarButton
                         label={t('rich_text.bullet_list')}
                         active={state?.bulletList}
@@ -411,6 +450,14 @@ export default function RichTextEditor({
                         }
                     >
                         <Quote aria-hidden="true" className="size-4" />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        label={t('rich_text.divider')}
+                        onClick={() =>
+                            editor.chain().focus().setHorizontalRule().run()
+                        }
+                    >
+                        <Minus aria-hidden="true" className="size-4" />
                     </ToolbarButton>
                     <LinkButton editor={editor} />
                     <span className="ml-auto px-1 text-xs text-muted-foreground">

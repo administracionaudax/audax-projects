@@ -627,7 +627,7 @@ export function HelpGeneral({
                                             {entry.title}
                                         </h3>
                                         {entry.subtitle ? (
-                                            <p className="text-sm text-muted-foreground">
+                                            <p className="text-sm whitespace-pre-line text-muted-foreground">
                                                 {entry.subtitle}
                                             </p>
                                         ) : null}
