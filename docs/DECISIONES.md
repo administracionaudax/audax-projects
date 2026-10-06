@@ -1402,7 +1402,8 @@ Las pantallas son la 10.2b. Detalle de las props de cada página en `docs/PLAN-F
 - **Borrar** (F-069): se lleva en cascada envíos, apuntes, exenciones, dictados, audio y satisfacción, y borra los MP3 del disco. Si era la más reciente, se abre la siguiente (+7 días), como en WeeklySync, también al borrar la activa.
 - **Cierre (10.3):** `WeeklyCycleOpener::afterClose($cerrada)` es el punto de enganche: tras marcarla cerrada, abre la siguiente.
 
-### D-156 · «Unirme a proyectos» desde la Weekly
+### D-156 · «Unirme a proyectos» desde la Weekly **[sustituida por D-221]**
+- **Sustituida el 06/10 por D-221:** ser miembro daba el chat del proyecto con su histórico, imputar en la bolsa y editar tareas. «Unirme» ya no toca la membresía.
 - WeeklySync tenía «colaborador de un cliente». En Audax, eso es ser **miembro de un proyecto del cliente** (F-034 y F-133).
 - Cualquier interno de plantilla se apunta como **miembro, nunca gestor**, a varios proyectos abiertos de clientes activos a la vez, y deja los que no gestiona.
 - Pasa por `ProjectMembership`: queda en la auditoría del proyecto. Los colaboradores externos no (D-134).
@@ -1566,7 +1567,7 @@ Detalle de las clases, rutas y props en `docs/PLAN-FASE-10.md` («10.4 (hecho)»
 - **«Equipo»** (`/equipo`, F-134 a F-137) es una página de la Weekly, tras «Clientes» en la barra lateral, para quien la usa y con el módulo encendido. Lista la plantilla activa que escribe la weekly con su departamento, puesto, rol y el estado de su weekly en la semana activa; los filtros y el orden son del navegador (es una lista corta, como en WeeklySync). El alta, la edición y la baja siguen en `/admin/usuarios` (F-138 a F-141): la página y la ficha enlazan allí a quien puede gestionar personas.
 - **«Ausente»** sale si una ausencia aprobada de día completo cubre hoy; el tipo (vacaciones, baja…), solo para quien puede saberlo (D-088).
 - **La ficha de persona** (`/equipo/{id}`) la ve la plantilla: su estado esta semana, racha, hábitos, clientes, último reporte por cliente e historial de un año. Una persona que no escribe la weekly (colaborador externo o cliente) da 404; una desactivada se ve, con su historial.
-- **El responsable de un cliente** (F-128) es quien gestiona más proyectos abiertos del cliente (a igualdad, el del proyecto más antiguo). **Lidera** un cliente quien gestiona alguno de sus proyectos abiertos y **colabora** quien es miembro sin gestionarlo (D-156). El **equipo** del cliente son los gestores y miembros de sus proyectos abiertos que escriben la weekly.
+- **El responsable de un cliente** (F-128) es quien gestiona más proyectos abiertos del cliente (a igualdad, el del proyecto más antiguo). **Lidera** un cliente quien gestiona alguno de sus proyectos abiertos y **colabora** quien es miembro sin gestionarlo o se ha unido al cliente en la Weekly (D-221). El **equipo** del cliente son los gestores y miembros de sus proyectos abiertos y quienes se han unido en la Weekly, que escriben la weekly.
 
 ### D-196 · «Estado de proyectos» nativo
 - La cartera (F-119 a F-121, `ProjectStatusBoard`) son los proyectos **abiertos** (planificados, activos y en pausa) de los clientes **activos**, a fecha de hoy y con las reglas del informe (D-188): la bolsa en curso, el fee con lo esperado por días laborables sin festivos de Audax, el presupuesto o, sin presupuesto, todas sus horas («Sin horas asignadas»). Más las horas de esta semana.
@@ -1771,8 +1772,44 @@ Concretan D-149. Procedimiento exacto en `PLAN-FASE-10.md` (10.8).
 
 ### D-220 · Uso de IA y lo que no se migra **[concreta D-149]**
 - **Uso de IA:** `ai_usage_events` → `ai_usage`, cada función de WeeklySync en la de Audax que la sustituye (informe, satisfacción, guion, locución, limpieza del dictado, tareas sugeridas, resúmenes y asistente). Lo del OCR del estado de proyectos y de las bolsas (D-148) no entra; su coste sale en el informe.
-- **No se migran:** las bolsas (`hour_banks`) y la foto del estado de proyectos (`project_status_*`, D-148), los responsables y equipos de cliente (`owner_id`, `client_team_members`) ni las insignias (`client_projects`), que salen de los proyectos de Audax (WEEKLY-INVENTARIO D.1), los roles, departamentos, estados y avatares de las personas, la consola multi-tenant (módulos y aviso global incluidos: se configuran en Audax) y `user_merge_audit` (vacía).
+- **No se migran:** las bolsas (`hour_banks`) y la foto del estado de proyectos (`project_status_*`, D-148), los responsables de cliente (`owner_id`; los equipos, `client_team_members`, sí desde D-221) ni las insignias (`client_projects`), que salen de los proyectos de Audax (WEEKLY-INVENTARIO D.1), los roles, departamentos, estados y avatares de las personas, la consola multi-tenant (módulos y aviso global incluidos: se configuran en Audax) y `user_merge_audit` (vacía).
 - **Informe** (`WeeklySyncImportReport`): recuentos por tipo (creados, actualizados, sin cambios y omitidos, por fila de origen), cada tabla frente al manifiesto (volcado, leídas, importadas y omitidas, y si cuadra), ficheros copiados, iguales y que faltan, motivos de lo omitido, avisos, tiempo y memoria. Una sola entrada de auditoría, «Importación de WeeklySync».
+
+### D-221 · «Unirme» en la Weekly es una suscripción, no una membresía de proyecto **[sustituye a D-156; concreta D-149]**
+Decisión del propietario por defecto tras la revisión de seguridad de la Fase 10 (hallazgo 1, alta): con D-156 cualquiera se hacía miembro de cualquier proyecto y ganaba el chat (con todo su histórico), imputar en la bolsa del cliente y editar tareas.
+- **Qué es:** «Unirme a clientes» crea una fila en `weekly_client_subscriptions` (cliente y persona, única). Es el `client_team_members` de WeeklySync. Se une cualquier interno de plantilla a clientes **activos** (`use-weeklies`; los colaboradores externos no) y lo deja cuando quiere.
+- **Para qué sirve, y nada más:** el cliente sale **propuesto en «Mi weekly»**, en **«Mis clientes»** («Colaboras en», con «Dejar el cliente») y en los clientes de su ficha de persona, y la persona sale en el **equipo del cliente** de la Weekly (rol «miembro», sin proyectos) y en el filtro por cliente de «Equipo».
+- **Qué NO da:** ni el chat del proyecto, ni imputar horas, ni crear o editar tareas, ni bolsas. Todo eso sigue en `project_members`, que la Weekly **ya no toca**: ni «Unirme» ni «Dejar». Las rutas `weeklies.projects.*` desaparecen (`/mi-espacio/proyectos` da 404) y las nuevas son `POST /mi-espacio/clientes` (`client_ids[]`) y `DELETE /mi-espacio/clientes/{client}` (`weeklies.clients.join` y `.leave`).
+- **Interfaz:** en `/weeklies`, «Unirme a clientes» (lista de clientes activos que aún no son míos, que se busca también por el código o el nombre de sus proyectos abiertos, prop opcional `joinable_clients`). En la pestaña «Equipo» de la ficha de cliente, «Unirme a este cliente» o «Dejar este cliente» (`weekly.subscription`), con el aviso de que no da acceso a los proyectos; «Mis proyectos en este cliente» solo enlaza.
+- **Importación (D-149):** `client_team_members` del original → `weekly_client_subscriptions` (`ClientTeamStage`, idempotente; se omiten las filas con persona o cliente sin casar). Nunca crea miembros de proyecto.
+- **Sin auditoría:** es una preferencia personal de la Weekly, como un «seguir».
+
+### D-222 · Coste de Gemini y la cola `ai`: límites, Jobs únicos y prioridad del informe
+Hallazgo 2 (media) de la revisión de seguridad: cualquiera podía llenar la cola `ai` de llamadas a Gemini y dejar el informe semanal y su audio horas en cola.
+- **Límites diarios por persona** (`AiDailyLimits`, de 0:00 a 24:00 en Madrid, en la caché): asistente 60, resúmenes con IA 30 y tareas sugeridas 10, configurables en `services.gemini.daily_limits` (`AI_DAILY_LIMIT_ASSISTANT`, `AI_DAILY_LIMIT_SUMMARIES` y `AI_DAILY_LIMIT_SUGGESTED_TASKS`; 0 = sin límite). Solo gasta lo que de verdad se encola: pedir un resumen que ya se está generando no cuenta. El informe, su audio y la satisfacción del cierre no tienen límite (los pide quien gestiona).
+- **Mensajes:** el asistente responde 422 con el motivo en la conversación; los resúmenes y las tareas sugeridas, 429 en JSON o un aviso de error en la página.
+- **Una pregunta al asistente en curso por persona:** la siguiente espera a la respuesta («Espera a que termine la respuesta anterior…»), salvo que la anterior lleve más de lo que dura un Job (atascada).
+- **Jobs únicos** (`ShouldBeUnique`, `AiQueue::UNIQUE_FOR` = 660 s, por debajo de los 12 minutos con los que un trabajo se da por atascado): informe y audio por semana, satisfacción por semana, resumen, pregunta, tanda de tareas sugeridas y dictado.
+- **Prioridad sin procesos nuevos:** el informe, su audio y la satisfacción del cierre van a la cola **`ai-high`**; el resto, a `ai`. El mismo `supervisor-ai` (un proceso, 128 MB) atiende `['ai-high', 'ai']` **sin balanceo**, es decir, por orden: el informe nunca espera detrás de las preguntas en cola, como mucho a que acabe el Job en curso. No se añade un proceso porque el límite de memoria de `audax-horizon.service` (640 MB) está ajustado y cambiarlo sería tocar el servidor.
+- **Límites de peticiones por acción** (hallazgo 3, media): `throttle:N,M` sin prefijo comparte una clave por persona entre todas las rutas, así que el sondeo (estado del informe, respuesta del asistente, autoguardado) agotaba el límite de «Generar», «Preguntar» o «Enviar». Todas las rutas con un límite numérico llevan ahora su nombre de ruta como prefijo (`throttle:20,1,assistant.ask`); solo comparten contador los grupos hechos a propósito (`home-layout`, chat, Google y tiempo real). Un test lo comprueba en todas las rutas.
+
+### D-223 · Cuotas de las subidas de la ayuda y las sugerencias
+Hallazgo 4 (baja): sin cuota, las subidas podían llenar el disco del servidor compartido con 38 webs (SPEC §16). En `config/help.php` (`HelpUploadQuota`):
+- **Vídeos de tutoriales:** una subida abierta por persona (empezar otra descarta la anterior) y como mucho **1 GB** a medio subir entre todas (`HELP_TUTORIAL_PENDING_MB`).
+- **Adjuntos de sugerencias y comentarios:** como mucho **250 MB** por persona (`HELP_SUGGESTION_USER_MB`); lo que quita al editar libera su cuota. Editar una sugerencia o un comentario tiene ya su límite de peticiones (30 y 60 por minuto).
+- **Disco:** no se acepta ninguna subida (ni un trozo de vídeo) si dejaría menos de **5 GB** libres (`HELP_UPLOADS_MIN_FREE_MB`), medido con `DiskUsage`, como el aviso de almacenamiento (D-076). En los tests, 0.
+
+### D-224 · Los resúmenes con IA no tienen enlaces activos
+Hallazgo 5 (baja): un texto de una weekly podía colar un enlace de phishing en el resumen de un cliente o una persona, que se pinta con `SafeMarkdown`. Ahora `SafeMarkdown links={false}` (`withoutLinks` de `lib/markdown.ts`) deja cada enlace como su texto con el **dominio visible** entre paréntesis («Revisa el informe (phishing.example)»). Lo usa `AiSummaryPanel`; el texto de privacidad sigue con enlaces. El asistente ya pintaba texto plano.
+
+### D-225 · El uso de la IA en el RGPD
+Hallazgo 6 (baja).
+- **Exportación:** sección `uso-ia` (`AiUsageSection`): las llamadas que pidió la persona y las que tratan sobre ella (los resúmenes de su desempeño o de su actividad), con fecha, función, operación, proveedor, modelo, estado y sobre qué. Nunca hay textos.
+- **Retención:** `retention_ai_usage_months`, **12 meses** por defecto (mínimo 1, en `/admin/privacidad`). Pasado el plazo, `app:prune-data` **anonimiza** (`AiUsagePruner`: quita la persona, el objeto y los metadatos, que llevan `target_user_id`) y conserva el coste para «Uso de IA».
+- Queda pendiente mencionarlo en el texto RGPD (con el propietario, al final).
+
+### D-226 · Tableros ocultos de sugerencias
+Hallazgo 7 (baja): en un tablero oculto (D-210) **nadie** vota, comenta ni reacciona (tampoco quien gestiona, que sí la ve para moderarla), y sus adjuntos solo los baja quien gestiona. Lo aplican `SuggestionPostPolicy` (`view`, `vote` y `comment`) y `SuggestionCommentPolicy::react`; `AttachmentPolicy` ya usaba `view`. La página lo dice («Este tablero está oculto…») y desactiva el voto (`post.can.interact`).
 
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
@@ -1844,9 +1881,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-220 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-226 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-221**.
+La siguiente libre es **D-227**.

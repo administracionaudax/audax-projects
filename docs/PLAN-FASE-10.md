@@ -711,3 +711,35 @@ En Supabase, borrar la clave secreta creada para el volcado. La copia nocturna d
 ### Para la 10.9
 - La última pasada, con WeeklySync congelado (sin escritura) y sus recordatorios apagados: los pasos 1 a 8 otra vez. Después, activar las reglas importadas en «Avisos» y la weekly del recordatorio de los viernes (10.5) y apagar la GitHub Action.
 - Revisar en la app lo creado inactivo (personas y clientes) por si conviene fusionarlo a mano.
+
+## 10.9a (hecho): fallos E2E y revisión de seguridad
+La suite completa de Playwright dio 8 fallos, todos en specs nuevos de la Fase 10 que no se habían ejecutado nunca, y la revisión de seguridad de la fase dejó un hallazgo alto, dos medios y cuatro bajos. Decisiones D-221 a D-226.
+
+### Los 8 fallos E2E
+| Spec | Causa | Arreglo |
+|---|---|---|
+| `help-center.spec.ts:32` y `:114` | El test abría páginas con `browser.newPage()`, que axe no admite («Please use browser.newContext()»). Tras arreglarlo salió un fallo real: el número de comentarios del roadmap y del feed era un `<span aria-label>` sin rol (`aria-prohibited-attr`). | Test: un contexto por persona. App: el número va con texto oculto (`sr-only`), con test Vitest. |
+| `help-center.spec.ts:81` | El test pulsaba Escape con dos diálogos abiertos (el de la sección aún cerrándose) y buscaba la sección con una expresión que casaba con los cinco botones de «Gestionar secciones». | Espera a un solo diálogo, lo cierra y pulsa la sección dentro de la navegación «Secciones»; la pregunta, con nombre exacto. |
+| `weeklies.spec.ts:64` | Al recargar, la caja enviada sale plegada: el texto está en el botón y en el `textarea` oculto, así que `getByText` daba 2. Después, el avatar de la tira del equipo es un enlace desde la 10.4, no una imagen, y axe encontró un fallo real: las iniciales de quien falta o está exento tenían contraste 4,15 (`opacity-60`). | Test: comprueba el texto del botón y el valor del `textarea`; los avatares por su rol de enlace. App: la opacidad solo se aplica a la foto (`[&_img]:opacity-60`), con test Vitest. |
+| `weeklies.spec.ts:147` | El avatar de los exentos es un enlace (no `img`), y en una base ya usada había más de un «Exención manual». | Por rol de enlace y mirando solo la fila de la persona. |
+| `weekly-insights.spec.ts:31` y `:146` | `getByLabel('Tipo')` y `getByLabel('Estado del reporte')` casaban también con «Proyectos abiertos por tipo» y «Ordenar por Estado del reporte». | `exact: true`. |
+| `weekly-reminders.spec.ts:30` | `getByText('Por defecto')` casaba también con el botón «Restaurar por defecto». | `exact: true`. |
+
+### Seguridad
+- **Alta, «Unirme a proyectos» (D-221):** la Weekly ya no toca `project_members`. «Unirme a clientes» crea una fila en `weekly_client_subscriptions` (migración `2026_10_06_100000`, `WeeklyClientSubscriptions`), que solo hace salir el cliente propuesto en «Mi weekly» (`MyWeeklyClients`), en «Mis clientes» y en los clientes de la ficha de persona (`PersonInsights`), y a la persona en el equipo del cliente (`ClientInsights::teamMembers`). Rutas `weeklies.clients.join` y `.leave`; `/mi-espacio/proyectos` da 404. El importador lleva `client_team_members` a esa tabla (`ClientTeamStage`). Tests de que no da chat (ni su histórico), horas, tareas ni bolsas.
+- **Media, coste de Gemini (D-222):** `AiDailyLimits` (60 preguntas, 30 resúmenes y 10 tandas de tareas por persona y día, configurables), una pregunta en curso por persona, todos los Jobs de IA únicos (`ShouldBeUnique`) y la cola prioritaria `ai-high` (informe, audio y satisfacción) en el mismo `supervisor-ai`, sin balanceo.
+- **Media, límites compartidos:** las 75 rutas con `throttle:N,M` sin prefijo (de todas las fases) llevan ahora su nombre de ruta como prefijo, así que cada una tiene su contador. Un test recorre todas las rutas y exige prefijo y que no se comparta salvo los grupos a propósito (`home-layout`, chat, Google y tiempo real). Tests de sondeo y acción: estado del informe → «Generar», respuesta del asistente → «Preguntar» y autoguardado → «Enviar».
+- **Bajas:** cuotas de subida (D-223: una subida de vídeo abierta por persona, 1 GB a medio subir, 250 MB de adjuntos de sugerencias por persona y 5 GB libres como mínimo; límite de peticiones al editar sugerencias y comentarios), resúmenes con IA sin enlaces activos y con el dominio visible (D-224), `ai_usage` en la exportación RGPD (`uso-ia`) y anonimizado a los 12 meses (D-225), y tableros ocultos sin votos, comentarios, reacciones ni descarga de adjuntos para la plantilla (D-226).
+
+### Tests nuevos
+- **Pest:** `WeeklyMiscTest` (unirse y dejar, sin acceso a nada más, propuestos y equipo), `WeeklyAiLimitsTest`, `WeeklyRateLimitTest`, `HelpUploadQuotaTest`, los tableros ocultos en `SuggestionsTest`, el uso de la IA en `WeeklyPersonalDataTest` y la importación de `client_team_members` en `WeeklySyncImportTest` (con su tabla en el volcado de ejemplo). Al día: `QueueConfigTest`, `PrivacyPagesTest`, `PersonalDataExportTest`, `BanksPdfTest` y los presupuestos de consultas del equipo y la ficha (+2 y +1).
+- **Vitest:** el número de comentarios y el contraste de la tira (`suggestions` y `weeklies-team-nav`), «Unirme a clientes» (`weeklies-team-nav` y `weeklies-insights`), los enlaces de la IA (`privacy-markdown` y `weeklies-insights`) y el tablero oculto (`suggestions`).
+
+### Resultados
+RESULTADOS
+
+### Para desplegar (con el SSH)
+- **Una migración:** `weekly_client_subscriptions`. Las membresías creadas con el «Unirme» anterior (si alguien lo usó en el servidor de desarrollo) siguen siendo membresías: se revisan a mano en cada proyecto.
+- **Horizon** coge la cola `ai-high` al reiniciarse en el despliegue (`horizon:terminate`); no cambian ni los procesos ni la memoria de `audax-horizon.service`.
+- **Opcional en el `.env`:** `AI_DAILY_LIMIT_*` y `HELP_*` (sus valores por defecto ya son los de D-222 y D-223).
+- **Sin cambios de sistema:** nada en `SERVIDOR-CAMBIOS.md`.
