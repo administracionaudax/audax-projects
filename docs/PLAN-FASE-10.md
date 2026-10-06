@@ -709,6 +709,7 @@ rm ~/.config/audax/weeklysync.env
 En Supabase, borrar la clave secreta creada para el volcado. La copia nocturna de esa noche puede llevar el volcado: son los mismos datos que ya están en la base y caduca con ella. En la 10.9, tras la última pasada, se rotan y borran todas las claves (`service_role`, contraseña de la base y GCP) al dar de baja Supabase.
 
 ### Para la 10.9
+- **Probar la Weekly antes del cambio (modo de prueba, D-239):** en `/admin/ajustes` → «Weekly y módulos», con los módulos apagados, encender «Modo de prueba para los admins» y guardar. Los admins ven y usan la Weekly entera (en la barra lateral, el bloque «Weekly»; en cada página, el aviso «Modo de prueba»); el resto de la plantilla no la ve (404). No sale ningún aviso ni recordatorio a nadie y los comandos programados siguen parados. Para desactivarlo, apagar el mismo interruptor y guardar. En el cambio definitivo se encienden los módulos (el modo de prueba deja de influir) y se puede volver a apagar. Por SSH (`audax-projects`, en `current`), si hiciera falta: `/opt/plesk/php/8.4/bin/php artisan tinker --execute "App\Models\Setting::set('modules_preview', true)"` (o `false`).
 - La última pasada, con WeeklySync congelado (sin escritura) y sus recordatorios apagados: los pasos 1 a 8 otra vez. Después, activar las reglas importadas en «Avisos» y la weekly del recordatorio de los viernes (10.5) y apagar la GitHub Action.
 - Revisar en la app lo creado inactivo (personas y clientes) por si conviene fusionarlo a mano.
 

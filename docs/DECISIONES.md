@@ -1947,6 +1947,17 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 ### D-238 · «Entrar con Google» sin el alcance `profile` **[cambia D-165]**
 En la vuelta de Google (`/login/google/callback`) el parámetro `scope` lleva `https://www.googleapis.com/auth/userinfo.profile`, y el WAF de Plesk (ModSecurity, Comodo, regla 210580 «OS File Access Attempt») lo toma por un intento de leer `.profile` y responde 403. Se piden solo `openid email`: el acceso casa por correo y no usa el nombre ni la foto de Google. Así no hay que tocar el WAF, que es común a todas las webs del servidor.
 
+### D-239 · Modo de prueba de los módulos para los admins **[amplía D-151; concreta F-177]**
+Pedido por el propietario el 06/10: la Weekly está desplegada con todos los módulos apagados (el equipo sigue con la antigua hasta el cambio) y quiere verla y probarla ya, sin afectar a nadie.
+- **Ajuste `modules_preview`** (por defecto apagado), en `/admin/ajustes` → «Weekly y módulos», bajo los módulos: «Modo de prueba para los admins». Encendido, cada módulo **apagado** se comporta para los admins (rol admin) como si estuviera encendido: rutas, navegación, páginas, acciones, búsqueda global, Inicio (tarjeta de la weekly), contador de «Mi espacio», preferencias de aviso, adjuntos de la ayuda y canales en tiempo real. Para el resto de la plantilla sigue apagado: 404 y sin entradas en el menú. Un módulo encendido no cambia.
+- **Dos preguntas en `App\Domain\Weeklies\AppModules`:**
+  - `enabled($module)`: ¿encendido de verdad? La usan los procesos automáticos (`weeklies:open-week`, `weeklies:remind`, la parte de la weekly de `time:remind-week`), «weekly cerrada», el plazo cambiado y el envío o la programación del informe de la Weekly por correo (`ReportAccess`): en modo de prueba no hacen nada,
+  - `visibleTo($user, $module)`: ¿lo ve y lo usa esta persona? La usan el middleware `module:…`, las props compartidas (`config.modules`, ya como las ve cada uno, y `config.modules_preview`, la lista de los que ve solo por la prueba) y el resto de los puntos de cara a las personas. `previewing()` dice si alguien lo ve solo por la prueba.
+- **Sin avisos a terceros:** con la Weekly apagada, `WeeklyNotifier` solo puede avisar a quien envía (un admin que se recuerda a sí mismo); «Recordar» y el envío manual responden «Modo de prueba: no se avisa a nadie.», y el plazo y el cierre lo añaden a su aviso. Las sugerencias no avisan a nadie (menciones, respuestas y cambios de estado) con la ayuda o las sugerencias apagadas.
+- **Aviso en la página:** en las páginas de un módulo que el admin ve solo por la prueba (lo marca el middleware, prop `module_preview`), una línea discreta bajo la cabecera: «Modo de prueba: solo lo ven los admins; no se envían avisos.». En «Avisos de la Weekly», además, «Modo de prueba: no se avisa a nadie.» junto al envío manual.
+- **Barra lateral:** las entradas de la Weekly (Mi espacio, Weeklies, Equipo, Asistente IA y Ayuda) van en su propio bloque al final, bajo una línea fina (el separador de la barra lateral, D-137) y con el encabezado discreto «Weekly», en modo de prueba y encendida. Sin ninguna entrada, no hay bloque ni línea. Sigue siendo un solo `<nav>` «Navegación principal»; el bloque es un grupo con nombre.
+- **Búsqueda global:** se añaden las cinco páginas de la Weekly, para quien usa la Weekly y con su módulo visible.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -1957,9 +1968,9 @@ En la vuelta de Google (`/login/google/callback`) el parámetro `scope` lleva `h
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-239**.
+La siguiente libre es **D-240**.
