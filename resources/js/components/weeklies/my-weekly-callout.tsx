@@ -139,113 +139,119 @@ export function MyWeeklyCallout({
 
     return (
         <div
-            className={cn(
-                'flex flex-col gap-3 border p-4',
-                !compact && 'md:flex-row md:items-center md:justify-between',
-                surface.box,
-            )}
+            className={cn('@container border p-4', surface.box)}
             data-test="my-weekly-callout"
             data-status={me.status}
         >
-            <div className="flex min-w-0 gap-3">
-                <Icon
-                    aria-hidden="true"
-                    className={cn('mt-0.5 size-5 shrink-0', surface.icon)}
-                    strokeWidth={1.5}
-                />
-                <div className="grid min-w-0 gap-1 text-sm">
-                    <p className="font-medium text-foreground">
-                        {t(variant.title)}
-                    </p>
-                    {variant.description ? (
-                        <p className="text-foreground">
-                            {t(variant.description, {
-                                date: formatDate(cycle.deadline_date),
-                            })}
+            {/* Fila o columna según el ancho de la propia tarjeta, no el de la ventana. */}
+            <div
+                className={cn(
+                    'flex flex-col gap-3',
+                    !compact &&
+                        '@xl:flex-row @xl:items-center @xl:justify-between',
+                )}
+            >
+                <div className="flex min-w-0 gap-3">
+                    <Icon
+                        aria-hidden="true"
+                        className={cn('mt-0.5 size-5 shrink-0', surface.icon)}
+                        strokeWidth={1.5}
+                    />
+                    <div className="grid min-w-0 gap-1 text-sm">
+                        <p className="font-medium text-foreground">
+                            {t(variant.title)}
                         </p>
-                    ) : null}
-                    {me.exemption_reason && me.exemption_until ? (
-                        <p
-                            className="text-xs text-muted-foreground"
-                            data-test="my-weekly-exempt-until"
-                        >
-                            {t('weeklies.callout.exempt_until', {
-                                date: formatDate(me.exemption_until),
-                            })}
-                        </p>
-                    ) : null}
-                    {offerAway ? (
-                        <div
-                            className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
-                            data-test="my-weekly-away"
-                        >
-                            {me.exemption_reason !== 'away' ? (
-                                <span className="text-muted-foreground">
-                                    {t('weeklies.callout.away_question')}
-                                </span>
-                            ) : null}
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-1 underline underline-offset-2"
-                                onClick={() => setAwayOpen(true)}
+                        {variant.description ? (
+                            <p className="text-foreground">
+                                {t(variant.description, {
+                                    date: formatDate(cycle.deadline_date),
+                                })}
+                            </p>
+                        ) : null}
+                        {me.exemption_reason && me.exemption_until ? (
+                            <p
+                                className="text-xs text-muted-foreground"
+                                data-test="my-weekly-exempt-until"
                             >
-                                <Palmtree
-                                    aria-hidden="true"
-                                    className="size-3.5"
-                                />
-                                {me.exemption_reason === 'away'
-                                    ? t('weeklies.callout.away_change')
-                                    : t('weeklies.callout.away_mark')}
-                            </button>
-                            {auth?.can?.viewAbsences ? (
-                                <Link
-                                    href={absencesIndex.url({
-                                        query: { solicitar: 1 },
-                                    })}
-                                    className="underline underline-offset-2"
+                                {t('weeklies.callout.exempt_until', {
+                                    date: formatDate(me.exemption_until),
+                                })}
+                            </p>
+                        ) : null}
+                        {offerAway ? (
+                            <div
+                                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                                data-test="my-weekly-away"
+                            >
+                                {me.exemption_reason !== 'away' ? (
+                                    <span className="text-muted-foreground">
+                                        {t('weeklies.callout.away_question')}
+                                    </span>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 underline underline-offset-2"
+                                    onClick={() => setAwayOpen(true)}
                                 >
-                                    {t('weeklies.callout.request_absence')}
-                                </Link>
-                            ) : null}
-                        </div>
-                    ) : null}
-                    {me.submitted_at ? (
-                        <p className="text-xs text-muted-foreground">
-                            {t('weeklies.editor.submitted_at', {
-                                date: formatDateTime(me.submitted_at),
-                            })}
-                        </p>
-                    ) : draft ? (
-                        <p className="text-xs text-muted-foreground">
-                            {t('weeklies.callout.draft', {
-                                date: formatDateTime(me.draft_saved_at),
-                            })}
-                        </p>
-                    ) : null}
+                                    <Palmtree
+                                        aria-hidden="true"
+                                        className="size-3.5"
+                                    />
+                                    {me.exemption_reason === 'away'
+                                        ? t('weeklies.callout.away_change')
+                                        : t('weeklies.callout.away_mark')}
+                                </button>
+                                {auth?.can?.viewAbsences ? (
+                                    <Link
+                                        href={absencesIndex.url({
+                                            query: { solicitar: 1 },
+                                        })}
+                                        className="underline underline-offset-2"
+                                    >
+                                        {t('weeklies.callout.request_absence')}
+                                    </Link>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        {me.submitted_at ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t('weeklies.editor.submitted_at', {
+                                    date: formatDateTime(me.submitted_at),
+                                })}
+                            </p>
+                        ) : draft ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t('weeklies.callout.draft', {
+                                    date: formatDateTime(me.draft_saved_at),
+                                })}
+                            </p>
+                        ) : null}
+                    </div>
                 </div>
-            </div>
-            {variant.action ? (
-                <Button
-                    asChild
-                    size="sm"
-                    variant={
-                        variant.tone === 'success' || variant.tone === 'neutral'
-                            ? 'outline'
-                            : 'default'
-                    }
-                    className="shrink-0 self-start md:self-center"
-                >
-                    <Link
-                        href={mySpaceIndex.url({
-                            query: { semana: cycle.id },
-                        })}
-                        data-test="my-weekly-open"
+                {variant.action ? (
+                    <Button
+                        asChild
+                        size="sm"
+                        variant={
+                            variant.tone === 'success' ||
+                            variant.tone === 'neutral'
+                                ? 'outline'
+                                : 'default'
+                        }
+                        className="shrink-0 self-start @xl:self-center"
                     >
-                        {t(variant.action)}
-                        <ArrowRight aria-hidden="true" />
-                    </Link>
-                </Button>
-            ) : null}
+                        <Link
+                            href={mySpaceIndex.url({
+                                query: { semana: cycle.id },
+                            })}
+                            data-test="my-weekly-open"
+                        >
+                            {t(variant.action)}
+                            <ArrowRight aria-hidden="true" />
+                        </Link>
+                    </Button>
+                ) : null}
+            </div>
             {offerAway && auth?.user ? (
                 <AwayDialog
                     person={auth.user}

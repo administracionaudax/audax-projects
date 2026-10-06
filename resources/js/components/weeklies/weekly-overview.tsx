@@ -88,11 +88,13 @@ export function WeeklyOverview(props: WeekliesIndexPageProps) {
                             <WeekLabel cycle={active} />
                         </p>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_15rem]">
                         {me ? <MyWeeklyCallout cycle={active} me={me} /> : null}
-                        {me ? <PushPrompt /> : null}
                         <div
-                            className="grid content-center gap-1 border bg-card p-4 text-sm"
+                            className={cn(
+                                'grid content-center gap-1 border bg-card p-4 text-sm',
+                                !me && 'md:col-span-2',
+                            )}
                             data-test="weekly-streak-card"
                         >
                             <StreakValue
@@ -107,6 +109,7 @@ export function WeeklyOverview(props: WeekliesIndexPageProps) {
                             </p>
                         </div>
                     </div>
+                    {me ? <PushPrompt /> : null}
                 </section>
             )}
 
