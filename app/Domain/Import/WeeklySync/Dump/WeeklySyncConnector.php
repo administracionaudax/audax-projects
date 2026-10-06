@@ -13,6 +13,18 @@ class WeeklySyncConnector
         return new PostgresWeeklySyncSource($credentials->databaseUrl, $credentials->databasePassword);
     }
 
+    /**
+     * Origen por la API REST con la clave secreta (D-237), sin la contraseña de la base.
+     */
+    public function apiSource(WeeklySyncCredentials $credentials): WeeklySyncSource
+    {
+        if ($credentials->projectUrl === null || $credentials->serviceKey === null) {
+            throw new \RuntimeException('Para leer por la API hacen falta WEEKLYSYNC_URL y WEEKLYSYNC_SERVICE_KEY.');
+        }
+
+        return new RestWeeklySyncSource($credentials->projectUrl, $credentials->serviceKey);
+    }
+
     public function storage(WeeklySyncCredentials $credentials): ?WeeklySyncStorage
     {
         if ($credentials->projectUrl === null || $credentials->serviceKey === null) {

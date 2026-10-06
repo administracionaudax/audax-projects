@@ -20,7 +20,8 @@ use RuntimeException;
 #[Signature('app:dump-weeklysync
     {directorio : Carpeta NUEVA donde escribir el volcado (se crea con permisos 700)}
     {--credenciales='.WeeklySyncCredentials::DEFAULT_PATH.' : Fichero con WEEKLYSYNC_DB_URL, WEEKLYSYNC_DB_PASSWORD, WEEKLYSYNC_URL y WEEKLYSYNC_SERVICE_KEY}
-    {--sin-ficheros : Solo las tablas, sin descargar audios, vídeos ni adjuntos}')]
+    {--sin-ficheros : Solo las tablas, sin descargar audios, vídeos ni adjuntos}
+    {--api : Lee las tablas por la API REST con la clave secreta, sin la contraseña de la base (D-237)}')]
 #[Description('Vuelca la base y los ficheros de WeeklySync (solo lectura) para importarlos después')]
 class DumpWeeklySync extends Command
 {
@@ -30,7 +31,7 @@ class DumpWeeklySync extends Command
         $withFiles = ! $this->option('sin-ficheros');
 
         try {
-            $credentials = WeeklySyncCredentials::load((string) $this->option('credenciales'), $withFiles);
+            $credentials = WeeklySyncCredentials::load((string) $this->option('credenciales'), $withFiles || $this->option('api'));
         } catch (RuntimeException $e) {
             $this->components->error($e->getMessage());
 
@@ -40,7 +41,7 @@ class DumpWeeklySync extends Command
         $this->components->info('Volcado de WeeklySync (solo lectura)');
 
         try {
-            $source = $connector->source($credentials);
+            $source = $this->option('api') ? $connector->apiSource($credentials) : $connector->source($credentials);
             $storage = $withFiles ? $connector->storage($credentials) : null;
             $result = $dumper->dump($directory, $source, $storage, new CommandImportOutput($this->output));
         } catch (RuntimeException $e) {
