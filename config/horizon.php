@@ -204,8 +204,9 @@ return [
     | - supervisor-mail (cola `mail`): los correos y, desde la Fase 9, el PDF y el Excel de los
     |   informes que se envían (SendReportDelivery). Un solo proceso de 256 MB, que es también el
     |   memory_limit que se pone el envío al generarlo (la CLI del servidor trae 128M).
-    | - supervisor-ai (cola `ai`, Fase 10, D-146): las llamadas a Gemini y a Google TTS de la Weekly
-    |   (informe, satisfacción, audio, resúmenes y asistente). Un solo proceso de 128 MB: son
+    | - supervisor-ai (colas `ai-high` y `ai`, Fase 10, D-146 y D-222): las llamadas a Gemini y a
+    |   Google TTS de la Weekly. Un solo proceso de 128 MB que atiende primero `ai-high` (informe,
+    |   audio y satisfacción) y después `ai` (resúmenes, asistente, tareas sugeridas y dictados): son
     |   llamadas HTTP de uno en uno (cuota de Gemini) y cada Job dura como mucho 600 s (AiQueue).
     | - Workers: 2 × 128 + 1 × 256 + 1 × 128 = 640 MB, el MemoryLimit de audax-horizon.service
     |   (antes 512; se aplica en el servidor al desplegar la Fase 10, SERVIDOR-CAMBIOS); más el

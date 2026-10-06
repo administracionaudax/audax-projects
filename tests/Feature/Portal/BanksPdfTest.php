@@ -54,10 +54,10 @@ it('es el PDF en modo portal y nunca lleva importes, ni siquiera con ?importes=1
     }
 });
 
-it('está limitado por minuto (throttle:30,1)', function () {
+it('está limitado por minuto (throttle:30,1, con su propio contador)', function () {
     $s = $this->s;
 
-    expect(Route::getRoutes()->getByName('portal.banks.pdf')?->gatherMiddleware())->toContain('throttle:30,1');
+    expect(Route::getRoutes()->getByName('portal.banks.pdf')?->gatherMiddleware())->toContain('throttle:30,1,portal.banks.pdf');
 
     foreach (range(1, 30) as $attempt) {
         $this->actingAs($s->portal)->get(($this->url)($s->b2))->assertOk();
