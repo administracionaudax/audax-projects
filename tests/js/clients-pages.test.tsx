@@ -314,11 +314,11 @@ describe('listado de clientes', () => {
         );
 
         const cell = document.querySelector<HTMLElement>(
-            '[data-test="client-team"]',
+            '[data-test="client-row-team"]',
         )!;
         expect(
             cell
-                .querySelector('[data-test="client-owner"]')
+                .querySelector('[data-test="client-row-owner"]')
                 ?.getAttribute('href'),
         ).toBe('/equipo/7');
         const team = within(cell).getByRole('list', {

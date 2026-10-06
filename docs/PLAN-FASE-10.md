@@ -746,3 +746,48 @@ La suite completa de Playwright dio 8 fallos, todos en specs nuevos de la Fase 1
 - **Horizon** coge la cola `ai-high` al reiniciarse en el despliegue (`horizon:terminate`); no cambian ni los procesos ni la memoria de `audax-horizon.service`.
 - **Opcional en el `.env`:** `AI_DAILY_LIMIT_*` y `HELP_*` (sus valores por defecto ya son los de D-222 y D-223).
 - **Sin cambios de sistema:** nada en `SERVIDOR-CAMBIOS.md`.
+
+## 10.9b (hecho): paridad con WeeklySync
+Siete revisores recorrieron WeeklySync (código) contra Audax por bloques (F-001 a F-181) y encontraron 3 P1, una veintena de P2, muchos P3 y 39 funcionalidades que no estaban en el inventario. Requisito del propietario: no se pierde ninguna funcionalidad. Decisiones D-227 a D-236; el inventario (`WEEKLY-INVENTARIO.md`) queda al día, con F-182 a F-220.
+
+### P1
+- **Marcarse fuera (D-228):** «Estoy fuera» (de vacaciones o ausente/baja, con vuelta opcional) desde el menú del avatar, «Mi weekly» (resumen e Inicio) y la ficha, con efecto inmediato: exime de las semanas cuyo plazo cae antes de la vuelta (motivo `away`, congelado al cerrar) y quita los recordatorios mientras dura, aunque se vuelva antes del plazo (también con una ausencia aprobada que cubre ese día). Insignia en el avatar. La propia persona puede pedir a la vez la ausencia de Audax y siempre tiene «Solicitar ausencia». Quien gestiona exime «solo esta semana» o marca fuera hasta una fecha (varias semanas) desde «Eximir», con enlace a «Ausencias del equipo». La importación trae el estado vigente de WeeklySync. Migración `2026_10_06_110000`.
+- **Limpieza del dictado encendida por defecto (D-227):** solo en la weekly; si la IA falla, texto literal con aviso.
+- **Importación sin perder texto con formato:** `WeeklySyncText::normalize` (h1/h2 → h3, h5/h6 → h4, b → strong, i → em, strike/del → s, div y bloques → p, img → enlace o texto alternativo, tablas → párrafos, el resto se desenvuelve; scripts fuera), con `WeeklySyncTextTest`. Las **semanas importadas sin informe estructurado** enseñan su texto final por secciones con índice en la página, el PDF/HTML y el CSV (`WeeklyReportText::sections`, `LegacyReportText`).
+
+### P2
+- **Tiempo real (D-229):** `weekly.changed` por el canal `weeklies` (envíos, exenciones, ausencias, «Estoy fuera», plazo, cierre, informe, audio y satisfacción); `/weeklies` y el informe se recargan solos (`useWeeklyLive`).
+- **Regenerar un informe editado a mano** pide confirmación.
+- **Weekly sin apuntes** (D-230): se puede enviar, tras confirmarlo. **Avisos del navegador**: aviso amable tras enviar y en el resumen (D-230).
+- **Tareas de Mi espacio (D-231):** la revisión de la IA a la vista con aviso al terminar; buscador con más de 8 clientes o proyectos; explicación de qué clientes salen en «Nueva tarea» y enlace a la cartera (donde se ve el responsable); avisos al crear y completar; la nota avisa de que la ve el proyecto; borrar con horas, desactivado y explicado; autocompletar con las notas.
+- **Clientes (D-232):** responsable elegible (`clients.owner_user_id`, migración `2026_10_06_120000`) y columna «Responsable y equipo» en la cartera (tres consultas por página); satisfacción con color por tramo.
+- **Personas (D-233):** «Asignar clientes» (varios) desde la ficha con la suscripción de D-221 y «Quitar»; mapa «Constancia (últimas 12 semanas)» en el perfil y la ficha; «Ver histórico» por cliente (todos los reportes, de 25 en 25) en la ficha y en el equipo del cliente; historiales por páginas (un año y medio año) sin tope; filtros de `/equipo` que se conservan al volver.
+- **Perfil y app (D-234):** foto de perfil recortada en el navegador y recodificada en el servidor (256 px, WebP, sin metadatos), URL firmada y relativa, en la exportación RGPD; rol en el pie de la barra; departamento y rol de solo lectura en el perfil (cambiarse el departamento no se permite: decide quién aprueba); `ErrorBoundary` con «Recargar».
+- **Fee por código FE**, **botones Título, Subtítulo y Divisor** en el editor (F-154) y **vídeos MP4, MOV y WebM** en sugerencias, bugs y su importación (D-235).
+- **«Avisos»** explica que quien tiene el resumen diario recibe el email al día siguiente.
+
+### P3 hechos (baratos)
+Nombres de quien falta al cerrar, color de la participación, un solo dictado a la vez, «hasta el…» de la exención en el editor y en «Mi weekly», el texto del editor exento, la bienvenida al entrar con Google, saltos de línea del subtítulo de las novedades, insignia de estado en el avatar y el comentario de los canales por defecto del recordatorio (D-236).
+
+### P3 que quedan (con motivo)
+- **Audio de una semana importada solo con texto:** no se regenera (el guion sale del informe estructurado); esas semanas ya traen su audio de WeeklySync.
+- **Histórico de «Mi espacio» y de `/weeklies` con tope de 104 semanas:** no se nota hasta dentro de dos años; se paginará como la ficha cuando haga falta.
+- **Ruta de detalle inexistente:** 404 de Audax con «Inicio» y «Volver» en lugar de redirigir con aviso.
+- **Filtros de `/equipo` sin buscador** (son nativos y se puede escribir para saltar) y **tarjetas en el móvil** para clientes y equipo (tablas con desplazamiento): diseño de Audax.
+- **Acciones en la fila** de la cartera y del equipo, **avatares del equipo en la cabecera** de la ficha de cliente, **resumen IA por tarjetas** y la insignia «Pendiente activación» en `/equipo`: el mismo dato está a un clic.
+- **Sugerencias:** fecha de cada voto, «N comentarios» en la cabecera, última actividad en las tarjetas, estados de «similares», orden de la actividad, categoría «General» precargada y mover de categoría el autor: cosméticos.
+- **Avisos:** recarga en vivo de la configuración, plantillas plegadas, envío a una semana concreta y reintento de un disparo fallido en la pasada siguiente (la cola ya reintenta el envío).
+- **Estado de proyectos:** número de factura bajo el proyecto, frase de la desviación a la vista e insignias de la cabecera filtradas por tipo; clientes archivados con proyectos abiertos (se arreglan en la ficha del cliente).
+- **Reproductor del cliente que vuelve a 0 al acabar,** «Guardar como» al descargar, índice dentro del HTML descargado, colores de la barra de proyecto (75/90 y parpadeo) y la etiqueta «Texto cerrado».
+- **Modo oscuro, perfil y cerrar sesión a 1 clic** en la barra y el asistente flotante (D-206): la navegación de Audax.
+- **Gemini 2.5 Flash** se retira el 16/10/2026: no es de código; `GEMINI_MODEL` en el `.env` del servidor lo cambia el propietario (ver «Urgente»).
+
+### Tests nuevos
+- **Pest:** `WeeklyAwayTest`, `WeeklyLiveTest`, `AvatarTest`, `WeeklySyncTextTest` (Unit) y casos nuevos en `WeeklyDictationTest`, `WeeklyReportPdfTest`, `WeeklySubmissionWriterTest`, `WeeklyDashboardsTest`, `MySpaceTasksTest`, `ClientWeeklyInsightsTest` (responsable, equipo y páginas), `TeamWeeklyInsightsTest` (constancia, histórico por cliente, páginas y asignar), `ProjectStatusBoardTest` (fee por código), `SuggestionsTest` (vídeos), `PersonalDataExportTest` (foto), `GoogleLoginTest` (bienvenida) y `WeeklySyncImportTest` («Estoy fuera»). Al día: `ClientIsolationTest` (ruta de la foto) y los presupuestos de `clients.index` (8 → 10) y de la cartera (12 → 13).
+- **Vitest:** `weeklies-away`, `weeklies-live`, `weeklies-push-prompt`, `error-boundary`, `avatar-field`, `rich-text-editor` y casos nuevos en `weeklies-dictation`, `weeklies-report`, `weeklies-editor`, `my-space-tasks`, `clients-pages` y `weeklies-insights`.
+- **E2E:** `weekly-parity.spec.ts` («Estoy fuera», ficha con constancia y asignar clientes, filtros del equipo y foto de perfil, con axe).
+
+### Para desplegar (con el SSH)
+- **Dos migraciones:** `users.weekly_away_*` y `clients.owner_user_id`.
+- **Fotos de perfil** en `storage/app/private/avatars` (disco `local`, va en la copia nocturna con el resto de `storage`).
+- **Sin cambios de sistema:** nada en `SERVIDOR-CAMBIOS.md`. GD ya está en el PHP 8.4 del servidor.

@@ -22,7 +22,7 @@ export function ClientTeamCell({
     const rest = team.team_count - team.team.length;
 
     return (
-        <div className="grid gap-1" data-test="client-team">
+        <div className="grid gap-1" data-test="client-row-team">
             {team.owner ? (
                 <Link
                     href={showPerson.url(team.owner.id)}
@@ -30,7 +30,7 @@ export function ClientTeamCell({
                         'inline-flex items-center gap-1.5 hover:underline',
                         FOCUS_RING,
                     )}
-                    data-test="client-owner"
+                    data-test="client-row-owner"
                 >
                     <UserAvatar
                         user={team.owner}

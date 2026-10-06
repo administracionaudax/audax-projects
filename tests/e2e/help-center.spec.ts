@@ -49,7 +49,9 @@ test('quien gestiona publica una novedad y la plantilla le da «me gusta» y la 
 
     await manager.getByRole('button', { name: 'Añadir novedad' }).click();
     const dialog = manager.getByRole('dialog');
-    await dialog.getByLabel('Título').fill(title);
+    await dialog
+        .getByRole('textbox', { name: 'Título', exact: true })
+        .fill(title);
     await dialog.getByLabel('Descripción breve').fill('Resumen de prueba');
     await dialog
         .getByRole('textbox', { name: 'Contenido detallado' })
@@ -136,7 +138,9 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
     await employee.goto('/ayuda?pestana=sugerencias&vista=feedback');
     await employee.getByRole('button', { name: 'Añadir' }).click();
     let dialog = employee.getByRole('dialog');
-    await dialog.getByLabel('Título').fill(idea);
+    await dialog
+        .getByRole('textbox', { name: 'Título', exact: true })
+        .fill(idea);
     await dialog
         .getByRole('textbox', { name: 'Detalle' })
         .fill('Que la ayuda tenga modo oscuro.');
@@ -162,7 +166,9 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
     await employee.locator('[data-test="help-report-bug"]').click();
     dialog = employee.getByRole('dialog');
     await expect(dialog).toContainText('Se publicará en la categoría «Bugs».');
-    await dialog.getByLabel('Título').fill(bug);
+    await dialog
+        .getByRole('textbox', { name: 'Título', exact: true })
+        .fill(bug);
     await dialog
         .getByRole('textbox', { name: 'Detalle' })
         .fill('Al pulsar «Guardar» no pasa nada.');
