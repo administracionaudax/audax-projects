@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previsión · matriz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<style>
+/*
+ * Maquetas de la Previsión. Tokens copiados de resources/css/app.css (tema Audax, D-137):
+ * estilo plano (radio 0, sin sombras), DM Sans 400/500 y 600 solo para cifras.
+ * Las capas de la previsión NO añaden colores: reutilizan --chart-1..3 (D-012) y una trama.
+ */
+:root {
+    color-scheme: light;
+    --background: #f5f6f7;
+    --foreground: #0b1b33;
+    --card: #ffffff;
+    --popover: #ffffff;
+    --primary: #0068eb;
+    --primary-foreground: #ffffff;
+    --primary-text: #005fd6;
+    --secondary: #eef1f5;
+    --muted: #eef1f5;
+    --muted-foreground: #5b6b82;
+    --accent: #e6f0ff;
+    --border: #e2e6ec;
+    --input: #808d9c;
+    --ring: #0171ff;
+    --brand: #0171ff;
+    --success: #1e7a4c;
+    --success-soft: #e9f5f0;
+    --warning: #9a5a1a;
+    --warning-soft: #fbeee2;
+    --danger: #b43a36;
+    --danger-soft: #fdeceb;
+    --info: #005fd6;
+    --info-soft: #e6f0ff;
+    --neutral-soft: #e9ecef;
+    --chart-1: #0171ff;
+    --chart-2: #179fa5;
+    --chart-3: #5e2dad;
+    --chart-4: #e65fb3;
+    --chart-5: #3c41ae;
+    --chart-6: #0892c4;
+    --sidebar: #ffffff;
+
+    /* Capas de la previsión (DISENO-PREVISION.md §3) */
+    --layer-real: var(--chart-1);
+    --layer-previsto: var(--chart-3);
+    --layer-imputado: var(--chart-2);
+    --posible-bg: color-mix(in oklab, var(--chart-3) 16%, var(--card));
+    --hatch: repeating-linear-gradient(135deg, var(--layer-previsto) 0 2px, var(--posible-bg) 2px 5px);
+    --capacity: var(--foreground);
+    --overload-wash: color-mix(in oklab, var(--danger) 7%, var(--card));
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme='light'])) {
+        color-scheme: dark;
+        --background: #0b1526;
+        --foreground: #f5f6f7;
+        --card: #121c30;
+        --popover: #121c30;
+        --primary-text: #519aff;
+        --secondary: rgb(255 255 255 / 0.06);
+        --muted: rgb(255 255 255 / 0.06);
+        --muted-foreground: rgb(255 255 255 / 0.7);
+        --accent: rgb(1 113 255 / 0.2);
+        --border: rgb(255 255 255 / 0.14);
+        --input: rgb(255 255 255 / 0.4);
+        --ring: #4a93ff;
+        --success: #5cc98e;
+        --success-soft: #0a3a43;
+        --warning: #f2b84b;
+        --warning-soft: #333834;
+        --danger: #f2837b;
+        --danger-soft: #36283d;
+        --info: #4a93ff;
+        --info-soft: #12284a;
+        --neutral-soft: #1a2538;
+        --chart-1: #0868e0;
+        --chart-2: #0d9298;
+        --chart-3: #9d74f8;
+        --chart-4: #b53087;
+        --chart-5: #7685f8;
+        --chart-6: #04729b;
+        --sidebar: #121c30;
+        --posible-bg: color-mix(in oklab, var(--chart-3) 22%, var(--card));
+        --overload-wash: color-mix(in oklab, var(--danger) 10%, var(--card));
+    }
+}
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    --background: #0b1526;
+    --foreground: #f5f6f7;
+    --card: #121c30;
+    --popover: #121c30;
+    --primary-text: #519aff;
+    --secondary: rgb(255 255 255 / 0.06);
+    --muted: rgb(255 255 255 / 0.06);
+    --muted-foreground: rgb(255 255 255 / 0.7);
+    --accent: rgb(1 113 255 / 0.2);
+    --border: rgb(255 255 255 / 0.14);
+    --input: rgb(255 255 255 / 0.4);
+    --ring: #4a93ff;
+    --success: #5cc98e;
+    --success-soft: #0a3a43;
+    --warning: #f2b84b;
+    --warning-soft: #333834;
+    --danger: #f2837b;
+    --danger-soft: #36283d;
+    --info: #4a93ff;
+    --info-soft: #12284a;
+    --neutral-soft: #1a2538;
+    --chart-1: #0868e0;
+    --chart-2: #0d9298;
+    --chart-3: #9d74f8;
+    --chart-4: #b53087;
+    --chart-5: #7685f8;
+    --chart-6: #04729b;
+    --sidebar: #121c30;
+    --posible-bg: color-mix(in oklab, var(--chart-3) 22%, var(--card));
+    --overload-wash: color-mix(in oklab, var(--danger) 10%, var(--card));
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.43;
+    overflow-x: hidden;
+}
+b, strong, .num-strong { font-weight: 600; }
+.tabular { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted-foreground); }
+.xs { font-size: 12px; line-height: 16px; }
+.sm { font-size: 14px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+svg.icon { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg.icon.s14 { width: 14px; height: 14px; }
+svg.icon.s12 { width: 12px; height: 12px; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+a { color: var(--primary-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Shell ───────────────────────────────────────────────────────────── */
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 100vh; }
+.sidebar .logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px 16px; font-weight: 500; font-size: 15px; }
+.sidebar .logo svg { width: 22px; height: 20px; }
+.sidebar .group { margin-top: 12px; padding: 0 8px 4px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-foreground); }
+.sidebar a.nav { display: flex; align-items: center; gap: 10px; padding: 7px 8px; color: var(--foreground); font-size: 14px; }
+.sidebar a.nav:hover { background: var(--accent); text-decoration: none; }
+.sidebar a.nav[aria-current='page'] { background: var(--accent); color: var(--primary-text); font-weight: 500; }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--card); }
+.topbar .crumbs { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted-foreground); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .crumbs span:last-child { color: var(--foreground); }
+.topbar .spacer { flex: 1; }
+.topbar .menu-btn { display: none; }
+.page { padding: 24px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.page-head h1 { margin: 0; font-size: 24px; font-weight: 400; letter-spacing: -0.02em; line-height: 1.25; }
+.page-head h1 .kw { color: var(--brand); }
+.page-head p { margin: 4px 0 0; color: var(--muted-foreground); max-width: 70ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+h2.section { margin: 0; font-size: 18px; font-weight: 400; }
+h3.sub { margin: 0; font-size: 16px; font-weight: 500; }
+
+@media (max-width: 1023px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .sidebar { display: none; }
+    .topbar .menu-btn { display: inline-flex; }
+}
+@media (max-width: 640px) {
+    .page { padding: 16px; gap: 20px; }
+    .topbar { padding: 0 12px; gap: 8px; }
+    .page-head h1 { font-size: 22px; }
+}
+
+/* ── Controles ───────────────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid transparent; background: var(--primary); color: var(--primary-foreground); font: inherit; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn.sm { height: 32px; padding: 0 10px; }
+.btn.outline { background: var(--card); border-color: var(--primary); color: var(--primary-text); }
+.btn.ghost { background: transparent; color: var(--foreground); }
+.btn.ghost:hover, .btn.outline:hover { background: var(--accent); }
+.btn.icon { width: 36px; padding: 0; }
+.field { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--input); background: var(--card); color: var(--foreground); font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.field .lbl { color: var(--muted-foreground); }
+.seg { display: inline-flex; border: 1px solid var(--input); background: var(--card); }
+.seg button { height: 30px; padding: 0 12px; border: 0; background: transparent; color: var(--foreground); font: inherit; font-size: 14px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed='true'] { background: var(--accent); color: var(--primary-text); font-weight: 500; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.toolbar .sep { width: 1px; height: 24px; background: var(--border); }
+.toggle-chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--border); background: var(--card); font: inherit; font-size: 14px; color: var(--foreground); cursor: pointer; }
+.toggle-chip[aria-pressed='false'] { color: var(--muted-foreground); }
+.toggle-chip[aria-pressed='false'] .sw { opacity: 0.25; }
+.toggle-chip .check { width: 14px; height: 14px; border: 1px solid var(--input); display: inline-flex; align-items: center; justify-content: center; }
+.toggle-chip[aria-pressed='true'] .check { background: var(--primary); border-color: var(--primary); color: #fff; }
+.toggle-chip .check svg { width: 12px; height: 12px; stroke-width: 3; }
+
+/* ── Superficies ─────────────────────────────────────────────────────── */
+.card { background: var(--card); border: 1px solid var(--border); padding: 20px; min-width: 0; }
+.card.flush { padding: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
+.card-head .t { font-size: 16px; font-weight: 500; }
+.card-head .d { font-size: 14px; color: var(--muted-foreground); margin-top: 2px; }
+.grid-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1023px) { .grid-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--card); border: 1px solid var(--border); padding: 14px 16px; min-width: 0; }
+.tile .k { font-size: 13px; color: var(--muted-foreground); }
+.tile .v { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; margin-top: 4px; }
+.tile .v small { font-size: 14px; font-weight: 400; color: var(--muted-foreground); letter-spacing: 0; }
+.tile .s { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+@media (max-width: 640px) { .tile .v { font-size: 22px; } .tile { padding: 12px; } }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; font-size: 12px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); white-space: nowrap; }
+
+/* ── Leyenda y muestras de capa ──────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 13px; color: var(--muted-foreground); }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend ul { display: contents; }
+ul.plain { list-style: none; margin: 0; padding: 0; }
+.sw { display: inline-block; width: 12px; height: 12px; flex-shrink: 0; }
+.sw.real { background: var(--layer-real); }
+.sw.seguro { background: var(--layer-previsto); }
+.sw.posible { background: var(--hatch); box-shadow: inset 0 0 0 1px var(--layer-previsto); }
+.sw.imputado { background: var(--layer-imputado); }
+.sw.cap { width: 16px; height: 0; border-top: 2px solid var(--capacity); }
+.sw.line-real { width: 16px; height: 0; border-top: 2px solid var(--layer-real); }
+.sw.line-prev { width: 16px; height: 0; border-top: 2px solid var(--layer-previsto); }
+.sw.line-imp { width: 16px; height: 0; border-top: 2px solid var(--layer-imputado); }
+.sw.line-imp-proj { width: 16px; height: 0; border-top: 2px dashed var(--layer-imputado); }
+.sw.gap { background: transparent; border: 1px dashed var(--muted-foreground); }
+.sw.status { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Etiqueta de seguridad de un previsto */
+.kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--foreground); white-space: nowrap; }
+.kind .sw { width: 10px; height: 10px; }
+
+/* ── Semáforo (D-052): mismas superficies y tonos que LoadCell ───────── */
+.lv-none { --lv-surface: var(--neutral-soft); --lv-tone: var(--muted-foreground); }
+.lv-under { --lv-surface: var(--info-soft); --lv-tone: var(--info); }
+.lv-balanced { --lv-surface: var(--success-soft); --lv-tone: var(--success); }
+.lv-high { --lv-surface: var(--warning-soft); --lv-tone: var(--warning); }
+.lv-over { --lv-surface: var(--danger-soft); --lv-tone: var(--danger); }
+.lv-icon { color: var(--lv-tone); }
+
+/* ── Tablas (cabecera de la hoja de Audax) ───────────────────────────── */
+table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.data thead th { background: var(--neutral-soft); color: var(--muted-foreground); font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; text-align: left; padding: 8px 12px; white-space: nowrap; }
+table.data td, table.data tbody th { padding: 10px 12px; border-top: 1px solid var(--border); text-align: left; font-weight: 400; vertical-align: middle; }
+table.data .r { text-align: right; }
+table.data tfoot td { border-top: 1px solid var(--border); background: var(--neutral-soft); font-weight: 500; }
+.scroll-x { position: relative; overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch; }
+
+/* ── Tooltip (ChartTooltipCard) ──────────────────────────────────────── */
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--popover); color: var(--foreground); border: 1px solid var(--border); padding: 10px 12px; font-size: 13px; min-width: 220px; max-width: 340px; opacity: 0; transform: translateY(2px); transition: opacity 0.08s, transform 0.08s; }
+.tip.on { opacity: 1; transform: none; }
+.tip .tt { font-size: 12px; color: var(--muted-foreground); margin-bottom: 6px; }
+.tip .head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.tip .head .big { font-size: 18px; font-weight: 600; }
+.tip ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tip li { display: grid; grid-template-columns: 14px auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.tip li .key { width: 12px; height: 3px; }
+.tip li .key.real { background: var(--layer-real); }
+.tip li .key.seguro { background: var(--layer-previsto); }
+.tip li .key.posible { height: 8px; background: var(--hatch); }
+.tip li .key.imputado { background: var(--layer-imputado); }
+.tip li .key.cap { background: var(--capacity); height: 2px; }
+.tip li .val { font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; min-width: 3.2em; }
+.tip li { align-items: start; }
+.tip li .key { margin-top: 7px; }
+.tip li .lab { color: var(--muted-foreground); }
+.tip .foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; display: grid; gap: 2px; }
+.tip .foot b { color: var(--foreground); font-weight: 500; }
+
+/* Notas de diseño (solo en las maquetas: anotaciones para el propietario) */
+.note { border-left: 2px solid var(--brand); background: var(--card); padding: 10px 14px; font-size: 13px; color: var(--muted-foreground); }
+.note b { color: var(--foreground); font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print { .sidebar, .topbar { display: none; } .app { display: block; } }
+@media (forced-colors: active) { .sw.posible, .tip li .key.posible { forced-color-adjust: none; } }
+</style>
+<style>
+    .mx-wrap { border: 1px solid var(--border); background: var(--card); }
+    table.mx { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+    table.mx th, table.mx td { padding: 0; }
+    .mx .namecol { position: sticky; left: 0; z-index: 2; background: var(--card); width: var(--name-w); min-width: var(--name-w); max-width: var(--name-w); border-right: 1px solid var(--border); text-align: left; font-weight: 400; }
+    .mx thead th { background: var(--neutral-soft); color: var(--muted-foreground); font-weight: 500; font-size: 12px; }
+    .mx thead .namecol { background: var(--neutral-soft); padding: 6px 12px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; vertical-align: bottom; }
+    .mx thead tr.months th.m { text-align: left; padding: 6px 8px 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; border-left: 1px solid var(--border); }
+    .mx thead tr.periods th.p { width: var(--col-w); min-width: var(--col-w); padding: 2px 6px 6px; text-align: left; line-height: 1.2; }
+    .mx thead tr.periods th.p .w { color: var(--foreground); font-size: 12px; }
+    .mx thead tr.periods th.p .d { font-size: 11px; font-weight: 400; }
+    .mx thead .hol { display: inline-flex; margin-left: 4px; vertical-align: -1px; color: var(--muted-foreground); }
+    .mx thead th.p.now { box-shadow: inset 0 -2px 0 var(--brand); }
+    .mx thead th.p.now .w { color: var(--primary-text); }
+    /* Fila de departamento: columnas apiladas frente a la capacidad (la vista B dentro de la matriz) */
+    .mx tr.dept > * { border-top: 1px solid var(--border); background: var(--card); }
+    .mx tr.dept .namecol { padding: 10px 12px; vertical-align: top; }
+    .dept-btn { all: unset; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; width: 100%; }
+    .dept-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .dept-btn .n { font-size: 15px; font-weight: 500; color: var(--foreground); }
+    .dept-btn .m { font-size: 12px; color: var(--muted-foreground); }
+    .dept-btn svg { margin-top: 2px; }
+    .dept-chart { position: relative; }
+    .dept-chart .hit { position: absolute; top: 0; bottom: 0; }
+    .dept-chart .hit:hover, .dept-chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); outline-offset: -2px; }
+    .dept-chart .lab { position: absolute; bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; color: var(--foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .dept-chart .lab.quiet { color: var(--muted-foreground); }
+    /* Celdas de persona: semáforo + barra de capas */
+    .mx tr.person > * { border-top: 1px solid var(--border); }
+    .mx tr.person .namecol { padding: 6px 12px; }
+    .pname { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .avatar { width: 24px; height: 24px; border-radius: 9999px; background: var(--neutral-soft); color: var(--foreground); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .avatar.gap { background: transparent; border: 1px dashed var(--muted-foreground); color: var(--muted-foreground); }
+    .pname .t { min-width: 0; }
+    .pname .nm { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pname .sb { display: block; font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    td.c { padding: 2px !important; }
+    .mc { position: relative; height: 40px; padding: 4px 5px; display: flex; flex-direction: column; justify-content: space-between; background: var(--lv-surface); cursor: pointer; }
+    .mc:hover, td.c:focus-visible .mc { box-shadow: inset 0 0 0 1px var(--foreground); }
+    td.c:focus-visible { outline: none; }
+    td.c:focus-visible .mc { box-shadow: inset 0 0 0 2px var(--ring); }
+    .mc .v { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 14px; white-space: nowrap; }
+    .mc .v svg { width: 12px; height: 12px; }
+    /* Capacidad reducida por una ausencia parcial: muesca en la esquina (no quita sitio a la cifra) */
+    .mc .red { position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 8px solid var(--muted-foreground); border-left: 8px solid transparent; }
+    .notch { display: inline-block; width: 0; height: 0; border-top: 9px solid var(--muted-foreground); border-left: 9px solid transparent; }
+    .mc.none .v { font-weight: 400; color: var(--muted-foreground); font-size: 11px; }
+    /* Barra de capas: pista = 0–150 % de la capacidad; marca en el 100 % */
+    .bar { position: relative; height: 6px; background: color-mix(in oklab, var(--card) 75%, transparent); display: flex; gap: 2px; overflow: hidden; }
+    .bar i { display: block; height: 100%; flex: none; }
+    .bar i.real { background: var(--layer-real); }
+    .bar i.seguro { background: var(--layer-previsto); }
+    .bar i.posible { background: var(--hatch); }
+    .bar-wrap { position: relative; }
+    .bar-wrap .cap { position: absolute; left: 66.67%; top: -3px; width: 2px; height: 12px; background: var(--capacity); }
+    .bar-wrap .more { position: absolute; right: -1px; top: -1px; width: 0; height: 0; border-left: 5px solid var(--foreground); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+    /* Huecos: demanda sin persona (borde discontinuo, como «sin responsable» en el Gantt) */
+    .mx tr.gap > * { border-top: 1px solid var(--border); }
+    .mx tr.gap .namecol { padding: 6px 12px; }
+    .gc { height: 40px; margin: 0; padding: 4px 5px; border: 1px dashed var(--muted-foreground); display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; }
+    .gc .v { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .gc .k { display: flex; gap: 2px; height: 6px; }
+    .gc .k i { display: block; height: 100%; flex: 1; }
+    .gc .k i.real { background: var(--layer-real); } .gc .k i.seguro { background: var(--layer-previsto); } .gc .k i.posible { background: var(--hatch); }
+    .gc.empty { border-color: transparent; }
+    .mx td.now-col { background: color-mix(in oklab, var(--brand) 4%, var(--card)); }
+    .side { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .side { grid-template-columns: minmax(0, 1fr); } }
+    .legend-block { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+    .legend-block .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: var(--muted-foreground); }
+    .legend-block .grp > span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-block .grp .ttl { color: var(--foreground); font-weight: 500; }
+    .mini-bar { display: inline-flex; width: 36px; }
+    .alt-nav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+    .alt-nav a[aria-current] { color: var(--foreground); font-weight: 500; text-decoration: none; }
+    @media (max-width: 640px) {
+        .hide-sm { display: none !important; }
+        .toolbar .field, .toolbar .seg { height: 32px; }
+    }
+</style>
+</head>
+<body>
+<main class="page" style="--name-w: 208px; --col-w: 64px">
+    <div class="note alt-nav"><b>Maqueta · Previsión</b><span>Alternativas:</span><a href="01-prevision-matriz.html" aria-current="page">A · Matriz de ocupación (recomendada)</a><a href="02-prevision-barras.html">B · Barras frente a capacidad</a><a href="03-prevision-cronograma.html">C · Cronograma por persona</a></div>
+
+    <div class="page-head">
+        <div>
+            <h1>Previsión del <span class="kw">equipo</span></h1>
+            <p>Capacidad frente a lo asignado en proyectos reales y previstos. Solo cuentan las asignaciones; las tareas y las bolsas, no.</p>
+        </div>
+        <div class="actions">
+            <button class="btn outline sm" type="button">Proyectos previstos <span class="badge" style="height:18px">5</span></button>
+            <button class="btn sm" type="button" id="new-btn"></button>
+        </div>
+    </div>
+
+    <div class="toolbar" role="group" aria-label="Filtros de la previsión">
+        <label class="field"><span class="lbl">Horizonte</span>
+            <select id="horizon" style="all:unset;cursor:pointer">
+                <option value="2">2 meses</option><option value="3" selected>3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+            </select>
+        </label>
+        <div class="seg" role="group" aria-label="Agrupar por"><button type="button" data-unit="week" aria-pressed="true">Semanas</button><button type="button" data-unit="month" aria-pressed="false">Meses</button></div>
+        <button class="field" type="button"><span class="lbl">Departamento</span>Todos <span id="chev-d"></span></button>
+        <button class="field hide-sm" type="button"><span id="ic-search"></span><span class="lbl">Buscar persona</span></button>
+        <span class="sep hide-sm"></span>
+        <div class="toolbar" role="group" aria-label="Capas que cuentan" id="layers"></div>
+    </div>
+
+    <section class="grid-tiles" id="kpis" aria-label="Resumen del horizonte"></section>
+
+    <section aria-labelledby="mx-title" style="display:grid;gap:12px;min-width:0">
+        <div class="card-head" style="margin:0">
+            <h2 class="section" id="mx-title">Ocupación por departamento y persona</h2>
+            <button class="btn ghost sm" type="button" id="table-btn"></button>
+        </div>
+        <div class="legend-block" id="legend"></div>
+        <div class="mx-wrap scroll-x" id="mx-scroll"><table class="mx" id="mx" role="grid" aria-labelledby="mx-title" aria-describedby="mx-help"></table></div>
+        <p id="mx-help" class="xs muted" style="margin:0">Flechas para moverte por la matriz, Intro para ver de qué proyectos sale cada hora. Cada celda dice su porcentaje y su nivel con texto e icono: el color nunca va solo.</p>
+    </section>
+
+    <div class="side">
+        <section class="card" aria-labelledby="gaps-title">
+            <div class="card-head"><div><div class="t" id="gaps-title">Huecos sin persona</div><div class="d">Demanda de un departamento que aún no tiene a nadie. Suma a la carga del departamento, no a la de nadie.</div></div></div>
+            <div class="scroll-x"><table class="data" id="gaps"></table></div>
+        </section>
+        <section class="card" aria-labelledby="fp-title">
+            <div class="card-head"><div><div class="t" id="fp-title">Proyectos previstos abiertos</div><div class="d">Seguros y posibles dentro del horizonte.</div></div><a href="04-ficha-previsto.html" class="sm">Ver todos</a></div>
+            <div class="scroll-x"><table class="data" id="fps"></table></div>
+        </section>
+    </div>
+</main>
+
+<script>
+/*
+ * Datos de ejemplo de las maquetas de la Previsión (docs/DISENO-PREVISION.md).
+ * Escala de Audax: 30 personas en 4 departamentos, 12 meses (oct 2026 – sep 2027),
+ * 12 proyectos reales con asignaciones y 5 previstos (2 seguros y 3 posibles), con huecos
+ * de departamento sin persona y alguna sobrecarga. Hoy = martes 6 de octubre de 2026.
+ *
+ * Reglas (PLAN-CARGAS §6 y §15): la carga sale SOLO de las asignaciones (P6, P7); la
+ * capacidad = jornada − festivos − ausencias; un hueco es demanda del departamento, no
+ * capacidad. Seguridad: «seguro» o «posible», sin % (P5).
+ */
+const PV = (() => {
+    const TODAY = '2026-10-06';
+    const START = '2026-10-05'; // lunes de esta semana
+    const DAYS_IN_HORIZON = 364; // 52 semanas
+
+    const DEPTS = [
+        { id: 'dis', name: 'Diseño' },
+        { id: 'dev', name: 'Desarrollo' },
+        { id: 'mkt', name: 'Marketing' },
+        { id: 'cue', name: 'Cuentas' },
+    ];
+
+    // [id, nombre, departamento, horas al día]
+    const PEOPLE_RAW = [
+        ['ana', 'Ana López', 'dis', 8],
+        ['luis', 'Luis Martín', 'dis', 8],
+        ['sara', 'Sara Ruiz', 'dis', 6],
+        ['marta', 'Marta Gil', 'dis', 8],
+        ['pablo', 'Pablo Ortega', 'dis', 8],
+        ['irene', 'Irene Navarro', 'dis', 8],
+        ['carlos', 'Carlos Vidal', 'dis', 8],
+        ['lucia', 'Lucía Herrera', 'dis', 8],
+        ['javier', 'Javier Molina', 'dis', 8],
+        ['elena', 'Elena Castro', 'dis', 8],
+        ['nuria', 'Nuria Prieto', 'dis', 8],
+        ['diego', 'Diego Romero', 'dev', 8],
+        ['raul', 'Raúl Serrano', 'dev', 8],
+        ['clara', 'Clara Domínguez', 'dev', 8],
+        ['andres', 'Andrés Peña', 'dev', 8],
+        ['sergio', 'Sergio Fuentes', 'dev', 8],
+        ['laura', 'Laura Iglesias', 'dev', 8],
+        ['hugo', 'Hugo Cano', 'dev', 8],
+        ['alba', 'Alba Rubio', 'dev', 5],
+        ['ivan', 'Iván Lozano', 'dev', 8],
+        ['paula', 'Paula Medina', 'mkt', 8],
+        ['alvaro', 'Álvaro Garrido', 'mkt', 8],
+        ['cristina', 'Cristina Vega', 'mkt', 8],
+        ['rocio', 'Rocío Calvo', 'mkt', 8],
+        ['daniel', 'Daniel Reyes', 'mkt', 8],
+        ['noelia', 'Noelia Santos', 'mkt', 8],
+        ['beatriz', 'Beatriz Moreno', 'cue', 8],
+        ['jorge', 'Jorge Delgado', 'cue', 8],
+        ['silvia', 'Silvia Ramos', 'cue', 8],
+        ['tomas', 'Tomás Herrero', 'cue', 8],
+    ];
+
+    const HOLIDAYS = {
+        '2026-10-12': 'Fiesta Nacional',
+        '2026-11-02': 'Todos los Santos (traslado)',
+        '2026-12-07': 'Constitución (traslado)',
+        '2026-12-08': 'Inmaculada',
+        '2026-12-25': 'Navidad',
+        '2027-01-01': 'Año Nuevo',
+        '2027-01-06': 'Reyes',
+        '2027-03-25': 'Jueves Santo',
+        '2027-03-26': 'Viernes Santo',
+        '2027-05-03': 'Día de la Comunidad',
+        '2027-08-16': 'Asunción (traslado)',
+    };
+
+    // Ausencias aprobadas: [persona, desde, hasta, tipo]. El tipo solo lo ve quien puede (D-088).
+    const ABSENCES = [
+        ['ana', '2026-12-21', '2027-01-01', 'Vacaciones'],
+        ['javier', '2026-11-16', '2026-11-20', 'Vacaciones'],
+        ['raul', '2026-12-28', '2027-01-08', 'Vacaciones'],
+        ['cristina', '2026-10-19', '2026-10-23', 'Vacaciones'],
+        ['irene', '2026-11-03', '2026-11-06', 'Vacaciones'],
+        ['elena', '2027-02-01', '2027-05-28', 'Ausencia'],
+        ['diego', '2026-12-21', '2026-12-31', 'Vacaciones'],
+        ['luis', '2026-10-26', '2026-10-27', 'Asuntos propios'],
+        ['sergio', '2027-01-04', '2027-01-08', 'Vacaciones'],
+    ];
+    // Agosto: cada cual dos o tres semanas.
+    const AUGUST = [
+        ['2027-08-02', '2027-08-20'],
+        ['2027-08-09', '2027-08-27'],
+        ['2027-07-26', '2027-08-13'],
+    ];
+    PEOPLE_RAW.forEach(([id], i) => {
+        const [from, to] = AUGUST[i % 3];
+        ABSENCES.push([id, from, to, 'Vacaciones']);
+    });
+
+    /*
+     * Proyectos. kind: real | seguro | posible.
+     * Asignaciones: [quién, modo, horas, desde, hasta]
+     *   quién: id de persona o «hueco:<dep>»;
+     *   modo: sem (h/semana) · total (h entre fechas) · mes (h/mes) · pct (% de la jornada).
+     */
+    const PROJECTS = [
+        {
+            id: 'kiwi2', code: 'KIWI-APP2', name: 'Kiwi · App fase 2', client: 'Kiwi Seguros', kind: 'real',
+            from: '2026-09-01', to: '2026-11-27',
+            allocs: [
+                ['ana', 'sem', 16, '2026-09-01', '2026-11-27'],
+                ['luis', 'sem', 24, '2026-09-01', '2026-11-27'],
+                ['raul', 'sem', 32, '2026-09-01', '2026-11-27'],
+                ['clara', 'sem', 24, '2026-09-01', '2026-11-27'],
+                ['jorge', 'sem', 8, '2026-09-01', '2026-11-27'],
+            ],
+        },
+        {
+            id: 'acme', code: 'ACME-B2B', name: 'ACME · Ecommerce B2B', client: 'ACME Industrial', kind: 'real',
+            from: '2026-10-05', to: '2027-03-26',
+            allocs: [
+                ['marta', 'sem', 32, '2026-10-05', '2027-03-26'],
+                ['diego', 'sem', 12, '2026-10-05', '2027-03-26'],
+                ['andres', 'sem', 36, '2026-10-05', '2027-03-26'],
+                ['sergio', 'sem', 32, '2026-10-05', '2026-12-18'],
+                ['laura', 'sem', 16, '2026-11-23', '2027-03-26'],
+                ['beatriz', 'sem', 12, '2026-10-05', '2027-03-26'],
+                ['hueco:dev', 'sem', 24, '2027-01-11', '2027-03-26'],
+            ],
+        },
+        {
+            id: 'sol', code: 'SOL-DS', name: 'Banco Sol · Sistema de diseño', client: 'Banco Sol', kind: 'real',
+            from: '2026-09-14', to: '2027-02-26',
+            allocs: [
+                ['pablo', 'sem', 32, '2026-09-14', '2027-02-26'],
+                ['irene', 'sem', 24, '2026-09-14', '2027-02-26'],
+                ['hugo', 'sem', 12, '2026-09-14', '2027-02-26'],
+                ['silvia', 'sem', 8, '2026-09-14', '2027-02-26'],
+                ['carlos', 'sem', 16, '2026-10-05', '2026-10-30'],
+            ],
+        },
+        {
+            id: 'norte', code: 'NORTE-WEB', name: 'Viajes Norte · Rediseño web', client: 'Viajes Norte', kind: 'real',
+            from: '2026-11-02', to: '2027-01-29',
+            allocs: [
+                ['carlos', 'sem', 32, '2026-11-02', '2027-01-29'],
+                ['lucia', 'sem', 24, '2026-11-02', '2027-01-29'],
+                ['luis', 'sem', 8, '2026-11-02', '2026-11-27'],
+                ['ivan', 'sem', 32, '2026-11-16', '2027-01-29'],
+                ['rocio', 'sem', 8, '2026-11-02', '2027-01-29'],
+                ['tomas', 'sem', 8, '2026-11-02', '2027-01-29'],
+            ],
+        },
+        {
+            id: 'arbe', code: 'ARBE-APP', name: 'Clínica Arbe · App de citas', client: 'Clínica Arbe', kind: 'real',
+            from: '2026-06-08', to: '2026-11-13',
+            allocs: [
+                ['javier', 'sem', 16, '2026-06-08', '2026-11-13'],
+                ['clara', 'sem', 8, '2026-06-08', '2026-11-13'],
+                ['alba', 'sem', 10, '2026-06-08', '2026-11-13'],
+                ['jorge', 'sem', 3, '2026-06-08', '2026-11-13'],
+            ],
+        },
+        {
+            id: 'lince', code: 'LINCE-FEE', name: 'Grupo Lince · Fee de marketing', client: 'Grupo Lince', kind: 'real',
+            from: '2026-01-01', to: '2027-12-31',
+            allocs: [
+                ['paula', 'sem', 12, '2026-01-01', '2027-12-31'],
+                ['alvaro', 'sem', 24, '2026-01-01', '2027-12-31'],
+                ['cristina', 'sem', 20, '2026-01-01', '2027-12-31'],
+                ['daniel', 'sem', 16, '2026-01-01', '2027-12-31'],
+                ['tomas', 'sem', 8, '2026-01-01', '2027-12-31'],
+                ['rocio', 'sem', 16, '2026-01-01', '2027-12-31'],
+                ['noelia', 'sem', 8, '2026-01-01', '2027-12-31'],
+            ],
+        },
+        {
+            id: 'valdemar', code: 'VALDEMAR', name: 'Ayto. de Valdemar · Sede electrónica', client: 'Ayuntamiento de Valdemar', kind: 'real',
+            from: '2026-10-05', to: '2027-04-30',
+            allocs: [
+                ['elena', 'sem', 28, '2026-10-05', '2027-01-29'],
+                ['hugo', 'sem', 20, '2026-10-05', '2027-04-30'],
+                ['ivan', 'sem', 6, '2026-10-05', '2027-04-30'],
+                ['silvia', 'sem', 6, '2026-10-05', '2027-04-30'],
+                ['javier', 'sem', 16, '2026-10-05', '2027-04-30'],
+                ['sara', 'sem', 18, '2026-11-23', '2027-04-30'],
+                ['hueco:dis', 'sem', 16, '2027-02-01', '2027-04-30'],
+            ],
+        },
+        {
+            id: 'pagalo', code: 'PAGALO', name: 'Pagalo · Onboarding', client: 'Pagalo', kind: 'real',
+            from: '2026-10-05', to: '2026-11-20',
+            allocs: [
+                ['nuria', 'sem', 32, '2026-10-05', '2026-11-20'],
+                ['sara', 'sem', 24, '2026-10-05', '2026-11-20'],
+                ['laura', 'sem', 16, '2026-10-05', '2026-11-20'],
+                ['beatriz', 'sem', 6, '2026-10-05', '2026-11-20'],
+                ['lucia', 'sem', 16, '2026-10-05', '2026-11-20'],
+            ],
+        },
+        {
+            id: 'faro', code: 'FARO', name: 'Editorial Faro · Plataforma de lectura', client: 'Editorial Faro', kind: 'real',
+            from: '2026-10-05', to: '2027-06-25',
+            allocs: [
+                ['ana', 'sem', 12, '2026-10-05', '2027-06-25'],
+                ['irene', 'sem', 12, '2026-10-05', '2026-12-18'],
+                ['lucia', 'sem', 12, '2026-10-05', '2026-10-30'],
+                ['sergio', 'sem', 8, '2026-10-05', '2027-06-25'],
+                ['diego', 'sem', 8, '2026-10-05', '2027-06-25'],
+                ['tomas', 'sem', 6, '2026-10-05', '2027-06-25'],
+                ['nuria', 'sem', 24, '2026-11-23', '2027-06-25'],
+            ],
+        },
+        {
+            id: 'bodegas', code: 'BODEGAS', name: 'Bodegas Ruiz · Tienda online', client: 'Bodegas Ruiz', kind: 'real',
+            from: '2027-01-11', to: '2027-04-16',
+            allocs: [
+                ['lucia', 'sem', 16, '2027-02-01', '2027-04-16'],
+                ['sergio', 'sem', 28, '2027-01-11', '2027-04-16'],
+                ['noelia', 'sem', 12, '2027-01-11', '2027-04-16'],
+                ['jorge', 'sem', 6, '2027-01-11', '2027-04-16'],
+            ],
+        },
+        {
+            id: 'kiwim', code: 'KIWI-MANT', name: 'Kiwi · Mantenimiento', client: 'Kiwi Seguros', kind: 'real',
+            from: '2026-01-01', to: '2027-12-31',
+            allocs: [
+                ['laura', 'mes', 30, '2026-01-01', '2027-12-31'],
+                ['raul', 'mes', 10, '2026-01-01', '2027-12-31'],
+            ],
+        },
+        {
+            id: 'audax', code: 'AUDAX-WEB', name: 'Audax · Web propia', client: 'Audax Studio (interno)', kind: 'real',
+            from: '2026-10-05', to: '2026-12-18',
+            allocs: [
+                ['nuria', 'sem', 6, '2026-10-05', '2026-12-18'],
+                ['noelia', 'sem', 12, '2026-10-05', '2026-12-18'],
+                ['daniel', 'sem', 8, '2026-10-05', '2026-12-18'],
+                ['marta', 'sem', 4, '2026-10-05', '2026-12-18'],
+                ['paula', 'sem', 8, '2026-10-05', '2026-12-18'],
+            ],
+        },
+        // ── Previstos ──────────────────────────────────────────────────────────────
+        {
+            id: 'kiwi3', code: null, name: 'Kiwi · App fase 3', client: 'Kiwi Seguros', kind: 'seguro',
+            from: '2026-11-30', to: '2027-04-30',
+            allocs: [
+                ['ana', 'sem', 20, '2026-11-30', '2027-04-30'],
+                ['luis', 'sem', 24, '2026-11-30', '2027-04-30'],
+                ['raul', 'sem', 32, '2026-11-30', '2027-04-30'],
+                ['clara', 'sem', 24, '2026-12-07', '2027-04-30'],
+                ['hueco:dev', 'sem', 40, '2027-02-01', '2027-04-30'],
+                ['jorge', 'sem', 8, '2026-11-30', '2027-04-30'],
+            ],
+        },
+        {
+            id: 'acmep', code: null, name: 'ACME · Campaña de primavera', client: 'ACME Industrial', kind: 'seguro',
+            from: '2027-01-11', to: '2027-03-26',
+            allocs: [
+                ['paula', 'sem', 8, '2027-01-11', '2027-03-26'],
+                ['alvaro', 'sem', 12, '2027-01-11', '2027-03-26'],
+                ['cristina', 'sem', 16, '2027-01-11', '2027-03-26'],
+                ['rocio', 'sem', 20, '2027-01-11', '2027-03-26'],
+                ['hueco:dis', 'sem', 12, '2027-01-11', '2027-02-26'],
+                ['beatriz', 'sem', 4, '2027-01-11', '2027-03-26'],
+            ],
+        },
+        {
+            id: 'marazul', code: null, name: 'Hotel Mar Azul · Web y branding', client: 'Hotel Mar Azul', newClient: true, kind: 'posible',
+            from: '2026-11-03', to: '2026-12-18',
+            allocs: [
+                ['hueco:dis', 'total', 80, '2026-11-03', '2026-11-27'],
+                ['luis', 'pct', 50, '2026-11-09', '2026-12-18'],
+                ['hueco:dev', 'total', 120, '2026-11-30', '2026-12-18'],
+                ['silvia', 'sem', 6, '2026-11-03', '2026-12-18'],
+            ],
+        },
+        {
+            id: 'coop', code: null, name: 'Cooperativa Agraria del Sur · Portal de socios', client: 'Cooperativa Agraria del Sur', newClient: true, kind: 'posible',
+            from: '2027-02-01', to: '2027-06-25',
+            allocs: [
+                ['hueco:dis', 'sem', 32, '2027-02-01', '2027-03-26'],
+                ['pablo', 'sem', 16, '2027-03-01', '2027-06-25'],
+                ['hueco:dev', 'sem', 64, '2027-03-01', '2027-06-25'],
+                ['tomas', 'sem', 6, '2027-02-01', '2027-06-25'],
+            ],
+        },
+        {
+            id: 'museo', code: null, name: 'Museo del Tranvía · Exposición digital', client: 'Museo del Tranvía', kind: 'posible',
+            from: '2026-11-16', to: '2027-01-29',
+            allocs: [
+                ['irene', 'sem', 16, '2026-11-16', '2027-01-29'],
+                ['carlos', 'sem', 12, '2026-11-16', '2027-01-29'],
+                ['hueco:mkt', 'sem', 16, '2026-11-16', '2027-01-29'],
+                ['hugo', 'sem', 16, '2026-11-16', '2027-01-29'],
+            ],
+        },
+    ];
+
+    // ── Fechas ──────────────────────────────────────────────────────────────────
+    const DAY = 86400000;
+    const toMs = (iso) => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return Date.UTC(y, m - 1, d);
+    };
+    const toIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+    const addDays = (iso, n) => toIso(toMs(iso) + n * DAY);
+    const weekday = (iso) => (new Date(toMs(iso)).getUTCDay() + 6) % 7; // 0 = lunes
+    const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+    const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const dayMonth = (iso) => {
+        const d = new Date(toMs(iso));
+        return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+    };
+    // Semana ISO
+    const isoWeek = (iso) => {
+        const d = new Date(toMs(iso));
+        const day = (d.getUTCDay() + 6) % 7;
+        d.setUTCDate(d.getUTCDate() - day + 3);
+        const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+        return 1 + Math.round(((d - firstThursday) / DAY - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    };
+
+    const DAYS = Array.from({ length: DAYS_IN_HORIZON }, (_, i) => addDays(START, i));
+
+    // ── Personas, capacidad diaria ──────────────────────────────────────────────
+    const PEOPLE = PEOPLE_RAW.map(([id, name, dept, hpd]) => ({ id, name, dept, hpd }));
+    const personById = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
+    const absenceOn = {}; // persona → fecha → tipo
+    for (const [pid, from, to, type] of ABSENCES) {
+        absenceOn[pid] ??= {};
+        for (let d = from; d <= to; d = addDays(d, 1)) absenceOn[pid][d] = type;
+    }
+    const isWeekday = (d) => weekday(d) < 5;
+    const isWorkingDept = (d) => isWeekday(d) && !HOLIDAYS[d];
+    const capOn = (pid, d) => {
+        if (!isWorkingDept(d)) return 0;
+        if (absenceOn[pid]?.[d]) return 0;
+        return personById[pid].hpd;
+    };
+
+    // ── Reparto de asignaciones por día ─────────────────────────────────────────
+    // load[rowKey][date] = [{p: proyecto, h}]
+    const load = {};
+    const push = (row, d, p, h) => {
+        if (h <= 0) return;
+        load[row] ??= {};
+        (load[row][d] ??= []).push({ p, h });
+    };
+    const workingDaysFor = (who, from, to) => {
+        const out = [];
+        for (let d = from; d <= to; d = addDays(d, 1)) {
+            const ok = who.startsWith('hueco:') ? isWorkingDept(d) : capOn(who, d) > 0;
+            if (ok) out.push(d);
+        }
+        return out;
+    };
+    for (const project of PROJECTS) {
+        for (const [who, mode, h, from, to] of project.allocs) {
+            const days = workingDaysFor(who, from, to);
+            if (mode === 'sem') days.forEach((d) => push(who, d, project.id, h / 5));
+            if (mode === 'pct') days.forEach((d) => push(who, d, project.id, (personById[who].hpd * h) / 100));
+            if (mode === 'total') days.forEach((d) => push(who, d, project.id, h / days.length));
+            if (mode === 'mes') {
+                const byMonth = {};
+                days.forEach((d) => (byMonth[d.slice(0, 7)] ??= []).push(d));
+                Object.values(byMonth).forEach((ds) => ds.forEach((d) => push(who, d, project.id, h / ds.length)));
+            }
+        }
+    }
+
+    const projectById = Object.fromEntries(PROJECTS.map((p) => [p.id, p]));
+
+    // ── Periodos ────────────────────────────────────────────────────────────────
+    function periods(unit, count) {
+        const out = [];
+        if (unit === 'week') {
+            for (let i = 0; i < count; i++) {
+                const from = addDays(START, i * 7);
+                const to = addDays(from, 6);
+                out.push({
+                    key: from, from, to, unit,
+                    label: `S${isoWeek(from)}`,
+                    sub: dayMonth(from),
+                    long: `semana ${isoWeek(from)} (${dayMonth(from)} – ${dayMonth(addDays(from, 4))})`,
+                    monthStart: i === 0 || from.slice(0, 7) !== addDays(from, -7).slice(0, 7) ? MONTHS[Number(from.slice(5, 7)) - 1] : null,
+                    current: from <= TODAY && TODAY <= to,
+                });
+            }
+        } else {
+            let y = 2026, m = 9; // octubre (0-based)
+            for (let i = 0; i < count; i++) {
+                const from = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+                const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+                const to = `${y}-${String(m + 1).padStart(2, '0')}-${last}`;
+                out.push({
+                    key: from, from: i === 0 ? START : from, to, unit,
+                    label: MONTHS[m], sub: String(y), long: `${MONTHS_LONG[m]} de ${y}`,
+                    monthStart: null, current: i === 0,
+                });
+                m++;
+                if (m === 12) { m = 0; y++; }
+            }
+        }
+        return out;
+    }
+
+    /** Agrega una fila (persona o hueco) en un periodo. */
+    function cell(rowKey, period) {
+        const isGap = rowKey.startsWith('hueco:');
+        const res = { cap: 0, real: 0, seguro: 0, posible: 0, items: {}, absent: 0, holidays: 0, absenceType: null, workdays: 0 };
+        for (let d = period.from; d <= period.to; d = addDays(d, 1)) {
+            if (d < START) continue;
+            if (isWeekday(d)) {
+                if (HOLIDAYS[d]) res.holidays++;
+                else if (!isGap && absenceOn[rowKey]?.[d]) { res.absent++; res.absenceType = absenceOn[rowKey][d]; }
+                else res.workdays++;
+            }
+            if (!isGap) res.cap += capOn(rowKey, d);
+            for (const { p, h } of load[rowKey]?.[d] ?? []) {
+                const kind = projectById[p].kind;
+                res[kind] += h;
+                res.items[p] = (res.items[p] ?? 0) + h;
+            }
+        }
+        res.items = Object.entries(res.items)
+            .map(([p, h]) => ({ project: projectById[p], h }))
+            .sort((a, b) => ['real', 'seguro', 'posible'].indexOf(a.project.kind) - ['real', 'seguro', 'posible'].indexOf(b.project.kind) || b.h - a.h);
+        return res;
+    }
+
+    function deptCell(deptId, period) {
+        const res = { cap: 0, real: 0, seguro: 0, posible: 0, gapH: 0, items: {} };
+        const rows = [...PEOPLE.filter((p) => p.dept === deptId).map((p) => p.id), `hueco:${deptId}`];
+        for (const r of rows) {
+            const c = cell(r, period);
+            res.cap += c.cap;
+            res.real += c.real; res.seguro += c.seguro; res.posible += c.posible;
+            if (r.startsWith('hueco:')) res.gapH += c.real + c.seguro + c.posible;
+            for (const it of c.items) res.items[it.project.id] = (res.items[it.project.id] ?? 0) + it.h;
+        }
+        res.items = Object.entries(res.items)
+            .map(([p, h]) => ({ project: projectById[p], h }))
+            .sort((a, b) => ['real', 'seguro', 'posible'].indexOf(a.project.kind) - ['real', 'seguro', 'posible'].indexOf(b.project.kind) || b.h - a.h);
+        return res;
+    }
+
+    const gapsOf = (deptId) => PROJECTS.flatMap((p) => p.allocs.filter((a) => a[0] === `hueco:${deptId}`).map((a) => ({ project: p, alloc: a })));
+
+    return {
+        TODAY, START, DEPTS, PEOPLE, PROJECTS, HOLIDAYS, MONTHS, MONTHS_LONG,
+        personById, projectById, periods, cell, deptCell, gapsOf, addDays, toMs, dayMonth, weekday, isoWeek, capOn, load,
+    };
+})();
+
+if (typeof module !== 'undefined') module.exports = PV;
+</script>
+<script>
+/* Piezas comunes de las maquetas: iconos, formatos, semáforo, tooltip, shell y gráficas SVG. */
+const UI = (() => {
+    // ── Iconos (trazos de Lucide, MIT) ─────────────────────────────────────────
+    const P = {
+        check: '<path d="M20 6 9 17l-5-5"/>',
+        circleCheck: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+        triangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        octagon: '<path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.31 2a2 2 0 0 1 1.42.59l4.68 4.68A2 2 0 0 1 22 8.69v6.62a2 2 0 0 1-.59 1.42l-4.68 4.68a2 2 0 0 1-1.42.59H8.69a2 2 0 0 1-1.42-.59l-4.68-4.68A2 2 0 0 1 2 15.31V8.69a2 2 0 0 1 .59-1.42l4.68-4.68A2 2 0 0 1 8.69 2z"/>',
+        gauge: '<path d="M15.6 2.7a10 10 0 1 0 5.7 5.7"/><circle cx="12" cy="12" r="2"/><path d="M13.4 10.6 19 5"/>',
+        calOff: '<path d="M4.2 4.2A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18"/><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5"/><path d="M16 2v4"/><path d="M3 10h7"/><path d="M21 10h-5.5"/><path d="m2 2 20 20"/>',
+        calMinus: '<path d="M16 19h6"/><path d="M16 2v4"/><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.5"/><path d="M3 10h18"/><path d="M8 2v4"/>',
+        chevRight: '<path d="m9 18 6-6-6-6"/>',
+        chevDown: '<path d="m6 9 6 6 6-6"/>',
+        gap: '<circle cx="12" cy="8" r="4" stroke-dasharray="3 2.4"/><path d="M4 21a8 8 0 0 1 16 0" stroke-dasharray="3 2.4"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        plus: '<path d="M5 12h14M12 5v14"/>',
+        table: '<path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>',
+        chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+        info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+        arrowRight: '<path d="M5 12h14m-7-7 7 7-7 7"/>',
+        search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        dots: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+        trendUp: '<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>',
+        trendDown: '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
+        equal: '<path d="M5 9h14M5 15h14"/>',
+        folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        list: '<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',
+        calendar: '<path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+        gantt: '<path d="M8 6h10M6 12h9M11 18h7"/>',
+        users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+        msg: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+        menu: '<path d="M4 12h16M4 6h16M4 18h16"/>',
+        filter: '<path d="M10 20a1 1 0 0 0 .55.89l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .52-1.34L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.74 1.67l7.22 7.99A2 2 0 0 1 10 14z"/>',
+        sun2: '<circle cx="12" cy="12" r="4"/>',
+        x: '<path d="M18 6 6 18M6 6l12 12"/>',
+        link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+        userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+        grip: '<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>',
+        home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    };
+    const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[name]}</svg>`;
+
+    // ── Formatos (es-ES, como lib/format.ts) ──────────────────────────────────
+    const nf0 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0, useGrouping: 'always' });
+    const nf1 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1, useGrouping: 'always' });
+    const h = (v) => `${(Math.abs(v) < 10 && Math.round(v) !== v ? nf1 : nf0).format(v)}\u00a0h`;
+    const H = (v) => `${nf0.format(Math.round(v))}\u00a0h`;
+    const pct = (v) => (v === null ? '—' : `${nf0.format(v)}\u00a0%`);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+    // ── Semáforo (thresholds.ts, D-052) ───────────────────────────────────────
+    const LEVELS = {
+        none: { label: 'Sin capacidad', icon: 'calOff', range: 'festivo, ausencia o día no laborable' },
+        under: { label: 'Holgada', icon: 'gauge', range: 'menos del 70 %' },
+        balanced: { label: 'Equilibrada', icon: 'circleCheck', range: 'del 70 % al 100 %' },
+        high: { label: 'Alta', icon: 'triangle', range: 'del 100 % al 120 %' },
+        over: { label: 'Sobrecarga', icon: 'octagon', range: 'más del 120 %' },
+    };
+    const loadPct = (load, cap) => (cap > 0 ? Math.round((Math.max(load, 0) * 100) / cap) : null);
+    function level(load, cap) {
+        const p = loadPct(load, cap);
+        if (p === null) return 'none';
+        if (p < 70) return 'under';
+        if (p <= 100) return 'balanced';
+        if (p <= 120) return 'high';
+        return 'over';
+    }
+    const levelIcon = (lv, cls = 's14') => `<span class="lv-${lv} lv-icon" style="display:inline-flex">${icon(LEVELS[lv].icon, cls)}</span>`;
+
+    /** Desviación frente a un plan o una estimación: flecha + signo + texto, aviso a partir de ±10 %. */
+    function devHTML(dv) {
+        const big = Math.abs(dv) > 10;
+        const ic = Math.abs(dv) < 1 ? 'equal' : dv > 0 ? 'trendUp' : 'trendDown';
+        const label = Math.abs(dv) < 1 ? 'Igual que lo previsto' : `${dv > 0 ? '+' : '−'}${Math.abs(dv)}\u00a0%`;
+        return `<span class="dev tabular" style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="display:inline-flex;color:${big ? 'var(--warning)' : 'var(--muted-foreground)'}">${icon(ic, 's12')}</span>${label}${big ? '<span class="sr-only"> (desviación alta)</span>' : ''}</span>`;
+    }
+    const KIND = {
+        real: { label: 'Real', long: 'Asignado en proyectos reales' },
+        seguro: { label: 'Previsto seguro', long: 'Previsto seguro' },
+        posible: { label: 'Previsto posible', long: 'Previsto posible' },
+    };
+    const kindBadge = (k) => `<span class="kind"><span class="sw ${k}"></span>${k === 'real' ? 'Real' : k === 'seguro' ? 'Seguro' : 'Posible'}</span>`;
+
+    // ── Capas activas (filtro) ────────────────────────────────────────────────
+    const layers = { real: true, seguro: true, posible: true };
+    const loadOf = (c) => (layers.real ? c.real : 0) + (layers.seguro ? c.seguro : 0) + (layers.posible ? c.posible : 0);
+
+    // ── Tooltip ───────────────────────────────────────────────────────────────
+    let tipEl;
+    const tips = new Map();
+    let tipSeq = 0;
+    const tip = (html) => {
+        const id = `t${++tipSeq}`;
+        tips.set(id, html);
+        return id;
+    };
+    function showTip(target) {
+        const html = tips.get(target.dataset.tip);
+        if (!html) return;
+        tipEl.innerHTML = html;
+        tipEl.classList.add('on');
+        const r = target.getBoundingClientRect();
+        const t = tipEl.getBoundingClientRect();
+        let x = r.left + r.width / 2 - t.width / 2;
+        let y = r.bottom + 8;
+        if (y + t.height > innerHeight - 8) y = r.top - t.height - 8;
+        x = Math.max(8, Math.min(x, innerWidth - t.width - 8));
+        y = Math.max(8, y);
+        tipEl.style.left = `${x}px`;
+        tipEl.style.top = `${y}px`;
+    }
+    function hideTip() { tipEl?.classList.remove('on'); }
+    function bindTips(root = document) {
+        root.addEventListener('pointerover', (e) => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+        root.addEventListener('pointerout', (e) => { if (e.target.closest('[data-tip]')) hideTip(); });
+        root.addEventListener('focusin', (e) => { const t = e.target.closest('[data-tip]'); if (t) showTip(t); });
+        root.addEventListener('focusout', hideTip);
+        addEventListener('scroll', hideTip, true);
+        addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+    }
+
+    /** Contenido del tooltip de una celda: el valor manda; las filas, en orden real → seguro → posible. */
+    function tipHTML({ title, load, cap, items, foot = [], gap = false }) {
+        const lv = gap ? null : level(load, cap);
+        const p = loadPct(load, cap);
+        let s = `<div class="tt">${esc(title)}</div>`;
+        if (gap) {
+            s += `<div class="head"><span class="big tabular">${H(load)}</span><span class="muted">sin persona asignada</span></div>`;
+        } else if (lv === 'none') {
+            s += `<div class="head">${levelIcon('none')}<span>Sin capacidad</span></div>`;
+        } else {
+            s += `<div class="head">${levelIcon(lv, '')}<span class="big tabular">${pct(p)}</span><span class="muted">${LEVELS[lv].label}</span></div>`;
+        }
+        if (items.length) {
+            s += '<ul>';
+            for (const it of items) {
+                const k = it.project.kind;
+                const on = layers[k];
+                s += `<li style="${on ? '' : 'opacity:.45'}"><span class="key ${k}"></span><span class="val">${h(Math.round(it.h * 10) / 10)}</span><span class="lab">${esc(it.project.name)}${k === 'real' ? '' : ` · ${k === 'seguro' ? 'seguro' : 'posible'}`}</span></li>`;
+            }
+            s += '</ul>';
+        } else {
+            s += '<div class="muted">Nada asignado</div>';
+        }
+        const f = [];
+        if (!gap && cap > 0) f.push(`<span><b class="tabular">${H(load)}</b> asignadas de <b class="tabular">${H(cap)}</b> de capacidad</span>`);
+        if (!gap && cap > 0 && load > cap) f.push(`<span>Se pasa en <b class="tabular">${H(load - cap)}</b></span>`);
+        if (!gap && cap > 0 && load < cap) f.push(`<span>Libre: <b class="tabular">${H(cap - load)}</b></span>`);
+        f.push(...foot);
+        if (f.length) s += `<div class="foot">${f.join('')}</div>`;
+        return s;
+    }
+
+    // ── Shell de la app ───────────────────────────────────────────────────────
+    const NAV = [
+        ['Trabajo', [['home', 'Inicio', 'inicio'], ['list', 'Mis tareas'], ['sun2', 'Mi día'], ['clock', 'Horas'], ['gauge', 'Carga', 'carga']]],
+        ['Proyectos', [['folder', 'Proyectos', 'proyectos'], ['gantt', 'Gantt'], ['calendar', 'Calendario'], ['trendUp', 'Previsión', 'prevision']]],
+        ['Agencia', [['users', 'Clientes'], ['chart', 'Informes'], ['msg', 'Chat']]],
+    ];
+    const LOGO = '<svg viewBox="0 0 200 176" aria-hidden="true"><path d="M100 176H0L50.13 87.87 100 0l50.13 88.13L200 176H100Z" style="fill:var(--foreground)"/></svg>';
+    function mountShell({ active, crumbs }) {
+        const qs = new URLSearchParams(location.search);
+        if (qs.get('tema') === 'oscuro') document.documentElement.dataset.theme = 'dark';
+        if (qs.get('tema') === 'claro') document.documentElement.dataset.theme = 'light';
+        const page = document.querySelector('main.page');
+        const app = document.createElement('div');
+        app.className = 'app';
+        const nav = NAV.map(([g, items]) => `<div class="group">${g}</div>` + items.map(([ic, label, key]) => `<a class="nav" href="#"${key === active ? ' aria-current="page"' : ''}>${icon(ic)}${label}</a>`).join('')).join('');
+        app.innerHTML = `<nav class="sidebar" aria-label="Menú principal"><div class="logo">${LOGO}Audax Proyectos</div>${nav}</nav><div class="main"><header class="topbar"><button class="btn ghost icon menu-btn" type="button" aria-label="Abrir el menú">${icon('menu')}</button><div class="crumbs">${crumbs.map((c) => `<span>${esc(c)}</span>`).join(icon('chevRight', 's14'))}</div><div class="spacer"></div><button class="btn ghost icon" type="button" id="theme-btn"></button></header></div>`;
+        document.body.prepend(app);
+        app.querySelector('.main').append(page);
+        const btn = app.querySelector('#theme-btn');
+        const isDark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+        const paint = () => {
+            btn.innerHTML = icon(isDark() ? 'sun' : 'moon');
+            btn.setAttribute('aria-label', isDark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+        };
+        btn.addEventListener('click', () => {
+            document.documentElement.dataset.theme = isDark() ? 'light' : 'dark';
+            paint();
+        });
+        paint();
+        tipEl = document.createElement('div');
+        tipEl.className = 'tip';
+        tipEl.setAttribute('role', 'tooltip');
+        document.body.append(tipEl);
+        bindTips();
+        // Trama de los previstos posibles para los SVG (una sola definición por página).
+        const defs = document.createElement('div');
+        defs.innerHTML = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="trama" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" style="fill:var(--posible-bg)"/><rect width="2" height="5" style="fill:var(--layer-previsto)"/></pattern></defs></svg>';
+        document.body.append(defs.firstChild);
+    }
+
+    // ── Columna apilada frente a capacidad (SVG) ──────────────────────────────
+    const FILL = { real: 'fill:var(--layer-real)', seguro: 'fill:var(--layer-previsto)', posible: 'fill:url(#trama)' };
+
+    /**
+     * Columnas apiladas real → seguro → posible frente a la línea de capacidad (escalonada).
+     * data: [{real, seguro, posible, cap, tip?, label?}] — horas por periodo.
+     */
+    function columns({ data, width, height, yMax, padTop = 6, axis = null, barMax = 24, showPct = false, pctH = 18, gapStroke = 'var(--card)', grid = [] }) {
+        const n = data.length;
+        const slot = width / n;
+        const bw = Math.min(barMax, Math.max(4, slot * 0.62));
+        const plotH = height - (showPct ? pctH : 0) - (axis ? 18 : 0);
+        const y = (v) => padTop + (plotH - padTop) * (1 - Math.min(v, yMax) / yMax);
+        let s = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="display:block;overflow:visible" aria-hidden="true">`;
+        for (const g of grid) s += `<line x1="0" x2="${width}" y1="${y(g)}" y2="${y(g)}" style="stroke:var(--border)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+        data.forEach((d, i) => {
+            const cx = i * slot + slot / 2;
+            let base = 0;
+            const segs = ['real', 'seguro', 'posible'].filter((k) => layers[k] && d[k] > 0.01);
+            segs.forEach((k, j) => {
+                const top = base + d[k];
+                const y0 = y(base), y1 = y(top);
+                const gapPx = j > 0 ? 2 : 0;
+                const hgt = Math.max(0, y0 - y1 - gapPx);
+                if (hgt > 0.2) s += `<rect x="${cx - bw / 2}" y="${y1}" width="${bw}" height="${hgt}" style="${FILL[k]}"/>`;
+                base = top;
+            });
+        });
+        // Capacidad: línea escalonada de 2 px en tinta (no es una serie, es la referencia).
+        let path = '';
+        data.forEach((d, i) => {
+            const yy = y(d.cap);
+            path += `${i === 0 ? 'M' : 'L'}${i * slot},${yy} L${(i + 1) * slot},${yy} `;
+        });
+        s += `<path d="${path}" style="fill:none;stroke:var(--capacity)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+        s += `<line x1="0" x2="${width}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--muted-foreground)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+        s += '</svg>';
+        return { svg: s, slot, bw, y };
+    }
+
+    return { devHTML, icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, KIND, kindBadge, layers, loadOf, tip, tipHTML, mountShell, columns, FILL, P };
+})();
+</script>
+<script>
+UI.mountShell({ active: 'prevision', crumbs: ['Proyectos', 'Previsión'] });
+const { icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, layers, loadOf } = UI;
+document.getElementById('new-btn').innerHTML = `${icon('plus')}Nuevo proyecto previsto`;
+document.getElementById('chev-d').innerHTML = icon('chevDown', 's14');
+document.getElementById('ic-search').innerHTML = icon('search', 's14');
+document.getElementById('table-btn').innerHTML = `${icon('table')}Ver como tabla`;
+
+const state = { months: 3, unit: 'week', open: { dis: true, dev: true, mkt: false, cue: false } };
+const qs = new URLSearchParams(location.search);
+if (qs.get('meses')) state.months = Number(qs.get('meses'));
+if (qs.get('por') === 'meses') state.unit = 'month';
+// En móvil, todos plegados por defecto (DISENO-PREVISION.md §4.1).
+if (!qs.get('abiertos') && matchMedia('(max-width: 640px)').matches) { for (const k in state.open) state.open[k] = false; }
+if (qs.get('abiertos')) { for (const k in state.open) state.open[k] = qs.get('abiertos').split(',').includes(k); }
+document.getElementById('horizon').value = String(state.months);
+
+const holidaysIn = (p) => { const n = Object.keys(PV.HOLIDAYS).filter((d) => d >= p.from && d <= p.to && PV.weekday(d) < 5).length; return n ? (n === 1 ? '1 festivo' : `${n} festivos`) : ''; };
+const initials = (n) => n.split(' ').map((w) => w[0]).slice(0, 2).join('');
+
+function periodsNow() {
+    return state.unit === 'week' ? PV.periods('week', Math.round(state.months * 4.345)) : PV.periods('month', state.months);
+}
+
+function layerChips() {
+    const el = document.getElementById('layers');
+    const defs = [['real', 'Real'], ['seguro', 'Previsto seguro'], ['posible', 'Previsto posible']];
+    el.innerHTML = defs.map(([k, l]) => `<button type="button" class="toggle-chip" data-layer="${k}" aria-pressed="${layers[k]}"><span class="check">${layers[k] ? icon('check') : ''}</span><span class="sw ${k}"></span>${l}</button>`).join('');
+    el.querySelectorAll('[data-layer]').forEach((b) => b.addEventListener('click', () => { layers[b.dataset.layer] = !layers[b.dataset.layer]; render(); }));
+}
+
+function legend() {
+    const lv = ['under', 'balanced', 'high', 'over', 'none'];
+    document.getElementById('legend').innerHTML = `
+        <div class="grp"><span class="ttl">Capas</span><span><span class="sw real"></span>Real</span><span><span class="sw seguro"></span>Previsto seguro</span><span><span class="sw posible"></span>Previsto posible (trama)</span><span><span class="sw cap"></span>Capacidad</span><span><span class="sw gap"></span>Hueco sin persona</span></div>
+        <div class="grp"><span class="ttl">Ocupación</span>${lv.map((l) => `<span><span class="sw status lv-${l}" style="background:var(--lv-surface)">${levelIcon(l, 's12')}</span><span>${LEVELS[l].label}<span class="hide-sm">: ${LEVELS[l].range}</span></span></span>`).join('')}<span>${icon('calMinus', 's12')}Semana con festivo (cabecera)</span><span><span class="notch"></span>Ausencia parcial</span></div>`;
+}
+
+function kpis(ps) {
+    let cap = 0, load = 0, realOnly = 0, overWeeks = 0;
+    const overPeople = new Set();
+    const wk = PV.periods('week', Math.round(state.months * 4.345));
+    for (const p of PV.PEOPLE) {
+        for (const per of ps) { const c = PV.cell(p.id, per); cap += c.cap; load += loadOf(c); realOnly += c.real; }
+        for (const per of wk) { const c = PV.cell(p.id, per); if (level(loadOf(c), c.cap) === 'over') { overWeeks++; overPeople.add(p.name.split(' ')[0]); } }
+    }
+    let gapTotal = 0; const gapBy = [];
+    for (const d of PV.DEPTS) { let g = 0; for (const per of ps) { const c = PV.cell(`hueco:${d.id}`, per); g += loadOf(c); } if (g > 0.5) gapBy.push(`${d.name} ${H(g)}`); gapTotal += g; }
+    const occ = loadPct(load, cap);
+    const lv = level(load, cap);
+    document.getElementById('kpis').innerHTML = `
+        <div class="tile"><div class="k">Ocupación del equipo</div><div class="v">${pct(occ)}</div><div class="s">${levelIcon(lv, 's12')}<span>${LEVELS[lv].label}. Solo real: ${pct(loadPct(realOnly, cap))}</span></div></div>
+        <div class="tile"><div class="k">Horas libres</div><div class="v">${H(Math.max(cap - load, 0))}</div><div class="s"><span>de ${H(cap)} de capacidad en ${state.months} meses</span></div></div>
+        <div class="tile"><div class="k">Semanas en sobrecarga</div><div class="v">${overWeeks}</div><div class="s">${levelIcon('over', 's12')}<span>${overPeople.size} personas: ${[...overPeople].slice(0, 4).join(', ')}</span></div></div>
+        <div class="tile"><div class="k">Huecos sin persona</div><div class="v">${H(gapTotal)}</div><div class="s"><span>${gapBy.join(' · ') || 'Ninguno'}</span></div></div>`;
+}
+
+function personCell(row, per, gap = false) {
+    const c = PV.cell(row, per);
+    const load = loadOf(c);
+    const title = `${gap ? `Sin persona · ${PV.DEPTS.find((d) => `hueco:${d.id}` === row).name}` : PV.personById[row].name} · ${per.long}`;
+    const foot = [];
+    if (!gap && c.holidays) foot.push(`<span>${c.holidays === 1 ? '1 festivo' : `${c.holidays} festivos`}</span>`);
+    if (!gap && c.absent && c.cap > 0) foot.push(`<span>Ausencia: ${c.absent} ${c.absent === 1 ? 'día' : 'días'}</span>`);
+    const tid = UI.tip(UI.tipHTML({ title, load, cap: c.cap, items: c.items, foot, gap }));
+    if (gap) {
+        if (load < 0.5) return `<td class="c" role="gridcell" tabindex="-1"><div class="gc empty"></div></td>`;
+        const kinds = ['real', 'seguro', 'posible'].filter((k) => layers[k] && c[k] > 0.01);
+        return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: ${H(load)} sin persona"><div class="gc"><span class="v">${H(load)}</span><span class="k">${kinds.map((k) => `<i class="${k}"></i>`).join('')}</span></div></td>`;
+    }
+    const lv = level(load, c.cap);
+    const p = loadPct(load, c.cap);
+    const reduced = c.cap > 0 && c.absent > 0; // los festivos van en la cabecera de la columna
+    if (lv === 'none') {
+        return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: sin capacidad, ausencia"><div class="mc none lv-none"><span class="v">${levelIcon('none', 's12')}</span><span class="v">${c.absent ? 'Ausencia' : 'Festivo'}</span></div></td>`;
+    }
+    const scale = (x) => (x / c.cap) * (100 / 1.5);
+    const segs = ['real', 'seguro', 'posible'].filter((k) => layers[k] && c[k] > 0.01).map((k) => `<i class="${k}" style="width:calc(${scale(c[k]).toFixed(2)}% - 2px)"></i>`).join('');
+    return `<td class="c" role="gridcell" tabindex="-1" data-tip="${tid}" aria-label="${esc(title)}: ${pct(p)}, ${LEVELS[lv].label}, ${H(load)} de ${H(c.cap)}${reduced ? ', capacidad reducida por ausencia' : ''}"><div class="mc lv-${lv}">${reduced ? '<span class="red"></span>' : ''}<span class="v">${levelIcon(lv, 's12')}${pct(p)}</span><span class="bar-wrap"><span class="bar">${segs}</span><span class="cap"></span>${p > 150 ? '<span class="more"></span>' : ''}</span></div></td>`;
+}
+
+function deptRow(d, ps, colW) {
+    const people = PV.PEOPLE.filter((p) => p.dept === d.id);
+    const cells = ps.map((per) => PV.deptCell(d.id, per));
+    const yMax = Math.max(...cells.map((c) => Math.max(c.cap, c.real + c.seguro + c.posible))) * 1.08;
+    const H_ = 78;
+    const ch = UI.columns({ data: cells, width: ps.length * colW, height: H_, yMax, showPct: true, pctH: 18, barMax: state.unit === 'week' ? 20 : 28, padTop: 8 });
+    const hits = cells.map((c, i) => {
+        const load = loadOf(c);
+        const lv = level(load, c.cap);
+        const tid = UI.tip(UI.tipHTML({ title: `${d.name} · ${ps[i].long}`, load, cap: c.cap, items: c.items.slice(0, 7), foot: [c.gapH > 0.5 ? `<span>Incluye <b class="tabular">${H(c.gapH)}</b> de huecos sin persona</span>` : ''].filter(Boolean).concat(c.items.length > 7 ? [`<span>y ${c.items.length - 7} proyectos más</span>`] : []) }));
+        const p = loadPct(load, c.cap);
+        const strong = lv === 'high' || lv === 'over';
+        return `<span class="hit" role="gridcell" tabindex="-1" data-tip="${tid}" style="left:${i * colW}px;width:${colW}px" aria-label="${esc(d.name)}, ${esc(ps[i].long)}: ${pct(p)}, ${LEVELS[lv].label}"></span><span class="lab ${strong ? '' : 'quiet'}" style="left:${i * colW}px;width:${colW}px">${strong ? levelIcon(lv, 's12') : ''}${pct(p)}</span>`;
+    }).join('');
+    const capWeek = cells[0].cap;
+    const open = state.open[d.id];
+    return `<tr class="dept" role="row"><th class="namecol" scope="row" role="rowheader"><button class="dept-btn" type="button" aria-expanded="${open}" data-dept="${d.id}">${icon(open ? 'chevDown' : 'chevRight', 's14')}<span><span class="n">${d.name}</span><br><span class="m">${people.length} personas · ${H(capWeek)} ${state.unit === 'week' ? 'esta semana' : 'este mes'}</span></span></button></th><td colspan="${ps.length}" style="padding:4px 0 0"><div class="dept-chart" style="width:${ps.length * colW}px">${ch.svg}${hits}</div></td></tr>`;
+}
+
+function render() {
+    layerChips();
+    const ps = periodsNow();
+    const colW = state.unit === 'week' ? 64 : 88;
+    document.querySelector('main.page').style.setProperty('--col-w', `${colW}px`);
+    kpis(ps);
+    // cabecera
+    let months = '';
+    if (state.unit === 'week') {
+        let span = 0, label = ps[0].monthStart;
+        ps.forEach((p, i) => {
+            if (i > 0 && p.monthStart) { months += `<th class="m" colspan="${span}">${label}</th>`; span = 0; label = p.monthStart; }
+            span++;
+        });
+        months += `<th class="m" colspan="${span}">${label}</th>`;
+    }
+    const head = `<thead>${state.unit === 'week' ? `<tr class="months" role="row"><th class="namecol" rowspan="2" scope="col">Persona</th>${months}</tr>` : ''}<tr class="periods" role="row">${state.unit === 'week' ? '' : '<th class="namecol" scope="col">Persona</th>'}${ps.map((p) => `<th class="p${p.current ? ' now' : ''}" scope="col" role="columnheader"><span class="w">${p.label}</span>${holidaysIn(p) ? `<span class="hol" title="${holidaysIn(p)}">${icon('calMinus', 's12')}<span class="sr-only">${holidaysIn(p)}</span></span>` : ''}<br><span class="d">${p.sub}</span></th>`).join('')}</tr></thead>`;
+    let body = '<tbody>';
+    for (const d of PV.DEPTS) {
+        body += deptRow(d, ps, colW);
+        if (!state.open[d.id]) continue;
+        for (const p of PV.PEOPLE.filter((x) => x.dept === d.id)) {
+            body += `<tr class="person" role="row" data-person="${p.id}"><th class="namecol" scope="row" role="rowheader"><span class="pname"><span class="avatar">${initials(p.name)}</span><span class="t"><span class="nm">${p.name}</span><span class="sb">${p.hpd * 5} h/sem</span></span></span></th>${ps.map((per) => personCell(p.id, per)).join('')}</tr>`;
+        }
+        const anyGap = ps.some((per) => loadOf(PV.cell(`hueco:${d.id}`, per)) > 0.5);
+        if (anyGap) body += `<tr class="gap" role="row"><th class="namecol" scope="row" role="rowheader"><span class="pname"><span class="avatar gap">${icon('gap', 's12')}</span><span class="t"><span class="nm">Sin persona</span><span class="sb">Hueco de ${d.name}</span></span></span></th>${ps.map((per) => personCell(`hueco:${d.id}`, per, true)).join('')}</tr>`;
+    }
+    body += '</tbody>';
+    const mx = document.getElementById('mx');
+    mx.innerHTML = head + body;
+    mx.querySelectorAll('[data-dept]').forEach((b) => b.addEventListener('click', () => { state.open[b.dataset.dept] = !state.open[b.dataset.dept]; render(); }));
+    const first = mx.querySelector('[role="gridcell"]');
+    if (first) first.tabIndex = 0;
+    gapsTable();
+    fpTable();
+}
+
+// Rejilla con una sola parada de tabulación (patrón WAI-ARIA «data grid», como WorkloadMatrix).
+document.getElementById('mx').addEventListener('keydown', (e) => {
+    const cells = [...document.querySelectorAll('#mx tr')].map((tr) => [...tr.querySelectorAll('[role="gridcell"]')]).filter((r) => r.length);
+    let ri = cells.findIndex((r) => r.includes(document.activeElement));
+    if (ri < 0) return;
+    let ci = cells[ri].indexOf(document.activeElement);
+    const k = e.key;
+    if (k === 'ArrowRight') ci++; else if (k === 'ArrowLeft') ci--; else if (k === 'ArrowDown') ri++; else if (k === 'ArrowUp') ri--; else if (k === 'Home') ci = 0; else if (k === 'End') ci = 1e9; else return;
+    e.preventDefault();
+    ri = Math.max(0, Math.min(ri, cells.length - 1));
+    ci = Math.max(0, Math.min(ci, cells[ri].length - 1));
+    document.activeElement.tabIndex = -1;
+    const next = cells[ri][ci];
+    next.tabIndex = 0;
+    next.focus();
+});
+
+function gapsTable() {
+    const rows = [];
+    for (const d of PV.DEPTS) for (const g of PV.gapsOf(d.id)) {
+        const [, mode, hh, from, to] = g.alloc;
+        const how = mode === 'sem' ? `${hh} h/sem` : mode === 'total' ? `${hh} h en total` : mode === 'mes' ? `${hh} h/mes` : `${hh} %`;
+        rows.push(`<tr><td><div>${d.name}</div><div class="xs muted" style="display:flex;gap:6px;align-items:center;margin-top:2px">${UI.kindBadge(g.project.kind)}<span>${esc(g.project.name)}</span></div></td><td class="tabular" style="white-space:nowrap">${how}<div class="xs muted">${PV.dayMonth(from)} – ${PV.dayMonth(to)}</div></td><td class="r"><button class="btn outline sm" type="button">${icon('userPlus', 's14')}Asignar a…</button></td></tr>`);
+    }
+    document.getElementById('gaps').innerHTML = `<thead><tr><th>Hueco</th><th>Cuánto y cuándo</th><th class="r"><span class="sr-only">Acciones</span></th></tr></thead><tbody>${rows.join('')}</tbody>`;
+}
+function fpTable() {
+    const fps = PV.PROJECTS.filter((p) => p.kind !== 'real');
+    document.getElementById('fps').innerHTML = `<thead><tr><th>Proyecto</th><th>Seguridad</th><th>Fechas</th></tr></thead><tbody>${fps.map((p) => `<tr><td><a href="04-ficha-previsto.html">${esc(p.name)}</a>${p.newClient ? '<div class="xs muted">Cliente nuevo</div>' : ''}</td><td>${UI.kindBadge(p.kind)}</td><td class="tabular" style="white-space:nowrap">${PV.dayMonth(p.from)} – ${PV.dayMonth(p.to)}</td></tr>`).join('')}</tbody>`;
+}
+
+document.getElementById('horizon').addEventListener('change', (e) => { state.months = Number(e.target.value); if (state.months > 3 && state.unit === 'week') setUnit('month'); else render(); });
+function setUnit(u) { state.unit = u; document.querySelectorAll('[data-unit]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.unit === u))); render(); }
+document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => setUnit(b.dataset.unit)));
+legend();
+setUnit(state.unit);
+if (matchMedia('(max-width: 640px)').matches) document.querySelector('main.page').style.setProperty('--name-w', '132px');
+</script>
+</body>
+</html>

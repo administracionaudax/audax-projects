@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previsión · barras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .alt-nav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+    .alt-nav a[aria-current] { color: var(--foreground); font-weight: 500; text-decoration: none; }
+    .depts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    @media (max-width: 1100px) { .depts { grid-template-columns: minmax(0, 1fr); } }
+    .peak { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .chart { position: relative; }
+    .chart .ytick { position: absolute; left: 0; width: 40px; text-align: right; font-size: 11px; color: var(--muted-foreground); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+    .chart .plot { position: absolute; left: 48px; top: 0; }
+    .chart .hit { position: absolute; top: 0; }
+    .chart .hit:hover, .chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); }
+    .chart .xl { position: absolute; text-align: center; font-size: 12px; color: var(--muted-foreground); }
+    .chart .pl { position: absolute; display: flex; justify-content: center; align-items: center; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+    .chart .pl.strong { color: var(--foreground); font-weight: 500; }
+    .chart .caplab { position: absolute; right: 0; font-size: 11px; color: var(--foreground); background: var(--card); padding: 0 4px; transform: translateY(-50%); }
+    .people { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; display: grid; gap: 2px; }
+    .prow { display: grid; grid-template-columns: 132px minmax(0, 1fr) 64px; align-items: center; gap: 12px; padding: 4px 0; }
+    .prow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .prow .pk { display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .prow .strip { position: relative; height: 30px; }
+    .toggle-people { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; color: var(--primary-text); font-size: 14px; margin-top: 12px; }
+    .toggle-people:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    @media (max-width: 640px) { .prow { grid-template-columns: 96px minmax(0, 1fr) 52px; gap: 8px; } }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="note alt-nav"><b>Maqueta · Previsión</b><span>Alternativas:</span><a href="01-prevision-matriz.html">A · Matriz de ocupación (recomendada)</a><a href="02-prevision-barras.html" aria-current="page">B · Barras frente a capacidad</a><a href="03-prevision-cronograma.html">C · Cronograma por persona</a></div>
+
+    <div class="page-head">
+        <div>
+            <h1>Previsión del <span class="kw">equipo</span></h1>
+            <p>Horas asignadas por departamento frente a su capacidad. Despliega un departamento para ver a sus personas.</p>
+        </div>
+        <div class="actions"><button class="btn sm" type="button" id="new-btn"></button></div>
+    </div>
+
+    <div class="toolbar" role="group" aria-label="Filtros de la previsión">
+        <label class="field"><span class="lbl">Horizonte</span>
+            <select id="horizon" style="all:unset;cursor:pointer"><option value="2">2 meses</option><option value="3">3 meses</option><option value="6" selected>6 meses</option><option value="12">12 meses</option></select>
+        </label>
+        <div class="seg" role="group" aria-label="Agrupar por"><button type="button" data-unit="week" aria-pressed="false">Semanas</button><button type="button" data-unit="month" aria-pressed="true">Meses</button></div>
+        <span class="sep"></span>
+        <div class="toolbar" role="group" aria-label="Capas que cuentan" id="layers"></div>
+    </div>
+
+    <ul class="legend plain" aria-label="Leyenda">
+        <li><span class="sw real"></span>Real</li><li><span class="sw seguro"></span>Previsto seguro</li><li><span class="sw posible"></span>Previsto posible</li><li><span class="sw cap"></span>Capacidad</li>
+    </ul>
+
+    <div class="depts" id="depts"></div>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'prevision', crumbs: ['Proyectos', 'Previsión'] });
+const { icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, layers, loadOf } = UI;
+document.getElementById('new-btn').innerHTML = `${icon('plus')}Nuevo proyecto previsto`;
+const state = { months: 6, unit: 'month', open: { dis: true } };
+
+function niceStep(max, n = 4) {
+    const raw = max / n; const mag = 10 ** Math.floor(Math.log10(raw));
+    return [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+}
+
+function layerChips() {
+    const el = document.getElementById('layers');
+    el.innerHTML = [['real', 'Real'], ['seguro', 'Previsto seguro'], ['posible', 'Previsto posible']].map(([k, l]) => `<button type="button" class="toggle-chip" data-layer="${k}" aria-pressed="${layers[k]}"><span class="check">${layers[k] ? icon('check') : ''}</span><span class="sw ${k}"></span>${l}</button>`).join('');
+    el.querySelectorAll('[data-layer]').forEach((b) => b.addEventListener('click', () => { layers[b.dataset.layer] = !layers[b.dataset.layer]; render(); }));
+}
+
+function deptCard(d, ps, width) {
+    const cells = ps.map((p) => PV.deptCell(d.id, p));
+    const max = Math.max(...cells.map((c) => Math.max(c.cap, c.real + c.seguro + c.posible)));
+    const step = niceStep(max * 1.05);
+    const yMax = Math.ceil((max * 1.05) / step) * step;
+    const plotW = width - 48;
+    const plotH = 200;
+    const ch = UI.columns({ data: cells, width: plotW, height: plotH, yMax, padTop: 0, barMax: 28, grid: Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step) });
+    const slot = plotW / ps.length;
+    let ticks = '';
+    for (let v = 0; v <= yMax; v += step) ticks += `<span class="ytick" style="top:${ch.y(v)}px">${new Intl.NumberFormat('es-ES', { useGrouping: 'always' }).format(v)} h</span>`;
+    const lbls = cells.map((c, i) => {
+        const load = loadOf(c); const lv = level(load, c.cap); const strong = lv === 'high' || lv === 'over';
+        const tid = UI.tip(UI.tipHTML({ title: `${d.name} · ${ps[i].long}`, load, cap: c.cap, items: c.items.slice(0, 7), foot: c.gapH > 0.5 ? [`<span>Incluye <b class="tabular">${H(c.gapH)}</b> de huecos sin persona</span>`] : [] }));
+        return `<span class="hit" tabindex="0" data-tip="${tid}" aria-label="${esc(ps[i].long)}: ${pct(loadPct(load, c.cap))}, ${LEVELS[lv].label}" style="left:${48 + i * slot}px;width:${slot}px;height:${plotH}px"></span>
+            <span class="pl ${strong ? 'strong' : ''}" style="left:${48 + i * slot}px;width:${slot}px;top:${plotH + 6}px">${strong ? levelIcon(lv, 's12') : ''}${pct(loadPct(load, c.cap))}</span>
+            <span class="xl" style="left:${48 + i * slot}px;width:${slot}px;top:${plotH + 24}px">${ps.length > 8 && i % 2 ? '' : ps[i].label}</span>`;
+    }).join('');
+    const peakI = cells.reduce((b, c, i) => (loadOf(c) / c.cap > loadOf(cells[b]) / cells[b].cap ? i : b), 0);
+    const pk = cells[peakI]; const pkLv = level(loadOf(pk), pk.cap);
+    const people = PV.PEOPLE.filter((p) => p.dept === d.id);
+    let peopleHTML = '';
+    if (state.open[d.id]) {
+        const stripW = width - (matchMedia('(max-width: 640px)').matches ? 96 + 52 + 16 : 132 + 64 + 24);
+        peopleHTML = `<div class="people">${people.map((p) => {
+            const pc = ps.map((per) => PV.cell(p.id, per));
+            // Escala en % de la capacidad de cada persona: la línea del 100 % es plana y se comparan entre sí.
+            const norm = pc.map((c) => c.cap > 0 ? { real: (c.real / c.cap) * 100, seguro: (c.seguro / c.cap) * 100, posible: (c.posible / c.cap) * 100, cap: 100 } : { real: 0, seguro: 0, posible: 0, cap: 0 });
+            const s = UI.columns({ data: norm, width: stripW, height: 30, yMax: 150, padTop: 0, barMax: 14 });
+            const pi = pc.reduce((b, c, i) => ((c.cap ? loadOf(c) / c.cap : 0) > (pc[b].cap ? loadOf(pc[b]) / pc[b].cap : 0) ? i : b), 0);
+            const lv = level(loadOf(pc[pi]), pc[pi].cap);
+            const hits = pc.map((c, i) => `<span class="hit" data-tip="${UI.tip(UI.tipHTML({ title: `${p.name} · ${ps[i].long}`, load: loadOf(c), cap: c.cap, items: c.items }))}" style="position:absolute;top:0;height:30px;left:${(i * stripW) / ps.length}px;width:${stripW / ps.length}px"></span>`).join('');
+            return `<div class="prow"><span class="nm">${p.name}</span><span class="strip">${s.svg}${hits}</span><span class="pk">${levelIcon(lv, 's12')}${pct(loadPct(loadOf(pc[pi]), pc[pi].cap))}</span></div>`;
+        }).join('')}<div class="xs muted" style="margin-top:6px">Cada fila, en % de la capacidad de esa persona (línea = 100 %). A la derecha, su pico del periodo.</div></div>`;
+    }
+    return `<section class="card" aria-labelledby="h-${d.id}">
+        <div class="card-head"><div><div class="t" id="h-${d.id}">${d.name}</div><div class="d">${people.length} personas · ${H(cells[1]?.cap ?? cells[0].cap)} de capacidad ${state.unit === 'month' ? 'al mes' : 'a la semana'}</div></div>
+        <span class="peak">${levelIcon(pkLv, 's14')}Pico: <b class="tabular" style="font-weight:600">${pct(loadPct(loadOf(pk), pk.cap))}</b> en ${ps[peakI].unit === 'month' ? ps[peakI].label : ps[peakI].label}</span></div>
+        <div class="chart" style="height:${plotH + 44}px" role="group" aria-label="${d.name}: horas asignadas frente a capacidad">${ticks}<div class="plot">${ch.svg}</div><span class="caplab" style="top:${ch.y(cells[cells.length - 1].cap)}px">Capacidad</span>${lbls}</div>
+        <button class="toggle-people" type="button" aria-expanded="${!!state.open[d.id]}" data-dept="${d.id}">${icon(state.open[d.id] ? 'chevDown' : 'chevRight', 's14')}${state.open[d.id] ? 'Ocultar' : 'Ver'} personas (${people.length})</button>
+        ${peopleHTML}
+    </section>`;
+}
+
+function render() {
+    layerChips();
+    const ps = state.unit === 'week' ? PV.periods('week', Math.round(state.months * 4.345)) : PV.periods('month', state.months);
+    const box = document.getElementById('depts');
+    const cols = matchMedia('(max-width: 1100px)').matches ? 1 : 2;
+    const width = Math.floor((box.clientWidth - 16 * (cols - 1)) / cols) - 42;
+    box.innerHTML = PV.DEPTS.map((d) => deptCard(d, ps, width)).join('');
+    box.querySelectorAll('[data-dept]').forEach((b) => b.addEventListener('click', () => { state.open[b.dataset.dept] = !state.open[b.dataset.dept]; render(); }));
+}
+document.getElementById('horizon').addEventListener('change', (e) => { state.months = Number(e.target.value); render(); });
+document.querySelectorAll('[data-unit]').forEach((b) => b.addEventListener('click', () => { state.unit = b.dataset.unit; document.querySelectorAll('[data-unit]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); render(); }));
+addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
