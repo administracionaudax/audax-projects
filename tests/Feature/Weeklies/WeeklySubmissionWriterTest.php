@@ -14,6 +14,8 @@ use App\Models\WeeklyCycle;
 use App\Models\WeeklyExemption;
 use App\Models\WeeklySubmission;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -268,4 +270,35 @@ it('al enviar, el contador de «Mi espacio» baja a 0 en la siguiente página', 
     $this->actingAs($this->me)->post("/mi-espacio/weeklies/{$this->cycle->id}/enviar", ['entries' => [['client_id' => null, 'body' => 'Hecho']]]);
 
     $this->actingAs($this->me)->get('/mi-espacio')->assertInertia(fn (Assert $page) => $page->where('weeklies.pending', 0));
+});
+
+it('el contador no cuesta consultas por petición: una lista para toda la plantilla, que no crece con los datos (D-187)', function () {
+    $others = collect(range(1, 3))->map(fn () => userWithRole('employee', ['created_at' => '2026-09-01 08:00:00']));
+    $closed = WeeklyCycle::factory()->create();
+    $status = app(MyWeeklyStatus::class);
+    $weeklyQueries = function (Closure $call): int {
+        $count = 0;
+        DB::listen(function (QueryExecuted $query) use (&$count): void {
+            $count += (int) (str_contains($query->sql, 'weekly') || str_contains($query->sql, 'absences'));
+        });
+        $call();
+        app('events')->forget(QueryExecuted::class);
+
+        return $count;
+    };
+
+    // La primera página de cualquiera calcula la lista (la semana activa y las cinco consultas).
+    expect($weeklyQueries(fn () => $status->pendingCount($this->me)))->toBe(6)
+        ->and($weeklyQueries(fn () => $others->each(fn (User $user) => $status->pendingCount($user))))->toBe(0);
+
+    // Más personas y más weeklies de otras semanas: el contador sigue sin consultar.
+    userWithRole('employee', ['created_at' => '2026-09-01 08:00:00']);
+    WeeklySubmission::factory()->count(3)->submitted()->create(['weekly_cycle_id' => $closed->id]);
+    expect($weeklyQueries(fn () => $status->pendingCount($this->me)))->toBe(0);
+
+    // Caducada la lista (5 minutos), la recalcula una sola petición; las siguientes, nada.
+    $this->travel(MyWeeklyStatus::CACHE_SECONDS + 1)->seconds();
+    expect($weeklyQueries(fn () => $status->pendingCount($others->first())))->toBe(5)
+        ->and($weeklyQueries(fn () => $status->pendingCount($this->me)))->toBe(0)
+        ->and($status->pendingCount($this->me))->toBe(1);
 });

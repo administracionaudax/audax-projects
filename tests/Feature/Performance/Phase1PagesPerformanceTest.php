@@ -217,10 +217,29 @@ function perfExpectedStatuses(string $email): array
  * Hace la petición dos veces (la primera calienta las cachés de ajustes, permisos y estados, como
  * en producción) y mide la segunda: consultas, repeticiones de la misma SQL y tiempo.
  *
+ * Las dos peticiones van con el reloj parado: la medida es «con la caché caliente», y una caché con
+ * caducidad no puede vencer entre el calentamiento y la medida. Sin esto, la lista compartida del
+ * contador de la Weekly (MyWeeklyStatus, 5 minutos, D-187) caducaba a mitad del test en el
+ * servidor (PostgreSQL con prioridad mínima, scripts/heavy.sh: entre la primera página y la segunda
+ * ronda pasan allí más de 5 minutos) y, si vencía justo entre las dos peticiones de una página, la
+ * medida pagaba sus cinco consultas: «mis tareas» pasaba de 12 a 17 sin que la página ni el
+ * contador dependieran de los datos (se reproduce en local adelantando el reloj 301 s entre las
+ * dos). En producción esas cinco consultas se hacen una vez cada 5 minutos para toda la plantilla
+ * (o tras un envío, una exención o una ausencia), no en cada petición.
+ *
  * @param  array<string, string>  $headers
  * @return array{status: int, total: int, repeats: int, repeated: string, ms: float, shapes: array<string, int>}
  */
 function perfMeasure(TestCase $test, User $user, string $url, array $headers): array
+{
+    return $test->freezeTime(fn (): array => perfMeasureFrozen($test, $user, $url, $headers));
+}
+
+/**
+ * @param  array<string, string>  $headers
+ * @return array{status: int, total: int, repeats: int, repeated: string, ms: float, shapes: array<string, int>}
+ */
+function perfMeasureFrozen(TestCase $test, User $user, string $url, array $headers): array
 {
     // Las cabeceras van en cada get(): withHeaders() se quedaría para las peticiones siguientes.
     $test->actingAs($user)->get($url, $headers);
