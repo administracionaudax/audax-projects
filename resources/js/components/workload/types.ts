@@ -217,6 +217,7 @@ export type WorkloadPageProps = {
     cell: WorkloadCellPanelData | null;
     /** Con la previsión, a quien solo ve su fila (D-305): «Mi carga» por asignaciones (diferida). */
     my_forecast?: MyForecast | null;
+    forecast_view?: boolean;
 };
 
 /** «Mi carga» en Inicio (prop diferida `workload`, App\Domain\Workload\MyWorkload). */

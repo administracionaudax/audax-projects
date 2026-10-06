@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
-import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n';
@@ -48,9 +47,10 @@ export function ProjectShell({
     actions?: ReactNode;
     children: ReactNode;
 }) {
-    const collaborator = usePage().props.auth?.user?.is_collaborator ?? false;
+    const auth = usePage().props.auth;
+    const collaborator = auth?.user?.is_collaborator ?? false;
     // Planificación (D-296): quien gestiona el proyecto, con el módulo `forecast` visible.
-    const plans = useAbilities()?.useForecast === true && canManage;
+    const plans = auth?.can?.useForecast === true && canManage;
     const tabs = TABS.filter(
         (item) =>
             (item.id !== 'bolsas' ||

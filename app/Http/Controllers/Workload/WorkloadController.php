@@ -36,6 +36,7 @@ class WorkloadController extends Controller
         $query = $request->query();
         $board = WorkloadBoard::for($user, WorkloadFilters::fromQuery($query));
         $opensCell = self::asksForCell($request);
+        $forecastView = ! $board->filterProps()['sees_team'] && Gate::forUser($user)->allows('use-forecast');
 
         return Inertia::render('workload/index', [
             'horizon' => $board->horizon(),
@@ -46,9 +47,8 @@ class WorkloadController extends Controller
             'trays' => fn (): array => $board->trays(),
             'cell' => fn (): ?array => $board->cell(strict: $opensCell),
             // Mi carga con la previsión (D-305): quien solo ve su fila ve sus asignaciones (P6 y P8).
-            'my_forecast' => ! $board->filterProps()['sees_team'] && Gate::forUser($user)->allows('use-forecast')
-                ? Inertia::defer(fn (): array => app(MyForecast::class)->for($user))
-                : null,
+            'forecast_view' => $forecastView,
+            'my_forecast' => $forecastView ? Inertia::defer(fn (): array => app(MyForecast::class)->for($user)) : null,
         ]);
     }
 

@@ -190,11 +190,11 @@ describe('Mi carga (D-305)', function () {
 
     it('en /carga, el empleado ve sus asignaciones; quien ve al equipo, no', function () {
         $this->actingAs($this->ana)->get('/carga')
-            ->assertInertia(fn (Assert $page) => $page->component('workload/index')
+            ->assertInertia(fn (Assert $page) => $page->component('workload/index')->where('forecast_view', true)
                 ->loadDeferredProps(fn (Assert $reload) => $reload->has('my_forecast.allocations', 2)));
 
         $this->actingAs($this->manager)->get('/carga')
-            ->assertInertia(fn (Assert $page) => $page->where('my_forecast', null));
+            ->assertInertia(fn (Assert $page) => $page->where('my_forecast', null)->where('forecast_view', false));
     });
 });
 

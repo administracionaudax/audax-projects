@@ -68,6 +68,7 @@ export default function WorkloadIndex({
     trays,
     cell,
     my_forecast: myForecast,
+    forecast_view,
 }: WorkloadPageProps) {
     const [navigating, setNavigating] = useState(false);
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function WorkloadIndex({
     const rows = matrix.groups.flatMap((group) => group.people);
     // Con la previsión, quien solo ve su fila tiene «Mi carga» por asignaciones (D-305); la
     // matriz por tareas sigue debajo, para sus tareas de las próximas semanas.
-    const forecastView = myForecast !== null;
+    const forecastView = forecast_view === true;
 
     const visit = (query: WorkloadQuery) =>
         router.visit(index.url({ query }), {

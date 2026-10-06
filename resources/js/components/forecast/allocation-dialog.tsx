@@ -329,11 +329,11 @@ export function AllocationDialog({
                                     className="flex items-center gap-2"
                                 >
                                     <RadioGroupItem
-                                        id={`${id}-${mode}`}
+                                        id={`${id}-mode-${mode}`}
                                         value={mode}
                                     />
                                     <Label
-                                        htmlFor={`${id}-${mode}`}
+                                        htmlFor={`${id}-mode-${mode}`}
                                         className="font-normal"
                                     >
                                         {t(`forecast.allocation.mode_${mode}`)}
@@ -351,12 +351,12 @@ export function AllocationDialog({
 
                     {form.data.mode === 'percent' ? (
                         <Field
-                            id={`${id}-percent`}
+                            id={`${id}-percent-value`}
                             label={amountLabel}
                             error={errors.percent}
                         >
                             <Input
-                                id={`${id}-percent`}
+                                id={`${id}-percent-value`}
                                 type="number"
                                 inputMode="numeric"
                                 min={1}
@@ -366,19 +366,22 @@ export function AllocationDialog({
                                     form.setData('percent', event.target.value)
                                 }
                                 aria-invalid={errors.percent ? true : undefined}
-                                aria-describedby={describedBy(`${id}-percent`, {
-                                    error: errors.percent,
-                                })}
+                                aria-describedby={describedBy(
+                                    `${id}-percent-value`,
+                                    {
+                                        error: errors.percent,
+                                    },
+                                )}
                             />
                         </Field>
                     ) : (
                         <Field
-                            id={`${id}-minutes`}
+                            id={`${id}-amount`}
                             label={amountLabel}
                             error={errors.minutes}
                         >
                             <DurationInput
-                                id={`${id}-minutes`}
+                                id={`${id}-amount`}
                                 value={form.data.minutes}
                                 onChange={(value) =>
                                     form.setData('minutes', value)
