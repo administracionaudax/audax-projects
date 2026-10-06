@@ -23,7 +23,7 @@ export function ChartTooltipCard({
     return (
         <div
             className={cn(
-                'min-w-36 rounded-md border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-sm',
+                'min-w-36 border bg-popover px-3 py-2 text-sm text-popover-foreground',
                 className,
             )}
         >
@@ -33,11 +33,18 @@ export function ChartTooltipCard({
             <ul className="grid gap-1">
                 {rows.map((row) => (
                     <li key={row.key} className="flex items-center gap-2">
-                        <span
-                            aria-hidden="true"
-                            className="h-0.5 w-3 shrink-0 rounded-full"
-                            style={{ backgroundColor: row.color }}
-                        />
+                        {row.pattern === 'hatch' ? (
+                            <span
+                                aria-hidden="true"
+                                className="h-2 w-3 shrink-0 bg-hatch-tentative"
+                            />
+                        ) : (
+                            <span
+                                aria-hidden="true"
+                                className="h-0.5 w-3 shrink-0"
+                                style={{ backgroundColor: row.color }}
+                            />
+                        )}
                         <span className="tabular font-medium">{row.value}</span>
                         <span className="text-muted-foreground">
                             {row.label}

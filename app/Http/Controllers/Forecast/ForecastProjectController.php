@@ -68,6 +68,7 @@ class ForecastProjectController extends ForecastController
             ...$data,
             'impact' => Inertia::defer(fn (): ?array => $impact->for($forecast), 'analysis'),
             'estimate' => Inertia::defer(fn (): ?array => $estimate->for($forecast), 'analysis'),
+            'history' => Inertia::defer(fn (): array => $presenter->history($user, $forecast), 'analysis'),
             'options' => Inertia::defer(fn (): array => [
                 ...$presenter->options(),
                 'clients' => $presenter->clients(),

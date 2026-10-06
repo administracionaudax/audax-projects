@@ -15,6 +15,7 @@ return [
         'internal' => 'Interno',
         'archived' => 'Archivado',
         'completed' => 'Completada',
+        'forecast' => 'Proyecto previsto',
     ],
     'pages' => [
         'home' => ['title' => 'Inicio', 'subtitle' => 'Tu panel personal', 'keywords' => 'panel dashboard resumen'],
@@ -50,5 +51,7 @@ return [
         'day_plan' => ['title' => 'Mi día', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia hoy daily lista lineas pendientes'],
         'day_plan_team' => ['title' => 'Equipo hoy', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia equipo hoy daily quien sin plan'],
         'day_plan_week' => ['title' => 'Semana del equipo', 'subtitle' => 'Plan del día', 'keywords' => 'plan del dia semana equipo daily'],
+        'forecast' => ['title' => 'Previsión', 'subtitle' => 'Carga del equipo en los próximos meses', 'keywords' => 'prevision capacidad ocupacion asignaciones huecos meses semanas carga futura'],
+        'forecast_projects' => ['title' => 'Proyectos previstos', 'subtitle' => 'Previsión', 'keywords' => 'previstos propuestas presupuestos posibles seguros oportunidades'],
     ],
 ];

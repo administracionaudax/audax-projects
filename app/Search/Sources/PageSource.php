@@ -103,6 +103,9 @@ class PageSource implements SearchSource
             ['route' => 'day-plan.show', 'key' => 'day_plan', 'allowed' => $dayPlan],
             ['route' => 'day-plan.team', 'key' => 'day_plan_team', 'allowed' => $dayPlan],
             ['route' => 'day-plan.week', 'key' => 'day_plan_week', 'allowed' => $dayPlan],
+            // Previsión (D-306): la gate ya mira el módulo (visible para esa persona).
+            ['route' => 'forecast.index', 'key' => 'forecast', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-forecast')],
+            ['route' => 'forecast.projects.index', 'key' => 'forecast_projects', 'allowed' => fn (User $user): bool => Gate::forUser($user)->allows('view-forecast')],
         ];
 
         $translated = [];

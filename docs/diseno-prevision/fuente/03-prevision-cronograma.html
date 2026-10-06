@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Previsión · cronograma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .alt-nav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+    .alt-nav a[aria-current] { color: var(--foreground); font-weight: 500; text-decoration: none; }
+    .tl { border: 1px solid var(--border); background: var(--card); }
+    .tl-inner { position: relative; }
+    .tl-row { display: flex; border-top: 1px solid var(--border); }
+    .tl-row:first-child { border-top: 0; }
+    .tl-name { position: sticky; left: 0; z-index: 3; width: var(--name-w); flex: none; background: var(--card); border-right: 1px solid var(--border); padding: 8px 12px; }
+    .tl-name .nm { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tl-name .sb { display: block; font-size: 11px; color: var(--muted-foreground); }
+    .tl-track { position: relative; flex: none; }
+    .tl-head .tl-name, .tl-head .tl-track { background: var(--neutral-soft); }
+    .tl-head .tl-name { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-foreground); font-weight: 500; display: flex; align-items: flex-end; }
+    .wk { position: absolute; top: 0; bottom: 0; padding: 6px 6px; font-size: 12px; color: var(--muted-foreground); border-left: 1px solid var(--border); line-height: 1.2; }
+    .wk b { display: block; color: var(--foreground); font-weight: 500; }
+    .wk.now b { color: var(--primary-text); }
+    .gridl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); }
+    .today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--brand); z-index: 1; pointer-events: none; }
+    .alloc { z-index: 2; }
+    .tl-head .tl-track { z-index: 2; }
+    .heat { position: absolute; top: 6px; height: 16px; display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-variant-numeric: tabular-nums; background: var(--lv-surface); color: var(--foreground); }
+    .heat svg { width: 11px; height: 11px; }
+    .alloc { position: absolute; height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; font-size: 12px; white-space: nowrap; overflow: hidden; color: var(--foreground); cursor: pointer; }
+    .alloc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .alloc span { overflow: hidden; text-overflow: ellipsis; }
+    .alloc .hh { color: var(--muted-foreground); flex: none; }
+    .alloc.real { background: color-mix(in oklab, var(--layer-real) 16%, var(--card)); }
+    .alloc.real::before { background: var(--layer-real); }
+    .alloc.seguro { background: color-mix(in oklab, var(--layer-previsto) 16%, var(--card)); }
+    .alloc.seguro::before { background: var(--layer-previsto); }
+    .alloc.posible { background: repeating-linear-gradient(135deg, color-mix(in oklab, var(--layer-previsto) 26%, var(--card)) 0 2px, var(--card) 2px 6px); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--layer-previsto) 45%, var(--card)); }
+    .alloc.posible::before { background: var(--hatch); }
+    .alloc.gapbar { outline: 1px dashed var(--muted-foreground); outline-offset: -1px; }
+    .alloc:hover, .alloc:focus-visible { box-shadow: inset 0 0 0 2px var(--foreground); }
+    .dept-h { display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 15px; }
+</style>
+</head>
+<body>
+<main class="page" style="--name-w: 200px">
+    <div class="note alt-nav"><b>Maqueta · Previsión</b><span>Alternativas:</span><a href="01-prevision-matriz.html">A · Matriz de ocupación (recomendada)</a><a href="02-prevision-barras.html">B · Barras frente a capacidad</a><a href="03-prevision-cronograma.html" aria-current="page">C · Cronograma por persona</a></div>
+
+    <div class="page-head">
+        <div>
+            <h1>Previsión del <span class="kw">equipo</span></h1>
+            <p>Quién está en qué y hasta cuándo. Arrastra una asignación para moverla o estira sus extremos para cambiar las fechas.</p>
+        </div>
+        <div class="actions"><button class="btn sm" type="button" id="new-btn"></button></div>
+    </div>
+
+    <div class="toolbar" role="group" aria-label="Filtros">
+        <label class="field"><span class="lbl">Horizonte</span>3 meses</label>
+        <button class="field" type="button"><span class="lbl">Departamento</span>Todos</button>
+        <span class="sep"></span>
+        <div class="toolbar" id="layers"></div>
+    </div>
+
+    <ul class="legend plain">
+        <li><span class="sw real"></span>Real</li><li><span class="sw seguro"></span>Previsto seguro</li><li><span class="sw posible"></span>Previsto posible</li><li><span class="sw gap"></span>Hueco sin persona</li><li><span style="display:inline-block;width:2px;height:12px;background:var(--brand)"></span>Hoy</li><li>Franja superior: ocupación de la semana (semáforo)</li>
+    </ul>
+
+    <div class="tl scroll-x"><div class="tl-inner" id="tl"></div></div>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'prevision', crumbs: ['Proyectos', 'Previsión'] });
+const { icon, H, pct, esc, level, loadPct, LEVELS, levelIcon, layers, loadOf } = UI;
+document.getElementById('new-btn').innerHTML = `${icon('plus')}Nuevo proyecto previsto`;
+document.getElementById('layers').innerHTML = [['real', 'Real'], ['seguro', 'Previsto seguro'], ['posible', 'Previsto posible']].map(([k, l]) => `<button type="button" class="toggle-chip" aria-pressed="true"><span class="check">${icon('check')}</span><span class="sw ${k}"></span>${l}</button>`).join('');
+const open = { dis: true, dev: false, mkt: false, cue: false };
+const ps = PV.periods('week', 13);
+const W = 76;
+const start = ps[0].from, end = ps[ps.length - 1].to;
+const dayX = (iso) => ((PV.toMs(iso) - PV.toMs(start)) / 86400000 / 7) * W;
+const total = ps.length * W;
+const nameW = matchMedia('(max-width: 640px)').matches ? 132 : 200;
+document.querySelector('main.page').style.setProperty('--name-w', `${nameW}px`);
+
+const how = (mode, hh) => (mode === 'sem' ? `${hh} h/sem` : mode === 'total' ? `${hh} h` : mode === 'mes' ? `${hh} h/mes` : `${hh} %`);
+
+function lanesFor(who) {
+    const items = [];
+    for (const p of PV.PROJECTS) for (const a of p.allocs) if (a[0] === who && a[4] >= start && a[3] <= end) items.push({ p, a });
+    items.sort((x, y) => x.a[3].localeCompare(y.a[3]));
+    const lanes = [];
+    for (const it of items) {
+        let l = lanes.findIndex((ln) => ln.at(-1).a[4] < it.a[3]);
+        if (l < 0) { lanes.push([]); l = lanes.length - 1; }
+        lanes[l].push(it);
+    }
+    return lanes;
+}
+
+function row(who, label, sub, gap = false) {
+    const lanes = lanesFor(who);
+    const hgt = 30 + Math.max(lanes.length, 1) * 26 + 4;
+    let s = `<div class="tl-row"><div class="tl-name">${gap ? `<span class="nm" style="display:flex;gap:6px;align-items:center">${icon('gap', 's14')}${label}</span>` : `<span class="nm">${label}</span>`}<span class="sb">${sub}</span></div><div class="tl-track" style="width:${total}px;height:${hgt}px">`;
+    ps.forEach((p, i) => { s += `<span class="gridl" style="left:${i * W}px"></span>`; });
+    if (!gap) ps.forEach((p, i) => {
+        const c = PV.cell(who, p); const load = loadOf(c); const lv = level(load, c.cap);
+        s += `<span class="heat lv-${lv}" style="left:${i * W + 3}px;width:${W - 6}px">${lv === 'none' ? 'Ausencia' : `${lv === 'over' || lv === 'high' ? levelIcon(lv, '') : ''}${pct(loadPct(load, c.cap))}`}</span>`;
+    });
+    lanes.forEach((ln, li) => ln.forEach(({ p, a }) => {
+        const x0 = Math.max(0, dayX(a[3])); const x1 = Math.min(total, dayX(PV.addDays(a[4], 1)));
+        const tid = UI.tip(`<div class="tt">${esc(label)}</div><div class="head"><span class="big">${how(a[1], a[2])}</span></div><ul><li><span class="key ${p.kind}"></span><span class="val"></span><span class="lab">${esc(p.name)} · ${UI.KIND[p.kind].label.toLowerCase()}</span></li></ul><div class="foot"><span>${PV.dayMonth(a[3])} – ${PV.dayMonth(a[4])}</span></div>`);
+        s += `<span class="alloc ${p.kind}${gap ? ' gapbar' : ''}" tabindex="0" data-tip="${tid}" style="left:${x0 + 1}px;width:${x1 - x0 - 2}px;top:${30 + li * 26}px"><span>${esc(p.name)}</span><span class="hh tabular">${how(a[1], a[2])}</span></span>`;
+    }));
+    return s + '</div></div>';
+}
+
+let html = `<div class="tl-row tl-head"><div class="tl-name">Persona</div><div class="tl-track" style="width:${total}px;height:44px">${ps.map((p, i) => `<span class="wk${p.current ? ' now' : ''}" style="left:${i * W}px;width:${W}px"><b>${p.label}</b>${p.sub}</span>`).join('')}</div></div>`;
+for (const d of PV.DEPTS) {
+    const people = PV.PEOPLE.filter((p) => p.dept === d.id);
+    html += `<div class="tl-row"><div class="tl-name"><span class="dept-h">${icon(open[d.id] ? 'chevDown' : 'chevRight', 's14')}${d.name}</span><span class="sb">${people.length} personas</span></div><div class="tl-track" style="width:${total}px;height:36px">${ps.map((p, i) => { const c = PV.deptCell(d.id, p); const load = loadOf(c); const lv = level(load, c.cap); return `<span class="heat lv-${lv}" style="left:${i * W + 3}px;width:${W - 6}px;top:10px">${lv === 'over' || lv === 'high' ? levelIcon(lv, '') : ''}${pct(loadPct(load, c.cap))}</span>`; }).join('')}</div></div>`;
+    if (!open[d.id]) continue;
+    for (const p of people) html += row(p.id, p.name, `${p.hpd * 5} h/sem`);
+    if (PV.gapsOf(d.id).length) html += row(`hueco:${d.id}`, 'Sin persona', `Hueco de ${d.name}`, true);
+}
+const tl = document.getElementById('tl');
+tl.style.width = `${nameW + total}px`;
+tl.innerHTML = html + `<span class="today" style="left:${nameW + dayX(PV.TODAY)}px"></span>`;
+</script>
+</body>
+</html>

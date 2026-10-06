@@ -85,6 +85,7 @@ export type SearchResultType =
     | 'client'
     | 'project'
     | 'task'
+    | 'forecast'
     | 'message';
 
 export type SearchResult = {

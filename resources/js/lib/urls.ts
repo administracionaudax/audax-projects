@@ -12,6 +12,7 @@ export type ProjectTab =
     | 'horas'
     | 'chat'
     | 'archivos'
+    | 'planificacion'
     | 'ajustes';
 
 export const urls = {

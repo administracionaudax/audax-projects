@@ -128,7 +128,7 @@ export function DepartmentHoursChart({
                         name={serie.label}
                         fill={serie.color}
                         maxBarSize={MAX_BAR_SIZE}
-                        radius={[0, BAR_RADIUS, BAR_RADIUS, 0]}
+                        radius={BAR_RADIUS}
                         isAnimationActive={false}
                     >
                         <LabelList

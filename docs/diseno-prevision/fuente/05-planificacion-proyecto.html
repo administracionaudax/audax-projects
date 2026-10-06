@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KIWI-APP2 · Planificación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tabs a { padding: 8px 12px; color: var(--muted-foreground); white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tabs a:hover { text-decoration: none; color: var(--foreground); }
+    .tabs a[aria-current] { color: var(--foreground); border-bottom-color: var(--brand); font-weight: 500; }
+    .chart { position: relative; }
+    .chart .ytick { position: absolute; left: 0; width: 36px; text-align: right; font-size: 11px; color: var(--muted-foreground); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+    .chart .xl { position: absolute; font-size: 11px; color: var(--muted-foreground); text-align: center; line-height: 1.2; }
+    .chart .xl b { display: block; font-weight: 500; color: var(--foreground); }
+    .chart .hit { position: absolute; top: 0; }
+    .chart .hit:hover, .chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); }
+    .chart .miss { position: absolute; display: flex; justify-content: center; align-items: center; gap: 3px; font-size: 11px; color: var(--foreground); }
+    .chart .end { position: absolute; font-size: 12px; white-space: nowrap; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; }
+    .chart .today-l { position: absolute; font-size: 11px; color: var(--primary-text); transform: translateX(-50%); white-space: nowrap; }
+    .bullet { position: relative; height: 14px; min-width: 140px; background: var(--neutral-soft); }
+    .bullet i { position: absolute; left: 0; top: 3px; height: 8px; background: var(--layer-imputado); }
+    .bullet b { position: absolute; top: -3px; width: 2px; height: 20px; background: var(--layer-real); }
+    .dev { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .span-bar { position: relative; height: 12px; min-width: 160px; }
+    .span-bar i { position: absolute; top: 2px; height: 8px; background: var(--layer-real); }
+    .span-bar .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--brand); }
+    .origin { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="page-head">
+        <div>
+            <div class="xs muted" style="margin-bottom:4px">KIWI-APP2 · Kiwi Seguros</div>
+            <h1>Kiwi · <span class="kw">App fase 2</span></h1>
+        </div>
+        <div class="actions"><button class="btn outline sm" type="button" id="add-btn"></button></div>
+    </div>
+    <nav class="tabs" aria-label="Secciones del proyecto"><a href="#">Resumen</a><a href="#">Tareas</a><a href="#">Gantt</a><a href="#">Horas</a><a href="#" aria-current="page">Planificación</a><a href="#">Archivos</a></nav>
+
+    <div class="note origin"><span>Viene del previsto <b>«Kiwi · App fase 2»</b> (vinculado el 28/08). Su estimación queda como línea base.</span><a href="06-estimado-frente-a-real.html">Ver estimado frente a real</a></div>
+
+    <section class="grid-tiles" id="tiles" aria-label="Resumen de la planificación"></section>
+
+    <section class="card" aria-labelledby="pvi-title">
+        <div class="card-head">
+            <div><div class="t" id="pvi-title">Plan frente a imputado por semana</div><div class="d">Plan: lo asignado a las personas del proyecto. Imputado: horas registradas. Si alguien no imputó nada en una semana pasada con plan, se marca.</div></div>
+            <button class="btn ghost sm" type="button" id="table-btn"></button>
+        </div>
+        <ul class="legend plain" style="margin-bottom:12px"><li><span class="sw line-real"></span>Plan (asignaciones)</li><li><span class="sw imputado"></span>Imputado</li><li><span class="sw imputado" style="opacity:.45"></span>Semana en curso</li><li><span style="display:inline-block;width:2px;height:12px;background:var(--brand)"></span>Hoy</li><li><span style="color:var(--danger);display:inline-flex" id="miss-ic"></span>Alguien no imputó</li></ul>
+        <div class="scroll-x"><div class="chart" id="pvi"></div></div>
+    </section>
+
+    <section class="card" aria-labelledby="as-title">
+        <div class="card-head"><div><div class="t" id="as-title">Asignaciones por persona</div><div class="d">El plan hasta hoy frente a lo imputado. La desviación se calcula sobre lo que ya debería estar hecho.</div></div></div>
+        <div class="scroll-x"><table class="data" id="people"></table></div>
+        <ul class="legend plain" style="margin-top:10px"><li><span class="sw imputado"></span>Imputado</li><li><span style="display:inline-block;width:2px;height:12px;background:var(--layer-real)"></span>Plan hasta hoy</li></ul>
+    </section>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'proyectos', crumbs: ['Proyectos', 'Kiwi · App fase 2', 'Planificación'] });
+const { icon, h, H, pct, esc, levelIcon } = UI;
+document.getElementById('add-btn').innerHTML = `${icon('plus')}Asignación`;
+document.getElementById('miss-ic').innerHTML = icon('octagon', 's12');
+document.getElementById('table-btn').innerHTML = `${icon('table')}Ver como tabla`;
+
+// Semanas del proyecto: 31 ago (S36) → 23 nov (S48). Hoy: martes 6 oct (S41, en curso).
+const P = PV.projectById.kiwi2;
+const weeks = Array.from({ length: 13 }, (_, i) => PV.addDays('2026-08-31', i * 7));
+const HOL = PV.HOLIDAYS;
+// Imputado por persona y semana (horas), solo semanas pasadas y la actual.
+const LOGGED = {
+    ana: [14, 18, 15, 0, 16, 3],
+    luis: [22, 26, 25, 28, 27, 6],
+    raul: [30, 33, 31, 35, 34, 7],
+    clara: [20, 22, 18, 25, 24, 5],
+    jorge: [6, 9, 8, 7, 8, 2],
+};
+const planWeek = (who, wk) => {
+    const a = P.allocs.find((x) => x[0] === who);
+    let days = 0;
+    for (let i = 0; i < 5; i++) { const d = PV.addDays(wk, i); if (d >= a[3] && d <= a[4] && !HOL[d]) days++; }
+    return (a[2] / 5) * days;
+};
+const people = P.allocs.map((a) => a[0]);
+const plan = weeks.map((wk) => people.reduce((s, p) => s + planWeek(p, wk), 0));
+const logged = weeks.map((wk, i) => (i < 6 ? people.reduce((s, p) => s + LOGGED[p][i], 0) : null));
+const nowIdx = 5; // semana en curso
+// Plan hasta hoy: semanas completas + 1 de 5 días de esta semana (lunes).
+const planToDate = (who) => weeks.slice(0, nowIdx).reduce((s, wk) => s + planWeek(who, wk), 0) + planWeek(who, weeks[nowIdx]) / 5;
+const loggedTotal = (who) => LOGGED[who].reduce((a, b) => a + b, 0);
+const planTotal = (who) => weeks.reduce((s, wk) => s + planWeek(who, wk), 0);
+
+const sum = (f) => people.reduce((s, p) => s + f(p), 0);
+const pTD = sum(planToDate), lT = sum(loggedTotal), pT = sum(planTotal);
+const devPct = Math.round(((lT - pTD) / pTD) * 100);
+document.getElementById('tiles').innerHTML = `
+    <div class="tile"><div class="k">Plan total</div><div class="v">${H(pT)}</div><div class="s">31 ago – 27 nov · 5 personas</div></div>
+    <div class="tile"><div class="k">Imputado</div><div class="v">${H(lT)}</div><div class="s">${pct(Math.round((lT / pT) * 100))} del plan total</div></div>
+    <div class="tile"><div class="k">Desviación hasta hoy</div><div class="v">${devPct > 0 ? '+' : ''}${devPct} %</div><div class="s"><span>${H(Math.abs(lT - pTD))} ${devPct < 0 ? 'menos' : 'más'} que el plan hasta hoy (${H(pTD)})</span></div></div>
+    <div class="tile"><div class="k">Restante</div><div class="v">${H(Math.max(pT - lT, 0))}</div><div class="s">en 8 semanas · ${H((pT - lT) / 7.8)}/sem</div></div>`;
+
+// Gráfica: columnas = imputado (pasado), línea escalonada = plan. Un solo eje en horas.
+(function chart() {
+    const slot = matchMedia('(max-width: 640px)').matches ? 44 : 72;
+    const W = weeks.length * slot, Hh = 200, left = 44, right = 96;
+    const yMax = 140, step = 35;
+    const y = (v) => 8 + (Hh - 8) * (1 - v / yMax);
+    let s = `<svg width="${W}" height="${Hh}" style="position:absolute;left:${left}px;top:0;overflow:visible" aria-hidden="true">`;
+    for (let v = 0; v <= yMax; v += step) s += `<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--border)"/>`;
+    weeks.forEach((wk, i) => {
+        if (logged[i] === null) return;
+        const bw = Math.min(24, slot * 0.5), x = i * slot + (slot - bw) / 2;
+        const partial = i === nowIdx;
+        s += `<rect x="${x}" y="${y(logged[i])}" width="${bw}" height="${y(0) - y(logged[i])}" style="fill:var(--layer-imputado);${partial ? 'fill-opacity:.45' : ''}"/>`;
+    });
+    let d = '';
+    plan.forEach((v, i) => { d += `${i ? 'L' : 'M'}${i * slot},${y(v)} L${(i + 1) * slot},${y(v)} `; });
+    s += `<path d="${d}" style="fill:none;stroke:var(--layer-real)" stroke-width="2"/>`;
+    s += `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--muted-foreground)"/>`;
+    const tx = nowIdx * slot + slot * 0.2;
+    s += `<line x1="${tx}" x2="${tx}" y1="0" y2="${Hh}" style="stroke:var(--brand)" stroke-width="2"/></svg>`;
+    let html = s;
+    for (let v = 0; v <= yMax; v += step) html += `<span class="ytick" style="top:${y(v)}px">${v} h</span>`;
+    html += `<span class="today-l" style="left:${left + tx}px;top:${Hh + 34}px">Hoy</span>`;
+    weeks.forEach((wk, i) => {
+        const missing = logged[i] === 0;
+        const tip = UI.tip(`<div class="tt">Semana ${PV.isoWeek(wk)} (${PV.dayMonth(wk)} – ${PV.dayMonth(PV.addDays(wk, 4))})${i === nowIdx ? ' · en curso' : ''}</div><ul><li><span class="key real"></span><span class="val">${H(plan[i])}</span><span class="lab">plan</span></li>${logged[i] !== null ? `<li><span class="key imputado"></span><span class="val">${H(logged[i])}</span><span class="lab">imputado</span></li>` : ''}</ul>${logged[i] !== null && i < nowIdx ? `<div class="foot"><span>Desviación: <b>${Math.round(((logged[i] - plan[i]) / plan[i]) * 100)} %</b></span></div>` : ''}`);
+        html += `<span class="hit" tabindex="0" data-tip="${tip}" style="left:${left + i * slot}px;width:${slot}px;height:${Hh}px"></span>`;
+        html += `<span class="xl" style="left:${left + i * slot}px;width:${slot}px;top:${Hh + 4}px"><b>S${PV.isoWeek(wk)}</b>${PV.dayMonth(wk)}</span>`;
+        const missingPeople = i < nowIdx ? people.filter((p) => LOGGED[p][i] === 0 && planWeek(p, wk) > 0) : [];
+        if (missingPeople.length) {
+            const mt = UI.tip(`<div class="tt">Semana ${PV.isoWeek(wk)}</div><div class="head">${levelIcon('over', '')}<span>Sin horas imputadas</span></div><ul>${missingPeople.map((p) => `<li><span class="key real"></span><span class="val">${H(planWeek(p, wk))}</span><span class="lab">${PV.personById[p].name}: plan sin imputar</span></li>`).join('')}</ul>`);
+            html += `<span class="miss" tabindex="0" data-tip="${mt}" style="left:${left + i * slot}px;width:${slot}px;top:${Hh + 34}px">${levelIcon('over', 's12')}<span>${missingPeople.length === 1 ? PV.personById[missingPeople[0]].name.split(' ')[0] : missingPeople.length}</span></span>`;
+        }
+    });
+    html += `<span class="end" style="left:${left + W + 8}px;top:${y(plan.at(-1))}px"><span class="sw line-real"></span>Plan</span>`;
+    const el = document.getElementById('pvi');
+    el.style.width = `${left + W + right}px`;
+    el.style.height = `${Hh + 56}px`;
+    el.innerHTML = html;
+})();
+
+// Tabla por persona
+const span0 = PV.toMs('2026-08-31'), span1 = PV.toMs('2026-11-30');
+const xp = (iso) => ((PV.toMs(iso) - span0) / (span1 - span0)) * 100;
+document.getElementById('people').innerHTML = `<thead><tr><th>Quién</th><th>Cómo</th><th>Fechas</th><th class="r">Plan</th><th class="r">Plan hasta hoy</th><th class="r">Imputado</th><th>Imputado frente a plan hasta hoy</th><th class="r">Desviación</th></tr></thead><tbody>${P.allocs.map(([who, mode, hh, from, to]) => {
+    const p = PV.personById[who];
+    const ptd = planToDate(who), lt = loggedTotal(who);
+    const dv = Math.round(((lt - ptd) / ptd) * 100);
+    const max = Math.max(ptd, lt) * 1.15;
+    return `<tr><td style="white-space:nowrap">${p.name}<div class="xs muted">${PV.DEPTS.find((d) => d.id === p.dept).name}</div></td><td class="tabular" style="white-space:nowrap">${hh} h/sem</td><td><div class="span-bar"><i style="left:${xp(from < '2026-08-31' ? '2026-08-31' : from)}%;width:${xp(PV.addDays(to, 1)) - xp(from < '2026-08-31' ? '2026-08-31' : from)}%"></i><span class="now" style="left:${xp(PV.TODAY)}%"></span></div><div class="xs muted tabular" style="margin-top:2px">${PV.dayMonth(from)} – ${PV.dayMonth(to)}</div></td><td class="r tabular">${H(planTotal(who))}</td><td class="r tabular">${H(ptd)}</td><td class="r tabular">${H(lt)}</td><td><div class="bullet" aria-hidden="true"><i style="width:${(lt / max) * 100}%"></i><b style="left:${(ptd / max) * 100}%"></b></div></td><td class="r">${UI.devHTML(dv)}</td></tr>`;
+}).join('')}</tbody>`;
+</script>
+</body>
+</html>

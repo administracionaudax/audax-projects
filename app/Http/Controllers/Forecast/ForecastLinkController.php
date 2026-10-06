@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Forecast;
 use App\Domain\Forecast\ForecastLinker;
 use App\Http\Requests\Forecast\CreateProjectFromForecastRequest;
 use App\Http\Requests\Projects\StoreProjectRequest;
+use App\Models\Client;
 use App\Models\ForecastProject;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -51,9 +53,18 @@ class ForecastLinkController extends ForecastController
     {
         /** @var User $user */
         $user = $request->user();
-        $attributes = collect($request->validated())->except(['member_ids', 'copy_allocations', ...StoreProjectRequest::templateFields()])->all();
+        $attributes = collect($request->validated())->except(['member_ids', 'copy_allocations', 'create_client', ...StoreProjectRequest::templateFields()])->all();
 
-        $project = $this->linker->createProject($forecast, $attributes, $request->memberIds(), $user, $request->boolean('copy_allocations', true));
+        $project = DB::transaction(function () use ($request, $forecast, $attributes, $user): Project {
+            // Previsto de un cliente nuevo (D-308): primero el cliente, con el nombre libre.
+            if ($request->boolean('create_client')) {
+                $client = Client::query()->create(['name' => trim((string) $forecast->prospect_name), 'is_active' => true]);
+                $forecast->update(['client_id' => $client->id, 'prospect_name' => null]);
+                $attributes['client_id'] = $client->id;
+            }
+
+            return $this->linker->createProject($forecast, $attributes, $request->memberIds(), $user, $request->boolean('copy_allocations', true));
+        });
         $this->toast(__('forecast.flash.project_created', ['project' => $project->code]));
 
         return to_route('projects.show', $project);

@@ -86,5 +86,6 @@
     "nav.sections.billing": "Facturación",
     "nav.sections.admin": "Administración",
     "nav.admin_panel": "Panel",
-    "nav.admin_settings": "Ajustes"
+    "nav.admin_settings": "Ajustes",
+    "project_tabs.planning": "Planificación"
 }

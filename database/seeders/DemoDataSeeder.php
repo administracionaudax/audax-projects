@@ -1326,6 +1326,54 @@ class DemoDataSeeder extends Seeder
         $lamas = $forecasts->create(['name' => 'App de obra', 'client_id' => Client::query()->where('name', 'Construcciones Lamas')->value('id'), 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(2))], $p['marta']);
         $allocate($lamas, ['department_id' => $this->departments['Desarrollo']->id, 'mode' => 'total', 'minutes' => 200 * 60, 'start_date' => $date($spring), 'end_date' => $date($spring->addMonths(2))]);
         $forecasts->lose($lamas, 'Precio');
+
+        $this->forecastTeam($monday, $allocate);
+    }
+
+    /**
+     * El resto del equipo con su plan de los próximos tres meses (pantallas de la previsión, D-300):
+     * cada persona de plantilla con asignaciones en proyectos reales (alguien se pasa, alguien va
+     * holgado), la colaboradora externa con las suyas y dos previstos más, uno seguro y uno posible
+     * con un hueco de Marketing. Sin el generador aleatorio, para no cambiar el resto de datos.
+     *
+     * @param  callable(Project|ForecastProject, array<string, mixed>): void  $allocate
+     */
+    private function forecastTeam(CarbonImmutable $monday, callable $allocate): void
+    {
+        $p = $this->people;
+        $date = fn (CarbonImmutable $day): string => $day->toDateString();
+        $projects = Project::query()->whereIn('code', ['MIR-WEB', 'MIR-SOP', 'LAM-INT', 'FAR-SHOP', 'FAR-RRSS', 'ARR-MKT'])->get()->keyBy('code');
+        $forecasts = app(ForecastProjectWriter::class);
+        $weeks = fn (int $count): string => $date($monday->addWeeks($count)->subDays(3));
+
+        $allocate($projects['MIR-WEB'], ['user_id' => $p['raul']->id, 'mode' => 'percent', 'percent' => 50, 'start_date' => $date($monday), 'end_date' => $weeks(10)]);
+        $allocate($projects['MIR-WEB'], ['user_id' => $p['elena']->id, 'mode' => 'per_day', 'minutes' => 150, 'start_date' => $date($monday->addWeeks(4)), 'end_date' => $weeks(12)]);
+        $allocate($projects['FAR-SHOP'], ['user_id' => $p['lucia']->id, 'mode' => 'per_day', 'minutes' => 240, 'start_date' => $date($monday->addWeeks(4)), 'end_date' => $weeks(10)]);
+        $allocate($projects['LAM-INT'], ['user_id' => $p['marta']->id, 'mode' => 'percent', 'percent' => 40, 'start_date' => $date($monday), 'end_date' => $weeks(12)]);
+        $allocate($projects['FAR-SHOP'], ['user_id' => $p['sergio']->id, 'mode' => 'per_day', 'minutes' => 300, 'start_date' => $date($monday), 'end_date' => $weeks(6)]);
+        $allocate($projects['MIR-SOP'], ['user_id' => $p['sergio']->id, 'mode' => 'monthly', 'minutes' => 24 * 60, 'start_date' => $date($this->today->startOfMonth()), 'end_date' => null, 'note' => 'Soporte del mes']);
+        $allocate($projects['ARR-MKT'], ['user_id' => $p['nuria']->id, 'mode' => 'percent', 'percent' => 50, 'start_date' => $date($monday), 'end_date' => $weeks(12)]);
+        $allocate($projects['FAR-RRSS'], ['user_id' => $p['irene']->id, 'mode' => 'per_day', 'minutes' => 180, 'start_date' => $date($monday), 'end_date' => $weeks(12)]);
+        $allocate($projects['ARR-MKT'], ['user_id' => $p['daniel']->id, 'mode' => 'per_day', 'minutes' => 240, 'start_date' => $date($monday), 'end_date' => $weeks(12)]);
+
+        // La colaboradora externa (D-300): retoques de fotos en MIR-WEB, con su jornada.
+        $sara = User::query()->where('email', self::COLLABORATOR_EMAIL)->first();
+        if ($sara !== null) {
+            $allocate($projects['MIR-WEB'], ['user_id' => $sara->id, 'mode' => 'total', 'minutes' => 60 * 60, 'start_date' => $date($monday->addWeeks(2)), 'end_date' => $weeks(6)]);
+        }
+
+        // Seguro: la app de reservas de Hoteles Mirador, que carga a Pablo y a Sergio.
+        $start = $monday->addWeeks(5);
+        $booking = $forecasts->create(['name' => 'App de reservas', 'client_id' => $projects['MIR-WEB']->client_id, 'confidence' => 'firm', 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(10)->subDays(3)), 'estimated_minutes' => 420 * 60, 'description' => 'Firmado a falta del pedido.'], $p['marta']);
+        $allocate($booking, ['user_id' => $p['pablo']->id, 'mode' => 'per_day', 'minutes' => 240, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(10)->subDays(3))]);
+        $allocate($booking, ['user_id' => $p['sergio']->id, 'mode' => 'percent', 'percent' => 40, 'start_date' => $date($start->addWeeks(2)), 'end_date' => $date($start->addWeeks(10)->subDays(3))]);
+        $allocate($booking, ['department_id' => $this->departments['Diseño']->id, 'mode' => 'monthly', 'minutes' => 40 * 60, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(10)->subDays(3))]);
+
+        // Posible: la campaña de verano de Cervezas Montaña, con un hueco de Marketing.
+        $start = $monday->addWeeks(7);
+        $summer = $forecasts->create(['name' => 'Campaña de verano', 'client_id' => Client::query()->where('name', 'Cervezas Montaña')->value('id'), 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3)), 'estimated_minutes' => 150 * 60], $p['nuria']);
+        $allocate($summer, ['department_id' => $this->departments['Marketing']->id, 'mode' => 'total', 'minutes' => 90 * 60, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3))]);
+        $allocate($summer, ['user_id' => $p['daniel']->id, 'mode' => 'percent', 'percent' => 30, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3))]);
     }
 
     private function monthsAgo(int $months): CarbonImmutable

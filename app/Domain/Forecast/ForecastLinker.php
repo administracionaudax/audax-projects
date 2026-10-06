@@ -103,7 +103,7 @@ final class ForecastLinker
         }
 
         return DB::transaction(function () use ($forecast, $attributes, $memberIds, $by, $copyAllocations): Project {
-            $assigned = ForecastPeople::staff()
+            $assigned = ForecastPeople::assignables()
                 ->whereIn('id', Allocation::query()->select('user_id')->where('forecast_project_id', $forecast->id)->whereNotNull('user_id'))
                 ->pluck('id')
                 ->map(fn ($id): int => (int) $id)

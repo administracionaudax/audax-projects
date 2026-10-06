@@ -64,28 +64,28 @@ describe('asignaciones', () => {
                 minutes: 4800,
                 percent: null,
             }),
-        ).toBe('80:00 en total');
+        ).toBe('80\u00a0h en total');
         expect(
             allocationAmountLabel({
                 mode: 'per_day',
                 minutes: 240,
                 percent: null,
             }),
-        ).toBe('4:00 al día');
+        ).toBe('4\u00a0h al día');
         expect(
             allocationAmountLabel({
                 mode: 'percent',
                 minutes: null,
                 percent: 50,
             }),
-        ).toBe('50 %');
+        ).toBe('50\u00a0% de su jornada');
         expect(
             allocationAmountLabel({
                 mode: 'monthly',
                 minutes: 1200,
                 percent: null,
             }),
-        ).toBe('20:00 al mes');
+        ).toBe('20\u00a0h al mes');
     });
 
     it('quién: la persona o el hueco del departamento', () => {

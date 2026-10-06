@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diseño de la Previsión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .wrap { max-width: 960px; margin: 0 auto; padding: 40px 16px; display: grid; gap: 24px; }
+    .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 700px) { .list { grid-template-columns: minmax(0, 1fr); } }
+    .list a { display: block; background: var(--card); border: 1px solid var(--border); padding: 16px; color: var(--foreground); }
+    .list a:hover { border-color: var(--ring); text-decoration: none; }
+    .list a b { display: block; font-weight: 500; margin-bottom: 4px; }
+    .list a span { color: var(--muted-foreground); font-size: 13px; }
+    .tag { display: inline-block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--primary-text); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div class="page-head"><div><h1>Diseño de la <span class="kw">Previsión</span></h1><p>Maquetas estáticas con datos de ejemplo a la escala de Audax (30 personas, 4 departamentos, 12 meses). Cada una funciona en claro y oscuro (botón arriba a la derecha) y a 375 px. Explicación completa en <code>docs/DISENO-PREVISION.md</code>.</p></div></div>
+    <ul class="legend plain"><li><span class="sw real"></span>Real</li><li><span class="sw seguro"></span>Previsto seguro</li><li><span class="sw posible"></span>Previsto posible (trama)</li><li><span class="sw imputado"></span>Imputado</li><li><span class="sw cap"></span>Capacidad</li></ul>
+    <div class="list">
+        <a href="01-prevision-matriz.html"><span class="tag">Recomendada</span><b>A · /prevision: matriz de ocupación</b><span>Departamentos con columnas frente a su capacidad; al desplegar, personas × semanas con el semáforo y la barra de capas.</span></a>
+        <a href="02-prevision-barras.html"><span class="tag">Alternativa</span><b>B · /prevision: barras frente a capacidad</b><span>Una gráfica por departamento y tiras por persona en %.</span></a>
+        <a href="03-prevision-cronograma.html"><span class="tag">Alternativa</span><b>C · /prevision: cronograma por persona</b><span>Quién está en qué y hasta cuándo, con la ocupación de la semana encima.</span></a>
+        <a href="04-ficha-previsto.html"><b>Ficha de un proyecto previsto</b><span>Impacto «sin / con este proyecto» por departamento y persona, y sus asignaciones.</span></a>
+        <a href="05-planificacion-proyecto.html"><b>Pestaña «Planificación» de un proyecto real</b><span>Plan frente a imputado por semana y por persona.</span></a>
+        <a href="06-estimado-frente-a-real.html"><b>Estimado frente a real</b><span>Línea base del previsto frente a las horas reales, acumulado, por departamento y por mes.</span></a>
+        <a href="07-mi-carga.html"><b>Mi carga (empleado)</b><span>Tarjeta de Inicio y vista en /carga, con los previstos posibles (P8).</span></a>
+    </div>
+</div>
+<script src="comun.js"></script>
+<script>
+// Solo el conmutador de tema (sin el shell de la app).
+const b = document.createElement('button');
+b.className = 'btn ghost icon'; b.type = 'button'; b.style.cssText = 'position:fixed;top:12px;right:12px';
+const dark = () => document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+const paint = () => { b.innerHTML = UI.icon(dark() ? 'sun' : 'moon'); b.setAttribute('aria-label', dark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'); };
+b.onclick = () => { document.documentElement.dataset.theme = dark() ? 'light' : 'dark'; paint(); };
+paint(); document.body.append(b);
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi carga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<link rel="stylesheet" href="base.css">
+<style>
+    .home { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .home .wide { grid-column: span 2; }
+    @media (max-width: 1100px) { .home { grid-template-columns: minmax(0, 1fr); } .home .wide { grid-column: auto; } }
+    .card .ct { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+    .card .ct .t { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .card .ct .t svg { color: var(--muted-foreground); }
+    .wk { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .lc { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--lv-surface); }
+    .lc .a { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .lc .b { font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+    .strip { position: relative; }
+    .strip .hit { position: absolute; top: 0; }
+    .strip .hit:hover, .strip .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 6%, transparent); }
+    .strip .pk { position: absolute; font-size: 11px; display: flex; gap: 3px; align-items: center; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .strip .xl { position: absolute; font-size: 11px; color: var(--muted-foreground); }
+    .next { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .next li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 13px; }
+    .next li .sw { margin-top: 4px; }
+    .next .when { color: var(--muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .next .sub { display: block; color: var(--muted-foreground); font-size: 12px; }
+    .divider { display: flex; align-items: center; gap: 12px; color: var(--muted-foreground); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+    .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .daylines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+    .daylines li { display: flex; gap: 8px; align-items: center; }
+    .daylines .bx { width: 14px; height: 14px; border: 1px solid var(--input); flex: none; }
+    .daylines .bx.ok { background: var(--primary); border-color: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+    .chart { position: relative; }
+    .chart .ytick { position: absolute; left: 0; width: 34px; text-align: right; font-size: 11px; color: var(--muted-foreground); transform: translateY(-50%); }
+    .chart .hit { position: absolute; top: 0; }
+    .chart .hit:hover, .chart .hit:focus-visible { background: color-mix(in oklab, var(--foreground) 5%, transparent); }
+    .chart .pl { position: absolute; display: flex; justify-content: center; align-items: center; gap: 2px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+    .chart .pl.strong { color: var(--foreground); font-weight: 500; }
+    .chart .xl { position: absolute; text-align: center; font-size: 11px; color: var(--muted-foreground); line-height: 1.2; }
+    .chart .xl b { display: block; color: var(--foreground); font-weight: 500; }
+    .rows { display: grid; gap: 6px; }
+    .arow { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; align-items: center; }
+    .arow .nm { font-size: 13px; min-width: 0; }
+    .arow .nm span { display: block; font-size: 12px; color: var(--muted-foreground); }
+    .arow .trk { position: relative; height: 22px; background: linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / calc(100% / 6) 100%; }
+    .arow .trk i { position: absolute; top: 3px; height: 16px; }
+    .arow .trk i.real { background: var(--layer-real); } .arow .trk i.seguro { background: var(--layer-previsto); } .arow .trk i.posible { background: var(--hatch); }
+    .arow .trk .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--brand); }
+    @media (max-width: 640px) { .arow { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+</style>
+</head>
+<body>
+<main class="page">
+    <div class="divider">1 · Inicio: tarjeta «Mi carga»</div>
+    <div class="page-head"><div><h1>Hola, <span class="kw">Luis</span></h1><p>Martes, 6 de octubre</p></div></div>
+    <div class="home">
+        <section class="card" aria-labelledby="myload-t">
+            <div class="ct"><div class="t" id="myload-t"><span id="ic-g"></span>Mi carga</div><a href="#carga" class="sm">Ver mi carga</a></div>
+            <div id="weeks"></div>
+            <div style="margin-top:14px">
+                <div class="xs muted" style="margin-bottom:6px">Próximas 12 semanas, en % de tu jornada</div>
+                <div class="strip" id="strip"></div>
+                <ul class="legend plain" style="margin-top:8px;font-size:12px"><li><span class="sw real"></span>Real</li><li><span class="sw seguro"></span>Seguro</li><li><span class="sw posible"></span>Posible</li></ul>
+            </div>
+            <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+                <div class="xs muted" style="margin-bottom:8px">Lo que viene</div>
+                <ul class="next" id="next"></ul>
+            </div>
+        </section>
+        <section class="card wide" aria-labelledby="myday-t">
+            <div class="ct"><div class="t" id="myday-t">Mi día</div><span class="xs muted">3 de 5 hechas</span></div>
+            <ul class="daylines"><li><span class="bx ok" id="ck1"></span>Kiwi · revisar flujo de alta con Raúl</li><li><span class="bx ok" id="ck2"></span>Kiwi · pantallas de pólizas (móvil)</li><li><span class="bx ok" id="ck3"></span>Daily de Diseño</li><li><span class="bx"></span>Kiwi · prototipo de reclamaciones</li><li><span class="bx"></span>Preparar el kick-off de Viajes Norte</li></ul>
+            <p class="xs muted" style="margin:16px 0 0">(Tarjeta existente, para dar contexto.)</p>
+        </section>
+    </div>
+
+    <div class="divider" id="carga" style="margin-top:12px">2 · Mi carga (/carga, vista del empleado)</div>
+    <div class="page-head"><div><h1>Mi <span class="kw">carga</span></h1><p>Tus horas asignadas frente a tu jornada en los próximos 6 meses, incluidos los proyectos previstos. Los posibles pueden no salir: van con trama.</p></div></div>
+    <section class="grid-tiles" id="tiles"></section>
+    <section class="card" aria-labelledby="ch-t">
+        <div class="card-head"><div><div class="t" id="ch-t">Por semana</div><div class="d">Pasa el ratón por una semana para ver de qué proyectos sale cada hora.</div></div><button class="btn ghost sm" type="button" id="tb"></button></div>
+        <ul class="legend plain" style="margin-bottom:12px"><li><span class="sw real"></span>Real</li><li><span class="sw seguro"></span>Previsto seguro</li><li><span class="sw posible"></span>Previsto posible</li><li><span class="sw cap"></span>Tu jornada</li></ul>
+        <div class="scroll-x"><div class="chart" id="chart"></div></div>
+    </section>
+    <section class="card" aria-labelledby="as-t">
+        <div class="card-head"><div><div class="t" id="as-t">Mis asignaciones</div><div class="d">En qué proyectos estás y hasta cuándo.</div></div></div>
+        <div class="rows" id="rows"></div>
+    </section>
+</main>
+
+<script src="datos.js"></script>
+<script src="comun.js"></script>
+<script>
+UI.mountShell({ active: 'inicio', crumbs: ['Inicio'] });
+const { icon, h, H, pct, esc, level, loadPct, LEVELS, levelIcon, loadOf } = UI;
+document.getElementById('ic-g').innerHTML = icon('gauge');
+document.getElementById('tb').innerHTML = `${icon('table')}Ver como tabla`;
+['ck1', 'ck2', 'ck3'].forEach((id) => (document.getElementById(id).innerHTML = icon('check', 's12')));
+const ME = 'luis';
+const wk = PV.periods('week', 26);
+
+// Esta semana y la que viene (LoadCell de siempre)
+document.getElementById('weeks').innerHTML = wk.slice(0, 2).map((p, i) => {
+    const c = PV.cell(ME, p); const load = loadOf(c); const lv = level(load, c.cap);
+    return `<div class="wk"><div class="sm">${i ? 'La semana que viene' : 'Esta semana'}<div class="xs muted tabular">${PV.dayMonth(i ? p.from : PV.TODAY)} – ${PV.dayMonth(PV.addDays(p.from, 4))}</div></div><div class="lc lv-${lv}"><span class="a">${levelIcon(lv, 's14')}${pct(loadPct(load, c.cap))}<span class="sr-only">${LEVELS[lv].label}</span></span><span class="b">${H(load)} / ${H(c.cap)}</span></div></div>`;
+}).join('');
+
+// Tira de 12 semanas en % (la línea del 100 % es plana)
+(function strip() {
+    const ps = wk.slice(0, 12);
+    const el = document.getElementById('strip');
+    const W = el.clientWidth || 300, Hh = 64;
+    const cells = ps.map((p) => PV.cell(ME, p));
+    const norm = cells.map((c) => (c.cap ? { real: (c.real / c.cap) * 100, seguro: (c.seguro / c.cap) * 100, posible: (c.posible / c.cap) * 100, cap: 100 } : { real: 0, seguro: 0, posible: 0, cap: 0 }));
+    const ch = UI.columns({ data: norm, width: W, height: Hh, yMax: 150, padTop: 14, barMax: 14 });
+    const slot = W / ps.length;
+    let pi = 0; cells.forEach((c, i) => { if (c.cap && loadOf(c) / c.cap > loadOf(cells[pi]) / cells[pi].cap) pi = i; });
+    const lv = level(loadOf(cells[pi]), cells[pi].cap);
+    let html = ch.svg;
+    html += `<span class="pk" style="left:${pi * slot + slot / 2}px;top:-4px">${levelIcon(lv, 's12')}${pct(loadPct(loadOf(cells[pi]), cells[pi].cap))}</span>`;
+    cells.forEach((c, i) => { html += `<span class="hit" tabindex="0" data-tip="${UI.tip(UI.tipHTML({ title: `${ps[i].long}`, load: loadOf(c), cap: c.cap, items: c.items }))}" style="left:${i * slot}px;width:${slot}px;height:${Hh}px"></span>`; });
+    html += `<span class="xl" style="left:0;top:${Hh + 2}px">${ps[0].sub}</span><span class="xl" style="right:0;top:${Hh + 2}px">${ps.at(-1).sub}</span>`;
+    el.style.height = `${Hh + 16}px`;
+    el.innerHTML = html;
+})();
+
+// Lo que viene: asignaciones que empiezan en el futuro (también los posibles, P8)
+const mine = PV.PROJECTS.flatMap((p) => p.allocs.filter((a) => a[0] === ME).map((a) => ({ p, a })));
+const how = (a) => (a[1] === 'sem' ? `${a[2]} h/sem` : a[1] === 'pct' ? `${a[2]}\u00a0% de tu jornada` : `${a[2]} h`);
+document.getElementById('next').innerHTML = mine.filter(({ a }) => a[3] > PV.TODAY).sort((x, y) => x.a[3].localeCompare(y.a[3])).map(({ p, a }) => `<li><span class="sw ${p.kind}"></span><span>${esc(p.name)}<span class="sub">${p.kind === 'real' ? 'Real' : p.kind === 'seguro' ? 'Previsto seguro' : 'Previsto posible: puede no salir'} · ${how(a)}</span></span><span class="when">desde ${PV.dayMonth(a[3])}</span></li>`).join('');
+
+// /carga: cifras
+(function tiles() {
+    const ps = PV.periods('month', 3);
+    const cs = wk.map((p) => PV.cell(ME, p));
+    let pi = 0; cs.forEach((c, i) => { if (c.cap && loadOf(c) / c.cap > loadOf(cs[pi]) / cs[pi].cap) pi = i; });
+    const nov = PV.cell(ME, ps[1]);
+    let free = 0; wk.slice(0, 13).forEach((p) => { const c = PV.cell(ME, p); free += Math.max(c.cap - loadOf(c), 0); });
+    const t0 = cs[0], lv0 = level(loadOf(t0), t0.cap), lvN = level(loadOf(nov), nov.cap), lvP = level(loadOf(cs[pi]), cs[pi].cap);
+    document.getElementById('tiles').innerHTML = `
+        <div class="tile"><div class="k">Esta semana</div><div class="v">${pct(loadPct(loadOf(t0), t0.cap))}</div><div class="s">${levelIcon(lv0, 's12')}<span>${LEVELS[lv0].label} · ${H(loadOf(t0))} de ${H(t0.cap)}</span></div></div>
+        <div class="tile"><div class="k">Noviembre</div><div class="v">${pct(loadPct(loadOf(nov), nov.cap))}</div><div class="s">${levelIcon(lvN, 's12')}<span>${LEVELS[lvN].label} · ${H(nov.posible)} son de un posible</span></div></div>
+        <div class="tile"><div class="k">Semana más cargada</div><div class="v">${pct(loadPct(loadOf(cs[pi]), cs[pi].cap))}</div><div class="s">${levelIcon(lvP, 's12')}<span>${wk[pi].long}</span></div></div>
+        <div class="tile"><div class="k">Horas libres en 3 meses</div><div class="v">${H(free)}</div><div class="s"><span>Sin contar los festivos ni tus ausencias</span></div></div>`;
+})();
+
+// /carga: columnas por semana frente a tu jornada
+(function chart() {
+    const mobile = matchMedia('(max-width: 640px)').matches;
+    const slot = mobile ? 30 : Math.max(36, Math.floor((document.getElementById('chart').parentElement.clientWidth - 52) / 26)), Hh = 200, left = 40;
+    const cells = wk.map((p) => PV.cell(ME, p));
+    const W = wk.length * slot;
+    const ch = UI.columns({ data: cells, width: W, height: Hh, yMax: 60, padTop: 4, barMax: 18, grid: [0, 10, 20, 30, 40, 50, 60] });
+    let html = `<div style="position:absolute;left:${left}px;top:0">${ch.svg}</div>`;
+    for (let v = 0; v <= 60; v += 10) html += `<span class="ytick" style="top:${ch.y(v)}px">${v} h</span>`;
+    cells.forEach((c, i) => {
+        const load = loadOf(c), lv = level(load, c.cap), strong = lv === 'high' || lv === 'over';
+        html += `<span class="hit" tabindex="0" data-tip="${UI.tip(UI.tipHTML({ title: `Semana ${wk[i].long}`, load, cap: c.cap, items: c.items, foot: c.holidays ? [`<span>${c.holidays === 1 ? '1 festivo' : `${c.holidays} festivos`}</span>`] : [] }))}" style="left:${left + i * slot}px;width:${slot}px;height:${Hh}px" aria-label="${esc(wk[i].long)}: ${pct(loadPct(load, c.cap))}"></span>`;
+        if (strong || i % 2 === 0) html += `<span class="pl ${strong ? 'strong' : ''}" style="left:${left + i * slot - 6}px;width:${slot + 12}px;top:${Hh + 4}px">${strong ? levelIcon(lv, 's12') : ''}${lv === 'none' ? '—' : loadPct(load, c.cap)}</span>`;
+        if (wk[i].monthStart) html += `<span class="xl" style="left:${left + i * slot}px;top:${Hh + 22}px"><b>${wk[i].monthStart}</b></span>`;
+    });
+    const el = document.getElementById('chart');
+    el.style.width = `${left + W + 8}px`;
+    el.style.height = `${Hh + 44}px`;
+    el.innerHTML = html + `<span class="xs muted" style="position:absolute;left:0;top:${Hh + 4}px">%</span>`;
+})();
+
+// Mis asignaciones (cronograma de una persona)
+(function rows() {
+    const s0 = PV.toMs('2026-10-01'), s1 = PV.toMs('2027-04-01');
+    const xp = (iso) => Math.max(0, Math.min(100, ((PV.toMs(iso) - s0) / (s1 - s0)) * 100));
+    const months = ['oct', 'nov', 'dic', 'ene', 'feb', 'mar'];
+    document.getElementById('rows').innerHTML = `<div class="arow"><span></span><div style="display:grid;grid-template-columns:repeat(6,1fr);font-size:11px;color:var(--muted-foreground)">${months.map((m) => `<span>${m}</span>`).join('')}</div></div>` + mine.map(({ p, a }) => `<div class="arow"><div class="nm">${esc(p.name)}<span>${UI.KIND[p.kind].label} · ${how(a)} · ${PV.dayMonth(a[3])} – ${PV.dayMonth(a[4])}</span></div><div class="trk"><i class="${p.kind}" style="left:${xp(a[3])}%;width:${xp(PV.addDays(a[4], 1)) - xp(a[3])}%"></i><span class="now" style="left:${xp(PV.TODAY)}%"></span></div></div>`).join('');
+})();
+</script>
+</body>
+</html>

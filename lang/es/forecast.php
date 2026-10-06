@@ -52,7 +52,7 @@ return [
 
     'errors' => [
         'person_or_gap' => 'Elige una persona o un departamento (hueco), uno de los dos.',
-        'person_not_assignable' => 'Solo se pueden asignar horas a personas de la plantilla activas.',
+        'person_not_assignable' => 'Solo se pueden asignar horas a personas activas de la plantilla o a colaboradores externos.',
         'department_missing' => 'Ese departamento no existe.',
         'not_a_gap' => 'Solo se puede pasar a una persona una asignación de un departamento (hueco).',
         'mode' => 'Elige cómo se reparten las horas.',
@@ -67,12 +67,19 @@ return [
         'name' => 'Escribe el nombre del proyecto previsto.',
         'confirmed_is_firm' => 'Un previsto confirmado es siempre seguro.',
         'status_change' => 'El previsto ya no está en un estado que lo permita.',
+        'no_prospect' => 'Este previsto no tiene un cliente nuevo que crear: elige el cliente.',
+        'client_exists' => 'Ya hay un cliente que se llama así: elígelo en la lista.',
+        'client_forbidden' => 'No puedes crear clientes: pide que lo creen o elige uno que exista.',
         'linked_cannot_delete' => 'Un previsto vinculado no se borra: es la línea base de su proyecto. Desvincúlalo antes.',
         'cannot_link' => 'Solo se vincula un previsto abierto o confirmado.',
         'project_archived' => 'No se puede vincular con un proyecto archivado.',
         'project_taken' => 'Ese proyecto ya está vinculado con otro previsto.',
         'not_linked' => 'Este previsto no está vinculado.',
         'project_forbidden' => 'No gestionas ese proyecto.',
+    ],
+
+    'history' => [
+        'gap' => 'hueco de :department',
     ],
 
     'flash' => [

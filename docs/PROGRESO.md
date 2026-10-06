@@ -154,6 +154,15 @@ Nivel 2 de `docs/PLAN-CARGAS.md` (entregas P1, P2 y el dominio de P4; D-280 a D-
 - **Además:** guardar los ajustes ya no enciende un módulo que no llega en el formulario; auditoría; datos de ejemplo (asignaciones reales, un fee mensual y cuatro previstos: posible, seguro, vinculado y perdido).
 - **Tests:** Pest (`tests/Feature/Forecast`: reparto con casos compartidos, capas, permisos por rol, páginas y rendimiento de 30 personas × 12 meses) y Vitest (`tests/js/forecast-lib.test.ts`). **Pendiente:** pantallas, integración con `/carga`, Inicio y Calendario, avisos, informe de precisión y E2E (D-289).
 
+### Previsión: pantallas (rama `prevision-pantallas`, sin desplegar)
+Las pantallas definitivas con el diseño aprobado (`docs/DISENO-PREVISION.md`, D-290 a D-299) y las decisiones del propietario del 06/10 (D-300 a D-309). El módulo `forecast` sigue **apagado** en el servidor.
+- **`/prevision`:** la matriz de ocupación (vista A): cifras del horizonte, filtros (horizonte, semanas o meses, departamento, persona y capas), fila de departamento con columnas frente a la capacidad, personas con semáforo y barra de capas, huecos con borde discontinuo, colaboradores externos aparte, tooltip, panel de la celda, teclado y «Ver como tabla»; debajo, huecos sin persona («Asignar a…» con la ocupación de cada candidato) y previstos abiertos.
+- **Previstos:** lista con filtros, alta y edición, y ficha con el impacto «sin / con» (frase del peor caso y rejilla por semana), asignaciones (cuatro modos) con minicronograma, seguridad, historial y acciones (pasar a seguro, crear el proyecto real creando el cliente si hace falta, vincular, perdido, reabrir, desvincular, borrar).
+- **Proyecto real:** pestaña «Planificación» (cifras, plan frente a imputado por semana, asignaciones con barra de bala y desviación) y «Estimado frente a real» (acumulado, por departamento, por mes y por persona).
+- **Mi carga:** por asignaciones en Inicio y en `/carga` del empleado (con el módulo). Entrada «Previsión» en la barra lateral, búsqueda global y 403 explicativo para los empleados. Columnas sin esquinas en todas las gráficas.
+- **Datos de ejemplo:** todo el equipo con plan de tres meses, la colaboradora con una asignación y dos previstos más.
+- **Tests:** Pest (`tests/Feature/Forecast/ForecastScreensTest.php` y los ajustes de los existentes), Vitest (`tests/js/forecast-screens.test.tsx`) y E2E (`tests/e2e/forecast.spec.ts`: el flujo completo, AA en claro y oscuro y móvil a 375 px). **Pendiente:** el Calendario con las asignaciones, la caché por versión (D-086), avisos de §9, informe «Precisión de previsiones», exportación y previstos en la ficha del cliente (D-289).
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

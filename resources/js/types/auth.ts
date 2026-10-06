@@ -52,6 +52,9 @@ export type Abilities = {
     viewAiUsage?: boolean;
     /** Plan del día (D-251): la plantilla interna con el módulo day_plan visible. */
     useDayPlan?: boolean;
+    /** Previsión (D-284): la global (admins, responsables y manage-forecast) y la propia carga. */
+    viewForecast?: boolean;
+    useForecast?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */

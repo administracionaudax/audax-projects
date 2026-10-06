@@ -2,15 +2,20 @@
 
 namespace App\Domain\Forecast;
 
+use App\Domain\Time\Capacity;
 use App\Domain\Time\CapacityPlan;
 use App\Enums\LoadLayer;
 use App\Enums\ProjectStatus;
+use App\Models\Absence;
 use App\Models\Allocation;
 use App\Models\Department;
 use App\Models\ForecastProject;
+use App\Models\Holiday;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Support\LocalTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -32,17 +37,29 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
  * sus personas de plantilla activas; sus huecos (asignaciones sin persona) suman a su carga y salen
  * aparte en `gaps`.
  *
- * Rendimiento (R7): una consulta de personas, una de departamentos, una de asignaciones con sus
- * proyectos y previstos, una de horas imputadas y las de Capacity (horarios, festivos y ausencias),
- * sea cual sea la plantilla o el periodo.
+ * **Colaboradores externos con asignaciones** (D-300): salen como personas aparte (`collaborator`),
+ * con la capacidad de su jornada (WorkSchedule) o sin capacidad si no la tienen (`has_schedule`),
+ * y no suman a su departamento ni al total del equipo. Solo los que tienen carga en el periodo.
+ *
+ * Para la vista (D-301): de cada persona, su avatar, su jornada semanal de hoy y, por columna, los
+ * días laborables de ausencia aprobada (`absences`, con el tipo, que el controlador vacía para quien
+ * no pueda verlo, D-088); de cada columna, sus festivos (`holidays`).
+ *
+ * Rendimiento (R7): una consulta de personas, una de colaboradores, una de departamentos, una de
+ * asignaciones con sus proyectos y previstos, una de horas imputadas, las de Capacity (horarios,
+ * festivos y ausencias) y las de la vista (jornadas, festivos y ausencias), sea cual sea la
+ * plantilla o el periodo.
  *
  * @phpstan-type Cell array{capacity: int, real: int, firm: int, tentative: int}
  * @phpstan-type Layers array{real: int, firm: int, tentative: int}
- * @phpstan-type Source array{allocation_id: int, layer: string, user_id: int|null, department_id: int|null, mode: string, project: array{id: int, code: string, name: string, color: string}|null, forecast: array{id: int, name: string, color: string}|null, minutes: list<int>}
+ * @phpstan-type Source array{allocation_id: int, layer: string, user_id: int|null, department_id: int|null, mode: string, project: array{id: int, code: string, name: string, color: string}|null, forecast: array{id: int, name: string, color: string}|null, client_name: string|null, minutes: list<int>}
+ * @phpstan-type Absences array{days: int, partial: bool, type: string|null}
+ * @phpstan-type Person array{id: int, name: string, department_id: int|null, avatar: string|null, collaborator: bool, has_schedule: bool, weekly_minutes: int, cells: list<Cell>, absences: list<Absences|null>}
  * @phpstan-type Board array{
  *     period: array{from: string, to: string, granularity: string, today: string, counts_from: string},
  *     buckets: list<array{key: string, from: string, to: string}>,
- *     people: list<array{id: int, name: string, department_id: int|null, cells: list<Cell>}>,
+ *     holidays: list<list<array{date: string, name: string}>>,
+ *     people: list<Person>,
  *     departments: list<array{id: int|null, name: string|null, color: string|null, people: int, cells: list<Cell>, gaps: list<Layers>}>,
  *     totals: list<Cell>,
  *     sources: list<Source>,
@@ -54,6 +71,9 @@ final class LoadCombiner
 {
     /** @var Cell */
     private const array EMPTY_CELL = ['capacity' => 0, 'real' => 0, 'firm' => 0, 'tentative' => 0];
+
+    /** @var array<string, array<string, string>> festivos leídos en esta petición: «desde-hasta» → fecha → nombre */
+    private array $holidayCache = [];
 
     public function __construct(private readonly AllocationPlanner $planner) {}
 
@@ -76,11 +96,26 @@ final class LoadCombiner
         $departmentIds = $options['department_ids'] ?? null;
         $userIds = $options['user_ids'] ?? null;
 
-        $people = ForecastPeople::staff()
+        $staff = ForecastPeople::staff()
             ->when($departmentIds !== null, fn (Builder $query) => $query->whereIn('department_id', $departmentIds ?? []))
             ->when($userIds !== null, fn (Builder $query) => $query->whereKey($userIds ?? []))
             ->orderBy('name')
-            ->get(['id', 'name', 'department_id']);
+            ->get(['id', 'name', 'department_id', 'avatar_path']);
+
+        // Colaboradores externos con alguna asignación que llegue al periodo (D-300); no en «mi carga».
+        $collaborators = $userIds !== null ? new EloquentCollection : ForecastPeople::collaborators()
+            ->when($departmentIds !== null, fn (Builder $query) => $query->whereIn('department_id', $departmentIds ?? []))
+            ->whereIn('id', Allocation::query()->select('user_id')->whereNotNull('user_id')
+                ->where('start_date', '<=', $period->to->toDateString())
+                ->where(fn (Builder $query) => $query->whereNull('end_date')->orWhere('end_date', '>=', CapacityPlan::date($start))))
+            ->orderBy('name')
+            ->get(['id', 'name', 'department_id', 'avatar_path']);
+
+        /** @var EloquentCollection<int, User> $people */
+        $people = $staff->concat($collaborators->all());
+        $collaboratorIds = array_flip(array_map(intval(...), $collaborators->modelKeys()));
+        $scheduled = $collaborators->isEmpty() ? [] : array_flip(array_map(intval(...), WorkSchedule::query()
+            ->whereIn('user_id', $collaborators->modelKeys())->distinct()->pluck('user_id')->all()));
 
         $departments = $userIds !== null ? new EloquentCollection : Department::query()
             ->when($departmentIds !== null, fn (Builder $query) => $query->whereKey($departmentIds ?? []))
@@ -109,7 +144,9 @@ final class LoadCombiner
         $personCells = [];
         foreach ($peopleIds as $personId) {
             $capacity = array_fill(0, $count, 0);
-            foreach ($map as $day => $index) {
+            // Un colaborador sin jornada no tiene capacidad: la celda dice «sin jornada» (D-300).
+            $hasCapacity = ! isset($collaboratorIds[$personId]) || isset($scheduled[$personId]);
+            foreach ($hasCapacity ? $map : [] as $day => $index) {
                 $capacity[$index] += $plan->capacity->forUser($personId, $day);
             }
             $personCells[$personId] = array_map(fn (int $minutes): array => [...self::EMPTY_CELL, 'capacity' => $minutes], $capacity);
@@ -157,7 +194,8 @@ final class LoadCombiner
         $totals = $empty;
 
         if ($userIds === null) {
-            $byDepartment = $people->groupBy(fn (User $person): int => (int) $person->department_id);
+            // Solo la plantilla: los colaboradores no suman a su departamento (D-300).
+            $byDepartment = $staff->groupBy(fn (User $person): int => (int) $person->department_id);
             $rows = array_values($departments->map(fn (Department $department): array => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color])->all());
 
             // Sin departamento: solo si hay alguien sin él (no suma huecos: un hueco siempre es de uno).
@@ -203,18 +241,175 @@ final class LoadCombiner
                 'counts_from' => CapacityPlan::date($start),
             ],
             'buckets' => $buckets,
-            'people' => array_values($people->map(fn (User $person): array => [
-                'id' => $person->id,
-                'name' => $person->name,
-                'department_id' => $person->department_id,
-                'cells' => array_values($personCells[$person->id]),
-            ])->all()),
+            'holidays' => $this->holidays($buckets, $start),
+            'people' => $this->people($people, $personCells, $collaboratorIds, $scheduled, $buckets, $start, $today),
             'departments' => $departmentRows,
             'totals' => $totals,
             'sources' => $sources,
             'overdue' => $plan->overdue,
             'unscheduled' => $plan->unscheduled,
         ];
+    }
+
+    /**
+     * Las personas del tablero con lo que necesita la vista (D-301). Los colaboradores sin carga en
+     * el periodo no salen.
+     *
+     * @param  EloquentCollection<int, User>  $people
+     * @param  array<int, array<int, Cell>>  $cells
+     * @param  array<int, int>  $collaborators  id → posición
+     * @param  array<int, int>  $scheduled  colaboradores con jornada: id → posición
+     * @param  list<array{key: string, from: string, to: string}>  $buckets
+     * @return list<Person>
+     */
+    private function people(EloquentCollection $people, array $cells, array $collaborators, array $scheduled, array $buckets, int $start, int $today): array
+    {
+        $people = $people->filter(fn (User $person): bool => ! isset($collaborators[$person->id])
+            || array_sum(array_map(fn (array $cell): int => $cell['real'] + $cell['firm'] + $cell['tentative'], $cells[$person->id])) > 0);
+
+        if ($people->isEmpty()) {
+            return [];
+        }
+
+        $ids = array_values(array_map(intval(...), $people->modelKeys()));
+        $weeks = app(Capacity::class)->weeksOn($ids, CarbonImmutable::parse(CapacityPlan::date($today)));
+        $absences = $this->absences($ids, $weeks, $buckets, $start);
+
+        return array_values($people->map(function (User $person) use ($cells, $collaborators, $scheduled, $weeks, $absences): array {
+            $hasSchedule = ! isset($collaborators[$person->id]) || isset($scheduled[$person->id]);
+
+            return [
+                'id' => $person->id,
+                'name' => $person->name,
+                'department_id' => $person->department_id,
+                'avatar' => $person->avatar_url,
+                'collaborator' => isset($collaborators[$person->id]),
+                'has_schedule' => $hasSchedule,
+                'weekly_minutes' => $hasSchedule ? array_sum($weeks[$person->id] ?? []) : 0,
+                'cells' => array_values($cells[$person->id]),
+                'absences' => $absences[$person->id] ?? array_fill(0, count($cells[$person->id]), null),
+            ];
+        })->all());
+    }
+
+    /**
+     * Días laborables de ausencia aprobada por persona y columna, de hoy en adelante (una consulta).
+     * Laborable: con jornada ese día de la semana y sin festivo.
+     *
+     * @param  list<int>  $ids
+     * @param  array<int, list<int>>  $weeks  persona → jornada de hoy (lunes primero)
+     * @param  list<array{key: string, from: string, to: string}>  $buckets
+     * @return array<int, list<Absences|null>>
+     */
+    private function absences(array $ids, array $weeks, array $buckets, int $start): array
+    {
+        if ($buckets === []) {
+            return [];
+        }
+
+        $last = CapacityPlan::day($buckets[count($buckets) - 1]['to']);
+
+        if ($last < $start) {
+            return [];
+        }
+
+        $holidays = $this->holidayDays($start, $last);
+        $ranges = [];
+        foreach ($buckets as $index => $bucket) {
+            $ranges[] = [CapacityPlan::day($bucket['from']), CapacityPlan::day($bucket['to']), $index];
+        }
+
+        $result = [];
+        foreach (Absence::query()->approved()->overlapping(CapacityPlan::date($start), CapacityPlan::date($last))->whereIn('user_id', $ids)
+            ->orderBy('start_date')->get(['id', 'user_id', 'type', 'start_date', 'end_date', 'partial_minutes', 'status']) as $absence) {
+            $week = $weeks[$absence->user_id] ?? [];
+            $from = max($start, CapacityPlan::day($absence->start_date->toDateString()));
+            $to = min($last, CapacityPlan::day($absence->end_date->toDateString()));
+            $result[$absence->user_id] ??= array_fill(0, count($buckets), null);
+
+            for ($day = $from; $day <= $to; $day++) {
+                if (($week[CapacityPlan::weekday($day) - 1] ?? 0) <= 0 || isset($holidays[$day])) {
+                    continue;
+                }
+
+                foreach ($ranges as [$a, $b, $index]) {
+                    if ($day >= $a && $day <= $b) {
+                        $current = $result[$absence->user_id][$index] ?? ['days' => 0, 'partial' => false, 'type' => $absence->type->value];
+                        $result[$absence->user_id][$index] = [
+                            'days' => $current['days'] + 1,
+                            'partial' => $current['partial'] || $absence->partial_minutes !== null,
+                            'type' => $current['type'],
+                        ];
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Festivos de cada columna, de hoy en adelante.
+     *
+     * @param  list<array{key: string, from: string, to: string}>  $buckets
+     * @return list<list<array{date: string, name: string}>>
+     */
+    private function holidays(array $buckets, int $start): array
+    {
+        $result = array_fill(0, count($buckets), []);
+
+        if ($buckets === []) {
+            return $result;
+        }
+
+        foreach ($this->holidayRows($start, CapacityPlan::day($buckets[count($buckets) - 1]['to'])) as $date => $name) {
+            foreach ($buckets as $index => $bucket) {
+                if ($date >= $bucket['from'] && $date <= $bucket['to']) {
+                    $result[$index][] = ['date' => $date, 'name' => $name];
+
+                    break;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Festivos entre dos días (una consulta por petición).
+     *
+     * @return array<string, string> fecha → nombre
+     */
+    private function holidayRows(int $from, int $to): array
+    {
+        $key = "{$from}-{$to}";
+
+        if (! isset($this->holidayCache[$key])) {
+            $this->holidayCache[$key] = [];
+
+            if ($to >= $from) {
+                foreach (Holiday::query()->whereBetween('date', [CapacityPlan::date($from), CapacityPlan::date($to)])->orderBy('date')->get(['date', 'name']) as $holiday) {
+                    $this->holidayCache[$key][$holiday->date->toDateString()] = $holiday->name;
+                }
+            }
+        }
+
+        return $this->holidayCache[$key];
+    }
+
+    /**
+     * @return array<int, true>
+     */
+    private function holidayDays(int $from, int $to): array
+    {
+        $days = [];
+        foreach (array_keys($this->holidayRows($from, $to)) as $date) {
+            $days[CapacityPlan::day($date)] = true;
+        }
+
+        return $days;
     }
 
     /**
@@ -263,8 +458,10 @@ final class LoadCombiner
                 ->whereIn('user_id', $userIds)
                 ->when(! isset($options['user_ids']), fn (Builder $gaps) => $gaps->orWhereIn('department_id', $departmentIds)))
             ->with([
-                'project:id,name,code,color,status',
-                'forecastProject:id,name,color,confidence,status',
+                'project:id,name,code,color,status,client_id',
+                'project.client:id,name',
+                'forecastProject:id,name,color,confidence,status,client_id,prospect_name',
+                'forecastProject.client:id,name',
             ])
             ->orderBy('id')
             ->get()
@@ -324,6 +521,8 @@ final class LoadCombiner
                 'name' => $allocation->forecastProject->name,
                 'color' => $allocation->forecastProject->color,
             ],
+            // El cliente, para el tooltip («24 h · Kiwi · App fase 2»).
+            'client_name' => $allocation->project !== null ? $allocation->project->client?->name : $allocation->forecastProject?->clientName(),
             'minutes' => $minutes,
         ];
     }

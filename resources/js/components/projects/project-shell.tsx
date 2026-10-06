@@ -20,6 +20,7 @@ const TABS: Tab[] = [
     { id: 'gantt', label: 'project_tabs.gantt' },
     { id: 'bolsas', label: 'project_tabs.hour_banks' },
     { id: 'horas', label: 'project_tabs.time' },
+    { id: 'planificacion', label: 'project_tabs.planning' },
     { id: 'chat', label: 'project_tabs.chat' },
     { id: 'archivos', label: 'project_tabs.files' },
     { id: 'ajustes', label: 'project_tabs.settings' },
@@ -28,7 +29,8 @@ const TABS: Tab[] = [
 /**
  * Cabecera y pestañas de la ficha de proyecto (SPEC §6). Cada pestaña es su propia página
  * Inertia (/proyectos/{id}/{pestaña}) y envuelve su contenido con este componente.
- * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes, si puede gestionarlo. Un
+ * La pestaña Bolsas solo aparece en proyectos de bolsas; Ajustes y Planificación (con la previsión),
+ * si puede gestionarlo. Un
  * colaborador externo (D-134) no tiene Bolsas ni Horas (las de todos): el servidor las cierra.
  */
 export function ProjectShell({
@@ -45,17 +47,21 @@ export function ProjectShell({
     actions?: ReactNode;
     children: ReactNode;
 }) {
-    const collaborator = usePage().props.auth?.user?.is_collaborator ?? false;
+    const auth = usePage().props.auth;
+    const collaborator = auth?.user?.is_collaborator ?? false;
+    // Planificación (D-296): quien gestiona el proyecto, con el módulo `forecast` visible.
+    const plans = auth?.can?.useForecast === true && canManage;
     const tabs = TABS.filter(
         (item) =>
             (item.id !== 'bolsas' ||
                 (project.billing_type === 'hour_bank' && !collaborator)) &&
             (item.id !== 'horas' || !collaborator) &&
+            (item.id !== 'planificacion' || plans) &&
             (item.id !== 'ajustes' || canManage),
     );
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-6">
+        <div className="flex min-w-0 flex-col gap-6 p-4 md:p-6">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
                     <span
@@ -109,7 +115,7 @@ export function ProjectShell({
                 </ul>
             </nav>
 
-            <div>{children}</div>
+            <div className="min-w-0">{children}</div>
         </div>
     );
 }

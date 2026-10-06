@@ -240,6 +240,7 @@
     "search.empty": "No hay resultados para «:query».",
     "search.error": "No se ha podido completar la búsqueda. Inténtalo de nuevo.",
     "search.group.client": "Clientes",
+    "search.group.forecast": "Proyectos previstos",
     "search.group.message": "Mensajes",
     "search.group.page": "Páginas",
     "search.group.person": "Personas",

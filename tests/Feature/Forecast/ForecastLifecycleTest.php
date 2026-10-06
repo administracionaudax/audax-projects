@@ -92,7 +92,7 @@ describe('previstos', function () {
 describe('asignaciones', function () {
     it('valida persona o hueco, la persona de plantilla, la cantidad según el modo y las fechas', function (array $data, string $field) {
         $base = ['user_id' => $this->ana->id, 'mode' => 'total', 'minutes' => 600, 'start_date' => '2026-11-02', 'end_date' => '2026-11-06'];
-        $data = array_map(fn ($value) => $value === 'collaborator' ? User::factory()->collaborator()->create()->id : ($value === 'department' ? $this->design->id : $value), $data);
+        $data = array_map(fn ($value) => $value === 'client' ? User::factory()->client()->create()->id : ($value === 'inactive' ? User::factory()->collaborator()->inactive()->create()->id : ($value === 'department' ? $this->design->id : $value)), $data);
 
         try {
             $this->allocations->create($this->forecast, [...$base, ...$data], $this->manager);
@@ -103,7 +103,8 @@ describe('asignaciones', function () {
     })->with([
         'persona y hueco a la vez' => [['department_id' => 'department'], 'user_id'],
         'ni persona ni hueco' => [['user_id' => null], 'user_id'],
-        'un colaborador externo' => [['user_id' => 'collaborator'], 'user_id'],
+        'un cliente' => [['user_id' => 'client'], 'user_id'],
+        'un colaborador desactivado' => [['user_id' => 'inactive'], 'user_id'],
         'sin modo' => [['mode' => 'weekly'], 'mode'],
         'total sin horas' => [['minutes' => null], 'minutes'],
         'porcentaje fuera de rango' => [['mode' => 'percent', 'percent' => 250], 'percent'],
@@ -112,6 +113,13 @@ describe('asignaciones', function () {
         'más de tres años' => [['end_date' => '2030-01-01'], 'end_date'],
         'fecha inválida' => [['start_date' => '2026-02-30'], 'start_date'],
     ]);
+
+    it('a un colaborador externo activo se le pueden asignar horas (D-300)', function () {
+        $amparo = User::factory()->collaborator()->create();
+        $allocation = $this->allocations->create($this->forecast, ['user_id' => $amparo->id, 'mode' => 'total', 'minutes' => 600, 'start_date' => '2026-11-02', 'end_date' => '2026-11-06'], $this->manager);
+
+        expect($allocation->user_id)->toBe($amparo->id);
+    });
 
     it('un modo mensual puede no tener fin, y la cantidad que no toca se descarta', function () {
         $allocation = $this->allocations->create($this->forecast, ['department_id' => $this->design->id, 'mode' => 'monthly', 'minutes' => 1200, 'percent' => 50, 'start_date' => '2026-11-01', 'end_date' => null], $this->manager);
@@ -149,7 +157,7 @@ describe('asignaciones', function () {
 });
 
 describe('impacto «sin / con»', function () {
-    it('por mes, la carga de cada departamento y persona sin el previsto y con él', function () {
+    it('por semana (hasta 16), la carga de cada departamento y persona sin el previsto y con él', function () {
         $project = Project::factory()->create();
         Allocation::factory()->forProject($project)->forUser($this->ana)->perDay(240)->between('2026-11-02', '2026-11-30')->create();
         Allocation::factory()->forForecast($this->forecast)->forUser($this->ana)->perDay(240)->between('2026-11-02', '2026-11-06')->create();
@@ -161,11 +169,23 @@ describe('impacto «sin / con»', function () {
         $design = collect($impact['departments'])->firstWhere('id', $this->design->id);
 
         expect($impact['layer'])->toBe('tentative')
-            ->and(array_column($impact['buckets'], 'key'))->toBe(['2026-11', '2026-12'])
-            ->and($ana['cells'][0])->toBe(['capacity' => 21 * 480, 'without' => 21 * 240, 'with' => 21 * 240 + 5 * 240])
-            ->and($dev['cells'][1])->toBe(['capacity' => 23 * 480, 'without' => 0, 'with' => 1200])
+            ->and($impact['granularity'])->toBe('week')
+            ->and(array_column($impact['buckets'], 'key'))->toBe(['2026-W45', '2026-W46', '2026-W47', '2026-W48', '2026-W49', '2026-W50', '2026-W51'])
+            ->and($ana['cells'][0])->toBe(['capacity' => 5 * 480, 'without' => 5 * 240, 'with' => 10 * 240])
+            ->and($ana['cells'][1])->toBe(['capacity' => 5 * 480, 'without' => 5 * 240, 'with' => 5 * 240])
+            ->and(array_sum(array_map(fn (array $cell): int => $cell['with'] - $cell['without'], $dev['cells'])))->toBe(1200)
             ->and($design['cells'][0]['with'] - $design['cells'][0]['without'])->toBe(1200)
             ->and(collect($impact['people'])->pluck('id')->all())->toBe([$this->ana->id]);
+    });
+
+    it('por mes si dura más de 16 semanas', function () {
+        Allocation::factory()->forForecast($this->forecast)->forUser($this->ana)->perDay(240)->between('2026-11-02', '2027-04-30')->create();
+
+        $impact = app(ForecastImpact::class)->for($this->forecast);
+
+        expect($impact['granularity'])->toBe('month')
+            ->and(array_column($impact['buckets'], 'key'))->toBe(['2026-11', '2026-12', '2027-01', '2027-02', '2027-03', '2027-04'])
+            ->and(collect($impact['people'])->firstWhere('id', $this->ana->id)['cells'][0])->toBe(['capacity' => 21 * 480, 'without' => 0, 'with' => 21 * 240]);
     });
 
     it('no hay impacto de un previsto que no cuenta', function () {
@@ -255,24 +275,31 @@ describe('vincular y estimado frente a real', function () {
 
         $comparison = app(EstimateVsActual::class)->for($this->forecast->fresh());
 
-        expect($comparison['totals'])->toBe(['estimated' => 3360, 'actual' => 3600, 'deviation_percent' => 7.1])
+        // Previsión al cerrar (D-297): lo real más lo que queda asignado en el real (Ana: 2400 − 1800
+        // imputados en su rango = 600; el hueco de Desarrollo, 960).
+        expect($comparison['totals'])->toBe(['estimated' => 3360, 'actual' => 3600, 'projected' => 5160, 'deviation_percent' => 7.1, 'projected_deviation_percent' => 53.6])
             ->and($comparison['dates'])->toMatchArray(['estimated_start' => '2026-11-02', 'estimated_end' => '2026-12-02', 'actual_start' => '2026-10-20', 'actual_end' => null])
-            ->and(collect($comparison['by_department'])->firstWhere('department_id', $this->dev->id))->toMatchArray(['estimated' => 960, 'actual' => 1200, 'deviation_percent' => 25.0])
-            ->and(collect($comparison['by_user'])->firstWhere('user_id', $this->ana->id))->toMatchArray(['estimated' => 2400, 'actual' => 2400, 'deviation_percent' => 0.0])
+            ->and(collect($comparison['by_department'])->firstWhere('department_id', $this->dev->id))->toMatchArray(['estimated' => 960, 'actual' => 1200, 'projected' => 2160, 'deviation_percent' => 25.0])
+            ->and(collect($comparison['by_user'])->firstWhere('user_id', $this->ana->id))->toMatchArray(['estimated' => 2400, 'actual' => 2400, 'projected' => 3000, 'deviation_percent' => 0.0])
             ->and(collect($comparison['by_user'])->firstWhere('user_id', $this->luis->id))->toMatchArray(['estimated' => 0, 'actual' => 1200, 'deviation_percent' => null])
             ->and($comparison['by_month'])->toBe([
-                ['month' => '2026-10', 'estimated' => 0, 'actual' => 600, 'cumulative_estimated' => 0, 'cumulative_actual' => 600],
-                ['month' => '2026-11', 'estimated' => 2400, 'actual' => 3000, 'cumulative_estimated' => 2400, 'cumulative_actual' => 3600],
-                ['month' => '2026-12', 'estimated' => 960, 'actual' => 0, 'cumulative_estimated' => 3360, 'cumulative_actual' => 3600],
+                ['month' => '2026-10', 'estimated' => 0, 'actual' => 600, 'remaining' => 0, 'cumulative_estimated' => 0, 'cumulative_actual' => 600, 'cumulative_projected' => 600],
+                ['month' => '2026-11', 'estimated' => 2400, 'actual' => 3000, 'remaining' => 600, 'cumulative_estimated' => 2400, 'cumulative_actual' => 3600, 'cumulative_projected' => 4200],
+                ['month' => '2026-12', 'estimated' => 960, 'actual' => 0, 'remaining' => 960, 'cumulative_estimated' => 3360, 'cumulative_actual' => 3600, 'cumulative_projected' => 5160],
             ]);
     });
 
-    it('un proyecto completado tiene fin real; uno en curso, la proyección al ritmo de las últimas 4 semanas', function () {
+    it('un proyecto completado tiene fin real; uno en curso, el último día asignado o, sin nada asignado, el ritmo de las últimas 4 semanas', function () {
         $this->linker->link($this->forecast, $this->project, $this->manager);
         $task = Task::factory()->create(['project_id' => $this->project->id]);
         TimeEntry::factory()->forTask($task)->on('2026-10-30')->minutes(280)->create(['user_id' => $this->ana->id]);
 
-        // 280 min en 28 días = 10 min/día; quedan 3.080 → 308 días.
+        // El hueco copiado acaba el 2 de diciembre (D-297).
+        $comparison = app(EstimateVsActual::class)->for($this->forecast->fresh());
+        expect($comparison['dates']['projected_end'])->toBe('2026-12-02');
+
+        // Sin nada asignado: 280 min en 28 días = 10 min/día; quedan 3.080 → 308 días.
+        Allocation::query()->where('project_id', $this->project->id)->delete();
         $comparison = app(EstimateVsActual::class)->for($this->forecast->fresh());
         expect($comparison['dates']['projected_end'])->toBe(CarbonImmutable::parse('2026-11-02')->addDays(308)->toDateString());
 

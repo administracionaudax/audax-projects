@@ -155,11 +155,7 @@ export function BillableHoursChart({
                             stroke={CHART_INK.surface}
                             strokeWidth={SURFACE_GAP}
                             maxBarSize={MAX_BAR_SIZE}
-                            radius={
-                                index === lastIndex
-                                    ? [BAR_RADIUS, BAR_RADIUS, 0, 0]
-                                    : 0
-                            }
+                            radius={BAR_RADIUS}
                             isAnimationActive={false}
                         >
                             {index === lastIndex ? (

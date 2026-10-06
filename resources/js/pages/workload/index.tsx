@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Deferred, Head, router } from '@inertiajs/react';
 import type { VisitOptions } from '@inertiajs/core';
 import { ArrowRight, CalendarOff, Info, Users, X } from 'lucide-react';
 import { useState } from 'react';
@@ -21,6 +21,11 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
 import { index } from '@/routes/workload';
+import { HatchDefs } from '@/components/forecast/layer-swatch';
+import {
+    MyForecastSkeleton,
+    MyForecastView,
+} from '@/components/forecast/my-forecast';
 
 /** Errores de una visita dentro de la página: un aviso, sin salir de ella. */
 function failureHandlers(onFailure?: () => void): Partial<VisitOptions> {
@@ -62,6 +67,8 @@ export default function WorkloadIndex({
     options,
     trays,
     cell,
+    my_forecast: myForecast,
+    forecast_view,
 }: WorkloadPageProps) {
     const [navigating, setNavigating] = useState(false);
     const [loadingKey, setLoadingKey] = useState<string | null>(null);
@@ -69,6 +76,9 @@ export default function WorkloadIndex({
     const shownCell = closing ? null : cell;
     const openKey = loadingKey ?? shownCell?.key ?? null;
     const rows = matrix.groups.flatMap((group) => group.people);
+    // Con la previsión, quien solo ve su fila tiene «Mi carga» por asignaciones (D-305); la
+    // matriz por tareas sigue debajo, para sus tareas de las próximas semanas.
+    const forecastView = forecast_view === true;
 
     const visit = (query: WorkloadQuery) =>
         router.visit(index.url({ query }), {
@@ -123,17 +133,45 @@ export default function WorkloadIndex({
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
                 <Heading
                     as="h1"
-                    title={t(
-                        filters.sees_team
-                            ? 'workload_page.heading_team'
-                            : 'workload_page.heading_own',
-                    )}
-                    description={t(
-                        filters.sees_team
-                            ? 'workload_page.description_team'
-                            : 'workload_page.description_own',
-                    )}
+                    title={
+                        forecastView
+                            ? t('forecast.my.title')
+                            : t(
+                                  filters.sees_team
+                                      ? 'workload_page.heading_team'
+                                      : 'workload_page.heading_own',
+                              )
+                    }
+                    description={
+                        forecastView
+                            ? t('forecast.my.description')
+                            : t(
+                                  filters.sees_team
+                                      ? 'workload_page.description_team'
+                                      : 'workload_page.description_own',
+                              )
+                    }
                 />
+
+                {forecastView ? (
+                    <Deferred
+                        data="my_forecast"
+                        fallback={<MyForecastSkeleton />}
+                    >
+                        <HatchDefs />
+                        <MyForecastView data={myForecast} showHeader={false} />
+                    </Deferred>
+                ) : null}
+                {forecastView ? (
+                    <div className="space-y-1 border-t pt-6">
+                        <h2 className="text-lg">
+                            {t('forecast.my.tasks_title')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {t('forecast.my.tasks_description')}
+                        </p>
+                    </div>
+                ) : null}
 
                 <WorkloadToolbar
                     horizon={horizon}
