@@ -19,6 +19,8 @@ class AllocationPolicy
 {
     public function update(User $user, Allocation $allocation): bool
     {
+        $allocation->loadMissing($allocation->forecast_project_id !== null ? 'forecastProject' : 'project');
+
         if ($allocation->forecast_project_id !== null) {
             $forecast = $allocation->forecastProject;
 

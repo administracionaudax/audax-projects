@@ -119,6 +119,8 @@ final class AllocationWriter
 
     private function container(Allocation $allocation): Project|ForecastProject|null
     {
+        $allocation->loadMissing($allocation->project_id !== null ? 'project' : 'forecastProject');
+
         return $allocation->project_id !== null ? $allocation->project : $allocation->forecastProject;
     }
 

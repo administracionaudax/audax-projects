@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -125,4 +126,12 @@ function reportHtmlText(string $html): string
     $text = html_entity_decode(strip_tags((string) preg_replace('#<(td|th|dt|dd|p|h\d|li|span|div)\b#', ' $0', $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
     return trim((string) preg_replace('/\s+/u', ' ', $text));
+}
+
+/**
+ * Enciende el módulo de la previsión (D-280), que viene apagado por defecto.
+ */
+function enableForecast(bool $enabled = true): void
+{
+    Setting::set('modules', ['forecast' => $enabled]);
 }
