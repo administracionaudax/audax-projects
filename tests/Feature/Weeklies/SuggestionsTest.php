@@ -190,10 +190,11 @@ it('un voto por persona: alterna, recuenta y dice quién ha votado (F-163)', fun
     expect($post->fresh()->vote_count)->toBe(1)
         ->and(SuggestionVote::query()->pluck('user_id')->all())->toBe([$this->manager->id]);
 
-    // El índice único impide dos votos de la misma persona.
-    expect(fn () => SuggestionVote::query()->insert([
+    // El índice único impide dos votos de la misma persona (en un punto de guardado, por PostgreSQL).
+    expect(inSavepoint(fn () => SuggestionVote::query()->insert([
         ['suggestion_post_id' => $post->id, 'user_id' => $this->manager->id, 'created_at' => now()],
-    ]))->toThrow(UniqueConstraintViolationException::class);
+    ])))->toThrow(UniqueConstraintViolationException::class)
+        ->and(SuggestionVote::query()->count())->toBe(1);
 });
 
 it('comentarios con respuestas anidadas, adjuntos, edición y borrado con sus respuestas (F-165)', function () {

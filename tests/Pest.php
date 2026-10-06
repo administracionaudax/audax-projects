@@ -43,6 +43,21 @@ function userWithRole(string $role, array $attributes = []): User
 }
 
 /**
+ * Envuelve una escritura que debe fallar (una restricción de la base) en un punto de guardado:
+ * `expect(inSavepoint(fn () => …))->toThrow(QueryException::class)`.
+ *
+ * Los tests corren dentro de la transacción de RefreshDatabase. En PostgreSQL, un error deja esa
+ * transacción abortada y cualquier consulta posterior del test falla con «SQLSTATE[25P02] current
+ * transaction is aborted» (en SQLite no pasa, por eso en local no se nota). DB::transaction()
+ * anidada abre un SAVEPOINT y, al fallar, vuelve a él y relanza la excepción: la base sigue usable
+ * igual en los dos motores.
+ */
+function inSavepoint(Closure $write): Closure
+{
+    return fn () => DB::transaction($write);
+}
+
+/**
  * Inserta una sesión en la tabla sessions (driver "database") y devuelve su id.
  */
 function insertSession(?User $user, string $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0', ?int $lastActivity = null): string

@@ -21,12 +21,14 @@ use Illuminate\Support\Facades\DB;
 
 /*
 | Contrato 10.1: tablas, restricciones y relaciones de la Weekly, la ayuda y las sugerencias.
+| Cada escritura que la base debe rechazar va en un punto de guardado (inSavepoint, tests/Pest.php):
+| en PostgreSQL el error abortaría la transacción del test y las comprobaciones siguientes fallarían.
 */
 
 it('solo puede haber una semana activa', function () {
     WeeklyCycle::factory()->active()->create();
 
-    expect(fn () => WeeklyCycle::factory()->active('2026-10-12')->create())->toThrow(QueryException::class);
+    expect(inSavepoint(fn () => WeeklyCycle::factory()->active('2026-10-12')->create()))->toThrow(QueryException::class);
 
     // Cerradas, todas las que hagan falta.
     WeeklyCycle::factory()->count(3)->create();
@@ -37,23 +39,24 @@ it('solo puede haber una semana activa', function () {
 it('una weekly por persona y semana; un apunte por cliente', function () {
     $submission = WeeklySubmission::factory()->create();
 
-    expect(fn () => WeeklySubmission::factory()->create([
+    expect(inSavepoint(fn () => WeeklySubmission::factory()->create([
         'weekly_cycle_id' => $submission->weekly_cycle_id,
         'user_id' => $submission->user_id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
     $entry = WeeklyEntry::factory()->create(['weekly_submission_id' => $submission->id]);
 
-    expect(fn () => WeeklyEntry::factory()->create([
+    expect(inSavepoint(fn () => WeeklyEntry::factory()->create([
         'weekly_submission_id' => $submission->id,
         'client_id' => $entry->client_id,
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class)
+        ->and(WeeklyEntry::query()->count())->toBe(1);
 });
 
 it('borrar a una persona no borra sus weeklies: la base lo impide (D-145)', function () {
     $submission = WeeklySubmission::factory()->submitted()->create();
 
-    expect(fn () => DB::table('users')->where('id', $submission->user_id)->delete())->toThrow(QueryException::class);
+    expect(inSavepoint(fn () => DB::table('users')->where('id', $submission->user_id)->delete()))->toThrow(QueryException::class);
     expect(WeeklySubmission::query()->count())->toBe(1);
 });
 
@@ -120,5 +123,6 @@ it('la ayuda y las sugerencias guardan su contenido y precargan la categoría Bu
         ->and($section->faqs()->count())->toBe(1)
         ->and($post->fresh()?->status)->toBe(SuggestionStatus::Open)
         ->and($post->category?->board->slug)->toBe('sugerencias')
-        ->and(fn () => $section->delete())->toThrow(QueryException::class);
+        ->and(inSavepoint(fn () => $section->delete()))->toThrow(QueryException::class)
+        ->and($section->faqs()->count())->toBe(1);
 });
