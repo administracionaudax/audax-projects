@@ -54,6 +54,8 @@ final class AuditCatalog
         'suggestion' => ['suggestion_boards', 'suggestion_categories', 'suggestion_posts', 'suggestions'],
         // Plan del día (D-256): las cabeceras de cada día, las líneas y los comentarios.
         'day_plan' => ['day_plans', 'day_plan_items', 'day_plan_comments'],
+        // Previsión (D-280): proyectos previstos (con vincular y desvincular) y asignaciones.
+        'forecast' => ['forecast_projects', 'allocations'],
     ];
 
     /**

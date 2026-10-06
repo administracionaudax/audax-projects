@@ -34,6 +34,7 @@ return [
         'help' => 'Centro de ayuda',
         'suggestion' => 'Sugerencias',
         'day_plan' => 'Plan del día',
+        'forecast' => 'Previsión',
         'other' => 'Otros',
     ],
 
@@ -162,6 +163,18 @@ return [
 
     // Nombres legibles de los campos (lo que no está aquí se muestra con su nombre técnico).
     'fields' => [
+        // Previsión (D-280).
+        'prospect_name' => 'Cliente nuevo',
+        'confidence' => 'Seguridad',
+        'lost_reason' => 'Motivo de «perdido»',
+        'lost_at' => 'Perdido el',
+        'linked_at' => 'Vinculado el',
+        'linked_by' => 'Vinculado por',
+        'estimated_amount' => 'Importe estimado',
+        'forecast_project_id' => 'Proyecto previsto',
+        'mode' => 'Modo',
+        'percent' => 'Porcentaje',
+        'copied_from_allocation_id' => 'Copiada de',
         // Plan del día (D-256).
         'text' => 'Línea',
         'planned_minutes' => 'Horas previstas',

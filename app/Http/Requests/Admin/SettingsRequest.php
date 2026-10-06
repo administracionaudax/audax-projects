@@ -169,7 +169,8 @@ class SettingsRequest extends FormRequest
             'occupancy_low_threshold' => $this->integer('occupancy_low_threshold'),
             'occupancy_high_threshold' => $this->integer('occupancy_high_threshold'),
             ...($this->has('week_reminder_enabled') ? ['week_reminder_enabled' => $this->boolean('week_reminder_enabled')] : []),
-            ...($this->has('modules') ? ['modules' => AppModules::normalize((array) $this->input('modules'))] : []),
+            // Los módulos que no llegan conservan su valor (no se encienden por omisión, D-280).
+            ...($this->has('modules') ? ['modules' => AppModules::normalize([...AppModules::map(), ...(array) $this->input('modules')])] : []),
             ...($this->has('modules_preview') ? ['modules_preview' => $this->boolean('modules_preview')] : []),
             ...($this->exists('global_banner') ? ['global_banner' => $this->banner()] : []),
             ...($this->has('weekly_dictation_cleanup') ? ['weekly_dictation_cleanup' => $this->boolean('weekly_dictation_cleanup')] : []),
