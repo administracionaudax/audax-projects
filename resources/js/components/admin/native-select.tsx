@@ -10,17 +10,27 @@ import { cn } from '@/lib/utils';
  */
 export function NativeSelect({
     className,
+    bare = false,
     children,
     ...props
-}: ComponentProps<'select'>) {
+}: ComponentProps<'select'> & {
+    /**
+     * Sin borde, fondo ni alto propios: para meterlo en un recuadro que ya los tiene (los «chips»
+     * de filtro con etiqueta). Ocupa todo el alto del recuadro.
+     */
+    bare?: boolean;
+}) {
     return (
-        <div className={cn('relative', className)}>
+        <div className={cn('relative', bare && 'h-full', className)}>
             <select
                 {...props}
                 className={cn(
-                    'h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-background py-1 pr-8 pl-3 text-base text-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive md:text-sm',
+                    // Sin fondo propio, como <Input>: sobre una tarjeta blanca no se ve gris. Las
+                    // opciones sí llevan el fondo del desplegable (en Windows heredan el del select).
+                    'h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-transparent py-1 pr-8 pl-3 text-base text-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive md:text-sm [&_option]:bg-popover [&_option]:text-popover-foreground',
                     FOCUS_RING,
                     'focus-visible:border-ring',
+                    bare && 'h-full border-0',
                 )}
             >
                 {children}
