@@ -656,6 +656,7 @@ export function MyWeeklyEditor({ editor }: { editor: Editor }) {
                                             : t('weeklies.editor.submit')
                                     }
                                     destructive={false}
+                                    processing={submitting}
                                     onConfirm={submit}
                                 />
                             ) : (
