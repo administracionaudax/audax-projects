@@ -1999,6 +1999,12 @@ Pedido por el propietario el 06/10: «que los menús principales se puedan colap
 - **Auto-despliegue:** al entrar en una página de una sección plegada (por la búsqueda, un enlace o la URL), la sección se despliega sola y se guarda así. Plegar la sección de la página en la que estás se respeta mientras sigas dentro de ella.
 - **Barra reducida a iconos:** sin encabezados ni nada que plegar; se ven todas las entradas con su tooltip y, al volver a desplegar la barra, cada sección recupera su estado. En el móvil (hoja lateral) las secciones funcionan igual.
 
+### D-261 · Sin «Inicio» en el menú y secciones plegadas por defecto **[cambia D-260]**
+Pedido por el propietario el 06/10: «no hace falta ese icono de inicio porque nos ocupa espacio» (el logotipo ya lleva a Inicio) y que todo nazca plegado salvo Proyectos.
+- **Inicio:** fuera de la barra; se llega con el logotipo de arriba (también con la barra en iconos y en el móvil). Arriba, fijo, solo queda Chat.
+- **Plegadas por defecto:** Weekly, Personas, Facturación y Administración; Proyectos, desplegada. Es lo que ve quien aún no ha tocado nada (`users.nav_collapsed` null, `NavSections::DEFAULT_COLLAPSED`). Lo que cada persona pliegue o despliegue se sigue recordando, también «todo desplegado» (lista vacía), y entrar en una página de una sección plegada la despliega.
+- Una migración olvidó lo guardado con el comportamiento anterior (solo del 06/10) para que a todos les llegue el nuevo.
+
 ## 06/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
 Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan). La Previsión (Nivel 2) no entra aquí.
 
@@ -2123,7 +2129,7 @@ Pedido por el propietario el 06/10.
 - Tareas y calendario: D-143 y D-144.
 - Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad; D-239: modo de prueba de los módulos).
 - Acceso con Google: D-165 a D-168.
-- Barra lateral con secciones plegables: D-260.
+- Barra lateral con secciones plegables: D-260 y D-261.
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Dictado de la weekly con Gemini: D-243.
@@ -2131,4 +2137,4 @@ Pedido por el propietario el 06/10.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-261 a D-269 y D-280 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-262 a D-269 y D-280 en adelante, sin usar).
