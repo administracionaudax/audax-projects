@@ -1879,6 +1879,11 @@ Revisión de paridad 10.9b (P2): WeeklySync aceptaba cualquier fichero en las su
 - **Con los límites de D-223:** el tamaño por fichero de `max_attachment_mb` (50 MB por defecto, hasta 200 en `/admin/ajustes`), 10 por envío, 250 MB por persona entre todas sus sugerencias y comentarios y 5 GB libres en el disco. Se descargan con su URL firmada, como el resto de adjuntos.
 - **Importación (D-219):** los vídeos adjuntos de WeeklySync ya no se omiten; el resto de tipos que Audax no admite, sí (con su recuento en el informe).
 
+### D-236 · Paridad 10.9b: pequeños cambios y lo que se deja **[concreta D-145]**
+- **Hechos sin decisión propia:** nombres de quien falta al confirmar el cierre, color de la participación por tramo (todas verde, más de la mitad ámbar, si no rojo), un solo dictado a la vez en «Mi weekly», la bienvenida también al entrar con Google, el fee reconocido por su código FE (además de «Fee mensual» en la descripción), los botones Título, Subtítulo y Divisor del editor (F-154), los saltos de línea del subtítulo de las novedades, «Hasta el…» de la exención en el editor y en «Mi weekly», el texto del editor exento («No puedes escribir mientras estés exento»), la importación del texto con formato de WeeklySync sin perder nada (h1/h2 → h3, b → strong, i → em, div → p, Markdown `#`/`##`/`**`, img → enlace o su texto alternativo) y las semanas importadas con solo el texto final, que se ven por secciones en la página, el PDF/HTML y el CSV.
+- **Analítica de uso (Umami y Microsoft Clarity de WeeklySync): no se trae.** El SPEC no admite terceros y el RGPD exigiría consentimiento; las métricas de uso que hacen falta salen de la auditoría y de «Uso de IA».
+- **Lo que queda con prioridad baja (P3)** está en el plan (10.9b), con su motivo; ninguno pierde datos ni impide trabajar.
+
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.
 - **Mismo cliente OAuth que Google Sheets (D-142)**, con una **segunda URI de redirección** que el propietario añade en Google Cloud: `https://projects.audaxstudio.com/login/google/callback` (`login.google.callback`; `GOOGLE_LOGIN_REDIRECT_URI`, vacía = esa ruta de `APP_URL`). URL bajo `/login`, como la página a la que acompaña.
@@ -1949,9 +1954,9 @@ Pedido por el propietario el 05/10: «añadir subtarea» solo creaba el título.
 - Fase 8: D-134 a D-138 (D-138: paneles de Inicio reordenables).
 - Fase 9: D-139 a D-142.
 - Tareas y calendario: D-143 y D-144.
-- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-226 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad).
+- Fase 10 (la Weekly): D-145 a D-161 y D-180 a D-236 (D-151 a D-154: contrato 10.1; D-155 a D-161: 10.2a; D-180 a D-186: 10.2b; D-187 a D-193: 10.3; D-194 a D-198: 10.4; D-199 a D-202: 10.5; D-203 a D-206: 10.6; D-207 a D-212: 10.7; D-213 a D-220: 10.8; D-221 a D-226: 10.9a, seguridad; D-227 a D-236: 10.9b, paridad).
 - Acceso con Google: D-165 a D-168.
 - Mejoras de tareas: D-170 a D-173.
 - Libres sin usar: D-162 a D-164, D-169 y D-174 a D-179.
 
-La siguiente libre es **D-227**.
+La siguiente libre es **D-237**.

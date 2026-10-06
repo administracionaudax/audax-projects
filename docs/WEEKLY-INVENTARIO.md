@@ -87,17 +87,17 @@ La entrega es la de F.
 | F-004 | Cabecera y menú móviles | `Layout.tsx:191-200` | Existe |
 | F-005 | Modo oscuro o claro con conmutador, guardado, y favicon según el tema | `Layout.tsx:323-382`, `index.html:26` | Existe (claro, oscuro y sistema) |
 | F-006 | Botón «Asistente AI», que abre `/ia` | `Layout.tsx:511-513`, `App.tsx:435` | Nueva (10.6) **Hecho (10.6): «Asistente IA» en la barra lateral, tras Chat, con el módulo `assistant` (D-206).** |
-| F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax. **Hecho (10.2): la ausencia es la de Audax; la exención y la renuncia, en «Mi weekly» y en el resumen.** |
-| F-008 | Acceso al perfil con nombre y rol en el pie de la barra | `Layout.tsx:436-460` | Existe |
+| F-007 | Mi estado (Disponible, Vacaciones o Ausente/Baja, con fecha de vuelta) desde el avatar | `Layout.tsx:441-608` | Adaptar: solicitar una ausencia en Audax + exención de weekly (10.2). **Servidor hecho (10.2a):** exención y renuncia; la ausencia es la de Audax. **Hecho (10.2): la ausencia es la de Audax; la exención y la renuncia, en «Mi weekly» y en el resumen.** **Hecho (10.9b): «Estoy fuera» (vacaciones o ausente/baja con fecha de vuelta) desde el menú del avatar y «Mi weekly», con efecto inmediato e insignia en el avatar; la ausencia de Audax se puede pedir a la vez (D-228).** |
+| F-008 | Acceso al perfil con nombre y rol en el pie de la barra | `Layout.tsx:436-460` | Existe **Hecho (10.9b): el pie de la barra enseña el rol (D-234).** |
 | F-009 | Cerrar sesión, limpiando el almacenamiento local | `Layout.tsx:471-478`, `App.tsx:1347-1374` | Existe |
 | F-010 | Accesos a Ayuda y a Notificaciones (este, solo ADMIN) | `Layout.tsx:350-404` | Nueva: Ayuda (10.7). Adaptar: ajustes (10.5). **Hecho (10.5): «Avisos», cuarta pestaña de /weeklies para quien gestiona, con enlace desde /admin/ajustes (D-199); Ayuda, en la 10.7.** **Hecho (10.7): «Ayuda» en la barra lateral, tras el asistente, con el módulo `help`.** |
 | F-011 | Avisos emergentes de éxito, error e información | `Layout.tsx:172`, `App.tsx` | Existe |
-| F-012 | Aviso de bienvenida al entrar | `App.tsx:831-833` | Nueva (trivial, 10.2). **Servidor hecho (10.2a):** aviso al entrar (D-161). **Hecho (10.2): el aviso sale con los avisos emergentes de siempre.** |
+| F-012 | Aviso de bienvenida al entrar | `App.tsx:831-833` | Nueva (trivial, 10.2). **Servidor hecho (10.2a):** aviso al entrar (D-161). **Hecho (10.2): el aviso sale con los avisos emergentes de siempre.** **Hecho (10.9b): también al entrar con Google.** |
 | F-013 | Detecta una versión nueva y recarga sola cuando no hay nada editándose ni grabándose | `App.tsx:325-400`, `src/lib/appUpdateGuard.ts`, `buildMeta.ts` | Adaptar: versión de Inertia + aviso (10.2). **Servidor hecho (10.2a):** `GET /version` (D-161). **Hecho (10.2): aviso «Hay una versión nueva» con «Recargar» (D-184).** |
 | F-014 | Recarga al volver a la pestaña o recuperar la conexión; aviso «Conexión inestable» y reintento | `App.tsx:378-395, 852, 1011` | Adaptar (10.2). **Hecho (10.2): aviso «Sin conexión» y recarga de los datos al volver (D-184).** |
-| F-015 | Tiempo real de personas, clientes, semanas, envíos, borradores y tareas | `App.tsx:922-980` | Adaptar: Reverb o recarga (10.2). **Hecho (10.2): dictado en vivo por Reverb y recarga de los datos al volver a la pestaña o a la conexión (D-184).** |
+| F-015 | Tiempo real de personas, clientes, semanas, envíos, borradores y tareas | `App.tsx:922-980` | Adaptar: Reverb o recarga (10.2). **Hecho (10.2): dictado en vivo por Reverb y recarga de los datos al volver a la pestaña o a la conexión (D-184).** **Hecho (10.9b): evento `weekly.changed` por Reverb; el resumen, el histórico y el informe se actualizan solos (D-229).** |
 | F-016 | Rutas en español con enlace directo (`/resumen`, `/mi-espacio`, `/weeklys/:id`, `/clientes/:id`, `/equipo/:id`, `/ia`, `/ayuda`, `/perfil`, `/notificaciones`) | `src/lib/routes.ts` | **Hecho (10.1):** `routes/app/weeklies.php` con `/weeklies`, `/weeklies/{id}`, `/mi-espacio`, `/equipo`, `/equipo/{id}`, `/ia`, `/ayuda` y `/admin/uso-ia` (clientes, perfil y notificaciones ya existían). Las pantallas, en su entrega |
-| F-017 | Pantalla de error con «recargar» | `ErrorBoundary.tsx`, `index.tsx` | Existe (`error.tsx`) |
+| F-017 | Pantalla de error con «recargar» | `ErrorBoundary.tsx`, `index.tsx` | Existe (`error.tsx`) **Hecho (10.9b): `ErrorBoundary` con «Recargar» e «Ir al inicio» si una página falla en el navegador (D-234).** |
 | F-018 | «¿Tarda demasiado? Forzar entrada» en la carga inicial | `App.tsx:~2895` | No aplica (Inertia no tiene esa carga) |
 | F-019 | PWA: manifest e iconos claro y oscuro | `public/site.webmanifest`, `index.html` | Existe |
 | F-020 | Cabeceras de tabla fijas al desplazar | `src/lib/useFloatingTableHeader.ts` | Adaptar (10.4) **Hecho (10.4): cabecera fija en las tablas de clientes, equipo y estado de proyectos (D-197).** |
@@ -106,14 +106,14 @@ La entrega es la de F.
 **Acceso, onboarding y perfil**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-022 | Entrar con Google | `LoginScreen.tsx:115-134` | Sustituida por el login de Audax (contraseña y 2FA). ¿Añadir «Entrar con Google»? (G3) |
+| F-022 | Entrar con Google | `LoginScreen.tsx:115-134` | Sustituida por el login de Audax (contraseña y 2FA). ¿Añadir «Entrar con Google»? (G3) **Hecho (D-165): «Entrar con Google».** |
 | F-023 | Aviso de entorno: localhost apuntando a producción | `LoginScreen.tsx:22, 105` | No aplica |
 | F-024 | Vincular identidades de Google y fusionar duplicados | `resolve-user-access`, migración 022 | No aplica (un email por cuenta) |
 | F-025 | Invitación que se activa en el primer acceso | `create-user`, `account_status` | Existe (`UserInviter`) |
 | F-026 | Completar el perfil obligatorio (nombre, departamento y puesto) | `CompleteProfileView.tsx` | Adaptar: añadir «Puesto» (`job_title`). **10.1:** columna `users.job_title`; falta el campo en el perfil y en el alta (10.2). **Servidor hecho (10.2a):** `job_title` en el perfil y en el alta. **Hecho (10.2): «Puesto» en el perfil y en el alta y edición de personas.** |
-| F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto). **Servidor hecho (10.2a):** `job_title` en el perfil. **Hecho (10.2).** |
-| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161). **Hecho (10.2): enviadas, a tiempo y racha en el perfil.** **Hecho (10.4): también en la ficha de persona.** |
-| F-029 | Avatar | `users.avatar_url` | Existe (avatar subido) |
+| F-027 | Editar el perfil (nombre, puesto y departamento) | `ProfileView.tsx:253-305` | Existe (+ puesto). **Servidor hecho (10.2a):** `job_title` en el perfil. **Hecho (10.2).** **Hecho (10.9b): el departamento y el rol se ven en el perfil de solo lectura; cambiarse el departamento uno mismo no se permite porque decide quién aprueba horas y ausencias (D-234).** |
+| F-028 | Estadísticas del perfil: reportes, a tiempo y racha | `ProfileView.tsx:36-155` | Nueva (10.4). **Servidor hecho (10.2a):** `weeklyStats` en el perfil, adelantado de 10.4 (D-161). **Hecho (10.2): enviadas, a tiempo y racha en el perfil.** **Hecho (10.4): también en la ficha de persona.** **Hecho (10.9b): con el mapa «Constancia (últimas 12 semanas)» (D-233).** |
+| F-029 | Avatar | `users.avatar_url` | Existe (avatar subido) **Hecho (10.9b): subir la foto recortada, reducida a 256 px y sin metadatos, servida con URL firmada; en la exportación RGPD (D-234).** |
 
 **Resumen (paneles)**
 | ID | Funcionalidad | Origen | Destino |
@@ -126,7 +126,7 @@ La entrega es la de F.
 | F-035 | ADMIN: «Gestión de weekly actual» con acceso al informe y «Cerrar semana» (confirmación y motivo del bloqueo) | `AdminDashboard.tsx:381-430, 208-210` | Nueva (10.3) **Hecho (10.3): «Cerrar semana» en la gestión del resumen y en el informe, con el motivo del bloqueo (D-191).** |
 | F-036 | ADMIN: estado global con el progreso de envíos y la lista de pendientes | `AdminDashboard.tsx:389-490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team`. **Hecho (10.2).** |
 | F-037 | ADMIN: recordar por email a una persona pendiente (plantilla «manual») | `AdminDashboard.tsx:229-239, 472`, `emailHelpers.ts:102` | Nueva (10.5). **Hecho (10.5): «Recordar» en las pendientes del resumen, con la plantilla manual y los canales de la persona (D-199).** |
-| F-038 | ADMIN: marcar a otra persona como ausente o de vacaciones, con fecha de fin | `AdminDashboard.tsx:464-622` | Adaptar: ausencia aprobada o exención manual (10.2). **Servidor hecho (10.2a):** exención manual (D-159). **Hecho (10.2): «Eximir» con nota y «Quitar exención».** |
+| F-038 | ADMIN: marcar a otra persona como ausente o de vacaciones, con fecha de fin | `AdminDashboard.tsx:464-622` | Adaptar: ausencia aprobada o exención manual (10.2). **Servidor hecho (10.2a):** exención manual (D-159). **Hecho (10.2): «Eximir» con nota y «Quitar exención».** **Hecho (10.9b): «Eximir» elige «Solo esta semana» o «De vacaciones»/«Ausente o de baja» hasta una fecha (varias semanas), con enlace a Ausencias del equipo (D-228).** |
 | F-039 | «¡Todo el equipo disponible ha reportado!» | `AdminDashboard.tsx:490` | Nueva (10.2). **Servidor hecho (10.2a):** `active.team.counts`. **Hecho (10.2).** |
 | F-040 | Estado vacío sin semana activa, con «Iniciar ciclo semanal» (ADMIN) | `App.tsx:2930-2955, 2198` | Nueva: apertura automática + botón (10.2). **Servidor hecho (10.2a):** `weeklies:open-week` y «Iniciar la semana» (D-155). **Hecho (10.2).** |
 
@@ -140,11 +140,11 @@ La entrega es la de F.
 | F-045 | Añadir otro cliente al reporte con un buscador | `WeeklyReportingInterface.tsx:297-305, 659-691` | Nueva (10.2). **Servidor hecho (10.2a):** `editor.clients.catalog`. **Hecho (10.2).** |
 | F-046 | Plegar o desplegar un cliente o todos | `WeeklyReportingInterface.tsx:427, 495-501, 572` | Nueva (10.2). **Hecho (10.2).** |
 | F-047 | Guía «cómo reportar» (consejos) | `WeeklyReportingInterface.tsx:461-477` | Nueva (10.2). **Hecho (10.2).** |
-| F-048 | «Autocompletar desde Mis tareas»: hechas y pendientes, con sus notas, por cliente | `WeeklyReportingInterface.tsx:308-360` | Adaptar: tareas y horas de Audax de la semana (10.2). **Servidor hecho (10.2a):** `editor.autofill`. **Hecho (10.2).** |
+| F-048 | «Autocompletar desde Mis tareas»: hechas y pendientes, con sus notas, por cliente | `WeeklyReportingInterface.tsx:308-360` | Adaptar: tareas y horas de Audax de la semana (10.2). **Servidor hecho (10.2a):** `editor.autofill`. **Hecho (10.2).** **Hecho (10.9b): con las notas de cada tarea (D-231).** |
 | F-049 | Dictado por cliente con transcripción y limpieza; aviso si no hay voz; «Transcribiendo y limpiando audio…» | `WeeklyReportingInterface.tsx:199-279, 622-643`, `transcribe-audio`, `src/lib/audioTranscription.js` | Adaptar: Whisper + limpieza (10.2). **Servidor hecho (10.2a):** `dictations.store` y `show` con Whisper (D-158). **Hecho (10.2): grabadora del chat, «Transcribiendo…» con el evento y sondeo de respaldo (D-182).** |
 | F-050 | Descarta los audios demasiado cortos sin llamar a la IA | `audioTranscription.js` (`shouldSkipAudioTranscription`) | Nueva (10.2). **Servidor hecho (10.2a):** `too_short`. **Hecho (10.2).** |
 | F-051 | Borrador autoguardado con estado (Guardando, Guardado, Error) y recuperación | `WeeklyReportingInterface.tsx:126-164, 707-709`, `supabaseHelpers.ts:536-618` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.draft`. **Hecho (10.2): autoguardado a los 700 ms con su estado y reintento (D-181).** |
-| F-052 | Enviar o actualizar el reporte: se edita hasta el cierre, también fuera de plazo, y conserva la fecha de envío | `WeeklyReportingInterface.tsx:362-381, 712-718`, `App.tsx:2011-2100` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.submit`. **Hecho (10.2).** |
+| F-052 | Enviar o actualizar el reporte: se edita hasta el cierre, también fuera de plazo, y conserva la fecha de envío | `WeeklyReportingInterface.tsx:362-381, 712-718`, `App.tsx:2011-2100` | Nueva (10.2). **Servidor hecho (10.2a):** `my-weekly.submit`. **Hecho (10.2).** **Hecho (10.9b): se puede enviar sin apuntes, tras confirmarlo (D-230).** |
 | F-053 | Ver mi exención en el formulario y quitármela | `WeeklyReportingInterface.tsx:407-419, 525-537` | Adaptar (10.2). **Servidor hecho (10.2a):** `weeklies.exemptions.waive` (D-159). **Hecho (10.2).** |
 | F-054 | No se puede editar mientras estoy exento | `WeeklyReportingInterface.tsx:486` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyRuleViolation::EXEMPT`. **Hecho (10.2).** |
 
@@ -154,11 +154,11 @@ La entrega es la de F.
 | F-055 | Tareas agrupadas por cliente («Tareas Generales» sin cliente) | `TaskView.tsx:132-138, 441` | Adaptar: Mis tareas, agrupadas por cliente (10.6) **Hecho (10.6): mis tareas asignadas, por cliente del proyecto, con «Tareas generales» para los internos (D-203).** |
 | F-056 | Filtro Pendientes o Completadas | `TaskView.tsx:305-311` | Existe (D-143) **Hecho (10.6): también en «Mi espacio», Todas, Pendientes o Completadas.** |
 | F-057 | Ver u ocultar archivadas; archivar y recuperar | `TaskView.tsx:153-163, 317-370, 506-517` | Adaptar: archivado personal (10.6) **Hecho (10.6): `task_archives`, solo para quien archiva (D-203).** |
-| F-058 | Crear y editar (descripción y cliente obligatorio); Intro guarda | `TaskView.tsx:263-300, 621-665` | Existe (tarea en un proyecto del cliente) **Hecho (10.6): «Nueva tarea» y «Editar» en «Mi espacio», con proyecto (y bolsa) obligatorio, por `tasks.store` y `TaskWriter` (D-203).** |
+| F-058 | Crear y editar (descripción y cliente obligatorio); Intro guarda | `TaskView.tsx:263-300, 621-665` | Existe (tarea en un proyecto del cliente) **Hecho (10.6): «Nueva tarea» y «Editar» en «Mi espacio», con proyecto (y bolsa) obligatorio, por `tasks.store` y `TaskWriter` (D-203).** **Hecho (10.9b): buscador con más de 8 clientes o proyectos, aviso al crear y explicación de qué clientes salen (D-231).** |
 | F-059 | Marcar hecha o pendiente con un clic | `TaskView.tsx:141, 463` | Existe **Hecho (10.6): la casilla de «Mi espacio».** |
-| F-060 | Notas de la tarea editables en línea, con dictado | `TaskView.tsx:148, 538-555` | Adaptar: descripción o comentario + dictado con Whisper (10.6) **Hecho (10.6): la descripción en texto plano, con autoguardado y dictado (`task_note`); con formato, se edita en la tarea (D-203).** |
-| F-061 | Eliminar para siempre | `TaskView.tsx:158, 524` | Existe **Hecho (10.6): «Eliminar» en «Mi espacio», con confirmación y solo sin horas (D-037).** |
-| F-062 | Generar tareas con IA a partir de la última weekly cerrada, sin duplicar | `TaskView.tsx:331`, `App.tsx:2674-2760`, `extract-tasks` | Nueva, con revisión antes de crear (10.6) **Hecho (10.6): Job en la cola `ai`, prompt y deduplicación portados; propuestas que se revisan y se crean con `TaskWriter` (D-204).** |
+| F-060 | Notas de la tarea editables en línea, con dictado | `TaskView.tsx:148, 538-555` | Adaptar: descripción o comentario + dictado con Whisper (10.6) **Hecho (10.6): la descripción en texto plano, con autoguardado y dictado (`task_note`); con formato, se edita en la tarea (D-203).** **Hecho (10.9b): aviso de que la nota la ve el equipo del proyecto (D-231).** |
+| F-061 | Eliminar para siempre | `TaskView.tsx:158, 524` | Existe **Hecho (10.6): «Eliminar» en «Mi espacio», con confirmación y solo sin horas (D-037).** **Hecho (10.9b): con horas, el botón queda desactivado y explicado (D-231).** |
+| F-062 | Generar tareas con IA a partir de la última weekly cerrada, sin duplicar | `TaskView.tsx:331`, `App.tsx:2674-2760`, `extract-tasks` | Nueva, con revisión antes de crear (10.6) **Hecho (10.6): Job en la cola `ai`, prompt y deduplicación portados; propuestas que se revisan y se crean con `TaskWriter` (D-204).** **Hecho (10.9b): al terminar, aviso y la revisión a la vista para crear con un clic (D-231).** |
 | F-063 | Prioridad y fecha de entrega (en el modelo; la interfaz no las muestra) | `types.ts` (`Task`) | Existe **Hecho (10.6): se ven y se ponen en «Mi espacio».** |
 
 **Weeklys: histórico y ciclo**
@@ -192,7 +192,7 @@ La entrega es la de F.
 | F-085 | Reproductor: reproducir y pausar, barra, velocidad, reiniciar e ir a la sección de un cliente | `ReportView.tsx:370-463, 936-1042` | Nueva (10.3) **Hecho (10.3).** |
 | F-086 | Reproductor en cada tarjeta de cliente: solo suena uno a la vez y Escape cierra los menús | `InlineAudioPlayer.tsx`, `weeklyAudioSync.ts` | Nueva (10.3) **Hecho (10.3).** |
 | F-087 | Descargar el audio | `ReportView.tsx:526-564` | Nueva (10.3) **Hecho (10.3).** |
-| F-088 | Estado del equipo dentro del informe | `ReportView.tsx:918-923` | Nueva (10.3) **Hecho (10.3): la tira del equipo.** |
+| F-088 | Estado del equipo dentro del informe | `ReportView.tsx:918-923` | Nueva (10.3) **Hecho (10.3): la tira del equipo.** **Hecho (10.9b): en tiempo real (D-229).** |
 | F-089 | Cerrar la semana: exige texto y audio y avisa de los pendientes | `ReportView.tsx:150-182, 902` | Nueva (10.3) **Hecho (10.3) (D-191).** |
 | F-090 | Menú de acciones en móvil («Estructurales» y «Generativas y descargas») | `ReportView.tsx:800, 1235-1349` | Nueva (10.3) **Hecho (10.3).** |
 | F-091 | Pinchar un cliente abre su ficha | `ReportView.tsx:1118` | Nueva (10.3) **Hecho (10.3): enlace a la ficha del cliente.** |
@@ -209,7 +209,7 @@ La entrega es la de F.
 **Exenciones, puntualidad y rachas**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-097 | Exención automática por vacaciones o ausencia que cubre el plazo | `src/lib/weekExcusal.ts` | Adaptar: ausencias aprobadas (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility`. **Hecho (10.2).** |
+| F-097 | Exención automática por vacaciones o ausencia que cubre el plazo | `src/lib/weekExcusal.ts` | Adaptar: ausencias aprobadas (10.2). **Servidor hecho (10.2a):** `WeeklyEligibility`. **Hecho (10.2).** **Hecho (10.9b): también «Estoy fuera» (D-228).** |
 | F-098 | Al cambiar el estado de alguien, se actualiza su exención de la semana activa | `App.tsx:1460-1510` | Adaptar (10.2). **Servidor hecho (10.2a):** al vuelo; el contador se renueva (D-160). **Hecho (10.2).** |
 | F-099 | Racha: semanas seguidas a tiempo; una semana exenta no la rompe, y la activa tampoco hasta el plazo | `MemberDashboard.tsx:40-80`, `ProfileView.tsx:36-83`, `TeamView.tsx:1272` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyStreaks`. **Hecho (10.2).** |
 | F-100 | A tiempo = enviado antes del final del día límite | `src/lib/weekTiming.ts:88-102` | Nueva (10.2). **Servidor hecho (10.2a):** `WeeklyTiming`. **Hecho (10.2).** |
@@ -222,7 +222,7 @@ La entrega es la de F.
 | F-103 | Activar el permiso del navegador y ver su estado (no compatible o bloqueado) | `NotificationSettingsView.tsx:460-471` | Existe (Web Push). **10.5: «Avisos» avisa si Web Push no está configurado y enlaza a las preferencias de notificación.** |
 | F-104 | Plantillas editables «automatic» y «manual»: asunto, cuerpo, variables `{nombre}` y `{semana}` y vista previa | `NotificationSettingsView.tsx:97-113, 578-690` | Nueva, en ajustes (10.5). **Hecho (10.5): con vista previa en vivo y «Restaurar por defecto» (D-199).** |
 | F-105 | Plantilla «weekly_closed» con `{weekly_url}` | migración 023 | Nueva (10.5). **Hecho (10.5): también `{week_label}`, como el original.** |
-| F-106 | Se recuerda solo a quien no ha enviado y está disponible y activo; nunca a los exentos | `send-email-reminder:174-207`, `NotificationSettingsView.tsx:709-713` | Nueva (10.5). **Hecho (10.5): con `WeeklyEligibility`, también en el envío manual y en el de los viernes (D-199).** |
+| F-106 | Se recuerda solo a quien no ha enviado y está disponible y activo; nunca a los exentos | `send-email-reminder:174-207`, `NotificationSettingsView.tsx:709-713` | Nueva (10.5). **Hecho (10.5): con `WeeklyEligibility`, también en el envío manual y en el de los viernes (D-199).** **Hecho (10.9b): tampoco a quien está fuera ese día aunque vuelva antes del plazo (D-228).** |
 | F-107 | Se envía desde el servidor aunque la app esté cerrada, cada 5 minutos y sin duplicados | `check-scheduled-reminders`, `.github/workflows/check-scheduled-reminders.yml` | Adaptar: scheduler (10.5). **Hecho (10.5): `weeklies:remind` cada 5 minutos, con la deduplicación del registro y los cambios de hora (D-201).** |
 | F-108 | Registro de envíos (enviado o fallido, con el error) | `email_log` | Adaptar: auditoría (10.5). **Hecho (10.5): registro con en cola, enviado, fallido (con el error) y omitido (con el motivo), filtros y plazo de conservación; los envíos manuales, también en la auditoría (D-201 y D-202).** |
 | F-109 | Envío manual a personas concretas, a todas o a las pendientes | `send-email-reminder:17, 174`, `emailHelpers.ts` | Nueva (10.5). **Hecho (10.5): a todas las pendientes o a las elegidas, con plantilla y canales (D-199).** |
@@ -241,7 +241,7 @@ La entrega es la de F.
 | F-118 | Aplicar la foto (se bloquea si hay faltantes, filas sin revisar o duplicados) y resumen | `ProjectStatusView.tsx:1053-1175`, `apply-project-status-upload` | Sustituida (G3) |
 | F-119 | Portfolio actual: cliente, código, tipo, presupuesto, consumido, esperado, desviación y «En línea con lo esperado», con filtros, orden y vista | `ProjectStatusView.tsx:2124-2366`, `projectStatus.ts` | Nueva: vista nativa «Estado de proyectos» con proyectos, bolsas y horas (10.4) **Hecho (10.4): `ProjectStatusBoard`, por cliente o en tabla, con filtros y orden (D-196).** |
 | F-120 | Insignias de tipo de proyecto con recuento en clientes, equipo y resumen | `ProjectBadgeChip.tsx`, `projectStatus.ts:118-182` | Adaptar: tipo de facturación y código (10.4) **Hecho (10.4): `ProjectKindCode`; insignias en la lista y la ficha de clientes, el estado de proyectos y la ficha de persona.** |
-| F-121 | Consumo esperado de un fee según los días laborables del mes | `projectStatus.ts:231-268` | Nueva, con `Capacity` y festivos (10.4) **Hecho (10.4): días laborables del mes sin fines de semana ni festivos de Audax.** |
+| F-121 | Consumo esperado de un fee según los días laborables del mes | `projectStatus.ts:231-268` | Nueva, con `Capacity` y festivos (10.4) **Hecho (10.4): días laborables del mes sin fines de semana ni festivos de Audax.** **Hecho (10.9b): el fee se reconoce también por el código FE.** |
 | F-122 | Bolsas leídas por OCR (antiguo, sin uso) | `extract-hour-banks` | Sustituida: bolsas reales (existe) |
 
 **Clientes**
@@ -250,28 +250,28 @@ La entrega es la de F.
 | F-123 | Cartera con buscador, «Mis proyectos», filtros por tipo de proyecto y por persona, y limpiar filtros | `ClientView.tsx:1494-1591` | Adaptar: lista de clientes de Audax + filtros (10.4) **Hecho (10.4): buscador, estado, tipo de proyecto, persona y «Mis proyectos» (D-197).** |
 | F-124 | Orden por nombre, último reporte o satisfacción | `ClientView.tsx:121, 204-225, 410-418` | Adaptar (10.4) **Hecho (10.4).** |
 | F-125 | Sección de clientes inactivos | `ClientView.tsx:1647` | Existe |
-| F-126 | Alta y edición (icono emoji, nombre, responsable, miembros y etiquetas), solo ADMIN | `ClientView.tsx:245-320, 644-703` | Existe; Adaptar: añadir el icono (10.4) **Hecho (10.4): el icono (un emoji) en el alta y la edición.** |
+| F-126 | Alta y edición (icono emoji, nombre, responsable, miembros y etiquetas), solo ADMIN | `ClientView.tsx:245-320, 644-703` | Existe; Adaptar: añadir el icono (10.4) **Hecho (10.4): el icono (un emoji) en el alta y la edición.** **Hecho (10.9b): el responsable del cliente se puede elegir (D-232).** |
 | F-127 | Activar, desactivar y eliminar un cliente | `ClientView.tsx:265-277, 718-722` | Existe |
-| F-128 | Ficha: responsable con enlace a su perfil y estado | `ClientView.tsx:1019-1078` | Adaptar (10.4) **Hecho (10.4): quien gestiona más proyectos abiertos, con enlace a su ficha (D-195).** |
+| F-128 | Ficha: responsable con enlace a su perfil y estado | `ClientView.tsx:1019-1078` | Adaptar (10.4) **Hecho (10.4): quien gestiona más proyectos abiertos, con enlace a su ficha (D-195).** **Hecho (10.9b): el elegido a mano manda sobre el deducido (D-232).** |
 | F-129 | Resumen IA estructurado (estado actual, satisfacción y tendencia, trabajo reciente, equipo, riesgos y estado de proyectos); generar o regenerar | `ClientView.tsx:352-380, 873, 1159-1175`, `StructuredAiSummary.tsx`, `generate-client-summary` | Nueva (10.4) **Hecho (10.4): pestaña «Resumen», en la cola `ai` y guardado hasta regenerarlo (D-194).** |
-| F-130 | Historial: línea de tiempo semanal (resumen, estado, pasos e hitos) y detalle de los reportes de cada semana | `ClientView.tsx:893, 1227` | Nueva (10.4) **Hecho (10.4): pestaña «Historial».** |
-| F-131 | Equipo: miembros, responsable, historial de cada uno en el cliente y «Analizar actividad del equipo» (IA) | `ClientView.tsx:329-350, 931, 1306-1402`, `analyze-team-activity` | Nueva (10.4) **Hecho (10.4): pestaña «Equipo», con el análisis de cada persona en su tarjeta.** |
+| F-130 | Historial: línea de tiempo semanal (resumen, estado, pasos e hitos) y detalle de los reportes de cada semana | `ClientView.tsx:893, 1227` | Nueva (10.4) **Hecho (10.4): pestaña «Historial».** **Hecho (10.9b): por páginas de medio año, sin tope (D-233).** |
+| F-131 | Equipo: miembros, responsable, historial de cada uno en el cliente y «Analizar actividad del equipo» (IA) | `ClientView.tsx:329-350, 931, 1306-1402`, `analyze-team-activity` | Nueva (10.4) **Hecho (10.4): pestaña «Equipo», con el análisis de cada persona en su tarjeta.** **Hecho (10.9b): el histórico de cada persona, completo y por páginas (D-233).** |
 | F-132 | Satisfacción: actual, semanas analizadas, tendencia semanal, mensual y trimestral, y gráfica | `ClientView.tsx:777-841, 1116, 1451-1478` | Nueva (10.4) **Hecho (10.4): pestaña «Satisfacción», con la gráfica (`--chart-1`) y su tabla.** |
 | F-133 | Unirse o salir como colaborador | `App.tsx:1661-1830` | Adaptar (igual que F-034). **Servidor hecho (10.2a):** igual que F-034. **Pantalla (10.2):** «Unirme a proyectos» y «Dejar proyecto» en /weeklies; en la ficha de cliente, con la 10.4. **Hecho (10.4): también en la pestaña «Equipo» de la ficha.** |
 
 **Equipo**
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
-| F-134 | Lista con buscador y filtros (departamento, rol, estado del reporte y cliente) | `TeamView.tsx:1688-1769` | Adaptar: personas de Audax + filtros (10.4) **Hecho (10.4): `/equipo` (D-195).** |
+| F-134 | Lista con buscador y filtros (departamento, rol, estado del reporte y cliente) | `TeamView.tsx:1688-1769` | Adaptar: personas de Audax + filtros (10.4) **Hecho (10.4): `/equipo` (D-195).** **Hecho (10.9b): los filtros se conservan al volver de una ficha (D-233).** |
 | F-135 | Columnas ordenables (nombre, email, puesto y estado del reporte) | `TeamView.tsx:392-434, 594-617` | Adaptar (10.4) **Hecho (10.4): también por departamento.** |
 | F-136 | Estado del reporte por persona (Enviado, Enviado con retraso, Pendiente, Con retraso o No requerido) e insignias VACACIONES y AUSENTE | `TeamView.tsx:480-481, 607-612` | Nueva (10.4) **Hecho (10.4): el tipo de ausencia solo para quien puede saberlo (D-088).** |
 | F-137 | Copiar el email | `TeamView.tsx:262, 698` | Nueva (trivial, 10.4) **Hecho (10.4).** |
 | F-138 | Alta (nombre opcional, email, departamento, puesto y rol) con invitación | `TeamView.tsx:211, 1824-1890`, `create-user` | Existe |
 | F-139 | Editar persona (nombre, estado hasta una fecha, departamento y rol) | `TeamView.tsx:228, 1477-1576` | Existe, con ausencias |
 | F-140 | Eliminar persona conservando su historial | `TeamView.tsx:241, 1046` | Existe (baja = desactivar; corrige el fallo de A.3) |
-| F-141 | Asignar proyectos (clientes) a una persona | `TeamView.tsx:327, 1589-1641` | Existe (miembros de proyecto) |
+| F-141 | Asignar proyectos (clientes) a una persona | `TeamView.tsx:327, 1589-1641` | Existe (miembros de proyecto) **Hecho (10.9b): «Asignar clientes» (varios a la vez) en la ficha, con la suscripción de la Weekly (D-233).** |
 | F-142 | Ficha: racha y hábitos de envío (hora media, mañana, tarde o noche, y día más habitual) | `TeamView.tsx:485-530, 1272-1277` | Nueva (10.4) **Hecho (10.4): en la hora de Madrid (D-198).** |
-| F-143 | Ficha: último reporte por cliente e historial completo por semanas (plegable) | `TeamView.tsx:168-175, 915-934, 1338-1430`, `get-user-report-history` | Nueva (10.4) **Hecho (10.4).** |
+| F-143 | Ficha: último reporte por cliente e historial completo por semanas (plegable) | `TeamView.tsx:168-175, 915-934, 1338-1430`, `get-user-report-history` | Nueva (10.4) **Hecho (10.4).** **Hecho (10.9b): «Ver histórico» por cliente e historial por páginas de un año, sin tope (D-233).** |
 | F-144 | Ficha: «Resumen de desempeño (IA)» | `TeamView.tsx:268-290, 1026, 1310-1326`, `generate-performance-summary` | Nueva (10.4; quién lo ve, G2) **Hecho (10.4): solo el admin y sus responsables (D-147 y D-194).** |
 | F-145 | Ficha: «Actividad por cliente (IA)», más los clientes que lidera y en los que colabora | `TeamView.tsx:292-320, 1440-1465`, `analyze-user-client-activity` | Nueva (10.4; G2) **Hecho (10.4): solo el admin y sus responsables (D-147 y D-194).** |
 
@@ -290,7 +290,7 @@ La entrega es la de F.
 | F-151 | Actualizaciones puntuales a mano (fecha, título, resumen y contenido) | `HelpView.tsx:1111-1154, 1837-1907` | Nueva (10.7) **Hecho (10.7): fecha, título, descripción breve y contenido con formato (D-208).** |
 | F-152 | Estados de las novedades (nueva, en proceso o anterior), buscador y filtro | `HelpView.tsx:382-386, 1434-1494` | Nueva (10.7) **Hecho (10.7): nueva, en curso o anterior con la regla de WeeklySync; buscador en título, resumen, versión, contenido y cambios; filtros de tipo y estado.** |
 | F-153 | «Me gusta» en las novedades y quién lo ha dado | `HelpView.tsx:1310-1321`, `help_update_likes` | Nueva (10.7) **Hecho (10.7): alternar, con los avatares y la lista de quién lo ha dado (D-208).** |
-| F-154 | Editor de texto con formato (negrita, cursiva, título, subtítulo y divisor) | `HelpView.tsx:284-320`, `AppEditorToolbar.tsx` | Existe (`RichText`) **Hecho (10.7): el editor de Audax (RichText) en las actualizaciones, las respuestas de las preguntas frecuentes y las sugerencias.** |
+| F-154 | Editor de texto con formato (negrita, cursiva, título, subtítulo y divisor) | `HelpView.tsx:284-320`, `AppEditorToolbar.tsx` | Existe (`RichText`) **Hecho (10.7): el editor de Audax (RichText) en las actualizaciones, las respuestas de las preguntas frecuentes y las sugerencias.** **Hecho (10.9b): botones Título, Subtítulo y Divisor en la barra del editor.** |
 | F-155 | Tutoriales en vídeo (hasta 200 MB, subida con progreso y ligados a una versión): vista previa, editar, sustituir el vídeo, eliminar y reordenar arrastrando | `HelpView.tsx:724-1100, 1602-1671, 1920-2150` | Nueva (10.7) **Hecho (10.7): hasta 200 MB, subida por trozos de 8 MB con progreso y reintento, ligado a una versión, reproductor con Range y URL firmada, editar, sustituir, eliminar y reordenar arrastrando (D-207).** |
 | F-156 | Preguntas frecuentes por secciones: crear, editar, eliminar y reordenar secciones y preguntas; desplegar la respuesta | `HelpView.tsx:1160-1300, 1686-1810, 2170-2282` | Nueva (10.7) **Hecho (10.7): secciones y preguntas con crear, editar, eliminar y reordenar (arrastrar o subir y bajar), respuesta desplegable y buscador en todas (D-208).** |
 | F-157 | Manual en PDF y enlace de soporte | `helpCenter.ts:828`, migración 026 | Nueva (10.7) **Hecho (10.7): PDF en el disco privado con URL firmada y enlace de soporte, editables por quien gestiona (D-208).** |
@@ -301,11 +301,11 @@ La entrega es la de F.
 |---|---|---|---|
 | F-159 | Vistas Feedback y Roadmap | `HelpSuggestionsView.tsx:3088, 3368-3369` | Nueva (10.7) **Hecho (10.7): Roadmap (por defecto) y Feedback, en la URL (`?vista=`, D-210).** |
 | F-160 | Tableros y categorías: crear, editar, ocultar y reordenar (ADMIN) | `HelpSuggestionsView.tsx:2401-2465, 2603-2757, 3742-3793, 4019-4035` | Nueva (10.7) **Hecho (10.7): «Gestionar categorías» con tableros y categorías: crear, editar, ocultar, eliminar (un tablero con sugerencias no) y reordenar arrastrando (D-210).** |
-| F-161 | Crear sugerencia (título, categoría, detalle con formato, adjuntos y pegar archivos) con «sugerencias similares» | `HelpSuggestionsView.tsx:2205-2234, 3875-3967` | Nueva (10.7) **Hecho (10.7): tablero y categoría, detalle con formato y menciones, adjuntos elegidos o pegados y «sugerencias similares» al escribir el título (D-210).** |
+| F-161 | Crear sugerencia (título, categoría, detalle con formato, adjuntos y pegar archivos) con «sugerencias similares» | `HelpSuggestionsView.tsx:2205-2234, 3875-3967` | Nueva (10.7) **Hecho (10.7): tablero y categoría, detalle con formato y menciones, adjuntos elegidos o pegados y «sugerencias similares» al escribir el título (D-210).** **Hecho (10.9b): también vídeos MP4, MOV y WebM (D-235).** |
 | F-162 | Feedback: buscador, filtro de categoría, orden Trending, Top o Nuevo, «cargar más» y resultados globales | `HelpSuggestionsView.tsx:278, 3498-3608`, `helpSuggestions.ts:30-42` | Nueva (10.7) **Hecho (10.7): búsqueda global (ignora tablero y categoría), Trending, Top, Nuevas o un estado del roadmap, categoría y «Cargar más» (D-210).** |
 | F-163 | Votar y ver quién ha votado | `HelpSuggestionsView.tsx:714, 2155, 3285-3287` | Nueva (10.7) **Hecho (10.7): un voto por persona (índice único), alternando al momento, y la lista de quién ha votado.** |
 | F-164 | Detalle con actividad, contexto y categoría; editar o eliminar (autor o ADMIN) | `HelpSuggestionsView.tsx:3069-3307` | Nueva (10.7) **Hecho (10.7): `/ayuda/sugerencias/{id}` con la actividad, el tablero y la categoría; editar o eliminar su autor o quien gestiona (con los adjuntos de sus comentarios).** |
-| F-165 | Comentarios con respuestas anidadas, edición, borrado, adjuntos y menciones @ con autocompletado | `HelpSuggestionsView.tsx:1062, 1235-1300, 2247-2330, 2779-2983` | Nueva (10.7) **Hecho (10.7): respuestas anidadas, editar (autor), eliminar con sus respuestas (autor o quien gestiona), adjuntos y menciones @ con el editor de Audax; avisos de respuesta y mención (D-209).** |
+| F-165 | Comentarios con respuestas anidadas, edición, borrado, adjuntos y menciones @ con autocompletado | `HelpSuggestionsView.tsx:1062, 1235-1300, 2247-2330, 2779-2983` | Nueva (10.7) **Hecho (10.7): respuestas anidadas, editar (autor), eliminar con sus respuestas (autor o quien gestiona), adjuntos y menciones @ con el editor de Audax; avisos de respuesta y mención (D-209).** **Hecho (10.9b): también vídeos (D-235).** |
 | F-166 | Reacciones a los comentarios (Me gusta, Impulso, Siguiendo y Me encanta) | `HelpSuggestionsView.tsx:410-413, 2361` | Nueva (10.7) **Hecho (10.7): Me gusta, Impulso, Siguiendo y Me encanta; una por persona (la misma la quita, otra la cambia) y quién las ha puesto.** |
 | F-167 | Moderación: estado (open, future, planned, building_now, beta o completed) con nota oficial e historial | `HelpSuggestionsView.tsx:2545-2554, 3307-3327`, `suggestion_status_events` | Nueva (10.7) **Hecho (10.7): estado con nota oficial e historial en la actividad; un cambio sin estado nuevo ni nota no hace nada; avisa a quien la propuso (D-209).** |
 | F-168 | Roadmap por columnas de estado: arrastrar entre columnas y reordenar, filtro de estados, buscador y «cargar más» | `HelpSuggestionsView.tsx:803, 1930-1990, 3625-3727` | Nueva (10.7) **Hecho (10.7): columnas por estado ordenadas en el servidor (`position`); arrastrar entre columnas (cambia el estado) y dentro de una, con teclado y el menú «Mover a…»; estados visibles, categoría, buscador y «Cargar más» (D-210).** |
@@ -316,7 +316,7 @@ La entrega es la de F.
 | ID | Funcionalidad | Origen | Destino |
 |---|---|---|---|
 | F-171 | Transcripción conservadora: detecta silencio y muletillas y no inventa | `transcribe-audio:80-135` | Adaptar: Whisper + filtros (10.2). **Servidor hecho (10.2a):** `no_speech` (D-158). **Hecho (10.2).** |
-| F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2). **Servidor hecho (10.2a):** `CleanDictation`, ajuste `weekly_dictation_cleanup` (D-158). **Hecho (10.2): interruptor en los ajustes.** |
+| F-172 | Corrige los nombres de clientes y personas en la transcripción | `transcribe-audio:150-200` | Nueva: limpieza (10.2). **Servidor hecho (10.2a):** `CleanDictation`, ajuste `weekly_dictation_cleanup` (D-158). **Hecho (10.2): interruptor en los ajustes.** **Hecho (10.9b): encendida por defecto, solo en la weekly, con aviso si falla (D-227).** |
 | F-173 | Telemetría de IA (modelo, tokens y coste) | `_shared/aiTelemetry.ts`, `ai_usage_events` | Nueva (10.3). **10.1:** tabla `ai_usage` y `AiUsageRecorder`; GeminiClient y GoogleTtsSynthesizer registran cada llamada con tokens, caracteres y coste. Falta la página (10.3) **Hecho (10.3): página «Uso de IA» (D-193).** |
 | F-174 | Modelo configurable sin tocar código | `vertexAI.ts:8-13, 192` | **Hecho (10.1):** `GEMINI_MODEL` (y `GOOGLE_TTS_VOICE`) en `.env`, leídos por `config/services.php`; sin desplegar |
 
@@ -330,6 +330,50 @@ La entrega es la de F.
 | F-179 | Salud de Supabase, Vercel e IA | `platform-health` | **Descartado** (Audax tiene `/health` y el estado de las copias) |
 | F-180 | Coste y tokens de IA de 30 días | `PlatformView.tsx:564-565`, `platform_ai_usage_summary` | **Descartado** como consola. Útil: página «Uso de IA» para el admin (con F-173, 10.3) **Hecho (10.3): `/admin/uso-ia`, de 7, 30 o 90 días, por función y modelo (D-193).** |
 | F-181 | Registro de auditoría de la plataforma | `platform_audit_logs` | **Descartado** (Audax tiene auditoría) |
+
+**No inventariadas (revisión de paridad 10.9b)**
+Las encontraron los siete revisores de paridad del 06/10 (informes en el plan, 10.9b).
+| ID | Funcionalidad | Origen | Destino |
+|---|---|---|---|
+| F-182 | Mapa «Constancia (últimas 12 semanas)» en el perfil y la ficha de persona | `ProfileView.tsx:87-216`, `TeamView.tsx:847-858, 1210-1267` | **Hecho (10.9b) (D-233).** |
+| F-183 | Pantalla de error del navegador con «Recargar aplicación» | `ErrorBoundary.tsx:30-52` | **Hecho (10.9b) (D-234).** |
+| F-184 | Pedir permiso de notificaciones del navegador al entrar | `App.tsx:857-873` | **Hecho (10.9b), distinto:** aviso amable con «Activar avisos» y «Ahora no», nunca el permiso sin un gesto (D-230). |
+| F-185 | Insignia de estado (vacaciones o ausencia) sobre el avatar y «Cambiar estado» | `Layout.tsx:137-151, 437-447` | **Hecho (10.9b) (D-228).** |
+| F-186 | Texto «tus reportes se marcarán automáticamente como completados» al marcarse fuera | `Layout.tsx:598-600` | **Hecho (10.9b) (D-228).** |
+| F-187 | El estado vence solo al pasar la fecha de fin; sin fecha, indefinido | `App.tsx:224-277` | **Hecho (10.9b) (D-228).** |
+| F-188 | Redirección y aviso con una ruta de detalle que no existe | `App.tsx:2825-2880` | **Distinto:** 404 de Audax con «Inicio» y «Volver». Pendiente P3 (ver el plan). |
+| F-189 | Desplegables de filtro con buscador a partir de 10 opciones | `DesktopFilterSelect.tsx:28` | **Parcial:** buscador en cliente y proyecto de las tareas (D-231); los filtros de `/equipo` son nativos (se puede escribir para saltar). P3. |
+| F-190 | Analítica de uso (Umami y Clarity) | `index.html:56-63` | **Descartado (10.9b):** sin terceros por el SPEC y el RGPD. |
+| F-191 | Envío vacío para dar la semana por hecha sin texto | `WeeklyReportingInterface.tsx:362-384` | **Hecho (10.9b) (D-230).** |
+| F-192 | Notas de la tarea en «Autocompletar» | `WeeklyReportingInterface.tsx:322-331` | **Hecho (10.9b) (D-231).** |
+| F-193 | Nombres de las personas pendientes en la confirmación de cierre | `AdminDashboard.tsx:643-647` | **Hecho (10.9b).** |
+| F-194 | Fecha de fin de la exención en el aviso del editor | `WeeklyReportingInterface.tsx:529` | **Hecho (10.9b) (D-228).** |
+| F-195 | Un solo dictado a la vez | `WeeklyReportingInterface.tsx:624` | **Hecho (10.9b).** |
+| F-196 | Nombres de clientes y personas para corregir la transcripción, siempre | `transcribe-audio:184-204` | **Hecho (10.9b):** limpieza encendida por defecto (D-227). |
+| F-197 | Aviso «la limpieza falló, se insertó la transcripción literal» | `transcribe-audio:243-255` | **Hecho (10.9b) (D-227).** |
+| F-198 | Selector de cliente con búsqueda con más de 8 clientes en «Nueva tarea» | `TaskView.tsx:650` | **Hecho (10.9b) (D-231).** |
+| F-199 | Color de la participación (verde, naranja y rojo) | `WeeklysList.tsx:129-133` | **Hecho (10.9b).** |
+| F-200 | Avisos «Tarea creada» y al marcarla hecha | `App.tsx:2570, 2622` | **Hecho (10.9b) (D-231).** |
+| F-201 | Informes antiguos solo de texto, por secciones y con índice, también en el HTML | `ReportView.tsx:212-221, 1167-1176`, `weeklyHtmlExport.ts:169-235` | **Hecho (10.9b):** página, PDF/HTML y CSV por secciones con su índice. El audio de una semana así no se regenera (P3, ver el plan). |
+| F-202 | Página del informe en tiempo real (equipo, «Hay nuevos reportes», reportes y aviso de cierre) | `App.tsx:952-973` | **Hecho (10.9b) (D-229).** |
+| F-203 | Color de la satisfacción por tramos | `ClientView.tsx:386-391` | **Hecho (10.9b) (D-232).** |
+| F-204 | Responsable y avatares del equipo en cada fila de la cartera | `ClientView.tsx:433-488` | **Hecho (10.9b) (D-232).** |
+| F-205 | «Ver histórico» por cliente en la ficha de persona | `TeamView.tsx:874-904` | **Hecho (10.9b) (D-233).** |
+| F-206 | Avatares del equipo en la cabecera de la ficha de cliente | `ClientView.tsx:1033-1056` | **Parcial:** el responsable en la cabecera; el equipo, en su pestaña y en la cartera. P3. |
+| F-207 | Acciones en la fila de la cartera y del equipo (editar, ocultar, eliminar) | `ClientView.tsx:497-633`, `TeamView.tsx:2123-2167` | **Distinto:** en la ficha y en `/admin/usuarios` («Recordar» sí en la fila). P3. |
+| F-208 | Vista en tarjetas en el móvil para clientes y equipo | `ClientView.tsx:533-637` | **Distinto:** tablas con desplazamiento horizontal. P3. |
+| F-209 | Resumen IA en tarjetas por sección con icono | `StructuredAiSummary.tsx` | **Parcial:** el mismo contenido en Markdown. P3. |
+| F-210 | Insignia «Pendiente activación» en el equipo | `TeamView.tsx:438-445` | **Parcial:** en `/admin/usuarios`. P3. |
+| F-211 | Vídeos y cualquier fichero en las sugerencias y bugs | `helpSuggestions.ts:253-268` | **Hecho (10.9b):** vídeos MP4, MOV y WebM (D-235); el resto de tipos, los de D-037. |
+| F-212 | Imágenes dentro de las novedades y el texto con formato importado | `HelpView.tsx:256-292` | **Distinto (D-208):** sin imágenes incrustadas; al importar, una imagen queda como enlace o su texto alternativo y no se pierde texto (10.9b). |
+| F-213 | Reordenar las columnas del roadmap | `HelpSuggestionsView.tsx:446-498` | **Descartado (D-210).** |
+| F-214 | Fecha de cada voto, «N comentarios» en la cabecera y última actividad en las tarjetas | `HelpSuggestionsView.tsx:727, 3121, 3295, 3595` | **Parcial:** fecha de creación. P3. |
+| F-215 | Estados de «similares» (Buscando…, No hemos encontrado…) | `HelpSuggestionsView.tsx:3913-3954` | **Parcial.** P3. |
+| F-216 | El administrador edita comentarios ajenos | `HelpSuggestionsView.tsx:2773` | **Descartado (D-210):** solo los borra. |
+| F-217 | Recarga en vivo de la configuración de avisos y plantillas plegadas | `NotificationSettingsView.tsx:213-238, 581-603` | **Parcial:** gana quien guarda último; plantillas abiertas. P3. |
+| F-218 | Reintento de un disparo de recordatorio fallido en la pasada siguiente | `check-scheduled-reminders:96-103` | **Parcial:** la cola reintenta; el disparo no se repite. P3. |
+| F-219 | Número de factura de la bolsa y frase de la desviación a la vista en la cartera de proyectos | `ProjectStatusView.tsx:2053-2106` | **Parcial.** P3. |
+| F-220 | Clientes archivados con proyectos abiertos en la cartera de proyectos | `ProjectStatusView.tsx:1923-1960` | **No.** P3. |
 
 **Recuento:** 181 funcionalidades.
 - Ya existen: 25.
@@ -348,6 +392,7 @@ La entrega es la de F.
 - Hechas en la 10.5: 12, las marcadas «Hecho (10.5)» (F-037, F-095, F-101, F-102 y F-104 a F-110), y se completa F-010 con «Avisos». F-103 ya existía (Web Push).
 - Hechas en la 10.6: las marcadas «Hecho (10.6)» (F-006, F-055 a F-063, F-146 y F-147), y se completa F-041.
 - Hechas en la 10.7: 21, las marcadas «Hecho (10.7)» (F-148 a F-153, F-155 a F-168 y F-170); F-154 se usa en las nuevas pantallas y se completa F-010 con «Ayuda». Ya no queda ninguna F pendiente de una entrega de pantallas: solo la migración (10.8) y el cierre (10.9).
+- **Revisión de paridad (10.9b):** las parciales pasan a hechas (las marcadas «Hecho (10.9b)», D-227 a D-235) y se añaden 39 funcionalidades que no estaban en la lista (F-182 a F-220): 22 hechas, 3 descartadas a propósito (analítica de terceros, reordenar columnas del roadmap y editar comentarios ajenos) y 14 distintas o parciales de prioridad baja (P3), con su motivo en el plan.
 
 ---
 
