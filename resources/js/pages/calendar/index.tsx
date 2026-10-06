@@ -90,7 +90,16 @@ export default function TeamCalendarPage(props: TeamCalendarPageProps) {
         }
     };
 
+    // Los destinos de «Mover a otro proyecto» dependen de la tarea (quitan su proyecto): al cambiar
+    // de tarea se olvidan y el diálogo los vuelve a pedir para la nueva (D-310).
+    const forgetMoveTargets = () => {
+        if (props.moveTargets !== undefined) {
+            router.replaceProp('moveTargets', undefined);
+        }
+    };
+
     const openTask = (taskId: number) => {
+        forgetMoveTargets();
         setClosedTaskId(null);
         setLoadingTaskId(taskId);
         router.visit(withTaskParam(page.url, taskId), {
@@ -102,6 +111,7 @@ export default function TeamCalendarPage(props: TeamCalendarPageProps) {
     };
 
     const closeTask = () => {
+        forgetMoveTargets();
         setClosedTaskId(panel?.task.id ?? null);
         setLoadingTaskId(null);
         router.visit(withTaskParam(page.url, null), {
@@ -121,9 +131,18 @@ export default function TeamCalendarPage(props: TeamCalendarPageProps) {
         setCreateOn(date);
 
         if (props.creatable === undefined) {
+            let loaded = false;
             router.reload({
                 only: ['creatable'],
+                // Si no llegan los proyectos, el diálogo no se abriría nunca: se avisa (D-310).
+                onFinish: () => {
+                    if (!loaded) {
+                        setCreateOn(null);
+                        toast.error(t('task_errors.network'));
+                    }
+                },
                 onSuccess: (next) => {
+                    loaded = true;
                     const creatable = (next.props as { creatable?: unknown[] })
                         .creatable;
 

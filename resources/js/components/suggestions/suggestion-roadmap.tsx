@@ -519,6 +519,8 @@ export function SuggestionRoadmap({
             positionRoute.url(postId),
             { status, ...roadmapNeighbours(next, status, postId) },
             {
+                // Asíncrona: mover otra tarjeta enseguida ya no interrumpe (y pierde) esta (D-310).
+                async: true,
                 preserveScroll: true,
                 preserveState: true,
                 only: ['suggestions'],

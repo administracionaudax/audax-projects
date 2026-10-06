@@ -51,9 +51,24 @@ export function MoveTaskDialog({
     const [error, setError] = useState<string | null>(null);
     const selected = targets?.find((project) => project.id === target) ?? null;
 
+    const [loadFailed, setLoadFailed] = useState(false);
+
     const load = () => {
         if (targets === undefined) {
-            router.reload({ only: ['moveTargets'] });
+            let loaded = false;
+            setLoadFailed(false);
+            router.reload({
+                only: ['moveTargets'],
+                onSuccess: () => {
+                    loaded = true;
+                },
+                // Sin red, error del servidor o cancelada: aviso y «Reintentar» (D-310).
+                onFinish: () => {
+                    if (!loaded) {
+                        setLoadFailed(true);
+                    }
+                },
+            });
         }
     };
 
@@ -103,7 +118,21 @@ export function MoveTaskDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                {targets === undefined ? (
+                {targets === undefined && loadFailed ? (
+                    <div className="grid justify-items-start gap-2">
+                        <p role="alert" className="text-sm text-danger">
+                            {t('task_errors.network')}
+                        </p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={load}
+                        >
+                            {t('task_errors.retry')}
+                        </Button>
+                    </div>
+                ) : targets === undefined ? (
                     <div
                         role="status"
                         aria-label={t('common.loading')}

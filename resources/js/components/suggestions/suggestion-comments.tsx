@@ -9,7 +9,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { RichTextContent } from '@/components/rich-text/rich-text-content';
 import RichTextEditor from '@/components/rich-text/rich-text-editor';
@@ -79,14 +79,25 @@ export function CommentForm({
     // El editor se vuelve a montar vacío tras publicar.
     const [round, setRound] = useState(0);
 
+    // Ctrl/⌘+Intro dos veces seguidas publicaba el comentario dos veces (D-310).
+    const sending = useRef(false);
+
     const submit = () => {
+        if (sending.current) {
+            return;
+        }
+
+        sending.current = true;
         const options = {
             forceFormData: true,
             preserveScroll: true,
             preserveState: true,
             only: ['suggestions'],
             onStart: () => setProcessing(true),
-            onFinish: () => setProcessing(false),
+            onFinish: () => {
+                sending.current = false;
+                setProcessing(false);
+            },
             onError: (next: Record<string, string>) => setErrors(next),
             onSuccess: () => {
                 setBody('');

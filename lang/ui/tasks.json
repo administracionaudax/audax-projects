@@ -256,6 +256,7 @@
     "task_activity.field.description": "Descripción",
     "task_errors.generic": "No se ha podido guardar el cambio. Revisa los datos e inténtalo de nuevo.",
     "task_errors.server": "Algo ha fallado en el servidor. Recarga la página e inténtalo de nuevo.",
+    "task_errors.retry": "Reintentar",
     "task_errors.network": "Sin conexión con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
     "task_errors.move_failed": "No se ha podido mover la tarea: ha vuelto a su sitio.",
     "move_task.title": "Mover a otro proyecto",
