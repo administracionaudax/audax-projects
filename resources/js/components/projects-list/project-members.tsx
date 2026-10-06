@@ -70,6 +70,10 @@ function MemberRow({
     const switchId = useId();
     const [processing, setProcessing] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    // El error de esta persona (no se puede quitar al gestor principal…), en su fila (D-310).
+    const [rowError, setRowError] = useState<string | null>(null);
+    const onError = (errors: Record<string, string>) =>
+        setRowError(Object.values(errors)[0] ?? null);
 
     const toggleManager = (isManager: boolean) => {
         router.patch(
@@ -77,7 +81,11 @@ function MemberRow({
             { is_manager: isManager },
             {
                 preserveScroll: true,
-                onStart: () => setProcessing(true),
+                onStart: () => {
+                    setRowError(null);
+                    setProcessing(true);
+                },
+                onError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -86,7 +94,11 @@ function MemberRow({
     const remove = () => {
         router.delete(destroy.url({ project: projectId, user: member.id }), {
             preserveScroll: true,
-            onStart: () => setProcessing(true),
+            onStart: () => {
+                setRowError(null);
+                setProcessing(true);
+            },
+            onError,
             onFinish: () => {
                 setProcessing(false);
                 setConfirming(false);
@@ -96,7 +108,7 @@ function MemberRow({
 
     return (
         <li
-            className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center"
+            className="flex flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-center"
             data-test="project-member"
         >
             <div className="min-w-0 flex-1">
@@ -175,6 +187,10 @@ function MemberRow({
                     )}
                 </div>
             ) : null}
+            <InputError
+                message={rowError ?? undefined}
+                className="sm:basis-full"
+            />
         </li>
     );
 }

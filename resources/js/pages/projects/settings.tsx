@@ -1,10 +1,4 @@
-import {
-    Head,
-    router,
-    setLayoutProps,
-    useForm,
-    usePage,
-} from '@inertiajs/react';
+import { Head, router, setLayoutProps, useForm } from '@inertiajs/react';
 import { Archive, ArchiveRestore, TriangleAlert } from 'lucide-react';
 import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -64,7 +58,6 @@ export default function ProjectSettings({
     portal?: ProjectPortalSettings;
 }) {
     const abilities = useAbilities();
-    const errors = usePage().props.errors as Record<string, string> | undefined;
     const archived = project.status === 'archived';
 
     setLayoutProps({
@@ -114,14 +107,8 @@ export default function ProjectSettings({
                         title={t('projects.settings.team')}
                         description={t('projects.settings.team_description')}
                     >
-                        {errors?.is_manager || errors?.user_id ? (
-                            <Alert variant="destructive" role="alert">
-                                <TriangleAlert aria-hidden="true" />
-                                <AlertDescription>
-                                    {errors.is_manager ?? errors.user_id}
-                                </AlertDescription>
-                            </Alert>
-                        ) : null}
+                        {/* Los errores de cada persona salen en su fila y los del alta junto al
+                            selector: aquí se repetían (D-310). */}
                         <ProjectMembers
                             projectId={project.id}
                             members={members}
