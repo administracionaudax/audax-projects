@@ -81,9 +81,9 @@ class Setting extends Model
         // Centro de ayuda (F-157): enlace de soporte y manual en PDF ({disk, path, name, size}).
         'help_support_url' => null,
         'help_manual' => null,
-        // Limpieza del dictado de la weekly con IA (F-172, D-146): corrige nombres de clientes y
-        // personas en la transcripción de Whisper. Solo el texto va a Gemini.
-        'weekly_dictation_cleanup' => false,
+        // Limpieza del dictado de la weekly con IA (F-172, D-146, D-227): corrige nombres de clientes y
+        // personas en la transcripción de Whisper, como hacía siempre WeeklySync. Solo el texto va a Gemini.
+        'weekly_dictation_cleanup' => true,
         // Entrar con Google (D-165): solo se ofrece si además hay credenciales de Google.
         'google_login_enabled' => true,
     ];

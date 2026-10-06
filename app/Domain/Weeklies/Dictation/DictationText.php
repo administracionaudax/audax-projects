@@ -25,6 +25,9 @@ final class DictationText
 
     public const string WARNING_NO_SPEECH = 'no_speech';
 
+    /** La limpieza con IA no ha respondido: el texto es la transcripción literal (D-227). */
+    public const string WARNING_CLEANUP_FAILED = 'cleanup_failed';
+
     /** Muletillas e interjecciones sueltas (ws:transcribe-audio `fillerOnlyPattern`). */
     private const string FILLER_ONLY = '/^(uh+|um+|umm+|eh+|emm+|mmm+|hmm+|aj[áa]m+|ah+|ehm+|mm+hmm+|vale+|ok+|okay+)$/iu';
 

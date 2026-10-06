@@ -85,7 +85,7 @@ final class TranscribeDictation implements ShouldBeUnique, ShouldQueue
 
         $raw = DictationText::strip($result->text);
         $meaningful = DictationText::isMeaningful($raw);
-        $clean = $meaningful && DictationCleaner::enabled() && ! DictationText::shouldSkipCleanup($raw);
+        $clean = $meaningful && DictationCleaner::appliesTo($dictation) && ! DictationText::shouldSkipCleanup($raw);
 
         $dictation->forceFill([
             'status' => $clean ? TranscriptionStatus::Processing : TranscriptionStatus::Done,

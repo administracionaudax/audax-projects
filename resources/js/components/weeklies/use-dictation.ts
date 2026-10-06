@@ -30,14 +30,16 @@ export type DictationPhase = 'idle' | 'uploading' | 'transcribing';
  * - no_speech / too_short: hecho, pero sin texto («no se ha oído nada», F-050 y F-171),
  * - failed: Whisper falló,
  * - upload: no se pudo subir (con el mensaje del servidor si lo hay),
- * - timeout: se ha cansado de esperar.
+ * - timeout: se ha cansado de esperar,
+ * - cleanup_failed: hay texto, pero literal: la limpieza con IA no ha respondido (D-227).
  */
 export type DictationNotice =
     | 'no_speech'
     | 'too_short'
     | 'failed'
     | 'upload'
-    | 'timeout';
+    | 'timeout'
+    | 'cleanup_failed';
 
 export type DictationState = {
     phase: DictationPhase;
@@ -108,7 +110,7 @@ export function useDictation({
             return;
         }
 
-        setNotice(null);
+        setNotice(dictation.warning === 'cleanup_failed' ? 'cleanup_failed' : null);
         deliver.current(text);
     }, []);
 

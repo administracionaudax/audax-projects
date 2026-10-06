@@ -37,6 +37,7 @@ const NOTICES: Record<DictationNotice, TranslationKey> = {
     failed: 'weeklies.dictation.notice.failed',
     upload: 'weeklies.dictation.notice.upload',
     timeout: 'weeklies.dictation.notice.timeout',
+    cleanup_failed: 'weeklies.dictation.notice.cleanup_failed',
 };
 
 /**
@@ -125,7 +126,9 @@ export function DictationButton({
           t(NOTICES[dictation.notice])
         : null;
     const isWarning =
-        dictation.notice === 'no_speech' || dictation.notice === 'too_short';
+        dictation.notice === 'no_speech' ||
+        dictation.notice === 'too_short' ||
+        dictation.notice === 'cleanup_failed';
 
     return (
         <div className="grid min-w-0 gap-1.5" data-test="dictation">

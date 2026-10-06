@@ -220,7 +220,7 @@ export default function AdminSettings({
         ) as Record<AppModule, boolean>,
         banner_message: settings.global_banner?.message ?? '',
         banner_tone: settings.global_banner?.tone ?? 'info',
-        weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? false,
+        weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? true,
         google_login_enabled: settings.google_login_enabled ?? true,
     });
     const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)

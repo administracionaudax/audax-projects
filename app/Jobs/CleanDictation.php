@@ -49,16 +49,20 @@ final class CleanDictation implements ShouldBeUnique, ShouldQueue
 
         $raw = DictationText::strip((string) $dictation->raw_text);
 
+        $warning = null;
+
         try {
             $text = $cleaner->clean($dictation, $raw);
         } catch (Throwable $e) {
             report($e);
             $text = $raw;
+            $warning = DictationText::WARNING_CLEANUP_FAILED;
         }
 
         $dictation->forceFill([
             'status' => TranscriptionStatus::Done,
             'text' => $text,
+            'warning' => $warning,
             'transcribed_at' => now(),
         ])->save();
 
@@ -73,6 +77,7 @@ final class CleanDictation implements ShouldBeUnique, ShouldQueue
             $dictation->forceFill([
                 'status' => TranscriptionStatus::Done,
                 'text' => DictationText::strip((string) $dictation->raw_text),
+                'warning' => DictationText::WARNING_CLEANUP_FAILED,
                 'transcribed_at' => now(),
             ])->save();
             event(DictationUpdated::for($dictation));

@@ -226,6 +226,40 @@ describe('DictationButton (dictado de la weekly, F-049)', () => {
         ).toBeTruthy();
     });
 
+    it('si la limpieza con IA falla, añade el texto literal y avisa de que lo repase (D-227)', async () => {
+        const onText = vi.fn();
+        fetchMock.mockResolvedValueOnce(
+            json({ dictation: dictation({ status: 'pending' }) }, 201),
+        );
+        render(
+            <DictationButton
+                cycleId={12}
+                clientId={3}
+                clientName="Ferretería Ruiz"
+                onText={onText}
+            />,
+        );
+
+        await recordAndSend();
+        fetchMock.mockResolvedValueOnce(
+            json({
+                dictation: dictation({
+                    status: 'done',
+                    text: 'eh bueno hoy la web',
+                    warning: 'cleanup_failed',
+                }),
+            }),
+        );
+        await act(async () => {
+            vi.advanceTimersByTime(DICTATION_POLL_MS);
+        });
+
+        expect(onText).toHaveBeenCalledWith('eh bueno hoy la web');
+        expect(
+            screen.getByText(/Se ha añadido la transcripción literal/),
+        ).toBeTruthy();
+    });
+
     it('un audio demasiado corto vuelve hecho al momento y avisa (F-050)', async () => {
         const onText = vi.fn();
         fetchMock.mockResolvedValueOnce(

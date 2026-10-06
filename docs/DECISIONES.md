@@ -1421,7 +1421,7 @@ Las pantallas son la 10.2b. Detalle de las props de cada página en `docs/PLAN-F
 2. **Menos de 0,7 s o de 1,5 KB** (F-050): no se transcribe. Queda hecho al momento, sin texto y con el aviso `too_short`.
 3. **`TranscribeDictation`**, en la cola `transcriptions`: el Whisper del servidor (D-070). El audio se borra al acabar, con éxito o sin él.
 4. **Sin voz útil** (F-171): Whisper no dice «no hay voz», sino que inventa frases de subtítulos sobre el silencio. Se quitan las anotaciones («[Música]») y esas frases. Si queda vacío, solo muletillas o una palabra suelta corta, el dictado queda hecho sin texto y con el aviso `no_speech`.
-5. **Limpieza con IA** (F-172): detrás del ajuste `weekly_dictation_cleanup`, **apagado por defecto**. Solo va el texto a Gemini (`CleanDictation`, cola `ai`, un intento), con los nombres de los clientes activos y de la plantilla para corregirlos. Si falla o no devuelve nada útil, se queda el texto de Whisper. Con 4 palabras o menos no se llama.
+5. **Limpieza con IA** (F-172): detrás del ajuste `weekly_dictation_cleanup`, **apagado por defecto** (encendido desde D-227, solo en la weekly). Solo va el texto a Gemini (`CleanDictation`, cola `ai`, un intento), con los nombres de los clientes activos y de la plantilla para corregirlos. Si falla o no devuelve nada útil, se queda el texto de Whisper. Con 4 palabras o menos no se llama.
 6. **Al terminar** se emite `dictation.updated` por el canal privado de su autor (`App.Models.User.{id}`). Sin Reverb, la interfaz sondea `dictations.show`. Solo su autor ve un dictado, ni siquiera el admin.
 
 ### D-159 · Exenciones: poner, renunciar y quitar
@@ -1810,6 +1810,12 @@ Hallazgo 6 (baja).
 
 ### D-226 · Tableros ocultos de sugerencias
 Hallazgo 7 (baja): en un tablero oculto (D-210) **nadie** vota, comenta ni reacciona (tampoco quien gestiona, que sí la ve para moderarla), y sus adjuntos solo los baja quien gestiona. Lo aplican `SuggestionPostPolicy` (`view`, `vote` y `comment`) y `SuggestionCommentPolicy::react`; `AttachmentPolicy` ya usaba `view`. La página lo dice («Este tablero está oculto…») y desactiva el voto (`post.can.interact`).
+
+### D-227 · La limpieza del dictado, encendida por defecto **[cambia D-158, paso 5]**
+Revisión de paridad 10.9b (F-172, P1): en WeeklySync el dictado de la weekly llegaba siempre limpio (sin muletillas y con los nombres de clientes y personas corregidos). Con la limpieza apagada, el equipo lo notaría en el primer dictado. El propietario ya autorizó en G1 mandar el texto a Gemini (D-146).
+- **`weekly_dictation_cleanup` = true por defecto** (se sigue pudiendo apagar en `/admin/ajustes`).
+- **Solo el dictado de la weekly** (`DictationCleaner::appliesTo`, contexto `weekly_entry`), como el modo `weekly-report` del original: las notas de las tareas quedan literales.
+- **Si la IA no responde**, se queda el texto de Whisper con el aviso nuevo `cleanup_failed` («Se ha añadido la transcripción literal: la limpieza automática no se ha podido completar»), como avisaba WeeklySync. Si responde vacío, el texto literal sin aviso.
 
 ### D-165 · Entrar con Google **[amplía SPEC §15 y §18]**
 Pedido por el propietario el 05/10: la agencia usa Google Workspace (`audaxstudio.com`) y quiere «Entrar con Google» en el inicio de sesión. Es una excepción a «integraciones externas fuera de alcance» (§18) pedida expresamente; no envía datos de la app a Google: solo se lee la identidad.

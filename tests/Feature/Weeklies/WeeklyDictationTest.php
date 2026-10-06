@@ -135,7 +135,8 @@ it('un colaborador externo no dicta; cada uno ve solo sus dictados', function ()
     $this->actingAs(userWithRole('admin'))->getJson("/mi-espacio/dictados/{$mine->id}")->assertForbidden();
 });
 
-it('de punta a punta (cola síncrona): subir, transcribir y consultar el texto', function () {
+it('de punta a punta (cola síncrona): subir, transcribir, limpiar y consultar el texto', function () {
+    FakeLlm::bind()->push('Hoy he cerrado la propuesta de Acme y mañana sigo con la web.');
     $response = $this->actingAs($this->me)
         ->post('/mi-espacio/dictados', dictationUpload(), ['Accept' => 'application/json'])
         ->assertCreated();
@@ -234,14 +235,31 @@ it('un dictado ya hecho no se vuelve a transcribir', function () {
 
 // --- Limpieza con IA (F-172), detrás del ajuste weekly_dictation_cleanup -----------------------
 
-it('con la limpieza apagada (por defecto) no se llama a la IA', function () {
+it('la limpieza viene encendida por defecto, como en WeeklySync (D-227)', function () {
+    expect(Setting::get(DictationCleaner::SETTING))->toBeTrue()
+        ->and(DictationCleaner::enabled())->toBeTrue();
+});
+
+it('con la limpieza apagada no se llama a la IA', function () {
+    Setting::set(DictationCleaner::SETTING, false);
     $llm = FakeLlm::bind();
     $dictation = storedDictation($this->me);
 
     TranscribeDictation::dispatchSync($dictation->id);
 
     $llm->assertNothingSent();
-    expect(Setting::get(DictationCleaner::SETTING))->toBeFalse();
+    expect($dictation->refresh()->text)->toBe('Hoy he cerrado la propuesta de Acme y mañana sigo con la web.');
+});
+
+it('las notas de una tarea no pasan por la limpieza, aunque esté encendida (D-227)', function () {
+    $llm = FakeLlm::bind();
+    $dictation = storedDictation($this->me, attributes: ['context' => DictationContext::TaskNote, 'weekly_cycle_id' => null]);
+
+    TranscribeDictation::dispatchSync($dictation->id);
+
+    $llm->assertNothingSent();
+    expect($dictation->refresh()->text)->toBe('Hoy he cerrado la propuesta de Acme y mañana sigo con la web.')
+        ->and($dictation->warning)->toBeNull();
 });
 
 it('con la limpieza encendida, la IA corrige los nombres con el catálogo; solo va el texto', function () {
@@ -273,7 +291,7 @@ it('con la limpieza encendida, la IA corrige los nombres con el catálogo; solo 
     Event::assertDispatched(DictationUpdated::class, fn (DictationUpdated $event) => $event->status === 'done');
 });
 
-it('si la IA falla o devuelve algo sin contenido, se queda la transcripción literal', function (mixed $reply) {
+it('si la IA falla o devuelve algo sin contenido, se queda la transcripción literal (y avisa si ha fallado)', function (mixed $reply, ?string $warning) {
     Setting::set(DictationCleaner::SETTING, true);
     FakeLlm::bind()->push($reply);
     $dictation = storedDictation($this->me);
@@ -281,11 +299,12 @@ it('si la IA falla o devuelve algo sin contenido, se queda la transcripción lit
     TranscribeDictation::dispatchSync($dictation->id);
 
     expect($dictation->refresh()->status)->toBe(TranscriptionStatus::Done)
-        ->and($dictation->text)->toBe('Hoy he cerrado la propuesta de Acme y mañana sigo con la web.');
+        ->and($dictation->text)->toBe('Hoy he cerrado la propuesta de Acme y mañana sigo con la web.')
+        ->and($dictation->warning)->toBe($warning);
 })->with([
-    'no responde' => [fn () => new LlmUnavailable('caída')],
-    'vacío' => [''],
-    'vallas de código vacías' => ["```\n```"],
+    'no responde' => [new LlmUnavailable('caída'), 'cleanup_failed'],
+    'vacío' => ['', null],
+    'vallas de código vacías' => ["```\n```", null],
 ]);
 
 it('la IA quita las vallas de código de su respuesta', function () {

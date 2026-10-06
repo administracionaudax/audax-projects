@@ -6,6 +6,7 @@ use App\Domain\Weeklies\Ai\LlmClient;
 use App\Domain\Weeklies\Ai\LlmException;
 use App\Domain\Weeklies\Ai\LlmRequest;
 use App\Enums\AiFeature;
+use App\Enums\DictationContext;
 use App\Models\Client;
 use App\Models\Dictation;
 use App\Models\Setting;
@@ -16,8 +17,10 @@ use App\Models\User;
  * muletillas y corrige los nombres de clientes y personas con el catálogo de Audax. Prompt portado de
  * `ws:transcribe-audio` (segunda pasada). Solo va a Gemini el TEXTO, nunca el audio.
  *
- * Detrás del ajuste `weekly_dictation_cleanup` (apagado por defecto). Si la IA falla o devuelve algo
- * que no parece voz útil, se queda la transcripción literal: la limpieza nunca bloquea el dictado.
+ * Detrás del ajuste `weekly_dictation_cleanup` (encendido por defecto, D-227) y solo para el dictado
+ * de la weekly, como el modo `weekly-report` de WeeklySync: las notas de las tareas quedan literales.
+ * Si la IA falla o devuelve algo que no parece voz útil, se queda la transcripción literal: la
+ * limpieza nunca bloquea el dictado (y, si falla, se avisa con `cleanup_failed`).
  */
 final class DictationCleaner
 {
@@ -27,7 +30,13 @@ final class DictationCleaner
 
     public static function enabled(): bool
     {
-        return (bool) Setting::get(self::SETTING, false);
+        return (bool) Setting::get(self::SETTING, true);
+    }
+
+    /** Si este dictado pasa por la limpieza: el ajuste encendido y un apunte de la weekly. */
+    public static function appliesTo(Dictation $dictation): bool
+    {
+        return $dictation->context === DictationContext::WeeklyEntry && self::enabled();
     }
 
     /**
