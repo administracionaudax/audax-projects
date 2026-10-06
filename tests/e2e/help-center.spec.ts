@@ -183,7 +183,10 @@ test('una persona propone una sugerencia y reporta un bug; quien gestiona la mue
     await manager
         .getByRole('searchbox', { name: 'Buscar sugerencias' })
         .fill(idea);
+    // La búsqueda va con espera: hasta que no llega, un clic se lo pisaría la visita de la búsqueda.
+    await expect(manager).toHaveURL(/[?&]q=/);
     await manager.getByRole('link', { name: idea }).click();
+    await expect(manager).toHaveURL(/\/ayuda\/sugerencias\/\d+/);
     const moderation = manager.locator('[data-test="suggestion-moderation"]');
     await moderation.getByLabel('Estado').selectOption('planned');
     await moderation.getByLabel(/Nota oficial/).fill('Para el próximo mes');
