@@ -1,0 +1,34 @@
+{
+    "default_manager": "ana@empresa.es",
+    "people": [
+        {
+            "clickup_email": "ana@empresa.es",
+            "email": "ana@empresa.es",
+            "name": "Ana Pérez",
+            "role": "admin",
+            "department": null
+        },
+        {
+            "clickup_email": "luis@empresa.es",
+            "email": "luis@empresa.es",
+            "name": "Luis Gil",
+            "role": "employee",
+            "department": null
+        },
+        {
+            "clickup_email": "rosa@empresa.es",
+            "email": "rosa@antiguos.empresa.invalid",
+            "name": "Rosa Antigua",
+            "role": "employee",
+            "department": null,
+            "active": false
+        },
+        {
+            "clickup_email": "amparo@gmail.com",
+            "email": "amparo@gmail.com",
+            "name": "Amparo Colaboradora",
+            "role": "collaborator",
+            "department": null
+        }
+    ]
+}

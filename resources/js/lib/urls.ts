@@ -70,4 +70,6 @@ export const urls = {
     chatConversation: (conversationId: number) => `/chat/${conversationId}`,
     chatMessage: (conversationId: number, messageId: number) =>
         `/chat/${conversationId}?mensaje=${messageId}`,
+    /** Canal de un cliente (D-271): se crea la primera vez que se abre. */
+    chatClient: (clientId: number) => `/chat/clientes/${clientId}`,
 } as const;

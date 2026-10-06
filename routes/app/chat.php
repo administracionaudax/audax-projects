@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Chat\ChannelController;
 use App\Http\Controllers\Chat\ChatController;
 use App\Http\Controllers\Chat\ConversationController;
 use App\Http\Controllers\Chat\GroupController;
@@ -33,6 +34,28 @@ Route::post('chat/directas', [ConversationController::class, 'storeDirect'])
 Route::post('chat/grupos', [ConversationController::class, 'storeGroup'])
     ->middleware('throttle:30,1,chat-conversations')
     ->name('chat.groups.store');
+
+// Canales (D-270 a D-272): crear y cambiar los de equipo (admins), entrar y salir, y el canal de
+// cada cliente (se crea la primera vez que se abre).
+Route::post('chat/canales', [ChannelController::class, 'store'])
+    ->middleware(['role:admin', 'throttle:30,1,chat-channels'])
+    ->name('chat.channels.store');
+Route::patch('chat/{conversation}/canal', [ChannelController::class, 'update'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-channels')
+    ->name('chat.channels.update');
+Route::post('chat/{conversation}/unirme', [ChannelController::class, 'join'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-channels')
+    ->name('chat.channels.join');
+Route::post('chat/{conversation}/dejar', [ChannelController::class, 'leave'])
+    ->whereNumber('conversation')
+    ->middleware('throttle:30,1,chat-channels')
+    ->name('chat.channels.leave');
+Route::get('chat/clientes/{client}', [ChannelController::class, 'client'])
+    ->whereNumber('client')
+    ->middleware('throttle:60,1,chat-client-channel')
+    ->name('chat.channels.client');
 
 // Conversaciones que el admin modera sin participar (proyectos y grupos; nunca directas, D-071).
 Route::get('chat/moderar', [ChatController::class, 'moderation'])

@@ -80,7 +80,12 @@ export type TranscriptionUpdate = {
 /** Búsqueda del chat (MessageSource::find). */
 export type ChatSearchMatch = 'message' | 'file' | 'transcription';
 
-export type ChatConversationType = 'project' | 'direct' | 'group';
+export type ChatConversationType =
+    | 'project'
+    | 'direct'
+    | 'group'
+    | 'client'
+    | 'team';
 
 export type ChatSearchResult = {
     id: number;

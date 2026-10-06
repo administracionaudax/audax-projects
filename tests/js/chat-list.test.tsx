@@ -54,8 +54,11 @@ function item(
         type: 'direct',
         title: `Conversación ${id}`,
         subtitle: null,
+        icon: null,
         project: null,
+        client: null,
         other_user: null,
+        is_participant: true,
         members_count: 2,
         muted: false,
         unread: 0,
@@ -147,17 +150,20 @@ describe('ConversationList', () => {
         const nav = screen.getByRole('navigation', { name: 'Conversaciones' });
         const links = within(nav).getAllByRole('link');
 
+        // Primero «Proyectos y clientes» (el proyecto archivado, al final de su grupo) y luego
+        // «Directos» (directas y grupos).
         expect(links).toHaveLength(4);
-        expect(links[0].getAttribute('href')).toBe('/chat/1');
-        expect(links[0].getAttribute('aria-current')).toBe('page');
-        expect(links[0].textContent).toContain('¿Lo tienes?');
-        expect(links[0].textContent).toContain('3 sin leer');
+        expect(links[1].getAttribute('href')).toBe('/chat/1');
+        expect(links[1].getAttribute('aria-current')).toBe('page');
+        expect(links[1].textContent).toContain('¿Lo tienes?');
+        expect(links[1].textContent).toContain('3 sin leer');
 
         // Silenciada, archivada, con más de 99 y un aviso del sistema.
-        expect(links[1].textContent).toContain('99+');
-        expect(links[1].textContent).toContain('Silenciada');
-        expect(links[1].textContent).toContain('Proyecto archivado');
-        expect(links[1].textContent).toContain('Hito completado: «Entrega».');
+        expect(links[0].getAttribute('href')).toBe('/chat/2');
+        expect(links[0].textContent).toContain('99+');
+        expect(links[0].textContent).toContain('Silenciada');
+        expect(links[0].textContent).toContain('Proyecto archivado');
+        expect(links[0].textContent).toContain('Hito completado: «Entrega».');
 
         expect(links[2].textContent).toContain('Marta: Audio');
         expect(links[3].textContent).toContain('Tú: Voy');

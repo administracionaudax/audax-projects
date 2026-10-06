@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+    Archive,
+    ArchiveRestore,
     Flag,
     Gauge,
     Info,
@@ -14,7 +16,7 @@ import type { ChatSystemData } from '@/types/chat';
 
 /**
  * Mensajes de sistema del chat: los del proyecto (App\Domain\Chat\Notices\ProjectChatNotices) y
- * los cambios de un grupo (ConversationDirectory, D-119). El servidor manda la clave y los datos y
+ * los cambios de un grupo (ConversationDirectory, D-119) o de un canal de equipo (D-272). El servidor manda la clave y los datos y
  * aquí se escriben el texto y el icono (siempre los dos).
  */
 
@@ -61,6 +63,19 @@ export function systemText(system: ChatSystemData): string {
             return t('chat.system.group_left', {
                 user: text(payload.user, t('chat.system.someone')),
             });
+        case 'channel.renamed':
+            return t('chat.system.channel_renamed', {
+                by: text(payload.by, t('chat.system.someone')),
+                name: text(payload.name),
+            });
+        case 'channel.archived':
+            return t('chat.system.channel_archived', {
+                by: text(payload.by, t('chat.system.someone')),
+            });
+        case 'channel.unarchived':
+            return t('chat.system.channel_unarchived', {
+                by: text(payload.by, t('chat.system.someone')),
+            });
         default:
             return t('chat.system.generic');
     }
@@ -75,7 +90,12 @@ export function systemIcon(system: ChatSystemData): LucideIcon {
         case 'milestone.completed':
             return Flag;
         case 'group.renamed':
+        case 'channel.renamed':
             return PencilLine;
+        case 'channel.archived':
+            return Archive;
+        case 'channel.unarchived':
+            return ArchiveRestore;
         case 'group.added':
             return UserPlus;
         case 'group.removed':

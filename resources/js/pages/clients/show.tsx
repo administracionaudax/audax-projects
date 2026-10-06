@@ -12,6 +12,7 @@ import {
     FolderKanban,
     Globe,
     History,
+    MessagesSquare,
     Pencil,
     Power,
     PowerOff,
@@ -300,85 +301,88 @@ export default function ClientShow({
                             <ProjectKindBadges badges={kindBadges} />
                         </div>
                     </div>
-                    {can.update || can.viewReport || can.viewBilling ? (
-                        <div className="flex flex-wrap gap-2">
-                            {/* Informe del cliente (Fase 2, R2): admins, responsables y sus gestores. */}
-                            {can.viewReport ? (
-                                <Button variant="outline" asChild>
-                                    <Link href={clientReport.url(client.id)}>
-                                        <ChartColumn aria-hidden="true" />
-                                        {t('reports_r2.link.client_report')}
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {/* Horas para facturar (Fase 2, R2): admins y quien tenga view-financials. */}
-                            {can.viewBilling ? (
-                                <Button variant="outline" asChild>
-                                    <Link
-                                        href={billing.url({
-                                            query: { cliente: [client.id] },
-                                        })}
-                                    >
-                                        <Receipt aria-hidden="true" />
-                                        {t('reports_r2.link.billing')}
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {can.update ? (
-                                <>
-                                    <ClientDialog
-                                        client={client}
-                                        showFinancials={showFinancials}
-                                        people={people ?? undefined}
+                    {/* Toda la plantilla que ve la ficha ve el canal del cliente (D-271): siempre hay acciones. */}
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" asChild>
+                            <Link
+                                href={urls.chatClient(client.id)}
+                                data-test="client-chat-channel"
+                            >
+                                <MessagesSquare aria-hidden="true" />
+                                {t('clients.show.chat_channel')}
+                            </Link>
+                        </Button>
+                        {/* Informe del cliente (Fase 2, R2): admins, responsables y sus gestores. */}
+                        {can.viewReport ? (
+                            <Button variant="outline" asChild>
+                                <Link href={clientReport.url(client.id)}>
+                                    <ChartColumn aria-hidden="true" />
+                                    {t('reports_r2.link.client_report')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {/* Horas para facturar (Fase 2, R2): admins y quien tenga view-financials. */}
+                        {can.viewBilling ? (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={billing.url({
+                                        query: { cliente: [client.id] },
+                                    })}
+                                >
+                                    <Receipt aria-hidden="true" />
+                                    {t('reports_r2.link.billing')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {can.update ? (
+                            <>
+                                <ClientDialog
+                                    client={client}
+                                    showFinancials={showFinancials}
+                                    people={people ?? undefined}
+                                    trigger={
+                                        <Button variant="outline">
+                                            <Pencil aria-hidden="true" />
+                                            {t('clients.edit')}
+                                        </Button>
+                                    }
+                                />
+                                {client.is_active ? (
+                                    <ConfirmDialog
+                                        open={confirmOpen}
+                                        onOpenChange={setConfirmOpen}
                                         trigger={
                                             <Button variant="outline">
-                                                <Pencil aria-hidden="true" />
-                                                {t('clients.edit')}
+                                                <PowerOff aria-hidden="true" />
+                                                {t('clients.deactivate')}
                                             </Button>
                                         }
+                                        title={t('clients.deactivate_title', {
+                                            name: client.name,
+                                        })}
+                                        description={t(
+                                            'clients.deactivate_description',
+                                        )}
+                                        confirmLabel={t('clients.deactivate')}
+                                        processing={processing}
+                                        onConfirm={toggleActive}
                                     />
-                                    {client.is_active ? (
-                                        <ConfirmDialog
-                                            open={confirmOpen}
-                                            onOpenChange={setConfirmOpen}
-                                            trigger={
-                                                <Button variant="outline">
-                                                    <PowerOff aria-hidden="true" />
-                                                    {t('clients.deactivate')}
-                                                </Button>
-                                            }
-                                            title={t(
-                                                'clients.deactivate_title',
-                                                {
-                                                    name: client.name,
-                                                },
-                                            )}
-                                            description={t(
-                                                'clients.deactivate_description',
-                                            )}
-                                            confirmLabel={t(
-                                                'clients.deactivate',
-                                            )}
-                                            processing={processing}
-                                            onConfirm={toggleActive}
-                                        />
-                                    ) : (
-                                        <Button
-                                            onClick={toggleActive}
-                                            disabled={processing}
-                                        >
-                                            {processing ? (
-                                                <Spinner />
-                                            ) : (
-                                                <Power aria-hidden="true" />
-                                            )}
-                                            {t('clients.reactivate')}
-                                        </Button>
-                                    )}
-                                </>
-                            ) : null}
-                        </div>
-                    ) : null}
+                                ) : (
+                                    <Button
+                                        onClick={toggleActive}
+                                        disabled={processing}
+                                    >
+                                        {processing ? (
+                                            <Spinner />
+                                        ) : (
+                                            <Power aria-hidden="true" />
+                                        )}
+                                        {t('clients.reactivate')}
+                                    </Button>
+                                )}
+                            </>
+                        ) : null}
+                    </div>
                 </header>
 
                 {can.useWeeklies ? (

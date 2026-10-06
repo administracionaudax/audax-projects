@@ -1,0 +1,26 @@
+{
+    "m-1": [
+        {
+            "reaction": "+1",
+            "user_id": 100,
+            "date": 1788253860000
+        },
+        {
+            "reaction": "heart",
+            "user_id": 101,
+            "date": 1788253920000
+        },
+        {
+            "reaction": "unicornio_inventado",
+            "user_id": 101,
+            "date": 1788253980000
+        }
+    ],
+    "m-3r": [
+        {
+            "reaction": "tada",
+            "user_id": 100,
+            "date": 1788255180000
+        }
+    ]
+}

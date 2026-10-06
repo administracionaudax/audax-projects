@@ -43,6 +43,12 @@ final class ImportReport
 
     public bool $dryRun = false;
 
+    /**
+     * @param  array<string, string>  $types  tipos del informe y su nombre (los de la importación de
+     *                                        ClickUp por defecto; el chat tiene los suyos)
+     */
+    public function __construct(private readonly array $types = self::TYPES) {}
+
     public float $seconds = 0.0;
 
     public int $peakMemoryBytes = 0;
@@ -123,7 +129,7 @@ final class ImportReport
     public function rows(): array
     {
         $rows = [];
-        foreach (self::TYPES as $type => $label) {
+        foreach ($this->types as $type => $label) {
             $rows[] = [
                 $label,
                 $this->get($type, self::CREATED),

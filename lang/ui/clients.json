@@ -88,5 +88,6 @@
     "clients.form.owner_help": "Si no eliges a nadie, es quien gestiona más proyectos abiertos del cliente.",
     "clients.no_reports": "Sin reportes",
     "clients.form.icon": "Icono",
-    "clients.form.icon_help": "Un emoji para reconocerlo en la cartera y en la Weekly."
+    "clients.form.icon_help": "Un emoji para reconocerlo en la cartera y en la Weekly.",
+    "clients.show.chat_channel": "Canal del cliente"
 }

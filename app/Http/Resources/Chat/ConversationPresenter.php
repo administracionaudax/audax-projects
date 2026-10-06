@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Chat;
 
 use App\Enums\ConversationType;
+use App\Models\Client;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Project;
@@ -26,6 +27,7 @@ final class ConversationPresenter
             ->get(['id', 'conversation_id', 'user_id', 'last_read_message_id']);
         $users = ChatUsers::load($participants->pluck('user_id')->all());
         $project = $conversation->type === ConversationType::Project ? $conversation->project : null;
+        $client = self::clientOf($conversation, $project);
         $other = null;
 
         if ($conversation->type === ConversationType::Direct) {
@@ -48,7 +50,9 @@ final class ConversationPresenter
             'type' => $conversation->type->value,
             'title' => self::title($conversation, $project, $other),
             'subtitle' => $project?->code,
+            'icon' => self::icon($conversation, $client),
             'project' => $project === null ? null : self::project($project),
+            'client' => $client === null ? null : self::client($client),
             'other_user' => $other === null ? null : ChatUsers::present($other),
             'participants' => $list,
             'muted' => $can->participant !== null && $can->participant->muted,
@@ -61,7 +65,9 @@ final class ConversationPresenter
                 'mute' => $can->participant !== null,
                 'manage' => $can->manage,
                 'leave' => $can->leave,
+                'join' => $can->join,
             ],
+            'archived' => $conversation->archived_at !== null,
             'read_only_reason' => $can->readOnlyReason($conversation),
         ];
     }
@@ -71,8 +77,46 @@ final class ConversationPresenter
         return match ($conversation->type) {
             ConversationType::Project => $project !== null ? $project->name : __('conversations.untitled'),
             ConversationType::Direct => $other !== null ? $other->name : __('conversations.untitled'),
-            ConversationType::Group => $conversation->name ?? __('conversations.untitled'),
+            ConversationType::Group, ConversationType::Team => $conversation->name ?? __('conversations.untitled'),
+            ConversationType::Client => $conversation->client->name ?? __('conversations.untitled'),
         };
+    }
+
+    /**
+     * Cliente al que pertenece la conversación: el del canal de cliente o el del proyecto.
+     */
+    public static function clientOf(Conversation $conversation, ?Project $project): ?Client
+    {
+        return match ($conversation->type) {
+            ConversationType::Client => $conversation->client,
+            ConversationType::Project => $project?->client,
+            default => null,
+        };
+    }
+
+    /**
+     * Emoji de la conversación: el del canal de equipo o el del cliente en su canal.
+     */
+    public static function icon(Conversation $conversation, ?Client $client): ?string
+    {
+        return match ($conversation->type) {
+            ConversationType::Team => $conversation->icon,
+            ConversationType::Client => $client?->icon,
+            default => null,
+        };
+    }
+
+    /**
+     * @return array{id: int, name: string, icon: string|null, is_active: bool}
+     */
+    public static function client(Client $client): array
+    {
+        return [
+            'id' => $client->id,
+            'name' => $client->name,
+            'icon' => $client->icon,
+            'is_active' => $client->is_active && ! $client->trashed(),
+        ];
     }
 
     /**

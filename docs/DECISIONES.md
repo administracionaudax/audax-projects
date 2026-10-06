@@ -1999,7 +1999,7 @@ Pedido por el propietario el 06/10: «que los menús principales se puedan colap
 - **Auto-despliegue:** al entrar en una página de una sección plegada (por la búsqueda, un enlace o la URL), la sección se despliega sola y se guarda así. Plegar la sección de la página en la que estás se respeta mientras sigas dentro de ella.
 - **Barra reducida a iconos:** sin encabezados ni nada que plegar; se ven todas las entradas con su tooltip y, al volver a desplegar la barra, cada sección recupera su estado. En el móvil (hoja lateral) las secciones funcionan igual.
 
-## 07/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
+## 06/10/2026: Plan del día (Nivel 1 de las cargas, entregas C1 a C3)
 Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las respuestas del propietario (§15, que mandan). La Previsión (Nivel 2) no entra aquí.
 
 ### D-250 · El plan del día: módulo propio `day_plan`, «Mi día» y la tarjeta de Inicio **[amplía D-151; concreta PLAN-CARGAS §4 y §7]**
@@ -2048,6 +2048,69 @@ Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las 
 - **Auditoría:** `day_plans`, `day_plan_items` y `day_plan_comments` (entidad «Plan del día» en `/admin/auditoria`), sin el orden de las líneas ni la hora del recordatorio.
 - **Texto RGPD pendiente del asesor (D-030):** el borrador ya lo menciona (para qué, qué datos y quién ve qué: textos para la plantilla; cifras y comentarios, la persona, su responsable y la administración; sin clasificaciones). **Pendiente del propietario:** que el asesor revise esos tres párrafos con el resto del texto.
 
+## 06/10/2026: Canales del chat e importación del chat de ClickUp
+Pedido por el propietario: traer el chat de ClickUp (canales, mensajes, hilos, reacciones y adjuntos) y reunir todos los chats en la página Chat. Detalle y procedimiento en `docs/PLAN-CHAT-CLICKUP.md`.
+
+### D-270 · Canales del chat: ver no es participar **[amplía SPEC §12 y D-068]**
+- **Dos tipos nuevos de conversación** (`ConversationType::Client` y `Team`), además de proyecto, directa y grupo. Columnas nuevas en `conversations`: `client_id` (único), `icon` y `archived_at`.
+- **Quién ve** cada conversación lo dice una sola regla, `ConversationAccess`, que usan la política y todas las consultas (lista, búsqueda, contadores, Inicio, avisos y tiempo real): directa → sus participantes; grupo y proyecto → sus participantes y el admin, que modera; canal de cliente → toda la plantilla y los colaboradores con proyectos de ese cliente; canal de equipo → toda la plantilla y los colaboradores que un admin añada.
+- **Participar** (no leídos, avisos de `@todos`, «leído por» y actividad en tiempo real) es aparte: `ChannelMembership` añade a quien le toca **solo si nunca ha estado** (quien sale no vuelve a entrar solo); lo anterior a su entrada cuenta como leído. Se hace al crear el canal, al entrar en un proyecto del cliente y, como red de seguridad, al pedir la lista del chat.
+- **Entrar y salir** de un canal es libre («Unirme» y «Dejar el canal» en la cabecera, sin mensaje de sistema). Quien escribe en un canal que ve pasa a participar; a quien se menciona y lo ve sin participar se le hace entrar para que le llegue el aviso.
+- Quien pasa a colaborador sale también de los canales de equipo (`CollaboratorOffboarding`).
+
+### D-271 · Canal del cliente **[amplía D-021 y D-134]**
+- Uno por cliente, creado la primera vez que se abre: desde la ficha del cliente («Canal del cliente», para toda la plantilla) o desde la lista del chat (`/chat/clientes/{id}`, abierta también al colaborador con proyectos de ese cliente).
+- Participan los miembros de sus proyectos activos; el resto de la plantilla lo ve y puede entrar.
+- Título y emoji, los del cliente. Con el cliente desactivado queda de solo lectura («El cliente está desactivado: su canal es de solo lectura»).
+
+### D-272 · Canales de equipo **[amplía D-119]**
+- Los crean, renombran, cambian de emoji (uno del selector, D-117) y archivan los **admins** («Nuevo → Canal de equipo» y «Ajustes del canal»). Archivado, se lee pero no se escribe.
+- Participa toda la plantilla interna activa; un colaborador externo solo si un admin lo añade (o lo era en ClickUp).
+- Cada cambio deja un mensaje de sistema (`channel.renamed`, `channel.archived`, `channel.unarchived`) y su entrada en la auditoría (log `chat`, acción «Cambios en los canales del chat»: `channel_created`, `channel_updated`, `channel_members_added`, `channel_member_removed`).
+- RGPD: los mensajes de los canales siguen la retención del chat (D-130) y salen en la exportación de datos personales como «Canal «…»» o «Canal del cliente …» (D-131).
+
+### D-273 · La página Chat reúne todos los chats en tres niveles plegables **[cambia D-110 y D-121]**
+Pedido por el propietario el 06/10.
+- **Niveles:** (1) **Canales**, los de equipo; (2) **Proyectos y clientes**, cada cliente con su canal como cabecera (si aún no existe, un enlace que lo abre y lo crea) y, sangrados debajo, los chats de sus proyectos; los proyectos internos, en «Proyectos internos»; (3) **Directos**, directas y grupos.
+- La lista trae las conversaciones en las que se participa **y todos los canales que se ven** (`ConversationDirectory::listable`): desde ahí se entra a cualquier chat sin pasar por el proyecto (el chat del proyecto sigue también en su pestaña).
+- Cada nivel con su número y sus **no leídos** (sin las silenciadas; los de C2 en vivo), y todo de la **última actividad** a la más antigua.
+- **Filtros:** buscador (nombre, código o cliente, sin tildes), «Solo los míos» (canales en los que se participa y clientes con algo propio) y «Ocultar archivados». Por defecto lo archivado (proyectos y canales archivados, clientes desactivados) va **al final** de su grupo.
+- **Plegado y filtros persistentes** por persona en este navegador (`localStorage`, clave `audax.chat.list.{id}`, con `try/catch`: sin almacenamiento vale lo de por defecto).
+- Botones de nivel con `aria-expanded`/`aria-controls`, recuento y no leídos dichos en texto; emojis decorativos (`aria-hidden`). A 375 px sin scroll horizontal (E2E).
+- **Rendimiento:** la lista sigue sin N+1 (consultas fijas: canales que faltan, conversaciones, proyectos, clientes, lo suyo, directas, últimos mensajes, menciones, personas y no leídos). Presupuestos de `C1PerformanceTest`: `chat.show` 35 y `chat.show.focus` 37 (+3).
+
+### D-274 · Descarga del chat de ClickUp **[concreta D-135]**
+- `scripts/clickup/descargar-chat.py` (API v3 de chat; solo lectura): canales con su ubicación (`parent`) y miembros, mensajes, respuestas, reacciones, metadatos y ficheros de los adjuntos (las URL de `clickup-attachments.com` son públicas) y `users.json` (miembros y personas del export v2).
+- **Despacio y reanudable:** 40 peticiones por minuto por defecto (el límite del token es 100 y se comparte), espera en los 429, guarda cada página al momento y sigue donde lo dejó. Las reacciones (una petición por mensaje) van al final.
+- El volcado y el token nunca entran en Git; el volcado se crea con permisos 700/600.
+
+### D-275 · Adónde va cada canal de ClickUp **[concreta D-135]**
+- Canal de una **lista** → el chat de su proyecto (o del proyecto de su bolsa). Las listas de **Audax Interno** (proyectos internos, sin cliente: Marketing, Innovación, Web…) → **canal de equipo**, como pidió el propietario.
+- Canal de una **carpeta** → el canal de su cliente.
+- Canales **generales** (del workspace, de un espacio o sueltos: Daily, Diseño, Audax Studio…) → canal de equipo, con el emoji del nombre como icono.
+- Canales de listas o carpetas sin correspondencia en la app → canal de equipo, con aviso. Los **vacíos** no se importan.
+- `clasificacion.json` en el volcado manda sobre todo lo anterior (`team`, `group`, `skip`, `project:<id>`, `client:<id>`).
+
+### D-276 · Mensajes importados
+- Conservan **fecha y autor**; las ediciones de ClickUp se marcan como editadas. Las **respuestas** de un hilo son respuestas al mensaje padre (el hilo del chat, D-069). El título de una publicación (`post`) va en negrita al principio.
+- **Texto:** el Markdown de ClickUp pasa al del chat: menciones `<@id>` (con su fila en `message_mentions`), `@followers`/`@channel`/`@here` → `@todos`, tareas `☑`/`☐`, viñetas `•`, títulos en negrita, escapes quitados, tarjetas de enlace en varias líneas → la URL; como mucho 10.000 caracteres.
+- **Adjuntos:** los descargados de tipos admitidos se guardan como adjuntos del mensaje (con `AttachmentStorage`, misma validación de tipo real); el resto (vídeos, HEIC…) queda como enlace «📎» a ClickUp.
+- **Reacciones:** por su nombre corto (`+1`, `heart`, `tada`…) al emoji del selector; las que el chat no tiene se avisan y no entran.
+- **Sin avisos ni tiempo real:** no pasa por `MessageWriter`; todo lo importado queda **leído**. Una sola entrada en la auditoría, «Importación del chat de ClickUp» (log `import`, evento `clickup_chat_import`).
+- **Idempotente** con `import_refs` (fuente `clickup`; tipos `chat_channel`, `chat_message` y `chat_attachment`).
+
+### D-277 · Los canales privados de ClickUp son grupos
+- Un canal **privado** de ClickUp (Estratégico, AudaxIA, «Melodía | Cliente»…) no se abre a toda la plantilla: se importa como **grupo** con sus miembros. Decisión tomada en autonomía para no exponer conversaciones restringidas.
+
+### D-278 · Personas del chat de ClickUp **[concreta D-136]**
+- Cada autor se casa por su correo de ClickUp con `personas.json` (el de `app:import-clickup`) y, por él, con su cuenta, activa o de antiguo empleado; si su correo no está o esa ficha no se importa (cuentas antiguas de la misma persona), por el **nombre**.
+- Lo que no casa (ClickBot, invitados que ya no están) lo firma **«Usuario de ClickUp»**, una cuenta desactivada (`usuario-clickup@antiguos.audaxstudio.invalid`) que solo sirve para eso. Las cuentas las crea `app:import-clickup`: este comando va después.
+- En los grupos, las personas desactivadas quedan como antiguas (con su histórico). Los directos «contigo mismo» (notas) no se importan.
+
+### D-279 · Mensajes directos: solo los del dueño del token, y opt-in para el resto
+- La API solo deja leer los directos y grupos de quien es dueño del token: se importan los del propietario, con sus participantes.
+- Cualquier otra persona puede traer **los suyos** después: descarga con su token (`descargar-chat.py --solo-directos --token-file …`) e importación con `app:import-clickup-chat <volcado> --solo-directos` (solo directas y grupos). Ningún admin ve las directas (D-071).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2065,6 +2128,7 @@ Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las 
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Dictado de la weekly con Gemini: D-243.
 - Plan del día: D-250 a D-256.
+- Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión, D-270… chat de ClickUp).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-261 a D-269 y D-280 en adelante, sin usar).

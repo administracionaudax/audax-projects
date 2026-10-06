@@ -1,0 +1,16 @@
+{
+    "done": true,
+    "messages": [
+        {
+            "id": "x-1",
+            "parent_channel": "dm-self",
+            "user_id": "100",
+            "date": 1788261000000,
+            "date_assigned": 1788261000000,
+            "type": "message",
+            "resolved": false,
+            "replies_count": 0,
+            "content": "Nota para mí"
+        }
+    ]
+}

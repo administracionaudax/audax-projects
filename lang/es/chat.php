@@ -13,6 +13,7 @@ return [
         'direct_invalid' => 'Solo puedes escribir a otra persona de la plantilla que esté activa.',
         'group_invalid' => 'Un grupo necesita un nombre y al menos otra persona activa.',
         'group_name' => 'El grupo necesita un nombre.',
+        'channel_name' => 'El canal necesita un nombre.',
         'group_add' => 'Elige al menos una persona activa que aún no esté en el grupo.',
         'group_remove' => 'Esa persona no está en el grupo (para irte tú, usa «Salir del grupo»).',
     ],

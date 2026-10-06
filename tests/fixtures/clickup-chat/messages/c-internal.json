@@ -1,0 +1,26 @@
+{
+    "done": true,
+    "messages": [
+        {
+            "id": "i-1",
+            "parent_channel": "c-internal",
+            "user_id": "100",
+            "date": 1788258000000,
+            "date_assigned": 1788258000000,
+            "type": "message",
+            "resolved": false,
+            "replies_count": 0,
+            "content": "Post del lunes"
+        },
+        {
+            "id": "i-2",
+            "parent_channel": "c-internal",
+            "user_id": "105",
+            "date": 1788258060000,
+            "type": "message",
+            "resolved": false,
+            "replies_count": 0,
+            "content": "Desde mi cuenta antigua"
+        }
+    ]
+}

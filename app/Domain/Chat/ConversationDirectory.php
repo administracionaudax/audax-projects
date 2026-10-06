@@ -3,6 +3,7 @@
 namespace App\Domain\Chat;
 
 use App\Enums\ConversationType;
+use App\Models\Client;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Project;
@@ -22,11 +23,18 @@ use Illuminate\Validation\ValidationException;
  * - directas: una por pareja de personas internas activas,
  * - de grupo: con nombre, creadas por cualquier interno; las gestiona (renombrar, añadir y quitar
  *   personas) quien la creó o el admin, y cualquiera puede salir. Cada cambio deja un mensaje de
- *   sistema en el grupo (D-119) y una entrada en la auditoría (activity('chat'), D-074).
+ *   sistema en el grupo (D-119) y una entrada en la auditoría (activity('chat'), D-074),
+ * - canal de cliente (D-271): uno por cliente, creado al primer uso; participan los miembros de sus
+ *   proyectos activos y lo ve toda la plantilla (ChannelMembership, ConversationAccess),
+ * - canal de equipo (D-272): con nombre y emoji; lo crean, renombran y archivan los admins y
+ *   participa toda la plantilla interna. De los canales se entra y se sale libremente.
  */
 final class ConversationDirectory
 {
-    public function __construct(private readonly MessageWriter $writer) {}
+    public function __construct(
+        private readonly MessageWriter $writer,
+        private readonly ChannelMembership $channels,
+    ) {}
 
     public function forProject(Project $project): Conversation
     {
@@ -53,6 +61,7 @@ final class ConversationDirectory
         }
 
         $memberIds = $project->members()->pluck('users.id')->all();
+        $conversation->forgetParticipants();
 
         DB::transaction(function () use ($conversation, $memberIds): void {
             foreach ($memberIds as $userId) {
@@ -65,31 +74,199 @@ final class ConversationDirectory
                 ->whereNull('left_at')
                 ->update(['left_at' => now()]);
         });
+
+        // Los miembros de un proyecto activo participan en el canal de su cliente (D-271).
+        if ($project->client_id !== null && $project->acceptsTime()) {
+            $channel = Conversation::query()->where('client_id', $project->client_id)->first();
+            if ($channel !== null) {
+                $this->channels->addNew($channel, array_values(array_map('intval', $memberIds)));
+            }
+        }
+    }
+
+    /**
+     * Canal del cliente (D-271): uno por cliente, creado al primer uso con los miembros de sus
+     * proyectos activos como participantes.
+     */
+    public function forClient(Client $client, ?int $createdBy = null): Conversation
+    {
+        $conversation = Conversation::query()->firstOrCreate(
+            ['client_id' => $client->id],
+            ['type' => ConversationType::Client, 'created_by' => $createdBy ?? $client->owner_user_id],
+        );
+
+        if ($conversation->wasRecentlyCreated) {
+            $this->channels->syncChannel($conversation);
+        }
+
+        return $conversation;
+    }
+
+    /**
+     * Canal de equipo nuevo (D-272), con toda la plantilla interna como participante.
+     */
+    public function createTeam(User $admin, string $name, ?string $icon): Conversation
+    {
+        Gate::forUser($admin)->authorize('create', Conversation::class);
+
+        $name = mb_substr(trim($name), 0, 120);
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => __('chat.errors.channel_name')]);
+        }
+
+        return DB::transaction(function () use ($admin, $name, $icon): Conversation {
+            $conversation = Conversation::query()->create([
+                'type' => ConversationType::Team,
+                'name' => $name,
+                'icon' => self::icon($icon),
+                'created_by' => $admin->id,
+            ]);
+
+            $this->channels->syncChannel($conversation);
+            $this->audit($admin, $conversation, 'channel_created', [
+                'attributes' => ['name' => $conversation->name, 'icon' => $conversation->icon],
+            ]);
+
+            return $conversation;
+        });
+    }
+
+    /**
+     * Cambia el nombre o el emoji de un canal de equipo, o lo archiva (solo lectura) y lo
+     * recupera (D-272). Cada cambio deja un mensaje de sistema y una entrada en la auditoría.
+     */
+    public function updateTeam(User $admin, Conversation $team, string $name, ?string $icon, bool $archived): void
+    {
+        Gate::forUser($admin)->authorize('manage', $team);
+
+        $name = mb_substr(trim($name), 0, 120);
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => __('chat.errors.channel_name')]);
+        }
+
+        $icon = self::icon($icon);
+        $old = ['name' => $team->name, 'icon' => $team->icon, 'archived' => $team->archived_at !== null];
+
+        if ($old['name'] !== $name || $old['icon'] !== $icon) {
+            $team->forceFill(['name' => $name, 'icon' => $icon])->save();
+            $this->writer->system($team, 'channel.renamed', ['by' => $admin->name, 'name' => $name]);
+        }
+
+        if ($old['archived'] !== $archived) {
+            // El aviso va antes de archivarlo (después ya no se escribe en él).
+            if ($archived) {
+                $this->writer->system($team, 'channel.archived', ['by' => $admin->name]);
+            }
+            $team->forceFill(['archived_at' => $archived ? now() : null])->save();
+            if (! $archived) {
+                $this->writer->system($team, 'channel.unarchived', ['by' => $admin->name]);
+                $this->channels->syncChannel($team);
+            }
+        }
+
+        $new = ['name' => $team->name, 'icon' => $team->icon, 'archived' => $team->archived_at !== null];
+        if ($new !== $old) {
+            $this->audit($admin, $team, 'channel_updated', ['old' => $old, 'attributes' => $new]);
+        }
+    }
+
+    /**
+     * Añade personas a un canal de equipo (D-272): sobre todo colaboradores externos, que no
+     * participan por defecto; la plantilla ya está.
+     *
+     * @param  list<int>  $userIds
+     * @return list<int> las que se han añadido
+     */
+    public function addToTeam(User $admin, Conversation $team, array $userIds): array
+    {
+        Gate::forUser($admin)->authorize('manage', $team);
+
+        $current = $team->activeParticipants()->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $people = User::query()->whereKey($userIds)->whereKeyNot($current)->active()->internal()->orderBy('name')->get(['id', 'name']);
+
+        if ($people->isEmpty()) {
+            throw ValidationException::withMessages(['user_ids' => __('chat.errors.group_add')]);
+        }
+
+        DB::transaction(function () use ($team, $people): void {
+            foreach ($people as $person) {
+                $this->join($team, $person->id);
+            }
+        });
+
+        $this->audit($admin, $team, 'channel_members_added', [
+            'attributes' => ['participants' => array_values($people->pluck('name')->all())],
+        ]);
+
+        return array_values($people->modelKeys());
+    }
+
+    /**
+     * Quita a una persona de un canal de equipo (D-272). Con la plantilla solo tiene sentido para
+     * los colaboradores externos: la plantilla puede volver a entrar cuando quiera.
+     */
+    public function removeFromTeam(User $admin, Conversation $team, User $member): void
+    {
+        Gate::forUser($admin)->authorize('manage', $team);
+
+        if (! $team->hasParticipant($member)) {
+            throw ValidationException::withMessages(['user' => __('chat.errors.group_remove')]);
+        }
+
+        $this->leave($team, $member->id);
+        $this->audit($admin, $team, 'channel_member_removed', ['old' => ['participants' => [$member->name]]]);
+    }
+
+    /**
+     * Entrar en un canal que se ve (D-270): desde ahí cuenta para no leídos y avisos.
+     */
+    public function joinChannel(User $user, Conversation $channel): ConversationParticipant
+    {
+        Gate::forUser($user)->authorize('join', $channel);
+
+        return $this->join($channel, $user->id);
+    }
+
+    /**
+     * Salir de un canal (D-270): se sigue viendo, pero sin no leídos ni avisos. No vuelve a entrar
+     * solo (ChannelMembership solo añade a quien nunca ha estado).
+     */
+    public function leaveChannel(User $user, Conversation $channel): void
+    {
+        if (! $channel->type->isChannel()) {
+            throw new AuthorizationException;
+        }
+        Gate::forUser($user)->authorize('leave', $channel);
+
+        $this->leave($channel, $user->id);
+    }
+
+    /**
+     * Emoji del canal: uno del selector (D-117) o ninguno.
+     */
+    private static function icon(?string $icon): ?string
+    {
+        $icon = trim((string) $icon);
+        if ($icon === '') {
+            return null;
+        }
+
+        if (mb_strlen($icon) > 16 || ! EmojiCatalog::contains($icon)) {
+            throw ValidationException::withMessages(['icon' => __('chat.errors.emoji')]);
+        }
+
+        return $icon;
     }
 
     public function join(Conversation $conversation, int $userId): ConversationParticipant
     {
-        $participant = ConversationParticipant::query()->firstOrNew([
-            'conversation_id' => $conversation->id,
-            'user_id' => $userId,
-        ]);
-
-        if (! $participant->exists || $participant->left_at !== null) {
-            $participant->fill(['joined_at' => $participant->exists ? $participant->joined_at : now(), 'left_at' => null]);
-            // Al entrar o al volver, lo anterior (también lo publicado mientras no estaba) cuenta
-            // como leído: solo avisa de lo nuevo. Nunca hacia atrás.
-            $last = $conversation->messages()->withTrashed()->max('id');
-            if ($last !== null && (int) $last > (int) ($participant->last_read_message_id ?? 0)) {
-                $participant->last_read_message_id = (int) $last;
-            }
-            $participant->save();
-        }
-
-        return $participant;
+        return Participants::join($conversation, $userId);
     }
 
     public function leave(Conversation $conversation, int $userId): void
     {
+        $conversation->forgetParticipants();
+
         ConversationParticipant::query()
             ->where('conversation_id', $conversation->id)
             ->where('user_id', $userId)
@@ -220,6 +397,9 @@ final class ConversationDirectory
 
     public function leaveGroup(User $user, Conversation $group): void
     {
+        if ($group->type !== ConversationType::Group) {
+            throw new AuthorizationException;
+        }
         Gate::forUser($user)->authorize('leave', $group);
 
         $this->leave($group, $user->id);
@@ -336,11 +516,11 @@ final class ConversationDirectory
                     ->where('p.user_id', '=', $user->id)
                     ->whereNull('p.left_at');
             })
-            // Un colaborador externo solo cuenta las de sus proyectos (D-134).
-            ->when($projectIds !== null, fn (QueryBuilder $query) => $query->whereIn('messages.conversation_id', DB::table('conversations')
-                ->select('id')
-                ->where('type', ConversationType::Project->value)
-                ->whereIn('project_id', $projectIds ?? [])))
+            // Un colaborador externo solo cuenta las de su alcance (D-134, D-271).
+            ->when($projectIds !== null, fn (QueryBuilder $query) => $query->whereIn('messages.conversation_id', Conversation::query()
+                ->select('conversations.id')
+                ->where(fn (Builder $scope) => ConversationAccess::scope($scope, $user))
+                ->toBase()))
             ->whereRaw('messages.id > coalesce(p.last_read_message_id, 0)')
             ->where(fn (QueryBuilder $query) => $query->whereNull('messages.user_id')->orWhere('messages.user_id', '!=', $user->id))
             ->whereNull('messages.deleted_at')
@@ -348,19 +528,32 @@ final class ConversationDirectory
     }
 
     /**
-     * Conversaciones en las que participa (activas), las más recientes primero. Un colaborador
-     * externo, solo las de los proyectos que ve (D-134).
+     * Conversaciones en las que participa (activas) y que puede ver, las más recientes primero
+     * (un colaborador externo, solo las de su alcance, D-134).
      *
      * @return Builder<Conversation>
      */
     public function forUser(User $user): Builder
     {
-        $projectIds = $user->visibleProjectIds();
-
         return Conversation::query()
             ->whereHas('participants', fn (Builder $query) => $query->where('user_id', $user->id)->whereNull('left_at'))
-            ->when($projectIds !== null, fn (Builder $query) => $query->where('type', ConversationType::Project->value)->whereIn('project_id', $projectIds ?? []))
+            ->where(fn (Builder $query) => ConversationAccess::scope($query, $user))
             ->orderByDesc('last_message_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Lo que sale en la lista del chat (D-273): aquellas en las que participa y, además, todos los
+     * canales que puede ver aunque no participe (para entrar en ellos sin pasar por otro sitio).
+     *
+     * @return Builder<Conversation>
+     */
+    public function listable(User $user): Builder
+    {
+        return Conversation::query()
+            ->where(fn (Builder $query) => ConversationAccess::scope($query, $user))
+            ->where(fn (Builder $query) => $query
+                ->whereIn('conversations.type', ConversationType::channelValues())
+                ->orWhereHas('participants', fn (Builder $participants) => $participants->where('user_id', $user->id)->whereNull('left_at')));
     }
 }

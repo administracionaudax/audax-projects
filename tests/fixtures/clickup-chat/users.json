@@ -1,0 +1,26 @@
+{
+    "100": {
+        "name": "Ana Pérez",
+        "email": "ana@empresa.es"
+    },
+    "101": {
+        "name": "Luis Gil",
+        "email": "luis@empresa.es"
+    },
+    "102": {
+        "name": "Rosa Antigua",
+        "email": "rosa@empresa.es"
+    },
+    "103": {
+        "name": "Beto Externo",
+        "email": "beto@gmail.com"
+    },
+    "104": {
+        "name": "Amparo Colaboradora",
+        "email": "amparo@gmail.com"
+    },
+    "105": {
+        "name": "Luis Gil",
+        "email": "luis.viejo@empresa.es"
+    }
+}

@@ -508,6 +508,31 @@ class User extends Authenticatable
     }
 
     /**
+     * Ids de los clientes de los proyectos que puede ver, o null si ve todos: el alcance del canal
+     * de cliente del chat (D-271). Un colaborador externo, solo los clientes de sus proyectos.
+     *
+     * @return list<int>|null
+     */
+    public function visibleClientIds(): ?array
+    {
+        $projectIds = $this->visibleProjectIds();
+
+        if ($projectIds === null) {
+            return null;
+        }
+
+        /** @var list<int> */
+        return $this->memo('visible-clients', fn (): array => $projectIds === [] ? [] : Project::withTrashed()
+            ->whereKey($projectIds)
+            ->whereNotNull('client_id')
+            ->distinct()
+            ->pluck('client_id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all());
+    }
+
+    /**
      * Al desactivar a un usuario se cierran todas sus sesiones y su «Recordarme» (SPEC §14): no
      * basta con que EnsureUserIsActive lo expulse en la siguiente petición. También se desconecta
      * su cuenta de Google (D-142).
@@ -583,7 +608,8 @@ class User extends Authenticatable
 
     /**
      * Quien queda dentro del alcance de la conversación (D-134, la regla de ConversationPolicy):
-     * en la de un proyecto, quien ve el proyecto; en directas y grupos, nadie que sea colaborador
+     * en la de un proyecto, quien ve el proyecto; en el canal de un cliente, quien ve alguno de sus
+     * proyectos; en los de equipo, quien participa; en directas y grupos, nadie que sea colaborador
      * externo. Red de seguridad para los avisos y el tiempo real del chat.
      *
      * @param  Builder<User>  $query
@@ -594,6 +620,24 @@ class User extends Authenticatable
         if ($conversation->type === ConversationType::Project && $conversation->project_id !== null) {
             $query->seeingProject($conversation->project_id);
 
+            return;
+        }
+
+        // Canal de cliente (D-271): la plantilla y los colaboradores con proyectos de ese cliente.
+        if ($conversation->type === ConversationType::Client && $conversation->client_id !== null) {
+            $query->where(fn (Builder $scope) => $scope
+                ->whereDoesntHave('roles', fn (Builder $roles) => $roles->where('name', Role::Collaborator->value))
+                ->orWhereIn('users.id', DB::table('project_members')
+                    ->join('projects', 'projects.id', '=', 'project_members.project_id')
+                    ->select('project_members.user_id')
+                    ->where('projects.client_id', $conversation->client_id)));
+
+            return;
+        }
+
+        // Canal de equipo (D-272): la plantilla y, como participantes, los colaboradores añadidos
+        // expresamente (los que eran miembros en ClickUp).
+        if ($conversation->type === ConversationType::Team) {
             return;
         }
 

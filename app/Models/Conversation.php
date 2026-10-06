@@ -9,27 +9,35 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 
 /**
  * Conversación del chat (SPEC §4.5 y §12): de proyecto (una por proyecto, con sus miembros),
- * directa 1:1 (una por pareja, direct_key = "idMenor:idMayor") o de grupo (con nombre).
+ * directa 1:1 (una por pareja, direct_key = "idMenor:idMayor"), de grupo (con nombre) o canal
+ * (D-270 a D-272): de cliente (uno por cliente, client_id) o de equipo (nombre, emoji y archivado).
  *
  * @property int $id
  * @property ConversationType $type
  * @property int|null $project_id
+ * @property int|null $client_id
  * @property string|null $name
+ * @property string|null $icon Emoji del canal de equipo
  * @property string|null $direct_key
  * @property int|null $created_by
  * @property CarbonImmutable|null $last_message_at
+ * @property CarbonImmutable|null $archived_at Canal de equipo archivado: se lee, no se escribe
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Project|null $project
+ * @property-read Client|null $client
  * @property-read Collection<int, ConversationParticipant> $participants
  * @property-read Collection<int, Message> $messages
  */
-#[Fillable(['type', 'project_id', 'name', 'direct_key', 'created_by', 'last_message_at'])]
+#[Fillable(['type', 'project_id', 'client_id', 'name', 'icon', 'direct_key', 'created_by', 'last_message_at', 'archived_at'])]
 class Conversation extends Model
 {
+    private const string PARTICIPANT_MEMO = 'conversation.participant.';
+
     /**
      * @return array<string, string>
      */
@@ -38,6 +46,7 @@ class Conversation extends Model
         return [
             'type' => ConversationType::class,
             'last_message_at' => 'immutable_datetime',
+            'archived_at' => 'immutable_datetime',
         ];
     }
 
@@ -52,6 +61,14 @@ class Conversation extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * @return BelongsTo<Client, $this>
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     /**
@@ -80,6 +97,38 @@ class Conversation extends Model
 
     public function hasParticipant(User $user): bool
     {
-        return $this->activeParticipants()->where('user_id', $user->id)->exists();
+        $query = fn (): bool => $this->activeParticipants()->where('user_id', $user->id)->exists();
+        $request = app()->bound('request') ? app('request') : null;
+
+        // Dentro de una petición, una consulta por conversación y persona (las políticas lo
+        // preguntan varias veces); fuera (colas, consola, tests), siempre a la base.
+        if (! $request instanceof Request || $request->route() === null || ! $this->exists) {
+            return $query();
+        }
+
+        $key = self::PARTICIPANT_MEMO.$this->id.'.'.$user->id;
+        if (! $request->attributes->has($key)) {
+            $request->attributes->set($key, $query());
+        }
+
+        return (bool) $request->attributes->get($key);
+    }
+
+    /**
+     * Olvida lo que se sabía de quién participa (tras entrar o salir alguien).
+     */
+    public function forgetParticipants(): void
+    {
+        $request = app()->bound('request') ? app('request') : null;
+        if (! $request instanceof Request) {
+            return;
+        }
+
+        $prefix = self::PARTICIPANT_MEMO.$this->id.'.';
+        foreach (array_keys($request->attributes->all()) as $key) {
+            if (str_starts_with((string) $key, $prefix)) {
+                $request->attributes->remove((string) $key);
+            }
+        }
     }
 }

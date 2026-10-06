@@ -20,6 +20,12 @@ import {
     update as updateRoute,
 } from '@/routes/chat/messages';
 import {
+    join as joinChannelRoute,
+    leave as leaveChannelRoute,
+    store as storeChannelRoute,
+    update as updateChannelRoute,
+} from '@/routes/chat/channels';
+import {
     leave as leaveGroupRoute,
     update as updateGroupRoute,
 } from '@/routes/chat/groups';
@@ -282,6 +288,35 @@ export const chatApi = {
         chatRequest<{ left: boolean; url: string }>(
             'POST',
             leaveGroupRoute.url(conversationId),
+        ),
+
+    createChannel: (data: { name: string; icon: string | null }) =>
+        chatRequest<{ id: number; url: string }>(
+            'POST',
+            storeChannelRoute.url(),
+            data,
+        ),
+
+    updateChannel: (
+        conversationId: number,
+        data: { name: string; icon: string | null; archived: boolean },
+    ) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'PATCH',
+            updateChannelRoute.url(conversationId),
+            data,
+        ),
+
+    joinChannel: (conversationId: number) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'POST',
+            joinChannelRoute.url(conversationId),
+        ),
+
+    leaveChannel: (conversationId: number) =>
+        chatRequest<{ conversation: ChatConversation }>(
+            'POST',
+            leaveChannelRoute.url(conversationId),
         ),
 
     taskOptions: (messageId: number) =>

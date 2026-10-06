@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Chat;
 
 use App\Broadcasting\UnreadCounts;
+use App\Domain\Chat\ConversationAccess;
 use App\Enums\ConversationType;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
@@ -53,8 +54,11 @@ final class HomeChatSummary
 
         $conversations = Conversation::query()
             ->whereKey($ids)
-            ->with(['project' => fn (Relation $query) => $query->select(['id', 'code', 'name'])])
-            ->get(['id', 'type', 'name', 'project_id'])
+            ->with([
+                'project' => fn (Relation $query) => $query->select(['id', 'code', 'name']),
+                'client' => fn (Relation $query) => $query->select(['id', 'name']),
+            ])
+            ->get(['id', 'type', 'name', 'project_id', 'client_id'])
             ->keyBy('id');
 
         $directIds = $conversations->where('type', ConversationType::Direct)->modelKeys();
@@ -134,12 +138,11 @@ final class HomeChatSummary
                     ->where('p.user_id', '=', $user->id)
                     ->whereNull('p.left_at');
             })
-            // Un colaborador externo, solo en las conversaciones de sus proyectos (D-134), aunque
-            // siga como participante de otra.
+            // Un colaborador externo, solo en las conversaciones de su alcance (D-134, D-271),
+            // aunque siga como participante de otra.
             ->when($projectIds !== null, fn (Builder $query) => $query->whereIn('messages.conversation_id', Conversation::query()
-                ->select('id')
-                ->where('type', ConversationType::Project->value)
-                ->whereIn('project_id', $projectIds ?? [])))
+                ->select('conversations.id')
+                ->where(fn (Builder $scope) => ConversationAccess::scope($scope, $user))))
             ->whereExists($mentioned)
             ->whereNotNull('messages.user_id')
             ->where('messages.user_id', '!=', $user->id)

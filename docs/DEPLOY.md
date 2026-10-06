@@ -213,6 +213,7 @@ Las de ejemplo, con valores ficticios, están en `.env.example`. En el servidor:
   - avisos: personas sin mapear, listas sin el patrón `TIPO+N - Hh - …`, subtareas aplanadas, registros de más de 24 h partidos por días…,
   - queda una sola entrada en la auditoría, «Importación de ClickUp», con los recuentos.
 - **No se importan:** comentarios, adjuntos ni etiquetas (D-135), ni los espacios personales y «Recursos».
+- **El chat de ClickUp** va aparte y después: `app:import-clickup-chat {volcado} {--personas=} {--dry-run} {--solo-directos}` (D-274 a D-279). Descarga, copia previa, subida con permisos 700/600, simulación con `scripts/heavy.sh`, importación, comprobación y borrado del volcado: `docs/PLAN-CHAT-CLICKUP.md`.
 
 ## 9. Gotenberg (PDF de los informes, Fase 9)
 

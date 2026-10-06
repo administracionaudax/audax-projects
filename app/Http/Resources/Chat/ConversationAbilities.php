@@ -25,6 +25,7 @@ final readonly class ConversationAbilities
         public ?ConversationParticipant $participant,
         public bool $manage = false,
         public bool $leave = false,
+        public bool $join = false,
     ) {}
 
     public static function for(User $user, Conversation $conversation): self
@@ -38,23 +39,28 @@ final readonly class ConversationAbilities
         $gate = Gate::forUser($user);
         $project = $conversation->type === ConversationType::Project ? $conversation->project : null;
         $group = $conversation->type === ConversationType::Group;
+        $channel = $conversation->type->isChannel();
+        $view = $gate->allows('view', $conversation);
 
         return new self(
-            view: $gate->allows('view', $conversation),
+            view: $view,
             post: $gate->allows('post', $conversation),
             moderate: $gate->allows('moderate', $conversation),
             createTask: $project !== null && $gate->allows('create', [Task::class, $project]),
             participant: $participant,
-            // Grupos (D-119): lo gestiona quien lo creó (si sigue en él) o el admin; sale quien participa.
-            manage: $group && $gate->allows('manage', $conversation),
-            leave: $group && $participant !== null,
+            // Grupos (D-119): lo gestiona quien lo creó (si sigue en él) o el admin; sale quien
+            // participa. Canales de equipo (D-272): los gestionan los admins. De los canales se
+            // entra y se sale libremente (D-270).
+            manage: ($group || $conversation->type === ConversationType::Team) && $gate->allows('manage', $conversation),
+            leave: ($group || $channel) && $participant !== null,
+            join: $channel && $view && $participant === null,
         );
     }
 
     /**
      * Por qué no puede escribir, para explicarlo en lugar del editor (o null si puede).
      *
-     * @return 'archived'|'not_participant'|'inactive'|null
+     * @return 'archived'|'not_participant'|'inactive'|'client_inactive'|'channel_archived'|null
      */
     public function readOnlyReason(Conversation $conversation): ?string
     {
@@ -62,10 +68,15 @@ final readonly class ConversationAbilities
             return null;
         }
 
-        if ($this->participant === null) {
+        if ($this->participant === null && ! $conversation->type->isChannel()) {
             return 'not_participant';
         }
 
-        return $conversation->type === ConversationType::Project ? 'archived' : 'inactive';
+        return match ($conversation->type) {
+            ConversationType::Project => 'archived',
+            ConversationType::Team => 'channel_archived',
+            ConversationType::Client => 'client_inactive',
+            default => 'inactive',
+        };
     }
 }

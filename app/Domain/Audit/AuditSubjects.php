@@ -195,7 +195,8 @@ final class AuditSubjects
     }
 
     /**
-     * Grupos del chat (los cambios de D-119), con enlace a la conversación.
+     * Grupos y canales de equipo del chat (los cambios de D-119 y D-272), con enlace a la
+     * conversación.
      *
      * @param  list<int>  $ids
      * @return array<int, AuditSubject>

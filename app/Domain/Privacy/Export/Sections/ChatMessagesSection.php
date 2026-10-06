@@ -89,8 +89,11 @@ final class ChatMessagesSection extends Section
         }
 
         $conversations = Conversation::query()->whereKey($ids)
-            ->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])])
-            ->get(['id', 'type', 'name', 'project_id']);
+            ->with([
+                'project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name']),
+                'client' => fn ($client) => $client->select(['id', 'name']),
+            ])
+            ->get(['id', 'type', 'name', 'project_id', 'client_id']);
 
         $others = ConversationParticipant::query()
             ->whereIn('conversation_id', $conversations->where('type', ConversationType::Direct)->modelKeys())
@@ -107,6 +110,8 @@ final class ChatMessagesSection extends Section
             $names[$conversation->id] = match ($conversation->type) {
                 ConversationType::Project => self::text('privacy.export.chat.project', ['project' => $project !== null ? "{$project->code} · {$project->name}" : '—']),
                 ConversationType::Group => self::text('privacy.export.chat.group', ['name' => (string) $conversation->name]),
+                ConversationType::Team => self::text('privacy.export.chat.team', ['name' => (string) $conversation->name]),
+                ConversationType::Client => self::text('privacy.export.chat.client', ['client' => $conversation->client->name ?? '—']),
                 ConversationType::Direct => self::text('privacy.export.chat.direct', ['person' => $others->get($conversation->id)?->user->name ?? '—']),
             };
         }

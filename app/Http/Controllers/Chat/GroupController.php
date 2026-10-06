@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Chat;
 
 use App\Domain\Chat\ConversationDirectory;
+use App\Enums\ConversationType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\AddGroupMembersRequest;
 use App\Http\Requests\Chat\UpdateGroupRequest;
@@ -41,7 +42,10 @@ class GroupController extends Controller
         /** @var list<int> $ids */
         $ids = array_values(array_map('intval', (array) $request->input('user_ids', [])));
 
-        $this->directory->addToGroup($user, $conversation, $ids);
+        // Canal de equipo (D-272): el admin añade personas (sobre todo colaboradores externos).
+        $conversation->type === ConversationType::Team
+            ? $this->directory->addToTeam($user, $conversation, $ids)
+            : $this->directory->addToGroup($user, $conversation, $ids);
 
         return $this->conversation($conversation, $user);
     }
@@ -53,7 +57,9 @@ class GroupController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $this->directory->removeFromGroup($user, $conversation, $member);
+        $conversation->type === ConversationType::Team
+            ? $this->directory->removeFromTeam($user, $conversation, $member)
+            : $this->directory->removeFromGroup($user, $conversation, $member);
 
         return $this->conversation($conversation, $user);
     }

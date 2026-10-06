@@ -335,14 +335,19 @@ final class AuditValues
     {
         $names = [];
         $conversations = Conversation::query()->whereKey($ids)
-            ->with(['project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name'])])
-            ->get(['id', 'type', 'name', 'project_id']);
+            ->with([
+                'project' => fn ($project) => $project->withTrashed()->select(['id', 'code', 'name']),
+                'client' => fn ($client) => $client->select(['id', 'name']),
+            ])
+            ->get(['id', 'type', 'name', 'project_id', 'client_id']);
 
         foreach ($conversations as $conversation) {
             $project = $conversation->project;
 
             $names[$conversation->id] = match ($conversation->type) {
                 ConversationType::Group => (string) $conversation->name,
+                ConversationType::Team => self::line('audit.values.team_conversation', ['name' => (string) $conversation->name]),
+                ConversationType::Client => self::line('audit.values.client_conversation', ['client' => $conversation->client->name ?? '—']),
                 ConversationType::Project => self::line('audit.values.project_conversation', ['project' => $project !== null ? "{$project->code} · {$project->name}" : '—']),
                 ConversationType::Direct => self::line('audit.values.direct_conversation'),
             };

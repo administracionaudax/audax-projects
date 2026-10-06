@@ -1,0 +1,142 @@
+[
+    {
+        "id": "c-daily",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "1",
+            "type": 12
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🔹 Daily"
+    },
+    {
+        "id": "c-client",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "f-1",
+            "type": 5
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🍊 Naranjas"
+    },
+    {
+        "id": "c-list",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "l-1",
+            "type": 6
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🎨 FE1 - Web [Naranjas]"
+    },
+    {
+        "id": "c-internal",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "l-2",
+            "type": 6
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🟠 Marketing"
+    },
+    {
+        "id": "c-private",
+        "type": "CHANNEL",
+        "visibility": "PRIVATE",
+        "parent": {
+            "id": "1",
+            "type": 12
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🔹 Estratégico"
+    },
+    {
+        "id": "c-empty",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "1",
+            "type": 12
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "Welcome"
+    },
+    {
+        "id": "c-unmapped",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "l-9",
+            "type": 6
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "🔸 Leads"
+    },
+    {
+        "id": "c-skipme",
+        "type": "CHANNEL",
+        "visibility": "PUBLIC",
+        "parent": {
+            "id": "1",
+            "type": 12
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false,
+        "name": "Pruebas"
+    },
+    {
+        "id": "dm-1",
+        "type": "DM",
+        "visibility": "PRIVATE",
+        "parent": {
+            "id": "1",
+            "type": 7
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false
+    },
+    {
+        "id": "dm-self",
+        "type": "DM",
+        "visibility": "PRIVATE",
+        "parent": {
+            "id": "1",
+            "type": 7
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false
+    },
+    {
+        "id": "gdm-1",
+        "type": "GROUP_DM",
+        "visibility": "PRIVATE",
+        "parent": {
+            "id": "1",
+            "type": 12
+        },
+        "created_at": 1788166800000,
+        "creator": "100",
+        "archived": false
+    }
+]

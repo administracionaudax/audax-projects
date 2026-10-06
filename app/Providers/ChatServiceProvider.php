@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Chat\ChannelMembership;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\Links\DnsHostResolver;
 use App\Domain\Chat\Links\HostResolver;
@@ -13,6 +14,7 @@ use App\Domain\Chat\Transcription\WhisperServerTranscriber;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Events\Chat\MessagePosted;
 use App\Models\Conversation;
+use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Task;
 use App\Notifications\Channels\AppDatabaseChannel;
@@ -55,6 +57,18 @@ class ChatServiceProvider extends ServiceProvider
     {
         $sync = function (ProjectMember $member, bool $joined): void {
             DB::afterCommit(function () use ($member, $joined): void {
+                // Quien entra en un proyecto activo participa en el canal de su cliente (D-271),
+                // si nunca ha estado en él (quien salió no vuelve a entrar solo).
+                if ($joined) {
+                    $project = Project::query()->find($member->project_id, ['id', 'client_id', 'status']);
+                    $channel = $project?->client_id === null || ! $project->acceptsTime()
+                        ? null
+                        : Conversation::query()->where('client_id', $project->client_id)->first();
+                    if ($channel !== null) {
+                        $this->app->make(ChannelMembership::class)->addNew($channel, [(int) $member->user_id]);
+                    }
+                }
+
                 $conversation = Conversation::query()->where('project_id', $member->project_id)->first();
                 if ($conversation === null) {
                     return;

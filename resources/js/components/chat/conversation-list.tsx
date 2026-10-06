@@ -1,31 +1,42 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     Archive,
-    BellOff,
     BellRing,
+    ChevronRight,
+    Hash,
     MessageSquarePlus,
     MessagesSquare,
     Plus,
     Search,
     ShieldCheck,
+    UserCheck,
     Users,
 } from 'lucide-react';
-import { useId, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { ChannelDialog } from '@/components/chat/channel-dialog';
 import { ConversationAvatar } from '@/components/chat/chat-avatar';
-import { formatListTime } from '@/components/chat/chat-format';
-import { normalizeSearch } from '@/components/chat/mentions';
+import { ConversationRow } from '@/components/chat/conversation-row';
+import {
+    buildChatTree,
+    CHAT_SECTIONS,
+    isTreeEmpty,
+    sectionItems,
+    sectionOf,
+} from '@/components/chat/conversation-tree';
+import type {
+    ChatClientNode,
+    ChatSectionKey,
+} from '@/components/chat/conversation-tree';
 import { ModerationDialog } from '@/components/chat/moderation-dialog';
 import {
     NewDirectDialog,
     NewGroupDialog,
 } from '@/components/chat/new-conversation-dialogs';
 import { useUnreadCounter } from '@/components/chat/realtime-bridge';
-import { systemText } from '@/components/chat/system-notice';
+import { useChatListPrefs } from '@/components/chat/use-chat-list-prefs';
 import { EmptyState } from '@/components/empty-state';
-import {
-    ConversationUnreadBadge,
-    PushNotificationsToggle,
-} from '@/components/realtime';
+import { PushNotificationsToggle } from '@/components/realtime';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -46,61 +57,19 @@ import { cn } from '@/lib/utils';
 import { search as chatSearch } from '@/routes/chat';
 import type { ChatConversationItem } from '@/types/chat';
 
-/** Props que cambian al pasar de una conversación a otra (la lista no se vuelve a pedir). */
-export const CONVERSATION_PROPS = [
-    'conversation',
-    'messages',
-    'pinned',
-    'focus',
-];
-
-/** Texto de la vista previa: «Tú: …», «Ana: …» (en grupos y proyectos) o el tipo de mensaje. */
-export function previewText(item: ChatConversationItem): string {
-    const last = item.last_message;
-
-    if (!last) {
-        return t('chat.list.no_messages');
-    }
-
-    const body =
-        last.kind === 'system' && last.system
-            ? systemText(last.system)
-            : last.kind === 'hidden'
-              ? t('chat.list.hidden')
-              : last.kind === 'audio'
-                ? t('chat.list.audio')
-                : last.kind === 'file' && last.preview === ''
-                  ? t('chat.list.file')
-                  : last.preview;
-
-    if (last.kind === 'system') {
-        return body;
-    }
-
-    if (last.is_mine) {
-        return `${t('chat.list.you')}: ${body}`;
-    }
-
-    return item.type !== 'direct' && last.author
-        ? `${last.author.split(/\s+/u)[0]}: ${body}`
-        : body;
-}
-
-function matches(item: ChatConversationItem, needle: string): boolean {
-    return normalizeSearch(
-        [item.title, item.subtitle ?? '', item.other_user?.name ?? ''].join(
-            ' ',
-        ),
-    ).includes(needle);
-}
+export {
+    CONVERSATION_PROPS,
+    previewText,
+} from '@/components/chat/conversation-row';
 
 /**
- * Lista de conversaciones de /chat (SPEC §12): nombre, vista previa sin markdown, hora, no leídos
- * (con número y texto; en vivo con los contadores de C2), presencia en las directas, silenciadas y
- * proyectos archivados marcados (icono y texto visible), filtro, «Buscar en el chat» (C3), «Avisos
- * en este navegador» (Web Push, C2), «Nuevo» (mensaje directo o grupo) y, para el admin,
- * «Moderar» (D-119). Estados vacío, sin resultados y de error. Los diálogos que se abren desde el
- * menú «Nuevo» devuelven el foco a ese botón al cerrarse.
+ * Lista de /chat (SPEC §12, D-273): todos los chats que se pueden ver, en tres niveles plegables:
+ * Canales (de equipo), Proyectos y clientes (cada cliente con su canal y, debajo, sus proyectos) y
+ * Directos (directas y grupos). Cada nivel con sus no leídos (los de C2 en vivo en cuanto llegan)
+ * y de la última actividad a la más antigua. Filtro por nombre, «Solo los míos» y «Ocultar archivados» (si no, van al final);
+ * lo plegado y los filtros se recuerdan por persona en este navegador. Arriba, «Buscar en el
+ * chat» (C3), «Avisos en este navegador» (Web Push, C2), «Nuevo» (directo, grupo y, para el admin,
+ * canal) y, para el admin, «Moderar» (D-119). Estados vacío, sin resultados y de error.
  */
 export function ConversationList({
     items,
@@ -118,10 +87,12 @@ export function ConversationList({
     const [query, setQuery] = useState('');
     const [direct, setDirect] = useState(false);
     const [group, setGroup] = useState(false);
+    const [channel, setChannel] = useState(false);
     const [moderation, setModeration] = useState(false);
     const newButton = useRef<HTMLButtonElement>(null);
     const moderationButton = useRef<HTMLButtonElement>(null);
-    // El admin modera chats ajenos (D-119). (Sin sesión en la prop, como en algún test, no.)
+    // El admin modera chats ajenos (D-119) y crea canales (D-272). (Sin sesión en la prop, como en
+    // algún test, no.)
     const sessionUser = usePage().props.auth?.user;
     const isAdmin = sessionUser?.roles?.includes('admin') ?? false;
     // Un colaborador externo no tiene directas ni grupos (D-134): solo los chats de sus proyectos.
@@ -129,9 +100,35 @@ export function ConversationList({
     const searchId = useId();
     // Los no leídos de cada fila: los de C2 en cuanto llega su primer recuento; antes, los de la lista.
     const counter = useUnreadCounter();
-    const needle = normalizeSearch(query.trim());
-    const visible =
-        needle === '' ? items : items.filter((item) => matches(item, needle));
+    const { prefs, toggleSection, setMineOnly, setHideArchived } =
+        useChatListPrefs(sessionUser?.id ?? null);
+    const tree = useMemo(
+        () =>
+            buildChatTree(items, {
+                query,
+                mineOnly: prefs.mineOnly,
+                showArchived: !prefs.hideArchived,
+            }),
+        [items, query, prefs.mineOnly, prefs.hideArchived],
+    );
+    // Los niveles que existen (con algo, antes de filtrar): un colaborador no ve «Directos».
+    const present = useMemo(
+        () => new Set(items.map((item) => sectionOf(item))),
+        [items],
+    );
+    const unreadOf = (item: ChatConversationItem) =>
+        counter.ready ? counter.count(item.id) : item.unread;
+    const mutedOf = (item: ChatConversationItem) =>
+        counter.ready ? counter.isMuted(item.id) : item.muted;
+    const row = (item: ChatConversationItem, nested = false) => (
+        <ConversationRow
+            item={item}
+            active={item.id === activeId}
+            unread={unreadOf(item)}
+            counterReady={counter.ready}
+            nested={nested}
+        />
+    );
 
     return (
         <div className={cn('flex min-h-0 flex-col', className)}>
@@ -189,7 +186,11 @@ export function ConversationList({
                                 ref={newButton}
                                 type="button"
                                 size="sm"
-                                aria-label={t('chat.list.new_menu')}
+                                aria-label={t(
+                                    isAdmin
+                                        ? 'chat.list.new_menu_admin'
+                                        : 'chat.list.new_menu',
+                                )}
                                 data-test="chat-new"
                             >
                                 <Plus aria-hidden="true" />
@@ -205,29 +206,66 @@ export function ConversationList({
                                 <Users aria-hidden="true" />
                                 {t('chat.list.new_group')}
                             </DropdownMenuItem>
+                            {isAdmin ? (
+                                <DropdownMenuItem
+                                    onSelect={() => setChannel(true)}
+                                    data-test="chat-new-channel"
+                                >
+                                    <Hash aria-hidden="true" />
+                                    {t('chat.list.new_channel')}
+                                </DropdownMenuItem>
+                            ) : null}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ) : null}
             </div>
 
             {items.length > 0 ? (
-                <div className="relative px-3 py-2">
-                    <Search
-                        aria-hidden="true"
-                        className="pointer-events-none absolute top-4.5 left-5.5 size-4 text-muted-foreground"
-                    />
-                    <label htmlFor={searchId} className="sr-only">
-                        {t('chat.list.search')}
-                    </label>
-                    <Input
-                        id={searchId}
-                        type="search"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        placeholder={t('chat.list.search_placeholder')}
-                        className="pl-8"
-                        data-test="chat-list-search"
-                    />
+                <div className="grid gap-2 px-3 py-2">
+                    <div className="relative">
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground"
+                        />
+                        <label htmlFor={searchId} className="sr-only">
+                            {t('chat.list.search')}
+                        </label>
+                        <Input
+                            id={searchId}
+                            type="search"
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            placeholder={t('chat.list.search_placeholder')}
+                            className="pl-8"
+                            data-test="chat-list-search"
+                        />
+                    </div>
+                    <div
+                        role="group"
+                        aria-label={t('chat.list.filters')}
+                        className="flex flex-wrap gap-1.5"
+                    >
+                        <FilterToggle
+                            pressed={prefs.mineOnly}
+                            onChange={setMineOnly}
+                            icon={<UserCheck aria-hidden="true" />}
+                            label={t('chat.list.mine_only')}
+                            test="chat-filter-mine"
+                        />
+                        <FilterToggle
+                            pressed={prefs.hideArchived}
+                            onChange={setHideArchived}
+                            icon={<Archive aria-hidden="true" />}
+                            label={
+                                prefs.hideArchived && tree.hiddenArchived > 0
+                                    ? t('chat.list.hidden_archived', {
+                                          count: tree.hiddenArchived,
+                                      })
+                                    : t('chat.list.hide_archived')
+                            }
+                            test="chat-filter-archived"
+                        />
+                    </div>
                 </div>
             ) : null}
 
@@ -291,7 +329,7 @@ export function ConversationList({
                             ) : null}
                         </EmptyState>
                     </div>
-                ) : visible.length === 0 ? (
+                ) : isTreeEmpty(tree) && query.trim() !== '' ? (
                     <p
                         className="p-4 text-sm text-muted-foreground"
                         role="status"
@@ -299,134 +337,57 @@ export function ConversationList({
                         {t('chat.list.no_results', { query: query.trim() })}
                     </p>
                 ) : (
-                    <ul className="grid gap-px p-1">
-                        {visible.map((item) => {
-                            const active = item.id === activeId;
-                            const unread = counter.ready
-                                ? counter.count(item.id)
-                                : item.unread;
+                    <div className="grid gap-1 p-1">
+                        {CHAT_SECTIONS.filter((section) =>
+                            present.has(section),
+                        ).map((section) => {
+                            const visible = sectionItems(tree, section);
+                            const unread = visible
+                                .filter((item) => !mutedOf(item))
+                                .reduce((sum, item) => sum + unreadOf(item), 0);
 
                             return (
-                                <li key={item.id}>
-                                    <Link
-                                        href={urls.chatConversation(item.id)}
-                                        only={CONVERSATION_PROPS}
-                                        preserveState
-                                        preserveScroll
-                                        aria-current={
-                                            active ? 'page' : undefined
-                                        }
-                                        className={cn(
-                                            'flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted',
-                                            active &&
-                                                'bg-accent hover:bg-accent',
-                                            FOCUS_RING,
-                                            'focus-visible:ring-offset-0',
-                                        )}
-                                        data-test="chat-conversation-item"
-                                    >
-                                        <ConversationAvatar
-                                            conversation={item}
-                                        />
-                                        <span className="grid min-w-0 flex-1 gap-0.5">
-                                            <span className="flex items-baseline gap-1.5">
-                                                <span
-                                                    className={cn(
-                                                        'truncate text-sm text-foreground',
-                                                        unread > 0 &&
-                                                            'font-medium',
-                                                    )}
-                                                >
-                                                    {item.title}
-                                                </span>
-                                                {item.muted ? (
-                                                    <span
-                                                        className="inline-flex shrink-0 items-center gap-0.5 self-center text-[11px] text-muted-foreground"
-                                                        data-test="chat-item-muted"
-                                                    >
-                                                        <BellOff
-                                                            aria-hidden="true"
-                                                            className="size-3.5"
-                                                        />
-                                                        {t('chat.list.muted')}
-                                                    </span>
-                                                ) : null}
-                                                {item.read_only ? (
-                                                    <span
-                                                        className="inline-flex shrink-0 items-center gap-0.5 self-center text-[11px] text-muted-foreground"
-                                                        data-test="chat-item-read-only"
-                                                    >
-                                                        <Archive
-                                                            aria-hidden="true"
-                                                            className="size-3.5"
-                                                        />
-                                                        {t(
-                                                            'chat.list.read_only_short',
-                                                        )}
-                                                    </span>
-                                                ) : null}
-                                                <span className="tabular ml-auto shrink-0 text-xs text-muted-foreground">
-                                                    {formatListTime(
-                                                        item.last_activity_at,
-                                                    )}
-                                                </span>
-                                            </span>
-                                            <span className="flex items-center gap-2">
-                                                <span className="truncate text-xs text-muted-foreground">
-                                                    {previewText(item)}
-                                                </span>
-                                                {counter.ready ? (
-                                                    <ConversationUnreadBadge
-                                                        conversationId={item.id}
-                                                        className="ml-auto shrink-0"
+                                <ChatSection
+                                    key={section}
+                                    section={section}
+                                    count={
+                                        section === 'clients'
+                                            ? tree.clients.length
+                                            : visible.length
+                                    }
+                                    unread={unread}
+                                    collapsed={prefs.collapsed[section]}
+                                    onToggle={() => toggleSection(section)}
+                                >
+                                    {section === 'clients' ? (
+                                        tree.clients.length === 0 ? (
+                                            <EmptySection section={section} />
+                                        ) : (
+                                            <ul className="grid gap-px">
+                                                {tree.clients.map((node) => (
+                                                    <ClientGroup
+                                                        key={node.key}
+                                                        node={node}
+                                                        row={row}
                                                     />
-                                                ) : unread > 0 ? (
-                                                    <span
-                                                        aria-hidden="true"
-                                                        className={cn(
-                                                            'tabular ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-medium',
-                                                            item.muted
-                                                                ? 'bg-neutral-soft text-foreground'
-                                                                : 'bg-primary text-primary-foreground',
-                                                        )}
-                                                    >
-                                                        {unread > 99
-                                                            ? '99+'
-                                                            : unread}
-                                                    </span>
-                                                ) : null}
-                                            </span>
-                                            <span className="sr-only">
-                                                {[
-                                                    t(
-                                                        `chat.list.type.${item.type}`,
-                                                    ),
-                                                    // Con C2, el número lo dice su propio contador.
-                                                    !counter.ready && unread > 0
-                                                        ? t(
-                                                              'chat.list.unread',
-                                                              {
-                                                                  count: unread,
-                                                              },
-                                                          )
-                                                        : null,
-                                                    // «Silenciada» y «Solo lectura» ya se leen
-                                                    // en su texto visible; aquí, el porqué.
-                                                    item.read_only
-                                                        ? t(
-                                                              'chat.list.read_only',
-                                                          )
-                                                        : null,
-                                                ]
-                                                    .filter(Boolean)
-                                                    .join('. ')}
-                                            </span>
-                                        </span>
-                                    </Link>
-                                </li>
+                                                ))}
+                                            </ul>
+                                        )
+                                    ) : visible.length === 0 ? (
+                                        <EmptySection section={section} />
+                                    ) : (
+                                        <ul className="grid gap-px">
+                                            {visible.map((item) => (
+                                                <li key={item.id}>
+                                                    {row(item)}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </ChatSection>
                             );
                         })}
-                    </ul>
+                    </div>
                 )}
             </nav>
 
@@ -441,12 +402,200 @@ export function ConversationList({
                 returnFocus={newButton}
             />
             {isAdmin ? (
-                <ModerationDialog
-                    open={moderation}
-                    onOpenChange={setModeration}
-                    returnFocus={moderationButton}
-                />
+                <>
+                    <ChannelDialog
+                        open={channel}
+                        onOpenChange={setChannel}
+                        returnFocus={newButton}
+                    />
+                    <ModerationDialog
+                        open={moderation}
+                        onOpenChange={setModeration}
+                        returnFocus={moderationButton}
+                    />
+                </>
             ) : null}
         </div>
+    );
+}
+
+function FilterToggle({
+    pressed,
+    onChange,
+    icon,
+    label,
+    test,
+}: {
+    pressed: boolean;
+    onChange: (pressed: boolean) => void;
+    icon: ReactNode;
+    label: string;
+    test: string;
+}) {
+    return (
+        <Button
+            type="button"
+            size="sm"
+            variant={pressed ? 'secondary' : 'ghost'}
+            aria-pressed={pressed}
+            onClick={() => onChange(!pressed)}
+            className="h-7 px-2 text-xs"
+            data-test={test}
+        >
+            {icon}
+            {label}
+        </Button>
+    );
+}
+
+/**
+ * Un nivel plegable de la lista: botón con su nombre, cuántas conversaciones tiene y sus no leídos
+ * (sin las silenciadas), con `aria-expanded`.
+ */
+function ChatSection({
+    section,
+    count,
+    unread,
+    collapsed,
+    onToggle,
+    children,
+}: {
+    section: ChatSectionKey;
+    count: number;
+    unread: number;
+    collapsed: boolean;
+    onToggle: () => void;
+    children: ReactNode;
+}) {
+    const listId = useId();
+
+    return (
+        <section data-test={`chat-section-${section}`}>
+            <h2>
+                <button
+                    type="button"
+                    aria-expanded={!collapsed}
+                    aria-controls={listId}
+                    onClick={onToggle}
+                    className={cn(
+                        'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground uppercase hover:bg-muted',
+                        FOCUS_RING,
+                        'focus-visible:ring-offset-0',
+                    )}
+                    data-test={`chat-section-toggle-${section}`}
+                >
+                    <ChevronRight
+                        aria-hidden="true"
+                        className={cn(
+                            'size-4 shrink-0 transition-transform motion-reduce:transition-none',
+                            !collapsed && 'rotate-90',
+                        )}
+                    />
+                    <span className="font-medium tracking-wide">
+                        {t(`chat.sections.${section}`)}
+                    </span>
+                    <span className="tabular" aria-hidden="true">
+                        {count}
+                    </span>
+                    {unread > 0 ? (
+                        <span
+                            aria-hidden="true"
+                            className="tabular ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground normal-case"
+                            data-test={`chat-section-unread-${section}`}
+                        >
+                            {unread > 99 ? '99+' : unread}
+                        </span>
+                    ) : null}
+                    <span className="sr-only">
+                        {[
+                            t('chat.sections.count', { count }),
+                            unread > 0
+                                ? t('chat.list.unread', { count: unread })
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join('. ')}
+                    </span>
+                </button>
+            </h2>
+            <div id={listId} hidden={collapsed}>
+                {collapsed ? null : children}
+            </div>
+        </section>
+    );
+}
+
+function EmptySection({ section }: { section: ChatSectionKey }) {
+    return (
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+            {t(`chat.sections.empty.${section}`)}
+        </p>
+    );
+}
+
+/**
+ * Un cliente del nivel «Proyectos y clientes»: su canal como cabecera (si aún no existe, un enlace
+ * que lo crea al abrirlo, D-271) y, sangrados debajo, los chats de sus proyectos. Los proyectos
+ * internos (sin cliente) van bajo un título sin canal.
+ */
+function ClientGroup({
+    node,
+    row,
+}: {
+    node: ChatClientNode;
+    row: (item: ChatConversationItem, nested?: boolean) => ReactNode;
+}) {
+    const title = node.client?.name ?? t('chat.sections.internal');
+
+    return (
+        <li data-test="chat-client-group">
+            {node.channel ? (
+                row(node.channel)
+            ) : node.client ? (
+                <Link
+                    href={urls.chatClient(node.client.id)}
+                    className={cn(
+                        'flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted',
+                        FOCUS_RING,
+                        'focus-visible:ring-offset-0',
+                    )}
+                    data-test="chat-client-open"
+                >
+                    <ConversationAvatar
+                        conversation={{
+                            type: 'client',
+                            title,
+                            icon: node.client.icon,
+                            other_user: null,
+                            project: null,
+                        }}
+                    />
+                    <span className="grid min-w-0 flex-1 gap-0.5">
+                        <span className="truncate text-sm text-foreground">
+                            {title}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                            {t('chat.list.open_client_channel')}
+                        </span>
+                    </span>
+                </Link>
+            ) : (
+                <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground">
+                    {title}
+                </p>
+            )}
+            {node.projects.length > 0 ? (
+                <ul
+                    className="grid gap-px"
+                    aria-label={t('chat.sections.projects_of', {
+                        client: title,
+                    })}
+                >
+                    {node.projects.map((item) => (
+                        <li key={item.id}>{row(item, true)}</li>
+                    ))}
+                </ul>
+            ) : null}
+        </li>
     );
 }

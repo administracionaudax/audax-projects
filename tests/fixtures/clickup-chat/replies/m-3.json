@@ -1,0 +1,16 @@
+{
+    "done": true,
+    "channel": "c-daily",
+    "replies": [
+        {
+            "id": "m-3r",
+            "parent_channel": "c-daily",
+            "parent_message": "m-3",
+            "user_id": "101",
+            "date": 1788255120000,
+            "type": "message",
+            "resolved": false,
+            "content": "Hecho 👍"
+        }
+    ]
+}
