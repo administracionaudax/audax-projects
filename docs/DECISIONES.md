@@ -1974,6 +1974,25 @@ Diseño en `docs/PLAN-CARGAS.md` (§4, §6.1, §7.1, §8 a §10 y §12) con las 
 - **Cifras** (horas previstas e imputadas, jornada, cumplimiento, hora de publicación, temporizador en marcha) y **comentarios**: solo la propia persona, su responsable y los admins (`canSeeAbsencesOf`, D-088). Para el resto llegan a `null` en las props, no solo ocultas. El motivo de una ausencia, igual (D-088); el festivo, para todos.
 - **Nadie edita la línea de otro**, tampoco un admin (`DayPlanItemPolicy`). Sin ranking ni puntuación.
 
+### D-252 · Hora límite a las 8:30 y recordatorio **[concreta PLAN-CARGAS §9 y P2 (8:30, no 10:00)]**
+- **Un solo ajuste, `day_plan_deadline` (08:30, hora de Madrid):** es la hora del recordatorio y la hora desde la que «Equipo hoy» marca «Sin plan» y las líneas escritas después («añadida a las 12:40»). Se cambia en `/admin/ajustes` → «Plan del día», junto a `day_plan_reminder_enabled` (sí) y `day_plan_editable_days`.
+- **A quién:** la plantilla del plan del día sin ninguna línea ese día, solo en **sus días con jornada** (`Capacity` > 0: ni fin de semana según su horario, ni festivo, ni ausencia aprobada de día completo) y sin «Estoy fuera» (D-228). Una ausencia parcial o solo solicitada no lo quita.
+- **Cómo:** `day-plan:remind` cada 5 minutos; envía desde la hora límite y durante 3 horas (si el servidor estuvo parado a las 8:30, sale al volver, pero nunca a media tarde). **Una vez por persona y día local de Madrid**, aunque el comando se repita o cambie la hora: se reclama con `day_plans.reminded_at` en una actualización atómica (si el envío falla, se libera). Aviso `day_plan.reminder` del catálogo (grupo «Plan del día»): app y navegador por defecto, email opcional; sin canal activado no se reclama.
+- **«Recordar» a mano** en «Equipo hoy»: su responsable o un admin, con su nombre en el aviso y el mismo registro (tampoco dos el mismo día; el de las 8:30 ya no sale). Nada se avisa al responsable (P2 a).
+- **Modo de prueba o módulo apagado:** no sale nada (`AppModules::enabled`), tampoco el «Recordar» («Modo de prueba: no se avisa a nadie.»).
+
+### D-253 · Cerrar y pasar líneas: hoy y el último día con jornada **[concreta PLAN-CARGAS §4.4 y P3]**
+- **Escribir** (añadir, texto, cliente o proyecto, horas, borrar, ordenar, nota): hoy y cualquier día hasta el domingo de la semana que viene. El pasado no se reescribe.
+- **Cerrar** (hecha, no hecha con motivo, pendiente otra vez, pasar a otro día, imputar): además, los `day_plan_editable_days` últimos días **con jornada** (1 por defecto): el lunes aún se cierra el viernes; con el viernes de vacaciones, el jueves. Lo anterior es de solo lectura.
+- **«Pasar a hoy» con un clic** (P3 a): al abrir hoy, «Tienes 3 pendientes del lunes» con «Pasar todas a hoy», «Elegir…» y «Marcar como no hechas», con las pendientes de esos días que aún se cierran. Pasar crea una copia en el destino (`carried_from_id`, `carry_count` + 1, la marca «↻ ×N») y deja la original como «pasada». Nunca es automático. Borrar la copia la deshace (la original vuelve a pendiente). Una hecha no se pasa.
+- **Check con tarea:** si la línea tiene una tarea abierta, al marcarla hecha se pregunta «¿Marcar también la tarea como hecha?» («Solo la línea» o «También la tarea», con `TaskPolicy::update` y `TaskWriter`). Nunca al revés ni en silencio.
+
+### D-255 · Equipo hoy, la semana y los comentarios **[concreta PLAN-CARGAS §4.2 y §4.3]**
+- **Equipo hoy** (`/dia/equipo?fecha=&departamento=`): una fila por persona de la plantilla, desplegada, con su estado («Plan a las 09:12», «Sin plan» en rojo pasada la hora límite, «Aún no», «Ausente», «Festivo», «No trabaja»), su nota del día y sus líneas. A quien puede ver sus cifras: previsto frente a jornada (en rojo si se pasa), imputado, hechas, arrastradas y «Ahora: …» con el temporizador. Resumen del departamento: con plan, sin plan, fuera y, solo si se ven las cifras de todos, hechas y arrastradas.
+- **Filtros:** departamento en la URL (por defecto el de quien mira; `todos` para toda la plantilla) y persona en el navegador.
+- **Semana** (`/dia/semana?semana=2026-W41`): personas × días (de lunes a viernes, y el fin de semana si alguien trabaja o planifica); clic en un día para ver sus líneas. «Hechas/planificadas» por celda y el total de la semana, solo con las cifras.
+- **Comentarios** (`day_plan_comments`): los dejan su responsable y los admins; la persona contesta desde Mi día. Los ven solo ellos. Avisan a la dueña de la línea (`day_plan.commented`, en la app). Cada uno borra los suyos. Auditados.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.

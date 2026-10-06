@@ -84,6 +84,9 @@ type SettingsForm = {
     banner_tone: 'info' | 'warning';
     weekly_dictation_cleanup: boolean;
     google_login_enabled: boolean;
+    day_plan_deadline: string;
+    day_plan_reminder_enabled: boolean;
+    day_plan_editable_days: string;
 };
 
 function Section({
@@ -226,6 +229,9 @@ export default function AdminSettings({
         banner_tone: settings.global_banner?.tone ?? 'info',
         weekly_dictation_cleanup: settings.weekly_dictation_cleanup ?? true,
         google_login_enabled: settings.google_login_enabled ?? true,
+        day_plan_deadline: settings.day_plan_deadline ?? '08:30',
+        day_plan_reminder_enabled: settings.day_plan_reminder_enabled ?? true,
+        day_plan_editable_days: String(settings.day_plan_editable_days ?? 1),
     });
     const audioDurations = AUDIO_DURATIONS.includes(settings.max_audio_seconds)
         ? AUDIO_DURATIONS
@@ -272,6 +278,7 @@ export default function AdminSettings({
                 (value) => Number(value),
             ),
             max_attachment_mb: Number(data.max_attachment_mb),
+            day_plan_editable_days: Number(data.day_plan_editable_days),
             occupancy_low_threshold: Number(data.occupancy_low_threshold),
             occupancy_high_threshold: Number(data.occupancy_high_threshold),
             max_audio_seconds: Number(data.max_audio_seconds),
@@ -946,6 +953,100 @@ export default function AdminSettings({
                                 <option value="warning">
                                     {t('weeklies.settings.banner_warning')}
                                 </option>
+                            </NativeSelect>
+                        </Field>
+                    </Section>
+
+                    {/* Plan del día (D-252 y D-253): hora límite, recordatorio y días que se cierran. */}
+                    <Section
+                        title={t('day_plan.settings.title')}
+                        description={t('day_plan.settings.description')}
+                    >
+                        <Field
+                            id={`${id}-day-plan-deadline`}
+                            label={t('day_plan.settings.deadline')}
+                            help={t('day_plan.settings.deadline_help')}
+                            error={errors.day_plan_deadline}
+                            className="max-w-md"
+                        >
+                            <Input
+                                id={`${id}-day-plan-deadline`}
+                                type="time"
+                                className="tabular w-32"
+                                value={form.data.day_plan_deadline}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'day_plan_deadline',
+                                        event.target.value,
+                                    )
+                                }
+                                aria-invalid={
+                                    errors.day_plan_deadline ? true : undefined
+                                }
+                                aria-describedby={describedBy(
+                                    `${id}-day-plan-deadline`,
+                                    {
+                                        help: true,
+                                        error: errors.day_plan_deadline,
+                                    },
+                                )}
+                                data-test="settings-day-plan-deadline"
+                            />
+                        </Field>
+                        <Toggle
+                            id={`${id}-day-plan-reminder`}
+                            label={t('day_plan.settings.reminder')}
+                            help={t('day_plan.settings.reminder_help')}
+                            checked={form.data.day_plan_reminder_enabled}
+                            onChange={(checked) =>
+                                form.setData(
+                                    'day_plan_reminder_enabled',
+                                    checked,
+                                )
+                            }
+                            error={errors.day_plan_reminder_enabled}
+                        />
+                        <Field
+                            id={`${id}-day-plan-days`}
+                            label={t('day_plan.settings.editable_days')}
+                            help={t('day_plan.settings.editable_days_help')}
+                            error={errors.day_plan_editable_days}
+                            className="max-w-md"
+                        >
+                            <NativeSelect
+                                id={`${id}-day-plan-days`}
+                                className="w-48"
+                                value={form.data.day_plan_editable_days}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'day_plan_editable_days',
+                                        event.target.value,
+                                    )
+                                }
+                                aria-describedby={describedBy(
+                                    `${id}-day-plan-days`,
+                                    {
+                                        help: true,
+                                        error: errors.day_plan_editable_days,
+                                    },
+                                )}
+                            >
+                                {[0, 1, 2, 3, 4, 5].map((days) => (
+                                    <option key={days} value={String(days)}>
+                                        {days === 0
+                                            ? t(
+                                                  'day_plan.settings.editable_none',
+                                              )
+                                            : days === 1
+                                              ? t(
+                                                    'day_plan.settings.editable_one',
+                                                )
+                                              : t(
+                                                    'day_plan.settings.editable_many',
+                                                    { count: days },
+                                                )}
+                                    </option>
+                                ))}
                             </NativeSelect>
                         </Field>
                     </Section>

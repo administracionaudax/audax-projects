@@ -26,6 +26,8 @@ return [
         'planned_minutes' => 'horas previstas',
         'note' => 'nota',
         'body' => 'comentario',
+        'deadline' => 'hora límite del plan del día',
+        'editable_days' => 'días que se pueden cerrar',
     ],
 
     'dates' => [
@@ -58,5 +60,25 @@ return [
         'not_done_many' => '{1} 1 línea marcada como no hecha.|[2,*] :count líneas marcadas como no hechas.',
         'from_tasks' => '{1} 1 tarea añadida a tu día (:date).|[2,*] :count tareas añadidas a tu día (:date).',
         'from_tasks_none' => 'Esas tareas ya estaban en tu plan de ese día.',
+        'commented' => 'Comentario publicado.',
+        'comment_deleted' => 'Comentario borrado.',
+    ],
+
+    // «Recordar» desde Equipo hoy (D-252).
+    'remind' => [
+        'sent' => 'Se le ha recordado a :name que escriba su plan.',
+        'preview' => 'Modo de prueba: no se avisa a nadie.',
+        'has_plan' => ':name ya ha escrito su plan de hoy.',
+        'off' => ':name no trabaja hoy: no se le recuerda.',
+        'already' => 'A :name ya se le ha recordado hoy.',
+        'no_channel' => 'No se ha enviado: :name tiene desactivado este aviso.',
+    ],
+
+    'notifications' => [
+        'reminder_title' => 'Aún no has escrito tu plan de hoy',
+        'reminder_by_title' => ':name te pide que escribas tu plan de hoy',
+        'reminder_body' => 'Escribe en Mi día lo que vas a hacer hoy, en líneas: menos de un minuto.',
+        'commented_title' => ':name ha comentado tu plan del día',
+        'commented_body' => '«:line»: :comment',
     ],
 ];

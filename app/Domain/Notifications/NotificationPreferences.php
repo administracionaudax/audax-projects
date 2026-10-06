@@ -2,6 +2,7 @@
 
 namespace App\Domain\Notifications;
 
+use App\Domain\DayPlan\DayPlanAccess;
 use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Models\ProjectMember;
@@ -215,6 +216,7 @@ final class NotificationPreferences
             NotificationCatalog::AUDIENCE_WEEKLIES => $user->writesWeeklies() && ! $user->isCollaborator() && AppModules::visibleTo($user, AppModule::Weeklies),
             NotificationCatalog::AUDIENCE_SUGGESTIONS => $user->writesWeeklies() && ! $user->isCollaborator()
                 && AppModules::visibleTo($user, AppModule::Help) && AppModules::visibleTo($user, AppModule::Suggestions),
+            NotificationCatalog::AUDIENCE_DAY_PLAN => DayPlanAccess::uses($user),
             NotificationCatalog::AUDIENCE_APPROVERS => $user->isAdmin() || $user->isDepartmentManager(),
             NotificationCatalog::AUDIENCE_MANAGERS => $user->isAdmin() || $user->isDepartmentManager()
                 || ($managesProjects ??= ProjectMember::query()->where('user_id', $user->id)->where('is_manager', true)->exists()),

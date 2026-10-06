@@ -26,6 +26,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { destroy, status } from '@/routes/day-plan/items';
+import { LineComments } from './line-comments';
 import { LineContent, LineFigures } from './line-content';
 import {
     CarryDialog,
@@ -117,121 +118,130 @@ export function MyLineRow({
     };
 
     return (
-        <div
-            className={cn(
-                'flex items-start gap-2 py-2',
-                line.running && 'bg-info-soft',
-            )}
-            data-test="day-plan-line"
-            data-line-id={line.id}
-            data-status={line.status}
-        >
-            {handle ?? <span aria-hidden="true" className="w-4 shrink-0" />}
-            <Checkbox
-                checked={line.status === 'done'}
-                disabled={!checkable || processing}
-                onCheckedChange={(checked) => toggle(checked === true)}
-                aria-label={t(
-                    line.status === 'done'
-                        ? 'day_plan.line.uncheck'
-                        : 'day_plan.line.check',
-                    { text: line.text },
+        <div className="grid gap-1 py-2">
+            <div
+                className={cn(
+                    'flex items-start gap-2',
+                    line.running && 'bg-info-soft',
                 )}
-                className="mt-0.5"
-                data-test="day-plan-line-check"
+                data-test="day-plan-line"
+                data-line-id={line.id}
+                data-status={line.status}
+            >
+                {handle ?? <span aria-hidden="true" className="w-4 shrink-0" />}
+                <Checkbox
+                    checked={line.status === 'done'}
+                    disabled={!checkable || processing}
+                    onCheckedChange={(checked) => toggle(checked === true)}
+                    aria-label={t(
+                        line.status === 'done'
+                            ? 'day_plan.line.uncheck'
+                            : 'day_plan.line.check',
+                        { text: line.text },
+                    )}
+                    className="mt-0.5"
+                    data-test="day-plan-line-check"
+                />
+                <LineContent line={line} />
+                <LineFigures line={line} />
+                {timer}
+                {canWrite || canClose ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={cn('size-8 shrink-0', FOCUS_RING)}
+                                aria-label={t('day_plan.line.actions', {
+                                    text: line.text,
+                                })}
+                                data-test="day-plan-line-menu"
+                            >
+                                <MoreHorizontal aria-hidden="true" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            {canWrite && !carried ? (
+                                <DropdownMenuItem
+                                    onSelect={() => setDialog('edit')}
+                                >
+                                    <Pencil aria-hidden="true" />
+                                    {t('day_plan.line.edit')}
+                                </DropdownMenuItem>
+                            ) : null}
+                            {canClose && !carried && line.status !== 'done' ? (
+                                <DropdownMenuItem
+                                    onSelect={() => setDialog('carry')}
+                                    data-test="day-plan-line-carry"
+                                >
+                                    <CalendarArrowUp aria-hidden="true" />
+                                    {t('day_plan.line.carry')}
+                                </DropdownMenuItem>
+                            ) : null}
+                            {canClose &&
+                            !carried &&
+                            line.status !== 'not_done' ? (
+                                <DropdownMenuItem
+                                    onSelect={() => setDialog('not_done')}
+                                    data-test="day-plan-line-not-done"
+                                >
+                                    <Ban aria-hidden="true" />
+                                    {t('day_plan.line.mark_not_done')}
+                                </DropdownMenuItem>
+                            ) : null}
+                            {canClose &&
+                            (line.status === 'not_done' ||
+                                line.status === 'done') ? (
+                                <DropdownMenuItem
+                                    onSelect={() => setStatus('pending')}
+                                >
+                                    <RotateCcw aria-hidden="true" />
+                                    {t('day_plan.line.reopen')}
+                                </DropdownMenuItem>
+                            ) : null}
+                            {extraActions}
+                            {canWrite && onMove ? (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        disabled={isFirst}
+                                        onSelect={() => onMove(-1)}
+                                    >
+                                        <ArrowUp aria-hidden="true" />
+                                        {t('day_plan.line.move_up')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={isLast}
+                                        onSelect={() => onMove(1)}
+                                    >
+                                        <ArrowDown aria-hidden="true" />
+                                        {t('day_plan.line.move_down')}
+                                    </DropdownMenuItem>
+                                </>
+                            ) : null}
+                            {canWrite ? (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onSelect={() => setDialog('delete')}
+                                        data-test="day-plan-line-delete"
+                                    >
+                                        <Trash2 aria-hidden="true" />
+                                        {t('day_plan.line.delete')}
+                                    </DropdownMenuItem>
+                                </>
+                            ) : null}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : null}
+            </div>
+            {/* Comentarios de su responsable (D-255): la persona contesta desde aquí. */}
+            <LineComments
+                line={line}
+                canComment={(line.comments?.length ?? 0) > 0}
             />
-            <LineContent line={line} />
-            <LineFigures line={line} />
-            {timer}
-            {canWrite || canClose ? (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={cn('size-8 shrink-0', FOCUS_RING)}
-                            aria-label={t('day_plan.line.actions', {
-                                text: line.text,
-                            })}
-                            data-test="day-plan-line-menu"
-                        >
-                            <MoreHorizontal aria-hidden="true" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        {canWrite && !carried ? (
-                            <DropdownMenuItem
-                                onSelect={() => setDialog('edit')}
-                            >
-                                <Pencil aria-hidden="true" />
-                                {t('day_plan.line.edit')}
-                            </DropdownMenuItem>
-                        ) : null}
-                        {canClose && !carried && line.status !== 'done' ? (
-                            <DropdownMenuItem
-                                onSelect={() => setDialog('carry')}
-                                data-test="day-plan-line-carry"
-                            >
-                                <CalendarArrowUp aria-hidden="true" />
-                                {t('day_plan.line.carry')}
-                            </DropdownMenuItem>
-                        ) : null}
-                        {canClose && !carried && line.status !== 'not_done' ? (
-                            <DropdownMenuItem
-                                onSelect={() => setDialog('not_done')}
-                                data-test="day-plan-line-not-done"
-                            >
-                                <Ban aria-hidden="true" />
-                                {t('day_plan.line.mark_not_done')}
-                            </DropdownMenuItem>
-                        ) : null}
-                        {canClose &&
-                        (line.status === 'not_done' ||
-                            line.status === 'done') ? (
-                            <DropdownMenuItem
-                                onSelect={() => setStatus('pending')}
-                            >
-                                <RotateCcw aria-hidden="true" />
-                                {t('day_plan.line.reopen')}
-                            </DropdownMenuItem>
-                        ) : null}
-                        {extraActions}
-                        {canWrite && onMove ? (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    disabled={isFirst}
-                                    onSelect={() => onMove(-1)}
-                                >
-                                    <ArrowUp aria-hidden="true" />
-                                    {t('day_plan.line.move_up')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    disabled={isLast}
-                                    onSelect={() => onMove(1)}
-                                >
-                                    <ArrowDown aria-hidden="true" />
-                                    {t('day_plan.line.move_down')}
-                                </DropdownMenuItem>
-                            </>
-                        ) : null}
-                        {canWrite ? (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    onSelect={() => setDialog('delete')}
-                                    data-test="day-plan-line-delete"
-                                >
-                                    <Trash2 aria-hidden="true" />
-                                    {t('day_plan.line.delete')}
-                                </DropdownMenuItem>
-                            </>
-                        ) : null}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            ) : null}
 
             {dialog === 'edit' ? (
                 <EditLineDialog

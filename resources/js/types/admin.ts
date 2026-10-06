@@ -194,6 +194,10 @@ export type AdminSettings = {
     weekly_dictation_cleanup?: boolean;
     /** Entrar con Google (D-165). */
     google_login_enabled?: boolean;
+    /** Plan del día (D-252 y D-253): hora límite «HH:MM», recordatorio y días que se cierran. */
+    day_plan_deadline?: string;
+    day_plan_reminder_enabled?: boolean;
+    day_plan_editable_days?: number;
 };
 
 export type AdminSettingsProps = {

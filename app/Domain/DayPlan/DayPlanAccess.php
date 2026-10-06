@@ -23,11 +23,16 @@ final class DayPlanAccess
 {
     public static function uses(?User $user): bool
     {
+        return self::staff($user) && AppModules::visibleTo($user, AppModule::DayPlan);
+    }
+
+    /** ¿Es de la plantilla del plan del día (sin mirar el módulo)? Activa, interna y no colaboradora. */
+    public static function staff(?User $user): bool
+    {
         return $user !== null
             && $user->isActive()
             && ! $user->isCollaborator()
-            && $user->writesWeeklies()
-            && AppModules::visibleTo($user, AppModule::DayPlan);
+            && $user->writesWeeklies();
     }
 
     /** ¿Ve $viewer las cifras y los comentarios del plan de $subject? */

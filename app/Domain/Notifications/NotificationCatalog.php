@@ -44,8 +44,11 @@ final class NotificationCatalog
     /** Quien usa las sugerencias del centro de ayuda (10.7, D-209), con sus módulos encendidos. */
     public const string AUDIENCE_SUGGESTIONS = 'suggestions';
 
+    /** Quien usa el plan del día (D-251), con su módulo visible; nunca un colaborador externo. */
+    public const string AUDIENCE_DAY_PLAN = 'day_plan';
+
     /** Grupos, en el orden de la página de preferencias. */
-    public const array GROUPS = ['tasks', 'time', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
+    public const array GROUPS = ['tasks', 'time', 'day_plan', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
 
     /** @var array<string, NotificationEvent>|null */
     private ?array $events = null;
@@ -88,6 +91,12 @@ final class NotificationCatalog
             new NotificationEvent('time.approved', 'time', $all, [$app]),
             new NotificationEvent('time.week_reminder', 'time', $all, [$app]),
             new NotificationEvent('time.timer_long', 'time', $all, [$app]),
+
+            // Plan del día (D-252 y D-255): el recordatorio de la hora límite (08:30) a quien aún no ha
+            // escrito su plan en un día con jornada, por defecto en la app y en el navegador; el email
+            // se puede activar. Y el comentario de su responsable en una de sus líneas, en la app.
+            new NotificationEvent('day_plan.reminder', 'day_plan', $all, [$app, $push], self::AUDIENCE_DAY_PLAN),
+            new NotificationEvent('day_plan.commented', 'day_plan', $all, [$app], self::AUDIENCE_DAY_PLAN),
 
             // La Weekly (Fase 10, entrega 10.5, D-199 a D-201). Los recordatorios por reglas salen por
             // el canal de cada regla (y solo si la persona no lo ha desactivado aquí); por defecto,

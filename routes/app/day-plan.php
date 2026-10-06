@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\DayPlan\DayPlanCommentController;
 use App\Http\Controllers\DayPlan\DayPlanItemController;
 use App\Http\Controllers\DayPlan\MyDayController;
+use App\Http\Controllers\DayPlan\TeamDayController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,6 +19,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['module:day_plan', 'can:use-day-plan'])->group(function () {
     Route::get('dia', MyDayController::class)->name('day-plan.show');
+    Route::get('dia/equipo', [TeamDayController::class, 'team'])->name('day-plan.team');
+    Route::get('dia/semana', [TeamDayController::class, 'week'])->name('day-plan.week');
 
     Route::middleware('throttle:240,1,day-plan.write')->group(function () {
         Route::post('dia/lineas', [DayPlanItemController::class, 'store'])->name('day-plan.items.store');
@@ -29,7 +33,13 @@ Route::middleware(['module:day_plan', 'can:use-day-plan'])->group(function () {
         Route::put('dia/orden', [DayPlanItemController::class, 'reorder'])->name('day-plan.reorder');
         Route::put('dia/nota', [DayPlanItemController::class, 'note'])->name('day-plan.note');
         Route::post('dia/desde-tareas', [DayPlanItemController::class, 'fromTasks'])->name('day-plan.from-tasks');
+        Route::post('dia/lineas/{item}/comentarios', [DayPlanCommentController::class, 'store'])->name('day-plan.items.comments.store');
+        Route::delete('dia/comentarios/{comment}', [DayPlanCommentController::class, 'destroy'])->name('day-plan.comments.destroy');
     });
+
+    Route::post('dia/equipo/{person}/recordar', [TeamDayController::class, 'remind'])
+        ->middleware('throttle:30,1,day-plan.remind')
+        ->name('day-plan.team.remind');
 
     Route::get('dia/tareas-sugeridas', [DayPlanItemController::class, 'suggestions'])
         ->middleware('throttle:120,1,day-plan.suggestions')
