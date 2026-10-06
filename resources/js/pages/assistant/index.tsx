@@ -260,6 +260,8 @@ export default function Assistant({
                             <Button
                                 type="submit"
                                 size="icon"
+                                // Del alto mínimo de la caja (40 px), no 36 px a su lado.
+                                className="size-10"
                                 disabled={waiting || input.trim() === ''}
                                 aria-label={t('assistant.send')}
                                 data-test="assistant-send"

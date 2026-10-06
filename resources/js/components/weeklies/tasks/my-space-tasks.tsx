@@ -99,7 +99,9 @@ export function MySpaceTasks({
                     <div
                         role="group"
                         aria-label={t('my_space.tasks.filter.label')}
-                        className="inline-flex border p-0.5"
+                        // Botones pegados de 32 px, como «Archivadas» a su lado (antes el recuadro con
+                        // relleno medía 38 px). D-310.
+                        className="inline-flex"
                     >
                         {FILTERS.map((option) => (
                             <button
@@ -108,7 +110,7 @@ export function MySpaceTasks({
                                 aria-pressed={filter === option.id}
                                 onClick={() => setFilter(option.id)}
                                 className={cn(
-                                    'h-8 px-3 text-sm',
+                                    '-ml-px h-8 border border-input px-3 text-sm first:ml-0',
                                     filter === option.id
                                         ? 'bg-primary text-primary-foreground'
                                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
