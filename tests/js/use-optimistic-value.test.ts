@@ -11,7 +11,9 @@ describe('useOptimisticValue', () => {
             { initialProps: { prop: '' } },
         );
 
-        act(() => result.current[1]('2026-09'));
+        act(() => {
+            result.current[1]('2026-09');
+        });
         expect(result.current[0]).toBe('2026-09');
 
         rerender({ prop: '2026-08' });
