@@ -736,7 +736,10 @@ La suite completa de Playwright dio 8 fallos, todos en specs nuevos de la Fase 1
 - **Vitest:** el número de comentarios y el contraste de la tira (`suggestions` y `weeklies-team-nav`), «Unirme a clientes» (`weeklies-team-nav` y `weeklies-insights`), los enlaces de la IA (`privacy-markdown` y `weeklies-insights`) y el tablero oculto (`suggestions`).
 
 ### Resultados
-RESULTADOS
+- Pest completo (`--parallel --processes=8`): 4.350 tests en verde (2 saltados), tras alinear `BanksPdfTest` con el prefijo de su límite.
+- PHPStan completo (`--memory-limit=2G`), Pint, `tsc --noEmit` y `vp check`: sin errores.
+- Vitest completo: 1.574 tests en 130 ficheros.
+- `vp build` y la suite E2E completa con el servidor recién sembrado: **449 bien, 5 saltados y 0 fallos**. En la primera pasada salieron dos fallos más de los specs de la Fase 10, que se arreglaron en el test: `my-space-tasks.spec.ts:46` medía axe con dos avisos animándose (falso fallo de contraste; ahora espera a que se vayan) y `weeklies.spec.ts:64` daba por hecho que la caja recargada salía plegada, cosa que solo pasa si la weekly ya estaba enviada (ahora comprueba el texto en los dos casos).
 
 ### Para desplegar (con el SSH)
 - **Una migración:** `weekly_client_subscriptions`. Las membresías creadas con el «Unirme» anterior (si alguien lo usó en el servidor de desarrollo) siguen siendo membresías: se revisan a mano en cada proyecto.
