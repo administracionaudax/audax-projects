@@ -2,7 +2,8 @@
 import { render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppSidebar, mainNavItems } from '@/components/app-sidebar';
+import { AppSidebar, navSections } from '@/components/app-sidebar';
+import { resetNavSectionsMemory } from '@/hooks/use-nav-sections';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Abilities, User } from '@/types';
@@ -98,33 +99,50 @@ const collaborator: Abilities = {
 beforeEach(() => {
     page.url = '/';
     setAbilities(none);
+    resetNavSectionsMemory();
+    window.localStorage.clear();
 });
 
-describe('navegación principal', () => {
-    it('sigue el orden del SPEC §3 con todos los permisos', () => {
-        const titles = mainNavItems({
-            ...none,
-            viewHourBanks: true,
-            viewAdmin: true,
-            viewFinancials: true,
-            viewTeamAbsences: true,
-        }).map((item) => item.title);
+/** Títulos de cada bloque que se pinta (sin los vacíos), por id de sección. */
+function titlesBySection(can: Abilities) {
+    return Object.fromEntries(
+        navSections(can)
+            .filter((section) => section.items.length > 0)
+            .map((section) => [
+                section.id,
+                section.items.map((item) => item.title),
+            ]),
+    );
+}
 
-        // «Ausencias», tras «Carga» (D-091).
-        expect(titles).toEqual([
-            'Inicio',
-            'Mis tareas',
-            'Calendario',
-            'Proyectos',
-            'Clientes',
-            'Bolsas',
-            'Horas',
-            'Carga',
-            'Ausencias',
-            'Informes',
-            'Chat',
-            'Administración',
-        ]);
+describe('navegación principal', () => {
+    it('agrupa las entradas en las secciones de D-260, con todos los permisos', () => {
+        // Inicio y Chat, fijos; «Ausencias», en Personas; Facturación, sin entradas, no sale.
+        expect(
+            titlesBySection({
+                ...none,
+                viewHourBanks: true,
+                viewAdmin: true,
+                viewFinancials: true,
+                viewTeamAbsences: true,
+                manageUsers: true,
+                manageSettings: true,
+            }),
+        ).toEqual({
+            main: ['Inicio', 'Chat'],
+            projects: [
+                'Mis tareas',
+                'Calendario',
+                'Proyectos',
+                'Clientes',
+                'Bolsas',
+                'Horas',
+                'Carga',
+                'Informes',
+            ],
+            people: ['Ausencias'],
+            admin: ['Panel', 'Usuarios', 'Ajustes'],
+        });
     });
 
     it('todos ven «Ausencias»; solo quien las aprueba, «Ausencias del equipo»', () => {
@@ -183,15 +201,50 @@ describe('navegación principal', () => {
         expect(nav.queryByRole('link', { name: 'Administración' })).toBeNull();
     });
 
-    it('muestra Administración solo al admin', () => {
-        setAbilities({ ...none, viewHourBanks: true, viewAdmin: true });
+    it('muestra la sección Administración solo al admin', () => {
+        expect(
+            renderSidebar().queryByRole('group', { name: 'Administración' }),
+        ).toBeNull();
+    });
+
+    it('al admin, la sección Administración con el panel, Usuarios y Ajustes', () => {
+        setAbilities({
+            ...none,
+            viewHourBanks: true,
+            viewAdmin: true,
+            manageUsers: true,
+            manageSettings: true,
+        });
+        const nav = renderSidebar();
+        const admin = within(
+            nav.getByRole('group', { name: 'Administración' }),
+        );
+
+        expect(
+            admin.getAllByRole('link').map((link) => link.getAttribute('href')),
+        ).toEqual(['/admin', '/admin/usuarios', '/admin/ajustes']);
+    });
+
+    it('el panel de administración solo es la página actual en /admin', () => {
+        page.url = '/admin/usuarios';
+        setAbilities({
+            ...none,
+            viewAdmin: true,
+            manageUsers: true,
+            manageSettings: true,
+        });
         const nav = renderSidebar();
 
         expect(
             nav
-                .getByRole('link', { name: 'Administración' })
-                .getAttribute('href'),
-        ).toBe('/admin');
+                .getByRole('link', { name: 'Panel' })
+                .getAttribute('aria-current'),
+        ).toBeNull();
+        expect(
+            nav
+                .getByRole('link', { name: 'Usuarios' })
+                .getAttribute('aria-current'),
+        ).toBe('page');
     });
 
     it('marca Inicio como la página actual', () => {
@@ -225,16 +278,11 @@ describe('navegación principal', () => {
 
 describe('navegación de un colaborador externo (D-134)', () => {
     it('solo tiene Inicio, Mis tareas, Calendario, Proyectos, Horas y Chat', () => {
-        const titles = mainNavItems(collaborator).map((item) => item.title);
-
-        expect(titles).toEqual([
-            'Inicio',
-            'Mis tareas',
-            'Calendario',
-            'Proyectos',
-            'Horas',
-            'Chat',
-        ]);
+        // Sin Weekly, Personas ni Administración: esas secciones no se pintan.
+        expect(titlesBySection(collaborator)).toEqual({
+            main: ['Inicio', 'Chat'],
+            projects: ['Mis tareas', 'Calendario', 'Proyectos', 'Horas'],
+        });
     });
 
     it('no pinta los enlaces a clientes, carga, ausencias ni informes', () => {

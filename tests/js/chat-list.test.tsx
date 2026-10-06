@@ -33,7 +33,7 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
     ),
 }));
 
-import { mainNavItems } from '@/components/app-sidebar';
+import { pinnedNavItems } from '@/components/app-sidebar';
 import {
     ConversationList,
     previewText,
@@ -440,18 +440,13 @@ describe('total sin leer de la navegación', () => {
     });
 
     it('la entrada Chat lleva el contador con su texto accesible', () => {
-        const can = {
-            viewHourBanks: false,
-            viewAdmin: false,
-            viewFinancials: false,
-        } as never;
-        const chat = mainNavItems(can, { chatUnread: 5 }).find(
+        const chat = pinnedNavItems({ chatUnread: 5 }).find(
             (entry) => entry.title === 'Chat',
         );
 
         expect(chat?.badge).toEqual({ count: 5, label: '5 mensajes sin leer' });
         expect(
-            mainNavItems(can).find((entry) => entry.title === 'Chat')?.badge,
+            pinnedNavItems().find((entry) => entry.title === 'Chat')?.badge,
         ).toBeUndefined();
     });
 });

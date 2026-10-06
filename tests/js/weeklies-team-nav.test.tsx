@@ -36,7 +36,7 @@ vi.mock('@inertiajs/react', async (importOriginal) => {
 
 import {
     AppSidebar,
-    mainNavItems,
+    navSections,
     weeklyNavItems,
 } from '@/components/app-sidebar';
 import { ModulePreviewBanner } from '@/components/weeklies/module-preview-banner';
@@ -195,10 +195,14 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         };
     });
 
-    it('la Weekly va en su propio bloque, no entre las entradas generales (D-239)', () => {
-        expect(mainNavItems(employee).map((item) => item.title)).not.toContain(
-            'Mi espacio',
-        );
+    it('la Weekly va en su propia sección, no entre las demás (D-239 y D-260)', () => {
+        for (const section of navSections(employee)) {
+            if (section.id !== 'weekly') {
+                expect(section.items.map((item) => item.title)).not.toContain(
+                    'Mi espacio',
+                );
+            }
+        }
         expect(weeklyNavItems(employee).map((item) => item.title)).toEqual([
             'Mi espacio',
             'Weeklies',
@@ -208,7 +212,7 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         ]);
     });
 
-    it('el bloque de la Weekly va bajo una línea fina y con su encabezado', () => {
+    it('la sección de la Weekly va bajo una línea fina y con su encabezado plegable', () => {
         render(
             <TooltipProvider>
                 <SidebarProvider>
@@ -220,11 +224,15 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         const nav = screen.getByRole('navigation', {
             name: 'Navegación principal',
         });
-        const separators = nav.querySelectorAll('[data-test="nav-separator"]');
-        expect(separators).toHaveLength(1);
-
         const block = within(nav).getByRole('group', { name: 'Weekly' });
-        expect(separators[0].nextElementSibling).toBe(block);
+        expect(block.previousElementSibling?.getAttribute('data-test')).toBe(
+            'nav-separator',
+        );
+        expect(
+            within(block)
+                .getByRole('button', { name: 'Weekly' })
+                .getAttribute('aria-expanded'),
+        ).toBe('true');
         expect(
             within(block)
                 .getAllByRole('link')
@@ -243,7 +251,7 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         ).toBeNull();
     });
 
-    it('sin entradas de la Weekly no hay bloque ni línea', () => {
+    it('sin entradas de la Weekly no hay sección ni su línea', () => {
         page.props = {
             ...page.props,
             auth: { user, can: { ...employee, useWeeklies: false } },
@@ -259,8 +267,15 @@ describe('barra lateral de la Weekly (F-001 y F-003)', () => {
         const nav = screen.getByRole('navigation', {
             name: 'Navegación principal',
         });
-        expect(nav.querySelector('[data-test="nav-separator"]')).toBeNull();
         expect(within(nav).queryByRole('group', { name: 'Weekly' })).toBeNull();
+        expect(
+            within(nav).queryByRole('button', { name: 'Weekly' }),
+        ).toBeNull();
+        // Una línea por sección pintada, ninguna de sobra.
+        const groups = within(nav).getAllByRole('group');
+        expect(
+            nav.querySelectorAll('[data-test="nav-separator"]'),
+        ).toHaveLength(groups.length);
     });
 
     it('sin el permiso (colaborador externo) o con el módulo apagado, no salen', () => {
