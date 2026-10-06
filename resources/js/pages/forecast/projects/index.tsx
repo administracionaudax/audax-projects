@@ -53,8 +53,10 @@ export default function ForecastProjectsIndex({
         () => can.create && wantsNew(page.url),
     );
 
+    // Quita ?nuevo=1 de la dirección cuando ya han llegado los clientes (prop diferida): cambiar la
+    // URL antes cancelaba su carga y el selector se quedaba en «Cargando…».
     useEffect(() => {
-        if (wantsNew(page.url)) {
+        if (wantsNew(page.url) && clients !== undefined) {
             router.replace({
                 url: index.url({
                     query: {
@@ -68,7 +70,7 @@ export default function ForecastProjectsIndex({
                 preserveScroll: true,
             });
         }
-    }, [page.url, filters.status]);
+    }, [page.url, filters.status, clients]);
 
     return (
         <>

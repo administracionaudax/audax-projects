@@ -135,6 +135,21 @@ test('la matriz: entrada en la barra lateral, cifras, capas, teclado y tooltip',
     ).toBeVisible();
 });
 
+test('«Nuevo proyecto previsto» desde la Previsión carga los clientes (prop diferida)', async ({
+    page,
+}) => {
+    await login(page, USERS.manager);
+    await page.goto('/prevision');
+    await page.getByRole('link', { name: 'Nuevo proyecto previsto' }).click();
+    const form = page.getByTestId('forecast-project-form');
+    // El selector nativo de clientes tiene sus opciones (no se queda en «Cargando…»).
+    await expect
+        .poll(() => form.locator('select option').count())
+        .toBeGreaterThan(1);
+    await expect(form.getByText('Cargando…')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/prevision\/proyectos$/);
+});
+
 test('crear un previsto con un hueco y una persona, ver el impacto, asignar el hueco, crear el proyecto real y ver la Planificación', async ({
     page,
 }) => {
