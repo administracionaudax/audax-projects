@@ -125,6 +125,12 @@ Tres mejoras pedidas por el propietario tras probar las tareas que vienen de Cli
 - **Interruptor** en `/admin/ajustes` (activado por defecto si hay credenciales).
 - **Pendiente del propietario:** añadir en Google Cloud la URI `https://projects.audaxstudio.com/login/google/callback` al cliente OAuth y desplegar (la migración añade `login_events.method`).
 
+### Menú plegable (rama `menu-colapsable`, 06/10, sin desplegar)
+- **Barra lateral en secciones plegables** (D-260): Inicio y Chat fijos arriba; Proyectos, Weekly, Personas (Ausencias; nombre provisional del módulo de RR. HH.), Facturación (preparada, oculta mientras no tenga entradas) y Administración (Panel, Usuarios y Ajustes).
+- **Estado por persona:** se guarda en el servidor (`users.nav_collapsed`, `PUT /menu/secciones`) y en el navegador; por defecto todo desplegado, y la sección de la página a la que entras se despliega sola.
+- **Accesible:** encabezados con `aria-expanded` y `aria-controls`, teclado, modo icono sin encabezados y móvil a 375 px.
+- **Tests:** Pest (`NavSectionsTest`), Vitest (`nav-sections`, `app-sidebar` y la Weekly) y E2E (`navigation.spec.ts`, con `/admin` en `SIDEBAR_PATHS`). Al desplegar hay una migración nueva.
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.
