@@ -32,6 +32,8 @@ export const PRIVACY_PENDING_USER =
 /** Rutas de la barra lateral (URLs en español, contrato de routes/web.php). */
 export const SIDEBAR_PATHS = [
     '/mis-tareas',
+    // Plan del día (D-250).
+    '/dia',
     '/mi-espacio',
     '/weeklies',
     '/calendario',

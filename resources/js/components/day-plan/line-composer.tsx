@@ -223,11 +223,14 @@ export function LineComposer({
                         open ? `${listId}-${active}` : undefined
                     }
                     aria-invalid={error ? true : undefined}
-                    aria-describedby={cn(
-                        compact ? undefined : hintId,
-                        error ? errorId : undefined,
-                    )}
-                    disabled={processing}
+                    aria-describedby={
+                        cn(
+                            compact ? undefined : hintId,
+                            error ? errorId : undefined,
+                        ) || undefined
+                    }
+                    // Sin disabled: el foco se queda en la caja para escribir la siguiente línea.
+                    aria-busy={processing || undefined}
                     onChange={(event) => {
                         setValue(event.target.value);
                         setCaret(event.target.selectionStart ?? 0);

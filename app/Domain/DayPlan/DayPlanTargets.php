@@ -25,7 +25,7 @@ final class DayPlanTargets
     {
         $mine = array_flip(DB::table('project_members')->where('user_id', $user->id)->pluck('project_id')->map(fn ($id): int => (int) $id)->all());
 
-        $projects = Project::query()
+        $projects = array_values(Project::query()
             ->notArchived()
             ->visibleTo($user)
             ->with('client:id,name')
@@ -42,16 +42,14 @@ final class DayPlanTargets
                 'is_internal' => $project->isInternal(),
             ])
             ->sortBy(fn (array $project): string => ($project['is_mine'] ? '0' : '1').$project['code'])
-            ->values()
-            ->all();
+            ->all());
 
-        $clients = Client::query()
+        $clients = array_values(Client::query()
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])
-            ->values()
-            ->all();
+            ->all());
 
         return ['clients' => $clients, 'projects' => $projects];
     }

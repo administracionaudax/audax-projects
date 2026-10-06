@@ -89,8 +89,10 @@ class TimerController extends TimeController
                 'task' => $this->taskTitle($results),
             ]));
             $this->flashWarnings($results);
-            $this->promptDayPlanLine($lineId === null ? null : (int) $lineId);
         }
+
+        // También si duró tan poco que no se ha imputado nada: la línea puede estar hecha igual.
+        $this->promptDayPlanLine($lineId === null ? null : (int) $lineId);
 
         return back();
     }

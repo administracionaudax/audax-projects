@@ -99,7 +99,11 @@ class DayPlanItem extends Model
         ];
     }
 
-    /** Reordenar no es un cambio que interese en la auditoría. */
+    /**
+     * Reordenar no es un cambio que interese en la auditoría.
+     *
+     * @return list<string>
+     */
     protected static function activityExcept(): array
     {
         return ['position', 'status_changed_at'];

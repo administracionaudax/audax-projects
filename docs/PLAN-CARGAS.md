@@ -690,3 +690,11 @@ Máximo 8. Cada una con opciones y la recomendada (★).
 - **P6, qué manda en la carga:** las horas estimadas de las tareas **no se tienen en cuenta** en la previsión. La carga de un proyecto real sale de él, de las horas asignadas a sus personas, y el proyecto estimado va aparte como línea base para comparar lo estimado con lo real. Pendiente de confirmar la interpretación con el propietario.
 - **P7, bolsas y fees:** c) **no entran:** solo asignaciones.
 - **P8, «Mi carga» del empleado:** b) **todo**, también los previstos posibles.
+
+## C1-C3 (hecho)
+Hecho el 07/10/2026 en la rama `plan-del-dia` (D-250 a D-256 en `docs/DECISIONES.md`), con las respuestas de §15:
+- **C1 · Mi día:** `day_plans`, `day_plan_items` (con `carry_count`) y `day_plan_comments`; `DayPlanWriter`; `/dia` con escribir (Intro, `@`, `#`, `~`), cerrar, no hecha, pasar a otro día, «Pasar a hoy» las pendientes, ordenar, nota y «Desde mis tareas»; tarjeta «Mi día» en Inicio; módulo `day_plan` (activado por defecto).
+- **C2 · Equipo hoy y Semana:** `/dia/equipo` y `/dia/semana`, textos y checks para todos y cifras solo para la persona, su responsable y los admins; comentarios; «Sin plan» y «Recordar»; recordatorio a las **8:30** (hora límite única, `day_plan_deadline`) solo en días con jornada; ajustes en `/admin/ajustes`.
+- **C3 · Temporizador e integración:** ▶ desde la línea (tarea propia, elegida o nueva con su texto), `day_plan_item_id` en temporizadores y entradas, «¿Das por hecha la línea?», «Imputar lo previsto», vincular horas, «Añadir a mi día» en Mis tareas, «Autocompletar» de la Weekly y la vista Día del calendario.
+- **Además:** búsqueda global, RGPD (exportación, retención de 12 meses y mención en el texto del asesor), auditoría y datos de ejemplo de cuatro semanas.
+

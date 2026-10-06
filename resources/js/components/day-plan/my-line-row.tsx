@@ -146,7 +146,7 @@ export function MyLineRow({
                 <LineFigures line={line} />
                 {timer}
                 {canWrite || canClose ? (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 type="button"

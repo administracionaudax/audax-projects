@@ -1191,7 +1191,7 @@ class DemoDataSeeder extends Seeder
         foreach ($people as $key => $user) {
             $projects = Project::query()->whereHas('members', fn ($query) => $query->whereKey($user->id))->notArchived()->get(['id', 'client_id']);
             $tasks = Task::query()->where('assignee_user_id', $user->id)->whereNull('completed_at')->where('is_milestone', false)->limit(12)->get(['id', 'project_id', 'title']);
-            $days = array_values(array_map('strval', array_keys(array_filter($capacity->forRange($user, $from, $this->today), fn (int $minutes): bool => $minutes > 0))));
+            $days = array_map('strval', array_keys(array_filter($capacity->forRange($user, $from, $this->today), fn (int $minutes): bool => $minutes > 0)));
             $past = array_values(array_filter($days, fn (string $date): bool => $date < $this->today->toDateString()));
             $lastPast = $past === [] ? null : $past[count($past) - 1];
 
@@ -1211,6 +1211,8 @@ class DemoDataSeeder extends Seeder
                     $project = $task === null && $projects->isNotEmpty() && $this->random->getInt(0, 1) === 0 ? $this->pick($projects->all()) : null;
                     $roll = $this->random->getInt(1, 10);
                     $status = match (true) {
+                        // Las dos primeras de Elena en su último día con jornada, pendientes (E2E).
+                        $key === 'elena' && $date === $lastPast && $position < 2 => DayPlanItemStatus::Pending,
                         $isToday => $roll <= 3 ? DayPlanItemStatus::Done : DayPlanItemStatus::Pending,
                         $roll <= 7 => DayPlanItemStatus::Done,
                         $roll === 8 => DayPlanItemStatus::NotDone,
@@ -1222,9 +1224,9 @@ class DemoDataSeeder extends Seeder
                         'user_id' => $user->id,
                         'date' => $date,
                         'position' => $position,
-                        'text' => $task?->title ?? $this->pick($texts),
+                        'text' => $task->title ?? $this->pick($texts),
                         'client_id' => $task !== null ? Project::query()->whereKey($task->project_id)->value('client_id') : $project?->client_id,
-                        'project_id' => $task?->project_id ?? $project?->id,
+                        'project_id' => $task->project_id ?? $project?->id,
                         'task_id' => $task?->id,
                         'planned_minutes' => $this->random->getInt(0, 2) === 0 ? null : $this->pick([30, 45, 60, 90, 120, 180]),
                         'status' => $status,

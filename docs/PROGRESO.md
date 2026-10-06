@@ -125,6 +125,15 @@ Tres mejoras pedidas por el propietario tras probar las tareas que vienen de Cli
 - **Interruptor** en `/admin/ajustes` (activado por defecto si hay credenciales).
 - **Pendiente del propietario:** añadir en Google Cloud la URI `https://projects.audaxstudio.com/login/google/callback` al cliente OAuth y desplegar (la migración añade `login_events.method`).
 
+### Plan del día (rama `plan-del-dia`, 07/10, sin desplegar)
+Nivel 1 de `docs/PLAN-CARGAS.md` (entregas C1 a C3, D-250 a D-256), con las respuestas del propietario (§15). La Previsión (Nivel 2) queda para después.
+- **Mi día** (`/dia`): líneas de texto libre (Intro para la siguiente, `@cliente`, `#proyecto`, `~1:30`), check, no hecha con motivo, pasar a otro día con la marca «↻ ×N», «Pasar a hoy» las pendientes de un clic, ordenar, nota del día, «Desde mis tareas» y tarjeta «Mi día» en Inicio. Módulo propio `day_plan` (activado por defecto) en `/admin/ajustes`.
+- **Equipo hoy y Semana** (`/dia/equipo`, `/dia/semana`): textos y checks para toda la plantilla; cifras (previsto, jornada, imputado, hechas, temporizador) y comentarios solo para la persona, su responsable y los admins. «Sin plan» en rojo pasada la hora límite y «Recordar».
+- **Recordatorio a las 8:30** (`day-plan:remind`, cada 5 minutos): solo en los días con jornada de cada persona (ni festivos, ni ausencias, ni «Estoy fuera»), una vez al día aunque cambie la hora, con las preferencias de aviso; nada en modo de prueba.
+- **Horas:** ▶ desde la línea siempre en una tarea (la suya, una elegida o una nueva con su texto), «Imputar lo previsto», vincular horas e imputar a mano con `TimerService` y `TimeEntryWriter`; «Añadir a mi día» en Mis tareas; las líneas de la semana en el «Autocompletar» de la Weekly; el plan de cada persona en la vista Día del calendario.
+- **RGPD:** exportación de datos personales, retención (12 meses) y auditoría. **Pendiente del propietario:** que el asesor revise los párrafos del plan del día en el texto RGPD (D-256).
+- **Tests:** Pest (`tests/Feature/DayPlan`), Vitest (`tests/js/day-plan-*`) y E2E (`tests/e2e/day-plan.spec.ts`).
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

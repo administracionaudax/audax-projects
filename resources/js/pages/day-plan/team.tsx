@@ -250,7 +250,9 @@ function TeamRow({
                     type="button"
                     onClick={onToggle}
                     aria-expanded={open}
-                    aria-controls={panelId}
+                    aria-controls={
+                        open && row.items.length > 0 ? panelId : undefined
+                    }
                     disabled={row.items.length === 0}
                     className={cn(
                         'flex min-w-0 items-center gap-2 text-left disabled:cursor-default',

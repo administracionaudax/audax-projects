@@ -44,7 +44,11 @@ class DayPlan extends Model
         ];
     }
 
-    /** El recordatorio no es un cambio del plan (D-252). */
+    /**
+     * El recordatorio no es un cambio del plan (D-252).
+     *
+     * @return list<string>
+     */
     protected static function activityExcept(): array
     {
         return ['reminded_at'];

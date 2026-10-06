@@ -80,7 +80,11 @@ final class DayPlanTeam
         return $days;
     }
 
-    /** ¿Trabaja ese día? (con jornada y sin «Estoy fuera»). */
+    /**
+     * ¿Trabaja ese día? (con jornada y sin «Estoy fuera»).
+     *
+     * @param  array{capacity: int, holiday: string|null, absence: string|null, away: bool}  $day
+     */
     public static function works(array $day): bool
     {
         return $day['capacity'] > 0 && ! $day['away'];
