@@ -224,7 +224,7 @@ export function ChannelDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('chat.channel.cancel')}
