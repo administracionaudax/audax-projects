@@ -159,7 +159,7 @@ function WeeklyTabPanel({
 
     switch (data.tab) {
         case 'historial':
-            return <ClientHistoryPanel data={data} />;
+            return <ClientHistoryPanel data={data} clientId={clientId} />;
         case 'equipo':
             return (
                 <ClientTeamPanel

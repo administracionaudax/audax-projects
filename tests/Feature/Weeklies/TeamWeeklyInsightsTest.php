@@ -9,6 +9,7 @@ use App\Enums\AbsenceType;
 use App\Enums\AiFeature;
 use App\Enums\AiSummaryKind;
 use App\Enums\WeeklyJobState;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Jobs\GenerateAiSummary;
 use App\Models\Absence;
 use App\Models\Client;
@@ -18,6 +19,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklyEntry;
+use App\Models\WeeklyExemption;
 use App\Models\WeeklySubmission;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +130,91 @@ it('la ficha: estado, racha, hábitos, clientes, último reporte por cliente e h
             // Un compañero no ve los resúmenes con IA (D-147).
             ->where('ai', null)
             ->where('can.viewAi', false));
+});
+
+it('la ficha trae el mapa de constancia de las últimas 12 semanas, solo desde el alta (D-233)', function () {
+    teamEntry($this->closed, $this->ana, $this->acme, 'A tiempo', '2026-10-02 10:00');
+    $older = WeeklyCycle::factory()->forWeekOf('2026-09-21')->create(['expected_user_ids' => [$this->ana->id]]);
+    teamEntry($older, $this->ana, $this->acme, 'Tarde', '2026-09-28 10:00');
+    $missed = WeeklyCycle::factory()->forWeekOf('2026-09-14')->create(['expected_user_ids' => [$this->ana->id]]);
+    $exempt = WeeklyCycle::factory()->forWeekOf('2026-09-07')->create(['expected_user_ids' => []]);
+    WeeklyExemption::factory()->create(['weekly_cycle_id' => $exempt->id, 'user_id' => $this->ana->id]);
+    // Antes de su alta (01/08): no sale.
+    WeeklyCycle::factory()->forWeekOf('2026-07-20')->create(['expected_user_ids' => []]);
+
+    $this->actingAs($this->pablo)->get("/equipo/{$this->ana->id}")->assertInertia(fn (Assert $page) => $page
+        ->where('consistency', fn ($cells) => collect($cells)->pluck('state')->all() === ['exempt', 'missed', 'late', 'on_time', 'pending']
+            && collect($cells)->last()['cycle_id'] === $this->active->id));
+
+    $this->actingAs($this->ana)->get('/ajustes/perfil')->assertInertia(fn (Assert $page) => $page
+        ->loadDeferredProps(fn (Assert $reload) => $reload->where('weeklyStats.consistency.4.state', 'pending')->where('weeklyStats.on_time', 1)));
+});
+
+it('«Ver histórico» de una persona en un cliente: todos sus reportes, de 25 en 25 (D-233)', function () {
+    foreach (range(1, 27) as $i) {
+        $cycle = WeeklyCycle::factory()->forWeekOf(CarbonImmutable::parse('2026-01-05')->addWeeks($i)->toDateString())->create();
+        teamEntry($cycle, $this->ana, $this->acme, "Reporte {$i}", $cycle->deadline_date->toDateString().' 10:00');
+    }
+    teamEntry($this->closed, $this->ana, null, 'General', '2026-10-02 10:00');
+
+    $first = $this->actingAs($this->pablo)->getJson("/equipo/{$this->ana->id}/clientes/{$this->acme->id}/historial")->assertOk();
+    expect($first->json('reports'))->toHaveCount(25)
+        ->and($first->json('reports.0.body'))->toBe('Reporte 27')
+        ->and($first->json('next_page'))->toBe(2);
+
+    $second = $this->actingAs($this->pablo)->getJson("/equipo/{$this->ana->id}/clientes/{$this->acme->id}/historial?pagina=2")->assertOk();
+    expect(collect($second->json('reports'))->pluck('body')->all())->toBe(['Reporte 2', 'Reporte 1'])
+        ->and($second->json('next_page'))->toBeNull();
+
+    $this->actingAs($this->pablo)->getJson("/equipo/{$this->ana->id}/clientes/general/historial")->assertJsonPath('reports.0.body', 'General');
+    $this->actingAs(User::factory()->collaborator()->create())->getJson("/equipo/{$this->ana->id}/clientes/{$this->acme->id}/historial")->assertForbidden();
+});
+
+it('el historial de la ficha ya no se corta en un año: va por páginas (10.9b)', function () {
+    foreach (range(1, 54) as $i) {
+        $cycle = WeeklyCycle::factory()->forWeekOf(CarbonImmutable::parse('2025-01-06')->addWeeks($i)->toDateString())->create();
+        teamEntry($cycle, $this->ana, $this->acme, "Semana {$i}", $cycle->deadline_date->toDateString().' 10:00');
+    }
+
+    $this->actingAs($this->pablo)->get("/equipo/{$this->ana->id}")->assertInertia(fn (Assert $page) => $page
+        ->where('weeks_page', 1)
+        ->where('weeks_more', true));
+    $this->actingAs($this->pablo)->get("/equipo/{$this->ana->id}?historial=2")->assertInertia(fn (Assert $page) => $page
+        ->where('weeks_page', 2)
+        ->where('weeks_more', false)
+        ->where('weeks', fn ($weeks) => collect($weeks)->pluck('entries.0.body')->all() === ['Semana 4', 'Semana 3', 'Semana 2', 'Semana 1'])
+        // El último reporte por cliente sigue siendo el más reciente.
+        ->where('last_reports.0.body', 'Semana 54'));
+});
+
+it('quien gestiona asigna varios clientes a una persona de golpe y se los quita (D-233)', function () {
+    $gamma = Client::factory()->create(['name' => 'Gamma']);
+    $delta = Client::factory()->create(['name' => 'Delta']);
+
+    $this->actingAs($this->boss)->get("/equipo/{$this->pablo->id}")->assertInertia(fn (Assert $page) => $page
+        ->where('can.assignClients', true)
+        ->missing('assignable_clients'));
+    $this->actingAs($this->boss)->get("/equipo/{$this->pablo->id}", [
+        'X-Inertia' => 'true', 'X-Inertia-Partial-Component' => 'team/show', 'X-Inertia-Partial-Data' => 'assignable_clients',
+        'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(request()),
+    ])->assertJsonPath('props.assignable_clients', fn ($clients) => collect($clients)->pluck('name')->all() === ['Acme', 'Beta', 'Delta', 'Gamma']);
+
+    $this->actingAs($this->boss)
+        ->post("/equipo/{$this->pablo->id}/clientes", ['client_ids' => [$gamma->id, $delta->id]])
+        ->assertSessionHasNoErrors()
+        ->assertInertiaFlash('toast.message', trans_choice('weeklies.flash.assigned', 2, ['count' => 2, 'name' => 'Pablo']));
+
+    $this->actingAs($this->pablo)->get("/equipo/{$this->pablo->id}")->assertInertia(fn (Assert $page) => $page
+        ->where('clients.member', fn ($clients) => collect($clients)->where('subscribed', true)->pluck('name')->sort()->values()->all() === ['Delta', 'Gamma'])
+        ->where('can.assignClients', false));
+
+    // No da acceso a ningún proyecto (D-221).
+    expect($this->pablo->projects()->count())->toBe(0);
+
+    $this->actingAs($this->ana)->post("/equipo/{$this->pablo->id}/clientes", ['client_ids' => [$gamma->id]])->assertForbidden();
+    $this->actingAs($this->boss)->delete("/equipo/{$this->pablo->id}/clientes/{$gamma->id}")->assertSessionHasNoErrors();
+    $this->actingAs($this->boss)->delete("/equipo/{$this->pablo->id}/clientes/{$gamma->id}")->assertNotFound();
+    $this->actingAs($this->ana)->delete("/equipo/{$this->pablo->id}/clientes/{$delta->id}")->assertForbidden();
 });
 
 it('los hábitos de envío, en la hora de Madrid (calculateSubmissionStats)', function () {

@@ -391,6 +391,23 @@ export type WeeklyStreakSummary = {
     submitted: number;
     on_time: number;
     streak: number;
+    /** «Constancia (últimas 12 semanas)» (D-233), en el perfil. */
+    consistency?: WeeklyConsistencyCell[];
+};
+
+/** WeeklyStreaks::consistency (D-233). */
+export type WeeklyConsistencyState =
+    | 'on_time'
+    | 'late'
+    | 'missed'
+    | 'exempt'
+    | 'pending';
+
+export type WeeklyConsistencyCell = {
+    cycle_id: number;
+    number: string;
+    label: string;
+    state: WeeklyConsistencyState;
 };
 
 /** ClientSatisfactionResource (F-132). */

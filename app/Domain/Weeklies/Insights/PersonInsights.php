@@ -103,15 +103,72 @@ final class PersonInsights
      *
      * @return array<string, mixed>
      */
-    public function profile(User $person, User $viewer, ?CarbonImmutable $now = null): array
+    public function profile(User $person, User $viewer, ?CarbonImmutable $now = null, int $page = 1): array
     {
         $now ??= CarbonImmutable::now();
+        $page = max(1, $page);
+        [$cycles, $more] = $this->cyclesPage(1);
+        [$weeks, $lastByClient, $submissions] = $this->weeksOf($person, $cycles);
+
+        // Semanas anteriores (10.9b): el historial ya no se corta en un año, va por páginas. El último
+        // reporte por cliente y los hábitos siguen saliendo del último año.
+        if ($page > 1) {
+            [$older, $more] = $this->cyclesPage($page);
+            [$weeks] = $this->weeksOf($person, $older);
+        }
+
+        $absence = $this->absencesToday([$person->id])[$person->id] ?? null;
+        $submittedAt = [];
+
+        foreach ($submissions as $submission) {
+            if ($submission->submitted_at !== null) {
+                $submittedAt[] = $submission->submitted_at;
+            }
+        }
+
+        return [
+            'person' => [
+                ...(new UserSummaryResource($person))->resolve(),
+                'email' => $person->email,
+                'job_title' => $person->job_title,
+                'department' => $person->department === null ? null : ['id' => $person->department->id, 'name' => $person->department->name],
+                'role' => $person->getRoleNames()->first(),
+            ],
+            'absence' => self::absenceFor($absence, $viewer, $person),
+            'away' => WeeklyAway::of($person),
+            'habits' => self::habits($submittedAt),
+            'clients' => $this->clients($person),
+            'last_reports' => array_values($lastByClient),
+            'weeks' => $weeks,
+            'weeks_page' => $page,
+            'weeks_more' => $more,
+        ];
+    }
+
+    /**
+     * Una página de semanas, de la más reciente a la más antigua, y si hay más.
+     *
+     * @return array{0: \Illuminate\Support\Collection<int, WeeklyCycle>, 1: bool}
+     */
+    private function cyclesPage(int $page): array
+    {
         $cycles = WeeklyCycle::query()
             ->orderByDesc('start_date')
-            ->limit(self::HISTORY_WEEKS)
-            ->get(['id', 'number', 'label', 'start_date', 'end_date', 'deadline_date', 'status'])
-            ->keyBy('id');
+            ->offset(($page - 1) * self::HISTORY_WEEKS)
+            ->limit(self::HISTORY_WEEKS + 1)
+            ->get(['id', 'number', 'label', 'start_date', 'end_date', 'deadline_date', 'status']);
 
+        return [$cycles->take(self::HISTORY_WEEKS)->keyBy('id'), $cycles->count() > self::HISTORY_WEEKS];
+    }
+
+    /**
+     * Los envíos de la persona en esas semanas, con su último reporte por cliente.
+     *
+     * @param  \Illuminate\Support\Collection<int, WeeklyCycle>  $cycles
+     * @return array{0: list<array<string, mixed>>, 1: array<int|string, array<string, mixed>>, 2: \Illuminate\Support\Collection<int, WeeklySubmission>}
+     */
+    private function weeksOf(User $person, \Illuminate\Support\Collection $cycles): array
+    {
         $submissions = WeeklySubmission::query()
             ->where('user_id', $person->id)
             ->whereNotNull('submitted_at')
@@ -157,29 +214,47 @@ final class PersonInsights
             }
         }
 
-        $absence = $this->absencesToday([$person->id])[$person->id] ?? null;
-        $submittedAt = [];
+        return [$weeks, $lastByClient, $submissions];
+    }
 
-        foreach ($submissions as $submission) {
-            if ($submission->submitted_at !== null) {
-                $submittedAt[] = $submission->submitted_at;
-            }
-        }
+    /** Reportes por página del histórico de una persona en un cliente. */
+    public const int CLIENT_HISTORY_PAGE = 25;
+
+    /**
+     * «Ver histórico» de una persona en un cliente (10.9b; `ws:TeamView.tsx:874-904` y el de la
+     * pestaña Equipo del cliente): todos sus apuntes enviados sobre el cliente, del más reciente al
+     * más antiguo, por páginas. Sin cliente, los de «General / Interno».
+     *
+     * @return array{reports: list<array{id: int, cycle: array<string, mixed>, body: string, submitted_at: string, project: array{id: int, code: string|null}|null}>, next_page: int|null}
+     */
+    public function clientHistory(User $person, ?Client $client, int $page = 1): array
+    {
+        $page = max(1, $page);
+        $rows = DB::table('weekly_entries')
+            ->join('weekly_submissions', 'weekly_submissions.id', '=', 'weekly_entries.weekly_submission_id')
+            ->leftJoin('projects', 'projects.id', '=', 'weekly_entries.project_id')
+            ->where('weekly_submissions.user_id', $person->id)
+            ->whereNotNull('weekly_submissions.submitted_at')
+            ->when($client !== null, fn ($query) => $query->where('weekly_entries.client_id', $client?->id), fn ($query) => $query->whereNull('weekly_entries.client_id'))
+            ->orderByDesc('weekly_submissions.submitted_at')
+            ->orderByDesc('weekly_entries.id')
+            ->offset(($page - 1) * self::CLIENT_HISTORY_PAGE)
+            ->limit(self::CLIENT_HISTORY_PAGE + 1)
+            ->get(['weekly_entries.id', 'weekly_entries.body', 'weekly_entries.project_id', 'projects.code as project_code', 'weekly_submissions.weekly_cycle_id', 'weekly_submissions.submitted_at']);
+
+        $more = $rows->count() > self::CLIENT_HISTORY_PAGE;
+        $rows = $rows->take(self::CLIENT_HISTORY_PAGE);
+        $cycles = WeeklyCycle::query()->whereKey($rows->pluck('weekly_cycle_id')->unique()->values()->all())->get(['id', 'number', 'label', 'start_date', 'end_date', 'status'])->keyBy('id');
 
         return [
-            'person' => [
-                ...(new UserSummaryResource($person))->resolve(),
-                'email' => $person->email,
-                'job_title' => $person->job_title,
-                'department' => $person->department === null ? null : ['id' => $person->department->id, 'name' => $person->department->name],
-                'role' => $person->getRoleNames()->first(),
-            ],
-            'absence' => self::absenceFor($absence, $viewer, $person),
-            'away' => WeeklyAway::of($person),
-            'habits' => self::habits($submittedAt),
-            'clients' => $this->clients($person),
-            'last_reports' => array_values($lastByClient),
-            'weeks' => $weeks,
+            'reports' => $rows->map(fn (object $row): array => [
+                'id' => (int) $row->id,
+                'cycle' => ClientInsights::cycleRef($cycles[(int) $row->weekly_cycle_id]),
+                'body' => (string) $row->body,
+                'submitted_at' => CarbonImmutable::parse($row->submitted_at, 'UTC')->toIso8601String(),
+                'project' => $row->project_id === null ? null : ['id' => (int) $row->project_id, 'code' => $row->project_code === null ? null : (string) $row->project_code],
+            ])->values()->all(),
+            'next_page' => $more ? $page + 1 : null,
         ];
     }
 
@@ -278,11 +353,17 @@ final class PersonInsights
             ];
         }
 
+        $subscribed = $this->subscriptions->clientIds($person);
         $known = array_column([...$groups['owned'], ...$groups['member']], 'id');
-        $followed = array_values(array_diff($this->subscriptions->clientIds($person), $known));
+        $followed = array_values(array_diff($subscribed, $known));
 
         foreach (Client::query()->whereKey($followed)->get(['id', 'name', 'icon']) as $client) {
             $groups['member'][] = ['id' => $client->id, 'name' => $client->name, 'icon' => $client->icon, 'badges' => [], 'projects' => []];
+        }
+
+        // Unida en la Weekly (D-221): quien gestiona puede quitarla (D-233).
+        foreach ($groups as $key => $rows) {
+            $groups[$key] = array_map(fn (array $row): array => [...$row, 'subscribed' => in_array($row['id'], $subscribed, true)], $rows);
         }
 
         foreach ($groups as $key => $rows) {

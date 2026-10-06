@@ -25,10 +25,11 @@ final class ClientWeeklyTabs
     /**
      * @return array<string, mixed>
      */
-    public function for(Client $client, string $tab, User $viewer): array
+    public function for(Client $client, string $tab, User $viewer, int $page = 1): array
     {
         return match ($tab) {
-            'historial' => ['tab' => $tab, 'weeks' => $this->insights->history($client)],
+            // Por páginas de medio año (10.9b): ?historial=2, 3…
+            'historial' => ['tab' => $tab, 'weeks' => $this->insights->history($client, $page), 'page' => max(1, $page), 'more' => $this->insights->hasMoreHistory($page)],
             'equipo' => [
                 'tab' => $tab,
                 ...$this->insights->team($client),

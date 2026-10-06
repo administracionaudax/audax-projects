@@ -367,9 +367,18 @@ export function ExemptDialog({
 export function JoinClientsDialog({
     clients,
     trigger,
+    propName = 'joinable_clients',
+    submitUrl,
+    title,
+    description,
 }: {
     clients: WeeklyJoinableClient[] | undefined;
     trigger: ReactNode;
+    /** La prop opcional con la lista (para «Asignar clientes» de la ficha, D-233). */
+    propName?: string;
+    submitUrl?: string;
+    title?: string;
+    description?: string;
 }) {
     const id = useId();
     const [open, setOpen] = useState(false);
@@ -409,7 +418,7 @@ export function JoinClientsDialog({
                     setError(null);
                     setLoading(true);
                     router.reload({
-                        only: ['joinable_clients'],
+                        only: [propName],
                         onFinish: () => setLoading(false),
                     });
                 }
@@ -422,7 +431,7 @@ export function JoinClientsDialog({
                     onSubmit={(event) => {
                         event.preventDefault();
                         router.post(
-                            joinClients.url(),
+                            submitUrl ?? joinClients.url(),
                             { client_ids: [...selected] },
                             {
                                 preserveScroll: true,
@@ -439,9 +448,11 @@ export function JoinClientsDialog({
                     }}
                 >
                     <DialogHeader>
-                        <DialogTitle>{t('weeklies.join.title')}</DialogTitle>
+                        <DialogTitle>
+                            {title ?? t('weeklies.join.title')}
+                        </DialogTitle>
                         <DialogDescription>
-                            {t('weeklies.join.description')}
+                            {description ?? t('weeklies.join.description')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="relative">

@@ -38,9 +38,79 @@ final class WeeklyStreaks
      */
     public function weeks(User $user): array
     {
+        return array_column($this->rows($user), 'week');
+    }
+
+    /** Semanas del mapa de constancia (`ws:ProfileView.tsx:87-100`). */
+    public const int CONSISTENCY_WEEKS = 12;
+
+    /**
+     * Mapa «Constancia (últimas 12 semanas)» (10.9b, D-233; `ws:ProfileView.tsx` y
+     * `ws:TeamView.tsx:847-858`): una casilla por semana, de la más antigua a la más reciente, solo
+     * desde el alta:
+     * - on_time (verde), late (naranja), missed (rojo: sin enviar con el plazo pasado),
+     * - exempt y pending (gris: exenta, o la semana activa aún en plazo).
+     *
+     * @return list<array{cycle_id: int, number: string, label: string, state: string}>
+     */
+    public function consistency(User $user, ?CarbonInterface $now = null): array
+    {
+        return $this->consistencyOf($this->rows($user, self::CONSISTENCY_WEEKS), $now);
+    }
+
+    /**
+     * La racha y el mapa de constancia con las mismas consultas (la ficha de persona y el perfil).
+     *
+     * @return array{summary: array{submitted: int, on_time: int, streak: int}, consistency: list<array{cycle_id: int, number: string, label: string, state: string}>}
+     */
+    public function overview(User $user, ?CarbonInterface $now = null): array
+    {
+        $now = CarbonImmutable::instance($now ?? CarbonImmutable::now());
+        $rows = $this->rows($user);
+
+        return [
+            'summary' => $this->calculator->summary(array_column($rows, 'week'), $now),
+            'consistency' => $this->consistencyOf(array_slice($rows, 0, self::CONSISTENCY_WEEKS), $now),
+        ];
+    }
+
+    /**
+     * @param  list<array{cycle: WeeklyCycle, week: StreakWeek}>  $rows  de la más reciente a la más antigua
+     * @return list<array{cycle_id: int, number: string, label: string, state: string}>
+     */
+    private function consistencyOf(array $rows, ?CarbonInterface $now): array
+    {
+        $now = CarbonImmutable::instance($now ?? CarbonImmutable::now());
+        $timing = new WeeklyTiming;
+        $cells = [];
+
+        foreach ($rows as ['cycle' => $cycle, 'week' => $week]) {
+            if (! $week->required) {
+                continue;
+            }
+
+            $state = match (true) {
+                $week->exempt => 'exempt',
+                $week->submittedAt !== null => $timing->isOnTime($week->submittedAt, $week->deadlineDate->toDateString()) ? 'on_time' : 'late',
+                $cycle->isActive() && $now->lessThanOrEqualTo($timing->deadlineEnd($week->deadlineDate->toDateString())) => 'pending',
+                default => 'missed',
+            };
+
+            $cells[] = ['cycle_id' => $cycle->id, 'number' => $cycle->number, 'label' => $cycle->label, 'state' => $state];
+        }
+
+        return array_reverse($cells);
+    }
+
+    /**
+     * @return list<array{cycle: WeeklyCycle, week: StreakWeek}>
+     */
+    private function rows(User $user, ?int $limit = null): array
+    {
         $cycles = WeeklyCycle::query()
             ->orderByDesc('start_date')
-            ->get(['id', 'start_date', 'end_date', 'deadline_date', 'status', 'expected_user_ids']);
+            ->when($limit !== null, fn ($query) => $query->limit((int) $limit))
+            ->get(['id', 'number', 'label', 'start_date', 'end_date', 'deadline_date', 'status', 'expected_user_ids']);
 
         if ($cycles->isEmpty()) {
             return [];
@@ -77,14 +147,14 @@ final class WeeklyStreaks
                     : ($createdAt === null || $createdAt->lessThanOrEqualTo($weekEnd));
             }
 
-            $weeks[] = new StreakWeek(
+            $weeks[] = ['cycle' => $cycle, 'week' => new StreakWeek(
                 endDate: CarbonImmutable::parse($cycle->end_date->toDateString(), WeeklyCalendar::TIMEZONE),
                 deadlineDate: CarbonImmutable::parse($cycle->deadline_date->toDateString(), WeeklyCalendar::TIMEZONE),
                 status: $cycle->status,
                 exempt: $exempt,
                 submittedAt: $submitted[$cycle->id] ?? null,
                 required: $required || isset($submitted[$cycle->id]),
-            );
+            )];
         }
 
         return $weeks;

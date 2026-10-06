@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConsistencyMap } from '@/components/weeklies/consistency-map';
 import { t } from '@/lib/i18n';
 import type { WeeklyStreakSummary } from '@/types/weeklies';
 
@@ -14,21 +15,29 @@ export function WeeklyStats({ stats }: { stats: WeeklyStreakSummary }) {
     ];
 
     return (
-        <dl
-            className="grid grid-cols-3 divide-x border bg-card"
-            data-test="weekly-stats"
-        >
-            {items.map((item) => (
-                <div key={item.label} className="grid gap-1 p-3 text-center">
-                    <dt className="order-2 text-xs text-muted-foreground">
-                        {item.label}
-                    </dt>
-                    <dd className="tabular order-1 text-xl font-semibold">
-                        {item.value}
-                    </dd>
-                </div>
-            ))}
-        </dl>
+        <div className="grid gap-4">
+            <dl
+                className="grid grid-cols-3 divide-x border bg-card"
+                data-test="weekly-stats"
+            >
+                {items.map((item) => (
+                    <div
+                        key={item.label}
+                        className="grid gap-1 p-3 text-center"
+                    >
+                        <dt className="order-2 text-xs text-muted-foreground">
+                            {item.label}
+                        </dt>
+                        <dd className="tabular order-1 text-xl font-semibold">
+                            {item.value}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+            {stats.consistency ? (
+                <ConsistencyMap cells={stats.consistency} />
+            ) : null}
+        </div>
     );
 }
 

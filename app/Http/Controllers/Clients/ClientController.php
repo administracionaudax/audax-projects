@@ -301,7 +301,7 @@ class ClientController extends Controller
             'kindBadges' => ProjectKindCode::badges($openProjects->map(fn (Project $project): string => ProjectKindCode::for($project->code, $projectStatus->kind($project)))->all()),
             // La Weekly del cliente (Fase 10, F-129 a F-133): solo la pestaña abierta, diferida; null
             // sin el módulo o para quien no usa la Weekly.
-            'weekly' => $weekly ? Inertia::defer(fn (): array => app(ClientWeeklyTabs::class)->for($client, $tab, $user), 'weekly') : null,
+            'weekly' => $weekly ? Inertia::defer(fn (): array => app(ClientWeeklyTabs::class)->for($client, $tab, $user, max(1, $request->integer('historial', 1))), 'weekly') : null,
             'projects' => ResourceProps::list(ProjectResource::collection($projects), $request),
             'hourBanks' => ResourceProps::list(ClientHourBankResource::collection($open), $request),
             'hourBankHistory' => ResourceProps::list(ClientHourBankResource::collection($history), $request),

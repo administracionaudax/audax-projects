@@ -93,6 +93,10 @@ Route::middleware('module:weeklies')->group(function () {
     // Equipo y ficha de persona (10.4); resúmenes IA solo para el admin y sus responsables (D-147).
     Route::get('equipo', [TeamController::class, 'index'])->name('team.index');
     Route::get('equipo/{user}', [TeamController::class, 'show'])->whereNumber('user')->name('team.show');
+    // Asignar clientes a una persona desde su ficha (10.9b, D-233): la suscripción de la Weekly.
+    Route::post('equipo/{user}/clientes', [WeeklyClientSubscriptionController::class, 'assign'])->whereNumber('user')->middleware('throttle:30,1,team.clients.assign')->name('team.clients.assign');
+    Route::delete('equipo/{user}/clientes/{client}', [WeeklyClientSubscriptionController::class, 'unassign'])->whereNumber(['user', 'client'])->middleware('throttle:30,1,team.clients.unassign')->name('team.clients.unassign');
+    Route::get('equipo/{user}/clientes/{client}/historial', [TeamController::class, 'clientHistory'])->whereNumber('user')->where('client', '[0-9]+|general')->middleware('throttle:120,1,team.client-history')->name('team.client-history');
     Route::post('equipo/{user}/resumen-ia', [TeamController::class, 'aiSummary'])->whereNumber('user')->middleware('throttle:10,1,team.ai-summary')->name('team.ai-summary');
 
     // Ficha de cliente de la Weekly (10.4): resumen IA y actividad del equipo con IA.

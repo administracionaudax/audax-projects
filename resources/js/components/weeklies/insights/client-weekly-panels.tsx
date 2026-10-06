@@ -14,13 +14,6 @@ import { useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { UserAvatar } from '@/components/realtime/presence-indicator';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { AiSummaryPanel } from '@/components/weeklies/insights/ai-summary-panel';
 import {
     formatPoints,
@@ -34,7 +27,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { aiSummary, teamActivity } from '@/routes/clients';
+import { aiSummary, show as showClient, teamActivity } from '@/routes/clients';
 import { show as showProject } from '@/routes/projects';
 import { show as showPerson } from '@/routes/team';
 import { show as showCycle } from '@/routes/weeklies';
@@ -42,6 +35,7 @@ import {
     join as joinClients,
     leave as leaveClient,
 } from '@/routes/weeklies/clients';
+import { ClientHistoryDialog } from '@/components/weeklies/insights/client-history-dialog';
 import type {
     ClientTeamMember,
     ClientWeeklyHistoryTab,
@@ -186,15 +180,91 @@ export function ClientSummaryPanel({
     );
 }
 
-/** Pestaña «Historial»: la línea de tiempo semanal (F-130). */
-export function ClientHistoryPanel({ data }: { data: ClientWeeklyHistoryTab }) {
+/** Páginas del historial del cliente (10.9b): medio año cada una, ?historial=2, 3… */
+function HistoryPager({
+    clientId,
+    page,
+    more,
+}: {
+    clientId: number;
+    page: number;
+    more: boolean;
+}) {
+    if (page <= 1 && !more) {
+        return null;
+    }
+
+    const href = (target: number) =>
+        showClient.url(clientId, {
+            query: {
+                pestana: 'historial',
+                ...(target > 1 ? { historial: target } : {}),
+            },
+        });
+
+    return (
+        <nav
+            aria-label={t('weeklies.client.history_title')}
+            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+            data-test="client-history-pager"
+        >
+            {page > 1 ? (
+                <Link
+                    href={href(page - 1)}
+                    preserveScroll
+                    className={cn('underline', FOCUS_RING)}
+                >
+                    {t('weeklies.client.history_newer')}
+                </Link>
+            ) : (
+                <span />
+            )}
+            <span className="text-muted-foreground">
+                {t('weeklies.client.history_page', { page })}
+            </span>
+            {more ? (
+                <Link
+                    href={href(page + 1)}
+                    preserveScroll
+                    className={cn('underline', FOCUS_RING)}
+                    data-test="client-history-older"
+                >
+                    {t('weeklies.client.history_older')}
+                </Link>
+            ) : (
+                <span />
+            )}
+        </nav>
+    );
+}
+
+/** Pestaña «Historial»: la línea de tiempo semanal (F-130), por páginas de medio año. */
+export function ClientHistoryPanel({
+    data,
+    clientId,
+}: {
+    data: ClientWeeklyHistoryTab;
+    clientId?: number;
+}) {
+    const pager =
+        clientId !== undefined ? (
+            <HistoryPager
+                clientId={clientId}
+                page={data.page ?? 1}
+                more={data.more ?? false}
+            />
+        ) : null;
+
     if (data.weeks.length === 0) {
         return (
-            <EmptyState
-                icon={History}
-                title={t('weeklies.client.history_empty')}
-                description={t('weeklies.client.history_description')}
-            />
+            <>
+                <EmptyState
+                    icon={History}
+                    title={t('weeklies.client.history_empty')}
+                    description={t('weeklies.client.history_description')}
+                />
+                {pager}
+            </>
         );
     }
 
@@ -326,64 +396,8 @@ export function ClientHistoryPanel({ data }: { data: ClientWeeklyHistoryTab }) {
                     </li>
                 ))}
             </ol>
+            {pager}
         </section>
-    );
-}
-
-function MemberHistoryDialog({
-    member,
-    clientName,
-    open,
-    onOpenChange,
-}: {
-    member: ClientTeamMember;
-    clientName: string;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}) {
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>
-                        {t('weeklies.client.team_history_title', {
-                            name: member.user.name,
-                        })}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {t('weeklies.client.team_history_description', {
-                            client: clientName,
-                        })}
-                    </DialogDescription>
-                </DialogHeader>
-                {member.reports.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        {t('weeklies.client.team_history_empty')}
-                    </p>
-                ) : (
-                    <ul className="grid gap-3">
-                        {member.reports.map((report, index) => (
-                            <li
-                                key={`${report.cycle.id}-${index}`}
-                                className="grid gap-1 border bg-muted p-3 text-sm"
-                            >
-                                <p className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                                    <span className="font-medium text-foreground">
-                                        {report.cycle.label}
-                                    </span>
-                                    <span>
-                                        {formatDate(report.submitted_at)}
-                                    </span>
-                                </p>
-                                <p className="whitespace-pre-line">
-                                    {report.body}
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </DialogContent>
-        </Dialog>
     );
 }
 
@@ -613,14 +627,13 @@ export function ClientTeamPanel({
                 )}
             </section>
 
-            {historyOf ? (
-                <MemberHistoryDialog
-                    member={historyOf}
-                    clientName={clientName}
-                    open
-                    onOpenChange={(open) => !open && setHistoryOf(null)}
-                />
-            ) : null}
+            {/* Todo su histórico en el cliente, por páginas (10.9b: ya no se corta en 20). */}
+            <ClientHistoryDialog
+                person={historyOf?.user ?? { id: 0, name: '' }}
+                client={{ id: clientId, name: clientName }}
+                open={historyOf !== null}
+                onOpenChange={(open) => (open ? null : setHistoryOf(null))}
+            />
         </div>
     );
 }

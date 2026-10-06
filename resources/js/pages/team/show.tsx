@@ -1,20 +1,27 @@
-import { Head, Link, setLayoutProps, usePage } from '@inertiajs/react';
+import { Head, Link, router, setLayoutProps, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     CalendarClock,
+    History,
     CalendarOff,
     Palmtree,
     Pencil,
+    Plus,
+    X,
     ShieldCheck,
     Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { UserAvatar } from '@/components/realtime/presence-indicator';
 import { Button } from '@/components/ui/button';
 import { AiSummaryPanel } from '@/components/weeklies/insights/ai-summary-panel';
 import { ProjectKindBadges } from '@/components/weeklies/insights/project-kind';
 import { AwayDialog } from '@/components/weeklies/away-dialog';
+import { ConsistencyMap } from '@/components/weeklies/consistency-map';
+import { ClientHistoryDialog } from '@/components/weeklies/insights/client-history-dialog';
+import { JoinClientsDialog } from '@/components/weeklies/weekly-dialogs';
 import {
     AbsenceTodayBadge,
     AwayBadge,
@@ -40,6 +47,10 @@ import {
     index as teamIndex,
     show as showPerson,
 } from '@/routes/team';
+import {
+    assign as assignClients,
+    unassign as unassignClient,
+} from '@/routes/team/clients';
 import { show as showCycle } from '@/routes/weeklies';
 import type {
     PersonClient,
@@ -62,10 +73,13 @@ function ClientList({
     title,
     clients,
     activity,
+    onUnassign,
 }: {
     title: string;
     clients: PersonClient[];
     activity: Record<string, string> | null;
+    /** Quitar la suscripción de la Weekly (D-233), para quien gestiona. */
+    onUnassign?: (client: PersonClient) => void;
 }) {
     return (
         <div className="grid content-start gap-2">
@@ -93,10 +107,30 @@ function ClientList({
                                     <ClientIcon icon={client.icon} />
                                     {client.name}
                                 </Link>
-                                <ProjectKindBadges
-                                    badges={client.badges}
-                                    compact
-                                />
+                                <span className="flex items-center gap-1">
+                                    <ProjectKindBadges
+                                        badges={client.badges}
+                                        compact
+                                    />
+                                    {onUnassign && client.subscribed ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            aria-label={t(
+                                                'weeklies.person.unassign',
+                                                { client: client.name },
+                                            )}
+                                            onClick={() => onUnassign(client)}
+                                            data-test="person-client-unassign"
+                                        >
+                                            <X aria-hidden="true" />
+                                            {t(
+                                                'weeklies.person.unassign_short',
+                                            )}
+                                        </Button>
+                                    ) : null}
+                                </span>
                             </div>
                             <ul className="flex flex-wrap gap-1">
                                 {client.projects.map((project) => (
@@ -147,10 +181,27 @@ export default function TeamShow({
     cycle,
     status,
     streak,
+    consistency,
+    weeks_page: weeksPage = 1,
+    weeks_more: weeksMore = false,
+    assignable_clients: assignableClients,
     ai,
     can,
 }: TeamShowPageProps) {
     const auth = usePage().props.auth;
+    const [historyOf, setHistoryOf] = useState<
+        | {
+              id: number;
+              name: string;
+          }
+        | null
+        | undefined
+    >(undefined);
+    const unassign = (client: PersonClient) =>
+        router.delete(
+            unassignClient.url({ user: person.id, client: client.id }),
+            { preserveScroll: true },
+        );
     setLayoutProps({
         breadcrumbs: [
             { title: t('weeklies.team.title'), href: teamIndex() },
@@ -250,6 +301,28 @@ export default function TeamShow({
                                 }
                             />
                         ) : null}
+                        {can.assignClients ? (
+                            <JoinClientsDialog
+                                clients={assignableClients}
+                                propName="assignable_clients"
+                                submitUrl={assignClients.url(person.id)}
+                                title={t('weeklies.person.assign_title', {
+                                    name: person.name,
+                                })}
+                                description={t(
+                                    'weeklies.person.assign_description',
+                                )}
+                                trigger={
+                                    <Button
+                                        variant="outline"
+                                        data-test="person-assign-clients"
+                                    >
+                                        <Plus aria-hidden="true" />
+                                        {t('weeklies.person.assign_clients')}
+                                    </Button>
+                                }
+                            />
+                        ) : null}
                         {auth?.can?.viewTeamAbsences &&
                         auth.user?.id !== person.id ? (
                             <Button variant="outline" asChild>
@@ -310,6 +383,9 @@ export default function TeamShow({
                             </>
                         ) : null}
                     </dl>
+                    {consistency ? (
+                        <ConsistencyMap cells={consistency} />
+                    ) : null}
                     {habits ? (
                         <div className="grid gap-1">
                             <h3 className="text-sm text-muted-foreground">
@@ -411,6 +487,9 @@ export default function TeamShow({
                                 title={t('weeklies.person.clients_member')}
                                 clients={clients.member}
                                 activity={activity}
+                                onUnassign={
+                                    can.assignClients ? unassign : undefined
+                                }
                             />
                         </div>
                     )}
@@ -450,10 +529,39 @@ export default function TeamShow({
                                     <p className="line-clamp-4 whitespace-pre-line">
                                         {report.body}
                                     </p>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="justify-self-start"
+                                        onClick={() =>
+                                            setHistoryOf(
+                                                report.client
+                                                    ? {
+                                                          id: report.client.id,
+                                                          name: report.client
+                                                              .name,
+                                                      }
+                                                    : null,
+                                            )
+                                        }
+                                        data-test="person-client-history"
+                                    >
+                                        <History aria-hidden="true" />
+                                        {t('weeklies.person.view_history')}
+                                    </Button>
                                 </li>
                             ))}
                         </ul>
                     )}
+                    <ClientHistoryDialog
+                        person={person}
+                        client={historyOf ?? null}
+                        open={historyOf !== undefined}
+                        onOpenChange={(open) =>
+                            open ? null : setHistoryOf(undefined)
+                        }
+                    />
                 </section>
 
                 <section
@@ -574,6 +682,49 @@ export default function TeamShow({
                             ))}
                         </ul>
                     )}
+                    {weeksPage > 1 || weeksMore ? (
+                        <nav
+                            aria-label={t('weeklies.person.history')}
+                            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                            data-test="person-history-pager"
+                        >
+                            {weeksPage > 1 ? (
+                                <Link
+                                    href={showPerson.url(person.id, {
+                                        query:
+                                            weeksPage > 2
+                                                ? { historial: weeksPage - 1 }
+                                                : {},
+                                    })}
+                                    preserveScroll
+                                    className={cn('underline', FOCUS_RING)}
+                                >
+                                    {t('weeklies.client.history_newer')}
+                                </Link>
+                            ) : (
+                                <span />
+                            )}
+                            <span className="text-muted-foreground">
+                                {t('weeklies.client.history_page', {
+                                    page: weeksPage,
+                                })}
+                            </span>
+                            {weeksMore ? (
+                                <Link
+                                    href={showPerson.url(person.id, {
+                                        query: { historial: weeksPage + 1 },
+                                    })}
+                                    preserveScroll
+                                    className={cn('underline', FOCUS_RING)}
+                                    data-test="person-history-older"
+                                >
+                                    {t('weeklies.client.history_older')}
+                                </Link>
+                            ) : (
+                                <span />
+                            )}
+                        </nav>
+                    ) : null}
                 </section>
             </div>
         </>

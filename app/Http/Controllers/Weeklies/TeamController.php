@@ -6,6 +6,7 @@ use App\Domain\Weeklies\Ai\AiDailyLimitReached;
 use App\Domain\Weeklies\Insights\AiSummaries;
 use App\Domain\Weeklies\Insights\PersonInsights;
 use App\Domain\Weeklies\MyWeeklyStatus;
+use App\Domain\Weeklies\WeeklyClientSubscriptions;
 use App\Domain\Weeklies\WeeklyStreaks;
 use App\Enums\AiSummaryKind;
 use App\Http\Controllers\Controller;
@@ -65,10 +66,12 @@ class TeamController extends Controller
         $canAi = $viewer->can('view-person-ai-summary', $user);
 
         return Inertia::render('team/show', [
-            ...$people->profile($user, $viewer),
+            // El historial por semanas va por páginas de un año (10.9b): ?historial=2, 3…
+            ...$people->profile($user, $viewer, page: max(1, $request->integer('historial', 1))),
             'cycle' => $cycle === null ? null : ['id' => $cycle->id, 'label' => $cycle->label, 'number' => $cycle->number],
             'status' => $cycle === null || ! $user->is_active ? null : $status->for($user, $cycle)['status'],
-            'streak' => $streaks->summary($user),
+            // La racha y el mapa «Constancia (últimas 12 semanas)» (D-233), con las mismas consultas.
+            ...(fn (array $overview): array => ['streak' => $overview['summary'], 'consistency' => $overview['consistency']])($streaks->overview($user)),
             // Resúmenes con IA (F-144 y F-145): null para quien no los puede ver.
             'ai' => $canAi ? [
                 'performance' => AiSummaries::present($summaries->find(AiSummaryKind::PersonPerformance, $user)),
@@ -80,8 +83,26 @@ class TeamController extends Controller
                 'remind' => $cycle !== null && $viewer->can('remind', $cycle),
                 // «Estoy fuera» (D-228): la propia persona o quien gestiona la Weekly.
                 'markAway' => $user->is_active && ($viewer->is($user) || $viewer->can('manage-weeklies')),
+                // «Asignar clientes» (D-233): quien gestiona la Weekly.
+                'assignClients' => $user->is_active && $viewer->can('manage-weeklies'),
             ],
+            // Para «Asignar clientes» (D-233): solo cuando se abre el diálogo.
+            'assignable_clients' => Inertia::optional(fn (): array => $viewer->can('manage-weeklies') ? app(WeeklyClientSubscriptions::class)->joinable($user) : []),
         ]);
+    }
+
+    /**
+     * «Ver histórico» de una persona en un cliente (10.9b): sus apuntes enviados sobre el cliente,
+     * por páginas (?pagina=). `general` = «General / Interno». Lo ve la plantilla, como la ficha.
+     */
+    public function clientHistory(Request $request, User $user, string $client, PersonInsights $people): JsonResponse
+    {
+        Gate::authorize('use-weeklies');
+        abort_unless($user->writesWeeklies(), 404);
+
+        $model = $client === 'general' ? null : Client::query()->findOrFail((int) $client);
+
+        return response()->json($people->clientHistory($user, $model, max(1, $request->integer('pagina', 1))));
     }
 
     /** Resumen de desempeño (tipo=desempeno) o actividad por cliente (tipo=clientes) con IA. */

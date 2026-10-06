@@ -40,6 +40,43 @@ class WeeklyClientSubscriptionController extends Controller
         return back();
     }
 
+    /**
+     * «Asignar clientes» a otra persona desde su ficha (10.9b, D-233; el «Asignar (n)» de
+     * `ws:TeamView.tsx:1582-1646`): quien gestiona la Weekly la une a varios clientes de golpe. Es la
+     * misma suscripción de la Weekly (D-221): no da acceso a ningún proyecto.
+     */
+    public function assign(JoinClientsRequest $request, User $user, WeeklyClientSubscriptions $subscriptions): RedirectResponse
+    {
+        Gate::authorize('manage-weeklies');
+        abort_unless($user->is_active && $user->writesWeeklies() && ! $user->isCollaborator(), 404);
+
+        $ids = $request->clientIds();
+
+        if (Client::query()->whereKey($ids)->where('is_active', true)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['client_ids' => __('weeklies.validation.clients')]);
+        }
+
+        $joined = $subscriptions->subscribe($user, $ids);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => trans_choice('weeklies.flash.assigned', $joined, ['count' => $joined, 'name' => $user->name])]);
+
+        return back();
+    }
+
+    /** Quitar a otra persona de un cliente de la Weekly (quien gestiona, D-233). */
+    public function unassign(User $user, Client $client, WeeklyClientSubscriptions $subscriptions): RedirectResponse
+    {
+        Gate::authorize('manage-weeklies');
+
+        if (! $subscriptions->unsubscribe($user, $client)) {
+            abort(404);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('weeklies.flash.unassigned', ['name' => $user->name, 'client' => $client->name])]);
+
+        return back();
+    }
+
     public function leave(Request $request, Client $client, WeeklyClientSubscriptions $subscriptions): RedirectResponse
     {
         Gate::authorize('use-weeklies');

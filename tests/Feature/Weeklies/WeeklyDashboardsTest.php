@@ -264,7 +264,12 @@ it('el perfil enseña mis estadísticas de envío (F-028) y el puesto se guarda 
 
     $this->actingAs($me)->get('/ajustes/perfil')->assertInertia(fn (Assert $page) => $page
         ->where('jobTitle', null)
-        ->loadDeferredProps(fn (Assert $reload) => $reload->where('weeklyStats', ['submitted' => 1, 'on_time' => 1, 'streak' => 1])));
+        ->loadDeferredProps(fn (Assert $reload) => $reload
+            ->where('weeklyStats.submitted', 1)
+            ->where('weeklyStats.on_time', 1)
+            ->where('weeklyStats.streak', 1)
+            // Y el mapa de constancia (D-233).
+            ->where('weeklyStats.consistency', fn ($cells) => collect($cells)->pluck('state')->all() === ['on_time', 'pending'])));
 
     $this->actingAs($me)
         ->patch('/ajustes/perfil', ['name' => $me->name, 'email' => $me->email, 'job_title' => '  Diseñadora  '])

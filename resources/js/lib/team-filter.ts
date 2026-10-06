@@ -102,3 +102,58 @@ export function filterTeam(
             return a.user.name.localeCompare(b.user.name, 'es');
         });
 }
+
+/** Clave de los filtros y el orden de /equipo en la pestaña (se conservan al volver de una ficha). */
+export const TEAM_FILTERS_KEY = 'audax.team.filters';
+
+export type StoredTeamView<F> = {
+    filters: F;
+    sort: { key: TeamSortKey; dir: 'asc' | 'desc' };
+};
+
+/**
+ * Los filtros y el orden guardados en la pestaña (sessionStorage), o null (10.9b: en WeeklySync la
+ * lista seguía montada y no se perdían al volver de una ficha).
+ */
+export function readTeamView<F extends Record<string, string>>(
+    empty: F,
+): StoredTeamView<F> | null {
+    try {
+        const raw = window.sessionStorage.getItem(TEAM_FILTERS_KEY);
+
+        if (!raw) {
+            return null;
+        }
+
+        const stored = JSON.parse(raw) as Partial<StoredTeamView<F>>;
+        const filters = { ...empty };
+
+        for (const key of Object.keys(empty) as (keyof F)[]) {
+            const value = stored.filters?.[key];
+
+            if (typeof value === 'string') {
+                filters[key] = value as F[keyof F];
+            }
+        }
+
+        const sort =
+            stored.sort && typeof stored.sort.key === 'string'
+                ? {
+                      key: stored.sort.key,
+                      dir: stored.sort.dir === 'desc' ? 'desc' : 'asc',
+                  }
+                : { key: 'name', dir: 'asc' };
+
+        return { filters, sort } as StoredTeamView<F>;
+    } catch {
+        return null;
+    }
+}
+
+export function writeTeamView<F>(view: StoredTeamView<F>): void {
+    try {
+        window.sessionStorage.setItem(TEAM_FILTERS_KEY, JSON.stringify(view));
+    } catch {
+        // Sin almacenamiento, los filtros solo duran mientras la página está abierta.
+    }
+}

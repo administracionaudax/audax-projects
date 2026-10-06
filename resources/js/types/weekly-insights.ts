@@ -6,6 +6,8 @@
 import type { ProjectStatus, UserSummary } from './domain';
 import type {
     WeeklyAwayStatus,
+    WeeklyConsistencyCell,
+    WeeklyJoinableClient,
     WeeklyClientUpdate,
     WeeklyCycleStatus,
     WeeklyJobState,
@@ -120,6 +122,9 @@ export type ClientWeeklyEntry = {
 
 export type ClientWeeklyHistoryTab = {
     tab: 'historial';
+    /** Página del historial (medio año cada una, 10.9b) y si hay semanas anteriores. */
+    page?: number;
+    more?: boolean;
     weeks: {
         cycle: WeeklyCycleRef;
         update: WeeklyClientUpdate | null;
@@ -232,6 +237,8 @@ export type PersonClient = {
     icon: string | null;
     badges: ProjectKindBadge[];
     projects: { id: number; code: string; name: string }[];
+    /** Unida en la Weekly (D-221): quien gestiona la puede quitar (D-233). */
+    subscribed?: boolean;
 };
 
 export type PersonWeekEntry = {
@@ -271,6 +278,13 @@ export type TeamShowPageProps = {
     /** Estado de su weekly en la semana activa. */
     status: WeeklyPersonStatus | null;
     streak: WeeklyStreakSummary;
+    /** «Constancia (últimas 12 semanas)» (D-233). */
+    consistency?: WeeklyConsistencyCell[];
+    /** Historial por páginas de un año (10.9b). */
+    weeks_page?: number;
+    weeks_more?: boolean;
+    /** «Asignar clientes» (D-233): solo cuando se abre el diálogo. */
+    assignable_clients?: WeeklyJoinableClient[];
     /** Solo para el admin y sus responsables (D-147). */
     ai: {
         performance: AiSummary | null;
@@ -282,5 +296,7 @@ export type TeamShowPageProps = {
         remind: boolean;
         /** «Estoy fuera» (D-228): la propia persona o quien gestiona la Weekly. */
         markAway?: boolean;
+        /** «Asignar clientes» (D-233): quien gestiona la Weekly. */
+        assignClients?: boolean;
     };
 };

@@ -39,6 +39,8 @@ return [
         'waiver_undone' => 'Vuelves a estar exento esta semana.',
         'joined' => '{0} Ya estabas en el equipo de esos clientes.|{1} Te has unido a 1 cliente.|[2,*] Te has unido a :count clientes.',
         'left' => 'Has dejado el cliente :client.',
+        'assigned' => '{0} :name ya estaba en el equipo de esos clientes.|{1} :name se ha unido a 1 cliente.|[2,*] :name se ha unido a :count clientes.',
+        'unassigned' => ':name ya no está en el equipo de :client.',
         'closed' => 'Weekly «:label» cerrada. Se ha abierto la siguiente: :next. La satisfacción de los clientes se calcula en segundo plano.',
     ],
 

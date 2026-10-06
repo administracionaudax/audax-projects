@@ -3,6 +3,7 @@
 namespace App\Domain\Weeklies;
 
 use App\Models\Client;
+use App\Models\Project;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,33 @@ final class WeeklyClientSubscriptions
         ], array_values(array_unique($clientIds)));
 
         return $rows === [] ? 0 : DB::table(self::TABLE)->insertOrIgnore($rows);
+    }
+
+    /**
+     * Clientes activos a los que la persona aún no pertenece (ni por sus proyectos ni por la Weekly),
+     * con los códigos de sus proyectos para buscarlos: «Unirme a clientes» (F-034) y «Asignar
+     * clientes» desde su ficha (D-233).
+     *
+     * @return list<array{id: int, name: string, icon: string|null, projects: list<array{id: int, code: string, name: string}>}>
+     */
+    public function joinable(User $user): array
+    {
+        $mine = $user->projects()->notArchived()->whereNotNull('client_id')->pluck('projects.client_id')->map(fn ($id): int => (int) $id)->all();
+        $exclude = array_values(array_unique([...$mine, ...$this->clientIds($user)]));
+
+        return array_values(Client::query()
+            ->where('is_active', true)
+            ->whereKeyNot($exclude)
+            ->with(['projects' => fn ($projects) => $projects->notArchived()->orderBy('code')->select(['id', 'client_id', 'code', 'name'])])
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon'])
+            ->map(fn (Client $client): array => [
+                'id' => $client->id,
+                'name' => $client->name,
+                'icon' => $client->icon,
+                'projects' => array_values($client->projects->map(fn (Project $project): array => ['id' => $project->id, 'code' => $project->code, 'name' => $project->name])->all()),
+            ])
+            ->all());
     }
 
     /** Deja el cliente; devuelve si estaba unida. */

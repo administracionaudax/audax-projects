@@ -125,11 +125,13 @@ final class ClientInsights
      * Historial: por semana, de la más reciente a la más antigua, lo que dijo el informe y los
      * reportes de cada persona sobre el cliente. Solo las semanas con algo.
      *
+     * Por páginas de HISTORY_WEEKS semanas (10.9b: ya no se corta en medio año).
+     *
      * @return list<array{cycle: array<string, mixed>, update: array<string, mixed>|null, entries: list<array<string, mixed>>}>
      */
-    public function history(Client $client): array
+    public function history(Client $client, int $page = 1): array
     {
-        $cycles = $this->recentCycles();
+        $cycles = $this->recentCycles($page);
         $entries = $this->entries($client, cycleIds: array_values(array_map(intval(...), $cycles->modelKeys())));
         $users = $this->users(array_values(array_unique(array_column($entries, 'user_id'))));
         $byCycle = [];
@@ -478,12 +480,19 @@ final class ClientInsights
      *
      * @return Collection<int, WeeklyCycle>
      */
-    private function recentCycles(): Collection
+    private function recentCycles(int $page = 1): Collection
     {
         return WeeklyCycle::query()
             ->orderByDesc('start_date')
+            ->offset((max(1, $page) - 1) * self::HISTORY_WEEKS)
             ->limit(self::HISTORY_WEEKS)
             ->get(['id', 'number', 'label', 'start_date', 'end_date', 'deadline_date', 'status', 'report']);
+    }
+
+    /** ¿Hay semanas antes de la página $page del historial? */
+    public function hasMoreHistory(int $page): bool
+    {
+        return WeeklyCycle::query()->offset(max(1, $page) * self::HISTORY_WEEKS)->limit(1)->exists();
     }
 
     private function updateFor(WeeklyCycle $cycle, Client $client): ?WeeklyClientUpdate

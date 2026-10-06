@@ -413,12 +413,47 @@ describe('ficha de cliente: equipo y satisfacción', () => {
             }),
         ).toBeTruthy();
 
+        // Todo su histórico en el cliente, por páginas (10.9b): se pide al abrir.
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    reports: [
+                        {
+                            id: 70,
+                            cycle: {
+                                id: 8,
+                                number: 'W40-26',
+                                label: 'Semana 40',
+                            },
+                            body: 'Maquetación de la home',
+                            submitted_at: '2026-10-02T08:00:00Z',
+                            project: null,
+                        },
+                    ],
+                    next_page: 2,
+                }),
+                { headers: { 'Content-Type': 'application/json' } },
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
         await userEvent.click(
             within(members[1]).getByRole('button', { name: /Histórico/ }),
         );
         const dialog = await screen.findByRole('dialog');
         expect(within(dialog).getByText('Histórico de Ana')).toBeTruthy();
-        expect(within(dialog).getByText('Maquetación de la home')).toBeTruthy();
+        expect(
+            await within(dialog).findByText('Maquetación de la home'),
+        ).toBeTruthy();
+        expect(String(fetchMock.mock.calls[0][0])).toBe(
+            '/equipo/2/clientes/3/historial?pagina=1',
+        );
+        await userEvent.click(
+            within(dialog).getByRole('button', { name: 'Ver más reportes' }),
+        );
+        expect(String(fetchMock.mock.calls[1][0])).toBe(
+            '/equipo/2/clientes/3/historial?pagina=2',
+        );
+        vi.unstubAllGlobals();
     });
 
     it('«Unirme a este cliente» es una suscripción de la Weekly (D-221) y se puede dejar', async () => {
@@ -708,6 +743,108 @@ describe('equipo', () => {
         ai: null,
         can: { viewAi: false, manageUser: false },
         ...overrides,
+    });
+
+    it('los filtros de la lista se conservan al volver de una ficha (10.9b)', async () => {
+        window.sessionStorage.clear();
+        const user = userEvent.setup();
+        const { unmount } = wrap(<TeamIndex {...indexProps} />);
+
+        await user.selectOptions(
+            screen.getByLabelText('Estado del reporte'),
+            'pending',
+        );
+        expect(byTest('team-row')).toHaveLength(1);
+        unmount();
+
+        wrap(<TeamIndex {...indexProps} />);
+        expect(byTest('team-row')).toHaveLength(1);
+        expect(
+            (screen.getByLabelText('Estado del reporte') as HTMLSelectElement)
+                .value,
+        ).toBe('pending');
+        window.sessionStorage.clear();
+    });
+
+    it('la ficha: mapa de constancia, histórico por cliente, páginas y asignar clientes (D-233)', async () => {
+        wrap(
+            <TeamShow
+                {...showProps({
+                    consistency: [
+                        {
+                            cycle_id: 7,
+                            number: 'W39-26',
+                            label: 'Semana 39',
+                            state: 'late',
+                        },
+                        {
+                            cycle_id: 8,
+                            number: 'W40-26',
+                            label: 'Semana 40',
+                            state: 'on_time',
+                        },
+                        {
+                            cycle_id: 9,
+                            number: 'W41-26',
+                            label: 'Semana 41',
+                            state: 'pending',
+                        },
+                    ],
+                    last_reports: [
+                        {
+                            client: { id: 3, name: 'Acme', icon: null },
+                            cycle: {
+                                id: 8,
+                                number: 'W40-26',
+                                label: 'Semana 40',
+                            },
+                            submitted_at: '2026-10-02T08:00:00Z',
+                            body: 'La home',
+                        },
+                    ],
+                    weeks_page: 1,
+                    weeks_more: true,
+                    can: {
+                        viewAi: false,
+                        manageUser: false,
+                        remind: false,
+                        assignClients: true,
+                    },
+                })}
+            />,
+        );
+
+        const map = byTest('weekly-consistency')[0];
+        expect(
+            within(map)
+                .getAllByRole('link')
+                .map((cell) => cell.getAttribute('aria-label')),
+        ).toEqual([
+            'Semana 39: Con retraso',
+            'Semana 40: A tiempo',
+            'Semana 41: Pendiente',
+        ]);
+        expect(byTest('person-history-older')[0]?.getAttribute('href')).toBe(
+            '/equipo/1?historial=2',
+        );
+        expect(
+            screen.getByRole('button', { name: 'Asignar clientes' }),
+        ).toBeTruthy();
+
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ reports: [], next_page: null }), {
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+        await userEvent.click(
+            screen.getByRole('button', { name: 'Ver histórico' }),
+        );
+        expect(await screen.findByText('Reportes de Acme')).toBeTruthy();
+        expect(String(fetchMock.mock.calls[0][0])).toBe(
+            '/equipo/1/clientes/3/historial?pagina=1',
+        );
+        vi.unstubAllGlobals();
     });
 
     it('la ficha: racha y hábitos; sin permiso, sin resúmenes con IA', () => {

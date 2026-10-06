@@ -189,6 +189,24 @@ it('el historial junta lo que dijo el informe y los reportes de cada semana', fu
                 ->has('weekly.weeks.1.entries', 1)));
 });
 
+it('el historial ya no se corta en medio año: va por páginas (10.9b)', function () {
+    foreach (range(1, 26) as $i) {
+        $cycle = WeeklyCycle::factory()->forWeekOf(CarbonImmutable::parse('2026-01-05')->subWeeks($i)->toDateString())->create();
+        insightEntry($cycle, $this->ana, $this->acme, "Antiguo {$i}", $cycle->deadline_date->toDateString().' 10:00');
+    }
+
+    $this->actingAs($this->ana)->get("/clientes/{$this->acme->id}?pestana=historial")
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('weekly', fn (Assert $reload) => $reload
+            ->where('weekly.page', 1)
+            ->where('weekly.more', true)));
+
+    $this->actingAs($this->ana)->get("/clientes/{$this->acme->id}?pestana=historial&historial=2")
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps('weekly', fn (Assert $reload) => $reload
+            ->where('weekly.page', 2)
+            ->where('weekly.more', false)
+            ->where('weekly.weeks', fn ($weeks) => collect($weeks)->pluck('entries.0.body')->last() === 'Antiguo 26')));
+});
+
 it('el equipo: el responsable primero, los miembros con sus proyectos y su histórico, y mis proyectos', function () {
     insightEntry($this->closed, $this->ana, $this->acme, 'Maquetación', '2026-10-02 17:00');
     userWithRole('employee', ['name' => 'Inactiva'])->forceFill(['is_active' => false])->save();

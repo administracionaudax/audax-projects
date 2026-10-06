@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Settings2, Users } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { NativeSelect } from '@/components/admin/native-select';
 import { EmptyState } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
@@ -27,7 +27,12 @@ import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as teamIndex, show as showPerson } from '@/routes/team';
-import { filterTeam, STATUS_ORDER } from '@/lib/team-filter';
+import {
+    filterTeam,
+    readTeamView,
+    STATUS_ORDER,
+    writeTeamView,
+} from '@/lib/team-filter';
 import type { TeamSortKey as SortKey } from '@/lib/team-filter';
 import type { TeamIndexPageProps } from '@/types/weekly-insights';
 
@@ -54,11 +59,19 @@ export default function TeamIndex({
     can,
 }: TeamIndexPageProps) {
     const id = useId();
-    const [filters, setFilters] = useState(EMPTY_FILTERS);
-    const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
-        key: 'name',
-        dir: 'asc',
-    });
+    // Se conservan al volver de una ficha (10.9b): en la pestaña, como en WeeklySync.
+    const [stored] = useState(() => readTeamView(EMPTY_FILTERS));
+    const [filters, setFilters] = useState(stored?.filters ?? EMPTY_FILTERS);
+    const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>(
+        stored?.sort ?? {
+            key: 'name',
+            dir: 'asc',
+        },
+    );
+
+    useEffect(() => {
+        writeTeamView({ filters, sort });
+    }, [filters, sort]);
     const rows = useMemo(
         () => filterTeam(members, filters, sort),
         [members, filters, sort],

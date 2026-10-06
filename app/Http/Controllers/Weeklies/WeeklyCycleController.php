@@ -20,7 +20,6 @@ use App\Http\Requests\Weeklies\UpdateWeeklyDeadlineRequest;
 use App\Http\Resources\UserSummaryResource;
 use App\Http\Resources\Weeklies\WeeklyCycleDetailResource;
 use App\Models\Client;
-use App\Models\Project;
 use App\Models\User;
 use App\Models\WeeklyCycle;
 use App\Models\WeeklySubmission;
@@ -61,7 +60,7 @@ class WeeklyCycleController extends Controller
             'me' => $active === null ? null : $status->for($user, $active),
             'streak' => $streaks->summary($user),
             'my_clients' => $this->myClients($user, $subscriptions),
-            'joinable_clients' => Inertia::optional(fn (): array => $this->joinableClients($user, $subscriptions)),
+            'joinable_clients' => Inertia::optional(fn (): array => $subscriptions->joinable($user)),
             'can' => [
                 'manage' => Gate::allows('manage-weeklies'),
                 'create' => Gate::allows('create', WeeklyCycle::class) && $active === null,
@@ -286,32 +285,5 @@ class WeeklyCycleController extends Controller
         };
 
         return ['owned' => $sort($groups['owned']), 'member' => $sort($groups['member'])];
-    }
-
-    /**
-     * Clientes a los que me puedo unir (F-034, D-221): los activos que aún no son míos (ni por sus
-     * proyectos ni por la Weekly), con los códigos de sus proyectos abiertos para buscarlos. Se piden
-     * al abrir el diálogo (prop opcional).
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function joinableClients(User $user, WeeklyClientSubscriptions $subscriptions): array
-    {
-        $mine = $user->projects()->notArchived()->whereNotNull('client_id')->pluck('projects.client_id')->map(fn ($id): int => (int) $id)->all();
-        $exclude = array_values(array_unique([...$mine, ...$subscriptions->clientIds($user)]));
-
-        return array_values(Client::query()
-            ->where('is_active', true)
-            ->whereKeyNot($exclude)
-            ->with(['projects' => fn ($projects) => $projects->notArchived()->orderBy('code')->select(['id', 'client_id', 'code', 'name'])])
-            ->orderBy('name')
-            ->get(['id', 'name', 'icon'])
-            ->map(fn (Client $client): array => [
-                'id' => $client->id,
-                'name' => $client->name,
-                'icon' => $client->icon,
-                'projects' => array_values($client->projects->map(fn (Project $project): array => ['id' => $project->id, 'code' => $project->code, 'name' => $project->name])->all()),
-            ])
-            ->all());
     }
 }

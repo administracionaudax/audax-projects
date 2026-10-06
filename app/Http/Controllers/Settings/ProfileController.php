@@ -37,7 +37,7 @@ class ProfileController extends Controller
             'jobTitle' => $user->job_title,
             // Estadísticas de la weekly (Fase 10, F-028): {submitted, on_time, streak}, diferidas;
             // null para quien no la escribe o con el módulo apagado.
-            'weeklyStats' => $writes ? Inertia::defer(fn (): array => app(WeeklyStreaks::class)->summary($user)) : null,
+            'weeklyStats' => $writes ? Inertia::defer(fn (): array => (fn (array $overview): array => [...$overview['summary'], 'consistency' => $overview['consistency']])(app(WeeklyStreaks::class)->overview($user))) : null,
         ]);
     }
 
