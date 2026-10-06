@@ -186,9 +186,8 @@ final class AllocationPlanner
             return [];
         }
 
-        $works = $allocation->user_id !== null
-            ? fn (int $day): bool => $capacity->userWorks((int) $allocation->user_id, $day)
-            : fn (int $day): bool => $capacity->departmentWorks((int) $allocation->department_id, $day);
+        // Los días laborables de la persona o del departamento, calculados una vez (rendimiento).
+        $works = $capacity->workdays($allocation->user_id, $allocation->department_id);
 
         $minutes = (int) $allocation->minutes;
 
@@ -212,7 +211,7 @@ final class AllocationPlanner
         $days = match ($allocation->mode) {
             AllocationMode::Total => $this->spread($minutes, self::workingDays($works, $start, $end), $start, $allocation, $plan, $today),
             AllocationMode::PerDay => self::perDay($minutes, self::workingDays($works, max($start, $today ?? $start), $end)),
-            AllocationMode::Percent => $this->percent($allocation, $capacity, $works, max($start, $today ?? $start), $end),
+            AllocationMode::Percent => $this->percent($allocation, $capacity, self::workingDays($works, max($start, $today ?? $start), $end)),
             AllocationMode::Monthly => $this->monthly($minutes, $works, $start, $end, $today),
         };
 
@@ -269,22 +268,17 @@ final class AllocationPlanner
     }
 
     /**
-     * @param  callable(int): bool  $works
+     * @param  list<int>  $working
      * @return array<int, int>
      */
-    private function percent(Allocation $allocation, CapacityCalendar $capacity, callable $works, int $start, int $end): array
+    private function percent(Allocation $allocation, CapacityCalendar $capacity, array $working): array
     {
         $percent = (int) $allocation->percent;
+        $userId = $allocation->user_id;
         $result = [];
 
-        for ($day = $start; $day <= $end; $day++) {
-            if (! $works($day)) {
-                continue;
-            }
-
-            $base = $allocation->user_id !== null
-                ? $capacity->forUser($allocation->user_id, $day)
-                : $capacity->defaultMinutes($day);
+        foreach ($working as $day) {
+            $base = $userId !== null ? $capacity->forUser($userId, $day) : $capacity->defaultMinutes($day);
             $minutes = (int) round($base * $percent / 100);
 
             if ($minutes > 0) {
@@ -299,10 +293,10 @@ final class AllocationPlanner
      * Cada mes natural del rango, sus minutos (a prorrata de los días laborables si el mes está
      * partido) repartidos como total entre sus días laborables del rango.
      *
-     * @param  callable(int): bool  $works
+     * @param  list<int>  $works  días laborables del calendario, en orden
      * @return array<int, int>
      */
-    private function monthly(int $minutes, callable $works, int $start, int $end, ?int $today): array
+    private function monthly(int $minutes, array $works, int $start, int $end, ?int $today): array
     {
         $result = [];
 
@@ -340,17 +334,30 @@ final class AllocationPlanner
     }
 
     /**
-     * @param  callable(int): bool  $works
+     * Los días laborables entre $from y $to (ambos incluidos) de una lista ordenada, con una
+     * búsqueda binaria del primero.
+     *
+     * @param  list<int>  $works
      * @return list<int>
      */
-    private static function workingDays(callable $works, int $from, int $to): array
+    private static function workingDays(array $works, int $from, int $to): array
     {
-        $days = [];
+        $low = 0;
+        $high = count($works);
 
-        for ($day = $from; $day <= $to; $day++) {
-            if ($works($day)) {
-                $days[] = $day;
+        while ($low < $high) {
+            $middle = intdiv($low + $high, 2);
+
+            if ($works[$middle] < $from) {
+                $low = $middle + 1;
+            } else {
+                $high = $middle;
             }
+        }
+
+        $days = [];
+        for ($index = $low, $count = count($works); $index < $count && $works[$index] <= $to; $index++) {
+            $days[] = $works[$index];
         }
 
         return $days;

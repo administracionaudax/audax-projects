@@ -107,12 +107,12 @@ final class LoadCombiner
 
         /** @var array<int, list<Cell>> $personCells */
         $personCells = [];
-        foreach ($people as $person) {
+        foreach ($peopleIds as $personId) {
             $capacity = array_fill(0, $count, 0);
             foreach ($map as $day => $index) {
-                $capacity[$index] += $plan->capacity->forUser($person->id, $day);
+                $capacity[$index] += $plan->capacity->forUser($personId, $day);
             }
-            $personCells[$person->id] = array_map(fn (int $minutes): array => [...self::EMPTY_CELL, 'capacity' => $minutes], $capacity);
+            $personCells[$personId] = array_map(fn (int $minutes): array => [...self::EMPTY_CELL, 'capacity' => $minutes], $capacity);
         }
 
         /** @var array<int, list<Cell>> $gapCells huecos (sin capacidad) */
@@ -121,6 +121,8 @@ final class LoadCombiner
 
         foreach ($allocations as $allocation) {
             $layer = $this->layer($allocation);
+            $userId = $allocation->user_id;
+            $departmentId = $allocation->department_id;
             $minutes = array_fill(0, $count, 0);
 
             foreach ($plan->days[$allocation->id] ?? [] as $day => $value) {
@@ -136,13 +138,13 @@ final class LoadCombiner
                     continue;
                 }
 
-                if ($allocation->user_id !== null) {
-                    if (isset($personCells[$allocation->user_id][$index])) {
-                        $personCells[$allocation->user_id][$index] = self::addCell($personCells[$allocation->user_id][$index], self::layerCell($layer, $value));
+                if ($userId !== null) {
+                    if (isset($personCells[$userId][$index])) {
+                        $personCells[$userId][$index] = self::addCell($personCells[$userId][$index], self::layerCell($layer, $value));
                     }
-                } elseif ($allocation->department_id !== null) {
-                    $gapCells[$allocation->department_id] ??= $empty;
-                    $gapCells[$allocation->department_id][$index] = self::addCell($gapCells[$allocation->department_id][$index], self::layerCell($layer, $value));
+                } elseif ($departmentId !== null) {
+                    $gapCells[$departmentId] ??= $empty;
+                    $gapCells[$departmentId][$index] = self::addCell($gapCells[$departmentId][$index], self::layerCell($layer, $value));
                 }
             }
 

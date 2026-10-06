@@ -23,6 +23,9 @@ use Carbon\CarbonImmutable;
  */
 final class CapacityCalendar
 {
+    /** @var array<string, list<int>> «u12» o «d3» → días laborables en orden (memoria) */
+    private array $workdays = [];
+
     /** @var array<int, array<int, int>> departamento → día → minutos (memoria) */
     private array $departmentDays = [];
 
@@ -35,6 +38,7 @@ final class CapacityCalendar
      */
     public function __construct(
         public readonly int $from,
+        public readonly int $to,
         public readonly int $limit,
         private readonly array $days,
         private readonly array $weeks,
@@ -84,7 +88,7 @@ final class CapacityCalendar
             }
         }
 
-        return new self($from, $limit, $days, $weeks, $members, Capacity::defaultWeek(), $holidays);
+        return new self($from, $to, $limit, $days, $weeks, $members, Capacity::defaultWeek(), $holidays);
     }
 
     /**
@@ -158,6 +162,31 @@ final class CapacityCalendar
         }
 
         return $this->forDepartment($departmentId, $day) > 0;
+    }
+
+    /**
+     * Días laborables (en orden) de una persona o de un departamento en todo el calendario, una vez
+     * por cada una (rendimiento: el reparto los recorre por tramos).
+     *
+     * @return list<int>
+     */
+    public function workdays(?int $userId, ?int $departmentId): array
+    {
+        $key = $userId !== null ? "u{$userId}" : "d{$departmentId}";
+
+        if (! isset($this->workdays[$key])) {
+            $days = [];
+
+            for ($day = $this->from; $day <= $this->to; $day++) {
+                if ($userId !== null ? $this->userWorks($userId, $day) : $this->departmentWorks((int) $departmentId, $day)) {
+                    $days[] = $day;
+                }
+            }
+
+            $this->workdays[$key] = $days;
+        }
+
+        return $this->workdays[$key];
     }
 
     /** Minutos de la jornada por defecto ese día de la semana (el «% de una persona» de un hueco). */
