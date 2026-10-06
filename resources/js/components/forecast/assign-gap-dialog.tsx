@@ -235,7 +235,7 @@ export function AssignGapDialog({
                 <DialogFooter>
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         onClick={() => onOpenChange(false)}
                     >
                         {t('forecast.actions.cancel')}

@@ -438,7 +438,7 @@ export function ForecastProjectDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => setOpen(false)}
                         >
                             {t('forecast.actions.cancel')}

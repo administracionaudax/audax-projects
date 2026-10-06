@@ -78,7 +78,7 @@ export function LoseDialog({ forecast, open, onOpenChange }: DialogProps) {
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}
@@ -179,7 +179,7 @@ export function LinkDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}
@@ -504,7 +504,7 @@ export function CreateProjectDialog({
                     <DialogFooter>
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => onOpenChange(false)}
                         >
                             {t('forecast.actions.cancel')}

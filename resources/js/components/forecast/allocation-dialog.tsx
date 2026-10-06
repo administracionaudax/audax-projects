@@ -511,7 +511,7 @@ export function AllocationDialog({
                         <span className="flex flex-col-reverse gap-2 sm:flex-row">
                             <Button
                                 type="button"
-                                variant="outline"
+                                variant="secondary"
                                 onClick={() => setOpen(false)}
                             >
                                 {t('forecast.actions.cancel')}
