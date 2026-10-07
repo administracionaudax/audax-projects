@@ -529,10 +529,8 @@ describe('formulario con el catálogo', { timeout: 20_000 }, () => {
             { timeout: 3000 },
         );
         const body = JSON.parse(
-            String(
-                (fetchMock.mock.calls.at(-1) as [string, RequestInit])[1].body,
-            ),
-        );
+            (fetchMock.mock.calls.at(-1) as [string, { body: string }])[1].body,
+        ) as Record<string, unknown>;
         expect(body).toMatchObject({
             leave_type_id: 7,
             start_time: '10:00',

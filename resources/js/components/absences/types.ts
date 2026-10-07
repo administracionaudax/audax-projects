@@ -102,7 +102,7 @@ export type MyAbsencesPageProps = {
     self_approves: boolean;
     can: { team: boolean };
     /** Fase 11, R3: catálogo, saldos y justificantes; null con el módulo apagado. */
-    leave: MyLeaveProps | null;
+    leave?: MyLeaveProps | null;
 };
 
 /** Props de /ausencias/equipo (TeamAbsenceController::index). */
@@ -118,8 +118,8 @@ export type TeamAbsencesPageProps = {
     limits: AbsenceLimits;
     pending_limit: number;
     /** Fase 11, R3: cancelaciones pedidas por decidir (vacío con el módulo apagado). */
-    cancellations: (AbsenceRow & { user: AbsencePerson })[];
-    leave: { types: LeaveTypeOption[] } | null;
+    cancellations?: (AbsenceRow & { user: AbsencePerson })[];
+    leave?: { types: LeaveTypeOption[] } | null;
 };
 
 /** Ausencia resumida de la tarjeta «Mis ausencias» de Inicio (MyAbsencesSummary). */
