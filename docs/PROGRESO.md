@@ -169,6 +169,18 @@ Pedida por el propietario: que todos los desplegables, selectores y formularios 
 - **Arreglado:** props diferidas que se cancelaban o se perdían al guardar, formularios que partían de datos viejos (la edición del previsto deshacía cambios), confirmaciones que no se cerraban (borrar una semana podía borrar otra), errores del servidor que no se veían, envíos dobles, valores fuera de las opciones, campos con borde de botón, selectores con fondo propio, escalones y ayudas que dejaban huecos.
 - **Tests:** Vitest (`form-fields`, `deferred-props`, `confirm-dialog`, `form-review-*` y otros), E2E `tests/e2e/form-review.spec.ts` y Pest (`HelpCenterTest`).
 
+### Mejoras de uso (rama `mejoras-uso`, 07/10, sin desplegar)
+Pedidas por el propietario tras usar la app (D-320 a D-325).
+- **Tareas del proyecto:** los grupos de estado se pliegan y se recuerdan; «Hecha» nace plegada. Mis tareas, igual por secciones.
+- **Horas:** vista «Por días» junto a la semana, con el total del día frente a la jornada, las entradas, «Añadir horas» por día y los festivos y ausencias. Por defecto en el móvil.
+- **Proyectos:** listado por clientes con sus bolsas, búsqueda por el nombre del cliente (también en Cmd+K) y el grupo «Audax Studio (interno)». La vista plana se mantiene, con orden y recordada. La ficha del cliente muestra los proyectos igual.
+- **Tarea abierta:** «Iniciar» y «Añadir horas» lo primero, con el foco en la duración.
+- **Filas de tarea clicables enteras** en todas las listas y en el kanban.
+- **Tests:**
+  - Pest: `ProjectIndexTest`, `SearchTest`, `TimesheetPageTest` y `CollaboratorScopeTest`, más el presupuesto de consultas de `time.index`.
+  - Vitest: `row-click`, `time-sheet-days`, `tasks-list`, `tasks-panel`, `time-entry-dialog`, `projects-index` y `clients-pages`.
+  - E2E: `tests/e2e/usability-improvements.spec.ts`.
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

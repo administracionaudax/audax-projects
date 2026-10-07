@@ -2316,6 +2316,48 @@ Los 52 diálogos de la app lo tenían así; la Previsión (`outline`), el canal 
 - **Corta** (una línea, o la vista previa «= 1:30» de la duración): se queda bajo su campo, cerca de lo que explica; las cajas ya quedan alineadas. En la fila del previsto la vista previa va superpuesta (`DurationInput preview="overlay"`).
 - En los filtros, el valor «sin filtro» es corto («Todas», «Todos») para que no se corte en la caja.
 
+### D-320 · Grupos de tareas plegables **[mejoras de uso del 07/10]**
+Pedido por el propietario: que los estados de las tareas del proyecto se puedan plegar para no hacer tanto scroll.
+- **Lista del proyecto:** cada grupo (por estado, responsable, bolsa o tipo) se pliega desde su encabezado, que es un botón con chevron, el número de tareas, `aria-expanded` y `aria-controls` (`CollapsibleGroupHeading`). Arriba, «Desplegar todo» y «Plegar todo», discretos.
+- **Por defecto:** desplegados los abiertos y plegado el estado de categoría `done`, que es el que más crece.
+- **Se recuerda** por persona y proyecto en el navegador (`useCollapsedGroups`, `localStorage` con try/catch; sin almacenamiento, vale para la visita). Solo lo que se toca a mano: lo demás sigue el valor por defecto.
+- **Mis tareas** (orden por vencimiento): las secciones Vencidas, Hoy, Esta semana, Próximas y Sin fecha, con el mismo patrón (desplegadas por defecto).
+- **Kanban:** sin cambios. Queda como propuesta plegar la columna «Hecha» a una franja estrecha.
+
+### D-321 · Hoja de horas «Por días»
+- Junto a la rejilla semanal, una **lista día por día** como la de ClickUp: cada día con su fecha, lo imputado frente a la jornada («6:30 de 8:00», con el icono del semáforo de carga), sus entradas (tarea, proyecto y bolsa, descripción, franja horaria, duración y estado) y «Añadir horas» en ese día. Un clic en una entrada editable la edita; las enviadas o aprobadas solo se ven.
+- **Días vacíos:** salen igual. Si eran laborables y ya han pasado, con un aviso discreto («Sin horas en un día laborable»).
+- **Festivos y ausencias** se marcan en cada día (`day_notes` de `TimesheetService::dayNotes`, desde `Capacity::details`). El tipo de ausencia solo llega a quien puede ver las ausencias de esa persona (D-088); a los demás, «Ausencia».
+- **Conmutador «Semana / Por días»:** en la URL (`?vista=dias` o `?vista=semana`) y en el navegador. Sin ninguno de los dos, por días en el móvil y la semana en el ordenador. La navegación de semanas y el selector de persona conservan la vista.
+- **Sin reglas nuevas:** usa las mismas filas, totales y capacidad que la rejilla, y las entradas se escriben con el mismo diálogo (`TimeEntryWriter`). En la vista por días no se muestran «Añadir fila» ni «Copiar tareas de la semana anterior», que solo sirven a la rejilla.
+
+### D-322 · Proyectos jerarquizados por cliente
+- **`/proyectos`, por defecto por clientes** (`ProjectTree`): cada cliente es un grupo plegable con sus proyectos y, bajo cada proyecto de bolsas, sus bolsas abiertas (activas y agotadas) con el consumo. Columnas: proyecto (código y nombre), tipo, estado, gestor, bolsas y consumo, y fechas; las mismas en todos los grupos.
+- **Orden de los grupos:** primero los internos sin cliente, bajo «‹empresa› (interno)» con el nombre de la empresa de los ajustes («Audax Studio (interno)»); después los clientes por nombre; al final, los que no son internos y no tienen cliente.
+- **Plegado:** con 25 proyectos o menos, con una búsqueda, con un cliente elegido o con un solo grupo, todo desplegado; si no, plegado. Lo que se toca a mano se recuerda por persona, salvo mientras se busca.
+- **Búsqueda:** también por el nombre del cliente («gestiones» encuentra «WE1 - 120h» de Gestiones). Si el texto, con 3 letras o más, está en el nombre de la empresa o en «internos», trae los internos («audax», «interno»). Igual en la búsqueda global (Cmd+K), donde salen primero los que casan por su propio nombre o código.
+- **Vista plana:** «Lista» (`?vista=lista`) es el listado de siempre, paginado y con orden por nombre, más recientes o fecha de entrega (`?orden=recientes|fin`). La vista por clientes no lleva parámetro. La elegida se recuerda en el navegador: al volver a `/proyectos` sin `?vista=`, si la última fue «Lista», se abre la lista.
+- **Ficha del cliente:** sus proyectos se ven igual, con las bolsas abiertas debajo (`ProjectTreeTable`). Las tarjetas de bolsas siguen debajo.
+- Un colaborador externo sigue sin ver las bolsas (D-134).
+
+### D-323 · Imputar, lo primero en la tarea
+- En la cabecera del panel de la tarea, lo primero tras el título: **«Iniciar» y «Añadir horas»**, los dos con borde e igual de visibles. A la derecha, «Seguir» y el menú «⋯».
+- «Añadir horas» abre el diálogo con esa tarea, la fecha de hoy y **el foco en la duración** (`focusDuration`, en `onOpenAutoFocus` del diálogo).
+- La sección «Horas» del panel ya no repite el botón: muestra el registrado y las entradas.
+- `/tareas/{id}` redirige a este mismo panel, así que no hay otra página que cambiar. Los hitos no llevan ni «Iniciar» ni «Añadir horas».
+
+### D-324 · Filas y tarjetas de tarea clicables enteras
+- Toda la caja de una tarea la abre, no solo el título: listas del proyecto, tarjetas del kanban, Mis tareas, tareas de la bolsa y Mi espacio (salvo la zona de notas). También las filas de proyecto y de bolsa de los listados de proyectos.
+- **Cómo** (`lib/row-click.ts`): un único control principal por fila (`data-row-primary`, el enlace o botón del título), que es lo que enfoca el teclado. Un clic en el resto de la fila lo pulsa.
+- **No abren la fila:** los demás controles (casilla, temporizador, menú, asa del kanban, campos), lo que abren en un portal (menús y diálogos), lo marcado con `data-row-ignore` ni un clic mientras se selecciona texto. Con Cmd o Ctrl, una fila con enlace se abre en otra pestaña.
+- **Aspecto:** cursor de mano y fondo `accent` suave al pasar por encima.
+- Las tarjetas del calendario ya eran un botón entero: sin cambios.
+
+### D-325 · Grupos plegables y vistas recordadas: patrón común
+- **Grupos:** `CollapsibleGroupHeading` (encabezado-botón con chevron, número, `aria-expanded` y `aria-controls`) y `GroupFoldControls` («Desplegar todo», «Plegar todo»). El contenido plegado lleva `hidden` y no se pinta.
+- **Estado plegado:** `useCollapsedGroups(clave)` guarda en `localStorage` solo lo que se toca a mano (como mucho 300 grupos). Con clave null (sin sesión o mientras se busca), solo en memoria.
+- **Vistas:** las de la hoja de horas y del listado de proyectos van en la URL y se recuerdan por persona en el navegador (`audax.time.view.{id}`, `audax.projects.view.{id}`), siempre con try/catch.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2340,6 +2382,7 @@ Los 52 diálogos de la app lo tenían así; la Previsión (`outline`), el canal 
 - Diseño de la previsión: D-290 a D-299.
 - Pantallas de la previsión: D-300 a D-309.
 - Revisión de formularios: D-310 a D-312.
+- Mejoras de uso del 07/10: D-320 a D-325.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269, D-313 a D-319 y D-326 en adelante, sin usar).
