@@ -1,6 +1,6 @@
 # Plan de la Fase 11: «Personas», el módulo de RR. HH. que sustituye a Woffu
 
-_Diseño del 06/10/2026 (antes `PLAN-RRHH.md`) · **aprobado** con las respuestas del propietario del 07/10/2026 (§14.1) · rama `rrhh-r1` (sale de `fase-10`) · **entrega en curso: R1 · Registro de jornada** (§0) · las dudas de derecho laboral siguen abiertas para la asesoría (`WOFFU-INVESTIGACION.md` §F)_
+_Diseño del 06/10/2026 (antes `PLAN-RRHH.md`) · **aprobado** con las respuestas del propietario del 07/10/2026 (§14.1) · ramas `rrhh-r1` y `rrhh-r2` (salen de `fase-10`) · **R1 y R2 hechas** (§0), sin desplegar y con el módulo apagado · las dudas de derecho laboral siguen abiertas para la asesoría (`WOFFU-INVESTIGACION.md` §F)_
 
 > **En una frase.** Audax Proyectos ya tiene ausencias, jornadas, festivos, avisos, auditoría y RGPD, pero **no tiene registro de jornada**, que es lo único que la ley exige y Woffu hace. Proponemos un módulo «Personas» que funcione como Woffu (fichar, el diario de cada día, solicitudes, saldos, aprobaciones y cierres mensuales), con el aspecto de Audax, y que empiece por lo legalmente imprescindible: **un registro de jornada que no se pueda alterar sin dejar huella, que cada persona pueda consultar y descargar y que se pueda entregar a la Inspección al momento**.
 
@@ -14,8 +14,8 @@ _Diseño del 06/10/2026 (antes `PLAN-RRHH.md`) · **aprobado** con las respuesta
 
 | Entrega | Estado |
 |---|---|
-| **R1 · Registro de jornada** | **En curso** (rama `rrhh-r1`). Decisiones **D-330 a D-345** |
-| R2 · Acceso, cierres e Inspección | Pendiente. **R1 y R2 van juntas a producción**: el módulo sigue apagado hasta tener las dos |
+| **R1 · Registro de jornada** | **Hecha** (rama `rrhh-r1`). Decisiones **D-330 a D-345** |
+| **R2 · Acceso, cierres e Inspección** | **Hecha** (rama `rrhh-r2`, 07/10/2026). Decisiones **D-346 a D-359**; contrato en §0.4. **R1 y R2 van juntas a producción**: el módulo sigue apagado hasta desplegarlas y hacer el mes en paralelo con Woffu |
 | R3 · Vacaciones y permisos | Pendiente |
 | R4 · Comodidades, R5 · Migración y baja de Woffu, R6 · Opcional | Pendientes |
 
@@ -51,6 +51,13 @@ Se ha repasado el modelo de §8 contra la ley de hoy, el borrador del RD (§2 y 
 - **Exportación con huella para la persona y la Inspección**: cada fichaje lleva su huella y su historial (original, anulado y añadido, con autor, fecha, motivo y conformidad); la exportación solo tiene que listar la cadena y su SHA-256.
 - **Retención de 48 meses**: nada borra fichajes ni correcciones (los *triggers* lo impiden y la FK de la persona es *restrict*). R2 añade la supresión a partir del mes 49 en `app:prune-data` (quitando el *trigger* solo dentro de esa orden, con la retención por litigio en `employment_profiles`), el ancla diaria (`register_anchors`) y la comprobación nocturna de la cadena con aviso a los admins.
 - **Horas extra y saldo de horas**: R1 registra todo el exceso del día; R2 lo clasifica (extra o flexibilidad) y añade `time_balance_movements`.
+
+### 0.4 Contrato de R2 (hecha el 07/10/2026; D-346 a D-359)
+- **Tablas** (migración `create_people_r2_tables`, solo aditiva): `month_closes` (cierre por persona, mes y versión, con lo congelado, el punto de la cadena, el sello y el PDF con su SHA-256; *trigger* contra cambios de lo congelado y borrados), `overtime_decisions` y `time_balance_movements` (solo alta y sellados), `register_anchors` (ancla diaria, solo alta), `register_checkpoints` (punto de partida tras la supresión), `people_documents` y `people_document_reads`, `inspection_accesses`, `people_exports`; `employment_profiles` + `part_time` y la retención por litigio. Los *triggers* de PostgreSQL de R1 se rehacen para que solo la supresión pueda borrar (`RegisterGuards`).
+- **Servicios** (`App\Domain\People`): `MonthCloser`, `OvertimeService`, `TimeBalanceLedger`, `RegisterAnchors`, `RegisterIntegrity` (ampliado), `PeopleDocuments`, `InspectionAccesses`, `PeopleNotifier`; `Reports\RegisterDataset`, `PeopleReports`, `RegisterFiles` (huellas y `people_exports`), `InspectionExport` (ZIP); `Retention\RegisterPruner` (supresión del mes 49 en `app:prune-data`).
+- **Órdenes:** `people:verify-register --nightly` (02:50, comprobación y ancla), `people:close-months` (06:00, cierres y recordatorios), `people:overtime-summary` (lunes 08:00).
+- **Rutas y pantallas:** D-358. **Permisos:** D-355 (gate `manage-people-register`). **Avisos:** D-356. **RGPD:** D-357.
+- **Lo que queda para abrirlo a la plantilla:** desplegar R1 y R2 con el módulo apagado; ajustar `people_register_starts_on` al día del corte; revisar con la asesoría los borradores (documento de implantación, política de desconexión y texto RGPD) y las dudas de D-359; hacer el **mes en paralelo** con Woffu (B-9); encender el módulo. Woffu se da de baja con R3 (vacaciones y permisos) y R5 (migración).
 
 ---
 

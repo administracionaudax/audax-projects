@@ -2488,6 +2488,97 @@ El tipo de una ausencia sigue la regla de D-088 también en el diario.
 6. **Nada se borra**: tampoco los fichajes de un admin en modo de prueba ni los de quien deja la empresa. La supresión pasados 48 meses llega en R2 con su propia orden.
 7. **Sin fichaje sin conexión** en R1 (el borrador del RD pide un registro «inmediato y personal»; uno guardado con la hora del móvil se podría manipular). Si hace falta, R2 lo hará como corrección propuesta.
 
+## 07/10/2026: RR. HH., entrega R2 (acceso, cierres e Inspección)
+
+Plan: `docs/PLAN-FASE-11.md` (§0.3 y fila R2 de §12). Va a producción junto con R1; el módulo `people` sigue apagado (ninguna migración lo enciende). Donde la ley o la investigación (`WOFFU-INVESTIGACION.md`) no lo dejan claro, se ha elegido lo más prudente y queda anotado para la asesoría (D-359).
+
+### D-346 · «Mi registro»
+- `/personas/registro`: el resumen del mes por confirmar arriba; la **descarga del registro de cualquier periodo** (hasta 366 días cada vez) en PDF (diario, historial de correcciones y cada fila de la cadena con su huella), Excel (una hoja para el diario, otra para los fichajes y otra para las correcciones) y CSV (el diario); los cierres de cada mes con su PDF y su huella; las horas extra reconocidas del año frente al tope; y el saldo de horas con los plazos.
+- Solo la propia persona entra en su «Mi registro» (art. 34.9 ET; borrador del RD: consulta y copia). Responsables y RR. HH. usan los informes y el PDF de cada cierre.
+- Cada descarga queda anotada (D-351). «Mi jornada» avisa del resumen pendiente y de los documentos sin leer.
+
+### D-347 · Cierre mensual
+- `month_closes`: una fila por persona, mes y **versión**, con los totales y el diario del mes **congelados** tal como los da `WorkdayCalculator` (con la clasificación de las horas extra), el punto de la cadena al que corresponden (`register_seq` y `register_hash`), el sello del contenido y el PDF con su SHA-256 (disco privado, `people/cierres/…`). Lo congelado no cambia nunca y no se borra: modelo y *trigger* (PostgreSQL y SQLite).
+- **Se genera el día 1** (`people:close-months`, cada día a las 06:00: solo los que faltan) y avisa a la persona. Recordatorios a los 3 y a los 7 días mientras siga pendiente (W-114).
+- **Confirma o dice que no está de acuerdo** (con motivo) **solo la persona**. El desacuerdo avisa a su responsable y a RR. HH. y no bloquea nada; quien discrepó puede confirmar después. La confirmación **bloquea el mes**: ni se proponen ni se aceptan correcciones ni se clasifican horas extra de él (`assertDayOpen` y `MonthCloser::assertMonthOpen`).
+- **Desconfirmar**: su responsable o RR. HH., nunca ella misma, con motivo (queda en el cierre, en la auditoría y en un aviso a la persona). El mes vuelve a admitir cambios y el siguiente cierre es una **versión nueva**; no se vuelve a cerrar solo: lo genera su responsable o RR. HH. desde «Cierres».
+- Si cambia el registro de un mes con el cierre **sin confirmar** (se acepta una corrección o se clasifica una hora extra), el cierre se **regenera solo** (versión nueva, la anterior queda «sustituida») y se avisa: nadie confirma unos totales que ya no son los del registro.
+- El PDF sirve como la copia de los arts. 12.4.c y 35.5 ET; su respuesta queda con la fecha. Si la asesoría pide entregarlo además con la nómina, se descarga de «Cierres» (F-4).
+
+### D-348 · Conservación, supresión del mes 49 y retención por litigio
+- Nuevo plazo `RetentionPolicy::PEOPLE_REGISTER` (ajuste `retention_people_register_months`): **48 meses como mínimo** (el ajuste no deja poner menos; máximo 120) y sin «sin límite» (la AEPD pide suprimir lo que ya no hace falta).
+- El plazo cuenta **desde el final del mes**: un fichaje de enero de 2026 se guarda hasta el 31/01/2030 y se suprime desde el 01/02/2030 (`RegisterPruner`, dentro de `app:prune-data`). Se borra el tramo inicial de la cadena de cada persona (sin dejar una anulación sin su fichaje ni una jornada partida) y se guarda su **punto de control** (`register_checkpoints`): la cadena se sigue comprobando y numerando desde ahí. Con él se van las correcciones, cierres (y PDF), decisiones de horas extra, movimientos del saldo (lo que sumaban se arrastra como saldo inicial), avisos de fichaje, anclas, ficheros anotados y la auditoría del registro anteriores al corte.
+- Solo esa orden quita la protección de los *triggers*: en PostgreSQL con `SET LOCAL audax.register_prune = 'on'` dentro de su transacción (UPDATE y TRUNCATE siguen prohibidos); en SQLite, quitando y volviendo a crear los *triggers* de DELETE dentro de la transacción (`RegisterGuards`).
+- **Retención por litigio** (`employment_profiles.legal_hold`, con motivo, quién y desde cuándo; G.5): con ella activa no se suprime nada de esa persona y, mientras haya alguna, tampoco las anclas ni la auditoría del registro. La marca RR. HH. en los datos laborales, **también de quien ya no está activo**.
+- La **auditoría del registro** (`clock_corrections`, `employment_profiles`, `month_closes`, `people-register`, `people-exports`, `people_documents`, `inspection`) se guarda como el registro aunque la general sea más corta: `ActivityLogPruner` no la toca.
+- Desactivar a una persona no borra nada (FK *restrict*).
+
+### D-349 · Horas extra
+- R1 registra todo el exceso; R2 lo **clasifica** día a día (W-047 y W-053): cuánto es **hora extra** y cuánto **flexibilidad**, y el destino de la extra: **compensar con descanso** (80 minutos por hora, convenio de publicidad, art. 22) o **pagar**. Lo decide su responsable o RR. HH., **nunca la propia persona** (tampoco un responsable o un admin lo suyo).
+- `overtime_decisions` es de **solo alta** y sellada: una decisión nueva del mismo día sustituye a la anterior (las dos quedan) y lo que sumó al saldo se revierte con un ajuste. Si una corrección cambia después el exceso del día, la decisión queda «por revisar».
+- Solo días ya cerrados (de ayer hacia atrás) y de meses sin confirmar; si el mes tiene el cierre pendiente, se regenera.
+- **Tiempo parcial** (`employment_profiles.part_time`): no hay horas extra (art. 12.4.c ET), son **complementarias** (art. 12.5) y se pagan; no cuentan para el tope.
+- **Tope de 80 h al año** (art. 35.2 ET): se cuentan **todas** las horas extra del año natural, también las compensadas (la ley permite descontar las compensadas en los 4 meses siguientes; hasta que lo confirme la asesoría, el aviso llega antes, nunca después). Aviso obligatorio a RR. HH. y al responsable al pasar de 60 h y al llegar a 80 h. Nunca impide registrar lo trabajado.
+- **Resumen semanal** (art. 35.5 ET y convenio: totalización semanal con copia a la persona): los lunes a las 08:00 (`people:overtime-summary`), obligatorio, con las horas reconocidas de la semana anterior y el exceso aún sin clasificar.
+- La pantalla propone como flexibilidad un exceso de hasta 30 minutos (la flexibilidad del convenio) y como hora extra lo que pase; es solo la propuesta.
+
+### D-350 · Saldo de horas
+- `time_balance_movements`, **solo alta** y sellado; en la interfaz «Saldo de horas», nunca «bolsa» (no se confunde con las bolsas de los clientes).
+- + horas extra compensadas (las escribe la decisión), − descanso disfrutado y − pagado (su responsable o RR. HH., con motivo), ± ajuste y ± saldo inicial (solo RR. HH.; aquí entrará lo que venga de Woffu, R5). **Nunca queda en negativo**: las horas no se «deben» a la empresa.
+- **Plazo de 4 meses** para disfrutar cada hora compensada (convenio, art. 22): los descansos y pagos se descuentan de los abonos más antiguos primero y la pantalla avisa de lo que vence en 30 días o ya venció.
+
+### D-351 · Informes y ficheros con huella
+- Los de Woffu con sus nombres (W-089 a W-093): **«Registro mensual de la jornada»** (cada día con entrada, salida, tramos, comida, trabajado, ordinarias, extra con su destino, complementarias y sin clasificar, modo e incidencias; y el estado del cierre), **«Anexo de horas»** (por persona y mes, con el acumulado del año frente al tope; datos mínimos para la representación: nombre y centro de trabajo, STS 1161/2024; el centro sale del ajuste `people_work_center`, por defecto «Valencia (Valencia)»), **«Presencia diaria»**, **«Presencia mensual»**, **«Fichajes»** (cada fila de la cadena, también las anulaciones, con su huella) e **«Incidencias»**.
+- En pantalla (las primeras 200 filas) y en **PDF, Excel y CSV**, solo para RR. HH. (`/personas/informes`), con ámbito: toda la plantilla sujeta al registro (también quien ya no está), un departamento o una persona.
+- **Huella del contenido** (SHA-256 del JSON canónico de la cabecera y las filas): va dentro del fichero (al pie del PDF y en las últimas filas del Excel y el CSV) y es la misma en los tres formatos. **Huella del fichero** (SHA-256 de sus bytes): no puede ir dentro, así que se guarda en `people_exports` (quién, qué, con qué parámetros), en la auditoría (`people-exports`) y en la cabecera `X-Content-SHA256` de la descarga. «Comprobar un fichero» (Inspección) dice si un fichero es exactamente uno de los que salieron.
+- CSV y Excel con los minutos como enteros (exactos y «tratables», como pide el borrador para la ITSS); PDF en h:mm. Textos nunca como fórmulas (TableExporter). PDF con Gotenberg en el servidor y el HTML en local y en los tests (REPORTS_PDF_DRIVER).
+
+### D-352 · Ancla diaria y comprobación nocturna
+- Cada noche a las **02:50** (`people:verify-register --nightly`, antes de la supresión y de la copia) se comprueba **todo**: la cadena de cada persona desde su punto de partida, los sellos de las correcciones, decisiones y movimientos, lo congelado y el PDF de cada cierre, y las anclas. Se guarda el **ancla del día** (`register_anchors`: la última fila de cada persona y un resumen encadenado con el del día anterior; solo alta) también en un fichero (`storage/app/private/people/anclas/AAAA-MM-DD.json`) que se lleva la copia nocturna.
+- Con el ancla, ni quien tenga acceso a la base de datos puede reescribir la cadena **recalculando todas las huellas** sin que se note (un test lo hace y lo detecta).
+- Si algo falla: aviso **obligatorio** a los admins (app y email) y el ancla del día queda marcada. La pantalla de la Inspección enseña las últimas anclas y «Comprobar ahora».
+
+### D-353 · Exportación y acceso temporal de la Inspección
+- **Exportar para la Inspección** (`/personas/inspeccion`, solo RR. HH.): un ZIP de un periodo (hasta un año cada vez) y unas personas, al momento (art. 50 LISOS), con el registro diario en PDF y CSV, `fichajes.csv` (la cadena con huellas), `correcciones.csv`, `presencia-diaria.csv`, `cierres-mensuales.csv`, `horas-extra.csv` (también las sustituidas), `anclas.csv`, `integridad.txt` (la comprobación al generarlo), `LEEME.txt` y `SHA256SUMS.txt`. Las ausencias van sin su tipo (minimización).
+- **Acceso temporal de solo lectura**: **apagado por defecto** (`people_inspection_enabled`); lo enciende y crea los accesos solo un admin o RR. HH. Cada acceso tiene ámbito (personas y fechas), empieza y **caduca** (como mucho 30 días) y se puede revocar. **No es una cuenta de la app**: se entra con un **enlace secreto y un código de 8 cifras** que la app enseña una sola vez a quien lo crea (guarda solo sus huellas) para entregarlos por vías distintas; 5 códigos mal puestos lo bloquean. Ve la lista de personas, el registro de cada una mes a mes y descarga el ZIP de su ámbito; nunca el resto de la app. **Cada consulta queda en la auditoría** (`inspection`) y cada ZIP en `people_exports`. Apagado el acceso o el módulo, todo da 404.
+- La app no envía el enlace por correo: lo entrega RR. HH. (no se manda nada en nombre de nadie sin que lo decida una persona).
+
+### D-354 · Documentos de RR. HH. con lectura registrada
+- Solo dos (el gestor documental general no entra): **documento de implantación del registro de jornada** (art. 34.9 ET y CT 101/2019; L-04) y **política de desconexión digital** (art. 88.3 LOPDGDD y art. 18 de la Ley 10/2021; L-10). Borradores en `lang/es/people_documents.php`, marcados **«pendiente de asesor»**, con lo que tiene que completar la empresa entre corchetes.
+- `people_documents` guarda cada **versión** (las anteriores se conservan: prueban qué leyó cada uno) y `people_document_reads`, quién la leyó y cuándo. Publicar un texto nuevo (RR. HH.) pide otra lectura a la plantilla y avisa. «He leído» solo vale para la versión vigente. RR. HH. ve quién la ha leído.
+
+### D-355 · Permisos de R2
+| | Persona | Su responsable | RR. HH. y admins | Compañero u otro responsable | Colaborador o cliente |
+|---|---|---|---|---|---|
+| Mi registro y su descarga | El suyo | — | — | No | No |
+| Confirmar o no estar de acuerdo con el mes | El suyo | No | No | No | No |
+| Cierres del equipo, desconfirmar con motivo y generar | No | Su departamento | Todos | No | No |
+| PDF de un cierre | El suyo | Su departamento | Todos | No | No |
+| Clasificar horas extra, anotar descanso o pago | No (nunca lo suyo) | Su departamento | Todos | No | No |
+| Ajustes y saldo inicial del saldo de horas | No | No | Sí | No | No |
+| Informes, exportación para la Inspección, sus accesos, comprobar ficheros | No | No | Sí | No | No |
+| Documentos: leer / publicar | Leer | Leer | Leer y publicar | Leer | No |
+| Retención por litigio y tiempo parcial | No | No | Sí | No | No |
+
+Gate nueva `manage-people-register` (= `manage-people` con el módulo visible); los colaboradores externos nunca la tienen.
+
+### D-356 · Avisos de R2
+- **Obligatorios** (con candado, como pide el plan para los legales): el resumen del mes para confirmar (y si cambia), la desconfirmación, el resumen semanal de horas extra y el tope anual (a RR. HH. y al responsable); la comprobación nocturna fallida, a los admins. El test del catálogo admite desde ahora obligatorios con la audiencia del registro (`people`), además de los de sistema.
+- Opcionales: los recordatorios de confirmar (días 3 y 7), el desacuerdo (a la empresa) y los documentos publicados.
+- Ninguno sale con el módulo apagado de verdad, ni en modo de prueba (`PeopleNotifier`).
+
+### D-357 · RGPD
+- El ZIP de datos personales lleva seis secciones nuevas: `registro-jornada` (la cadena, sin la huella de la IP), `correcciones-registro`, `cierres-mensuales`, `horas-extra`, `saldo-horas` y `datos-laborales` (con la retención por litigio y los documentos leídos).
+- El **texto informativo por defecto** (borrador, pendiente de asesor) cuenta el registro: finalidad, base legal (art. 6.1.c RGPD y 34.9 ET, sin consentimiento), datos (sin geolocalización ni biometría; de la IP, solo una huella), quién lo ve (persona, responsable y RR. HH.; Inspección y representación según la ley), que no se usa para medir la productividad y los cuatro años con su supresión y el bloqueo si hay litigio. `tests/fixtures/privacy-draft.json` regenerado.
+
+### D-358 · Pantallas, rutas y navegación
+- Rutas (`routes/app/people.php`): `/personas/registro` (+ `/descargar`), `/personas/cierres` (+ `/generar`, `/{cierre}/confirmar|desacuerdo|desconfirmar|recordar|pdf`), `/personas/horas-extra`, `/personas/saldo`, `/personas/documentos` (+ `/{documento}/leido`, `PUT /personas/documentos/{clave}`), `/personas/informes` (+ `/{informe}`) y `/personas/inspeccion` (+ `/exportar`, `/verificar`, `/comprobar`, `/ajustes`, `/accesos`, `/accesos/{acceso}/revocar`). El acceso de la Inspección va aparte, fuera del grupo interno (`routes/app/inspection.php`, middleware `inspection`): `/inspeccion/acceso/{enlace}`, `/inspeccion`, `/inspeccion/personas/{persona}`, `/inspeccion/exportar` y `/inspeccion/salir`.
+- Pestañas del registro para todos (Mi jornada, Mi registro, Documentos), del responsable (Jornada del equipo, Pendientes, Cierres, Horas extra) y de RR. HH. (Informes, Inspección). En la barra lateral, debajo de «Mi jornada», con su contador (correcciones por decidir, el resumen por confirmar y los documentos sin leer).
+
+### D-359 · Datos de ejemplo y dudas legales decididas de forma conservadora
+- `DemoDataSeeder` (solo local, tests y CI): el mes anterior completo fichado y **clasificado** por cada responsable (más de una hora, hora extra; menos, flexibilidad; Irene, a tiempo parcial, complementarias pagadas), **cerrado** el día 1 y confirmado salvo Elena y Daniel (pendientes; el E2E confirma el de Elena) y Lucía (en desacuerdo); el saldo de horas (descanso de Pablo, saldo inicial de Sergio «desde Woffu»); el día largo de Lucía de este mes por clasificar; los dos documentos leídos menos por Elena y Daniel; y el ancla de hoy. Los PDF de ejemplo se guardan con el motor html.
+- Decidido de forma prudente, **para la asesoría**: (1) el tope de 80 h cuenta también las horas compensadas (D-349); (2) a tiempo parcial no hay horas extra, solo complementarias pagadas, y hace falta el pacto de horas complementarias (art. 12.5); (3) la flexibilidad no es hora extra y se decide día a día, no semana a semana (F-3); (4) el saldo no puede ser negativo; (5) se conserva 48 meses desde el final del mes y luego se suprime, con bloqueo por litigio (F-5); (6) el resumen mensual se confirma con un acuse electrónico en la app, sin firma cualificada (F-4); (7) la representación legal recibiría el «Anexo de horas» minimizado; (8) el acceso remoto de la Inspección está preparado pero apagado hasta que lo pida el RD o una actuación.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2513,7 +2604,7 @@ El tipo de una ausencia sigue la regla de D-088 también en el diario.
 - Pantallas de la previsión: D-300 a D-309.
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
-- RR. HH. (Fase 11): D-330 a D-349 reservadas; R1 usa D-330 a D-345.
+- RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-346 a D-349, para RR. HH.; D-350 en adelante, libres).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-360 en adelante, libres).

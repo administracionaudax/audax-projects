@@ -198,7 +198,19 @@ Fase 11 (`docs/PLAN-FASE-11.md`, §0), decisiones D-330 a D-345. Sustituye a Wof
 - **Pantallas:** «Mi jornada» (diario del mes, día con historial), «Jornada del equipo», «Pendientes» y datos laborales en la ficha de usuario. Jornadas con margen de entrada, comida prevista y verano (también en `Capacity`).
 - **Incidencias y avisos:** falta la salida, sin fichajes, menos horas, descanso de menos de 12 h, más de 6 h seguidas, más de 9 h; avisos de entrada, salida y jornada sin cerrar (`people:remind`) y caducidad de las correcciones (`people:expire-corrections`).
 - **Tests:** Pest en `tests/Feature/People` (inmutabilidad, cadena, correcciones, totales con parcial, verano, medianoche y cambio de hora, incidencias, avisos y matriz de permisos), Vitest `people-lib` y `people-components`, E2E `tests/e2e/people.spec.ts`.
-- **Pendiente para R2:** cierre mensual con confirmación y PDF con huella, «Mi registro» con descarga, informes y exportación para la Inspección, horas extra con destino y saldo, retención de 48 meses con retención por litigio, ancla diaria y comprobación nocturna, documentos de RR. HH. y texto RGPD.
+- **R2:** hecha (rama `rrhh-r2`, abajo).
+
+### RR. HH., R2 · Acceso, cierres e Inspección (rama `rrhh-r2`, 07/10, sin desplegar; módulo apagado)
+Fase 11 (`docs/PLAN-FASE-11.md`, §0.4), decisiones D-346 a D-359. **Va a producción junto con R1**.
+- **Mi registro:** descarga del registro de cualquier periodo en PDF, Excel y CSV con su huella; los cierres de cada mes con su PDF; horas extra del año frente al tope de 80 h; saldo de horas con sus plazos.
+- **Cierre mensual:** el día 1 se congela el mes (totales, diario, punto de la cadena y PDF con SHA-256); la persona confirma o no está de acuerdo; un mes confirmado bloquea correcciones y clasificaciones; su responsable o RR. HH. lo desconfirma con motivo y el siguiente cierre es una versión nueva; si cambia el registro antes de confirmar, se regenera solo. Recordatorios a los 3 y 7 días.
+- **Horas extra y saldo:** el responsable o RR. HH. clasifica el exceso (extra o flexibilidad; compensar a 80 min por hora o pagar; a tiempo parcial, complementarias); tope de 80 h con aviso a las 60 y a las 80; resumen semanal obligatorio; saldo de horas de solo alta con plazo de 4 meses.
+- **Informes con huella:** registro mensual, anexo de horas, presencia diaria y mensual, fichajes e incidencias; en pantalla y en PDF, Excel y CSV; cada fichero anotado con su SHA-256 y comprobable.
+- **Inspección:** exportación ZIP al momento y acceso temporal de solo lectura (apagado por defecto, enlace y código, caducidad, revocación y auditoría de cada consulta); integridad con ancla diaria y comprobación nocturna con aviso a los admins.
+- **Conservación:** 48 meses como mínimo desde el final del mes, supresión a partir del mes 49 con punto de control y retención por litigio; la auditoría del registro se guarda lo mismo.
+- **Documentos de RR. HH.** (implantación del registro y desconexión digital) con versión y «He leído»; **RGPD:** seis secciones nuevas en la exportación y texto por defecto actualizado (pendiente de asesor).
+- **Tests:** Pest (`MonthCloseTest`, `OvertimeTest`, `RegisterRetentionTest`, `RegisterReportsTest`, `InspectionAccessTest`, `PeopleR2PermissionsTest`, `PeopleDemoDataTest`), Vitest (`people-register-lib`, `people-register-components`), E2E `tests/e2e/people-register.spec.ts`.
+- **Pendiente para abrirlo a la plantilla:** desplegar R1 y R2, mes en paralelo con Woffu, revisión de la asesoría (borradores y dudas de D-359) y R3 (vacaciones y permisos) antes de dar de baja Woffu.
 
 ### Facturación: investigación (rama `investigacion-facturacion`, 06/10, solo documentación)
 Inventario de Holded (`docs/HOLDED-INVENTARIO.md`, H-001 a H-146) y propuesta con el estado legal, el encaje, la migración y las entregas F0 a F8 (`docs/PLAN-FACTURACION.md`). **Pendiente del propietario:** preguntas P1 a P8 del plan. VeriFactu: el aplazamiento a octubre de 2028 es un anuncio del 05/10/2026, sin norma en el BOE; la fecha legal sigue siendo el 01/01/2027.
