@@ -202,7 +202,7 @@ test('la descarga por la URL del informe pasa por el generador: PDF, Excel y la 
 
     $this->actingAs($s->admin)->get($url.'&formato=xlsx&tabla=bolsas')->assertOk()->streamedContent();
 
-    expect(Activity::query()->where('log_name', 'report-delivery')->pluck('properties')->map(fn ($p) => $p['format'].':'.($p['query']['tabla'] ?? '-'))->all())
+    expect(Activity::query()->where('log_name', 'report-delivery')->orderBy('id')->pluck('properties')->map(fn ($p) => $p['format'].':'.($p['query']['tabla'] ?? '-'))->all())
         ->toBe(['pdf:-', 'xlsx:bolsas']);
 
     // Un empleado, 403 antes de generar nada.
