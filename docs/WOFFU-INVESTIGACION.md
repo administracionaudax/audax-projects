@@ -1,13 +1,14 @@
 # Sustituir Woffu por un módulo de RR. HH. en Audax Proyectos: investigación legal y propuesta
 
 - **Fecha de la investigación:** 06/10/2026. Todas las fuentes se consultaron ese día; entre paréntesis va la fecha de publicación o actualización de cada una.
-- **Ámbito:** Audax Studio, unas 14 personas en plantilla, Valencia (Comunitat Valenciana).
+- **Ámbito:** Audax Studio, Valencia (Comunitat Valenciana). La primera pasada hablaba de unas 14 personas; el encargo de la segunda habla de **unas 30**. Ninguna obligación de este documento cambia entre 14 y 30: los umbrales que importan están en **50** (plan de igualdad, medidas LGTBI de la Ley 4/2023 y canal de denuncias).
+- **Segunda pasada (06/10/2026, tarde):** la sección **G** actualiza el estado del real decreto (con la convocatoria de elecciones), verifica en el BOE las cuantías de la LISOS y añade jurisprudencia de 2024 a 2026. El inventario de Woffu está en `docs/WOFFU-INVENTARIO.md` y la propuesta, en `docs/PLAN-RRHH.md`.
 - **Aviso:** esto es una investigación técnica, no asesoramiento jurídico. Lo marcado **[SIN VERIFICAR]** no se ha podido confirmar en una fuente oficial. Las dudas de la sección F tiene que cerrarlas la asesoría laboral antes de dar de baja Woffu.
 
 ## Resumen
 
 1. **El registro de jornada es obligatorio desde 2019** (art. 34.9 ET) para todas las empresas, cualquiera que sea su tamaño. Hoy la imputación de horas a tareas de Audax Proyectos **no lo cubre**: el propio SPEC lo deja fuera de alcance (línea 762). Es lo único imprescindible que hace Woffu y la app no hace.
-2. **El Real Decreto de registro horario digital sigue sin aprobarse** a 06/10/2026: no está en el BOE. Salió a audiencia pública en octubre de 2025 y, según la prensa, el Consejo de Estado emitió un dictamen desfavorable en marzo de 2026. Aun así conviene construir ya el módulo según su borrador (digital, inalterable, con trazabilidad de los cambios y acceso remoto de la Inspección), porque entraría en vigor a los 20 días de publicarse.
+2. **El Real Decreto de registro horario digital sigue sin aprobarse** a 06/10/2026: no está en el BOE. Salió a audiencia pública en octubre de 2025 y, según la prensa, el Consejo de Estado emitió un dictamen desfavorable en marzo de 2026. Aun así conviene construir ya el módulo según su borrador (digital, inalterable, con trazabilidad de los cambios y acceso remoto de la Inspección), porque entraría en vigor a los 20 días de publicarse. **Actualización (G.1):** el 02/10/2026 Trabajo dio por cerrada la revisión del texto y apunta a aprobarlo en octubre; el 06/10/2026 el BOE publicó la disolución de las Cortes y las elecciones del 29/11/2026, que no impiden aprobar un real decreto antes de esa fecha.
 3. **La jornada de 37,5 h no está aprobada** con carácter general: el Congreso rechazó la ley el 10/09/2025. Pero el **convenio estatal de publicidad**, el probable para Audax, ya fija 37,5 h semanales y 35 h en julio y agosto.
 4. **VeriFactu:** Hacienda anunció el 05/10/2026 que lo aplaza a octubre de 2028, pero **todavía no hay norma en el BOE** y la sede de la AEAT sigue mostrando el 01/01/2027 para sociedades. La factura electrónica B2B sí tiene ya fechas firmes: la Orden HAC/1028/2026 entró en vigor el 06/10/2026, así que para una empresa de menos de 8 M€ es obligatoria **24 meses después, hacia el 06/10/2028**.
 
@@ -35,7 +36,7 @@ Leyenda: **Ya** = lo cubre Audax Proyectos hoy; **Parcial** = existe una base qu
 | **L-12** | **Geolocalización:** solo se permite si antes se informa de forma expresa, clara e inequívoca a la plantilla y a la representación legal, y con proporcionalidad: como mucho al fichar, nunca un seguimiento continuo. | Art. 90 LOPDGDD ([BOE](https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673)); AEPD (17/02/2026, misma URL) | No aplica si no se usa, que es lo recomendado. |
 | **L-13** | **Biometría (huella o cara): no se usa.** La AEPD considera que el consentimiento del trabajador no es válido y que haría falta una norma con rango de ley que la habilite. | AEPD, [nota de prensa](https://www.aepd.es/prensa-y-comunicacion/notas-de-prensa/la-aepd-publica-una-guia-sobre-la-utilizacion-de-datos) y [guía](https://www.aepd.es/guias/guia-control-presencia-biometrico.pdf) (23/11/2023) | No aplica |
 | **L-14** | **Trazabilidad de las correcciones:** un fichaje no se sobrescribe. Toda corrección deja constancia del valor original, de quién la hace, cuándo y por qué. Hoy es una exigencia práctica de la fiabilidad (L-02); el borrador del RD la hace explícita. | L-02; borrador del RD ([eldiario.es, 09/10/2025](https://www.eldiario.es/economia/registro-jornada-propone-trabajo-acceso-remoto-inspeccion-desvele-horas-extra_1_12669987.html); [Autónomos y Emprendedor, 09/10/2025](https://www.autonomosyemprendedor.es/articulo/laboral/es-texto-decreto-registro-horario-que-trabajo-ha-sacado-audiencia-publica/20251009112914045913.html)) | **Parcial**: la auditoría con `activitylog` existe, pero no el registro. |
-| **L-15** | **Sanciones vigentes:** <br>- incumplir el registro o la normativa de jornada, horas extra, descansos, vacaciones o permisos es una **infracción grave** (art. 7.5 LISOS), <br>- grave: de 751 € a 7.500 € (mínimo 751–1.500; medio 1.501–3.750; máximo 3.751–7.500), <br>- leve: de 70 € a 750 €, <br>- muy grave: de 7.501 € a 225.018 € (art. 40.1 LISOS), <br>- la **multa «por trabajador afectado»** era una propuesta del proyecto de ley de 37,5 h, que se rechazó: **no está en vigor**. | Art. 7.5 LISOS ([BOE, act. 03/10/2026](https://www.boe.es/buscar/act.php?id=BOE-A-2000-15060)); cuantías del art. 40 tomadas de [Kronjop (08/04/2026)](https://kronjop.com/es/newsroom/control-horario/ley/sanciones/), porque el art. 40 no se pudo leer en el BOE **[SIN VERIFICAR en el BOE]** | — |
+| **L-15** | **Sanciones vigentes:** <br>- incumplir el registro o la normativa de jornada, horas extra, descansos, vacaciones o permisos es una **infracción grave** (art. 7.5 LISOS), <br>- grave: de 751 € a 7.500 € (mínimo 751–1.500; medio 1.501–3.750; máximo 3.751–7.500), <br>- leve: de 70 € a 750 €, <br>- muy grave: de 7.501 € a 225.018 € (art. 40.1 LISOS), <br>- la **multa «por trabajador afectado»** era una propuesta del proyecto de ley de 37,5 h, que se rechazó: **no está en vigor**. | Art. 7.5 LISOS ([BOE, act. 03/10/2026](https://www.boe.es/buscar/act.php?id=BOE-A-2000-15060)); cuantías del art. 40.1 **verificadas en el BOE en la segunda pasada** (G.2) | — |
 | **L-16** | **Carga de la prueba:** <br>- sin registro, con horario fijo y conocido, el trabajador tiene que aportar indicios de las horas extra, <br>- con horario irregular, la carga de probar pasa a la empresa, <br>- Audax tiene flexibilidad horaria, así que **sin un registro fiable soporta el riesgo de reclamaciones de horas extra**. | STS 372/2026, de 15/04/2026, rec. 674/2025 ([Economist & Jurist, 29/06/2026](https://www.economistjurist.es/articulos-juridicos-destacados/el-supremo-aclara-cuando-la-falta-de-registro-horario-invierte-la-carga-de-la-prueba/)) | — |
 
 **Real Decreto de registro horario digital: estado a 06/10/2026**
@@ -282,6 +283,79 @@ Principio: **el registro de jornada es un dominio aparte de la imputación de ho
 6. **Histórico de Woffu y RD digital:**
    - ¿basta con conservar las exportaciones en PDF y CSV de Woffu durante 4 años como registro válido?,
    - si se publica el RD con el texto del borrador, ¿hay algo del diseño propuesto (E1 a E3) que no cumpliría?
+
+---
+
+## G. Segunda pasada (06/10/2026): lo que cambia o se confirma
+
+Esta sección **no repite** A a F: solo añade, corrige o verifica.
+
+### G.1 Real decreto de registro horario digital: dónde está hoy
+
+**Ley hoy** (lo único que obliga a 06/10/2026):
+
+- el **art. 34.9 ET**, redactado por el RDL 8/2019 y sin cambios desde el 13/03/2019. Lo he releído en el texto consolidado del BOE: registro diario con «horario concreto de inicio y finalización», organizado por convenio, acuerdo o decisión de la empresa previa consulta a la representación legal, **4 años** de conservación y a disposición de la persona, de sus representantes y de la ITSS,
+- el art. 12.4.c ET (tiempo parcial), el art. 35.5 ET (horas extra) y el art. 14 de la Ley 10/2021 (trabajo a distancia),
+- la LISOS (G.2) y el Criterio Técnico 101/2019 de la ITSS,
+- **cualquier soporte vale hoy** (papel, hoja de cálculo o programa) mientras sea objetivo, fiable y accesible (L-02).
+
+**Proyecto** (no obliga todavía):
+
+| Fecha | Hecho | Fuente |
+|---|---|---|
+| 30/09/2025 | El Consejo de Ministros acuerda tramitar por vía urgente un real decreto propio, separado de la ley de 37,5 h que había caído el 10/09/2025 | [controllaboral](https://controllaboral.es/registro-horario-digital-obligatorio/) |
+| 10–20/10/2025 | Audiencia pública del borrador | A.1 |
+| Marzo de 2026 | **Dictamen desfavorable del Consejo de Estado**: «no procede aprobar el real decreto proyectado». Motivos: impone obligaciones nuevas que exceden un reglamento (reserva de ley), la memoria no valora el coste (calcula unos **867 M€ al año** para más de un millón de empresas), no se adapta a sectores con jornadas peculiares, la protección de datos es insuficiente (sigue a la AEPD) y el plazo de 20 días para adaptarse es «manifiestamente insuficiente» para las pymes. Las fuentes fechan el dictamen entre el 19 y el 20/03; la prensa lo publicó el 23/03 | [Infobae, 23/03/2026](https://www.infobae.com/espana/2026/03/23/el-nuevo-registro-horario-de-yolanda-diaz-no-convence-al-consejo-de-estado-critica-que-no-se-tengan-en-cuenta-las-peculiaridades-de-cada-sector/); [PressDigital, 23/03/2026](https://www.pressdigital.es/articulo/economia/2026-03-23/5819626-consejo-estado-posiciona-contra-reforma-registro-horario-impulsada-trabajo); [fichme, act. 05/10/2026](https://fichme.com/noticias/registro-horario-digital-ultima-hora) **[SIN VERIFICAR en el Consejo de Estado]** |
+| 24/07/2026 | Trabajo y Economía acuerdan aplazarlo a septiembre | [fichme](https://fichme.com/noticias/registro-horario-digital-ultima-hora) |
+| 09/09 y 26/09/2026 | La ministra anuncia el acuerdo; el 26/09 se vuelve a aplazar y no entra en el Consejo de Ministros del 29/09 | ídem; A.1 |
+| **02/10/2026** | El secretario de Estado de Trabajo da por **concluida la revisión** y confía en llevarlo al Consejo de Ministros **en octubre**. Los cambios tras el dictamen: **más garantías de protección de datos** y **más papel de la negociación colectiva** en cómo se organiza el registro. **No se conocen ni el texto final ni el plazo de adaptación** | [Autónomos y Emprendedor, 02/10/2026](https://www.autonomosyemprendedor.es/articulo/pymes/trabajo-da-revisado-nuevo-control-horario-digital-autonomos-apunta-octubre-desbloquearlo/20261002174235056155.html); [PressDigital, 02/10/2026](https://www.pressdigital.es/articulo/economia/2026-10-02/6036973-trabajo-convocara-expertos-actualizar-smi-mes-confia-aprobar-registro-horario) |
+| **06/10/2026** | El BOE publica la **disolución de las Cortes** y las **elecciones generales del 29/11/2026**. Un real decreto no pasa por las Cortes, así que el Gobierno **puede** aprobarlo antes de las elecciones; después quedará en funciones y lo tendrá más difícil (Ley 50/1997, art. 21: un gobierno en funciones se limita al despacho ordinario salvo urgencia) **[interpretación propia]** | [menorca.info, 06/10/2026](https://www.menorca.info/actualidad/elecciones-29n/2026/10/06/2723243/boe-publica-decreto-convoca-elecciones-generales-para-noviembre.html); [El Debate, 06/10/2026](https://www.eldebate.com/economia/20261006/registro-horario-subida-smi-yolanda-diaz-apura-ultimas-balas-antes-elecciones-29n_466259.html); [Forbes, 05/10/2026](https://forbes.es/ultima-hora/1037074/la-reforma-del-registro-horario-todavia-podria-ver-la-luz-antes-de-las-elecciones-del-29n/) |
+
+**Qué exige el borrador de 2025** (lo último público; el texto revisado no se conoce): registro **solo digital**; anotado por la propia persona de forma «directa, inmediata, personal y libre» al empezar y acabar; hora y minuto de inicio y fin, pausas que no son trabajo efectivo, presencial o a distancia, tipo de hora (ordinaria, extra o complementaria), tiempos de espera y disponibilidad, interrupciones de la desconexión, medidas de conciliación, totales diarios y mensuales, y **autoría y autorización de cada modificación** con «huella clara e indeleble»; cambios con la conformidad de las dos partes o, si no la hay, con las dos versiones anotadas; acceso de la persona (consulta y copia, y resumen con la nómina), de la representación (sin DNI, domicilio ni estado civil) y de la ITSS **«inmediato, remoto y presencial»** en formatos tratables y de uso general; 4 años de conservación ([Autónomos y Emprendedor, 09/10/2025](https://www.autonomosyemprendedor.es/articulo/laboral/es-texto-decreto-registro-horario-que-trabajo-ha-sacado-audiencia-publica/20251009112914045913.html)).
+
+**Escenarios para Audax:**
+
+1. **Se aprueba en octubre o noviembre de 2026.** Habrá un plazo de adaptación (el borrador decía 20 días, y el Consejo de Estado lo consideró insuficiente). Si el módulo ya cumple el borrador, el cambio será de ajustes (por ejemplo, el formato de la exportación para la ITSS).
+2. **No se aprueba antes de las elecciones.** Queda para el próximo Gobierno, o decae. La obligación del art. 34.9 sigue igual y Audax tiene que cumplirla igual: **el riesgo de sanción hoy no depende del real decreto**.
+
+**Conclusión de diseño:** construir según el borrador. No cuesta más para 30 personas y cubre los dos escenarios. Lo único que no se puede cerrar hasta ver el texto final es el formato de la exportación para la ITSS y si hace falta un acceso remoto de verdad o basta con una exportación inmediata.
+
+### G.2 Sanciones: verificadas en el BOE
+
+LISOS, texto consolidado con la última actualización publicada el 03/10/2026 ([BOE-A-2000-15060](https://www.boe.es/buscar/act.php?id=BOE-A-2000-15060)), leído en la segunda pasada:
+
+- **Art. 7.5 (grave):** «La transgresión de las normas y los límites legales o pactados en materia de jornada, trabajo nocturno, horas extraordinarias, horas complementarias, descansos, vacaciones, permisos, **registro de jornada** y, en general, el tiempo de trabajo…». Entran también las **vacaciones y los permisos**: un saldo de vacaciones mal calculado o un permiso denegado sin motivo son la misma infracción.
+- **Art. 40.1 (cuantías):**
+  - leves: de 70 a 750 €,
+  - **graves: 751–1.500 € (mínimo), 1.501–3.750 € (medio) y 3.751–7.500 € (máximo)**,
+  - muy graves: de 7.501 a 225.018 €.
+  - La multa **por persona afectada** (art. 40.1.c bis) solo se aplica a las infracciones que enumera (art. 7.2 y otras), **no al 7.5**: el registro de jornada se sanciona **una vez por empresa**, y el número de personas afectadas solo sirve para graduarla (art. 39.2).
+- **Art. 50 (obstrucción a la ITSS):** no facilitar en una visita los documentos que deben estar en el centro de trabajo deja de ser un «mero retraso» (leve) y pasa a grave. Por eso la exportación para la ITSS tiene que poder hacerse al momento.
+- **Art. 4.1:** las infracciones laborales **prescriben a los 3 años**. La conservación de 4 años del art. 34.9 lo cubre.
+- Las cifras de «6.251 a 187.515 €» que aparecen en algunos blogs de proveedores son **antiguas** y no son las vigentes.
+
+### G.3 Jurisprudencia que la primera pasada no recogía
+
+| Resolución | Qué dice | Qué implica para el diseño | Fuente |
+|---|---|---|---|
+| **STS 1161/2024**, de 24/09/2024, rec. 236/2022 | A la representación legal se le dan **cada mes, en formato electrónico (hoja de cálculo o similar)**, el registro con **nombre y apellidos y provincia y municipio**. **No** tiene derecho al historial completo de modificaciones de cada apunte. Un sistema objetivo, fiable y trazable se da por bueno sin más que sospechas en contra | La exportación para la RLT es mensual y minimizada, sin el historial de cambios. El historial completo sí se guarda para la persona y la ITSS | [Iustel, Diario del Derecho](https://www.iustel.com/diario_del_derecho/noticia.asp?ref_iustel=1250583) |
+| **SAN de 09/12/2024** | Para la representación, la ley no impone un acceso **inmediato y continuo**: basta con que el registro esté disponible y se entregue cada mes | Sin RLT en Audax no aplica; si la hubiera, basta con la entrega mensual | [Lexa-go](https://publicaciones.lexa-go.com/empresas-deben-garantizar-acceso-inmediato-representantes-trabajadores-registro-jornada-o-es-suficiente-su-entrega-mensual) **[SIN VERIFICAR en el CENDOJ]** |
+| **STS 521/2026**, de 28/05/2026, rec. 134/2025 (El Corte Inglés) | Desestima el recurso de un sindicato por falta de legitimación para pedir copias del registro de todos los centros; el derecho es de los órganos de representación y de los delegados LOLS de cada centro. **No resuelve** si la empresa debe dar copias o acceso permanente | Nada nuevo para Audax | [despachosreferentes](https://www.despachosreferentes.com/ts-el-corte-ingles-sa-el-supremo-vincula-el-acceso-sindical-al-registro-de-jornada-art-34-9-et-a-la-existencia-de-delegados-lols-y-niega-al-sindicato-accionante-legitimacion-para-reclamar-copias/) **[SIN VERIFICAR en el CENDOJ]** |
+| STS 372/2026 (ya en L-16) | Sin registro fiable y con horario irregular, la carga de la prueba de las horas extra pasa a la empresa | Es el **riesgo económico** real de Audax, más que la multa: reclamaciones de horas extra de hasta un año atrás (art. 59 ET) | A.1 |
+
+### G.4 Permisos y otras normas: verificado o añadido
+
+- **Releído en el BOE** (ET consolidado): art. 37.3 (15 días por matrimonio, **5** por enfermedad grave u hospitalización, **2 + 2** por fallecimiento, 1 por traslado, hasta **4** por imposibilidad de acudir por catástrofe), art. 37.9 (fuerza mayor, **4 días al año** retribuidos, en horas), art. 38 (vacaciones, 2 meses de antelación, IT y 18 meses) y art. 48 bis (permiso parental de 8 semanas hasta los 8 años, con **10 días** de preaviso). Coincide con L-17 a L-22.
+- **Nacimiento (art. 48.4, RDL 9/2025):** 19 semanas por progenitor (32 en monoparentalidad): 6 obligatorias, **11** a distribuir hasta los 12 meses y **2 para el cuidado del menor hasta los 8 años**, con **15 días** de preaviso. Son suspensiones del contrato que paga la Seguridad Social, pero la app tiene que poder registrarlas y saber que no cuentan como jornada.
+- **Ley 4/2026** (BOE del 03/10/2026, en vigor el 23/10/2026): cambia el art. 37.6 ET (reducción de jornada por cuidado de un hijo con cáncer o enfermedad grave más allá de la edad límite si hay gran discapacidad, y reducción compartida por los dos progenitores hasta el 100 %). Afecta a las **jornadas versionadas**, no al fichaje.
+- **Ley 4/2023 (LGTBI):** su art. 15 obliga a tener medidas y un **protocolo frente al acoso LGTBI** a las empresas de **más de 50** personas (desarrollado por el RD 1026/2024). **Con 30 personas no obliga** ([BOE-A-2023-5366](https://www.boe.es/buscar/act.php?id=BOE-A-2023-5366)). El protocolo frente al acoso sexual y por razón de sexo sí es para todas (B-8).
+- **Jornada de 37,5 h:** el proyecto ya se rechazó en 2025 y la disolución de las Cortes hace decaer cualquier iniciativa parlamentaria pendiente. Solo cuenta lo que diga el convenio (L-09).
+- **Registro retributivo** (RD 902/2020): obligatorio para **todas** las empresas, desde la primera persona contratada (art. 5, [BOE-A-2020-12215](https://www.boe.es/buscar/act.php?id=BOE-A-2020-12215)). Woffu no lo resuelve en sus planes básicos y Audax Proyectos tampoco; queda fuera de este módulo, pero conviene que la asesoría lo tenga.
+
+### G.5 Conservación y protección de datos: precisiones
+
+- **Después de los 4 años**, lo que pide la AEPD es suprimir lo que ya no hace falta. Si hay un conflicto abierto (una reclamación o una inspección), lo que se hace es **bloquear** los datos (art. 32 LOPDGDD): se guardan fuera del uso normal solo para jueces y autoridades. Para la app: plazo de retención del registro de **48 meses como mínimo** y un indicador de **«retención por litigio»** por persona que impide la supresión.
+- El Consejo de Estado, siguiendo a la AEPD, criticó que el borrador se limitara a decir que «personas no autorizadas no accederán». Para un acceso remoto de la ITSS hacen falta medidas técnicas concretas: cuenta propia con caducidad, doble factor, solo lectura, registro de cada acceso y minimización. Ya estaba en E2; ahora es además lo que pedirá cualquier versión del texto final.
 
 ---
 
