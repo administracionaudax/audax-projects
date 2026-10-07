@@ -93,8 +93,8 @@ export default function TeamAbsences({
     today,
     limits,
     pending_limit: pendingLimit,
-    cancellations,
-    leave,
+    cancellations = [],
+    leave = null,
 }: TeamAbsencesPageProps) {
     const filterId = useId();
     const viewer = useRequiredUser();

@@ -57,8 +57,9 @@ it('forRanges calcula varias personas y rangos con un número fijo de consultas,
     DB::disableQueryLog();
 
     // Horarios, festivos y ausencias (Fase 3), y como mucho el ajuste de la jornada por defecto:
-    // no depende del número de personas ni de rangos.
-    expect($queries)->toBeLessThanOrEqual(4)
+    // no depende del número de personas ni de rangos. Y desde la Fase 11 (R3, D-366), los días
+    // especiales del calendario (media jornada), una vez.
+    expect($queries)->toBeLessThanOrEqual(5)
         ->and($result)->toHaveCount(3)
         ->and(array_values($result[0]))->toBe([420, 480, 480, 480, 300, 0, 0])
         ->and(array_values($result[1]))->toBe([480, 480, 480, 480, 480, 0, 0])

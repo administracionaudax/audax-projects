@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\RemindWeekSubmission;
+use App\Domain\Absences\LeaveCalendar;
 use App\Domain\Notifications\NotificationPreferences;
 use App\Enums\TimesheetStatus;
 use App\Models\Absence;
@@ -233,6 +234,8 @@ it('hace las mismas consultas con 5 personas que con 50', function () {
 
     $withWeek(45);
     Cache::flush();
+    // Cada orden lee una vez los días especiales del calendario (R3): aquí, en el mismo proceso.
+    LeaveCalendar::forget();
     $count = 0;
     $this->artisan('time:remind-week')->assertSuccessful();
     $many = $count;

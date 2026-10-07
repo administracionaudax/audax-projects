@@ -10,10 +10,12 @@ use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -55,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Días especiales del calendario laboral (Fase 11, R3): leídos una vez por petición o trabajo.
         $this->app->scoped(LeaveCalendar::class);
+        // Y cada orden de consola los vuelve a leer (las programadas corren en el mismo proceso).
+        Event::listen(CommandStarting::class, fn () => LeaveCalendar::forget());
     }
 
     /**

@@ -45,6 +45,6 @@ class AbsenceCancellationDecidedNotification extends AbsenceNotification
 
     public function icon(): string
     {
-        return $this->accepted ? 'calendar-off' : 'calendar-check';
+        return 'calendar-x';
     }
 }

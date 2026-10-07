@@ -98,7 +98,7 @@ export default function MyAbsences({
     limits,
     self_approves: selfApproves,
     can,
-    leave,
+    leave = null,
 }: MyAbsencesPageProps) {
     const page = usePage();
     const [requesting, setRequesting] = useState(() => wantsRequest(page.url));
