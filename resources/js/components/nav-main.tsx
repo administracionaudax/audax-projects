@@ -126,14 +126,20 @@ function NavBlock({
             data-state={collapsible ? (open ? 'open' : 'closed') : undefined}
         >
             {collapsible ? (
-                <SidebarGroupLabel asChild>
+                // Encabezado de sección con más presencia que sus entradas: mismo tamaño, peso 500 y
+                // color de texto pleno (antes, 12 px y apagado). Las clases van aquí y no en el botón:
+                // con `asChild` se suman sin fusionar y ganarían las de serie.
+                <SidebarGroupLabel
+                    asChild
+                    className="h-9 text-sm font-medium text-sidebar-foreground"
+                >
                     <button
                         type="button"
                         id={labelId}
                         aria-expanded={open}
                         aria-controls={contentId}
                         onClick={onToggle}
-                        className="w-full cursor-pointer text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        className="w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         data-test={`nav-section-toggle-${section.id}`}
                     >
                         <span className="truncate">{section.label}</span>
