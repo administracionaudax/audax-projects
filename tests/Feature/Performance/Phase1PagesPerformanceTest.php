@@ -90,7 +90,9 @@ const PERF_BUDGETS = [
     // Mis tareas con filtros (D-143): + la tarea responsable, las opciones (proyectos con su cliente y
     // tipos) y los estados ya no en la caché del listado; fijas, no por fila (12 medidas + 3).
     'my-tasks.index' => 15,
-    'time.index' => 22,
+    // La vista «Por días» (D-321) pide los festivos y ausencias de la semana: horarios, festivos y
+    // ausencias de la persona, 3 consultas fijas (20 medidas + 3). La de otra persona ya tenía margen.
+    'time.index' => 23,
     'time.index.person' => 25,
     'time.approvals.index' => 18,
     'time.locks.index' => 11,
