@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { AccountStatusBadge, RoleBadge } from '@/components/admin/badges';
+import { EmploymentCard } from '@/components/admin/employment-card';
 import { ScheduleDialog } from '@/components/admin/schedule-dialog';
 import {
     decimalToInput,
@@ -47,6 +48,45 @@ import { destroy as destroySchedule } from '@/routes/admin/users/schedules';
 import type { AdminUserEditProps, AdminWorkSchedule } from '@/types';
 import type { PersonalDataExportRow } from '@/types/privacy';
 
+/**
+ * Margen de entrada, comida prevista y verano de una versión (registro de jornada, D-336), en una
+ * línea. Nada si la versión no los tiene.
+ */
+function ScheduleRegisterSummary({
+    schedule,
+}: {
+    schedule: AdminWorkSchedule;
+}) {
+    const parts = [
+        schedule.start_time_from && schedule.start_time_to
+            ? t('people.schedule.summary_window', {
+                  from: schedule.start_time_from,
+                  to: schedule.start_time_to,
+              })
+            : null,
+        schedule.expected_pause_minutes
+            ? t('people.schedule.summary_pause', {
+                  minutes: schedule.expected_pause_minutes,
+              })
+            : null,
+        schedule.summer
+            ? t('people.schedule.summary_summer', {
+                  from: schedule.summer.starts_on,
+                  to: schedule.summer.ends_on,
+              })
+            : null,
+    ].filter((part): part is string => part !== null);
+
+    return parts.length === 0 ? null : (
+        <p
+            className="text-xs text-muted-foreground"
+            data-test="schedule-register-summary"
+        >
+            {parts.join(' · ')}
+        </p>
+    );
+}
+
 /** Día siguiente a una fecha "YYYY-MM-DD" (sin zonas horarias). */
 function nextDay(date: string): string {
     const [year, month, day] = date.split('-').map(Number);
@@ -64,6 +104,7 @@ export default function AdminUserEdit({
     openTasksCount,
     hasActiveTimer,
     can,
+    employment = null,
     personalDataExports = null,
 }: AdminUserEditProps & {
     /** Exportaciones de sus datos personales (D-075): solo para el admin. */
@@ -330,6 +371,7 @@ export default function AdminUserEdit({
                             {can.manage ? (
                                 <ScheduleDialog
                                     userId={user.id}
+                                    initial={latest ?? current ?? undefined}
                                     initialWeek={
                                         (latest ?? current)?.week ?? [
                                             480, 480, 480, 480, 480, 0, 0,
@@ -519,6 +561,9 @@ export default function AdminUserEdit({
                                                     </dd>
                                                 </div>
                                             </dl>
+                                            <ScheduleRegisterSummary
+                                                schedule={schedule}
+                                            />
                                         </li>
                                     ))}
                                 </ol>
@@ -528,6 +573,13 @@ export default function AdminUserEdit({
                             </p>
                         </CardContent>
                     </Card>
+
+                    {employment ? (
+                        <EmploymentCard
+                            userId={user.id}
+                            employment={employment}
+                        />
+                    ) : null}
                 </div>
 
                 {personalDataExports !== null ? (

@@ -9,12 +9,17 @@ use App\Domain\Forecast\AllocationWriter;
 use App\Domain\Forecast\ForecastLinker;
 use App\Domain\Forecast\ForecastProjectWriter;
 use App\Domain\HourBanks\HourBankLedger;
+use App\Domain\People\ClockCorrectionService;
+use App\Domain\People\ClockWriter;
+use App\Domain\People\PeopleAccess;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Domain\Weeklies\WeeklyCalendar;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BillingType;
+use App\Enums\ClockEventKind;
+use App\Enums\ClockSource;
 use App\Enums\DayPlanItemOrigin;
 use App\Enums\DayPlanItemStatus;
 use App\Enums\HourBankStatus;
@@ -28,6 +33,7 @@ use App\Enums\TimesheetStatus;
 use App\Enums\WeeklyCycleStatus;
 use App\Enums\WeeklyEntrySource;
 use App\Enums\WeeklyReminderChannel;
+use App\Enums\WorkMode;
 use App\Events\Chat\ConversationRead;
 use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
@@ -57,6 +63,7 @@ use App\Models\WeeklyReminderRule;
 use App\Models\WeeklySubmission;
 use App\Models\WorkSchedule;
 use App\Support\LocalTime;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
@@ -213,6 +220,7 @@ class DemoDataSeeder extends Seeder
             WeeklyChanged::muted(fn () => $this->weeklies());
             $this->dayPlans();
             $this->forecast();
+            $this->clockRegister();
         });
 
         $this->chat();
@@ -1374,6 +1382,214 @@ class DemoDataSeeder extends Seeder
         $summer = $forecasts->create(['name' => 'Campaña de verano', 'client_id' => Client::query()->where('name', 'Cervezas Montaña')->value('id'), 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3)), 'estimated_minutes' => 150 * 60], $p['nuria']);
         $allocate($summer, ['department_id' => $this->departments['Marketing']->id, 'mode' => 'total', 'minutes' => 90 * 60, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3))]);
         $allocate($summer, ['user_id' => $p['daniel']->id, 'mode' => 'percent', 'percent' => 30, 'start_date' => $date($start), 'end_date' => $date($start->addWeeks(6)->subDays(3))]);
+    }
+
+    /**
+     * Registro de jornada de ejemplo (Fase 11, R1; D-344): las cuatro últimas semanas de fichajes de
+     * toda la plantilla, con la hora «del servidor» de cada momento (se mueve el reloj y se ficha con
+     * ClockWriter, como en producción), su margen de entrada (8:00 a 10:00) y la comida prevista. Hay
+     * de todo para enseñar las pantallas:
+     * - Elena (empleado@example.com) aún no ha fichado hoy (los E2E fichan con ella) y tiene una
+     *   corrección aceptada por Raúl la semana pasada,
+     * - Daniel olvidó la salida hace dos semanas y su corrección espera a Nuria,
+     * - Lucía tiene una corrección en discrepancia (Raúl no está de acuerdo),
+     * - Marta propone a Sergio un ajuste que espera la conformidad de Sergio,
+     * - Pablo alargó un día (exceso y más de 9 h) y Sergio entregó de noche (menos de 12 h de
+     *   descanso),
+     * - Irene, a media jornada, sin comida; los viernes, parte de la plantilla trabaja a distancia,
+     * - hoy, quien ya ha entrado está trabajando o en la comida, según la hora.
+     * Sin avisos: el módulo `people` viene apagado.
+     */
+    private function clockRegister(): void
+    {
+        $random = new Randomizer(new Mt19937(3411));
+        $writer = app(ClockWriter::class);
+        $capacity = app(Capacity::class);
+        $realNow = CarbonImmutable::now();
+        $zone = LocalTime::timezone();
+        $from = $this->today->subWeeks(4)->startOfWeek();
+        $today = $this->today->toDateString();
+        $lastWeek = $this->today->startOfWeek()->subWeek();
+        // El n-ésimo día laborable (de lunes a viernes) antes de hoy.
+        $workdayBefore = function (int $n): string {
+            $date = $this->today;
+            while ($n > 0) {
+                $date = $date->subDay();
+                $n -= $date->isWeekday() ? 1 : 0;
+            }
+
+            return $date->toDateString();
+        };
+        // Las pendientes, de hace pocos días (a los 7 sin respuesta quedarían en discrepancia).
+        $special = [
+            'daniel_no_out' => $workdayBefore(2),
+            'lucia_disputed' => $this->today->startOfWeek()->subWeeks(3)->addDays(2)->toDateString(),
+            'elena_late' => $lastWeek->toDateString(),
+            'sergio_night' => $lastWeek->addDay()->toDateString(),
+            'pablo_long' => $lastWeek->addDays(2)->toDateString(),
+            'sergio_adjust' => $workdayBefore(3),
+        ];
+
+        foreach ($this->people as $key => $user) {
+            WorkSchedule::query()->where('user_id', $user->id)->whereNull('valid_to')->update([
+                'start_time_from' => '08:00',
+                'start_time_to' => '10:00',
+                'expected_pause_minutes' => $key === 'irene' ? 0 : 60,
+            ]);
+        }
+
+        $punch = function (User $user, string $date, string $time, ClockEventKind $kind, ?WorkMode $mode = null) use ($writer, $realNow, $zone): bool {
+            $at = CarbonImmutable::parse("{$date} {$time}", $zone);
+
+            if ($at->greaterThan($realNow)) {
+                return false;
+            }
+
+            Carbon::setTestNow($at);
+            CarbonImmutable::setTestNow($at);
+            $writer->punch($user, $kind, $mode, ClockSource::Web, null, 'Mozilla/5.0 (datos de ejemplo)');
+
+            return true;
+        };
+
+        try {
+            foreach ($this->people as $key => $user) {
+                // Solo ficha la plantilla (D-331): la colaboradora externa, no.
+                if (! PeopleAccess::subject($user)) {
+                    continue;
+                }
+
+                $remoteDays = match ($key) {
+                    'elena', 'lucia' => [5],
+                    'pablo', 'sergio' => [1, 4],
+                    'irene' => [2, 4],
+                    default => [],
+                };
+
+                foreach ($capacity->details($user, $from, $this->today) as $date => $detail) {
+                    if ($detail['minutes'] <= 0 || ($key === 'elena' && $date === $today)) {
+                        continue;
+                    }
+
+                    $mode = in_array(CarbonImmutable::parse($date)->dayOfWeekIso, $remoteDays, true) ? WorkMode::Remote : WorkMode::OnSite;
+                    $in = 8 * 60 + $random->getInt(0, 95);
+                    $lunch = $detail['minutes'] >= 420 ? [13 * 60 + 30 + $random->getInt(0, 45), 45 + $random->getInt(0, 30)] : null;
+                    $out = $in + $detail['minutes'] + ($lunch[1] ?? 0) + $random->getInt(-10, 35);
+
+                    match (true) {
+                        $key === 'elena' && $date === $special['elena_late'] => $in = 9 * 60 + 52,
+                        $key === 'lucia' && $date === $special['lucia_disputed'] => $in = 9 * 60 + 40,
+                        $key === 'pablo' && $date === $special['pablo_long'] => $out += 125,
+                        $key === 'sergio' && $date === $special['sergio_night'] => [$in, $lunch, $out] = [12 * 60, [15 * 60, 30], 23 * 60 + 30],
+                        $key === 'sergio' && $date === CarbonImmutable::parse($special['sergio_night'])->addDay()->toDateString() => $in = 8 * 60 + 35,
+                        default => null,
+                    };
+
+                    $clock = fn (int $minutes): string => sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+
+                    if (! $punch($user, $date, $clock($in), ClockEventKind::ClockIn, $mode)) {
+                        continue;
+                    }
+
+                    if ($lunch !== null) {
+                        if (! $punch($user, $date, $clock($lunch[0]), ClockEventKind::PauseStart)) {
+                            continue;
+                        }
+
+                        if (! $punch($user, $date, $clock($lunch[0] + $lunch[1]), ClockEventKind::PauseEnd, $mode)) {
+                            continue;
+                        }
+                    }
+
+                    if ($key === 'daniel' && $date === $special['daniel_no_out']) {
+                        continue;
+                    }
+
+                    $punch($user, $date, $clock(min($out, 23 * 60 + 59)), ClockEventKind::ClockOut);
+                }
+            }
+
+            $this->clockCorrections($special, $zone);
+        } finally {
+            Carbon::setTestNow();
+            CarbonImmutable::setTestNow();
+        }
+    }
+
+    /**
+     * Correcciones de ejemplo del registro (D-335): una aceptada, una pendiente de su responsable,
+     * una en discrepancia y una que espera la conformidad de la persona.
+     *
+     * @param  array<string, string>  $special
+     */
+    private function clockCorrections(array $special, string $zone): void
+    {
+        $service = app(ClockCorrectionService::class);
+        $p = $this->people;
+        $at = function (string $date, string $time) use ($zone): void {
+            $instant = CarbonImmutable::parse($date, $zone)->addDay()->setTimeFromTimeString($time);
+            Carbon::setTestNow($instant);
+            CarbonImmutable::setTestNow($instant);
+        };
+        $rows = function (User $user, string $date, ?callable $change = null) use ($service, $zone): array {
+            $rows = array_map(fn ($event): array => [
+                'id' => $event->id,
+                'kind' => $event->kind->value,
+                'time' => $event->occurred_at->setTimezone($zone)->format('H:i'),
+                'work_mode' => $event->work_mode?->value,
+            ], $service->dayEvents($user->id, $date));
+
+            return $change === null ? $rows : $change($rows);
+        };
+
+        $has = fn (string $who, string $date): bool => $service->dayEvents($p[$who]->id, $date) !== [];
+
+        // Elena: llegó a las 9:05 y fichó a las 9:52; Raúl lo acepta.
+        if ($has('elena', $special['elena_late'])) {
+            $at($special['elena_late'], '09:10');
+            $elena = $service->propose($p['elena'], $p['elena'], $special['elena_late'], $rows($p['elena'], $special['elena_late'], function (array $rows): array {
+                $rows[0]['time'] = '09:05';
+
+                return $rows;
+            }), 'Llegué a las 9:05, pero el móvil se había quedado sin batería y fiché al encender el portátil.');
+            $at($special['elena_late'], '11:30');
+            $service->accept($p['raul'], $elena, 'Correcto, estabas en la reunión de las 9:15.');
+        }
+
+        // Lucía: dice que entró a las 8:30; Raúl no está de acuerdo (en discrepancia).
+        if ($has('lucia', $special['lucia_disputed'])) {
+            $at($special['lucia_disputed'], '10:00');
+            $lucia = $service->propose($p['lucia'], $p['lucia'], $special['lucia_disputed'], $rows($p['lucia'], $special['lucia_disputed'], function (array $rows): array {
+                $rows[0]['time'] = '08:30';
+
+                return $rows;
+            }), 'Empecé a las 8:30 desde casa revisando el correo del cliente.');
+            $at($special['lucia_disputed'], '17:00');
+            $service->reject($p['raul'], $lucia, 'Ese día no había nada urgente y no consta actividad antes de las 9:30. Lo hablamos.');
+        }
+
+        // Daniel: olvidó la salida; la propone y espera a Nuria.
+        if ($has('daniel', $special['daniel_no_out'])) {
+            $at($special['daniel_no_out'], '09:20');
+            $service->propose($p['daniel'], $p['daniel'], $special['daniel_no_out'], $rows($p['daniel'], $special['daniel_no_out'], fn (array $rows): array => [
+                ...$rows,
+                ['kind' => 'clock_out', 'time' => '18:05'],
+            ]), 'Olvidé fichar la salida; salí a las 18:05 después de la llamada con Bodegas Arrieta.');
+        }
+
+        // Marta propone a Sergio un ajuste de su vuelta de la comida: espera a Sergio.
+        if ($has('sergio', $special['sergio_adjust'])) {
+            $at($special['sergio_adjust'], '12:00');
+            $service->propose($p['marta'], $p['sergio'], $special['sergio_adjust'], $rows($p['sergio'], $special['sergio_adjust'], function (array $rows): array {
+                foreach ($rows as $index => $row) {
+                    if ($row['kind'] === 'pause_end') {
+                        $rows[$index]['time'] = substr((string) CarbonImmutable::parse('2000-01-01 '.$row['time'])->addMinutes(20)->format('H:i'), 0, 5);
+                    }
+                }
+
+                return $rows;
+            }), 'La comida con el cliente se alargó hasta más tarde de lo que fichaste; lo ajusto para que cuadre.');
+        }
     }
 
     private function monthsAgo(int $months): CarbonImmutable

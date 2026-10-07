@@ -91,10 +91,10 @@ it('Jornada del equipo y Pendientes: responsables, RR. HH. y admins', function (
 
 it('el responsable solo ve a su departamento; RR. HH., a todos', function () {
     $this->actingAs($this->manager)->get('/personas/equipo')
-        ->assertInertia(fn (Assert $page) => $page->component('people/team')->has('people', 3));
+        ->assertInertia(fn (Assert $page) => $page->component('people/team')->has('members', 3));
 
     $this->actingAs($this->hr)->get('/personas/equipo')
-        ->assertInertia(fn (Assert $page) => $page->has('people', User::query()->role(['admin', 'department_manager', 'employee'])->where('is_active', true)->count()));
+        ->assertInertia(fn (Assert $page) => $page->has('members', User::query()->role(['admin', 'department_manager', 'employee'])->where('is_active', true)->count()));
 });
 
 it('la jornada de una persona: ella (que va a la suya), su responsable, RR. HH. y los admins', function (string $who, int $status) {

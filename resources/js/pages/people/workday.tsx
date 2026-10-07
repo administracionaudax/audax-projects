@@ -157,7 +157,10 @@ export default function WorkdayPage(props: WorkdayPageProps) {
                         difference={null}
                         extra={
                             today_day ? (
-                                <DayStatusBadge status={today_day.status} />
+                                <DayStatusBadge
+                                    status={today_day.status}
+                                    className="justify-self-start"
+                                />
                             ) : null
                         }
                         testId="summary-today"

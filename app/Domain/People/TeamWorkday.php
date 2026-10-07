@@ -77,7 +77,7 @@ final class TeamWorkday
             'next_week' => $week->end()->toDateString() < $today ? Week::containing($week->start->addWeek())->iso() : null,
             'dates' => $dates,
             'today' => $today,
-            'people' => $rows,
+            'members' => $rows,
             'departments' => PeopleAccess::departments($viewer)->map(fn ($department): array => ['id' => $department->id, 'name' => $department->name, 'color' => $department->color])->values()->all(),
             'department_id' => $departmentId,
             'pending' => $this->pendingFor($viewer),

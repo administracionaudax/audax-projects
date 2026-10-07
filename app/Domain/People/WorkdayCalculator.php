@@ -172,7 +172,8 @@ final class WorkdayCalculator
     }
 
     /**
-     * Totales de un diario: trabajado, teórica y diferencia hasta hoy (los días futuros no cuentan),
+     * Totales de un diario: trabajado, teórica y diferencia hasta hoy (los días futuros y la teórica de
+     * hoy mientras no se cierra no cuentan),
      * exceso, días con incidencia y pendientes.
      *
      * @param  array<string, Day>  $days
@@ -188,7 +189,8 @@ final class WorkdayCalculator
             }
 
             $totals['worked_minutes'] += $day['worked_minutes'];
-            $totals['expected_minutes'] += $day['expected_minutes'];
+            // Hoy sin cerrar (sin diferencia todavía) no suma su teórica: no hay deuda a media mañana.
+            $totals['expected_minutes'] += $day['difference_minutes'] === null ? 0 : $day['expected_minutes'];
             $totals['excess_minutes'] += $day['excess_minutes'];
             $totals['incident_days'] += $day['incidents'] === [] ? 0 : 1;
             $totals['pending_days'] += $day['pending_corrections'] > 0 ? 1 : 0;
@@ -273,7 +275,10 @@ final class WorkdayCalculator
 
         $worked = (int) round($workedSeconds / 60);
         $pause = (int) round($pauseSeconds / 60);
-        $difference = $future ? null : $worked - $expected;
+        // Hoy, mientras la jornada sigue en curso o aún no se ha fichado, no hay diferencia: saldría
+        // negativa toda la mañana. Se calcula al cerrar la jornada (o mañana).
+        $pendingToday = $date === $today && ($inProgress || $workdays === []);
+        $difference = $future || $pendingToday ? null : $worked - $expected;
         $incidents = [];
 
         if ($employed && $registered && ! $future) {

@@ -222,7 +222,8 @@ export type TeamWorkdayPageProps = {
     next_week: string | null;
     dates: string[];
     today: string;
-    people: TeamPerson[];
+    /** Las personas (no `people`: es la prop compartida del registro). */
+    members: TeamPerson[];
     departments: { id: number; name: string; color: string }[];
     department_id: number | null;
     pending: number;

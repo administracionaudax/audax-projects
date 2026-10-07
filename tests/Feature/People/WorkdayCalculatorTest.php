@@ -262,7 +262,10 @@ it('hoy en curso: cuenta hasta ahora, sin incidencias de cierre y con los días 
         ->and($days['2026-10-05']['status'])->toBe('in_progress')
         ->and($days['2026-10-06']['status'])->toBe('future')
         ->and($days['2026-10-06']['difference_minutes'])->toBeNull()
-        ->and(WorkdayCalculator::totals($days)['expected_minutes'])->toBe(480);
+        // Sin cerrar, hoy no tiene diferencia ni suma su teórica en los totales (no hay deuda a media mañana).
+        ->and($days['2026-10-05']['difference_minutes'])->toBeNull()
+        ->and(WorkdayCalculator::totals($days)['expected_minutes'])->toBe(0)
+        ->and(WorkdayCalculator::totals($days)['worked_minutes'])->toBe(150);
 });
 
 it('una jornada partida se suma en el día', function () {

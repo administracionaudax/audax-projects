@@ -15,6 +15,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/lib/i18n';
@@ -24,7 +26,36 @@ import type { AdminWorkSchedule } from '@/types';
 type ScheduleForm = {
     valid_from: string;
     week: (number | null)[];
+    // Registro de jornada (Fase 11, D-336).
+    start_time_from: string;
+    start_time_to: string;
+    expected_pause_minutes: number;
+    summer: boolean;
+    summer_starts_on: string;
+    summer_ends_on: string;
+    summer_week: (number | null)[];
+    summer_expected_pause_minutes: number;
 };
+
+/** Jornada de verano del convenio de publicidad: 7 h de lunes a viernes, del 1/7 al 31/8. */
+const SUMMER_WEEK = [420, 420, 420, 420, 420, 0, 0];
+
+/** Valores del formulario a partir de una versión (la que se edita o la vigente al crear). */
+function registerData(
+    source: AdminWorkSchedule | undefined,
+): Omit<ScheduleForm, 'valid_from' | 'week'> {
+    return {
+        start_time_from: source?.start_time_from ?? '',
+        start_time_to: source?.start_time_to ?? '',
+        expected_pause_minutes: source?.expected_pause_minutes ?? 0,
+        summer: Boolean(source?.summer),
+        summer_starts_on: source?.summer?.starts_on ?? '07-01',
+        summer_ends_on: source?.summer?.ends_on ?? '08-31',
+        summer_week: source?.summer?.week ?? SUMMER_WEEK,
+        summer_expected_pause_minutes:
+            source?.summer?.expected_pause_minutes ?? 0,
+    };
+}
 
 /**
  * Alta de una versión nueva de la jornada o edición de la última (si aún no ha empezado). La nueva
@@ -33,6 +64,7 @@ type ScheduleForm = {
 export function ScheduleDialog({
     userId,
     schedule,
+    initial,
     initialWeek,
     defaultFrom,
     trigger,
@@ -40,6 +72,8 @@ export function ScheduleDialog({
     userId: number;
     /** Versión que se edita; sin ella, se crea una nueva. */
     schedule?: AdminWorkSchedule;
+    /** Versión de la que se copian el margen, la pausa y el verano al crear (la vigente). */
+    initial?: AdminWorkSchedule;
     /** Jornada de partida al crear (la vigente). */
     initialWeek: number[];
     /** Fecha de inicio propuesta al crear ("YYYY-MM-DD"). */
@@ -51,9 +85,13 @@ export function ScheduleDialog({
     const form = useForm<ScheduleForm>({
         valid_from: schedule?.valid_from ?? defaultFrom,
         week: schedule?.week ?? initialWeek,
+        ...registerData(schedule ?? initial),
     });
     const errors = form.errors as Record<string, string | undefined>;
-    const invalidWeek = form.data.week.some((minutes) => minutes === null);
+    const invalidWeek =
+        form.data.week.some((minutes) => minutes === null) ||
+        (form.data.summer &&
+            form.data.summer_week.some((minutes) => minutes === null));
 
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
@@ -86,6 +124,7 @@ export function ScheduleDialog({
                     form.setData({
                         valid_from: schedule?.valid_from ?? defaultFrom,
                         week: schedule?.week ?? initialWeek,
+                        ...registerData(schedule ?? initial),
                     });
                     form.clearErrors();
                 }
@@ -132,6 +171,207 @@ export function ScheduleDialog({
                         errorPrefix="week"
                         errors={errors}
                     />
+
+                    <fieldset
+                        className="grid gap-4 rounded-md border p-4"
+                        data-test="schedule-register"
+                    >
+                        <legend className="px-1 text-sm font-medium">
+                            {t('people.schedule.register')}
+                        </legend>
+                        <div className="grid gap-2">
+                            <span
+                                id={`${id}-window`}
+                                className="text-sm font-medium"
+                            >
+                                {t('people.schedule.window')}
+                            </span>
+                            <div
+                                className="flex flex-wrap items-end gap-3"
+                                role="group"
+                                aria-labelledby={`${id}-window`}
+                            >
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor={`${id}-start-from`}
+                                        className="text-xs"
+                                    >
+                                        {t('people.schedule.window_from')}
+                                    </Label>
+                                    <Input
+                                        id={`${id}-start-from`}
+                                        type="time"
+                                        step={60}
+                                        value={form.data.start_time_from}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'start_time_from',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="tabular w-32"
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor={`${id}-start-to`}
+                                        className="text-xs"
+                                    >
+                                        {t('people.schedule.window_to')}
+                                    </Label>
+                                    <Input
+                                        id={`${id}-start-to`}
+                                        type="time"
+                                        step={60}
+                                        value={form.data.start_time_to}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'start_time_to',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="tabular w-32"
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor={`${id}-pause`}
+                                        className="text-xs"
+                                    >
+                                        {t('people.schedule.pause')}
+                                    </Label>
+                                    <Input
+                                        id={`${id}-pause`}
+                                        type="number"
+                                        min={0}
+                                        max={240}
+                                        step={5}
+                                        value={form.data.expected_pause_minutes}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'expected_pause_minutes',
+                                                Number(event.target.value),
+                                            )
+                                        }
+                                        className="tabular w-32"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {t('people.schedule.window_hint')}
+                            </p>
+                            <InputError
+                                message={
+                                    errors.start_time_from ??
+                                    errors.start_time_to ??
+                                    errors.expected_pause_minutes
+                                }
+                            />
+                        </div>
+
+                        <label className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                                checked={form.data.summer}
+                                onCheckedChange={(checked) =>
+                                    form.setData('summer', checked === true)
+                                }
+                                data-test="schedule-summer"
+                            />
+                            {t('people.schedule.summer')}
+                        </label>
+                        <p className="-mt-2 text-xs text-muted-foreground">
+                            {t('people.schedule.summer_hint')}
+                        </p>
+                        {form.data.summer ? (
+                            <div className="grid gap-4">
+                                <div className="flex flex-wrap items-end gap-3">
+                                    <div className="grid gap-1">
+                                        <Label
+                                            htmlFor={`${id}-summer-from`}
+                                            className="text-xs"
+                                        >
+                                            {t('people.schedule.summer_from')}
+                                        </Label>
+                                        <Input
+                                            id={`${id}-summer-from`}
+                                            value={form.data.summer_starts_on}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'summer_starts_on',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            inputMode="numeric"
+                                            placeholder="07-01"
+                                            className="tabular w-28"
+                                        />
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label
+                                            htmlFor={`${id}-summer-to`}
+                                            className="text-xs"
+                                        >
+                                            {t('people.schedule.summer_to')}
+                                        </Label>
+                                        <Input
+                                            id={`${id}-summer-to`}
+                                            value={form.data.summer_ends_on}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'summer_ends_on',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            inputMode="numeric"
+                                            placeholder="08-31"
+                                            className="tabular w-28"
+                                        />
+                                    </div>
+                                    <div className="grid gap-1">
+                                        <Label
+                                            htmlFor={`${id}-summer-pause`}
+                                            className="text-xs"
+                                        >
+                                            {t('people.schedule.summer_pause')}
+                                        </Label>
+                                        <Input
+                                            id={`${id}-summer-pause`}
+                                            type="number"
+                                            min={0}
+                                            max={240}
+                                            step={5}
+                                            value={
+                                                form.data
+                                                    .summer_expected_pause_minutes
+                                            }
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'summer_expected_pause_minutes',
+                                                    Number(event.target.value),
+                                                )
+                                            }
+                                            className="tabular w-32"
+                                        />
+                                    </div>
+                                </div>
+                                <InputError
+                                    message={
+                                        errors.summer_starts_on ??
+                                        errors.summer_ends_on
+                                    }
+                                />
+                                <WeekMinutesInput
+                                    value={form.data.summer_week}
+                                    onChange={(week) =>
+                                        form.setData('summer_week', week)
+                                    }
+                                    legend={t('people.schedule.summer_week')}
+                                    errorPrefix="summer_week"
+                                    errors={errors}
+                                />
+                            </div>
+                        ) : null}
+                    </fieldset>
 
                     <DialogFooter className="gap-2">
                         <DialogClose asChild>

@@ -174,10 +174,10 @@ export function CorrectionDialog({
                                 {rows.map((row, index) => (
                                     <li
                                         key={row.key}
-                                        className="grid grid-cols-[1fr_6.5rem_auto] items-end gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_minmax(0,9rem)_auto_auto]"
+                                        className="relative grid grid-cols-2 items-end gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1fr)_6.5rem_minmax(0,9rem)_auto_auto]"
                                         data-test="correction-row"
                                     >
-                                        <div className="grid gap-1">
+                                        <div className="col-span-2 grid gap-1 pr-10 sm:col-span-1 sm:pr-0">
                                             <Label
                                                 htmlFor={`${id}-kind-${row.key}`}
                                                 className="text-xs"
@@ -237,7 +237,7 @@ export function CorrectionDialog({
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="size-9 sm:order-last"
+                                            className="absolute top-1 right-1 size-9 sm:static sm:order-last"
                                             onClick={() =>
                                                 setRows((current) =>
                                                     current.filter(
@@ -259,7 +259,7 @@ export function CorrectionDialog({
                                         </Button>
                                         {row.kind === 'clock_in' ||
                                         row.kind === 'pause_end' ? (
-                                            <div className="col-span-2 grid gap-1 sm:col-span-1">
+                                            <div className="grid gap-1">
                                                 <Label
                                                     htmlFor={`${id}-mode-${row.key}`}
                                                     className="text-xs"
@@ -296,7 +296,7 @@ export function CorrectionDialog({
                                         {row.kind === 'clock_in' ? (
                                             <span className="hidden sm:block" />
                                         ) : (
-                                            <label className="col-span-2 flex h-9 items-center gap-2 text-sm sm:col-span-1">
+                                            <label className="flex h-9 items-center gap-2 text-sm">
                                                 <Checkbox
                                                     checked={row.next_day}
                                                     onCheckedChange={(

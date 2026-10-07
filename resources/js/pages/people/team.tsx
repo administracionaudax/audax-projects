@@ -41,7 +41,7 @@ export default function TeamWorkdayPage(props: TeamWorkdayPageProps) {
         week,
         dates,
         today,
-        people,
+        members,
         departments,
         department_id: departmentId,
     } = props;
@@ -51,11 +51,11 @@ export default function TeamWorkdayPage(props: TeamWorkdayPageProps) {
         const needle = normalize(search.trim());
 
         return needle === ''
-            ? people
-            : people.filter((person) =>
+            ? members
+            : members.filter((person) =>
                   normalize(person.name).includes(needle),
               );
-    }, [people, search]);
+    }, [members, search]);
     const departmentQuery: Record<string, string> =
         departmentId === null ? {} : { departamento: String(departmentId) };
 
@@ -236,7 +236,7 @@ export default function TeamWorkdayPage(props: TeamWorkdayPageProps) {
                                 <tr className="border-b text-left text-xs text-muted-foreground">
                                     <th
                                         scope="col"
-                                        className="sticky left-0 z-10 bg-background px-2 py-2 font-medium"
+                                        className="sticky left-0 z-10 bg-neutral-soft px-2 py-2 font-medium"
                                     >
                                         {t('people.team.person')}
                                     </th>
@@ -368,7 +368,7 @@ export default function TeamWorkdayPage(props: TeamWorkdayPageProps) {
                                                             cell.status
                                                         }
                                                     >
-                                                        <span className="tabular text-xs">
+                                                        <span className="tabular text-xs whitespace-nowrap">
                                                             {cell.worked_minutes >
                                                                 0 ||
                                                             cell.expected_minutes >
