@@ -66,7 +66,7 @@ export function EmploymentCard({
                         form.put(update.url(userId), { preserveScroll: true });
                     }}
                 >
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid items-start gap-4 sm:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor={`${id}-hire`}>
                                 {t('people.employment.hire_date')}

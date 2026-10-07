@@ -1531,16 +1531,7 @@ class DemoDataSeeder extends Seeder
             Carbon::setTestNow($instant);
             CarbonImmutable::setTestNow($instant);
         };
-        $rows = function (User $user, string $date, ?callable $change = null) use ($service, $zone): array {
-            $rows = array_map(fn ($event): array => [
-                'id' => $event->id,
-                'kind' => $event->kind->value,
-                'time' => $event->occurred_at->setTimezone($zone)->format('H:i'),
-                'work_mode' => $event->work_mode?->value,
-            ], $service->dayEvents($user->id, $date));
-
-            return $change === null ? $rows : $change($rows);
-        };
+        $rows = fn (User $user, string $date, ?callable $change = null): array => $this->correctionRows($service, $user, $date, $zone, $change);
 
         $has = fn (string $who, string $date): bool => $service->dayEvents($p[$who]->id, $date) !== [];
 
@@ -1590,6 +1581,24 @@ class DemoDataSeeder extends Seeder
                 return $rows;
             }), 'La comida con el cliente se alargó hasta más tarde de lo que fichaste; lo ajusto para que cuadre.');
         }
+    }
+
+    /**
+     * Las filas del formulario de corrección de un día (sus fichajes efectivos) con un cambio.
+     *
+     * @param  (callable(list<array{id?: int|null, kind: string, time: string, next_day?: bool, work_mode?: string|null}>): list<array{id?: int|null, kind: string, time: string, next_day?: bool, work_mode?: string|null}>)|null  $change
+     * @return list<array{id?: int|null, kind: string, time: string, next_day?: bool, work_mode?: string|null}>
+     */
+    private function correctionRows(ClockCorrectionService $service, User $user, string $date, string $zone, ?callable $change): array
+    {
+        $rows = array_map(fn ($event): array => [
+            'id' => $event->id,
+            'kind' => $event->kind->value,
+            'time' => $event->occurred_at->setTimezone($zone)->format('H:i'),
+            'work_mode' => $event->work_mode?->value,
+        ], $service->dayEvents($user->id, $date));
+
+        return $change === null ? $rows : $change($rows);
     }
 
     private function monthsAgo(int $months): CarbonImmutable
