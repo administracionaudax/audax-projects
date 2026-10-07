@@ -171,7 +171,24 @@ export function TimeEntryDialog({
 }: TimeEntryDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+            <DialogContent
+                className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg"
+                // Desde la tarea (D-323), el foco va a la duración y no al primer campo.
+                onOpenAutoFocus={(event) => {
+                    const duration = focusDuration
+                        ? (
+                              event.currentTarget as HTMLElement | null
+                          )?.querySelector<HTMLInputElement>(
+                              'input[id$="-minutes"]',
+                          )
+                        : null;
+
+                    if (duration) {
+                        event.preventDefault();
+                        duration.focus();
+                    }
+                }}
+            >
                 {open ? (
                     <TimeEntryForm
                         task={task}

@@ -120,7 +120,7 @@ export default function ProjectsIndex({
 
     // La vista plana se recuerda en este navegador (D-322): al volver a /proyectos sin ?vista=,
     // si la última elegida fue «Lista», se abre la lista. Solo al entrar en la página.
-    const [restored] = useState(() => {
+    const [restoring, setRestoring] = useState(() => {
         const stored = userId === null ? null : readStoredView(userId);
         const inUrl = new URL(page.url, 'http://localhost').searchParams.has(
             'vista',
@@ -129,12 +129,19 @@ export default function ProjectsIndex({
         return !inUrl && stored === 'list' && view === 'clients';
     });
 
+    // Hasta que llega la lista no se pinta el árbol; después, ya no se restaura nada.
+    if (restoring && view === 'list') {
+        setRestoring(false);
+    }
+
+    const [restoreOnMount] = useState(restoring);
+
     useEffect(() => {
-        if (restored) {
+        if (restoreOnMount) {
             visit(filters, 'list', sort);
         }
-        // Solo una vez, al entrar: `restored` no cambia.
-    }, [restored]);
+        // Solo una vez, al entrar: `restoreOnMount` no cambia.
+    }, [restoreOnMount]);
 
     const applyFilters = useCallback(
         (next: ProjectListFilters) => visit(next, view, sort),
@@ -258,7 +265,7 @@ export default function ProjectsIndex({
                                     'projects.index.no_results_description',
                                 )}
                             />
-                        ) : restored && view === 'clients' ? null : view ===
+                        ) : restoring && view === 'clients' ? null : view ===
                               'clients' && groups ? (
                             <ProjectsTree
                                 groups={groups}
