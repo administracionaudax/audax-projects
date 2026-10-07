@@ -24,7 +24,7 @@ beforeEach(function () {
 
 it('el modelo no deja cambiar ni borrar un fichaje', function () {
     $event = ClockEvent::query()->findOrFail($this->events[0]->id);
-    $event->forceFill(['occurred_at' => madrid('2026-10-05 08:00')]);
+    $event->forceFill(['occurred_at' => madridAt('2026-10-05 08:00')]);
 
     expect(fn () => $event->save())->toThrow(RegisterImmutable::class)
         ->and(fn () => ClockEvent::query()->findOrFail($this->events[0]->id)->delete())->toThrow(RegisterImmutable::class)
@@ -48,7 +48,7 @@ it('la base de datos rechaza UPDATE y DELETE aunque se salte el modelo', functio
 it('una corrección decidida no se cambia ni se borra, ni con el modelo ni en la base de datos', function () {
     $manager = peopleTeam($this->user)['manager'];
 
-    $this->travelTo(madrid('2026-10-06 10:00'));
+    $this->travelTo(madridAt('2026-10-06 10:00'));
     $correction = app(ClockCorrectionService::class)->propose($this->user, $this->user, '2026-10-05', [
         ['id' => $this->events[0]->id, 'kind' => 'clock_in', 'time' => '08:30'],
         ['id' => $this->events[1]->id, 'kind' => 'pause_start', 'time' => '14:00'],
@@ -67,7 +67,7 @@ it('una corrección decidida no se cambia ni se borra, ni con el modelo ni en la
 });
 
 it('lo propuesto en una corrección pendiente tampoco se cambia; solo su decisión', function () {
-    $this->travelTo(madrid('2026-10-06 10:00'));
+    $this->travelTo(madridAt('2026-10-06 10:00'));
     $correction = app(ClockCorrectionService::class)->propose($this->user, $this->user, '2026-10-05', [
         ['id' => $this->events[0]->id, 'kind' => 'clock_in', 'time' => '08:45'],
         ['id' => $this->events[1]->id, 'kind' => 'pause_start', 'time' => '14:00'],

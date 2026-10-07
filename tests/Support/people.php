@@ -22,7 +22,7 @@ function enablePeople(): void
 }
 
 /** Instante de Madrid «AAAA-MM-DD HH:MM». */
-function madrid(string $local): CarbonImmutable
+function madridAt(string $local): CarbonImmutable
 {
     return CarbonImmutable::parse($local, 'Europe/Madrid');
 }
@@ -32,7 +32,7 @@ function madrid(string $local): CarbonImmutable
  */
 function punchAt(User $user, string $local, ClockEventKind $kind, ?WorkMode $mode = null): ClockEvent
 {
-    test()->travelTo(madrid($local));
+    test()->travelTo(madridAt($local));
 
     return app(ClockWriter::class)->punch($user, $kind, $mode);
 }

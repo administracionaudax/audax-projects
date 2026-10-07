@@ -42,6 +42,8 @@ Se ha repasado el modelo de §8 contra la ley de hoy, el borrador del RD (§2 y 
 - **`work_schedules`** (+ columnas): `start_time_from` y `start_time_to` (margen de entrada), `expected_pause_minutes`, `summer_starts_on` y `summer_ends_on` (`MM-DD`), `summer_week` (7 valores en minutos) y `summer_expected_pause_minutes`.
 - **`employment_profiles`** (1:1 con `users`): `hire_date`, `termination_date`, `subject_to_register` y `register_exemption_reason`. R2 y R3 añaden aquí la retención por litigio, el NIF, el contrato y el calendario.
 - **`clock_reminders`**: un aviso de entrada, salida o jornada sin cerrar por persona, día y tipo.
+- **Rutas** (`routes/app/people.php`, módulo `people`): `POST /fichar`, `/personas/jornada`, `/personas/equipo`, `/personas/equipo/{persona}` (y `/filas`), `/personas/pendientes`, `/personas/correcciones…` (proponer, aceptar una o varias, rechazar y retirar) y `PUT /admin/usuarios/{user}/laboral`. Gates `use-people`, `clock` y `view-people-team`; prop compartida `people` (el botón de la cabecera y el contador de pendientes).
+- **Órdenes:** `people:remind` (cada 5 minutos), `people:expire-corrections` (cada hora) y `people:verify-register` (a mano; R2 la programará).
 - **Servicios** (`App\Domain\People`): `ClockWriter` (el único que escribe fichajes), `ClockState` (estado actual), `RegisterHasher` y `RegisterIntegrity` (la cadena y su comprobación, con `php artisan people:verify-register`), `WorkdayCalculator` (diario, totales e incidencias), `ClockCorrectionService`, `CorrectionApprovers`, `PeopleAccess` (quién ficha y quién ve a quién) y `ClockReminders`.
 
 ### 0.3 Lo que R2 necesita y R1 ya deja listo

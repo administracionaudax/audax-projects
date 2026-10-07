@@ -2384,6 +2384,110 @@ Pedido por el propietario.
 - **Agrupando por estado no hay columna «Estado»**: repetiría el del grupo. Una subtarea con un estado distinto del de su grupo lo muestra junto al título. Agrupando por otra cosa, la columna vuelve.
 - **A 1440 px** (con la barra lateral abierta), la tabla agrupada por estado cabe entera. Si no cabe (agrupada por otra cosa, más columnas o una pantalla más estrecha), la tarea guarda al menos 14 rem y la tabla se desplaza en horizontal. Una sombra suave en el borde (`HorizontalScroll`) avisa de que hay más columnas a ese lado.
 
+## 07/10/2026: RR. HH., entrega R1 (registro de jornada)
+
+Plan: `docs/PLAN-FASE-11.md` (antes `PLAN-RRHH.md`), §0 con el contrato de R1. Respuestas del propietario en §14.1. Las dudas de derecho laboral siguen siendo de la asesoría (`WOFFU-INVESTIGACION.md` §F); donde R1 ha tenido que decidir, ha elegido lo más conservador (D-345).
+
+### D-330 · Módulo «Personas» (`people`) y permiso `manage-people`
+- Módulo nuevo `people`, **apagado** al crearse (migración `add_people_off_to_stored_modules` y `Setting::DEFAULTS`). Se enciende en /admin/ajustes cuando R1 y R2 estén en producción: cada fichaje queda guardado para siempre, así que no se enciende «para probar» en el servidor.
+- En **modo de prueba** (D-239) un admin ve las pantallas, pero lo que fiche es un fichaje real e indeleble y no sale ningún aviso. El modo de prueba sirve para mirar, no para fichar.
+- Permiso **`manage-people`** adelantado de R2: RR. HH. (Toni, P5) ve la jornada de toda la plantilla, decide sus correcciones y edita los datos laborales. Lo tienen los admins; se puede dar a alguien sin hacerle admin. Ningún colaborador externo lo tiene (`COLLABORATOR_DENIED`).
+
+### D-331 · Quién ficha
+- La **plantilla interna** (admin, responsables y empleados), activa y **sujeta al registro**. Por defecto todo el mundo lo está (lo conservador: el art. 34.9 ET es para toda persona trabajadora).
+- **Los colaboradores externos no fichan** (Amparo incluida): no son plantilla, el registro es una obligación para las personas trabajadoras por cuenta ajena y registrar la jornada de una profesional externa podría leerse como un indicio de laboralidad. Si alguien externo tiene un rol interno, RR. HH. lo marca como no sujeto.
+- **No sujeto al registro** solo con un motivo escrito (por ejemplo, un socio que no es asalariado), lo decide `manage-people` en la ficha de usuario y queda en la auditoría. Ni los clientes ni los desactivados fichan.
+
+### D-332 · Un registro que no se puede alterar sin dejar rastro
+- **`clock_events` es de solo alta.** Tres capas: el modelo no deja cambiar ni borrar una fila; un *trigger* de la base de datos rechaza `UPDATE` y `DELETE` (y `TRUNCATE` en PostgreSQL), tanto en PostgreSQL como en el SQLite de los tests; y una **cadena de huellas** por persona (`seq`, `prev_hash`, `hash` SHA-256 de todas las columnas de contenido, formato `v1`) delata cualquier cambio hecho quitando el *trigger*. `people:verify-register` la comprueba.
+- Las **anulaciones** de una corrección son filas `void` de la **misma** cadena, no una tabla aparte: borrar una anulación también rompería la cadena.
+- La persona tiene una FK *restrict*: mientras tenga fichajes no se puede borrar (desactivarla no borra nada).
+- **Hora del servidor** siempre: `POST /fichar` solo recibe qué se ficha y el modo; la hora la pone `ClockWriter`. Sin conexión no se ficha (nunca se guarda la hora del dispositivo). La cabecera corrige el reloj del dispositivo con la hora del servidor solo para pintar el contador.
+- **Sin geolocalización ni biometría** (L-12, L-13). De la IP se guarda solo una huella HMAC con la clave de la app (para comparar fichajes entre sí sin guardar la IP) y un agente de usuario corto.
+
+### D-333 · La secuencia de fichajes y la jornada
+- Entrada → (comida → vuelta) → salida. `ClockWriter` rechaza lo que no encaja: dos entradas seguidas, una pausa sin entrada, una vuelta sin pausa.
+- **Salir desde la comida** está permitido (la pausa acaba con la salida) y deja la incidencia «Salida en la comida».
+- **Jornada partida**: tras una salida se puede volver a entrar el mismo día (desde el menú del botón); lo trabajado se suma en el día.
+- Una jornada **pertenece al día de Madrid de su entrada**, aunque acabe pasada la medianoche (W-021). Los tramos se miden con instantes UTC: en el cambio de hora cuenta el tiempo real (7 h de 22:00 a 04:00 en octubre, 5 h en marzo).
+- **Nunca se cierra una jornada sola.** Una jornada sin salida deja de estar «en curso» a las **16 h** de la entrada: se puede fichar una entrada nueva y la anterior queda con «Falta la salida»; su tramo abierto no cuenta (lo que pasó después no se sabe). La persona propone la salida con una corrección.
+- El modo (presencial o a distancia, Ley 10/2021) se elige al entrar y al volver de la comida; por defecto, el último que usó.
+
+### D-334 · Solo se ficha la comida
+- Respuesta P3: solo la pausa de la comida, que **no** es tiempo de trabajo. Es un enum (`PauseType::Meal`); si un día hace falta un tipo que compute como trabajo, se añade ahí con `countsAsWork()`.
+- La jornada lleva una **comida prevista** (minutos) solo para saber cuándo avisar de la salida; nunca se descuenta una pausa que no se ha fichado.
+
+### D-335 · Correcciones con doble conformidad
+- **Proponen** la persona, su responsable o RR. HH., con **motivo obligatorio**. La propuesta es el día como debería quedar; lo que cambia frente a los fichajes efectivos se guarda como anulaciones y añadidos (mover un fichaje es anularlo y añadir otro).
+- **Da la conformidad la otra parte**: si la propone la persona, su responsable o RR. HH.; si la propone el responsable o RR. HH., **solo la persona** (RR. HH. no puede aceptar por ella). **Nadie acepta lo que ha propuesto**, tampoco un responsable o un admin su propio registro (a diferencia de las ausencias, D-049).
+- **Sin acuerdo, discrepancia**: rechazar exige un motivo; rechazada o **sin respuesta en 7 días** (`people:expire-corrections`, cada hora), queda «en discrepancia», no se aplica, **cuenta la original** y constan las dos versiones (borrador del RD).
+- Al aceptarla se **vuelve a validar** el día (puede haber cambiado, por ejemplo si es hoy): si ya no cuadra, no se aplica y hay que proponer otra. Una pendiente por persona y día. Validación: el día resultante empieza por una entrada, alterna bien, acaba con una salida si ya ha pasado, no tiene fichajes en el futuro, sus entradas son de ese día y no pisa otra jornada.
+- Las correcciones **no se borran nunca** y, decididas, no cambian: el modelo y un *trigger* lo impiden; mientras están pendientes solo cambia su decisión. Al decidirse se **sellan** con su huella (que `people:verify-register` también comprueba). Los fichajes que escribe una corrección aceptada llevan su número y, como autor, quien la aceptó.
+- `assertDayOpen()` es el punto donde R2 impedirá corregir un mes confirmado.
+
+### D-336 · Jornadas: margen de entrada, comida prevista y verano
+- Cada **versión** de `work_schedules` gana el **margen de entrada** (horario tolerante de Woffu, W-028), la **comida prevista** y la **temporada de verano** (fechas MM-DD de todos los años, con su semana y su comida; si el inicio es posterior al final, cruza el fin de año).
+- El verano va **dentro de la versión**, no en un perfil compartido: cambiarlo es una versión nueva y la jornada teórica de los veranos pasados no se reescribe (D-036).
+- **`Capacity` aplica el verano en toda la app** (carga, informes, previsión y días de ausencia): es la jornada teórica. Sin verano configurado nada cambia.
+- Las jornadas pasan a la **auditoría** (`LogsDomainActivity`, entidad «Jornadas»). Se editan en la ficha de usuario (`manage-users`).
+
+### D-337 · Cómo se cuenta
+- **Trabajado** = suma de los tramos de trabajo efectivos (los fichajes menos los anulados, más los añadidos por correcciones aceptadas), en segundos reales, redondeado al minuto. Siempre se calcula a partir de la cadena; no se guarda ningún total que pueda divergir (R2 congelará el del mes en el cierre).
+- **Teórica** = `Capacity` (jornada vigente o de verano, menos festivos y ausencias aprobadas), y **0** fuera del periodo de alta o **antes del inicio del registro en la app** (`people_register_starts_on` o, sin ese ajuste, el día del primer fichaje de la empresa: antes, el registro estaba en Woffu y «Sin fichajes» sería falso).
+- **Diferencia** = trabajado − teórica; **exceso** = la parte positiva. Hoy, mientras no se cierra la jornada, no hay diferencia ni suma su teórica en los totales (no hay «deuda» a media mañana).
+- **Horas extra (P6)**: R1 registra **todo** el exceso, sin límite ni redondeo a la baja; R2 decide qué es hora extra y su destino (compensar o pagar) y el resumen semanal.
+
+### D-338 · Incidencias
+- Falta la salida; sin fichajes (día pasado con teórica); fichajes durante una ausencia de día completo; menos horas (30 minutos o más por debajo de la teórica, la flexibilidad del convenio); menos de 12 h de descanso entre jornadas; más de 6 h seguidas sin pausa; más de 9 h en el día; salida en la comida.
+- **Avisan, no bloquean ni corrigen.** «Falta la salida», «Sin fichajes» y «Salida en la comida» piden una corrección (estado «Incidencia»); las de los límites legales son un «Aviso».
+- Fuera del periodo de alta, antes del inicio del registro y para quien no está sujeto, no hay incidencias.
+
+### D-339 · Avisos
+- **Entrada**: 15 minutos después del final del margen de entrada (sin margen, de las 10:00), en un día con jornada sin festivo ni ausencia de día completo, durante 4 horas. **Salida**: 30 minutos después de la salida prevista (primera entrada + teórica + la comida prevista o la ya hecha, si es más larga). **Jornada sin cerrar**: desde las 8:00 del día siguiente, si faltó la salida o no hubo fichajes. Una vez por persona, día y tipo (`clock_reminders`), cada 5 minutos (`people:remind`).
+- **Correcciones**: a la otra parte la que espera su conformidad (app y email por defecto), la aceptada (app) y la que queda en discrepancia (app y email), a las dos partes si es por falta de respuesta.
+- Grupo «Registro de jornada» en las preferencias de cada persona. Con el módulo apagado de verdad (también en modo de prueba) no sale ninguno. Ningún aviso ficha por la persona.
+
+### D-340 · Ayudas para no duplicar trabajo (PLAN §3.2)
+- **Empezar el temporizador sin haber fichado** muestra «No has fichado la entrada. ¿Fichar ahora?» con un botón. Fichar es siempre un gesto de la persona.
+- **Empezar la comida o salir con el temporizador en marcha** pregunta si se para también (sí por defecto). Si se paró al empezar la comida, al volver se ofrece reanudarlo.
+- **Al fichar la salida**, solo a la persona: «Hoy has trabajado X y has imputado Y», con «Imputar lo que falta» (a su semana de horas). En el detalle de un día de su registro ve también lo imputado ese día. **El responsable no ve esa comparación** (L-11; F-5 de la asesoría).
+- **Nunca** se crean fichajes a partir de las horas imputadas ni de la actividad.
+
+### D-341 · Pantallas y rutas
+- **Cabecera**: botón de fichar junto al temporizador («Entrar» con el modo en el desplegable; «Trabajando 3:12 · Comida · Salir»; «En la comida desde 14:00 · Volver»; «Jornada cerrada 7:50»). En el móvil, solo iconos y el tiempo.
+- **`/personas/jornada`** («Mi jornada», como «Mi presencia» de Woffu): hoy, la semana y el mes; el diario del mes (previsto, tramos, comida, trabajado, diferencia, modo y estado); cada día se abre en un panel con los fichajes que cuentan, las correcciones y el **historial** completo (lo anulado, tachado). Arriba, las correcciones que esperan su conformidad.
+- **`/personas/equipo`** («Jornada del equipo»): persona × día de la semana con trabajado / teórico, el estado y cómo está cada uno ahora (W-023); **`/personas/equipo/{persona}`**: su diario. **`/personas/pendientes`**: la bandeja de correcciones por decidir, una a una o en bloque (W-081).
+- Barra lateral, sección «Personas»: «Mi jornada» (con el contador de lo que espera mi decisión) y, para responsables y RR. HH., «Jornada del equipo» y «Pendientes». **Datos laborales** en la ficha de usuario.
+
+### D-342 · Quién ve qué (R1)
+| | Persona | Su responsable | RR. HH. y admins | Compañero u otro responsable | Colaborador o cliente |
+|---|---|---|---|---|---|
+| Fichar | Sí, la suya | Sí, la suya | Sí, la suya | — | No |
+| Ver el registro | El suyo | El de su departamento | Todos | No | No |
+| Proponer una corrección | La suya | De su equipo | De cualquiera | No | No |
+| Aceptar o rechazar | Las que le proponen | Las de su equipo | Las que proponen las personas | No | No |
+| Jornada del equipo y Pendientes | No | Su departamento | Todos | No | No |
+| Comparación con las horas imputadas | Sí | No | No | No | No |
+| Datos laborales | No | No | Sí (`manage-people`) | No | No |
+
+El tipo de una ausencia sigue la regla de D-088 también en el diario.
+
+### D-343 · Datos laborales
+- Tabla `employment_profiles` (1:1 con la persona): **fecha de alta y de baja** y si está **sujeta al registro** (con el motivo si no). Sin fila, cuenta como sujeta y sin fechas. Fuera del periodo de alta no hay jornada teórica ni incidencias, pero lo que se fiche se registra igual (nunca se impide fichar por las fechas: el trabajo real se registra).
+- La editan quienes tienen `manage-people` en la ficha de usuario; queda en la auditoría. R2 y R3 añaden aquí la retención por litigio, el contrato y el calendario.
+
+### D-344 · Datos de ejemplo (solo local)
+- `DemoDataSeeder` añade las cuatro últimas semanas de fichajes de la plantilla, con la hora «del servidor» de cada momento (mueve el reloj y ficha con `ClockWriter`), margen de 8:00 a 10:00 y comida de 1 h: una corrección aceptada (Elena), una pendiente de su responsable (Daniel, sin salida), una en discrepancia (Lucía), una que espera la conformidad de la persona (Sergio), un día largo (Pablo), un descanso corto (Sergio) y tiempo parcial (Irene). Elena no ha fichado hoy (los E2E fichan con ella). Nada de esto va al servidor.
+
+### D-345 · Dudas legales decididas de forma conservadora
+1. **Todo el exceso se registra** y se enseña; nada lo «limita» (Woffu W-050) ni lo redondea. Qué es hora extra lo decide R2 con la asesoría (F-3).
+2. **Colaboradores externos fuera del registro** (D-331), y nadie queda exento sin motivo escrito.
+3. **El responsable ve los fichajes de su equipo**, porque los tiene que validar, pero **no la comparación con las horas imputadas** (L-11, F-5).
+4. **La comida no computa** como trabajo (F-3: hasta que la asesoría diga otra cosa) y no se presume: sin pausa fichada, todo el tramo es trabajo.
+5. **Las correcciones sin respuesta no se dan por aceptadas**: a los 7 días quedan en discrepancia y cuenta lo que se fichó.
+6. **Nada se borra**: tampoco los fichajes de un admin en modo de prueba ni los de quien deja la empresa. La supresión pasados 48 meses llega en R2 con su propia orden.
+7. **Sin fichaje sin conexión** en R1 (el borrador del RD pide un registro «inmediato y personal»; uno guardado con la hora del móvil se podría manipular). Si hace falta, R2 lo hará como corrección propuesta.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2409,6 +2513,7 @@ Pedido por el propietario.
 - Pantallas de la previsión: D-300 a D-309.
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
+- RR. HH. (Fase 11): D-330 a D-349 reservadas; R1 usa D-330 a D-345.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269, D-313 a D-319 y D-330 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-346 a D-349, para RR. HH.; D-350 en adelante, libres).

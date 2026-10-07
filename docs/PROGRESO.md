@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 06/10/2026_
+_Última actualización: 07/10/2026_
 
 ## Hecho
 
@@ -189,6 +189,16 @@ Pedidas por el propietario y vistas en las capturas de la primera tanda (D-326 a
 - **Tests:**
   - Vitest: `tasks-kanban`, `tasks-list`, `projects-index` y `horizontal-scroll`.
   - E2E: `tests/e2e/usability-improvements-2.spec.ts`.
+
+### RR. HH., R1 · Registro de jornada (rama `rrhh-r1`, 07/10, sin desplegar; módulo apagado)
+Fase 11 (`docs/PLAN-FASE-11.md`, §0), decisiones D-330 a D-345. Sustituye a Woffu en lo legalmente imprescindible (art. 34.9 ET); **va a producción junto con R2** (cierres, informes e Inspección).
+- **Registro de solo alta:** `clock_events` con la hora del servidor, cadena de huellas por persona y *triggers* contra `UPDATE` y `DELETE` en PostgreSQL y SQLite; `ClockWriter` es el único que escribe; `php artisan people:verify-register` comprueba la cadena.
+- **Fichar** desde la cabecera, junto al temporizador: entrada, comida, vuelta y salida, presencial o a distancia. Ayudas para no duplicar trabajo: fichar al empezar el temporizador sin haber fichado, parar el temporizador al salir y «Hoy has trabajado X e imputado Y».
+- **Correcciones con doble conformidad** y discrepancia (7 días sin respuesta o rechazo con motivo); nada se sobrescribe.
+- **Pantallas:** «Mi jornada» (diario del mes, día con historial), «Jornada del equipo», «Pendientes» y datos laborales en la ficha de usuario. Jornadas con margen de entrada, comida prevista y verano (también en `Capacity`).
+- **Incidencias y avisos:** falta la salida, sin fichajes, menos horas, descanso de menos de 12 h, más de 6 h seguidas, más de 9 h; avisos de entrada, salida y jornada sin cerrar (`people:remind`) y caducidad de las correcciones (`people:expire-corrections`).
+- **Tests:** Pest en `tests/Feature/People` (inmutabilidad, cadena, correcciones, totales con parcial, verano, medianoche y cambio de hora, incidencias, avisos y matriz de permisos), Vitest `people-lib` y `people-components`, E2E `tests/e2e/people.spec.ts`.
+- **Pendiente para R2:** cierre mensual con confirmación y PDF con huella, «Mi registro» con descarga, informes y exportación para la Inspección, horas extra con destino y saldo, retención de 48 meses con retención por litigio, ancla diaria y comprobación nocturna, documentos de RR. HH. y texto RGPD.
 
 ### Facturación: investigación (rama `investigacion-facturacion`, 06/10, solo documentación)
 Inventario de Holded (`docs/HOLDED-INVENTARIO.md`, H-001 a H-146) y propuesta con el estado legal, el encaje, la migración y las entregas F0 a F8 (`docs/PLAN-FACTURACION.md`). **Pendiente del propietario:** preguntas P1 a P8 del plan. VeriFactu: el aplazamiento a octubre de 2028 es un anuncio del 05/10/2026, sin norma en el BOE; la fecha legal sigue siendo el 01/01/2027.

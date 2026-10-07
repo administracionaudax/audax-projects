@@ -16,7 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     enablePeople();
     Setting::set('people_register_starts_on', '2026-09-01');
-    $this->travelTo(madrid('2026-10-07 12:00'));
+    $this->travelTo(madridAt('2026-10-07 12:00'));
 
     $this->employee = userWithRole('employee');
     $this->colleague = userWithRole('employee');
@@ -29,7 +29,7 @@ beforeEach(function () {
     $this->client = userWithRole('client');
 });
 
-function actor(string $who): User
+function peopleActor(string $who): User
 {
     return match ($who) {
         'persona' => test()->employee,
@@ -45,7 +45,7 @@ function actor(string $who): User
 }
 
 it('Mi jornada: toda la plantilla interna; ni colaboradores ni clientes', function (string $who, int $status) {
-    $this->actingAs(actor($who))->get('/personas/jornada')->assertStatus($status);
+    $this->actingAs(peopleActor($who))->get('/personas/jornada')->assertStatus($status);
 })->with([
     ['persona', 200], ['responsable', 200], ['rrhh', 200], ['admin', 200],
     ['colaborador', 403], ['cliente', 302],
@@ -70,7 +70,7 @@ it('Mi jornada pinta el diario del mes, los totales y el día abierto', function
 });
 
 it('fichar: quien está sujeto al registro; no un exento, ni un colaborador, ni un cliente', function (string $who, int $status) {
-    $this->actingAs(actor($who))->post('/fichar', ['kind' => 'clock_in', 'work_mode' => 'on_site'])->assertStatus($status);
+    $this->actingAs(peopleActor($who))->post('/fichar', ['kind' => 'clock_in', 'work_mode' => 'on_site'])->assertStatus($status);
 })->with([
     ['persona', 302], ['responsable', 302], ['admin', 302],
     ['colaborador', 403], ['cliente', 302],
@@ -83,8 +83,8 @@ it('un exento no ficha', function () {
 });
 
 it('Jornada del equipo y Pendientes: responsables, RR. HH. y admins', function (string $who, int $status) {
-    $this->actingAs(actor($who))->get('/personas/equipo')->assertStatus($status);
-    $this->actingAs(actor($who))->get('/personas/pendientes')->assertStatus($status);
+    $this->actingAs(peopleActor($who))->get('/personas/equipo')->assertStatus($status);
+    $this->actingAs(peopleActor($who))->get('/personas/pendientes')->assertStatus($status);
 })->with([
     ['persona', 403], ['responsable', 200], ['rrhh', 200], ['admin', 200], ['colaborador', 403],
 ]);
@@ -98,8 +98,8 @@ it('el responsable solo ve a su departamento; RR. HH., a todos', function () {
 });
 
 it('la jornada de una persona: ella (que va a la suya), su responsable, RR. HH. y los admins', function (string $who, int $status) {
-    $this->actingAs(actor($who))->get("/personas/equipo/{$this->employee->id}")->assertStatus($status);
-    $this->actingAs(actor($who))->get("/personas/equipo/{$this->employee->id}/filas?dia=2026-10-06")->assertStatus($status === 302 ? 200 : $status);
+    $this->actingAs(peopleActor($who))->get("/personas/equipo/{$this->employee->id}")->assertStatus($status);
+    $this->actingAs(peopleActor($who))->get("/personas/equipo/{$this->employee->id}/filas?dia=2026-10-06")->assertStatus($status === 302 ? 200 : $status);
 })->with([
     ['persona', 302], ['responsable', 200], ['rrhh', 200], ['admin', 200],
     ['compañero', 403], ['otro responsable', 403], ['otro departamento', 403], ['colaborador', 403],
@@ -113,7 +113,7 @@ it('el responsable no ve la comparación con las horas imputadas (solo la person
 });
 
 it('datos laborales: RR. HH. y los admins', function (string $who, int $status) {
-    $this->actingAs(actor($who))
+    $this->actingAs(peopleActor($who))
         ->put("/admin/usuarios/{$this->employee->id}/laboral", ['hire_date' => '2024-02-01', 'subject_to_register' => true])
         ->assertStatus($status);
 })->with([
@@ -153,7 +153,7 @@ it('con el módulo apagado, 404 para todos salvo los admins en modo de prueba', 
 
 it('la cabecera recibe el estado del registro de quien ficha', function () {
     punchAt($this->employee, '2026-10-07 09:00', ClockEventKind::ClockIn);
-    $this->travelTo(madrid('2026-10-07 12:00'));
+    $this->travelTo(madridAt('2026-10-07 12:00'));
 
     $this->actingAs($this->employee)->get('/personas/jornada')
         ->assertInertia(fn (Assert $page) => $page

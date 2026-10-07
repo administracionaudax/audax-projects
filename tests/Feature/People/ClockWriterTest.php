@@ -24,7 +24,7 @@ beforeEach(function () {
 });
 
 it('ficha con la hora del servidor, sin segundos fraccionarios, y guarda quién y desde dónde', function () {
-    $this->travelTo(madrid('2026-10-05 09:02:17.734'));
+    $this->travelTo(madridAt('2026-10-05 09:02:17.734'));
 
     $event = app(ClockWriter::class)->punch($this->user, ClockEventKind::ClockIn, WorkMode::Remote, ClockSource::Pwa, '10.1.2.3', 'Mozilla/5.0 (iPhone)');
 
@@ -40,7 +40,7 @@ it('ficha con la hora del servidor, sin segundos fraccionarios, y guarda quién 
 
 it('no acepta la hora del navegador: la ruta ignora cualquier instante que se le mande', function () {
     enablePeople();
-    $this->travelTo(madrid('2026-10-05 09:00'));
+    $this->travelTo(madridAt('2026-10-05 09:00'));
 
     $this->actingAs($this->user)
         ->post('/fichar', ['kind' => 'clock_in', 'occurred_at' => '2026-10-05T05:00:00Z', 'work_mode' => 'on_site'])
@@ -101,10 +101,10 @@ it('deja salir desde la pausa (queda la incidencia) y volver a entrar el mismo d
 it('una jornada sin salida deja de estar en curso a las 16 horas: se puede entrar al día siguiente y nunca se cierra sola', function () {
     punchAt($this->user, '2026-10-05 09:00', ClockEventKind::ClockIn);
 
-    $this->travelTo(madrid('2026-10-06 00:30'));
+    $this->travelTo(madridAt('2026-10-06 00:30'));
     expect(ClockState::of($this->user)->status)->toBe(ClockStatus::Working);
 
-    $this->travelTo(madrid('2026-10-06 08:55'));
+    $this->travelTo(madridAt('2026-10-06 08:55'));
     $state = ClockState::of($this->user);
     expect($state->status)->toBe(ClockStatus::Off)
         ->and($state->unclosedDate)->toBe('2026-10-05');

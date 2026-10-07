@@ -9,7 +9,7 @@ use Spatie\Activitylog\Models\Activity;
 */
 
 beforeEach(function () {
-    $this->travelTo(madrid('2026-10-07 12:00'));
+    $this->travelTo(madridAt('2026-10-07 12:00'));
     $this->admin = userWithRole('admin');
     $this->user = userWithRole('employee');
 });
@@ -35,7 +35,7 @@ it('guarda el margen de entrada, la comida y el verano en la versión nueva', fu
         ->and($schedule->expected_pause_minutes)->toBe(60)
         ->and($schedule->summer_week)->toBe([420, 420, 420, 420, 420, 0, 0])
         ->and($schedule->inSummer('2027-07-15'))->toBeTrue()
-        ->and($schedule->minutesFor(madrid('2027-07-15')))->toBe(420);
+        ->and($schedule->minutesFor(madridAt('2027-07-15')))->toBe(420);
 });
 
 it('valida el margen y las fechas del verano', function (array $data, string $error) {
@@ -64,7 +64,7 @@ it('sin verano, sus columnas quedan vacías y la capacidad no cambia', function 
 
     expect($schedule->summer_starts_on)->toBeNull()
         ->and($schedule->hasSummer())->toBeFalse()
-        ->and($schedule->minutesFor(madrid('2027-07-15')))->toBe(480);
+        ->and($schedule->minutesFor(madridAt('2027-07-15')))->toBe(480);
 });
 
 it('los cambios de jornada quedan en la auditoría', function () {
