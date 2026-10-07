@@ -276,6 +276,7 @@ function perfMeasureFrozen(TestCase $test, User $user, string $url, array $heade
  */
 function perfMeasureAll(TestCase $test, User $user): array
 {
+    perfAnalyze();
     $results = [];
 
     foreach (perfPages() as $label => [$url, $headers]) {
@@ -284,6 +285,19 @@ function perfMeasureAll(TestCase $test, User $user): array
     }
 
     return $results;
+}
+
+/**
+ * En PostgreSQL, las filas del test viven en una transacción sin confirmar: sin ANALYZE el planificador
+ * cree que las tablas están vacías y puede elegir planes cuadráticos (subconsultas por fila con
+ * recorridos completos) que tardan minutos con los datos de ejemplo. ANALYZE dentro de la transacción
+ * cuenta también las filas insertadas en ella, como en producción, donde el autovacuum las analiza.
+ */
+function perfAnalyze(): void
+{
+    if (DB::connection()->getDriverName() === 'pgsql') {
+        DB::statement('ANALYZE');
+    }
 }
 
 /**
