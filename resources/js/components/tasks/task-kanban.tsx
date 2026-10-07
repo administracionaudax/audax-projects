@@ -4,12 +4,14 @@ import {
     DragOverlay,
     KeyboardSensor,
     PointerSensor,
+    pointerWithin,
     useDroppable,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
 import type {
     Announcements,
+    CollisionDetection,
     DragEndEvent,
     DragOverEvent,
     DragStartEvent,
@@ -26,6 +28,8 @@ import { router } from '@inertiajs/react';
 import {
     ArrowDown,
     ArrowUp,
+    ChevronDown,
+    ChevronRight,
     CircleCheck,
     EllipsisVertical,
     GripVertical,
@@ -62,6 +66,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCollapsedGroups } from '@/hooks/use-collapsed-groups';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -333,6 +338,26 @@ function SortableCard({
     );
 }
 
+function StatusMarker({ status }: { status: TaskStatus }) {
+    return status.category === 'done' ? (
+        <CircleCheck
+            aria-hidden="true"
+            className="size-4 shrink-0 text-success"
+        />
+    ) : (
+        <span
+            aria-hidden="true"
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: status.color }}
+        />
+    );
+}
+
+/** Clave del estado plegado de una columna (la misma forma que los grupos de la lista). */
+export function kanbanColumnKey(statusId: number): string {
+    return `status-${statusId}`;
+}
+
 function Column({
     status,
     taskIds,
@@ -343,6 +368,9 @@ function Column({
     onMove,
     hiddenCompleted,
     onShowCompleted,
+    foldable,
+    collapsed,
+    onToggle,
 }: {
     status: TaskStatus;
     taskIds: number[];
@@ -353,9 +381,67 @@ function Column({
     onMove: MoveHandler;
     hiddenCompleted: number;
     onShowCompleted: () => void;
+    /** ¿Se puede plegar? (con más de una columna). */
+    foldable: boolean;
+    collapsed: boolean;
+    onToggle: () => void;
 }) {
+    // La columna plegada sigue siendo una zona donde soltar (D-326): se registra con el mismo id.
     const { setNodeRef, isOver } = useDroppable({ id: columnKey(status.id) });
     const headingId = `kanban-column-${status.id}`;
+    const contentId = `kanban-column-content-${status.id}`;
+    const count = t('task_list.group_count', { count: taskIds.length });
+
+    if (foldable && collapsed) {
+        // Franja estrecha y vertical con el nombre y el número de tareas (con las completadas
+        // ocultas por el filtro, que también son de la columna).
+        const total = taskIds.length + hiddenCompleted;
+
+        return (
+            <section
+                ref={setNodeRef}
+                aria-labelledby={headingId}
+                className={cn(
+                    'flex min-h-64 w-11 shrink-0 flex-col self-stretch rounded-md border bg-muted p-1',
+                    isOver && 'border-primary bg-accent',
+                )}
+                data-test="kanban-column"
+                data-kanban-column={status.id}
+                data-kanban-list={status.id}
+                data-collapsed="true"
+            >
+                <h2 id={headingId} className="flex flex-1 text-sm font-medium">
+                    <button
+                        type="button"
+                        aria-expanded={false}
+                        aria-controls={contentId}
+                        onClick={onToggle}
+                        title={t('task_board.expand_column', {
+                            status: status.name,
+                        })}
+                        className={cn(
+                            'flex flex-1 flex-col items-center gap-2 rounded-md px-1 py-2 hover:bg-accent',
+                            FOCUS_RING,
+                        )}
+                        data-test="kanban-column-toggle"
+                    >
+                        <ChevronRight
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-muted-foreground"
+                        />
+                        <StatusMarker status={status} />
+                        <span className="whitespace-nowrap [writing-mode:vertical-rl]">
+                            {status.name}
+                            <span className="mt-2 font-normal text-muted-foreground">
+                                {t('task_list.group_count', { count: total })}
+                            </span>
+                        </span>
+                    </button>
+                </h2>
+                <div id={contentId} hidden />
+            </section>
+        );
+    }
 
     return (
         <section
@@ -368,80 +454,102 @@ function Column({
                 id={headingId}
                 className="flex items-center gap-2 text-sm font-medium"
             >
-                {status.category === 'done' ? (
-                    <CircleCheck
-                        aria-hidden="true"
-                        className="size-4 text-success"
-                    />
-                ) : (
-                    <span
-                        aria-hidden="true"
-                        className="size-2.5 rounded-full"
-                        style={{ backgroundColor: status.color }}
-                    />
-                )}
-                {status.name}
-                <span className="font-normal text-muted-foreground">
-                    {t('task_list.group_count', { count: taskIds.length })}
-                </span>
-            </h2>
-            <SortableContext
-                id={columnKey(status.id)}
-                items={taskIds.map(cardKey)}
-                strategy={verticalListSortingStrategy}
-            >
-                <ul
-                    ref={setNodeRef}
-                    className={cn(
-                        'flex min-h-16 flex-col gap-2 rounded-md',
-                        isOver && 'bg-accent',
-                    )}
-                    aria-label={t('task_board.column_tasks', {
-                        status: status.name,
-                    })}
-                    data-kanban-list={status.id}
-                >
-                    {taskIds.map((taskId, index) => {
-                        const task = tasksById.get(taskId);
-
-                        return task ? (
-                            <SortableCard
-                                key={taskId}
-                                task={task}
-                                statusId={status.id}
-                                index={index}
-                                count={taskIds.length}
-                                statuses={statuses}
-                                canMove={canMove}
-                                onOpen={onOpen}
-                                onMove={onMove}
-                            />
-                        ) : null;
-                    })}
-                </ul>
-            </SortableContext>
-            {hiddenCompleted > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                    {t('task_board.hidden_completed', {
-                        count: hiddenCompleted,
-                    })}{' '}
+                {foldable ? (
                     <button
                         type="button"
-                        onClick={onShowCompleted}
+                        aria-expanded={true}
+                        aria-controls={contentId}
+                        onClick={onToggle}
+                        title={t('task_board.collapse_column', {
+                            status: status.name,
+                        })}
                         className={cn(
-                            'rounded-md text-primary-text underline',
+                            '-mx-1 inline-flex min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left hover:bg-accent',
                             FOCUS_RING,
                         )}
+                        data-test="kanban-column-toggle"
                     >
-                        {t('task_board.show_completed')}
+                        <ChevronDown
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-muted-foreground"
+                        />
+                        <StatusMarker status={status} />
+                        <span className="min-w-0 break-words">
+                            {status.name}
+                            <span className="ml-2 font-normal whitespace-nowrap text-muted-foreground">
+                                {count}
+                            </span>
+                        </span>
                     </button>
-                </p>
-            ) : null}
-            <QuickAddTask
-                compact
-                defaults={{ status_id: status.id }}
-                label={t('quick_add.label_in', { group: status.name })}
-            />
+                ) : (
+                    <>
+                        <StatusMarker status={status} />
+                        {status.name}
+                        <span className="font-normal text-muted-foreground">
+                            {count}
+                        </span>
+                    </>
+                )}
+            </h2>
+            <div id={contentId} className="flex flex-col gap-3">
+                <SortableContext
+                    id={columnKey(status.id)}
+                    items={taskIds.map(cardKey)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <ul
+                        ref={setNodeRef}
+                        className={cn(
+                            'flex min-h-16 flex-col gap-2 rounded-md',
+                            isOver && 'bg-accent',
+                        )}
+                        aria-label={t('task_board.column_tasks', {
+                            status: status.name,
+                        })}
+                        data-kanban-list={status.id}
+                    >
+                        {taskIds.map((taskId, index) => {
+                            const task = tasksById.get(taskId);
+
+                            return task ? (
+                                <SortableCard
+                                    key={taskId}
+                                    task={task}
+                                    statusId={status.id}
+                                    index={index}
+                                    count={taskIds.length}
+                                    statuses={statuses}
+                                    canMove={canMove}
+                                    onOpen={onOpen}
+                                    onMove={onMove}
+                                />
+                            ) : null;
+                        })}
+                    </ul>
+                </SortableContext>
+                {hiddenCompleted > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                        {t('task_board.hidden_completed', {
+                            count: hiddenCompleted,
+                        })}{' '}
+                        <button
+                            type="button"
+                            onClick={onShowCompleted}
+                            className={cn(
+                                'rounded-md text-primary-text underline',
+                                FOCUS_RING,
+                            )}
+                        >
+                            {t('task_board.show_completed')}
+                        </button>
+                    </p>
+                ) : null}
+                <QuickAddTask
+                    compact
+                    defaults={{ status_id: status.id }}
+                    label={t('quick_add.label_in', { group: status.name })}
+                />
+            </div>
         </section>
     );
 }
@@ -452,6 +560,10 @@ function Column({
  * soltar y Escape para cancelar), con anuncios en español para lectores de pantalla y, además,
  * un menú «Mover a…» por tarjeta. Al soltar se cambia el estado y la posición en el servidor; la
  * tarjeta se mueve al instante y vuelve a su sitio si el servidor lo rechaza.
+ *
+ * Las columnas se pliegan a una franja estrecha (D-326): la de categoría «done» nace plegada y
+ * las demás se pliegan a mano. Se recuerda por persona y proyecto (`storageKey`, como D-325) y
+ * una tarjeta se puede soltar sobre una columna plegada sin desplegarla.
  */
 export function TaskKanban({
     tasks,
@@ -459,14 +571,43 @@ export function TaskKanban({
     onOpen,
     hiddenCompletedCount,
     onShowCompleted,
+    storageKey = null,
 }: {
     tasks: TaskListItem[];
     statuses: TaskStatus[];
     onOpen: (taskId: number) => void;
     hiddenCompletedCount: number;
     onShowCompleted: () => void;
+    /** Clave del navegador para recordar las columnas plegadas (null: solo en memoria). */
+    storageKey?: string | null;
 }) {
     const lookups = useTaskLookups();
+    const folds = useCollapsedGroups(storageKey);
+    // Con una sola columna (filtro por estado), nada que plegar.
+    const foldable = statuses.length > 1;
+    const isColumnCollapsed = (status: TaskStatus) =>
+        foldable &&
+        folds.isCollapsed(
+            kanbanColumnKey(status.id),
+            status.category === 'done',
+        );
+    const collapsedKeys = new Set<UniqueIdentifier>(
+        statuses
+            .filter(isColumnCollapsed)
+            .map((status) => columnKey(status.id)),
+    );
+
+    /**
+     * Con el puntero sobre una columna plegada, esa columna (la franja es estrecha y la tarjeta que
+     * se arrastra, ancha: por esquinas ganaría la columna de al lado). Si no, por esquinas.
+     */
+    const collisionDetection: CollisionDetection = (args) => {
+        const hit = pointerWithin(args).find((collision) =>
+            collapsedKeys.has(collision.id),
+        );
+
+        return hit ? [hit] : closestCorners(args);
+    };
     const [sourceTasks, setSourceTasks] = useState(tasks);
     const [sourceStatuses, setSourceStatuses] = useState(statuses);
     const [columns, setColumns] = useState<KanbanColumns>(() =>
@@ -707,7 +848,7 @@ export function TaskKanban({
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={collisionDetection}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
@@ -746,6 +887,14 @@ export function TaskKanban({
                                     : 0
                             }
                             onShowCompleted={onShowCompleted}
+                            foldable={foldable}
+                            collapsed={isColumnCollapsed(status)}
+                            onToggle={() =>
+                                folds.setCollapsed(
+                                    kanbanColumnKey(status.id),
+                                    !isColumnCollapsed(status),
+                                )
+                            }
                         />
                     ))}
                 </div>

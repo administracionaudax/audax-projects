@@ -111,6 +111,8 @@
     "task_board.estimate": "Estimación :estimate",
     "task_board.hidden_completed": ":count completadas ocultas.",
     "task_board.show_completed": "Mostrarlas",
+    "task_board.collapse_column": "Plegar la columna «:status»",
+    "task_board.expand_column": "Desplegar la columna «:status»",
     "task_board.instructions": "Para mover una tarea, pulsa espacio o Intro en su asa. Usa las flechas para cambiarla de posición o de columna, pulsa espacio o Intro para soltarla y Escape para cancelar.",
     "task_board.position": "columna «:status», posición :position de :total",
     "task_board.announce.start": "Has cogido la tarea «:task». Está en la :position.",

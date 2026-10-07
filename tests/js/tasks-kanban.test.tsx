@@ -145,22 +145,39 @@ const lookups = (canUpdate = true) =>
         | 'maxAttachmentMb'
     >);
 
-function renderBoard(canUpdate = true) {
+function renderBoard(
+    canUpdate = true,
+    {
+        storageKey = null,
+        hiddenCompletedCount = 0,
+        boardStatuses = statuses,
+    }: {
+        storageKey?: string | null;
+        hiddenCompletedCount?: number;
+        boardStatuses?: TaskStatus[];
+    } = {},
+) {
     const onOpen = vi.fn();
 
-    render(
+    const result = render(
         <TaskLookupsProvider value={lookups(canUpdate)}>
             <TaskKanban
                 tasks={tasks}
-                statuses={statuses}
+                statuses={boardStatuses}
                 onOpen={onOpen}
-                hiddenCompletedCount={0}
+                hiddenCompletedCount={hiddenCompletedCount}
                 onShowCompleted={vi.fn()}
+                storageKey={storageKey}
             />
         </TaskLookupsProvider>,
     );
 
-    return { onOpen };
+    return { onOpen, unmount: result.unmount };
+}
+
+/** Botón que pliega o despliega la columna (su encabezado). */
+function columnToggle(name: string): HTMLElement {
+    return screen.getByRole('button', { name: new RegExp(`^${name}`) });
 }
 
 function column(name: string) {
@@ -283,7 +300,10 @@ describe('kanban', () => {
             'Maquetar la home',
         ]);
         expect(titles('En curso')).toEqual(['Revisar textos']);
-        expect(titles('Hecha')).toEqual([]);
+        // «Hecha» nace plegada (D-326): sin lista, solo la franja.
+        expect(
+            screen.queryByRole('list', { name: 'Tareas en «Hecha»' }),
+        ).toBeNull();
 
         await user.click(
             screen.getByRole('button', { name: 'Maquetar la home' }),
@@ -387,7 +407,8 @@ describe('kanban', () => {
             'Diseñar la home',
             'Maquetar la home',
         ]);
-        expect(titles('Hecha')).toEqual([]);
+        // La columna plegada no se ha quedado con la tarjeta.
+        expect(columnToggle('Hecha').textContent).toContain('(0)');
     });
 
     it('también vuelve a su sitio si el servidor falla (error 500)', async () => {
@@ -484,5 +505,115 @@ describe('kanban', () => {
                 name: 'Más opciones de «Diseñar la home»',
             }),
         ).toBeNull();
+    });
+});
+
+describe('columnas plegables del kanban (D-326)', () => {
+    const key = 'audax.tasks.kanban.1.1';
+
+    beforeEach(() => window.localStorage.clear());
+
+    it('«Hecha» nace plegada en una franja con su nombre y su número (con las completadas ocultas)', () => {
+        renderBoard(true, { storageKey: key, hiddenCompletedCount: 4 });
+
+        const done = columnToggle('Hecha');
+        expect(done.getAttribute('aria-expanded')).toBe('false');
+        expect(done.textContent).toContain('Hecha');
+        expect(done.textContent).toContain('(4)');
+        expect(
+            document.getElementById(done.getAttribute('aria-controls') ?? '')
+                ?.hidden,
+        ).toBe(true);
+        expect(
+            done
+                .closest('[data-test="kanban-column"]')
+                ?.getAttribute('data-collapsed'),
+        ).toBe('true');
+
+        // Las demás, desplegadas.
+        expect(columnToggle('Por hacer').getAttribute('aria-expanded')).toBe(
+            'true',
+        );
+        expect(columnToggle('En curso').getAttribute('aria-expanded')).toBe(
+            'true',
+        );
+    });
+
+    it('se despliega con el teclado y se recuerda por persona y proyecto al volver', async () => {
+        const user = userEvent.setup();
+        const { unmount } = renderBoard(true, { storageKey: key });
+
+        columnToggle('Hecha').focus();
+        await user.keyboard('{Enter}');
+        expect(columnToggle('Hecha').getAttribute('aria-expanded')).toBe(
+            'true',
+        );
+        expect(titles('Hecha')).toEqual([]);
+        expect(JSON.parse(window.localStorage.getItem(key) ?? '{}')).toEqual({
+            'status-3': false,
+        });
+        unmount();
+
+        renderBoard(true, { storageKey: key });
+        expect(columnToggle('Hecha').getAttribute('aria-expanded')).toBe(
+            'true',
+        );
+    });
+
+    it('cualquier otra columna se pliega a mano y deja de pintar sus tarjetas', async () => {
+        const user = userEvent.setup();
+        renderBoard(true, { storageKey: key });
+
+        await user.click(columnToggle('Por hacer'));
+        expect(columnToggle('Por hacer').getAttribute('aria-expanded')).toBe(
+            'false',
+        );
+        expect(columnToggle('Por hacer').textContent).toContain('(2)');
+        expect(screen.queryByText('Diseñar la home')).toBeNull();
+
+        await user.click(columnToggle('Por hacer'));
+        expect(titles('Por hacer')).toEqual([
+            'Diseñar la home',
+            'Maquetar la home',
+        ]);
+    });
+
+    it('se puede soltar una tarjeta en la columna plegada sin desplegarla', async () => {
+        mockBoardGeometry();
+        const user = userEvent.setup();
+        renderBoard(true, { storageKey: key });
+
+        screen.getByRole('button', { name: 'Mover «Revisar textos»' }).focus();
+        await user.keyboard(' ');
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        await user.keyboard('{ArrowRight}');
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+        await user.keyboard(' ');
+
+        await waitFor(() => expect(server.patch).toHaveBeenCalledTimes(1));
+        const [url, data] = server.patch.mock.calls[0];
+        expect(url).toBe('/tareas/12/posicion');
+        expect(data).toEqual({ status_id: 3, before_id: null, after_id: null });
+
+        // Sigue plegada, con la tarea contada.
+        expect(columnToggle('Hecha').getAttribute('aria-expanded')).toBe(
+            'false',
+        );
+        expect(columnToggle('Hecha').textContent).toContain('(1)');
+        expect(titles('En curso')).toEqual([]);
+    });
+
+    it('con una sola columna (filtro por estado) no hay nada que plegar', () => {
+        renderBoard(true, {
+            storageKey: key,
+            boardStatuses: statuses.filter((status) => status.id === 3),
+        });
+
+        expect(titles('Hecha')).toEqual([]);
+        expect(screen.queryByRole('button', { name: /^Hecha/ })).toBeNull();
     });
 });

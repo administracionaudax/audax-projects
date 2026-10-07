@@ -215,6 +215,11 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
                                     completed: true,
                                 })
                             }
+                            storageKey={
+                                userId === null
+                                    ? null
+                                    : `audax.tasks.kanban.${userId}.${project.id}`
+                            }
                         />
                     ) : (
                         <TaskList
