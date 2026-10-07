@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Absences\LeaveCalendar;
 use App\Domain\DayPlan\DayPlanAccess;
 use App\Domain\Forecast\ForecastAccess;
 use App\Domain\People\PeopleAccess;
@@ -52,7 +53,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Días especiales del calendario laboral (Fase 11, R3): leídos una vez por petición o trabajo.
+        $this->app->scoped(LeaveCalendar::class);
     }
 
     /**

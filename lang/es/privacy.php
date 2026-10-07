@@ -30,7 +30,7 @@ return [
 - tus datos de identificación y de contacto profesionales,
 - las horas que imputas, tus tareas y tus comentarios,
 - tu plan del día: las líneas que escribes, si las haces, las horas que prevés y los comentarios de tu responsable,
-- tus ausencias: solo el tipo y las fechas, nunca diagnósticos ni justificantes médicos,
+- tus ausencias y tus saldos de vacaciones y permisos: el tipo, las fechas, lo que te queda de cada saldo y, si el permiso lo pide, su justificante (nunca un diagnóstico: basta con el justificante de la hospitalización, la citación o el certificado),
 - tu registro de jornada: la hora de entrada, de la comida y de salida que fichas, si trabajas presencial o a distancia, las correcciones con su motivo, tus resúmenes mensuales con tu confirmación y tus horas extra y saldo de horas; de la conexión desde la que fichas, solo una huella de la dirección IP que no permite saber cuál era y el navegador. No se usa geolocalización ni datos biométricos,
 - tus mensajes del chat y tus audios, con su transcripción, que se hace en el propio servidor de la empresa,
 - tus weeklies y sus dictados: el dictado se transcribe con Google Gemini y su audio se borra al transcribirlo,
@@ -39,6 +39,7 @@ return [
 **Quién los ve:**
 - Cada persona ve sus propios datos.
 - Tus responsables y los gestores de tus proyectos ven lo necesario para organizar el trabajo.
+- Tus justificantes los ves tú y RR. HH.; tu responsable, solo los que no son de salud. El resto de la plantilla solo ve que no estás, nunca el motivo de tu ausencia.
 - Tu registro de jornada lo ves tú, tu responsable y RR. HH. La Inspección de Trabajo y, si la hubiera, la representación legal de la plantilla pueden acceder a él en los términos que marca la ley; la Inspección, con un acceso temporal de solo lectura que queda registrado. La comparación entre tu jornada y tus horas imputadas solo la ves tú.
 - El texto y el estado de las líneas de tu plan del día los ve el resto de la plantilla; las horas previstas, el cumplimiento y los comentarios, solo tú, tu responsable y la administración. No se hacen clasificaciones entre personas.
 - Los clientes solo ven, en su portal, las horas aprobadas de sus propios proyectos, y tu nombre únicamente si así se configura.
@@ -153,6 +154,14 @@ MD,
                     'date' => 'Día', 'hour_type' => 'Tipo de hora', 'excess_minutes' => 'Exceso (min)', 'overtime_minutes' => 'Horas extra (min)', 'flex_minutes' => 'Flexibilidad (min)',
                     'destination' => 'Destino', 'decided_by' => 'Decidido por', 'decided_at' => 'Decidido el', 'supersedes_id' => 'Sustituye a', 'note' => 'Nota',
                 ],
+            ],
+            'leave_balance' => [
+                'description' => 'Los movimientos de tus saldos de vacaciones y permisos: asignaciones anuales, ajustes, saldo inicial y arrastres, con su caducidad. Las cantidades en días van en centésimas (2200 = 22 días); las de horas, en minutos.',
+                'columns' => ['type' => 'Tipo', 'year' => 'Año', 'kind' => 'Movimiento', 'amount' => 'Cantidad', 'unit' => 'Unidad', 'valid_from' => 'Desde', 'expires_on' => 'Caduca', 'reason' => 'Motivo', 'created_by' => 'Anotado por', 'created_at' => 'Anotado el'],
+            ],
+            'absence_documents' => [
+                'description' => 'Los justificantes que se han subido a tus ausencias (el fichero se descarga desde «Mis ausencias»).',
+                'columns' => ['absence_id' => 'Id de la ausencia', 'name' => 'Fichero', 'mime' => 'Formato', 'size' => 'Tamaño (bytes)', 'sha256' => 'Huella SHA-256', 'uploaded_by' => 'Subido por', 'created_at' => 'Subido el'],
             ],
             'time_balance' => [
                 'description' => 'Los movimientos de tu saldo de horas: horas extra a compensar, descansos disfrutados, pagos y ajustes.',

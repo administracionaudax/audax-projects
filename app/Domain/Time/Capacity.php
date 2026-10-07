@@ -2,6 +2,7 @@
 
 namespace App\Domain\Time;
 
+use App\Domain\Absences\LeaveCalendar;
 use App\Models\Absence;
 use App\Models\Holiday;
 use App\Models\Setting;
@@ -13,8 +14,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Capacidad de trabajo (SPEC §9): minutos de jornada de un usuario por fecha según su
- * WorkSchedule vigente (o el ajuste default_work_minutes, D-036), MENOS festivos (0 ese día) y
- * MENOS ausencias aprobadas (el día entero o sus partial_minutes; nunca por debajo de 0).
+ * WorkSchedule vigente (o el ajuste default_work_minutes, D-036), MENOS festivos (0 ese día), la
+ * MITAD los días de media jornada del calendario laboral (Fase 11, R3, D-366) y MENOS ausencias aprobadas (el día entero o sus partial_minutes; nunca por debajo de 0).
  * Todos los informes y la carga usan esta clase: la Fase 3 añadió festivos y ausencias aquí.
  *
  * Por tramos (PERF-05): la capacidad de cada persona es un CapacityPlan, los intervalos de días
@@ -101,13 +102,14 @@ final class Capacity
 
         $default = self::defaultWeek();
         $holidays = self::holidays($from, $to);
+        $halfDays = LeaveCalendar::halfDays($from, $to);
         $absences = self::absences($userIds, $from, $to);
         /** @var array<int, list<array{from: int, to: int|null, week: list<int>}>> $versions horarios de cada persona, leídos una vez */
         $versions = [];
         $firstDay = CapacityPlan::day($from);
         $lastDay = CapacityPlan::day($to);
 
-        return array_map(function (array $range) use ($schedules, $default, $holidays, $absences, &$versions, $firstDay, $lastDay): CapacityPlan {
+        return array_map(function (array $range) use ($schedules, $default, $holidays, $halfDays, $absences, &$versions, $firstDay, $lastDay): CapacityPlan {
             // Cada versión con sus temporadas de verano delante (D-336): la primera que cubre gana.
             $versions[$range['user_id']] ??= array_merge(...array_map(
                 fn (WorkSchedule $schedule): array => self::periodsOf($schedule, $firstDay, $lastDay),
@@ -117,7 +119,7 @@ final class Capacity
             $from = CapacityPlan::day($range['from']);
             $to = CapacityPlan::day($range['to']);
             $plan = self::plan($versions[$range['user_id']], $default, $from, $to);
-            $overrides = self::overrides($plan, $holidays, $absences[$range['user_id']] ?? [], $from, $to);
+            $overrides = self::overrides($plan, $holidays, $absences[$range['user_id']] ?? [], $from, $to, $halfDays);
 
             return $overrides === [] ? $plan : new CapacityPlan($plan->segments, $overrides);
         }, $days);
@@ -179,17 +181,26 @@ final class Capacity
     }
 
     /**
-     * Días con una capacidad distinta de la de su semana: los festivos (0) y las ausencias
-     * aprobadas (el día entero, o sus partial_minutes sin bajar de 0), con las mismas reglas que el
-     * detalle día a día de detailedDays().
+     * Días con una capacidad distinta de la de su semana: los festivos (0), los de media jornada
+     * (la mitad, si no son festivo) y las ausencias aprobadas (el día entero, o sus partial_minutes
+     * sin bajar de 0), con las mismas reglas que el detalle día a día de detailedDays().
      *
      * @param  array<string, string>  $holidays
      * @param  list<Absence>  $absences
+     * @param  array<string, string>  $halfDays
      * @return array<int, int> Día → minutos.
      */
-    private static function overrides(CapacityPlan $plan, array $holidays, array $absences, int $from, int $to): array
+    private static function overrides(CapacityPlan $plan, array $holidays, array $absences, int $from, int $to, array $halfDays = []): array
     {
         $overrides = [];
+
+        foreach (array_keys($halfDays) as $date) {
+            $day = CapacityPlan::day($date);
+
+            if ($day >= $from && $day <= $to && ! isset($holidays[$date])) {
+                $overrides[$day] = intdiv($plan->base($day), 2);
+            }
+        }
 
         foreach (array_keys($holidays) as $date) {
             $day = CapacityPlan::day($date);
@@ -240,6 +251,7 @@ final class Capacity
             self::absences([$user->id], $fromDay->toDateString(), $toDay->toDateString())[$user->id] ?? [],
             $fromDay,
             $toDay,
+            LeaveCalendar::halfDays($fromDay->toDateString(), $toDay->toDateString()),
         );
     }
 
@@ -277,10 +289,11 @@ final class Capacity
 
         $default = self::defaultWeek();
         $holidays = self::holidays($from, $to);
+        $halfDays = LeaveCalendar::halfDays($from, $to);
         $absences = self::absences($userIds, $from, $to);
 
         return array_map(
-            fn (array $range): array => self::detailedDays($schedules->get($range['user_id']) ?? new Collection, $default, $holidays, $absences[$range['user_id']] ?? [], $range['from'], $range['to']),
+            fn (array $range): array => self::detailedDays($schedules->get($range['user_id']) ?? new Collection, $default, $holidays, $absences[$range['user_id']] ?? [], $range['from'], $range['to'], $halfDays),
             $days,
         );
     }
@@ -397,9 +410,10 @@ final class Capacity
      * @param  list<int>  $default
      * @param  array<string, string>  $holidays
      * @param  list<Absence>  $absences
+     * @param  array<string, string>  $halfDays  Días de media jornada (Fase 11, R3).
      * @return array<string, array{base: int, minutes: int, holiday: string|null, absence: array{type: string, partial_minutes: int|null}|null}>
      */
-    private static function detailedDays(Collection $schedules, array $default, array $holidays, array $absences, CarbonImmutable $from, CarbonImmutable $to): array
+    private static function detailedDays(Collection $schedules, array $default, array $holidays, array $absences, CarbonImmutable $from, CarbonImmutable $to, array $halfDays = []): array
     {
         $periods = [];
         $firstDay = CapacityPlan::day($from->toDateString());
@@ -444,6 +458,8 @@ final class Capacity
 
             if ($holiday !== null) {
                 $minutes = 0;
+            } elseif (isset($halfDays[$date])) {
+                $minutes = intdiv($base, 2);
             }
 
             foreach ($leaves as $leave) {

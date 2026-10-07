@@ -238,8 +238,9 @@ it('hace las mismas consultas con 5 personas que con 50', function () {
     $many = $count;
 
     Notification::assertSentTimes(WeekSubmissionReminder::class, 5 + 50);
-    // Una más desde la 10.5 (D-200): la semana activa de la weekly, aquí sin ninguna.
-    expect($few)->toBeLessThanOrEqual(9)
+    // Una más desde la 10.5 (D-200): la semana activa de la weekly, aquí sin ninguna. Y otra desde
+    // la Fase 11, R3 (D-366): los días especiales del calendario laboral, una vez por proceso.
+    expect($few)->toBeLessThanOrEqual(10)
         ->and($many)->toBe($few);
 });
 

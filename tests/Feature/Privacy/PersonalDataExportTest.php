@@ -326,6 +326,9 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         'horarios.json', 'horarios.csv',
         'horas.json', 'horas.csv',
         'ausencias.json', 'ausencias.csv',
+        // Fase 11, R3 (D-372).
+        'saldos-ausencias.json', 'saldos-ausencias.csv',
+        'justificantes.json', 'justificantes.csv',
         'comentarios.json', 'comentarios.csv',
         'mensajes-chat.json', 'mensajes-chat.csv',
         // Plan del día (D-256).

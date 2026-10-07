@@ -17,6 +17,9 @@ namespace App\Domain\People\Reports;
  *   las incidencias, el cierre y quién validó las correcciones (W-091 y W-092).
  * - `fichajes`: cada fila de la cadena, también las anulaciones, con su huella (W-093).
  * - `incidencias`: los días con incidencias y lo que se ha hecho con ellas.
+ *
+ * R3 (vacaciones y permisos, D-371; W-096, W-097 y W-071): `saldos`, `actividad` y
+ * `justificantes-pendientes` (BuildsLeaveReports).
  */
 enum PeopleReportKind: string
 {
@@ -26,6 +29,9 @@ enum PeopleReportKind: string
     case MonthlyPresence = 'presencia-mensual';
     case Punches = 'fichajes';
     case Incidents = 'incidencias';
+    case LeaveBalances = 'saldos';
+    case LeaveActivity = 'actividad';
+    case MissingDocuments = 'justificantes-pendientes';
 
     public function title(): string
     {

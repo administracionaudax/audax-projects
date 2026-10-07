@@ -141,6 +141,15 @@ Schedule::command('people:overtime-summary')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Vacaciones y permisos, R3 (D-362 y D-369): cada día a las 07:30, la asignación del año en curso y
+// del siguiente, los avisos de saldo a punto de caducar y los de justificante pendiente. Nada con el
+// módulo apagado.
+Schedule::command('people:leave-daily')
+    ->dailyAt('07:30')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
 Schedule::command('app:prune-data')
     ->dailyAt('03:10')

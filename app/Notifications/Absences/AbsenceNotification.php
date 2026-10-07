@@ -32,6 +32,9 @@ abstract class AbsenceNotification extends AppNotification
     /** Quien provoca el aviso (quien solicita, aprueba, rechaza, registra o anula). */
     public string $actorName;
 
+    /** El nombre del tipo del catálogo (Fase 11, R3): «Matrimonio o registro de pareja de hecho». */
+    public ?string $typeName = null;
+
     public function __construct(Absence $absence, User $actor)
     {
         $this->absenceId = $absence->id;
@@ -41,6 +44,8 @@ abstract class AbsenceNotification extends AppNotification
         $this->endDate = $absence->end_date->toDateString();
         $this->partialMinutes = $absence->partial_minutes;
         $this->actorName = $actor->name;
+        $leaveType = $absence->leave_type_id === null ? null : ($absence->relationLoaded('leaveType') ? $absence->leaveType : $absence->leaveType()->first());
+        $this->typeName = AbsenceText::typeName($leaveType, $absence->type);
     }
 
     /**
@@ -102,7 +107,7 @@ abstract class AbsenceNotification extends AppNotification
             'name' => $this->ownerName,
             'actor' => $this->actorName,
             'reviewer' => $this->actorName,
-            'type' => $this->absenceType()->label(),
+            'type' => $this->typeName ?? $this->absenceType()->label(),
             'phrase' => AbsenceText::phrase($this->absenceType()),
             'period' => AbsenceText::period($this->startDate, $this->endDate, $this->partialMinutes),
         ];

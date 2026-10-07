@@ -2,15 +2,21 @@
 
 namespace App\Domain\Absences;
 
+use App\Domain\People\PeopleAccess;
+use App\Domain\People\PeopleNotifier;
 use App\Domain\Reports\ReportCache;
 use App\Enums\AbsenceStatus;
+use App\Enums\CancellationStatus;
 use App\Enums\Role;
 use App\Models\Absence;
 use App\Models\User;
 use App\Notifications\Absences\AbsenceApprovedNotification;
+use App\Notifications\Absences\AbsenceCancellationDecidedNotification;
+use App\Notifications\Absences\AbsenceCancellationRequestedNotification;
 use App\Notifications\Absences\AbsenceCancelledNotification;
 use App\Notifications\Absences\AbsenceRejectedNotification;
 use App\Notifications\Absences\AbsenceRequestedNotification;
+use App\Notifications\Absences\AbsenceSecondApprovalNotification;
 use App\Notifications\Absences\AbsenceUpdatedNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -31,6 +37,16 @@ use Illuminate\Validation\ValidationException;
  * - Las ausencias de responsables y admins se aprueban solas al solicitarlas (sin aviso a nadie,
  *   como las semanas de horas, D-041). `approved_by` guarda quién la revisó: quien la aprueba, la
  *   rechaza, la registra o la modifica; null en la aprobación automática.
+ *
+ * Fase 11, R3, con el módulo `people` visible (LeaveMode; D-364 y D-365):
+ * - **Segundo nivel** en los tipos que lo piden (solo vacaciones, P4): la aprueba primero su
+ *   responsable (queda «pendiente de RR. HH.» y se avisa a RR. HH.) y después RR. HH.; si la aprueba
+ *   RR. HH. directamente, cuenta por los dos niveles. Las de un responsable pasan el primero solas;
+ *   las de RR. HH., los dos.
+ * - **Pedir cancelación** de una aprobada que ya ha empezado (la que no ha empezado se cancela sin
+ *   más, como siempre): la persona la pide con un motivo y quien aprueba sus ausencias la acepta
+ *   (queda cancelada y el saldo vuelve) o la rechaza con un comentario.
+ * - Al pedirla la propia persona, AbsenceRules mira los días bloqueados y el saldo.
  */
 final class AbsenceService
 {
@@ -57,11 +73,15 @@ final class AbsenceService
     {
         Gate::forUser($actor)->authorize('create', Absence::class);
 
-        $autoApproved = $this->selfApproves($actor);
+        $secondLevel = LeaveMode::on($actor) && $data->leaveType?->needsSecondApproval() === true;
+        $selfApproves = $this->selfApproves($actor);
+        // Con segundo nivel, la de un responsable pasa sola el primero; la de RR. HH., los dos.
+        $autoApproved = $selfApproves && (! $secondLevel || PeopleAccess::managesAll($actor));
+        $firstAuto = $selfApproves && ! $autoApproved;
 
-        $absence = DB::transaction(function () use ($actor, $data, $autoApproved): Absence {
+        $absence = DB::transaction(function () use ($actor, $data, $autoApproved, $firstAuto): Absence {
             $this->lockPerson($actor->id);
-            $this->rules->check($actor, $actor, $data);
+            $this->rules->check($actor, $actor, $data, own: true);
 
             return Absence::query()->create([
                 ...$data->attributes(),
@@ -69,6 +89,7 @@ final class AbsenceService
                 'status' => $autoApproved ? AbsenceStatus::Approved : AbsenceStatus::Requested,
                 'approved_by' => null,
                 'reviewed_at' => $autoApproved ? now() : null,
+                'first_approved_at' => $firstAuto ? now() : null,
             ]);
         });
 
@@ -76,6 +97,8 @@ final class AbsenceService
 
         if ($autoApproved) {
             ReportCache::bump();
+        } elseif ($firstAuto) {
+            PeopleNotifier::send($this->approvers->second($actor), new AbsenceSecondApprovalNotification($absence, $actor));
         } else {
             Notification::send($this->approvers->for($actor), new AbsenceRequestedNotification($absence, $actor));
         }
@@ -129,15 +152,35 @@ final class AbsenceService
             $current = $this->relock($absence);
             $this->assertRequested($current);
 
+            if (Gate::forUser($reviewer)->denies('review', $current)) {
+                throw ValidationException::withMessages(['absence' => AbsenceText::get('leave.errors.second_level_only')]);
+            }
+
+            // Segundo nivel: el responsable da el primero; RR. HH., el segundo (o los dos a la vez).
+            if (self::needsSecondLevel($current, $reviewer) && $current->first_approved_at === null && ! PeopleAccess::managesAll($reviewer)) {
+                $current->fill(['first_approved_by' => $reviewer->id, 'first_approved_at' => now()])->save();
+
+                return $current;
+            }
+
             $current->fill([
                 'status' => AbsenceStatus::Approved,
                 'approved_by' => $reviewer->id,
                 'reviewed_at' => now(),
                 'review_comment' => null,
+                ...($current->first_approved_at === null && self::needsSecondLevel($current, $reviewer)
+                    ? ['first_approved_by' => $reviewer->id, 'first_approved_at' => now()]
+                    : []),
             ])->save();
 
             return $current;
         });
+
+        if ($absence->status === AbsenceStatus::Requested) {
+            PeopleNotifier::send($this->approvers->second($absence->user, $reviewer), new AbsenceSecondApprovalNotification($absence, $reviewer));
+
+            return $absence;
+        }
 
         ReportCache::bump();
         $absence->user->notify(new AbsenceApprovedNotification($absence, $reviewer));
@@ -202,9 +245,9 @@ final class AbsenceService
                 ])]);
             }
 
-            $this->rules->check($actor, $current->user, $data, ignoreId: $current->id);
+            $this->rules->check($actor, $current->user, $data, ignoreId: $current->id, previousTypeId: $current->leave_type_id);
 
-            $before = $current->type->label().' '.AbsenceText::period(
+            $before = AbsenceText::typeName($current->leaveType, $current->type).' '.AbsenceText::period(
                 $current->start_date->toDateString(),
                 $current->end_date->toDateString(),
                 $current->partial_minutes,
@@ -217,6 +260,7 @@ final class AbsenceService
             }
 
             $current->fill(['approved_by' => $actor->id, 'reviewed_at' => now()])->save();
+            $current->load('leaveType');
 
             return [$current, $before];
         });
@@ -276,6 +320,103 @@ final class AbsenceService
     }
 
     /**
+     * «Pedir cancelación» (R3, W-069): la persona pide cancelar una aprobada que ya ha empezado o ha
+     * pasado, con un motivo. Sigue aprobada hasta que decide quien aprueba sus ausencias.
+     *
+     * @throws ValidationException
+     */
+    public function requestCancellation(User $actor, Absence $absence, string $reason): Absence
+    {
+        Gate::forUser($actor)->authorize('requestCancellation', $absence);
+
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 3) {
+            throw ValidationException::withMessages(['reason' => AbsenceText::get('leave.errors.cancellation_reason')]);
+        }
+
+        $absence = DB::transaction(function () use ($actor, $absence, $reason): Absence {
+            $current = $this->relock($absence);
+
+            if (Gate::forUser($actor)->denies('requestCancellation', $current)) {
+                throw ValidationException::withMessages(['absence' => AbsenceText::get('leave.errors.cancellation_unavailable')]);
+            }
+
+            $current->fill([
+                'cancellation_status' => CancellationStatus::Requested,
+                'cancellation_reason' => $reason,
+                'cancellation_requested_at' => now(),
+                'cancellation_decided_by' => null,
+                'cancellation_decided_at' => null,
+                'cancellation_comment' => null,
+            ])->save();
+
+            return $current;
+        });
+
+        PeopleNotifier::send($this->approvers->for($absence->user), new AbsenceCancellationRequestedNotification($absence, $actor));
+
+        return $absence;
+    }
+
+    /**
+     * Quien aprueba sus ausencias acepta (queda cancelada y el saldo vuelve) o rechaza (con un
+     * comentario; sigue aprobada) la cancelación que ha pedido la persona.
+     *
+     * @throws ValidationException
+     */
+    public function decideCancellation(User $actor, Absence $absence, bool $accept, ?string $comment = null): Absence
+    {
+        Gate::forUser($actor)->authorize('decideCancellation', $absence);
+
+        $comment = trim((string) $comment);
+        if (! $accept && $comment === '') {
+            throw ValidationException::withMessages(['comment' => AbsenceText::get('absences.errors.reject_comment_required')]);
+        }
+
+        $absence = DB::transaction(function () use ($actor, $absence, $accept, $comment): Absence {
+            $current = $this->relock($absence);
+
+            if (Gate::forUser($actor)->denies('decideCancellation', $current)) {
+                throw ValidationException::withMessages(['absence' => AbsenceText::get('leave.errors.cancellation_not_pending')]);
+            }
+
+            $current->fill([
+                'status' => $accept ? AbsenceStatus::Cancelled : $current->status,
+                'cancellation_status' => $accept ? CancellationStatus::Accepted : CancellationStatus::Rejected,
+                'cancellation_decided_by' => $actor->id,
+                'cancellation_decided_at' => now(),
+                'cancellation_comment' => $comment === '' ? null : $comment,
+            ])->save();
+
+            return $current;
+        });
+
+        if ($accept) {
+            ReportCache::bump();
+        }
+
+        if ($absence->user->is_active) {
+            $absence->user->notify(new AbsenceCancellationDecidedNotification($absence, $actor, $accept, $comment === '' ? null : $comment));
+        }
+
+        return $absence;
+    }
+
+    /**
+     * ¿Pide segundo nivel esta ausencia (con el módulo visible para quien decide)?
+     */
+    public static function needsSecondLevel(Absence $absence, ?User $actor): bool
+    {
+        if (! LeaveMode::on($actor)) {
+            return false;
+        }
+
+        $type = $absence->relationLoaded('leaveType') ? $absence->leaveType : $absence->leaveType()->first();
+
+        return $type?->needsSecondApproval() === true;
+    }
+
+    /**
      * Quien aprobó o registró la ausencia (null si se aprobó sola).
      */
     private function approverOf(Absence $absence): ?User
@@ -294,7 +435,7 @@ final class AbsenceService
     private function relock(Absence $absence): Absence
     {
         /** @var Absence $current */
-        $current = Absence::query()->with('user')->whereKey($absence->id)->lockForUpdate()->firstOrFail();
+        $current = Absence::query()->with(['user', 'leaveType'])->whereKey($absence->id)->lockForUpdate()->firstOrFail();
 
         return $current;
     }

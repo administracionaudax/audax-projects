@@ -31,6 +31,8 @@ use Carbon\CarbonImmutable;
  */
 final class PeopleReports
 {
+    use BuildsLeaveReports;
+
     public function __construct(
         private readonly RegisterDataset $dataset,
         private readonly CompanyIdentity $identity,
@@ -45,6 +47,9 @@ final class PeopleReports
             PeopleReportKind::MonthlyPresence => $this->monthlyPresence($scope),
             PeopleReportKind::Punches => $this->punches($scope),
             PeopleReportKind::Incidents => $this->incidents($scope),
+            PeopleReportKind::LeaveBalances => $this->leaveBalances($scope),
+            PeopleReportKind::LeaveActivity => $this->leaveActivity($scope),
+            PeopleReportKind::MissingDocuments => $this->missingDocuments($scope),
         };
     }
 

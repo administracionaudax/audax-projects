@@ -4,6 +4,7 @@ namespace App\Domain\Absences;
 
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
+use App\Models\LeaveType;
 use App\Support\Duration;
 use Carbon\CarbonImmutable;
 
@@ -37,6 +38,16 @@ final class AbsenceText
     public static function phrase(AbsenceType $type): string
     {
         return self::get("absences.type_phrases.{$type->value}");
+    }
+
+    /**
+     * El nombre del tipo de una ausencia en mensajes y avisos: el del catálogo si es uno de los
+     * nuevos de R3 («Matrimonio o registro de pareja de hecho»); en los cinco de siempre, la
+     * etiqueta de la Fase 3 («Baja», «Permiso»), para que nada cambie con el módulo apagado.
+     */
+    public static function typeName(?LeaveType $leaveType, AbsenceType $category): string
+    {
+        return $leaveType !== null && $leaveType->key !== $category->value ? $leaveType->name : $category->label();
     }
 
     public static function status(AbsenceStatus $status): string
