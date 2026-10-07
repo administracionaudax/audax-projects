@@ -138,3 +138,19 @@ function enableForecast(bool $enabled = true): void
 
 // Registro de jornada (Fase 11): fichar a una hora de Madrid, jornadas enteras y encender el módulo.
 require_once __DIR__.'/Support/people.php';
+
+/**
+ * Simula a alguien con acceso a la base que quita las protecciones de una tabla del registro de
+ * jornada para manipularla (los tests de integridad comprueban que la comprobación lo delata). En
+ * PostgreSQL desactiva todos sus triggers de usuario; en SQLite borra el que se indique.
+ */
+function tamperRegisterTable(string $table, string $sqliteTrigger): void
+{
+    if (DB::connection()->getDriverName() === 'pgsql') {
+        DB::statement("ALTER TABLE {$table} DISABLE TRIGGER USER");
+
+        return;
+    }
+
+    DB::statement("DROP TRIGGER {$sqliteTrigger}");
+}

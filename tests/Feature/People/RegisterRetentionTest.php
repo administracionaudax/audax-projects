@@ -135,7 +135,7 @@ it('el ancla delata a quien reescribe la cadena entera recalculando las huellas,
     app(RegisterAnchors::class)->nightly();
 
     // Alguien con acceso a la base quita el trigger y reescribe la salida, recalculando las huellas.
-    DB::statement('DROP TRIGGER clock_events_no_update');
+    tamperRegisterTable('clock_events', 'clock_events_no_update');
     $out = ClockEvent::query()->where('user_id', $this->employee->id)->where('seq', 2)->firstOrFail();
     $out->occurred_at = $out->occurred_at->addHour();
     $hash = app(RegisterHasher::class)->event($out);

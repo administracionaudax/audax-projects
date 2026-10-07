@@ -153,7 +153,7 @@ it('la comprobación detecta un cierre o un PDF tocados', function () {
     expect(app(RegisterIntegrity::class)->verify()['problems'])->toContain("cierre de 2026-09 (persona {$this->employee->id}, versión 1): su PDF no coincide con su huella.");
 
     // Quien quite el trigger para cambiar los totales tampoco pasa la comprobación.
-    DB::statement('DROP TRIGGER month_closes_frozen');
+    tamperRegisterTable('month_closes', 'month_closes_frozen');
     DB::table('month_closes')->where('id', $close->id)->update(['worked_minutes' => 99999]);
     expect(app(RegisterIntegrity::class)->verify()['problems'])->toContain("cierre de 2026-09 (persona {$this->employee->id}, versión 1): lo congelado no coincide con su sello.");
 });
