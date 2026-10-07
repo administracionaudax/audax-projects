@@ -8,6 +8,7 @@ import {
     EllipsisVertical,
     Link2,
     MessageSquare,
+    Plus,
     Trash2,
 } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -28,6 +29,7 @@ import { TaskPanelFields } from '@/components/tasks/task-panel-fields';
 import { toastErrors, updateTask } from '@/components/tasks/task-requests';
 import { TaskSubtasks } from '@/components/tasks/task-subtasks';
 import { TaskTime } from '@/components/tasks/task-time';
+import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { TimerButton } from '@/components/time/timer-button';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,6 +57,7 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
+import { todayInMadrid } from '@/lib/week';
 import { cn } from '@/lib/utils';
 import { destroy as destroyTask, unwatch, watch } from '@/routes/tasks';
 import type { TaskPanelData } from '@/types';
@@ -173,6 +176,7 @@ function PanelBody({
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [moving, setMoving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [addingTime, setAddingTime] = useState(false);
     const blockedReason = panel.delete_blocked
         ? t(`task_panel.delete_blocked.${panel.delete_blocked}`)
         : null;
@@ -206,9 +210,25 @@ function PanelBody({
 
     return (
         <div className="grid gap-5 px-4 pb-8">
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Lo primero, imputar (D-323): «Iniciar» y «Añadir horas», lo que más se repite. */}
+            <div
+                className="flex flex-wrap items-center gap-2"
+                data-test="task-panel-actions"
+            >
                 {!task.is_milestone && panel.can.log_time ? (
-                    <TimerButton task={task} size="sm" />
+                    <>
+                        <TimerButton task={task} size="sm" />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAddingTime(true)}
+                            data-test="task-add-time"
+                        >
+                            <Plus aria-hidden="true" />
+                            {t('task_panel.add_time')}
+                        </Button>
+                    </>
                 ) : null}
                 {task.is_milestone ? (
                     <span className="inline-flex items-center gap-1 rounded-md bg-neutral-soft px-1.5 py-0.5 text-xs font-medium">
@@ -218,8 +238,9 @@ function PanelBody({
                 ) : null}
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
+                    className="sm:ml-auto"
                     onClick={toggleWatch}
                     aria-pressed={panel.is_watching}
                 >
@@ -376,6 +397,20 @@ function PanelBody({
                     date: formatDateTime(task.created_at),
                 })}
             </p>
+
+            {!task.is_milestone && panel.can.log_time ? (
+                <TimeEntryDialog
+                    open={addingTime}
+                    onOpenChange={setAddingTime}
+                    task={{
+                        id: task.id,
+                        title: task.title,
+                        project_id: task.project_id,
+                    }}
+                    date={todayInMadrid()}
+                    focusDuration
+                />
+            ) : null}
 
             {panel.can.move ? (
                 <MoveTaskDialog

@@ -313,5 +313,6 @@
     "project_files.pagination": "Páginas de archivos",
     "project_files.previous": "Anterior",
     "project_files.next": "Siguiente",
-    "project_files.page": "Página :page de :pages"
+    "project_files.page": "Página :page de :pages",
+    "task_panel.add_time": "Añadir horas"
 }

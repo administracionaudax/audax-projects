@@ -54,6 +54,8 @@ export type TimeEntryDialogProps = {
     userId?: number;
     /** Línea del plan del día de la que salen las horas (D-254). */
     dayPlanItemId?: number;
+    /** Al abrir, el foco va a la duración (la tarea y la fecha ya vienen puestas, D-323). */
+    focusDuration?: boolean;
 };
 
 type Errors = Partial<
@@ -165,6 +167,7 @@ export function TimeEntryDialog({
     minutes,
     userId,
     dayPlanItemId,
+    focusDuration = false,
 }: TimeEntryDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -177,6 +180,7 @@ export function TimeEntryDialog({
                         minutes={minutes}
                         userId={userId}
                         dayPlanItemId={dayPlanItemId}
+                        focusDuration={focusDuration}
                         onDone={() => onOpenChange(false)}
                     />
                 ) : null}
@@ -192,6 +196,7 @@ function TimeEntryForm({
     minutes: proposedMinutes,
     userId,
     dayPlanItemId,
+    focusDuration = false,
     onDone,
 }: Omit<TimeEntryDialogProps, 'open' | 'onOpenChange'> & {
     onDone: () => void;
@@ -494,6 +499,7 @@ function TimeEntryForm({
                         </Label>
                         <DurationInput
                             id={field('minutes')}
+                            autoFocus={focusDuration}
                             value={minutes}
                             onChange={setMinutes}
                             invalid={Boolean(errors.minutes)}

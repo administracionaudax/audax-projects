@@ -58,7 +58,8 @@ export function TimerButton({
     return (
         <Button
             type="button"
-            variant={running ? 'default' : 'ghost'}
+            // Con texto (cabecera de la tarea), con borde: tan visible como «Añadir horas» (D-323).
+            variant={running ? 'default' : size === 'sm' ? 'outline' : 'ghost'}
             size={size}
             onClick={toggle}
             disabled={milestone}
