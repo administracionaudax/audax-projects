@@ -1,14 +1,11 @@
 import { usePage } from '@inertiajs/react';
-import { Plus, Timer } from 'lucide-react';
-import { useState } from 'react';
+import { Timer } from 'lucide-react';
 import { TimeEntryStatusBadge } from '@/components/domain/badges';
 import { loggedBreakdown } from '@/components/tasks/task-meta';
-import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import {
     formatElapsed,
     useElapsedSeconds,
 } from '@/components/time/use-elapsed';
-import { Button } from '@/components/ui/button';
 import {
     formatDate,
     formatMinutes,
@@ -46,11 +43,10 @@ function RunningTimer({ startedAt }: { startedAt: string }) {
 /**
  * Horas de la tarea (SPEC §6 y §7): el registrado (en una tarea con subtareas, el total con su
  * desglose, D-170), las entradas que quien mira puede ver (D-021) con su franja horaria, el
- * temporizador en marcha (el botón de iniciar y parar va en la cabecera del panel) y «Añadir horas» (por duración o con hora de inicio y fin, D-172). Los hitos no
- * llevan horas.
+ * temporizador en marcha. «Iniciar» y «Añadir horas» (por duración o con hora de inicio y fin,
+ * D-172) van en la cabecera del panel, lo primero (D-323). Los hitos no llevan horas.
  */
 export function TaskTime({ panel }: { panel: TaskPanelData }) {
-    const [open, setOpen] = useState(false);
     const task = panel.task;
     const timer = usePage().props.timer ?? null;
     const running = timer?.task_id === task.id ? timer : null;
@@ -123,19 +119,6 @@ export function TaskTime({ panel }: { panel: TaskPanelData }) {
                               },
                           )}
                 </p>
-                {panel.can.log_time ? (
-                    <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setOpen(true)}
-                        >
-                            <Plus aria-hidden="true" />
-                            {t('time_entry_dialog.title')}
-                        </Button>
-                    </div>
-                ) : null}
             </div>
             {running ? <RunningTimer startedAt={running.started_at} /> : null}
             {task.is_milestone ? (
@@ -196,17 +179,6 @@ export function TaskTime({ panel }: { panel: TaskPanelData }) {
                     })}
                 </ul>
             )}
-            {panel.can.log_time ? (
-                <TimeEntryDialog
-                    open={open}
-                    onOpenChange={setOpen}
-                    task={{
-                        id: task.id,
-                        title: task.title,
-                        project_id: task.project_id,
-                    }}
-                />
-            ) : null}
         </div>
     );
 }
