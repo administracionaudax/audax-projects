@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
@@ -77,7 +78,7 @@ describe('asignación anual', function () {
         expect($delta->amount)->toBe(-1650)
             ->and($delta->reason)->toContain('Recálculo')
             ->and($first->fresh()->amount)->toBe(2200)
-            ->and(LeaveMovement::query()->where('user_id', $this->employee->id)->sum('amount'))->toBe(550);
+            ->and((int) LeaveMovement::query()->where('user_id', $this->employee->id)->sum('amount'))->toBe(550);
     });
 
     it('redondea hacia arriba al medio día', function () {
@@ -279,8 +280,8 @@ describe('libro de solo alta', function () {
 
         expect(fn () => $movement->forceFill(['amount' => 9900])->save())->toThrow(RegisterImmutable::class)
             ->and(fn () => $movement->delete())->toThrow(RegisterImmutable::class)
-            ->and(fn () => DB::table('leave_movements')->where('id', $movement->id)->update(['amount' => 9900]))->toThrow(Exception::class)
-            ->and(fn () => DB::table('leave_movements')->where('id', $movement->id)->delete())->toThrow(Exception::class)
+            ->and(inSavepoint(fn () => DB::table('leave_movements')->where('id', $movement->id)->update(['amount' => 9900])))->toThrow(QueryException::class)
+            ->and(inSavepoint(fn () => DB::table('leave_movements')->where('id', $movement->id)->delete()))->toThrow(QueryException::class)
             ->and($movement->fresh()->amount)->toBe(2200);
     });
 
