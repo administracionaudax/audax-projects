@@ -2,9 +2,12 @@
 
 use App\Domain\HourBanks\Events\HourBankOverageRecorded;
 use App\Domain\HourBanks\Events\HourBankThresholdReached;
+use App\Enums\AbsenceType;
 use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
+use App\Models\Absence;
 use App\Models\Department;
+use App\Models\Holiday;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
@@ -256,4 +259,30 @@ it('carga la hoja con muchas filas y entradas sin consultas perezosas (N+1)', fu
         ->get('/horas?semana=2026-W39')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('rows', 6)->where('totals.week', 360));
+});
+
+it('marca los festivos y las ausencias de cada día para la vista por días; el tipo, solo a quien puede verlo (D-321, D-088)', function () {
+    Holiday::factory()->create(['date' => '2026-09-24', 'name' => 'La Mercè']);
+    Absence::factory()->for($this->employee)->approved()->between('2026-09-22', '2026-09-22')->create(['type' => AbsenceType::Sick]);
+    Absence::factory()->for($this->employee)->approved()->between('2026-09-25', '2026-09-25')->partial(120)->create();
+
+    $this->actingAs($this->employee)
+        ->get('/horas?semana=2026-W39')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('day_notes', 7)
+            ->where('day_notes.2026-09-21', ['holiday' => null, 'absence' => null])
+            ->where('day_notes.2026-09-22.absence', ['type' => 'sick', 'partial' => false])
+            ->where('day_notes.2026-09-24.holiday', 'La Mercè')
+            ->where('day_notes.2026-09-25.absence', ['type' => 'vacation', 'partial' => true]));
+
+    $manager = User::factory()->employee()->create();
+    $this->web->addMember($manager, isManager: true);
+
+    $this->actingAs($manager)
+        ->get("/horas?persona={$this->employee->id}&semana=2026-W39")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('day_notes.2026-09-22.absence', ['type' => null, 'partial' => false])
+            ->where('day_notes.2026-09-24.holiday', 'La Mercè'));
 });
