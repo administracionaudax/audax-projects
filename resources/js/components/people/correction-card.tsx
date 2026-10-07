@@ -129,15 +129,15 @@ export function CorrectionCard({
                 </span>
             </header>
 
-            <dl className="grid gap-2 text-sm">
-                <div>
+            <div className="grid gap-2 text-sm">
+                <dl>
                     <dt className="text-xs text-muted-foreground">
                         {t('people.correction_card.reason')}
                     </dt>
                     <dd className="break-words">{correction.reason}</dd>
-                </div>
+                </dl>
                 <div className="grid gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
-                    <div>
+                    <dl>
                         <dt className="text-xs text-muted-foreground">
                             {t('people.correction_card.voids')}
                         </dt>
@@ -161,12 +161,12 @@ export function CorrectionCard({
                                 </ul>
                             )}
                         </dd>
-                    </div>
+                    </dl>
                     <ArrowRight
                         aria-hidden="true"
                         className="hidden size-4 text-muted-foreground sm:mt-5 sm:block"
                     />
-                    <div>
+                    <dl>
                         <dt className="text-xs text-muted-foreground">
                             {t('people.correction_card.adds')}
                         </dt>
@@ -190,19 +190,19 @@ export function CorrectionCard({
                                 </ul>
                             )}
                         </dd>
-                    </div>
+                    </dl>
                 </div>
                 {correction.decision_note ? (
-                    <div>
+                    <dl>
                         <dt className="text-xs text-muted-foreground">
                             {t('people.correction_card.note')}
                         </dt>
                         <dd className="break-words">
                             {correction.decision_note}
                         </dd>
-                    </div>
+                    </dl>
                 ) : null}
-            </dl>
+            </div>
 
             {decided ? (
                 <p className="text-xs text-muted-foreground">{decided}</p>
