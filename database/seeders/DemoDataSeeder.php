@@ -11,12 +11,19 @@ use App\Domain\Forecast\ForecastProjectWriter;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\People\ClockCorrectionService;
 use App\Domain\People\ClockWriter;
+use App\Domain\People\MonthCloser;
+use App\Domain\People\OvertimeService;
 use App\Domain\People\PeopleAccess;
+use App\Domain\People\PeopleDocuments;
+use App\Domain\People\RegisterAnchors;
+use App\Domain\People\Reports\RegisterDataset;
+use App\Domain\People\TimeBalanceLedger;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Domain\Weeklies\WeeklyCalendar;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
+use App\Enums\BalanceMovementKind;
 use App\Enums\BillingType;
 use App\Enums\ClockEventKind;
 use App\Enums\ClockSource;
@@ -24,6 +31,7 @@ use App\Enums\DayPlanItemOrigin;
 use App\Enums\DayPlanItemStatus;
 use App\Enums\HourBankStatus;
 use App\Enums\OveragePolicy;
+use App\Enums\OvertimeDestination;
 use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Enums\TaskPriority;
@@ -45,6 +53,7 @@ use App\Models\DayPlan;
 use App\Models\DayPlanComment;
 use App\Models\DayPlanItem;
 use App\Models\Department;
+use App\Models\EmploymentProfile;
 use App\Models\ForecastProject;
 use App\Models\Holiday;
 use App\Models\HourBank;
@@ -221,6 +230,7 @@ class DemoDataSeeder extends Seeder
             $this->dayPlans();
             $this->forecast();
             $this->clockRegister();
+            $this->registerR2();
         });
 
         $this->chat();
@@ -1407,7 +1417,9 @@ class DemoDataSeeder extends Seeder
         $capacity = app(Capacity::class);
         $realNow = CarbonImmutable::now();
         $zone = LocalTime::timezone();
-        $from = $this->today->subWeeks(4)->startOfWeek();
+        // Desde el día 1 del mes anterior (o 4 semanas, si es más): el mes anterior entero, para su
+        // cierre de ejemplo (R2, D-359).
+        $from = $this->today->subWeeks(4)->startOfWeek()->min($this->today->startOfMonth()->subMonthNoOverflow());
         $today = $this->today->toDateString();
         $lastWeek = $this->today->startOfWeek()->subWeek();
         // El n-ésimo día laborable (de lunes a viernes) antes de hoy.
@@ -1428,6 +1440,8 @@ class DemoDataSeeder extends Seeder
             'sergio_night' => $lastWeek->addDay()->toDateString(),
             'pablo_long' => $lastWeek->addDays(2)->toDateString(),
             'sergio_adjust' => $workdayBefore(3),
+            // R2: un día largo de Lucía este mes, para clasificar su hora extra (E2E de people-register).
+            'lucia_long' => $workdayBefore(1),
         ];
 
         foreach ($this->people as $key => $user) {
@@ -1480,6 +1494,7 @@ class DemoDataSeeder extends Seeder
                         $key === 'elena' && $date === $special['elena_late'] => $in = 9 * 60 + 52,
                         $key === 'lucia' && $date === $special['lucia_disputed'] => $in = 9 * 60 + 40,
                         $key === 'pablo' && $date === $special['pablo_long'] => $out += 125,
+                        $key === 'lucia' && $date === $special['lucia_long'] => $out += 80,
                         $key === 'sergio' && $date === $special['sergio_night'] => [$in, $lunch, $out] = [12 * 60, [15 * 60, 30], 23 * 60 + 30],
                         $key === 'sergio' && $date === CarbonImmutable::parse($special['sergio_night'])->addDay()->toDateString() => $in = 8 * 60 + 35,
                         default => null,
@@ -1514,6 +1529,124 @@ class DemoDataSeeder extends Seeder
             Carbon::setTestNow();
             CarbonImmutable::setTestNow();
         }
+    }
+
+    /**
+     * Registro de jornada, R2 (D-359; solo local): con el reloj en el momento de cada cosa,
+     * - Irene, a tiempo parcial (sus horas por encima de la jornada son complementarias),
+     * - el exceso del mes anterior, clasificado por el responsable de cada persona (RR. HH., Ana, el de
+     *   los responsables): lo que pasa de una hora es hora extra (a compensar, salvo Pablo, que alterna
+     *   con pagar); lo demás, flexibilidad. Este mes queda casi todo por clasificar (el día largo de
+     *   Lucía, para el E2E),
+     * - el saldo de horas: un descanso disfrutado de Pablo y el saldo inicial de Sergio «desde Woffu»,
+     * - los cierres del mes anterior del día 1: confirmados, salvo Elena y Daniel (pendientes; el E2E
+     *   confirma el de Elena) y Lucía (en desacuerdo),
+     * - los dos documentos de RR. HH. (borradores), leídos por todos menos Elena y Daniel,
+     * - el ancla de hoy.
+     * Los PDF de los cierres se guardan con el motor html (sin Gotenberg en local). Sin avisos: el
+     * módulo `people` viene apagado.
+     */
+    private function registerR2(): void
+    {
+        config(['services.reports_pdf.driver' => 'html']);
+        $p = $this->people;
+        $zone = LocalTime::timezone();
+        $realNow = CarbonImmutable::now();
+        $at = function (CarbonImmutable $instant) use ($realNow): void {
+            $instant = $instant->min($realNow);
+            Carbon::setTestNow($instant);
+            CarbonImmutable::setTestNow($instant);
+        };
+        $previous = $this->today->startOfMonth()->subMonthNoOverflow();
+
+        try {
+            $profile = EmploymentProfile::query()->firstOrNew(['user_id' => $p['irene']->id]);
+            $profile->fill(['part_time' => true])->save();
+            $p['irene']->unsetRelation('employmentProfile');
+
+            $overtime = app(OvertimeService::class);
+            $dataset = app(RegisterDataset::class);
+            $decider = function (User $user) use ($p): ?User {
+                if ($user->isDepartmentManager() || $user->isAdmin()) {
+                    return $user->id === $p['ana']->id ? null : $p['ana'];
+                }
+
+                return collect($p)->first(fn (User $candidate): bool => $candidate->isDepartmentManager() && $candidate->department_id === $user->department_id) ?? $p['ana'];
+            };
+
+            // El exceso del mes anterior, clasificado el día 1 a primera hora.
+            $at(CarbonImmutable::parse($this->today->startOfMonth()->toDateString().' 05:30', $zone));
+            $toggle = false;
+
+            foreach ($p as $key => $user) {
+                $boss = $decider($user);
+
+                if ($boss === null || ! PeopleAccess::subject($user)) {
+                    continue;
+                }
+
+                $lines = $dataset->build([$user->fresh() ?? $user], $previous->toDateString(), $previous->endOfMonth()->toDateString())[$user->id]['lines'];
+
+                foreach ($lines as $date => $line) {
+                    if ($line['excess_minutes'] <= 0) {
+                        continue;
+                    }
+
+                    $extra = $line['excess_minutes'] >= 60 ? $line['excess_minutes'] : 0;
+                    $destination = $extra === 0 ? null : ($key === 'irene' ? OvertimeDestination::Pay : ($key === 'pablo' && ($toggle = ! $toggle) ? OvertimeDestination::Pay : OvertimeDestination::Compensate));
+                    $overtime->decide($boss, $user->fresh() ?? $user, $date, $extra, $destination, $extra > 0 ? 'Entrega de cliente.' : null);
+                }
+            }
+
+            // El saldo de horas: Pablo disfruta una hora; Sergio trae su saldo de Woffu.
+            $at(CarbonImmutable::parse($this->today->startOfMonth()->toDateString().' 08:00', $zone));
+            $ledger = app(TimeBalanceLedger::class);
+            if ($ledger->balance($p['pablo']->id) >= 60) {
+                $ledger->record($p['marta'], $p['pablo'], BalanceMovementKind::RestTaken, 60, $this->today->startOfMonth()->toDateString(), 'Salió una hora antes el viernes por la entrega del día 30.');
+            }
+            $ledger->record($p['ana'], $p['sergio'], BalanceMovementKind::OpeningBalance, 300, $this->today->startOfMonth()->toDateString(), 'Saldo inicial desde Woffu a '.$this->today->startOfMonth()->format('d/m/Y').'.');
+
+            // Los cierres del mes anterior (día 1, 06:00) y las respuestas (día 2).
+            $closer = app(MonthCloser::class);
+            $at(CarbonImmutable::parse($this->today->startOfMonth()->toDateString().' 06:00', $zone));
+            $closes = [];
+            foreach ($closer->dueSubjects($previous) as $user) {
+                $closes[$user->id] = $closer->generate($user, $previous, null, false);
+            }
+
+            $at(CarbonImmutable::parse($this->today->startOfMonth()->addDay()->toDateString().' 09:15', $zone));
+            foreach ($p as $key => $user) {
+                $close = $closes[$user->id] ?? null;
+
+                if ($close === null || in_array($key, ['elena', 'daniel'], true)) {
+                    continue;
+                }
+
+                if ($key === 'lucia') {
+                    $closer->disagree($user, $close, 'El día que entré a las 8:30 desde casa sigue sin contar. Lo hablé con Raúl y no estamos de acuerdo.');
+
+                    continue;
+                }
+
+                $closer->confirm($user, $close);
+            }
+
+            // Documentos de RR. HH. (borradores), leídos por todos menos Elena y Daniel.
+            $documents = app(PeopleDocuments::class);
+            foreach ($documents->all() as $document) {
+                foreach ($p as $key => $user) {
+                    if (PeopleAccess::staff($user) && ! in_array($key, ['elena', 'daniel'], true)) {
+                        $documents->markRead($user, $document);
+                    }
+                }
+            }
+        } finally {
+            Carbon::setTestNow();
+            CarbonImmutable::setTestNow();
+        }
+
+        // El ancla de hoy (la comprobación nocturna).
+        app(RegisterAnchors::class)->nightly(notify: false);
     }
 
     /**
