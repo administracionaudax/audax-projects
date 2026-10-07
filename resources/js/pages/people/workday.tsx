@@ -23,6 +23,8 @@ import {
     tCount,
 } from '@/lib/people';
 import { cn } from '@/lib/utils';
+import { index as documentsIndex } from '@/routes/people/documents';
+import { index as registerIndex } from '@/routes/people/register';
 import { show as teamShow } from '@/routes/people/team';
 import { index as workdayIndex } from '@/routes/people/workday';
 import type { WorkdayDay, WorkdayPageProps } from '@/types/people';
@@ -116,6 +118,45 @@ export default function WorkdayPage(props: WorkdayPageProps) {
                 {subject.is_me && people && people.clock === null ? (
                     <p className="text-sm text-muted-foreground">
                         {t('people.workday.not_subject')}
+                    </p>
+                ) : null}
+
+                {subject.is_me && people?.pending_close ? (
+                    <p
+                        className="flex flex-wrap items-center gap-2 rounded-md border border-info p-3 text-sm"
+                        role="status"
+                        data-test="close-banner"
+                    >
+                        <span className="first-letter:uppercase">
+                            {t('people.workday.close_banner', {
+                                month: monthLabel(people.pending_close.month),
+                            })}
+                        </span>
+                        <Link
+                            href={registerIndex.url()}
+                            className="text-primary-text underline-offset-4 hover:underline"
+                        >
+                            {t('people.workday.close_banner_action')}
+                        </Link>
+                    </p>
+                ) : null}
+
+                {subject.is_me && (people?.unread_documents ?? 0) > 0 ? (
+                    <p
+                        className="flex flex-wrap items-center gap-2 rounded-md border p-3 text-sm"
+                        role="status"
+                        data-test="documents-banner"
+                    >
+                        {tCount(
+                            'people.workday.documents_banner',
+                            people?.unread_documents ?? 0,
+                        )}
+                        <Link
+                            href={documentsIndex.url()}
+                            className="text-primary-text underline-offset-4 hover:underline"
+                        >
+                            {t('people.workday.documents_banner_action')}
+                        </Link>
                     </p>
                 ) : null}
 

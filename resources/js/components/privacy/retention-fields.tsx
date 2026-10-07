@@ -119,6 +119,9 @@ export function RetentionFields({
                             {field.type === 'day_plans'
                                 ? ` ${t('privacy.admin.day_plans_help')}`
                                 : null}
+                            {field.type === 'people_register'
+                                ? ` ${t('privacy.admin.people_register_help')}`
+                                : null}
                         </p>
                         <InputError id={errorId} message={error} />
                     </div>

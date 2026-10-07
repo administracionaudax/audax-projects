@@ -12,7 +12,8 @@ export type RetentionType =
     | 'weekly_reminder_logs'
     | 'dictations'
     | 'ai_usage'
-    | 'day_plans';
+    | 'day_plans'
+    | 'people_register';
 
 /** Plazo vigente de un tipo de dato, en meses (null = sin límite). */
 export type RetentionPeriod = {
