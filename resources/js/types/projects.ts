@@ -4,6 +4,7 @@
  */
 import type {
     BillingType,
+    HourBankStatus,
     Option,
     Project,
     ProjectMember,
@@ -54,8 +55,45 @@ export type ProjectListItem = Project & {
     } | null;
 };
 
+/** Bolsa abierta de un proyecto en el listado por clientes (D-322). */
+export type ProjectTreeBank = {
+    id: number;
+    name: string;
+    status: HourBankStatus;
+    total_minutes: number;
+    consumed_minutes: number;
+    overage_minutes: number;
+    end_date: string | null;
+};
+
+/** Proyecto del listado por clientes: la fila del plano más sus bolsas abiertas. */
+export type ProjectTreeItem = ProjectListItem & {
+    /** null si no es de bolsas o quien mira no ve las bolsas (D-134). */
+    open_banks: ProjectTreeBank[] | null;
+};
+
+/** Grupo del listado por clientes (App\Domain\Projects\ProjectTree). */
+export type ProjectClientGroup = {
+    key: string;
+    /** «internal»: internos sin cliente; «none»: sin cliente y no internos. */
+    kind: 'internal' | 'client' | 'none';
+    client: { id: number; name: string } | null;
+    projects: ProjectTreeItem[];
+};
+
+/** Vista del listado (?vista=lista para la plana) y su orden (?orden=recientes|fin). */
+export type ProjectListView = 'clients' | 'list';
+export type ProjectListSort = 'name' | 'recent' | 'due';
+
 export type ProjectsIndexProps = {
-    projects: ProjectsPaginated<ProjectListItem>;
+    view: ProjectListView;
+    sort: ProjectListSort;
+    /** Solo en la vista plana. */
+    projects: ProjectsPaginated<ProjectListItem> | null;
+    /** Solo en la vista por clientes. */
+    groups: ProjectClientGroup[] | null;
+    /** Nombre de la empresa (grupo de los internos). */
+    company: string;
     filters: ProjectListFilters;
     options: {
         clients: Option[];

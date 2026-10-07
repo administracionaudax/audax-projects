@@ -44,7 +44,11 @@ beforeEach(function () {
 });
 
 it('solo ve sus proyectos en el listado, sin consumo de bolsas ni clientes ajenos', function () {
-    $props = ($this->props)('/proyectos');
+    $props = ($this->props)('/proyectos?vista=lista');
+    $tree = ($this->props)('/proyectos');
+
+    expect(collect($tree['groups'])->pluck('projects')->flatten(1)->pluck('id')->all())->toBe([$this->own->id])
+        ->and($tree['groups'][0]['projects'][0]['open_banks'])->toBeNull();
 
     expect(collect($props['projects']['data'])->pluck('id')->all())->toBe([$this->own->id])
         ->and($props['projects']['data'][0]['hour_banks'])->toBeNull()

@@ -23,13 +23,11 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { ClientDialog } from '@/components/clients/client-dialog';
 import { ClientHourBankCard } from '@/components/clients/client-hour-bank-card';
+import { ProjectTreeTable } from '@/components/projects-list/projects-tree';
 import { ClientStatusBadge } from '@/components/clients/client-status-badge';
 import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import {
-    HourBankStatusBadge,
-    ProjectStatusBadge,
-} from '@/components/domain/badges';
+import { HourBankStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
 import { ClientPortalSection } from '@/components/portal/access/client-portal-section';
 import type { ClientPortalAccess } from '@/components/portal/access/types';
@@ -611,103 +609,37 @@ export default function ClientShow({
                                     )}
                                 />
                             ) : (
-                                <div
-                                    className={cn(
-                                        'overflow-x-auto rounded-md border',
-                                        FOCUS_RING,
-                                    )}
-                                    role="region"
-                                    aria-label={t(
-                                        'clients.show.projects_table',
-                                    )}
-                                    tabIndex={0}
-                                >
-                                    <table className="w-full min-w-[40rem] text-sm">
-                                        <caption className="sr-only">
-                                            {t('clients.show.projects_table')}
-                                        </caption>
-                                        <thead>
-                                            <tr className="border-b text-left">
-                                                <th
-                                                    scope="col"
-                                                    className="px-3 py-2 font-medium"
-                                                >
-                                                    {t('clients.show.project')}
-                                                </th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-3 py-2 font-medium"
-                                                >
-                                                    {t('clients.show.billing')}
-                                                </th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-3 py-2 font-medium"
-                                                >
-                                                    {t('clients.show.owner')}
-                                                </th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-3 py-2 font-medium"
-                                                >
-                                                    {t('clients.status_filter')}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {projects.map((project) => (
-                                                <tr
-                                                    key={project.id}
-                                                    className="border-b last:border-b-0 even:bg-muted"
-                                                    data-test="client-project"
-                                                >
-                                                    <td className="px-3 py-2">
-                                                        <span className="flex items-center gap-2">
-                                                            <span
-                                                                aria-hidden="true"
-                                                                className="size-2.5 shrink-0 rounded-full"
-                                                                style={{
-                                                                    backgroundColor:
-                                                                        project.color,
-                                                                }}
-                                                            />
-                                                            <Link
-                                                                href={urls.project(
-                                                                    project.id,
-                                                                )}
-                                                                className={cn(
-                                                                    'rounded-sm font-medium hover:underline',
-                                                                    FOCUS_RING,
-                                                                )}
-                                                            >
-                                                                {project.name}
-                                                            </Link>
-                                                        </span>
-                                                        <span className="block pl-4.5 text-xs text-muted-foreground">
-                                                            {project.code}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        {t(
-                                                            `project.billing_type.${project.billing_type}`,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        {project.owner?.name ??
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <ProjectStatusBadge
-                                                            status={
-                                                                project.status
-                                                            }
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                // Como en el listado por clientes (D-322): cada proyecto con
+                                // sus bolsas abiertas debajo y la fila entera clicable.
+                                <ProjectTreeTable
+                                    projects={projects.map((project) => ({
+                                        ...project,
+                                        open_banks:
+                                            project.billing_type === 'hour_bank'
+                                                ? hourBanks
+                                                      .filter(
+                                                          (bank) =>
+                                                              bank.project_id ===
+                                                              project.id,
+                                                      )
+                                                      .map((bank) => ({
+                                                          id: bank.id,
+                                                          name: bank.name,
+                                                          status: bank.status,
+                                                          total_minutes:
+                                                              bank.total_minutes,
+                                                          consumed_minutes:
+                                                              bank.consumed_minutes,
+                                                          overage_minutes:
+                                                              bank.overage_minutes,
+                                                          end_date:
+                                                              bank.end_date,
+                                                      }))
+                                                : null,
+                                    }))}
+                                    label={t('clients.show.projects_table')}
+                                    thresholds={thresholds}
+                                />
                             )}
                         </section>
 

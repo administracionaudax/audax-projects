@@ -5,6 +5,7 @@ import { HourBankMiniMeter } from '@/components/hour-banks/hour-bank-mini-meter'
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import type { ProjectListItem } from '@/types';
@@ -61,7 +62,11 @@ export function ProjectsTable({
                     {projects.map((project) => (
                         <tr
                             key={project.id}
-                            className="border-b last:border-0 even:bg-muted"
+                            className={cn(
+                                'border-b last:border-0 even:bg-muted',
+                                ROW_CLICK_CLASS,
+                            )}
+                            {...rowClickProps}
                         >
                             <th
                                 scope="row"
@@ -69,6 +74,7 @@ export function ProjectsTable({
                             >
                                 <Link
                                     href={urls.project(project.id)}
+                                    data-row-primary
                                     className={cn(
                                         'group inline-flex min-w-0 items-start gap-2 rounded-md',
                                         FOCUS_RING,

@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChartGantt, FolderKanban, Plus, SearchX } from 'lucide-react';
+import {
+    ChartGantt,
+    FolderKanban,
+    FolderTree,
+    List,
+    Plus,
+    SearchX,
+} from 'lucide-react';
 import { useCallback } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
@@ -10,36 +17,94 @@ import {
     projectFiltersQuery,
 } from '@/components/projects-list/project-filters';
 import { PageHeader } from '@/components/projects-list/page-header';
+import { FilterSelect } from '@/components/projects-list/filter-select';
 import { ProjectsTable } from '@/components/projects-list/projects-table';
+import {
+    ProjectsTree,
+    treeExpandedByDefault,
+} from '@/components/projects-list/projects-tree';
 import { Button } from '@/components/ui/button';
-import { useAbilities } from '@/hooks/use-auth';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
+import { useCollapsedGroups } from '@/hooks/use-collapsed-groups';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { create, index } from '@/routes/projects';
-import type { ProjectListFilters, ProjectsIndexProps } from '@/types';
+import type {
+    ProjectListFilters,
+    ProjectListSort,
+    ProjectListView,
+    ProjectsIndexProps,
+} from '@/types';
+
+const SORTS: ProjectListSort[] = ['name', 'recent', 'due'];
+
+const SORT_PARAM: Record<ProjectListSort, string> = {
+    name: 'nombre',
+    recent: 'recientes',
+    due: 'fin',
+};
 
 /**
  * Listado de proyectos (SPEC §6, D-021): todos los internos ven todos los proyectos; crean los
- * admins y los responsables (D-022). Filtros en la URL para poder compartirla.
+ * admins y los responsables (D-022). Filtros en la URL para poder compartirla. Por defecto,
+ * jerarquizado por cliente con sus bolsas (D-322); «Lista» es la vista plana, con orden y páginas.
  */
 export default function ProjectsIndex({
+    view,
+    sort,
     projects,
+    groups,
+    company,
     filters,
     options,
 }: ProjectsIndexProps) {
     const can = useAbilities();
+    const user = useRequiredUser();
     const thresholds = useHourBankThresholds();
 
-    const applyFilters = useCallback((next: ProjectListFilters) => {
-        router.get(index.url({ query: projectFiltersQuery(next) }), undefined, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        });
-    }, []);
+    const visit = useCallback(
+        (
+            next: ProjectListFilters,
+            nextView: ProjectListView,
+            nextSort: ProjectListSort,
+        ) => {
+            router.get(
+                index.url({
+                    query: {
+                        ...projectFiltersQuery(next),
+                        ...(nextView === 'list' ? { vista: 'lista' } : {}),
+                        ...(nextView === 'list' && nextSort !== 'name'
+                            ? { orden: SORT_PARAM[nextSort] }
+                            : {}),
+                    },
+                }),
+                undefined,
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                },
+            );
+        },
+        [],
+    );
+
+    const applyFilters = useCallback(
+        (next: ProjectListFilters) => visit(next, view, sort),
+        [visit, view, sort],
+    );
 
     const filtered = hasActiveProjectFilters(filters);
-    const empty = projects.meta.total === 0;
+    const empty =
+        view === 'list'
+            ? (projects?.meta.total ?? 0) === 0
+            : (groups ?? []).length === 0;
+    // Con una búsqueda o un cliente, lo plegado no se recuerda: se ve todo lo encontrado.
+    const searching = filters.buscar.trim() !== '' || filters.cliente !== null;
+    const folds = useCollapsedGroups(
+        searching ? null : `audax.projects.tree.${user.id}`,
+    );
 
     return (
         <>
@@ -87,6 +152,58 @@ export default function ProjectsIndex({
                             onChange={applyFilters}
                         />
 
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                            <ToggleGroup
+                                type="single"
+                                variant="outline"
+                                value={view}
+                                onValueChange={(next) => {
+                                    if (next === 'clients' || next === 'list') {
+                                        visit(filters, next, sort);
+                                    }
+                                }}
+                                aria-label={t('projects.view.label')}
+                                data-test="projects-view"
+                            >
+                                <ToggleGroupItem
+                                    value="clients"
+                                    className="gap-1.5 px-3"
+                                    data-test="projects-view-clients"
+                                >
+                                    <FolderTree aria-hidden="true" />
+                                    {t('projects.view.clients')}
+                                </ToggleGroupItem>
+                                <ToggleGroupItem
+                                    value="list"
+                                    className="gap-1.5 px-3"
+                                    data-test="projects-view-list"
+                                >
+                                    <List aria-hidden="true" />
+                                    {t('projects.view.list')}
+                                </ToggleGroupItem>
+                            </ToggleGroup>
+                            {view === 'list' ? (
+                                <FilterSelect
+                                    id="projects-sort"
+                                    label={t('projects.sort.label')}
+                                    value={sort}
+                                    options={SORTS.map((value) => ({
+                                        value,
+                                        label: t(`projects.sort.${value}`),
+                                    }))}
+                                    onChange={(value) =>
+                                        visit(
+                                            filters,
+                                            view,
+                                            (value ??
+                                                'name') as ProjectListSort,
+                                        )
+                                    }
+                                    className="w-48"
+                                />
+                            ) : null}
+                        </div>
+
                         {empty ? (
                             <EmptyState
                                 icon={SearchX}
@@ -95,17 +212,30 @@ export default function ProjectsIndex({
                                     'projects.index.no_results_description',
                                 )}
                             />
-                        ) : (
+                        ) : view === 'clients' && groups ? (
+                            <ProjectsTree
+                                groups={groups}
+                                company={company}
+                                folds={folds}
+                                expandedByDefault={treeExpandedByDefault(
+                                    groups,
+                                    searching,
+                                )}
+                                thresholds={thresholds}
+                            />
+                        ) : projects ? (
                             <ProjectsTable
                                 projects={projects.data}
                                 thresholds={thresholds}
                             />
-                        )}
+                        ) : null}
 
-                        <ListPagination
-                            page={projects}
-                            label={t('projects.pagination.label')}
-                        />
+                        {view === 'list' && projects ? (
+                            <ListPagination
+                                page={projects}
+                                label={t('projects.pagination.label')}
+                            />
+                        ) : null}
                     </>
                 )}
             </div>

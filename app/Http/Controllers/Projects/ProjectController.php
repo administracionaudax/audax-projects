@@ -11,6 +11,7 @@ use App\Domain\Projects\ProjectColors;
 use App\Domain\Projects\ProjectCreator;
 use App\Domain\Projects\ProjectFilters;
 use App\Domain\Projects\ProjectSummary;
+use App\Domain\Projects\ProjectTree;
 use App\Domain\Recurring\ProjectRecurringSettings;
 use App\Domain\Templates\ProjectFromTemplate;
 use App\Domain\Templates\ProjectTemplatingSettings;
@@ -34,6 +35,7 @@ use App\Models\Department;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\ProjectTemplate;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -57,7 +59,7 @@ class ProjectController extends Controller
     /** Columnas del usuario para UserSummaryResource. */
     public const array USER_SUMMARY_COLUMNS = ['id', 'name', 'avatar_path', 'department_id', 'is_active'];
 
-    public function index(Request $request, ProjectFilters $filters): Response
+    public function index(Request $request, ProjectFilters $filters, ProjectTree $tree): Response
     {
         $this->authorize('viewAny', Project::class);
 
@@ -85,22 +87,60 @@ class ProjectController extends Controller
         // Un colaborador externo solo ve sus proyectos (D-134).
         $query->visibleTo($user);
 
-        $paginator = $query
-            ->orderBy('projects.name')
-            ->orderBy('projects.id')
-            ->paginate(self::PER_PAGE, pageName: 'pagina')
-            ->withQueryString();
+        // Vista (D-322): por clientes (por defecto, jerarquizada) o plana con orden y paginación.
+        $view = $request->query('vista') === 'lista' ? 'list' : 'clients';
+        $sort = match ($request->query('orden')) {
+            'recientes' => 'recent',
+            'fin' => 'due',
+            default => 'name',
+        };
 
-        $items = [];
-        foreach ($paginator->items() as $project) {
-            $items[] = ResourceData::of(ProjectListResource::make($project), $request);
+        if ($view === 'clients') {
+            $projects = $query
+                ->with(['hourBanks' => fn ($banks) => $banks
+                    ->whereIn('hour_banks.status', [HourBankStatus::Active->value, HourBankStatus::Exhausted->value])
+                    ->orderBy('hour_banks.start_date')
+                    ->orderBy('hour_banks.id')])
+                ->orderBy('projects.name')
+                ->orderBy('projects.id')
+                ->limit(ProjectTree::LIMIT)
+                ->get();
+
+            $groups = $tree->groups($projects, $request);
+            $paginated = null;
+        } else {
+            match ($sort) {
+                'recent' => $query->orderByDesc('projects.created_at'),
+                // Los que no tienen fecha de fin, al final.
+                'due' => $query->orderByRaw('CASE WHEN projects.due_date IS NULL THEN 1 ELSE 0 END')->orderBy('projects.due_date'),
+                default => null,
+            };
+
+            $paginator = $query
+                ->orderBy('projects.name')
+                ->orderBy('projects.id')
+                ->paginate(self::PER_PAGE, pageName: 'pagina')
+                ->withQueryString();
+
+            $items = [];
+            foreach ($paginator->items() as $project) {
+                $items[] = ResourceData::of(ProjectListResource::make($project), $request);
+            }
+
+            $groups = null;
+            $paginated = Paginated::props($paginator, $items);
         }
 
         // Filtros: un colaborador solo ve los clientes y gestores de sus proyectos (D-134).
         $visible = Project::query()->visibleTo($user);
 
         return Inertia::render('projects/index', [
-            'projects' => Paginated::props($paginator, $items),
+            'view' => $view,
+            'sort' => $sort,
+            'projects' => $paginated,
+            'groups' => $groups,
+            // El grupo de los internos lleva el nombre de la empresa de los ajustes.
+            'company' => (string) Setting::get('company_name'),
             'filters' => $values,
             'options' => [
                 'clients' => Client::query()

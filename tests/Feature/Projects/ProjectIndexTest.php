@@ -26,7 +26,7 @@ beforeEach(function () {
         $codes = [];
 
         $this->actingAs($this->viewer)
-            ->get('/proyectos?'.http_build_query($query))
+            ->get('/proyectos?'.http_build_query(['vista' => 'lista', ...$query]))
             ->assertOk()
             ->assertInertia(function (Assert $page) use (&$codes) {
                 $page->component('projects/index');
@@ -113,7 +113,7 @@ test('cada fila lleva cliente, gestor principal y el consumo agregado de sus bol
     TimeEntry::factory()->forTask(Task::factory()->inBank($closed)->create())->minutes(60)->create();
 
     $this->actingAs($this->viewer)
-        ->get('/proyectos')
+        ->get('/proyectos?vista=lista')
         ->assertInertia(fn (Assert $page) => $page
             ->where('projects.data.0.code', 'BOLSAS')
             ->where('projects.data.0.client.name', $project->client?->name)
@@ -130,7 +130,7 @@ test('un proyecto que no es de bolsas no lleva consumo', function () {
     Project::factory()->fixedPrice()->create();
 
     $this->actingAs($this->viewer)
-        ->get('/proyectos')
+        ->get('/proyectos?vista=lista')
         ->assertInertia(fn (Assert $page) => $page->where('projects.data.0.hour_banks', null));
 });
 
@@ -138,7 +138,7 @@ test('con view-financials llegan la tarifa y el importe cerrado', function () {
     Project::factory()->fixedPrice()->create(['hourly_rate' => '60.00']);
 
     $this->actingAs(userWithRole('admin'))
-        ->get('/proyectos')
+        ->get('/proyectos?vista=lista')
         ->assertInertia(fn (Assert $page) => $page
             ->where('projects.data.0.fixed_price_amount', '4800.00')
             ->where('projects.data.0.hourly_rate', '60.00'));
@@ -148,7 +148,7 @@ test('pagina de 25 en 25 conservando los filtros', function () {
     Project::factory()->count(27)->create();
 
     $this->actingAs($this->viewer)
-        ->get('/proyectos?tipo=time_and_materials&pagina=2')
+        ->get('/proyectos?vista=lista&tipo=time_and_materials&pagina=2')
         ->assertInertia(fn (Assert $page) => $page
             ->has('projects.data', 2)
             ->where('projects.meta.current_page', 2)
@@ -163,6 +163,7 @@ test('sin N+1: el número de consultas no crece con las filas', function () {
         DB::flushQueryLog();
         DB::enableQueryLog();
         $this->actingAs($this->viewer)->get('/proyectos')->assertOk();
+        $this->actingAs($this->viewer)->get('/proyectos?vista=lista')->assertOk();
         DB::disableQueryLog();
 
         return count(DB::getQueryLog());
@@ -198,4 +199,82 @@ test('las opciones de los filtros incluyen clientes, responsables y departamento
             ->where('filters.mios', true)
             ->where('filters.buscar', 'web')
             ->where('filters.estado', ''));
+});
+
+/*
+| Listado por clientes (D-322): por defecto, jerarquizado. La búsqueda también encuentra los
+| proyectos por el nombre de su cliente, y los internos por el nombre de la empresa o «interno».
+*/
+
+test('por defecto agrupa por cliente: internos primero, clientes por nombre y bolsas abiertas dentro', function () {
+    $gestiones = Client::factory()->create(['name' => 'Gestiones Norte']);
+    $acme = Client::factory()->create(['name' => 'Acme']);
+    $bolsas = Project::factory()->hourBank()->create(['code' => 'GES-BH', 'name' => 'Bolsa de horas', 'client_id' => $gestiones->id]);
+    $open = HourBank::factory()->hours(120)->create(['project_id' => $bolsas->id, 'name' => 'WE 120H']);
+    HourBank::factory()->hours(20)->closed()->create(['project_id' => $bolsas->id, 'name' => 'Vieja']);
+    Project::factory()->create(['code' => 'GES-WE1', 'name' => 'WE1 - 120h', 'client_id' => $gestiones->id]);
+    Project::factory()->create(['code' => 'ACME-WEB', 'client_id' => $acme->id]);
+    Project::factory()->internal()->create(['code' => 'INT-GEN', 'name' => 'General', 'client_id' => null]);
+
+    $this->actingAs($this->viewer)
+        ->get('/proyectos')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('projects/index')
+            ->where('view', 'clients')
+            ->where('projects', null)
+            ->where('company', 'Audax Studio')
+            ->where('groups.0.kind', 'internal')
+            ->where('groups.0.projects.0.code', 'INT-GEN')
+            ->where('groups.0.projects.0.open_banks', null)
+            ->where('groups.1.client.name', 'Acme')
+            ->where('groups.2.client.name', 'Gestiones Norte')
+            ->where('groups.2.projects.0.code', 'GES-BH')
+            ->has('groups.2.projects.0.open_banks', 1)
+            ->where('groups.2.projects.0.open_banks.0.id', $open->id)
+            ->where('groups.2.projects.0.open_banks.0.name', 'WE 120H')
+            ->where('groups.2.projects.0.open_banks.0.total_minutes', 7200)
+            ->where('groups.2.projects.1.code', 'GES-WE1')
+            ->has('groups', 3));
+});
+
+test('busca también por el nombre del cliente y, con la empresa o «interno», los internos', function () {
+    $gestiones = Client::factory()->create(['name' => 'Gestiones Norte']);
+    Project::factory()->create(['code' => 'GES-WE1', 'name' => 'WE1 - 120h', 'client_id' => $gestiones->id]);
+    Project::factory()->create(['code' => 'OTRO', 'name' => 'Otra cosa']);
+    Project::factory()->internal()->create(['code' => 'INT-GEN', 'name' => 'General', 'client_id' => null]);
+
+    expect(($this->codes)(['buscar' => 'gestiones']))->toBe(['GES-WE1'])
+        ->and(($this->codes)(['buscar' => 'NORTE']))->toBe(['GES-WE1'])
+        ->and(($this->codes)(['buscar' => 'audax']))->toBe(['INT-GEN'])
+        ->and(($this->codes)(['buscar' => 'interno']))->toBe(['INT-GEN'])
+        ->and(($this->codes)(['buscar' => 'au']))->toBe([]);
+
+    $this->actingAs($this->viewer)
+        ->get('/proyectos?buscar=gestiones')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('groups', 1)
+            ->where('groups.0.client.name', 'Gestiones Norte')
+            ->where('groups.0.projects.0.name', 'WE1 - 120h'));
+});
+
+test('la vista plana ordena por nombre, por los más recientes o por fecha de entrega', function () {
+    Project::factory()->create(['code' => 'B', 'name' => 'Beta', 'due_date' => '2026-12-01', 'created_at' => now()->subDays(3)]);
+    Project::factory()->create(['code' => 'A', 'name' => 'Alfa', 'due_date' => null, 'created_at' => now()->subDay()]);
+    Project::factory()->create(['code' => 'C', 'name' => 'Gamma', 'due_date' => '2026-11-01', 'created_at' => now()->subDays(2)]);
+
+    $codes = function (string $sort): array {
+        $codes = [];
+        $this->actingAs($this->viewer)
+            ->get('/proyectos?vista=lista&orden='.$sort)
+            ->assertInertia(function (Assert $page) use (&$codes) {
+                $codes = array_column($page->toArray()['props']['projects']['data'], 'code');
+            });
+
+        return $codes;
+    };
+
+    expect($codes('nombre'))->toBe(['A', 'B', 'C'])
+        ->and($codes('recientes'))->toBe(['A', 'C', 'B'])
+        ->and($codes('fin'))->toBe(['C', 'B', 'A']);
 });

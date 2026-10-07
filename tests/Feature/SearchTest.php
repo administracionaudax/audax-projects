@@ -246,3 +246,17 @@ test('los escapes de LIKE no rompen la búsqueda de proyectos', function () {
     expect(collect($this->actingAs(searcher())->getJson('/buscar?q='.urlencode('100%'))->json('results'))->where('type', 'project'))
         ->toHaveCount(0);
 });
+
+test('encuentra un proyecto por el nombre de su cliente, después de los que casan por su nombre (D-322)', function () {
+    $gestiones = Client::factory()->create(['name' => 'Gestiones Norte']);
+    Project::factory()->create(['client_id' => $gestiones->id, 'name' => 'WE1 - 120h', 'code' => 'GES-WE1']);
+    Project::factory()->create(['name' => 'Gestiones internas', 'code' => 'ZZZ']);
+    Project::factory()->internal()->create(['client_id' => null, 'name' => 'General', 'code' => 'INT-GEN']);
+
+    $projects = fn (string $q) => collect($this->actingAs(searcher())->getJson('/buscar?q='.urlencode($q))->json('results'))
+        ->where('type', 'project')->pluck('title')->values()->all();
+
+    expect($projects('gestiones'))->toBe(['Gestiones internas', 'WE1 - 120h'])
+        ->and($projects('audax'))->toBe(['General'])
+        ->and($projects('interno'))->toBe(['General']);
+});

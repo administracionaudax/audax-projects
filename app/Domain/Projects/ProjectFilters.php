@@ -5,6 +5,7 @@ namespace App\Domain\Projects;
 use App\Enums\BillingType;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Models\TaskType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +23,8 @@ use Throwable;
  * - responsable: el gestor principal (owner, D-032).
  * - departamento implicado (D-037): el proyecto tiene un miembro, una bolsa o una tarea con un tipo
  *   de ese departamento.
- * - buscar: nombre o código, sin mayúsculas (y sin acentos en PostgreSQL con unaccent).
+ * - buscar: nombre o código del proyecto o nombre de su cliente (D-322), sin mayúsculas (y sin
+ *   acentos en PostgreSQL con unaccent); el nombre de la empresa o «interno» trae los internos.
  * - mios: proyectos de los que soy miembro.
  */
 final class ProjectFilters
@@ -30,20 +32,23 @@ final class ProjectFilters
     public const string ALL_STATUSES = 'todos';
 
     /**
-     * @var array<string, array{name: literal-string, code: literal-string}>
+     * @var array<string, array{name: literal-string, code: literal-string, client: literal-string}>
      */
     private const array EXPRESSIONS = [
         'pgsql_unaccent' => [
             'name' => "unaccent(projects.name) ILIKE unaccent(CAST(? AS text)) ESCAPE '\\'",
             'code' => "projects.code ILIKE ? ESCAPE '\\'",
+            'client' => "unaccent(clients.name) ILIKE unaccent(CAST(? AS text)) ESCAPE '\\'",
         ],
         'pgsql' => [
             'name' => "projects.name ILIKE ? ESCAPE '\\'",
             'code' => "projects.code ILIKE ? ESCAPE '\\'",
+            'client' => "clients.name ILIKE ? ESCAPE '\\'",
         ],
         'default' => [
             'name' => "LOWER(projects.name) LIKE ? ESCAPE '\\'",
             'code' => "LOWER(projects.code) LIKE ? ESCAPE '\\'",
+            'client' => "LOWER(clients.name) LIKE ? ESCAPE '\\'",
         ],
     ];
 
@@ -132,10 +137,38 @@ final class ProjectFilters
         $like = '%'.$this->escapeLike(Str::lower($text)).'%';
         $expressions = self::EXPRESSIONS[$this->mode()];
 
-        $query->where(function (Builder $where) use ($like, $expressions): void {
+        $internal = self::matchesInternalGroup($text);
+
+        $query->where(function (Builder $where) use ($like, $expressions, $internal): void {
             $where->whereRaw($expressions['name'], [$like])
-                ->orWhereRaw($expressions['code'], [$like]);
+                ->orWhereRaw($expressions['code'], [$like])
+                // También por su cliente (D-322): «gestiones» encuentra «WE1 - 120h» de Gestiones.
+                ->orWhereHas('client', fn (Builder $clients) => $clients->whereRaw($expressions['client'], [$like]));
+
+            if ($internal) {
+                // Y los internos sin cliente si se busca la empresa («audax») o «interno».
+                $where->orWhere(fn (Builder $own) => $own
+                    ->whereNull('projects.client_id')
+                    ->where('projects.billing_type', BillingType::Internal->value));
+            }
         });
+    }
+
+    /**
+     * ¿El texto busca el grupo de los internos? Si está en el nombre de la empresa de los ajustes
+     * («audax», «studio») o en «interno», sin mayúsculas ni acentos (D-322).
+     */
+    public static function matchesInternalGroup(string $text): bool
+    {
+        $needle = Str::lower(Str::ascii(trim($text)));
+
+        if (mb_strlen($needle) < 3) {
+            return false;
+        }
+
+        $company = Str::lower(Str::ascii((string) Setting::get('company_name')));
+
+        return str_contains($company, $needle) || str_contains('internos', $needle);
     }
 
     private function positiveInt(mixed $value): ?int
