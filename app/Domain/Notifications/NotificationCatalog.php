@@ -147,6 +147,12 @@ final class NotificationCatalog
             new NotificationEvent('absence.rejected', 'absences', $all, [$app, $email]),
             new NotificationEvent('absence.updated', 'absences', $all, [$app, $email]),
             new NotificationEvent('absence.cancelled', 'absences', $all, [$app, $email]),
+            // Vacaciones y permisos (Fase 11, R3; D-369): solo con el módulo `people` encendido.
+            new NotificationEvent('absence.second_approval', 'absences', $all, [$app, $email], self::AUDIENCE_APPROVERS),
+            new NotificationEvent('absence.cancellation_requested', 'absences', $all, [$app, $email], self::AUDIENCE_APPROVERS),
+            new NotificationEvent('absence.cancellation_decided', 'absences', $all, [$app, $email]),
+            new NotificationEvent('absence.balance_expiring', 'absences', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('absence.document_missing', 'absences', $all, [$app, $email], self::AUDIENCE_PEOPLE),
 
             // Chat (Fase 6): mensajes directos y menciones (también @todos).
             new NotificationEvent('chat.direct', 'chat', $all, [$app, $push]),

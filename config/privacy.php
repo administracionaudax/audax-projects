@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\People\Retention\RegisterPruner;
+use App\Domain\Privacy\Export\Sections\AbsenceDocumentsSection;
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\AiUsageSection;
@@ -13,6 +14,7 @@ use App\Domain\Privacy\Export\Sections\DictationsSection;
 use App\Domain\Privacy\Export\Sections\EmploymentSection;
 use App\Domain\Privacy\Export\Sections\HelpLikesSection;
 use App\Domain\Privacy\Export\Sections\IntegrationsSection;
+use App\Domain\Privacy\Export\Sections\LeaveBalanceSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
 use App\Domain\Privacy\Export\Sections\MonthClosesSection;
 use App\Domain\Privacy\Export\Sections\MySpaceTasksSection;
@@ -59,6 +61,9 @@ return [
         WorkSchedulesSection::class,
         TimeEntriesSection::class,
         AbsencesSection::class,
+        // Vacaciones y permisos (Fase 11, R3; D-372).
+        LeaveBalanceSection::class,
+        AbsenceDocumentsSection::class,
         TaskCommentsSection::class,
         ChatMessagesSection::class,
         // La Weekly (Fase 10, 10.5, D-202): envíos, apuntes, dictados, exenciones, los resúmenes

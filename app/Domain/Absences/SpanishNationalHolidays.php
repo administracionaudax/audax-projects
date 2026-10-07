@@ -34,17 +34,17 @@ final class SpanishNationalHolidays
     /**
      * Los festivos del año, por fecha.
      *
-     * @return list<array{date: string, name: string}>
+     * @return list<array{date: string, name: string, level: string, source: null}>
      */
     public function forYear(int $year): array
     {
         $holidays = [];
 
         foreach (self::FIXED as $day => $key) {
-            $holidays[] = ['date' => sprintf('%04d-%s', $year, $day), 'name' => self::name($key)];
+            $holidays[] = ['date' => sprintf('%04d-%s', $year, $day), 'name' => self::name($key), 'level' => 'national', 'source' => null];
         }
 
-        $holidays[] = ['date' => self::goodFriday($year)->toDateString(), 'name' => self::name('good_friday')];
+        $holidays[] = ['date' => self::goodFriday($year)->toDateString(), 'name' => self::name('good_friday'), 'level' => 'national', 'source' => null];
 
         usort($holidays, fn (array $a, array $b): int => strcmp($a['date'], $b['date']));
 

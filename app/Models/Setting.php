@@ -105,6 +105,10 @@ class Setting extends Model
         'people_inspection_enabled' => false,
         // Centro de trabajo del «Anexo de horas» (municipio y provincia, STS 1161/2024).
         'people_work_center' => null,
+        // Vacaciones y permisos (Fase 11, R3; D-362): desde qué día cuentan las ausencias en los saldos
+        // de la app (AAAA-MM-DD; null, desde siempre). En R5, el día del corte con Woffu: lo anterior
+        // llega como saldo inicial.
+        'people_leave_starts_on' => null,
     ];
 
     protected static function booted(): void

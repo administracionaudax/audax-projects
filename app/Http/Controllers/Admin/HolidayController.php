@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Absences\AbsenceText;
 use App\Domain\Absences\HolidayImporter;
 use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Absences\ValenciaHolidays;
 use App\Domain\Reports\ReportCache;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\HolidayFileRequest;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -52,7 +54,7 @@ class HolidayController extends Controller
         $holidays = Holiday::query()
             ->whereBetween('date', ["{$year}-01-01", "{$year}-12-31"])
             ->orderBy('date')
-            ->get(['id', 'date', 'name']);
+            ->get(['id', 'date', 'name', 'level', 'source']);
         $taken = $holidays->mapWithKeys(fn (Holiday $holiday): array => [$holiday->date->toDateString() => true])->all();
 
         return Inertia::render('admin/holidays/index', [
@@ -62,7 +64,14 @@ class HolidayController extends Controller
                 'id' => $holiday->id,
                 'date' => $holiday->date->toDateString(),
                 'name' => $holiday->name,
+                'level' => $holiday->level?->value,
+                'source' => $holiday->source,
             ])->values()->all(),
+            // Fase 11, R3 (D-367): el calendario de València del año, si está comprobado.
+            'valencia' => ValenciaHolidays::covers($year) ? [
+                'holidays' => array_map(fn (array $holiday): array => [...$holiday, 'exists' => isset($taken[$holiday['date']])], app(ValenciaHolidays::class)->forYear($year)),
+                'agreement' => array_map(fn (array $holiday): array => [...$holiday, 'exists' => isset($taken[$holiday['date']])], app(ValenciaHolidays::class)->agreement($year)),
+            ] : null,
             'national' => array_map(fn (array $holiday): array => [
                 ...$holiday,
                 'exists' => isset($taken[$holiday['date']]),
@@ -152,6 +161,32 @@ class HolidayController extends Controller
         $result = $this->importer->store($actor, $this->national->forYear($year), 'holidays_national', ['year' => $year]);
 
         $this->toast(AbsenceText::choice('absences.holidays.national_added', $result['created'], ['year' => $year]));
+
+        return back();
+    }
+
+    /**
+     * POST /admin/festivos/valencia (Fase 11, R3; L-23; D-367): añade las fiestas laborales de la
+     * ciudad de València del año (nacionales, autonómicas y locales, comprobadas en el BOE, el DOGV y
+     * valencia.es; ValenciaHolidays) que aún no estén, cada una con su nivel y su fuente. Con
+     * `agreement`, también los días del convenio de publicidad (pendientes de asesor).
+     */
+    public function valencia(Request $request, ValenciaHolidays $valencia): RedirectResponse
+    {
+        Gate::authorize('manage-settings');
+        $data = $request->validate([
+            'year' => ['required', 'integer', Rule::in(ValenciaHolidays::years())],
+            'agreement' => ['boolean'],
+        ]);
+
+        /** @var User $actor */
+        $actor = $request->user();
+        $year = (int) $data['year'];
+        $rows = [...$valencia->forYear($year), ...(($data['agreement'] ?? false) ? $valencia->agreement($year) : [])];
+
+        $result = $this->importer->store($actor, $rows, 'holidays_valencia', ['year' => $year, 'agreement' => (bool) ($data['agreement'] ?? false)]);
+
+        $this->toast(trans_choice('leave.flash.valencia_added', $result['created'], ['count' => $result['created'], 'year' => $year]));
 
         return back();
     }

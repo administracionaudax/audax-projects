@@ -101,9 +101,12 @@ export function AbsenceStatusBadge({ status }: { status: AbsenceStatus }) {
 export function AbsenceTypeLabel({
     type,
     className,
+    label,
 }: {
     type: AbsenceType;
     className?: string;
+    /** Fase 11, R3: el nombre del tipo del catálogo (el icono sigue siendo el de su categoría). */
+    label?: string;
 }) {
     const Icon = ABSENCE_TYPES[type].icon;
 
@@ -114,7 +117,7 @@ export function AbsenceTypeLabel({
                 className="size-4 shrink-0 text-muted-foreground"
                 strokeWidth={1.5}
             />
-            {absenceTypeLabel(type)}
+            {label ?? absenceTypeLabel(type)}
         </span>
     );
 }

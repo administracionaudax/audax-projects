@@ -42,12 +42,13 @@ export function AbsenceItem({
     /** Contenido adicional bajo los datos (p. ej. las ausencias que coinciden). */
     extra?: ReactNode;
 }) {
-    const days =
-        absence.partial_minutes !== null
-            ? t('absences.partial_label', {
-                  minutes: formatMinutes(absence.partial_minutes),
-              })
-            : workingDaysLabel(absence.working_days);
+    const days = absence.leave
+        ? null
+        : absence.partial_minutes !== null
+          ? t('absences.partial_label', {
+                minutes: formatMinutes(absence.partial_minutes),
+            })
+          : workingDaysLabel(absence.working_days);
     const inProgress = isInProgress(absence, today);
 
     return (
@@ -80,6 +81,7 @@ export function AbsenceItem({
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <AbsenceTypeLabel
                         type={absence.type}
+                        label={absence.leave?.type?.name}
                         className="inline-flex items-center gap-1.5 font-medium"
                     />
                     <span className="tabular">

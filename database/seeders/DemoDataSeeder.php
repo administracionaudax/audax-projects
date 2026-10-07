@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Absences\LeaveLedger;
 use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Absences\ValenciaHolidays;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Domain\Forecast\AllocationWriter;
@@ -25,11 +27,14 @@ use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
 use App\Enums\BalanceMovementKind;
 use App\Enums\BillingType;
+use App\Enums\CancellationStatus;
 use App\Enums\ClockEventKind;
 use App\Enums\ClockSource;
 use App\Enums\DayPlanItemOrigin;
 use App\Enums\DayPlanItemStatus;
 use App\Enums\HourBankStatus;
+use App\Enums\LeaveCalendarDayKind;
+use App\Enums\LeaveMovementKind;
 use App\Enums\OveragePolicy;
 use App\Enums\OvertimeDestination;
 use App\Enums\ProjectStatus;
@@ -47,6 +52,7 @@ use App\Events\Chat\MessagePosted;
 use App\Events\Chat\MessageUpdated;
 use App\Events\Weeklies\WeeklyChanged;
 use App\Models\Absence;
+use App\Models\AbsenceDocument;
 use App\Models\Client;
 use App\Models\Conversation;
 use App\Models\DayPlan;
@@ -57,8 +63,11 @@ use App\Models\EmploymentProfile;
 use App\Models\ForecastProject;
 use App\Models\Holiday;
 use App\Models\HourBank;
+use App\Models\LeaveCalendarDay;
+use App\Models\LeaveType;
 use App\Models\Message;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\TaskStatus;
@@ -80,6 +89,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 use RuntimeException;
@@ -231,6 +242,7 @@ class DemoDataSeeder extends Seeder
             $this->forecast();
             $this->clockRegister();
             $this->registerR2();
+            $this->leaveR3();
         });
 
         $this->chat();
@@ -250,7 +262,7 @@ class DemoDataSeeder extends Seeder
         $national = new SpanishNationalHolidays;
         foreach ([$this->today->year - 1, $this->today->year, $this->today->year + 1] as $year) {
             foreach ($national->forYear($year) as $holiday) {
-                Holiday::query()->firstOrCreate(['date' => $holiday['date']], ['name' => $holiday['name'], 'scope' => 'company']);
+                Holiday::query()->firstOrCreate(['date' => $holiday['date']], ['name' => $holiday['name'], 'scope' => 'company', 'level' => $holiday['level']]);
             }
         }
 
@@ -1529,6 +1541,129 @@ class DemoDataSeeder extends Seeder
             Carbon::setTestNow();
             CarbonImmutable::setTestNow();
         }
+    }
+
+    /**
+     * Vacaciones y permisos, R3 (D-373; solo local). Va al final y sin el generador aleatorio, para no
+     * cambiar las horas, los fichajes ni los cierres de ejemplo: nada nuevo cae dentro de los 12 meses
+     * de horas ni de los fichajes (lo pasado, antes; lo nuevo, en el futuro).
+     * - Festivos de València del año que viene (con su nivel y su fuente); los de este año quedan en
+     *   /admin/festivos como «faltan», para no mover la capacidad de esta semana.
+     * - Los saldos de la app empiezan el 1 de enero (`people_leave_starts_on`): la asignación de este
+     *   año y del siguiente (22 días de vacaciones y las horas de 4 días de fuerza mayor) y, como saldo
+     *   inicial de Woffu, el arrastre de Lucía (caduca el 31/03) y las vacaciones que Daniel aplazó
+     *   por una IT (art. 38.3 ET).
+     * - Futuras: vacaciones aprobadas de Raúl, Marta y Ana (dentro de 8 semanas o más), dos pendientes
+     *   (Sergio, con antelación; Pablo, con menos de 2 meses), un deber inexcusable de Pablo por horas
+     *   con franja y su citación, un traslado de Daniel sin justificante y un permiso de salud de
+     *   Irene con su justificante (su responsable no lo ve).
+     * - Sergio pide cancelar unas vacaciones ya disfrutadas («trabajé el viernes»).
+     * - Días especiales: el 24 y el 31 de diciembre, media jornada; del 28 al 30, bloqueados.
+     * - Un ajuste con motivo (un día más de Lucía).
+     * Elena (los E2E) tiene sus 22 días menos las vacaciones de la semana que viene.
+     */
+    private function leaveR3(): void
+    {
+        $ledger = app(LeaveLedger::class);
+        $year = $this->today->year;
+        $types = LeaveType::query()->get()->keyBy('key');
+        $before = $this->start->subWeeks(10)->startOfWeek();
+
+        // Festivos de València del año que viene (si están comprobados).
+        foreach ((new ValenciaHolidays)->forYear($year + 1) as $holiday) {
+            Holiday::query()->firstOrCreate(['date' => $holiday['date']], [
+                'name' => $holiday['name'],
+                'scope' => 'company',
+                'level' => $holiday['level'],
+                'source' => $holiday['source'],
+            ]);
+        }
+
+        // Los saldos de la app empiezan el 1 de enero: lo de antes vino de Woffu como saldo inicial.
+        Setting::set('people_leave_starts_on', "{$year}-01-01");
+        foreach ([$year, $year + 1] as $item) {
+            $ledger->syncYear($item);
+        }
+
+        $absence = function (string $who, string $key, CarbonImmutable $from, CarbonImmutable $to, string $status = 'approved', ?string $approver = null, array $extra = []) use ($types): Absence {
+            $type = $types[$key];
+            $reviewer = $approver !== null ? $this->people[$approver] : null;
+            $absence = new Absence([
+                'user_id' => $this->people[$who]->id,
+                'type' => $type->category,
+                'leave_type_id' => $type->id,
+                'start_date' => $from->toDateString(),
+                'end_date' => $to->toDateString(),
+                'status' => $status,
+                'approved_by' => $reviewer?->id,
+                'reviewed_at' => $status === 'approved' ? ($from < $this->today ? $from->subWeeks(3)->setTime(10, 0) : $this->today->subDay()) : null,
+                ...$extra,
+            ]);
+            $absence->created_at = $from < $this->today ? $from->subWeeks(4)->setTime(9, 0) : $this->today->subDays(2)->setTime(9, 0);
+            $absence->save();
+
+            return $absence;
+        };
+
+        // Una IT larga de Daniel antes de las horas de ejemplo: sus vacaciones de ese año se aplazan
+        // (art. 38.3 ET) y llegan de Woffu como saldo inicial con su caducidad.
+        $ana = $this->people['ana'];
+        $absence('daniel', 'sick', $before, $before->addDays(20), approver: 'nuria');
+        $ledger->adjust($ana, $this->people['daniel'], $types['vacation'], LeaveMovementKind::OpeningBalance, 500, $year, 'Saldo inicial desde Woffu a 01/01/'.$year.': vacaciones de '.$before->year.' aplazadas por la IT (art. 38.3 ET).', "{$year}-01-01", CarbonImmutable::create($year, 6, 30)->max($this->today->addMonths(2)->endOfMonth())->toDateString());
+        // Arrastre de Lucía del año pasado, traído de Woffu (ya caducado si ha pasado el 31/03).
+        $ledger->adjust($ana, $this->people['lucia'], $types['vacation'], LeaveMovementKind::OpeningBalance, 200, $year - 1, 'Saldo inicial desde Woffu a 01/01/'.$year.': arrastre de '.($year - 1).'.', "{$year}-01-01", "{$year}-03-31");
+
+        // Una cancelación pedida: Sergio trabajó el viernes de sus vacaciones (hace 20 semanas).
+        $sergio = Absence::query()->where('user_id', $this->people['sergio']->id)->where('type', 'vacation')->where('start_date', $this->today->startOfWeek()->subWeeks(20)->toDateString())->first();
+        $sergio?->forceFill([
+            'cancellation_status' => CancellationStatus::Requested,
+            'cancellation_reason' => 'Me llamaron por la entrega del viernes y trabajé ese día: devolvedme las vacaciones.',
+            'cancellation_requested_at' => $this->today->subDays(2)->setTime(11, 0),
+        ])->save();
+
+        // Futuras.
+        $in = fn (int $weeks, int $day = 0): CarbonImmutable => $this->today->startOfWeek()->addWeeks($weeks)->addDays($day);
+        $absence('raul', 'vacation', $in(8), $in(8, 4), approver: 'ana');
+        $absence('marta', 'vacation', $in(9), $in(10, 4), approver: 'ana');
+        $absence('ana', 'vacation', $in(11), $in(11, 2));
+        $absence('sergio', 'vacation', $in(12), $in(12, 4), 'requested');
+        $absence('pablo', 'vacation', $in(5), $in(5, 2), 'requested');
+        $citation = $absence('pablo', 'public_duty', $in(3, 2), $in(3, 2), approver: 'marta', extra: ['partial_minutes' => 150, 'start_time' => '10:00', 'end_time' => '12:30', 'notes' => 'Citación como testigo en el juzgado.']);
+        $this->leaveDocument($citation, 'citacion-juzgado.pdf', $this->people['pablo']);
+        $absence('daniel', 'moving', $in(2, 3), $in(2, 3), approver: 'nuria');
+        // Una intervención programada del padre de Irene: permiso de salud con su justificante
+        // (solo lo ven ella y RR. HH.; su responsable sabe que está entregado).
+        $family = $absence('irene', 'family_illness', $in(4, 1), $in(4, 2), approver: 'nuria');
+        $this->leaveDocument($family, 'justificante-hospital.pdf', $this->people['irene']);
+
+        // Días especiales de este año: media jornada el 24 y el 31 de diciembre; del 28 al 30, bloqueados.
+        LeaveCalendarDay::query()->create(['kind' => LeaveCalendarDayKind::HalfDay, 'name' => 'Nochebuena (media jornada)', 'start_date' => "{$year}-12-24", 'end_date' => "{$year}-12-24", 'created_by' => $ana->id]);
+        LeaveCalendarDay::query()->create(['kind' => LeaveCalendarDayKind::HalfDay, 'name' => 'Nochevieja (media jornada)', 'start_date' => "{$year}-12-31", 'end_date' => "{$year}-12-31", 'created_by' => $ana->id]);
+        LeaveCalendarDay::query()->create(['kind' => LeaveCalendarDayKind::Blocked, 'name' => 'Cierre del ejercicio', 'start_date' => "{$year}-12-28", 'end_date' => "{$year}-12-30", 'created_by' => $ana->id]);
+
+        // Un ajuste con motivo: el día de la empresa de Lucía.
+        $ledger->adjust($ana, $this->people['lucia'], $types['vacation'], LeaveMovementKind::Adjustment, 100, $year, 'Día extra por el aniversario de la agencia.');
+    }
+
+    /** Un justificante de ejemplo (un PDF mínimo) en el disco privado. */
+    private function leaveDocument(Absence $absence, string $name, User $uploader): void
+    {
+        $contents = "%PDF-1.4\n% Justificante de ejemplo (datos ficticios)\n%%EOF\n";
+        $path = sprintf('people/justificantes/%d/%s.pdf', $absence->user_id, Str::uuid()->toString());
+        Storage::disk('local')->put($path, $contents);
+
+        $document = new AbsenceDocument;
+        $document->forceFill([
+            'absence_id' => $absence->id,
+            'user_id' => $absence->user_id,
+            'uploaded_by' => $uploader->id,
+            'path' => $path,
+            'original_name' => $name,
+            'mime' => 'application/pdf',
+            'size' => strlen($contents),
+            'sha256' => hash('sha256', $contents),
+            'created_at' => $this->today->subDay(),
+        ])->save();
     }
 
     /**

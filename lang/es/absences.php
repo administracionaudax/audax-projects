@@ -153,6 +153,7 @@ return [
         'holiday_deleted' => 'Festivo eliminado',
         'holidays_national' => 'Festivos nacionales añadidos',
         'holidays_imported' => 'Festivos importados',
+        'holidays_valencia' => 'Calendario de València añadido',
     ],
 
     // Nombres de los campos en los errores de validación.

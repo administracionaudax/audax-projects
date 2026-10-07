@@ -138,15 +138,16 @@ final class HolidayImporter
      * Añade los festivos de las fechas que aún no tienen (la primera aparición de cada fecha) y deja
      * un registro resumido en la auditoría.
      *
-     * @param  list<array{date: string, name: string}>  $rows
+     * @param  list<array{date: string, name: string, level?: string|null, source?: string|null}>  $rows
      * @param  array<string, mixed>  $properties
      * @return array{created: int, skipped: int, dates: list<string>}
      */
     public function store(User $actor, array $rows, string $event, array $properties = []): array
     {
+        /** @var array<string, array{date: string, name: string, level?: string|null, source?: string|null}> $unique */
         $unique = [];
         foreach ($rows as $row) {
-            $unique[$row['date']] ??= $row['name'];
+            $unique[$row['date']] ??= $row;
         }
 
         $result = DB::transaction(function () use ($actor, $unique, $event, $properties): array {
@@ -159,14 +160,16 @@ final class HolidayImporter
 
             foreach (array_chunk($new, 100, true) as $chunk) {
                 $created += Holiday::query()->insertOrIgnore(array_map(
-                    fn (string $date, string $name): array => [
-                        'date' => $date,
-                        'name' => $name,
+                    fn (array $row): array => [
+                        'date' => $row['date'],
+                        'name' => $row['name'],
                         'scope' => 'company',
+                        // Fase 11, R3 (D-367): de dónde sale cada festivo.
+                        'level' => $row['level'] ?? null,
+                        'source' => isset($row['source']) ? mb_substr((string) $row['source'], 0, 300) : null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ],
-                    array_keys($chunk),
                     array_values($chunk),
                 ));
             }

@@ -32,7 +32,8 @@ beforeEach(function () {
     /** Presupuesto: lo medido (máximo de los tres roles) más 3. */
     $this->budgets = [
         // +1 fija con la Fase 6: el total sin leer del chat (prop compartida `chat.unread`).
-        'home' => 16,
+        // +1 fija con la Fase 11, R3 (D-366): los días especiales del calendario (Capacity), una vez.
+        'home' => 17,
         'absences.index' => 10,
         'absences.team' => 17,
         'absences.team.month' => 17,

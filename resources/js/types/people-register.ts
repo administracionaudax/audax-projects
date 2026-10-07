@@ -207,7 +207,10 @@ export type ReportKind =
     | 'presencia-diaria'
     | 'presencia-mensual'
     | 'fichajes'
-    | 'incidencias';
+    | 'incidencias'
+    | 'saldos'
+    | 'actividad'
+    | 'justificantes-pendientes';
 
 export type RegisterExport = {
     id: number;

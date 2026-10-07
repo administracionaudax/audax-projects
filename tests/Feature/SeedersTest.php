@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Absences\SpanishNationalHolidays;
+use App\Domain\Absences\ValenciaHolidays;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
@@ -114,14 +116,19 @@ test('los datos de ejemplo tienen festivos y ausencias, y nadie imputa en un dí
     $today = LocalTime::todayString();
     $email = fn (string $address): int => User::query()->where('email', $address)->value('id');
 
-    // Festivos nacionales del año pasado, este y el que viene.
-    expect(Holiday::query()->count())->toBe(30);
+    // Festivos nacionales del año pasado, este y el que viene; y, desde la Fase 11 (R3, D-373), los
+    // de València del año que viene que no son nacionales (si ese año está comprobado).
+    $year = (int) substr($today, 0, 4);
+    $national = array_column((new SpanishNationalHolidays)->forYear($year + 1), 'date');
+    $valencia = array_diff(array_column((new ValenciaHolidays)->forYear($year + 1), 'date'), $national);
+    expect(Holiday::query()->count())->toBe(30 + count($valencia));
 
     // Ausencias pasadas y aprobadas dentro de los 12 meses de horas: dos semanas de vacaciones,
     // un día de formación, una baja de dos días y medio día.
     $past = Absence::query()->with('user')->approved()->where('end_date', '<', $today)->get();
     expect($past->map(fn (Absence $absence): string => $absence->type->value.':'.($absence->start_date->diffInWeekdays($absence->end_date) + 1).':'.($absence->partial_minutes ?? 'dia'))->sort()->values()->all())
-        ->toBe(['leave:1:240', 'sick:2:dia', 'training:1:dia', 'vacation:5:dia', 'vacation:5:dia'])
+        // R3 (D-373): la IT de tres semanas de Daniel de hace más de un año, antes de las horas.
+        ->toBe(['leave:1:240', 'sick:16:dia', 'sick:2:dia', 'training:1:dia', 'vacation:5:dia', 'vacation:5:dia'])
         ->and($past->every(fn (Absence $absence): bool => $absence->approved_by !== null && $absence->reviewed_at < $absence->start_date))->toBeTrue();
 
     // Las futuras de los E2E: Elena de vacaciones la semana que viene y una solicitud de Lucía.

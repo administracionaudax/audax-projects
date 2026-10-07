@@ -8,14 +8,19 @@ use App\Domain\Absences\AbsenceRules;
 use App\Domain\Absences\AbsenceScope;
 use App\Domain\Absences\AbsenceService;
 use App\Domain\Absences\AbsenceText;
+use App\Domain\Absences\LeaveCatalog;
+use App\Domain\Absences\LeaveMode;
+use App\Domain\Absences\LeavePresenter;
 use App\Domain\Absences\SpanishNationalHolidays;
 use App\Enums\AbsenceStatus;
+use App\Enums\CancellationStatus;
 use App\Http\Requests\Absences\RegisterAbsenceRequest;
 use App\Http\Requests\Absences\RejectAbsenceRequest;
 use App\Http\Requests\Absences\UpdateAbsenceRequest;
 use App\Models\Absence;
 use App\Models\Department;
 use App\Models\Holiday;
+use App\Models\LeaveType;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -37,6 +42,10 @@ use Inertia\Response;
  *   o anular.
  * - Registrar una ausencia ya aprobada de alguien de su ámbito.
  * Filtro por departamento (?departamento=3) entre los que puede ver.
+ *
+ * Fase 11, R3 (módulo `people` visible): cada ausencia con su tipo del catálogo, coste,
+ * justificantes y avisos (LeavePresenter); las vacaciones pendientes del segundo nivel (solo RR. HH.
+ * las aprueba); las cancelaciones pedidas por decidir; y el catálogo para registrar.
  */
 class TeamAbsenceController extends AbsencesController
 {
@@ -51,6 +60,7 @@ class TeamAbsenceController extends AbsencesController
         private readonly AbsenceService $absences,
         private readonly AbsenceScope $scope,
         private readonly AbsenceDays $days,
+        private readonly LeavePresenter $leave,
     ) {}
 
     public function index(Request $request): Response
@@ -98,8 +108,20 @@ class TeamAbsenceController extends AbsencesController
             ->get();
         $this->attachPeople($upcoming, $byId);
 
-        $days = $this->days->count($pending->concat($upcoming));
+        $leaveOn = LeaveMode::on($viewer);
+        $cancellations = $leaveOn ? Absence::query()
+            ->approved()
+            ->where('cancellation_status', CancellationStatus::Requested->value)
+            ->whereIn('user_id', array_values(array_diff($ids, [$viewer->id])) ?: [0])
+            ->orderBy('cancellation_requested_at')
+            ->orderBy('id')
+            ->limit(self::PENDING_LIMIT)
+            ->get() : new Collection;
+        $this->attachPeople($cancellations, $byId);
+
+        $days = $this->days->count($pending->concat($upcoming)->concat($cancellations));
         $overlaps = $this->overlaps($pending, $ids, $byId);
+        $leave = $this->leave->forAbsences($pending->concat($upcoming)->concat($cancellations)->unique('id'), $viewer);
 
         $calendar = Absence::query()
             ->whereIn('user_id', $ids ?: [0])
@@ -110,10 +132,14 @@ class TeamAbsenceController extends AbsencesController
 
         return Inertia::render('absences/team', [
             'pending' => $pending->map(fn (Absence $absence): array => [
-                ...AbsencePresenter::row($absence, $viewer, $days, withUser: true),
+                ...AbsencePresenter::row($absence, $viewer, $days, withUser: true, leave: $leave),
                 'overlaps' => $overlaps[$absence->id] ?? [],
             ])->values()->all(),
-            'upcoming' => $upcoming->map(fn (Absence $absence): array => AbsencePresenter::row($absence, $viewer, $days, withUser: true))->values()->all(),
+            'upcoming' => $upcoming->map(fn (Absence $absence): array => AbsencePresenter::row($absence, $viewer, $days, withUser: true, leave: $leave))->values()->all(),
+            'cancellations' => $cancellations->map(fn (Absence $absence): array => AbsencePresenter::row($absence, $viewer, $days, withUser: true, leave: $leave))->values()->all(),
+            'leave' => $leaveOn ? [
+                'types' => LeaveCatalog::active()->map(fn (LeaveType $type): array => LeavePresenter::type($type))->values()->all(),
+            ] : null,
             'calendar' => [
                 'month' => $month->format('Y-m'),
                 'current' => $today->format('Y-m'),
@@ -193,7 +219,7 @@ class TeamAbsenceController extends AbsencesController
 
         $this->toast(AbsenceText::get('absences.flash.registered', [
             'name' => $target->name,
-            'type' => $absence->type->label(),
+            'type' => AbsenceText::typeName($absence->leaveType, $absence->type),
             'period' => AbsenceText::period($absence->start_date->toDateString(), $absence->end_date->toDateString(), $absence->partial_minutes),
         ]));
 
@@ -211,7 +237,9 @@ class TeamAbsenceController extends AbsencesController
         $reviewer = $request->user();
         $absence = $this->absences->approve($reviewer, $absence);
 
-        $this->toast(AbsenceText::get('absences.flash.approved', ['name' => $absence->user->name]));
+        $this->toast($absence->status === AbsenceStatus::Approved
+            ? AbsenceText::get('absences.flash.approved', ['name' => $absence->user->name])
+            : AbsenceText::get('leave.flash.first_approved'));
 
         return back();
     }
@@ -245,7 +273,7 @@ class TeamAbsenceController extends AbsencesController
 
         $this->toast(AbsenceText::get($changed ? 'absences.flash.updated' : 'absences.flash.unchanged', [
             'name' => $absence->user->name,
-            'type' => $absence->type->label(),
+            'type' => AbsenceText::typeName($absence->leaveType, $absence->type),
             'period' => AbsenceText::period($absence->start_date->toDateString(), $absence->end_date->toDateString(), $absence->partial_minutes),
         ]), $changed ? 'success' : 'info');
 

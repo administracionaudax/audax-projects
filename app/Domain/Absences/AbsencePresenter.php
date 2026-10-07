@@ -16,9 +16,10 @@ final class AbsencePresenter
 {
     /**
      * @param  array<int, int>  $workingDays  id → días laborables (AbsenceDays)
+     * @param  array<int, array<string, mixed>>  $leave  id → lo que añade R3 (LeavePresenter; vacío con el módulo apagado)
      * @return array<string, mixed>
      */
-    public static function row(Absence $absence, User $viewer, array $workingDays = [], bool $withUser = false): array
+    public static function row(Absence $absence, User $viewer, array $workingDays = [], bool $withUser = false, array $leave = []): array
     {
         $reviewer = $absence->relationLoaded('approver') ? $absence->approver : null;
         $gate = Gate::forUser($viewer);
@@ -43,6 +44,10 @@ final class AbsencePresenter
                 'update' => $absence->status === AbsenceStatus::Approved && $gate->allows('update', $absence),
             ],
         ];
+
+        if (isset($leave[$absence->id])) {
+            $row['leave'] = $leave[$absence->id];
+        }
 
         if ($withUser && $absence->relationLoaded('user')) {
             $department = $absence->user->relationLoaded('department') ? $absence->user->department : null;

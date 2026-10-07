@@ -154,3 +154,5 @@ function tamperRegisterTable(string $table, string $sqliteTrigger): void
 
     DB::statement("DROP TRIGGER {$sqliteTrigger}");
 }
+
+require_once __DIR__.'/Support/leave.php';

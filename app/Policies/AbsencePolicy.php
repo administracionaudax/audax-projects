@@ -2,6 +2,9 @@
 
 namespace App\Policies;
 
+use App\Domain\Absences\AbsenceService;
+use App\Domain\Absences\LeaveMode;
+use App\Domain\People\PeopleAccess;
 use App\Enums\AbsenceStatus;
 use App\Models\Absence;
 use App\Models\User;
@@ -18,6 +21,12 @@ use App\Support\LocalTime;
  * - quien puede aprobarlas modifica una aprobada de otra persona (acortar una baja que termina
  *   antes, por ejemplo), nunca la suya: como al revisar.
  * Los clientes nunca llegan aquí (middleware internal) y un desactivado no puede nada (Gate::before).
+ *
+ * Fase 11, R3 (D-364, D-365 y D-370), con el módulo `people` visible para quien actúa:
+ * - RR. HH. (`manage-people`) aprueba las de toda la plantilla, como un admin (PLAN §9),
+ * - en el segundo nivel (vacaciones, si se activa), cuando el responsable ya ha dado el primero,
+ *   solo decide RR. HH.,
+ * - la persona pide cancelar una aprobada que ya ha empezado; la decide quien aprueba sus ausencias.
  */
 class AbsencePolicy
 {
@@ -31,7 +40,7 @@ class AbsencePolicy
      */
     public function viewTeam(User $user): bool
     {
-        return $user->isAdmin() || $user->isDepartmentManager();
+        return $user->isAdmin() || $user->isDepartmentManager() || self::hr($user);
     }
 
     public function view(User $user, Absence $absence): bool
@@ -53,12 +62,44 @@ class AbsencePolicy
             return false;
         }
 
-        return $user->isAdmin() || $user->supervises($target);
+        return $user->isAdmin() || self::hr($user) || $user->supervises($target);
     }
 
     public function review(User $user, Absence $absence): bool
     {
-        return $user->id !== $absence->user_id && $this->approves($user, $absence);
+        if ($user->id === $absence->user_id) {
+            return false;
+        }
+
+        // Ya tiene el primer nivel: solo falta RR. HH.
+        if ($absence->status === AbsenceStatus::Requested && $absence->first_approved_at !== null
+            && AbsenceService::needsSecondLevel($absence, $user)) {
+            return self::hr($user);
+        }
+
+        return $this->approves($user, $absence);
+    }
+
+    /**
+     * «Pedir cancelación» (R3): la persona, de una suya aprobada que ya ha empezado (la que no ha
+     * empezado la cancela sin más) y sin otra petición pendiente.
+     */
+    public function requestCancellation(User $user, Absence $absence): bool
+    {
+        return $user->id === $absence->user_id
+            && LeaveMode::on($user)
+            && $absence->status === AbsenceStatus::Approved
+            && ! $absence->cancellationPending()
+            && $absence->start_date->toDateString() <= LocalTime::todayString();
+    }
+
+    /** Aceptar o rechazar la cancelación pedida: quien aprueba sus ausencias, nunca ella misma. */
+    public function decideCancellation(User $user, Absence $absence): bool
+    {
+        return $user->id !== $absence->user_id
+            && $absence->status === AbsenceStatus::Approved
+            && $absence->cancellationPending()
+            && $this->approves($user, $absence);
     }
 
     /**
@@ -91,7 +132,7 @@ class AbsencePolicy
      */
     private function approves(User $user, Absence $absence): bool
     {
-        if ($user->isAdmin()) {
+        if ($user->isAdmin() || self::hr($user)) {
             return true;
         }
 
@@ -100,5 +141,11 @@ class AbsencePolicy
             : User::query()->whereKey($absence->user_id)->value('department_id');
 
         return $department !== null && $user->managesDepartment((int) $department);
+    }
+
+    /** RR. HH. (`manage-people`) con el módulo visible: aprueba como un admin (R3). */
+    private static function hr(User $user): bool
+    {
+        return LeaveMode::on($user) && PeopleAccess::managesAll($user);
     }
 }

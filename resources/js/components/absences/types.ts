@@ -3,6 +3,12 @@
  * App\Http\Controllers\Absences\* y Admin\HolidayController y App\Domain\Absences\AbsencePresenter.
  * Fechas locales "YYYY-MM-DD", instantes ISO en UTC y horas en minutos.
  */
+import type { ValenciaHoliday } from '@/components/leave/valencia-holidays';
+import type {
+    AbsenceLeave,
+    LeaveTypeOption,
+    MyLeaveProps,
+} from '@/types/leave';
 
 /** App\Enums\AbsenceType */
 export type AbsenceType = 'vacation' | 'sick' | 'leave' | 'training' | 'other';
@@ -39,6 +45,8 @@ export type AbsenceRow = {
     can: { cancel: boolean; review: boolean; update: boolean };
     /** Solo en «Ausencias del equipo». */
     user?: AbsencePerson;
+    /** Fase 11, R3: solo con el módulo `people` (LeavePresenter). */
+    leave?: AbsenceLeave;
 };
 
 /** Ausencia de otra persona del departamento que coincide con una solicitud pendiente. */
@@ -93,6 +101,8 @@ export type MyAbsencesPageProps = {
     limits: AbsenceLimits;
     self_approves: boolean;
     can: { team: boolean };
+    /** Fase 11, R3: catálogo, saldos y justificantes; null con el módulo apagado. */
+    leave?: MyLeaveProps | null;
 };
 
 /** Props de /ausencias/equipo (TeamAbsenceController::index). */
@@ -107,6 +117,9 @@ export type TeamAbsencesPageProps = {
     today: string;
     limits: AbsenceLimits;
     pending_limit: number;
+    /** Fase 11, R3: cancelaciones pedidas por decidir (vacío con el módulo apagado). */
+    cancellations?: (AbsenceRow & { user: AbsencePerson })[];
+    leave?: { types: LeaveTypeOption[] } | null;
 };
 
 /** Ausencia resumida de la tarjeta «Mis ausencias» de Inicio (MyAbsencesSummary). */
@@ -124,7 +137,14 @@ export type MyAbsencesSummary = {
     pending: AbsenceSummaryItem[];
 };
 
-export type Holiday = { id: number; date: string; name: string };
+export type Holiday = {
+    id: number;
+    date: string;
+    name: string;
+    /** Fase 11, R3 (D-367): nivel y fuente oficial. */
+    level?: 'national' | 'regional' | 'local' | 'company' | null;
+    source?: string | null;
+};
 
 /** Props de /admin/festivos (HolidayController::index). */
 export type HolidaysPageProps = {
@@ -132,6 +152,11 @@ export type HolidaysPageProps = {
     current_year: number;
     holidays: Holiday[];
     national: (HolidayDay & { exists: boolean })[];
+    /** Fase 11, R3: el calendario de València del año, si está comprobado (2026 y 2027). */
+    valencia?: {
+        holidays: ValenciaHoliday[];
+        agreement: ValenciaHoliday[];
+    } | null;
     limits: {
         min_year: number;
         max_year: number;

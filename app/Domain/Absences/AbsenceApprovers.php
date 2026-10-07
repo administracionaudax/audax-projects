@@ -2,6 +2,7 @@
 
 namespace App\Domain\Absences;
 
+use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +37,23 @@ final class AbsenceApprovers
             ->active()
             ->whereKeyNot($owner->id)
             ->role(Role::Admin->value)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'is_active']);
+    }
+
+    /**
+     * El segundo nivel de aprobación (Fase 11, R3; W-067; D-364): RR. HH. (`manage-people`), activo,
+     * nunca la propia persona ni un colaborador externo.
+     *
+     * @return Collection<int, User>
+     */
+    public function second(User $owner, ?User $except = null): Collection
+    {
+        return User::query()
+            ->active()
+            ->whereKeyNot(array_values(array_filter([$owner->id, $except?->id])))
+            ->withoutCollaborators()
+            ->permission(Permission::ManagePeople->value)
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'is_active']);
     }

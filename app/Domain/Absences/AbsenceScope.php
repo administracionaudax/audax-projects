@@ -2,6 +2,7 @@
 
 namespace App\Domain\Absences;
 
+use App\Domain\People\PeopleAccess;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +23,7 @@ final class AbsenceScope
         return User::query()
             ->active()
             ->internal()
-            ->when(! $viewer->isAdmin(), fn (Builder $query) => $query->whereIn('department_id', $viewer->managedDepartmentIds() ?: [0]))
+            ->when(! self::seesAll($viewer), fn (Builder $query) => $query->whereIn('department_id', $viewer->managedDepartmentIds() ?: [0]))
             ->when($departmentId !== null, fn (Builder $query) => $query->where('department_id', $departmentId));
     }
 
@@ -34,8 +35,14 @@ final class AbsenceScope
     public function departments(User $viewer): Collection
     {
         return Department::query()
-            ->when(! $viewer->isAdmin(), fn (Builder $query) => $query->whereKey($viewer->managedDepartmentIds() ?: [0]))
+            ->when(! self::seesAll($viewer), fn (Builder $query) => $query->whereKey($viewer->managedDepartmentIds() ?: [0]))
             ->orderBy('name')
             ->get(['id', 'name', 'color']);
+    }
+
+    /** Un admin o, con el módulo `people` visible, RR. HH. (`manage-people`, R3): toda la plantilla. */
+    public static function seesAll(User $viewer): bool
+    {
+        return $viewer->isAdmin() || (LeaveMode::on($viewer) && PeopleAccess::managesAll($viewer));
     }
 }

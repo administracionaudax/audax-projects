@@ -19,6 +19,7 @@ import { toastVisitErrors } from '@/components/admin/visit-errors';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { KeywordText } from '@/components/keyword-text';
+import { ValenciaHolidaysPanel } from '@/components/leave/valencia-holidays';
 import { StatusBadge } from '@/components/styleguide/status-badges';
 import { weekdayLongLabel } from '@/components/time/week-days';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { index as adminIndex } from '@/routes/admin';
 import {
@@ -89,6 +91,7 @@ export default function AdminHolidays({
     current_year: currentYear,
     holidays,
     national,
+    valencia,
     limits,
 }: HolidaysPageProps) {
     const [adding, setAdding] = useState(false);
@@ -254,6 +257,13 @@ export default function AdminHolidays({
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     {holiday.name}
+                                                    {holiday.level ? (
+                                                        <span className="block text-xs text-muted-foreground">
+                                                            {t(
+                                                                `leave.levels.${holiday.level}` as TranslationKey,
+                                                            )}
+                                                        </span>
+                                                    ) : null}
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     <div className="flex justify-end gap-1">
@@ -287,6 +297,14 @@ export default function AdminHolidays({
                             </div>
                         )}
                     </section>
+
+                    {valencia ? (
+                        <ValenciaHolidaysPanel
+                            year={year}
+                            holidays={valencia.holidays}
+                            agreement={valencia.agreement}
+                        />
+                    ) : null}
 
                     <section
                         aria-labelledby="national-heading"

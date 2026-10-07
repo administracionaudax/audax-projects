@@ -109,7 +109,7 @@ it('la pantalla de informes enseña las primeras filas, la huella y las últimas
             ->where('kind', 'fichajes')
             ->where('preview.total', 8)
             ->has('preview.rows', 8)
-            ->has('kinds', 6)
+            ->has('kinds', 9) // R3 (D-371): saldos, actividad y justificantes pendientes
             ->etc());
 });
 

@@ -90,6 +90,11 @@ return [
             'rejected' => ['label' => 'Ausencia rechazada', 'description' => 'Cuando te rechazan una ausencia.'],
             'updated' => ['label' => 'Ausencia modificada', 'description' => 'Cuando otra persona cambia una ausencia tuya.'],
             'cancelled' => ['label' => 'Ausencia anulada', 'description' => 'Cuando se anula una ausencia tuya o de tu equipo.'],
+            'second_approval' => ['label' => 'Vacaciones por aprobar (RR. HH.)', 'description' => 'Cuando unas vacaciones esperan el segundo nivel de aprobación.'],
+            'cancellation_requested' => ['label' => 'Cancelaciones pedidas', 'description' => 'Cuando alguien de tu equipo pide cancelar una ausencia aprobada.'],
+            'cancellation_decided' => ['label' => 'Cancelación decidida', 'description' => 'Cuando aceptan o rechazan la cancelación que has pedido.'],
+            'balance_expiring' => ['label' => 'Saldo a punto de caducar', 'description' => 'Un mes antes de que caduquen días u horas que te quedan sin disfrutar.'],
+            'document_missing' => ['label' => 'Justificante pendiente', 'description' => 'Cuando una ausencia que pide justificante ya ha empezado y aún no lo has subido.'],
         ],
         'chat' => [
             'direct' => ['label' => 'Mensajes directos', 'description' => 'Cuando alguien te escribe por mensaje directo.'],
