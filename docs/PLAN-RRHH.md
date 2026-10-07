@@ -413,6 +413,15 @@ Pocas y concretas. Las de derecho laboral (convenio, horas extra dentro de la fl
 | **P6** | ¿Se hacen horas extra? | (a) no, salvo autorización previa, (b) sí, y se compensan con descanso, (c) sí, y se pagan | **(a)**: el sistema registra todo exceso y el responsable decide si es hora extra (y su destino) o tiempo dentro de la flexibilidad |
 | **P7** | ¿Usáis Woffu para repartir nóminas o documentos? | (a) sí, y hay que mantenerlo, (b) no, o lo hace la gestoría por otra vía | **(b)** en la primera versión; si es (a), va en R6 |
 
+### 14.1 Respuestas del propietario (07/10/2026)
+- **P1:** plan **Lite** de Woffu (sin API pública: la migración va con los informes exportados). Fecha de renovación: por confirmar. Plantilla: 9 personas más una colaboradora externa (Amparo).
+- **P2:** sin respuesta; queda la recomendada (b): Toni, que lleva RR. HH., pide la baja y descarga las exportaciones con la lista que preparemos.
+- **P3:** **(a) solo la comida** («creo que se fichan solo las comidas»).
+- **P4:** sin respuesta; queda la recomendada (a): un nivel, el responsable (segundo nivel activable solo para vacaciones, en R3).
+- **P5:** **(b) una persona concreta: Toni** (Toni Fernández, que además es admin) con `manage-people`.
+- **P6:** **sí hay horas extra y se fichan**: el sistema registra todo exceso y el responsable decide si es hora extra y su destino (compensar o pagar), con el resumen semanal (R2).
+- **P7:** **(b)** en la primera versión: «creo que las nóminas no se reparten por Woffu, pero no lo sé». R6 queda fuera hasta confirmarlo.
+
 ---
 
 ## 15. Riesgos
