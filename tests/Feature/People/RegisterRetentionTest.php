@@ -18,6 +18,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\People\RegisterIntegrityBroken;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -77,7 +78,7 @@ it('suprime a partir del mes 49 (no antes), deja el punto de control y la cadena
         ->and(app(RegisterIntegrity::class)->verify()['ok'])->toBeTrue();
 
     // Los triggers vuelven a estar: fuera de la supresión, nada se borra.
-    expect(inSavepoint(fn () => DB::table('clock_events')->delete()))->toThrow(Illuminate\Database\QueryException::class);
+    expect(inSavepoint(fn () => DB::table('clock_events')->delete()))->toThrow(QueryException::class);
 
     // La cadena sigue desde el punto de control.
     $next = punchAt($this->employee, '2030-02-01 09:00', ClockEventKind::ClockIn);
@@ -155,8 +156,8 @@ it('las anclas, las decisiones y los movimientos no se cambian (solo alta)', fun
     $this->travelTo(madridAt('2026-10-06 02:50'));
     $anchor = app(RegisterAnchors::class)->nightly()['anchor'];
 
-    expect(inSavepoint(fn () => DB::table('register_anchors')->where('id', $anchor->id)->update(['digest' => str_repeat('0', 64)])))->toThrow(Illuminate\Database\QueryException::class)
-        ->and(inSavepoint(fn () => DB::table('register_anchors')->delete()))->toThrow(Illuminate\Database\QueryException::class);
+    expect(inSavepoint(fn () => DB::table('register_anchors')->where('id', $anchor->id)->update(['digest' => str_repeat('0', 64)])))->toThrow(QueryException::class)
+        ->and(inSavepoint(fn () => DB::table('register_anchors')->delete()))->toThrow(QueryException::class);
 });
 
 it('desactivar a una persona no borra nada de su registro', function () {
@@ -164,5 +165,5 @@ it('desactivar a una persona no borra nada de su registro', function () {
     $this->employee->forceFill(['is_active' => false])->save();
 
     expect(ClockEvent::query()->where('user_id', $this->employee->id)->count())->toBe(2)
-        ->and(fn () => User::query()->whereKey($this->employee->id)->delete())->toThrow(Illuminate\Database\QueryException::class);
+        ->and(fn () => User::query()->whereKey($this->employee->id)->delete())->toThrow(QueryException::class);
 });

@@ -11,7 +11,6 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\People\PeopleDocumentPublished;
 use Carbon\CarbonImmutable;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;

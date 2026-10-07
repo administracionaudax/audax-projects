@@ -4,6 +4,7 @@ use App\Domain\People\InspectionAccesses;
 use App\Models\InspectionAccess;
 use App\Models\PeopleExport;
 use App\Models\Setting;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -164,12 +165,12 @@ it('caduca, se revoca y deja de funcionar si se apaga el acceso o el módulo', f
 it('comprobar un fichero: dice si coincide con uno que salió de la app', function () {
     $download = $this->actingAs($this->hr)->get('/personas/informes/fichajes?desde=2026-09-01&hasta=2026-09-30&formato=csv');
     $content = (string) $download->getContent();
-    $file = Illuminate\Http\UploadedFile::fake()->createWithContent('fichajes.csv', $content);
+    $file = UploadedFile::fake()->createWithContent('fichajes.csv', $content);
 
     $this->actingAs($this->hr)->post('/personas/inspeccion/comprobar', ['file' => $file])->assertRedirect()
         ->assertSessionHas('file_verification', fn (array $result) => $result['match'] !== null && $result['match']['kind'] === 'punches');
 
-    $tampered = Illuminate\Http\UploadedFile::fake()->createWithContent('fichajes.csv', $content.'x');
+    $tampered = UploadedFile::fake()->createWithContent('fichajes.csv', $content.'x');
     $this->actingAs($this->hr)->post('/personas/inspeccion/comprobar', ['file' => $tampered])
         ->assertSessionHas('file_verification', fn (array $result) => $result['match'] === null);
 });

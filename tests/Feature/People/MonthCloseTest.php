@@ -2,11 +2,14 @@
 
 use App\Domain\People\ClockCorrectionService;
 use App\Domain\People\MonthCloser;
+use App\Domain\People\RegisterImmutable;
 use App\Domain\People\RegisterIntegrity;
 use App\Domain\People\WorkdayCalculator;
 use App\Enums\MonthCloseStatus;
+use App\Enums\Role;
 use App\Models\MonthClose;
 use App\Models\Setting;
+use App\Models\User;
 use App\Notifications\People\MonthCloseDisagreed;
 use App\Notifications\People\MonthCloseReady;
 use App\Notifications\People\MonthCloseReminder;
@@ -134,8 +137,8 @@ it('nada se borra y lo congelado no cambia: el modelo y la base de datos lo impi
     $close = $this->closer->generate($this->employee, $this->month);
 
     $close->worked_minutes = 1;
-    expect(fn () => $close->save())->toThrow(App\Domain\People\RegisterImmutable::class)
-        ->and(fn () => MonthClose::query()->findOrFail($close->id)->delete())->toThrow(App\Domain\People\RegisterImmutable::class)
+    expect(fn () => $close->save())->toThrow(RegisterImmutable::class)
+        ->and(fn () => MonthClose::query()->findOrFail($close->id)->delete())->toThrow(RegisterImmutable::class)
         ->and(inSavepoint(fn () => DB::table('month_closes')->where('id', $close->id)->update(['worked_minutes' => 1])))->toThrow(QueryException::class)
         ->and(inSavepoint(fn () => DB::table('month_closes')->where('id', $close->id)->delete()))->toThrow(QueryException::class);
 
@@ -157,7 +160,7 @@ it('la comprobación detecta un cierre o un PDF tocados', function () {
 
 it('el día 1 genera los cierres que faltan y recuerda a los 3 y a los 7 días; con el módulo apagado, nada', function () {
     $other = userWithRole('employee');
-    $collaborator = App\Models\User::factory()->withRole(App\Enums\Role::Collaborator)->create();
+    $collaborator = User::factory()->withRole(Role::Collaborator)->create();
 
     Setting::set('modules', [...(array) Setting::get('modules', []), 'people' => false]);
     expect($this->closer->runDue())->toBe(['generated' => 0, 'reminded' => 0]);
