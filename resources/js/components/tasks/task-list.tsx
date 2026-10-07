@@ -5,6 +5,7 @@ import {
     GroupFoldControls,
 } from '@/components/collapsible-group';
 import { PriorityBadge, TaskStatusBadge } from '@/components/domain/badges';
+import { HorizontalScroll } from '@/components/horizontal-scroll';
 import { QuickAddTask } from '@/components/tasks/quick-add-task';
 import { AssigneeLabel } from '@/components/tasks/task-fields';
 import { groupTasks } from '@/components/tasks/task-groups';
@@ -27,9 +28,32 @@ import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { cn } from '@/lib/utils';
 import type { TaskGroupBy, TaskListItem } from '@/types';
 
+/**
+ * Anchos de las columnas de la tabla de tareas, en rem (D-329). Con `table-fixed`, las de todos
+ * los grupos quedan alineadas y la tarea se queda con lo que sobra (como poco, `TITLE_MIN_REM`):
+ * si no cabe, la tabla se desplaza en horizontal con una sombra en el borde.
+ */
+const COLUMN_REM = {
+    select: 2.5,
+    assignee: 9.5,
+    bank: 8.5,
+    type: 7.5,
+    status: 7.5,
+    dates: 11.5,
+    estimate: 6.5,
+    logged: 6.5,
+    timer: 3,
+} as const;
+
+const TITLE_MIN_REM = 14;
+
 type RowProps = {
     task: TaskListItem;
     level: 0 | 1;
+    /** Sin columna de estado cuando la lista se agrupa por estado (sería el del grupo). */
+    showStatus: boolean;
+    /** Estado del grupo (agrupando por estado). */
+    groupStatusId?: number;
     selected: boolean;
     onSelect: (taskId: number, selected: boolean) => void;
     onOpen: (taskId: number) => void;
@@ -41,6 +65,8 @@ type RowProps = {
 function TaskRow({
     task,
     level,
+    showStatus,
+    groupStatusId,
     selected,
     onSelect,
     onOpen,
@@ -136,6 +162,7 @@ function TaskRow({
                     <button
                         type="button"
                         onClick={() => onOpen(task.id)}
+                        title={task.title}
                         className={cn(
                             'min-w-0 truncate rounded-md text-left hover:underline',
                             task.is_completed && 'line-through',
@@ -146,6 +173,17 @@ function TaskRow({
                     >
                         {task.title}
                     </button>
+                    {/* Sin columna de estado, una subtarea con otro estado que su grupo lo dice aquí. */}
+                    {!showStatus &&
+                    level === 1 &&
+                    status &&
+                    status.id !== groupStatusId ? (
+                        <TaskStatusBadge
+                            name={status.name}
+                            color={status.color}
+                            done={status.category === 'done'}
+                        />
+                    ) : null}
                     {task.priority === 'high' || task.priority === 'urgent' ? (
                         <PriorityBadge priority={task.priority} />
                     ) : null}
@@ -159,11 +197,14 @@ function TaskRow({
                     ) : null}
                 </div>
             </th>
-            <td className="max-w-40 px-2 py-2">
-                <AssigneeLabel user={task.assignee} />
+            <td className="px-2 py-2">
+                {/* En una línea: «Sin responsable» cabe y los nombres largos se cortan. */}
+                <div className="flex min-w-0 whitespace-nowrap">
+                    <AssigneeLabel user={task.assignee} />
+                </div>
             </td>
             {lookups.usesBanks ? (
-                <td className="max-w-48 truncate px-2 py-2">
+                <td className="truncate px-2 py-2" title={bank?.name}>
                     {bank ? (
                         bank.name
                     ) : (
@@ -171,7 +212,7 @@ function TaskRow({
                     )}
                 </td>
             ) : null}
-            <td className="px-2 py-2 whitespace-nowrap">
+            <td className="truncate px-2 py-2" title={type?.name}>
                 {type ? (
                     <span className="inline-flex items-center gap-1.5">
                         <span
@@ -185,15 +226,17 @@ function TaskRow({
                     <span className="text-muted-foreground">—</span>
                 )}
             </td>
-            <td className="px-2 py-2">
-                {status ? (
-                    <TaskStatusBadge
-                        name={status.name}
-                        color={status.color}
-                        done={status.category === 'done'}
-                    />
-                ) : null}
-            </td>
+            {showStatus ? (
+                <td className="px-2 py-2">
+                    {status ? (
+                        <TaskStatusBadge
+                            name={status.name}
+                            color={status.color}
+                            done={status.category === 'done'}
+                        />
+                    ) : null}
+                </td>
+            ) : null}
             <td className="px-2 py-2">
                 <TaskDates task={task} />
             </td>
@@ -236,6 +279,7 @@ function TaskRow({
 
 function GroupTable({
     group,
+    showStatus,
     showCompleted,
     selection,
     onSelect,
@@ -243,6 +287,7 @@ function GroupTable({
     headingId,
 }: {
     group: TaskGroup;
+    showStatus: boolean;
     showCompleted: boolean;
     selection: Set<number>;
     onSelect: (taskIds: number[], selected: boolean) => void;
@@ -265,6 +310,18 @@ function GroupTable({
     ]);
     const allSelected =
         visibleIds.length > 0 && visibleIds.every((id) => selection.has(id));
+    const widths = [
+        COLUMN_REM.select,
+        COLUMN_REM.assignee,
+        ...(lookups.usesBanks ? [COLUMN_REM.bank] : []),
+        COLUMN_REM.type,
+        ...(showStatus ? [COLUMN_REM.status] : []),
+        COLUMN_REM.dates,
+        COLUMN_REM.estimate,
+        ...(showLogged ? [COLUMN_REM.logged] : []),
+        COLUMN_REM.timer,
+    ];
+    const minWidth = widths.reduce((sum, rem) => sum + rem, TITLE_MIN_REM);
     const someSelected = visibleIds.some((id) => selection.has(id));
 
     const toggle = (taskId: number) =>
@@ -281,14 +338,35 @@ function GroupTable({
         });
 
     return (
-        <div
-            className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
+        <HorizontalScroll
+            className={cn('rounded-md border', FOCUS_RING)}
             role="region"
             aria-labelledby={headingId}
             tabIndex={0}
         >
-            <table className="w-full min-w-[62rem] text-sm">
+            <table
+                className="w-full table-fixed text-sm"
+                style={{ minWidth: `${minWidth}rem` }}
+            >
                 <caption className="sr-only">{group.label}</caption>
+                <colgroup>
+                    <col style={{ width: `${COLUMN_REM.select}rem` }} />
+                    <col />
+                    <col style={{ width: `${COLUMN_REM.assignee}rem` }} />
+                    {lookups.usesBanks ? (
+                        <col style={{ width: `${COLUMN_REM.bank}rem` }} />
+                    ) : null}
+                    <col style={{ width: `${COLUMN_REM.type}rem` }} />
+                    {showStatus ? (
+                        <col style={{ width: `${COLUMN_REM.status}rem` }} />
+                    ) : null}
+                    <col style={{ width: `${COLUMN_REM.dates}rem` }} />
+                    <col style={{ width: `${COLUMN_REM.estimate}rem` }} />
+                    {showLogged ? (
+                        <col style={{ width: `${COLUMN_REM.logged}rem` }} />
+                    ) : null}
+                    <col style={{ width: `${COLUMN_REM.timer}rem` }} />
+                </colgroup>
                 <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">
                         <th scope="col" className="w-10 px-2 py-2">
@@ -328,9 +406,11 @@ function GroupTable({
                         <th scope="col" className="px-2 py-2 font-medium">
                             {t('task_list.column.type')}
                         </th>
-                        <th scope="col" className="px-2 py-2 font-medium">
-                            {t('task_list.column.status')}
-                        </th>
+                        {showStatus ? (
+                            <th scope="col" className="px-2 py-2 font-medium">
+                                {t('task_list.column.status')}
+                            </th>
+                        ) : null}
                         <th scope="col" className="px-2 py-2 font-medium">
                             {t('task_list.column.dates')}
                         </th>
@@ -368,6 +448,7 @@ function GroupTable({
                                 key={task.id}
                                 task={task}
                                 level={0}
+                                showStatus={showStatus}
                                 selected={selection.has(task.id)}
                                 onSelect={(id, selected) =>
                                     onSelect([id], selected)
@@ -388,6 +469,10 @@ function GroupTable({
                                           key={subtask.id}
                                           task={subtask}
                                           level={1}
+                                          showStatus={showStatus}
+                                          groupStatusId={
+                                              group.defaults.status_id
+                                          }
                                           selected={selection.has(subtask.id)}
                                           onSelect={(id, selected) =>
                                               onSelect([id], selected)
@@ -398,22 +483,9 @@ function GroupTable({
                                 : []),
                         ];
                     })}
-                    {group.tasks.length === 0 ? (
-                        <tr>
-                            <td
-                                colSpan={
-                                    (lookups.usesBanks ? 10 : 9) -
-                                    (showLogged ? 0 : 1)
-                                }
-                                className="px-3 py-3 text-sm text-muted-foreground"
-                            >
-                                {t('task_list.group_empty')}
-                            </td>
-                        </tr>
-                    ) : null}
                 </tbody>
             </table>
-        </div>
+        </HorizontalScroll>
     );
 }
 
@@ -509,14 +581,25 @@ export function TaskList({
                         >
                             {collapsed ? null : (
                                 <>
-                                    <GroupTable
-                                        group={group}
-                                        showCompleted={showCompleted}
-                                        selection={selection}
-                                        onSelect={onSelect}
-                                        onOpen={onOpen}
-                                        headingId={headingId}
-                                    />
+                                    {count === 0 ? (
+                                        // Sin tareas, sin tabla vacía: una línea (D-328).
+                                        <p
+                                            className="text-sm text-muted-foreground"
+                                            data-test="task-group-empty"
+                                        >
+                                            {t('task_list.group_empty')}
+                                        </p>
+                                    ) : (
+                                        <GroupTable
+                                            group={group}
+                                            showStatus={groupBy !== 'status'}
+                                            showCompleted={showCompleted}
+                                            selection={selection}
+                                            onSelect={onSelect}
+                                            onOpen={onOpen}
+                                            headingId={headingId}
+                                        />
+                                    )}
                                     <QuickAddTask
                                         defaults={group.defaults}
                                         label={

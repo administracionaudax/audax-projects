@@ -11,7 +11,10 @@ export type TaskGroup = {
     tasks: TaskListItem[];
     /** Valores con los que la creación rápida del grupo crea la tarea. */
     defaults: QuickAddDefaults;
-    /** Plegado mientras la persona no lo despliegue: el estado «done», el que más crece (D-320). */
+    /**
+     * Plegado mientras la persona no lo despliegue: el estado «done», el que más crece (D-320), y
+     * los estados sin tareas salvo el de por defecto (D-328).
+     */
     collapsedByDefault?: boolean;
 };
 
@@ -39,16 +42,24 @@ export function groupTasks(
     if (groupBy === 'status') {
         return lookups.statuses
             .filter((status) => showCompleted || status.category !== 'done')
-            .map((status) => ({
-                key: `status-${status.id}`,
-                label: status.name,
-                color: status.color,
-                tasks: tasks
+            .map((status) => {
+                const statusTasks = tasks
                     .filter((task) => task.status_id === status.id)
-                    .sort(byPosition),
-                defaults: { status_id: status.id },
-                collapsedByDefault: status.category === 'done',
-            }));
+                    .sort(byPosition);
+
+                return {
+                    key: `status-${status.id}`,
+                    label: status.name,
+                    color: status.color,
+                    tasks: statusTasks,
+                    defaults: { status_id: status.id },
+                    // El estado por defecto queda abierto aunque esté vacío: siempre hay un alta
+                    // rápida a la vista.
+                    collapsedByDefault:
+                        status.category === 'done' ||
+                        (statusTasks.length === 0 && !status.is_default),
+                };
+            });
     }
 
     const sorted = [...tasks].sort(

@@ -442,3 +442,145 @@ describe('grupos plegables y filas clicables (D-320, D-324)', () => {
         expect(onOpen).toHaveBeenCalledTimes(calls);
     });
 });
+
+describe('grupos vacíos y columnas de la tabla (D-328, D-329)', () => {
+    const withBlocked: TaskStatus[] = [
+        statuses[0],
+        {
+            id: 3,
+            name: 'Bloqueada',
+            color: '#E5484D',
+            category: 'in_progress',
+            position: 1,
+            is_default: false,
+        },
+        { ...statuses[1], position: 2 },
+    ];
+
+    function List({
+        items = tasks,
+        groupBy = 'status',
+        listStatuses = withBlocked,
+    }: {
+        items?: TaskListItem[];
+        groupBy?: 'status' | 'assignee';
+        listStatuses?: TaskStatus[];
+    }) {
+        return (
+            <TaskLookupsProvider
+                value={buildTaskLookups({
+                    project,
+                    statuses: listStatuses,
+                    types: [],
+                    banks: [],
+                    users: [{ ...ana, is_member: true }],
+                    currentUser: { id: 1, department_id: null },
+                    can: { create: true, update: true },
+                    maxAttachmentMb: 50,
+                })}
+            >
+                <TaskList
+                    tasks={items}
+                    groupBy={groupBy}
+                    showCompleted={false}
+                    selection={new Set()}
+                    onSelect={vi.fn()}
+                    onOpen={vi.fn()}
+                    storageKey="audax.tasks.groups.1.1"
+                />
+            </TaskLookupsProvider>
+        );
+    }
+
+    beforeEach(() => window.localStorage.clear());
+
+    it('un estado sin tareas nace plegado y, al desplegarlo, dice en una línea que está vacío', async () => {
+        const user = userEvent.setup();
+        render(<List />);
+
+        const blocked = screen.getByRole('button', { name: /^Bloqueada/ });
+        expect(blocked.getAttribute('aria-expanded')).toBe('false');
+        expect(blocked.textContent).toContain('(0)');
+        expect(screen.getAllByRole('table')).toHaveLength(1);
+
+        await user.click(blocked);
+        const content = document.getElementById(
+            blocked.getAttribute('aria-controls') ?? '',
+        ) as HTMLElement;
+        expect(within(content).queryByRole('table')).toBeNull();
+        expect(
+            within(content).getByText('No hay tareas en este grupo.'),
+        ).toBeTruthy();
+        // Y se puede crear una tarea ahí.
+        expect(within(content).getByRole('textbox')).toBeTruthy();
+    });
+
+    it('el estado por defecto sigue abierto aunque esté vacío: siempre hay un alta rápida a la vista', () => {
+        render(<List items={[task(40, 'Bloqueo', { status_id: 3 })]} />);
+
+        const todo = screen.getByRole('button', { name: /^Por hacer/ });
+        expect(todo.getAttribute('aria-expanded')).toBe('true');
+        expect(
+            screen
+                .getByRole('button', { name: /^Bloqueada/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('true');
+        expect(screen.getByText('No hay tareas en este grupo.')).toBeTruthy();
+    });
+
+    it('agrupando por estado no se repite la columna «Estado»; una subtarea con otro estado lo dice junto al título', () => {
+        render(
+            <List
+                listStatuses={statuses}
+                items={[
+                    task(10, 'Diseñar la home', {
+                        subtasks: [
+                            task(20, 'Cabecera', {
+                                parent_task_id: 10,
+                                status_id: 2,
+                            }),
+                        ],
+                    }),
+                ]}
+            />,
+        );
+
+        const table = screen.getByRole('table');
+        expect(
+            within(table).queryByRole('columnheader', { name: 'Estado' }),
+        ).toBeNull();
+        const subtask = within(table)
+            .getAllByRole('row')
+            .find((row) => row.textContent?.includes('Cabecera'));
+        expect(subtask?.textContent).toContain('Hecha');
+        const parent = within(table)
+            .getAllByRole('row')
+            .find((row) => row.textContent?.includes('Diseñar la home'));
+        expect(parent?.textContent).not.toContain('Por hacer');
+    });
+
+    it('agrupando por otra cosa, la columna «Estado» vuelve', () => {
+        render(<List groupBy="assignee" listStatuses={statuses} />);
+
+        expect(
+            screen.getAllByRole('columnheader', { name: 'Estado' }).length,
+        ).toBeGreaterThan(0);
+    });
+
+    it('«Sin responsable» va en una línea y las columnas tienen ancho fijo con la tarea con lo que sobra', () => {
+        render(<List listStatuses={statuses} />);
+
+        for (const label of screen.getAllByText('Sin responsable')) {
+            expect(label.closest('.whitespace-nowrap')).toBeTruthy();
+        }
+
+        const table = screen.getByRole('table');
+        expect(table.className).toContain('table-fixed');
+        const cols = [...table.querySelectorAll('col')];
+        // Selección, tarea (sin ancho: lo que sobra), responsable, tipo, fechas, estimación,
+        // imputadas y temporizador.
+        expect(cols).toHaveLength(8);
+        expect(cols[1].style.width).toBe('');
+        expect(table.style.minWidth).toMatch(/rem$/);
+    });
+});
