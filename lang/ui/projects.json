@@ -159,6 +159,7 @@
     "projects.alerts.hour_bank_threshold_help": "Aviso cuando una bolsa llega a cada umbral de consumo (75 %, 90 % y 100 %, salvo otro ajuste).",
     "projects.alerts.hour_bank_overage": "Horas en exceso",
     "projects.alerts.hour_bank_overage_help": "Aviso, como mucho uno al día, cuando se imputa sobre una bolsa agotada.",
+    "projects.tree.card_banks": "Bolsas abiertas de «:project»",
     "projects.tree.bank_figures": ":consumed de :total",
     "projects.tree.consumption": "Bolsas y consumo",
     "projects.tree.open_banks": "Bolsas abiertas: :count",

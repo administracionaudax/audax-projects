@@ -2,6 +2,8 @@ import { Link } from '@inertiajs/react';
 import { TriangleAlert } from 'lucide-react';
 import { ProjectStatusBadge } from '@/components/domain/badges';
 import { HourBankMiniMeter } from '@/components/hour-banks/hour-bank-mini-meter';
+import { ProjectCard } from '@/components/projects-list/projects-tree';
+import { useIsNarrow } from '@/hooks/use-media-query';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -12,7 +14,8 @@ import type { ProjectListItem } from '@/types';
 
 /**
  * Tabla del listado de proyectos (SPEC §6): código, nombre, cliente, estado, tipo, gestor
- * principal, consumo de bolsas y fechas. En móvil se desplaza dentro de su contenedor.
+ * principal, consumo de bolsas y fechas. En el móvil (menos de 640 px), una tarjeta por proyecto
+ * (D-327).
  */
 export function ProjectsTable({
     projects,
@@ -22,6 +25,41 @@ export function ProjectsTable({
     /** Umbrales configurados en % (config.hour_bank_thresholds; D-035). */
     thresholds?: readonly number[];
 }) {
+    const narrow = useIsNarrow();
+
+    if (narrow) {
+        return (
+            <ul
+                className="flex flex-col gap-2"
+                aria-label={t('projects.table.label')}
+                data-test="project-cards"
+            >
+                {projects.map((project) => (
+                    <ProjectCard
+                        key={project.id}
+                        project={project}
+                        client={
+                            project.client?.name ?? (
+                                <span className="text-muted-foreground">
+                                    {t('projects.table.no_client')}
+                                </span>
+                            )
+                        }
+                    >
+                        {project.hour_banks === null ? null : (
+                            <div className="border-t pt-2">
+                                <BankConsumption
+                                    project={project}
+                                    thresholds={thresholds}
+                                />
+                            </div>
+                        )}
+                    </ProjectCard>
+                ))}
+            </ul>
+        );
+    }
+
     return (
         <div
             className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}

@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { CornerDownRight, TriangleAlert } from 'lucide-react';
+import type { ReactNode } from 'react';
 import {
     CollapsibleGroupHeading,
     GroupFoldControls,
@@ -10,6 +11,7 @@ import {
 } from '@/components/domain/badges';
 import { HourBankMiniMeter } from '@/components/hour-banks/hour-bank-mini-meter';
 import type { CollapsedGroups } from '@/hooks/use-collapsed-groups';
+import { useIsNarrow } from '@/hooks/use-media-query';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -69,7 +71,11 @@ function BankFigures({
     );
 }
 
-function Dates({ project }: { project: TreeProject }) {
+export function Dates({
+    project,
+}: {
+    project: Pick<TreeProject, 'start_date' | 'due_date'>;
+}) {
     if (!project.start_date && !project.due_date) {
         return <span className="text-muted-foreground">—</span>;
     }
@@ -95,6 +101,154 @@ function Dates({ project }: { project: TreeProject }) {
 }
 
 /**
+ * Tarjeta de un proyecto en el móvil (D-327): código y nombre, tipo y estado, gestor, fechas y,
+ * debajo (`children`), sus bolsas. La tarjeta entera abre el proyecto (D-324); los enlaces de
+ * dentro (las bolsas) siguen siendo suyos.
+ */
+export function ProjectCard({
+    project,
+    client,
+    children,
+}: {
+    project: TreeProject;
+    /** Cliente, en la vista plana (en la de clientes ya lo dice el grupo). */
+    client?: ReactNode;
+    children?: ReactNode;
+}) {
+    return (
+        <li
+            className={cn(
+                'flex flex-col gap-2 rounded-md border bg-card p-3',
+                ROW_CLICK_CLASS,
+            )}
+            {...rowClickProps}
+            data-test="project-card"
+            data-project-id={project.id}
+        >
+            <Link
+                href={urls.project(project.id)}
+                className={cn(
+                    'group inline-flex min-w-0 items-start gap-2 self-start rounded-md',
+                    FOCUS_RING,
+                )}
+                data-row-primary
+            >
+                <span
+                    aria-hidden="true"
+                    className="mt-1.5 size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                />
+                <span className="min-w-0">
+                    <span className="block text-xs font-medium text-muted-foreground">
+                        {project.code}
+                    </span>{' '}
+                    <span className="block break-words text-primary-text group-hover:underline">
+                        {project.name}
+                    </span>
+                </span>
+            </Link>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <ProjectStatusBadge status={project.status} />
+                <span className="text-muted-foreground">
+                    {t(`project.billing_type.${project.billing_type}`)}
+                </span>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                {client !== undefined ? (
+                    <div className="col-span-2 min-w-0">
+                        <dt className="text-xs text-muted-foreground">
+                            {t('projects.table.client')}
+                        </dt>
+                        <dd className="break-words">{client}</dd>
+                    </div>
+                ) : null}
+                <div className="min-w-0">
+                    <dt className="text-xs text-muted-foreground">
+                        {t('projects.table.owner')}
+                    </dt>
+                    <dd className="break-words">
+                        {project.owner?.name ?? '—'}
+                    </dd>
+                </div>
+                <div className="min-w-0">
+                    <dt className="text-xs text-muted-foreground">
+                        {t('projects.table.dates')}
+                    </dt>
+                    <dd className="tabular">
+                        <Dates project={project} />
+                    </dd>
+                </div>
+            </dl>
+            {children}
+        </li>
+    );
+}
+
+/** Las bolsas abiertas de un proyecto dentro de su tarjeta, cada una con su consumo. */
+function CardBanks({
+    project,
+    thresholds,
+}: {
+    project: TreeProject;
+    thresholds?: readonly number[];
+}) {
+    const banks = project.open_banks;
+
+    if (banks === undefined || banks === null) {
+        return null;
+    }
+
+    if (banks.length === 0) {
+        return (
+            <p className="text-xs text-muted-foreground">
+                {t('projects.table.no_open_banks')}
+            </p>
+        );
+    }
+
+    return (
+        <ul
+            className="flex flex-col gap-2 border-t pt-2"
+            aria-label={t('projects.tree.card_banks', {
+                project: project.name,
+            })}
+        >
+            {banks.map((bank) => (
+                <li
+                    key={bank.id}
+                    className="flex flex-col gap-1 rounded-md bg-muted p-2"
+                    data-test="card-bank"
+                >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Link
+                            href={urls.hourBank(project.id, bank.id)}
+                            className={cn(
+                                'min-w-0 rounded-md text-sm break-words hover:underline',
+                                FOCUS_RING,
+                            )}
+                        >
+                            <span className="sr-only">
+                                {t('projects.tree.bank')}
+                            </span>{' '}
+                            {bank.name}
+                        </Link>
+                        <HourBankStatusBadge status={bank.status} />
+                    </div>
+                    <BankFigures bank={bank} thresholds={thresholds} />
+                    {bank.end_date ? (
+                        <span className="tabular text-xs text-muted-foreground">
+                            {t('projects.tree.bank_until', {
+                                date: formatDate(bank.end_date),
+                            })}
+                        </span>
+                    ) : null}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+/**
  * Proyectos de un cliente con sus bolsas abiertas debajo (D-322): código, nombre, tipo, estado,
  * gestor, fechas y el consumo de cada bolsa. Cada fila (de proyecto o de bolsa) se abre entera con
  * un clic (D-324). Lo usan el listado por clientes y la ficha del cliente.
@@ -109,6 +263,25 @@ export function ProjectTreeTable({
     label: string;
     thresholds?: readonly number[];
 }) {
+    const narrow = useIsNarrow();
+
+    if (narrow) {
+        // En el móvil, una tarjeta por proyecto en lugar de la tabla con scroll (D-327).
+        return (
+            <ul
+                className="flex flex-col gap-2"
+                aria-label={label}
+                data-test="project-cards"
+            >
+                {projects.map((project) => (
+                    <ProjectCard key={project.id} project={project}>
+                        <CardBanks project={project} thresholds={thresholds} />
+                    </ProjectCard>
+                ))}
+            </ul>
+        );
+    }
+
     return (
         <div
             className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}

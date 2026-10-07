@@ -479,3 +479,113 @@ describe('listado por clientes (D-322)', () => {
         );
     });
 });
+
+describe('proyectos en tarjetas en el móvil (D-327)', () => {
+    /** Simula una pantalla de menos de 640 px. */
+    function narrowScreen(matches = true) {
+        return vi.spyOn(window, 'matchMedia').mockImplementation(
+            (query: string) =>
+                ({
+                    matches: matches && query === '(max-width: 639px)',
+                    media: query,
+                    onchange: null,
+                    addEventListener: () => {},
+                    removeEventListener: () => {},
+                    addListener: () => {},
+                    removeListener: () => {},
+                    dispatchEvent: () => false,
+                }) as MediaQueryList,
+        );
+    }
+
+    beforeEach(() => {
+        window.localStorage.clear();
+        inertia.props = { auth: { user: { id: 5 }, can: can() } };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('por clientes: una tarjeta por proyecto con tipo, estado, gestor, fechas y cada bolsa con su consumo', () => {
+        narrowScreen();
+        render(<ProjectsIndex {...tree([internal, gestiones])} />);
+
+        expect(screen.queryByRole('table')).toBeNull();
+        const cards = document.querySelectorAll('[data-test="project-card"]');
+        expect(cards).toHaveLength(2);
+
+        const card = [...cards].find((item) =>
+            item.textContent?.includes('WE1 - 120h'),
+        ) as HTMLElement;
+        expect(card.textContent).toContain('GES-BH');
+        expect(card.textContent).toContain('Bolsas de horas');
+        expect(card.textContent).toContain('Activo');
+        expect(card.textContent).toContain('Laura Gómez');
+        expect(card.textContent).toContain('01/09/2026');
+        const banks = within(card).getByRole('list', {
+            name: 'Bolsas abiertas de «WE1 - 120h»',
+        });
+        expect(
+            within(banks)
+                .getByRole('link', { name: 'Bolsa WE 120H' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/9/bolsas/12');
+        expect(within(banks).getByRole('meter')).toBeTruthy();
+        expect(banks.textContent).toContain('60:00 de 120:00');
+
+        // Los grupos por cliente siguen plegables.
+        expect(
+            screen
+                .getByRole('button', { name: /Gestiones Norte/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('true');
+    });
+
+    it('un clic en cualquier punto de la tarjeta abre el proyecto (D-324); el de la bolsa abre la bolsa', async () => {
+        narrowScreen();
+        const user = userEvent.setup();
+        render(<ProjectsIndex {...tree([gestiones])} />);
+
+        const card = document.querySelector(
+            '[data-test="project-card"]',
+        ) as HTMLElement;
+        const link = within(card).getByRole('link', {
+            name: 'GES-BH WE1 - 120h',
+        });
+        const opened = vi.fn();
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            opened();
+        });
+        const bank = within(card).getByRole('link', { name: 'Bolsa WE 120H' });
+        bank.addEventListener('click', (event) => event.preventDefault());
+
+        await user.click(within(card).getByText('Laura Gómez'));
+        expect(opened).toHaveBeenCalledTimes(1);
+
+        await user.click(bank);
+        expect(opened).toHaveBeenCalledTimes(1);
+    });
+
+    it('la vista «Lista» también va en tarjetas, con el cliente y el consumo de sus bolsas', () => {
+        narrowScreen();
+        render(<ProjectsIndex {...props([project()])} />);
+
+        expect(screen.queryByRole('table')).toBeNull();
+        const card = document.querySelector(
+            '[data-test="project-card"]',
+        ) as HTMLElement;
+        expect(card.textContent).toContain('Acme');
+        expect(card.textContent).toContain('Web corporativa');
+        expect(within(card).getByRole('meter')).toBeTruthy();
+    });
+
+    it('en escritorio sigue la tabla', () => {
+        narrowScreen(false);
+        render(<ProjectsIndex {...tree([gestiones])} />);
+
+        expect(screen.getByRole('table')).toBeTruthy();
+        expect(document.querySelector('[data-test="project-card"]')).toBeNull();
+    });
+});
