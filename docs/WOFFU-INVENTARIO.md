@@ -1,11 +1,11 @@
 # Woffu → Audax Proyectos: inventario funcional
 
-_06/10/2026 · solo lectura · complementa `WOFFU-INVESTIGACION.md` (lo legal) y alimenta `PLAN-RRHH.md` (la propuesta)._
+_06/10/2026 · solo lectura · complementa `WOFFU-INVESTIGACION.md` (lo legal) y alimenta `PLAN-FASE-11.md` (la propuesta)._
 
 ## Cómo se ha hecho
 - **Fuente principal:** los **143 artículos** del centro de ayuda público de Woffu (`woffu.my.site.com/help`, sacados de su mapa del sitio el 06/10/2026), leídos uno a uno. La columna «Fuente» da el *slug* del artículo: la URL es `https://woffu.my.site.com/help/s/article/<slug>?language=es`. Entre paréntesis va la fecha de su última publicación.
 - **Otras fuentes:** [woffu.com/en/api](https://woffu.com/en/api/) (API), [Capterra](https://www.capterra.com/p/156162/Woffu/) y la comparativa de la propia Woffu con Sesame ([woffu.com, blog](https://woffu.com/es/blog/noticias/woffu-vs-sesame-hr/)).
-- **No se ha visto la cuenta de Audax en Woffu.** No sabemos qué plan tiene contratado ni qué módulos usa: es la primera pregunta para el propietario (P1 de `PLAN-RRHH.md`). Lo marcado **[inferido]** se deduce de la ayuda, no se ha leído literalmente.
+- **No se ha visto la cuenta de Audax en Woffu.** No sabemos qué plan tiene contratado ni qué módulos usa: es la primera pregunta para el propietario (P1 de `PLAN-FASE-11.md`). Lo marcado **[inferido]** se deduce de la ayuda, no se ha leído literalmente.
 
 ## Columnas
 - **Para Audax** (unas 30 personas, una oficina en Valencia, teletrabajo y horario flexible):
@@ -17,7 +17,7 @@ _06/10/2026 · solo lectura · complementa `WOFFU-INVESTIGACION.md` (lo legal) y
   - **Adaptar**: hay una base que completar,
   - **Nueva**: hay que construirlo,
   - **No**: no se hace (con el motivo).
-- La **entrega** (R1 a R6) es la de `PLAN-RRHH.md` §12.
+- La **entrega** (R1 a R6) es la de `PLAN-FASE-11.md` §12.
 
 ## Vocabulario de Woffu (para entender las filas)
 | Woffu | Qué es | En Audax |
@@ -261,4 +261,4 @@ Con unas 30 personas, Audax estaría en **Pro** o en **Lite** si se quedó por d
 | **Documentos** | Gestor documental (descarga por persona) | Lo que se haya subido | `documentos-que-funcionalidades-nos-ofrece` |
 | **API** | Solo si el plan es Enterprise. La documentación (Swagger) pide iniciar sesión | — | [woffu.com/en/api](https://woffu.com/en/api/) |
 
-**Antes de pedir la baja:** Woffu guarda los datos de una persona suspendida 4 años, pero **no hemos encontrado qué pasa con los datos de la cuenta al darse de baja la empresa**. Hay que preguntarlo a Woffu por escrito y **exportar todo antes** (P2 de `PLAN-RRHH.md`).
+**Antes de pedir la baja:** Woffu guarda los datos de una persona suspendida 4 años, pero **no hemos encontrado qué pasa con los datos de la cuenta al darse de baja la empresa**. Hay que preguntarlo a Woffu por escrito y **exportar todo antes** (P2 de `PLAN-FASE-11.md`).

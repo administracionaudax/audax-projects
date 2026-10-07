@@ -2,7 +2,7 @@
 
 - **Fecha de la investigación:** 06/10/2026. Todas las fuentes se consultaron ese día; entre paréntesis va la fecha de publicación o actualización de cada una.
 - **Ámbito:** Audax Studio, Valencia (Comunitat Valenciana). La primera pasada hablaba de unas 14 personas; el encargo de la segunda habla de **unas 30**. Ninguna obligación de este documento cambia entre 14 y 30: los umbrales que importan están en **50** (plan de igualdad, medidas LGTBI de la Ley 4/2023 y canal de denuncias).
-- **Segunda pasada (06/10/2026, tarde):** la sección **G** actualiza el estado del real decreto (con la convocatoria de elecciones), verifica en el BOE las cuantías de la LISOS y añade jurisprudencia de 2024 a 2026. El inventario de Woffu está en `docs/WOFFU-INVENTARIO.md` y la propuesta, en `docs/PLAN-RRHH.md`.
+- **Segunda pasada (06/10/2026, tarde):** la sección **G** actualiza el estado del real decreto (con la convocatoria de elecciones), verifica en el BOE las cuantías de la LISOS y añade jurisprudencia de 2024 a 2026. El inventario de Woffu está en `docs/WOFFU-INVENTARIO.md` y la propuesta, en `docs/PLAN-FASE-11.md`.
 - **Aviso:** esto es una investigación técnica, no asesoramiento jurídico. Lo marcado **[SIN VERIFICAR]** no se ha podido confirmar en una fuente oficial. Las dudas de la sección F tiene que cerrarlas la asesoría laboral antes de dar de baja Woffu.
 
 ## Resumen

@@ -1,6 +1,6 @@
-# Plan: «Personas», el módulo de RR. HH. que sustituye a Woffu
+# Plan de la Fase 11: «Personas», el módulo de RR. HH. que sustituye a Woffu
 
-_Documento de diseño · 06/10/2026 · sin código · pendiente de las respuestas del propietario (§14) y de la asesoría laboral (`WOFFU-INVESTIGACION.md` §F)_
+_Diseño del 06/10/2026 (antes `PLAN-RRHH.md`) · **aprobado** con las respuestas del propietario del 07/10/2026 (§14.1) · rama `rrhh-r1` (sale de `fase-10`) · **entrega en curso: R1 · Registro de jornada** (§0) · las dudas de derecho laboral siguen abiertas para la asesoría (`WOFFU-INVESTIGACION.md` §F)_
 
 > **En una frase.** Audax Proyectos ya tiene ausencias, jornadas, festivos, avisos, auditoría y RGPD, pero **no tiene registro de jornada**, que es lo único que la ley exige y Woffu hace. Proponemos un módulo «Personas» que funcione como Woffu (fichar, el diario de cada día, solicitudes, saldos, aprobaciones y cierres mensuales), con el aspecto de Audax, y que empiece por lo legalmente imprescindible: **un registro de jornada que no se pueda alterar sin dejar huella, que cada persona pueda consultar y descargar y que se pueda entregar a la Inspección al momento**.
 
@@ -10,7 +10,50 @@ _Documento de diseño · 06/10/2026 · sin código · pendiente de las respuesta
 
 ---
 
+## 0. Estado de la fase y contrato de R1
+
+| Entrega | Estado |
+|---|---|
+| **R1 · Registro de jornada** | **En curso** (rama `rrhh-r1`). Decisiones **D-330 a D-345** |
+| R2 · Acceso, cierres e Inspección | Pendiente. **R1 y R2 van juntas a producción**: el módulo sigue apagado hasta tener las dos |
+| R3 · Vacaciones y permisos | Pendiente |
+| R4 · Comodidades, R5 · Migración y baja de Woffu, R6 · Opcional | Pendientes |
+
+### 0.1 Validación del modelo antes de construir (07/10/2026)
+Se ha repasado el modelo de §8 contra la ley de hoy, el borrador del RD (§2 y `WOFFU-INVESTIGACION.md` G.1) y las respuestas de §14.1. Cambios frente al modelo orientativo, todos en la dirección más conservadora:
+
+| Punto | §8 decía | R1 hace | Por qué |
+|---|---|---|---|
+| Anulaciones | Tabla aparte `clock_event_voids` | Fila `void` en la **misma** cadena de `clock_events` | Una anulación también tiene que tener huella: si fuera a otra tabla sin encadenar, borrarla devolvería en silencio un fichaje anulado (D-332) |
+| Correcciones | Tabla con estado editable | `clock_corrections` **sin DELETE** y sin cambios una vez decidida (trigger), sellada con su huella al decidirse | «Huella clara e indeleble» de la autoría y la conformidad, también de las discrepancias, que no generan fichajes (D-335) |
+| Rechazo | Estados `rejected` y `disputed` distintos | Rechazar con motivo o no contestar en 7 días deja la corrección **«en discrepancia»** | El borrador solo distingue acuerdo o discrepancia; las dos versiones quedan y cuenta la original (D-335) |
+| Autoaprobación | — | **Nadie acepta su propia corrección**, tampoco un responsable o un admin | La doble conformidad no admite la excepción de las ausencias (D-049) (D-335) |
+| Pausas | Tabla `pause_types` | Un único tipo, **comida**, que no computa (enum ampliable) | P3: solo se ficha la comida (D-334) |
+| Verano | Tabla `schedule_profiles` compartida | Dentro de **cada versión** de `work_schedules` | Un perfil compartido, al editarse, reescribiría la jornada teórica de veranos pasados (D-336) |
+| `workdays` | Tabla de resumen | Se calcula al vuelo (`WorkdayCalculator`) | Con 10 personas no hace falta; R2 congela los totales en el cierre mensual |
+| `manage-people` | En R2 | **Ya en R1** | La bandeja y la jornada de la plantilla de RR. HH. lo necesitan (P5: Toni) (D-330) |
+| Quién ficha | La plantilla | La plantilla interna **sujeta al registro**; colaboradores externos, no | D-331 |
+
+**Reglas legales críticas comprobadas** (y cubiertas por los tests de `tests/Feature/People`): inicio y fin diarios con la hora del servidor (L-01, L-02); teletrabajo como modo de cada tramo (L-03); nada se sobrescribe ni se borra, ni siquiera con acceso a la base de datos sin dejar rastro (L-14 y borrador); las correcciones con autor, fecha, motivo y conformidad o discrepancia (borrador); el registro de la persona solo lo ven ella, su responsable y RR. HH. (L-11); los límites de jornada como incidencias que avisan sin bloquear (L-09); todo el exceso queda registrado para las horas extra (P6, L-07); nunca se crean fichajes a partir de las horas imputadas (§3.2).
+
+### 0.2 Contrato de datos de R1
+- **`clock_events`** (solo alta; *trigger* en PostgreSQL y en SQLite contra UPDATE y DELETE, y contra TRUNCATE en PostgreSQL; el modelo también lo impide): `user_id` (FK *restrict*: no se puede borrar a la persona), `seq` (1, 2, 3… por persona, único), `kind` (`clock_in`, `pause_start`, `pause_end`, `clock_out` o `void`), `occurred_at` (UTC; la hora del servidor salvo en lo que añade una corrección aceptada), `recorded_at` (UTC, hora del servidor), `work_mode` (`on_site`, `remote`), `pause_type` (`meal`), `source` (`web`, `pwa`, `correction`), `voided_event_id` (lo que anula una fila `void`), `correction_id`, `created_by`, `ip_hash` (HMAC, no la IP), `user_agent` (corto), `prev_hash` y `hash` (SHA-256 de una cadena canónica `v1`).
+- **`clock_corrections`**: `user_id`, `date` (día de Madrid de la jornada), `proposed_by`, `reason`, `voids` (ids de fichajes efectivos que anula), `adds` (fichajes que propone: tipo, instante UTC, modo), `status` (`pending`, `accepted`, `disputed`, `withdrawn`), `decided_by`, `decided_at`, `decision_note`, `dispute_reason` (`rejected` o `no_answer`), `hash` (sello al decidirse). Sin DELETE; solo se cambia mientras está pendiente.
+- **`work_schedules`** (+ columnas): `start_time_from` y `start_time_to` (margen de entrada), `expected_pause_minutes`, `summer_starts_on` y `summer_ends_on` (`MM-DD`), `summer_week` (7 valores en minutos) y `summer_expected_pause_minutes`.
+- **`employment_profiles`** (1:1 con `users`): `hire_date`, `termination_date`, `subject_to_register` y `register_exemption_reason`. R2 y R3 añaden aquí la retención por litigio, el NIF, el contrato y el calendario.
+- **`clock_reminders`**: un aviso de entrada, salida o jornada sin cerrar por persona, día y tipo.
+- **Servicios** (`App\Domain\People`): `ClockWriter` (el único que escribe fichajes), `ClockState` (estado actual), `RegisterHasher` y `RegisterIntegrity` (la cadena y su comprobación, con `php artisan people:verify-register`), `WorkdayCalculator` (diario, totales e incidencias), `ClockCorrectionService`, `CorrectionApprovers`, `PeopleAccess` (quién ficha y quién ve a quién) y `ClockReminders`.
+
+### 0.3 Lo que R2 necesita y R1 ya deja listo
+- **Cierre mensual con confirmación** (`month_closes`: persona, mes, totales congelados, PDF con SHA-256, confirmación o desacuerdo y desconfirmación con motivo): el diario se calcula siempre igual a partir de la cadena, así que el cierre solo congela lo que `WorkdayCalculator` ya devuelve; `ClockCorrectionService` tiene un único punto (`assertDayOpen`) donde R2 impedirá corregir un mes confirmado.
+- **Exportación con huella para la persona y la Inspección**: cada fichaje lleva su huella y su historial (original, anulado y añadido, con autor, fecha, motivo y conformidad); la exportación solo tiene que listar la cadena y su SHA-256.
+- **Retención de 48 meses**: nada borra fichajes ni correcciones (los *triggers* lo impiden y la FK de la persona es *restrict*). R2 añade la supresión a partir del mes 49 en `app:prune-data` (quitando el *trigger* solo dentro de esa orden, con la retención por litigio en `employment_profiles`), el ancla diaria (`register_anchors`) y la comprobación nocturna de la cadena con aviso a los admins.
+- **Horas extra y saldo de horas**: R1 registra todo el exceso del día; R2 lo clasifica (extra o flexibilidad) y añade `time_balance_movements`.
+
+---
+
 ## Índice
+0. Estado de la fase y contrato de R1
 1. Objetivos y no objetivos
 2. Ley hoy y proyecto: qué condiciona el diseño
 3. Registro de jornada frente a horas imputadas
