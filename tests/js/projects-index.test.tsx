@@ -99,6 +99,10 @@ function props(
     overrides: Partial<ProjectsIndexProps> = {},
 ): ProjectsIndexProps {
     return {
+        view: 'list',
+        sort: 'name',
+        groups: null,
+        company: 'Audax Studio',
         projects: {
             data: items,
             meta: {

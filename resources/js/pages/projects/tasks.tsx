@@ -18,7 +18,6 @@ import {
     filtersToQuery,
     withTaskParam,
 } from '@/components/tasks/task-requests';
-import { useRequiredUser } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { tasks as projectTasks } from '@/routes/projects';
@@ -33,7 +32,8 @@ import type { CalendarMode } from '@/types/planning';
 export default function ProjectTasks(props: ProjectTasksPageProps) {
     const { project, view, filters, tasks, statuses, panel } = props;
     const page = usePage();
-    const user = useRequiredUser();
+    // Sin sesión (tests), los plegados no se recuerdan.
+    const userId = page.props.auth?.user?.id ?? null;
     const lookups = buildTaskLookups(props);
     const [selection, setSelection] = useState<Set<number>>(new Set());
     const [loadingTaskId, setLoadingTaskId] = useState<number | null>(null);
@@ -224,7 +224,11 @@ export default function ProjectTasks(props: ProjectTasksPageProps) {
                             selection={selected}
                             onSelect={select}
                             onOpen={openTask}
-                            storageKey={`audax.tasks.groups.${user.id}.${project.id}`}
+                            storageKey={
+                                userId === null
+                                    ? null
+                                    : `audax.tasks.groups.${userId}.${project.id}`
+                            }
                         />
                     )}
 

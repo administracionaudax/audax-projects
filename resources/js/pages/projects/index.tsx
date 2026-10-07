@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ChartGantt,
     FolderKanban,
@@ -25,7 +25,7 @@ import {
 } from '@/components/projects-list/projects-tree';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
+import { useAbilities } from '@/hooks/use-auth';
 import { useCollapsedGroups } from '@/hooks/use-collapsed-groups';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
@@ -60,7 +60,8 @@ export default function ProjectsIndex({
     options,
 }: ProjectsIndexProps) {
     const can = useAbilities();
-    const user = useRequiredUser();
+    // Sin sesión (tests), los plegados no se recuerdan.
+    const userId = usePage().props.auth?.user?.id ?? null;
     const thresholds = useHourBankThresholds();
 
     const visit = useCallback(
@@ -103,7 +104,9 @@ export default function ProjectsIndex({
     // Con una búsqueda o un cliente, lo plegado no se recuerda: se ve todo lo encontrado.
     const searching = filters.buscar.trim() !== '' || filters.cliente !== null;
     const folds = useCollapsedGroups(
-        searching ? null : `audax.projects.tree.${user.id}`,
+        searching || userId === null
+            ? null
+            : `audax.projects.tree.${userId}`,
     );
 
     return (

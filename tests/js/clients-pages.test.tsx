@@ -473,11 +473,19 @@ describe('ficha de cliente', () => {
         expect(screen.getByText('3:30')).toBeTruthy();
         expect(screen.getByText('24:30')).toBeTruthy();
         expect(
-            screen.getByRole('link', { name: 'Web' }).getAttribute('href'),
+            screen
+                .getByRole('link', { name: 'HOT-WEB Web' })
+                .getAttribute('href'),
         ).toBe('/proyectos/3');
+        // Como en el listado por clientes (D-322): la bolsa abierta, bajo su proyecto, y su tarjeta.
         expect(
-            screen.getByRole('meter', { name: 'Consumo de Bolsa Q4' }),
-        ).toBeTruthy();
+            screen
+                .getByRole('link', { name: 'Bolsa Bolsa Q4' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/3/bolsas/5');
+        expect(
+            screen.getAllByRole('meter', { name: 'Consumo de Bolsa Q4' }),
+        ).toHaveLength(2);
         expect(
             screen.getByRole('link', { name: 'Bolsa Q4' }).getAttribute('href'),
         ).toBe('/proyectos/3/bolsas/5');
