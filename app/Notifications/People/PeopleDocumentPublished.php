@@ -30,6 +30,6 @@ class PeopleDocumentPublished extends AppNotification
 
     public function icon(): ?string
     {
-        return 'file-text';
+        return 'notebook-pen';
     }
 }

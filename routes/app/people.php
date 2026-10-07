@@ -112,7 +112,6 @@ Route::middleware(['module:people', 'can:use-people'])->group(function () {
     Route::middleware('can:manage-people-register')->group(function () {
         Route::get('personas/informes', [RegisterReportController::class, 'index'])->name('people.reports.index');
         Route::get('personas/informes/{report}', [RegisterReportController::class, 'download'])
-            ->where('report', '[a-z-]+')
             ->middleware('throttle:30,1,people.reports.download')
             ->name('people.reports.download');
 
@@ -138,7 +137,6 @@ Route::middleware(['module:people', 'can:use-people'])->group(function () {
             ->name('people.inspection.revoke');
 
         Route::put('personas/documentos/{key}', [PeopleDocumentController::class, 'update'])
-            ->where('key', '[a-z_]+')
             ->middleware('throttle:20,1,people.documents.update')
             ->name('people.documents.update');
     });

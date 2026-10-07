@@ -21,11 +21,18 @@ Route::post('inspeccion/acceso/{token}', [InspectionPortalController::class, 'lo
     ->middleware('throttle:10,1,inspection.login')
     ->name('inspection.login');
 
-Route::middleware(['inspection', 'throttle:120,1,inspection.pages'])->group(function () {
-    Route::get('inspeccion', [InspectionPortalController::class, 'index'])->name('inspection.index');
-    Route::get('inspeccion/personas/{person}', [InspectionPortalController::class, 'person'])->whereNumber('person')->name('inspection.person');
+Route::middleware('inspection')->group(function () {
+    Route::get('inspeccion', [InspectionPortalController::class, 'index'])
+        ->middleware('throttle:120,1,inspection.index')
+        ->name('inspection.index');
+    Route::get('inspeccion/personas/{person}', [InspectionPortalController::class, 'person'])
+        ->whereNumber('person')
+        ->middleware('throttle:120,1,inspection.person')
+        ->name('inspection.person');
     Route::get('inspeccion/exportar', [InspectionPortalController::class, 'export'])
         ->middleware('throttle:10,1,inspection.export')
         ->name('inspection.export');
-    Route::post('inspeccion/salir', [InspectionPortalController::class, 'logout'])->name('inspection.logout');
+    Route::post('inspeccion/salir', [InspectionPortalController::class, 'logout'])
+        ->middleware('throttle:30,1,inspection.logout')
+        ->name('inspection.logout');
 });

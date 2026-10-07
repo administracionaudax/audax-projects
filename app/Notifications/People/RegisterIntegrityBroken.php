@@ -40,6 +40,6 @@ class RegisterIntegrityBroken extends AppNotification
 
     public function icon(): ?string
     {
-        return 'shield-alert';
+        return 'triangle-alert';
     }
 }

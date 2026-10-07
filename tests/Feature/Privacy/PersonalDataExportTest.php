@@ -343,6 +343,13 @@ test('el job genera un ZIP con JSON y CSV por sección y un LEEME, solo con los 
         'sugerencias-comentarios.json', 'sugerencias-comentarios.csv',
         'sugerencias-votos.json', 'sugerencias-votos.csv',
         'ayuda-me-gusta.json', 'ayuda-me-gusta.csv',
+        // Registro de jornada (Fase 11, R2; D-357).
+        'registro-jornada.json', 'registro-jornada.csv',
+        'correcciones-registro.json', 'correcciones-registro.csv',
+        'cierres-mensuales.json', 'cierres-mensuales.csv',
+        'horas-extra.json', 'horas-extra.csv',
+        'saldo-horas.json', 'saldo-horas.csv',
+        'datos-laborales.json', 'datos-laborales.csv',
         'notificaciones.json', 'notificaciones.csv',
         'integraciones.json', 'integraciones.csv',
         'accesos.json', 'accesos.csv',

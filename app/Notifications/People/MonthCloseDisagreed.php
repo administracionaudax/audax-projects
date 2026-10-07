@@ -39,6 +39,6 @@ class MonthCloseDisagreed extends AppNotification
 
     public function icon(): ?string
     {
-        return 'message-square-warning';
+        return 'message-square';
     }
 }

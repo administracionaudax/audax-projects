@@ -38,6 +38,6 @@ class MonthCloseReopened extends AppNotification
 
     public function icon(): ?string
     {
-        return 'file-pen';
+        return 'undo-2';
     }
 }
