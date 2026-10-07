@@ -98,6 +98,13 @@ class Setting extends Model
         'day_plan_editable_days' => 1,
         // Retención del plan del día (D-256): datos de desempeño, un año por defecto.
         'retention_day_plans_months' => 12,
+        // Registro de jornada (Fase 11, R2; D-348): 48 meses como mínimo (art. 34.9 ET), contados
+        // desde el final del mes; después se suprime salvo la retención por litigio.
+        'retention_people_register_months' => 48,
+        // Acceso temporal de la Inspección (D-353): apagado hasta que haga falta.
+        'people_inspection_enabled' => false,
+        // Centro de trabajo del «Anexo de horas» (municipio y provincia, STS 1161/2024).
+        'people_work_center' => null,
     ];
 
     protected static function booted(): void

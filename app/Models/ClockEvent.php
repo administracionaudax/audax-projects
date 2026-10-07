@@ -37,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read User $user
  * @property-read User|null $author
  * @property-read ClockCorrection|null $correction
+ * @property-read ClockEvent|null $voidedEvent
  */
 class ClockEvent extends Model
 {
@@ -88,6 +89,16 @@ class ClockEvent extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * El fichaje que anula una fila `void`.
+     *
+     * @return BelongsTo<ClockEvent, $this>
+     */
+    public function voidedEvent(): BelongsTo
+    {
+        return $this->belongsTo(ClockEvent::class, 'voided_event_id');
     }
 
     /**

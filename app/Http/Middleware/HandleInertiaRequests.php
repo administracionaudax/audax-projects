@@ -9,17 +9,20 @@ use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Navigation\NavSections;
 use App\Domain\People\ClockState;
 use App\Domain\People\PeopleAccess;
+use App\Domain\People\PeopleDocuments;
 use App\Domain\People\TeamWorkday;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Weeklies\AppModules;
 use App\Domain\Weeklies\MyWeeklyStatus;
 use App\Domain\Weeklies\WeeklyAway;
+use App\Enums\MonthCloseStatus;
 use App\Http\Resources\FinancialResource;
 use App\Models\Absence;
 use App\Models\ActiveTimer;
 use App\Models\Client;
 use App\Models\ClockCorrection;
+use App\Models\MonthClose;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Models\User;
@@ -134,6 +137,8 @@ class HandleInertiaRequests extends Middleware
                 'clock' => $user ? Gate::forUser($user)->allows('clock') : false,
                 'viewPeopleTeam' => $user ? Gate::forUser($user)->allows('view-people-team') : false,
                 'managePeople' => $user ? Gate::forUser($user)->allows('manage-people') : false,
+                // R2 (D-355): informes, Inspección y documentos de RR. HH. con el módulo visible.
+                'managePeopleRegister' => $user ? Gate::forUser($user)->allows('manage-people-register') : false,
             ],
         ];
     }
@@ -190,7 +195,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{clock: array<string, mixed>|null, pending: int}|null
+     * @return array{clock: array<string, mixed>|null, pending: int, pending_close: array{id: int, month: string}|null, unread_documents: int}|null
      */
     private function people(User $user): ?array
     {
@@ -225,7 +230,16 @@ class HandleInertiaRequests extends Middleware
             $pending += app(TeamWorkday::class)->pendingFor($user);
         }
 
-        return ['clock' => $clock, 'pending' => $pending];
+        // R2 (D-346 y D-354): el resumen del mes que espera mi respuesta y los documentos de RR. HH.
+        // que aún no he leído (el aviso de Mi jornada y la insignia de Mi registro y Documentos).
+        $close = MonthClose::query()->where('user_id', $user->id)->where('status', MonthCloseStatus::Pending->value)->orderByDesc('month')->first(['id', 'month']);
+
+        return [
+            'clock' => $clock,
+            'pending' => $pending,
+            'pending_close' => $close === null ? null : ['id' => $close->id, 'month' => $close->monthKey()],
+            'unread_documents' => count(app(PeopleDocuments::class)->unreadFor($user)),
+        ];
     }
 
     /**

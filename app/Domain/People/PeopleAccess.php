@@ -24,6 +24,10 @@ use Illuminate\Database\Eloquent\Collection;
  * - **La acepta o la rechaza** la otra parte (doble conformidad, D-335): si la propone la persona,
  *   su responsable o RR. HH.; si la propone su responsable o RR. HH., la persona. Nadie decide una
  *   propuesta suya ni una corrección de su propio registro que haya propuesto él.
+ * - **R2 (D-355)**: confirma o no su cierre mensual solo la persona; lo desconfirma, clasifica sus
+ *   horas extra y anota movimientos de su saldo de horas su responsable o RR. HH., nunca ella
+ *   misma (tampoco un responsable o un admin lo suyo). Los informes, la exportación para la
+ *   Inspección, sus accesos y los documentos de RR. HH., solo RR. HH. (`manage-people`).
  */
 final class PeopleAccess
 {
@@ -41,6 +45,15 @@ final class PeopleAccess
             && ! $user->isCollaborator()
             && ! $user->isClient()
             && $user->writesWeeklies();
+    }
+
+    /**
+     * ¿Es de la plantilla interna, activa o no? Para los datos laborales: la retención por litigio
+     * de quien ya se fue (D-348).
+     */
+    public static function internalStaff(User $user): bool
+    {
+        return ! $user->isCollaborator() && ! $user->isClient() && $user->writesWeeklies();
     }
 
     /** ¿Está sujeta al registro de jornada? Sin datos laborales, sí (lo conservador, D-331). */
@@ -83,6 +96,37 @@ final class PeopleAccess
         }
 
         return $viewer->id === $subject->id || self::managesAll($viewer) || $viewer->supervises($subject);
+    }
+
+    /**
+     * ¿Decide $actor por la empresa sobre el registro de $subject (desconfirmar su mes, clasificar
+     * sus horas extra, anotar su saldo de horas)? Su responsable o RR. HH., nunca ella misma (D-355).
+     */
+    public static function decidesFor(User $actor, User $subject): bool
+    {
+        return self::staff($actor) && self::staff($subject) && $actor->id !== $subject->id
+            && (self::managesAll($actor) || $actor->supervises($subject));
+    }
+
+    /** Informes, exportación para la Inspección, sus accesos y los documentos: RR. HH. (D-355). */
+    public static function managesRegister(User $user): bool
+    {
+        return self::uses($user) && self::managesAll($user);
+    }
+
+    /**
+     * La plantilla sujeta al registro (activa o no: quien ya se fue también tiene cierres y
+     * registro), para los cierres, los informes y la Inspección.
+     *
+     * @return Builder<User>
+     */
+    public static function registerSubjects(): Builder
+    {
+        return User::query()
+            ->role([Role::Admin->value, Role::DepartmentManager->value, Role::Employee->value])
+            ->withoutCollaborators()
+            ->whereDoesntHave('employmentProfile', fn (Builder $profile) => $profile->where('subject_to_register', false))
+            ->orderBy('name');
     }
 
     /** ¿Puede $actor proponer una corrección del registro de $subject? */

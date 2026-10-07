@@ -152,6 +152,9 @@ final class ClockCorrectionService
 
         $this->notify([User::query()->findOrFail($decided->proposed_by)], new CorrectionAccepted($decided, $actor->name));
 
+        // Si el mes tiene un cierre sin confirmar, se regenera con el registro corregido (D-347).
+        app(MonthCloser::class)->refreshAfterChange($subject, $decided->date->toDateString());
+
         return $decided;
     }
 
@@ -242,12 +245,14 @@ final class ClockCorrectionService
     }
 
     /**
-     * Un día de un mes ya confirmado no se corrige sin desconfirmarlo antes (PLAN-FASE-11 §7.4). Los
-     * cierres mensuales llegan en R2: aquí irá la comprobación.
+     * Un día de un mes ya confirmado no se corrige sin desconfirmarlo antes (PLAN-FASE-11 §7.4;
+     * W-085; D-347): ni se propone ni se acepta una corrección suya.
+     *
+     * @throws ValidationException
      */
     public function assertDayOpen(User $subject, string $date): void
     {
-        // R2: comprobar que el mes de $date no está confirmado (month_closes).
+        MonthCloser::assertMonthOpen($subject->id, $date);
     }
 
     /**

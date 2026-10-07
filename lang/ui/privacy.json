@@ -58,6 +58,7 @@
     "privacy.retention.types.weekly_reminder_logs": "Registro de avisos de la Weekly",
     "privacy.retention.types.dictations": "Dictados de la Weekly",
     "privacy.retention.types.day_plans": "Plan del día",
+    "privacy.retention.types.people_register": "Registro de jornada",
     "privacy.retention.types.ai_usage": "Uso de la IA (quién y sobre qué)",
     "privacy.admin.title": "Privacidad y datos",
     "privacy.admin.heading": "Privacidad y [[datos]]",
@@ -97,6 +98,7 @@
     "privacy.admin_user.in_progress": "Ya hay una exportación en curso.",
     "privacy.admin_user.empty": "Aún no se ha exportado ningún dato de esta persona",
     "privacy.admin.ai_usage_help": "Pasado el plazo, cada llamada a la IA deja de decir quién la pidió y sobre qué; el coste se conserva para «Uso de IA».",
+    "privacy.admin.people_register_help": "Fichajes, correcciones, cierres mensuales, horas extra y saldo de horas. La ley pide conservarlos 4 años (art. 34.9 ET): no se puede poner menos de 48 meses. Se cuentan desde el final de cada mes y no se suprime nada de quien tenga activa la retención por litigio.",
     "privacy.admin.day_plans_help": "Las líneas de cada día, su estado y sus comentarios (datos de desempeño). Las horas imputadas nunca se borran: solo pierden el enlace con la línea.",
     "privacy.admin.dictations_help": "El texto de cada dictado ya está en su apunte de la weekly: aquí solo se borra el borrador del dictado. El audio nunca se guarda.",
     "privacy.admin.chat_messages_help": "Con un plazo, cada mensaje más antiguo se borra con sus adjuntos, sus audios y sus transcripciones. Las tareas creadas desde un mensaje se conservan."

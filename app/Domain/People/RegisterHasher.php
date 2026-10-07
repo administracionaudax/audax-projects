@@ -4,6 +4,9 @@ namespace App\Domain\People;
 
 use App\Models\ClockCorrection;
 use App\Models\ClockEvent;
+use App\Models\MonthClose;
+use App\Models\OvertimeDecision;
+use App\Models\TimeBalanceMovement;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
 
@@ -65,6 +68,95 @@ final class RegisterHasher
             (string) ($correction->dispute_reason ?? ''),
             self::instant($correction->created_at),
         ]));
+    }
+
+    /**
+     * Sello de lo congelado de un cierre mensual (R2, D-347): los totales, el diario y el punto de la
+     * cadena. El PDF lleva además su propio SHA-256 (`pdf_sha256`).
+     */
+    public function closeContent(MonthClose $close): string
+    {
+        return hash('sha256', implode("\n", [
+            self::VERSION,
+            'month_close',
+            (string) $close->user_id,
+            $close->month->format('Y-m'),
+            (string) $close->version,
+            (string) $close->worked_minutes,
+            (string) $close->expected_minutes,
+            (string) $close->difference_minutes,
+            (string) $close->overtime_minutes,
+            self::canonicalJson($close->totals),
+            self::canonicalJson($close->days),
+            (string) ($close->register_seq ?? ''),
+            (string) ($close->register_hash ?? ''),
+            self::instant($close->generated_at),
+            (string) ($close->generated_by ?? ''),
+        ]));
+    }
+
+    /** Sello de una decisión de horas extra (R2, D-349). */
+    public function overtimeDecision(OvertimeDecision $decision): string
+    {
+        return hash('sha256', implode("\n", [
+            self::VERSION,
+            'overtime_decision',
+            (string) $decision->user_id,
+            $decision->date->toDateString(),
+            $decision->hour_type->value,
+            (string) $decision->excess_minutes,
+            (string) $decision->overtime_minutes,
+            (string) $decision->flex_minutes,
+            $decision->destination->value ?? '',
+            (string) ($decision->note ?? ''),
+            (string) $decision->decided_by,
+            (string) ($decision->supersedes_id ?? ''),
+            self::instant($decision->created_at),
+        ]));
+    }
+
+    /** Sello de un movimiento del saldo de horas (R2, D-350). */
+    public function balanceMovement(TimeBalanceMovement $movement): string
+    {
+        return hash('sha256', implode("\n", [
+            self::VERSION,
+            'time_balance_movement',
+            (string) $movement->user_id,
+            $movement->date->toDateString(),
+            (string) $movement->minutes,
+            $movement->kind->value,
+            $movement->reason,
+            (string) ($movement->overtime_decision_id ?? ''),
+            (string) ($movement->created_by ?? ''),
+            self::instant($movement->created_at),
+        ]));
+    }
+
+    /**
+     * Resumen del ancla diaria (R2, D-352): la fecha, el resumen del día anterior, el número de
+     * filas y la última huella de cada persona.
+     *
+     * @param  array<int, array{seq: int, hash: string}>  $heads
+     */
+    public function anchorDigest(string $date, string $previous, int $events, array $heads): string
+    {
+        return hash('sha256', implode("\n", [
+            self::VERSION,
+            'register_anchor',
+            $date,
+            $previous,
+            (string) $events,
+            self::canonicalJson($heads),
+        ]));
+    }
+
+    /**
+     * Huella del contenido de una exportación (R2, D-351): el mismo contenido da la misma huella,
+     * sea cual sea el formato del fichero.
+     */
+    public static function contentHash(mixed $content): string
+    {
+        return hash('sha256', self::canonicalJson($content));
     }
 
     /**

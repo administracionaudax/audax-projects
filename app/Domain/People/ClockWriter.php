@@ -9,6 +9,7 @@ use App\Enums\PauseType;
 use App\Enums\WorkMode;
 use App\Models\ClockCorrection;
 use App\Models\ClockEvent;
+use App\Models\RegisterCheckpoint;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -184,15 +185,21 @@ final class ClockWriter
             ->lockForUpdate()
             ->first(['id', 'seq', 'hash']);
 
+        // Si la supresión del mes 49 se llevó toda la cadena, se sigue desde su punto de control
+        // (D-348): nunca se repite un número ni se vuelve a empezar la cadena.
+        $start = $previous === null
+            ? RegisterCheckpoint::query()->where('user_id', $user->id)->first(['seq', 'hash'])
+            : null;
+
         $event = new ClockEvent;
         $event->forceFill([
             'voided_event_id' => null,
             'correction_id' => null,
             ...$attributes,
             'user_id' => $user->id,
-            'seq' => ($previous->seq ?? 0) + 1,
+            'seq' => ($previous->seq ?? $start->seq ?? 0) + 1,
             'recorded_at' => $now,
-            'prev_hash' => $previous->hash ?? RegisterHasher::GENESIS,
+            'prev_hash' => $previous->hash ?? $start->hash ?? RegisterHasher::GENESIS,
             'created_at' => $now,
         ]);
         $event->hash = $this->hasher->event($event);

@@ -119,6 +119,28 @@ Schedule::command('people:expire-corrections')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Registro de jornada, R2 (D-347, D-349 y D-352): cada noche a las 02:50, antes de la supresión y de
+// la copia, se comprueba la cadena entera y se guarda el ancla del día (aviso a los admins si
+// falla); cada día a las 06:00, los cierres del mes anterior que falten y sus recordatorios; y los
+// lunes a las 08:00, el resumen semanal de horas extra. Las dos últimas, nada con el módulo apagado.
+Schedule::command('people:verify-register --nightly')
+    ->dailyAt('02:50')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('people:close-months')
+    ->dailyAt('06:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('people:overtime-summary')
+    ->weeklyOn(1, '08:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
 Schedule::command('app:prune-data')
     ->dailyAt('03:10')

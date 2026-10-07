@@ -89,6 +89,18 @@ final class NotificationCatalog
             new NotificationEvent('people.correction_requested', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
             new NotificationEvent('people.correction_accepted', 'people', $all, [$app], self::AUDIENCE_PEOPLE),
             new NotificationEvent('people.correction_disputed', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            // R2 (D-356): el resumen del mes para confirmar (obligatorio: es la copia de los arts.
+            // 12.4.c y 35.5 ET), sus recordatorios, la desconfirmación y el desacuerdo; el resumen
+            // semanal de horas extra (obligatorio, art. 35.5 ET); el tope anual; los documentos de
+            // RR. HH.; y la comprobación nocturna del registro, a los admins.
+            new NotificationEvent('people.month_close_ready', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.month_close_reminder', 'people', $all, [$app, $push], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.month_close_reopened', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.month_close_disagreed', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.overtime_weekly_summary', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.overtime_cap', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.document_published', 'people', $all, [$app], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.integrity_broken', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
 
             // Tareas (Fase 1): asignación, mención, comentario y cambio de estado de una tarea que
             // sigo, y tareas que vencen mañana o vencidas.

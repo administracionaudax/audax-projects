@@ -44,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         'use-people',
         'clock',
         'view-people-team',
+        'manage-people-register',
     ];
 
     /**
@@ -119,6 +120,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('use-people', fn (User $user): bool => PeopleAccess::uses($user));
         Gate::define('clock', fn (User $user): bool => PeopleAccess::clocks($user));
         Gate::define('view-people-team', fn (User $user): bool => PeopleAccess::viewsTeam($user));
+        // R2 (D-355): informes, exportación para la Inspección, sus accesos y los documentos: RR. HH.
+        Gate::define('manage-people-register', fn (User $user): bool => PeopleAccess::managesRegister($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));

@@ -35,6 +35,13 @@ final class RetentionPolicy
     /** Plan del día (D-256): datos de desempeño; las horas enlazadas se conservan sin el enlace. */
     public const string DAY_PLANS = 'day_plans';
 
+    /**
+     * Registro de jornada (Fase 11, R2; D-348): fichajes, correcciones, cierres, horas extra, saldo,
+     * anclas y su auditoría. 48 meses como mínimo (art. 34.9 ET), contados desde el final del mes;
+     * después se suprime (RegisterPruner), salvo la retención por litigio.
+     */
+    public const string PEOPLE_REGISTER = 'people_register';
+
     /** Ajuste de cada tipo de dato, en meses (null = sin límite). */
     public const array SETTINGS = [
         self::LOGIN_EVENTS => 'retention_login_events_months',
@@ -45,6 +52,7 @@ final class RetentionPolicy
         self::DICTATIONS => 'retention_dictations_months',
         self::AI_USAGE => 'retention_ai_usage_months',
         self::DAY_PLANS => 'retention_day_plans_months',
+        self::PEOPLE_REGISTER => 'retention_people_register_months',
     ];
 
     /** Mínimo en meses que se puede fijar (la auditoría, al menos un año). */
@@ -57,6 +65,7 @@ final class RetentionPolicy
         self::DICTATIONS => 1,
         self::AI_USAGE => 1,
         self::DAY_PLANS => 1,
+        self::PEOPLE_REGISTER => 48,
     ];
 
     /** Máximo en meses (10 años). */

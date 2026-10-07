@@ -1,22 +1,29 @@
 <?php
 
+use App\Domain\People\Retention\RegisterPruner;
 use App\Domain\Privacy\Export\Sections\AbsencesSection;
 use App\Domain\Privacy\Export\Sections\AiSummariesSection;
 use App\Domain\Privacy\Export\Sections\AiUsageSection;
 use App\Domain\Privacy\Export\Sections\ChatMessagesSection;
+use App\Domain\Privacy\Export\Sections\ClockCorrectionsSection;
+use App\Domain\Privacy\Export\Sections\ClockEventsSection;
 use App\Domain\Privacy\Export\Sections\DayPlanCommentsSection;
 use App\Domain\Privacy\Export\Sections\DayPlansSection;
 use App\Domain\Privacy\Export\Sections\DictationsSection;
+use App\Domain\Privacy\Export\Sections\EmploymentSection;
 use App\Domain\Privacy\Export\Sections\HelpLikesSection;
 use App\Domain\Privacy\Export\Sections\IntegrationsSection;
 use App\Domain\Privacy\Export\Sections\LoginEventsSection;
+use App\Domain\Privacy\Export\Sections\MonthClosesSection;
 use App\Domain\Privacy\Export\Sections\MySpaceTasksSection;
 use App\Domain\Privacy\Export\Sections\NotificationsSection;
+use App\Domain\Privacy\Export\Sections\OvertimeSection;
 use App\Domain\Privacy\Export\Sections\ProfileSection;
 use App\Domain\Privacy\Export\Sections\SuggestionCommentsSection;
 use App\Domain\Privacy\Export\Sections\SuggestionsSection;
 use App\Domain\Privacy\Export\Sections\SuggestionVotesSection;
 use App\Domain\Privacy\Export\Sections\TaskCommentsSection;
+use App\Domain\Privacy\Export\Sections\TimeBalanceSection;
 use App\Domain\Privacy\Export\Sections\TimeEntriesSection;
 use App\Domain\Privacy\Export\Sections\WeeklyEntriesSection;
 use App\Domain\Privacy\Export\Sections\WeeklyExemptionsSection;
@@ -74,6 +81,14 @@ return [
         SuggestionCommentsSection::class,
         SuggestionVotesSection::class,
         HelpLikesSection::class,
+        // Registro de jornada (Fase 11, R2; D-357): la cadena, las correcciones, los cierres, las horas
+        // extra, el saldo de horas y los datos laborales con los documentos de RR. HH. leídos.
+        ClockEventsSection::class,
+        ClockCorrectionsSection::class,
+        MonthClosesSection::class,
+        OvertimeSection::class,
+        TimeBalanceSection::class,
+        EmploymentSection::class,
         NotificationsSection::class,
         // Cuenta de Google conectada (Fase 9, D-142): el correo y la fecha, nunca los tokens.
         IntegrationsSection::class,
@@ -93,6 +108,9 @@ return [
         RetentionPolicy::AI_USAGE => AiUsagePruner::class,
         // Plan del día (D-256): las cabeceras de los días, con sus líneas y comentarios.
         RetentionPolicy::DAY_PLANS => DayPlansPruner::class,
+        // Registro de jornada (Fase 11, R2; D-348): la supresión a partir del mes 49, salvo la
+        // retención por litigio.
+        RetentionPolicy::PEOPLE_REGISTER => RegisterPruner::class,
     ],
 
     // Filas por lote al borrar: cada lote es una sentencia corta, sin bloqueos largos.
