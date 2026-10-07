@@ -43,6 +43,9 @@ import type {
     PendingOvertime,
 } from '@/types/people-register';
 
+/** Exceso que se propone como flexibilidad (la del convenio, ±30 minutos). */
+const FLEX_SUGGESTION_MINUTES = 30;
+
 const MANUAL_KINDS: BalanceKind[] = [
     'rest_taken',
     'paid',
@@ -361,7 +364,13 @@ function DecisionForm({
     restPerHour: number;
 }) {
     const id = useId();
-    const [text, setText] = useState(formatMinutes(item.excess_minutes));
+    // Hasta 30 minutos (la flexibilidad del convenio) se propone como flexibilidad; más, como hora
+    // extra. Es solo la propuesta: decide quien clasifica (D-349).
+    const [text, setText] = useState(
+        item.excess_minutes > FLEX_SUGGESTION_MINUTES
+            ? formatMinutes(item.excess_minutes)
+            : '0',
+    );
     const [destination, setDestination] = useState<OvertimeDestination>(
         item.part_time ? 'pay' : 'compensate',
     );
@@ -382,6 +391,7 @@ function DecisionForm({
             aria-labelledby={`${id}-title`}
             data-test="overtime-item"
             data-date={item.date}
+            data-excess={item.excess_minutes}
             onSubmit={(event) => {
                 event.preventDefault();
                 if (overtime === null) {

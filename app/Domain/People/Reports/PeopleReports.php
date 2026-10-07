@@ -120,7 +120,7 @@ final class PeopleReports
                     'expected' => PeopleFormat::hm($totals['expected_minutes']),
                     'overtime' => PeopleFormat::hm($totals['overtime_minutes']),
                     'complementary' => PeopleFormat::hm($totals['complementary_minutes']),
-                    'close' => $closeLabels === [] ? __('people.reports.register.no_close') : implode(' · ', $closeLabels),
+                    'close' => $closeLabels !== [] ? implode(' · ', $closeLabels) : __($kind === 'month_close' ? 'people.reports.register.this_close' : 'people.reports.register.no_close'),
                 ]),
                 'table' => PdfTable::make([
                     [__('people.reports.cols.day')], [__('people.reports.cols.expected')], [__('people.reports.cols.in'), true],

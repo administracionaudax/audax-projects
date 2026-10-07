@@ -70,7 +70,9 @@ class MonthCloseController extends Controller
                 'close' => $latest === null ? null : RegisterController::close($latest, $viewer),
                 'versions' => ($closes->get($person->id) ?? collect())->count(),
                 'can' => [
-                    'generate' => $isPast && $decides && ($latest === null || in_array($latest->status, [MonthCloseStatus::Reopened, MonthCloseStatus::Pending, MonthCloseStatus::Disagreed], true)),
+                    // Solo lo que falta o se desconfirmó: un cierre pendiente se regenera solo si cambia
+                    // el registro del mes (MonthCloser::refreshAfterChange).
+                    'generate' => $isPast && $decides && ($latest === null || $latest->status === MonthCloseStatus::Reopened),
                     'reopen' => $decides && $latest?->status === MonthCloseStatus::Confirmed,
                     'remind' => $decides && $latest?->status === MonthCloseStatus::Pending,
                 ],
@@ -111,9 +113,8 @@ class MonthCloseController extends Controller
         $count = 0;
 
         foreach ($query->get() as $person) {
-            $current = MonthClose::query()->current()->where('user_id', $person->id)->where('month', $month->toDateString())->first();
-
-            if ($current?->status === MonthCloseStatus::Confirmed) {
+            // Solo los que faltan o se desconfirmaron (los vigentes se regeneran solos al cambiar).
+            if (MonthClose::query()->current()->where('user_id', $person->id)->where('month', $month->toDateString())->exists()) {
                 continue;
             }
 

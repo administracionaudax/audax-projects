@@ -187,7 +187,7 @@ export default function ReportsPage(props: ReportsPageProps) {
                             >
                                 <SelectTrigger
                                     id={`${id}-department`}
-                                    className="w-52"
+                                    className="w-60"
                                 >
                                     <SelectValue />
                                 </SelectTrigger>
@@ -325,7 +325,12 @@ export default function ReportsPage(props: ReportsPageProps) {
                             {t('people.reports.empty')}
                         </p>
                     ) : (
-                        <div className="max-h-[32rem] overflow-auto rounded-md border">
+                        <div
+                            className="max-h-[32rem] overflow-auto rounded-md border"
+                            tabIndex={0}
+                            role="region"
+                            aria-label={props.preview.title}
+                        >
                             <table
                                 className="w-full text-xs"
                                 data-test="report-preview"

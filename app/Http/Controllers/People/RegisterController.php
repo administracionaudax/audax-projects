@@ -57,6 +57,9 @@ class RegisterController extends Controller
             ->effective()
             ->with('decider:id,name')
             ->where('user_id', $user->id)
+            // Solo lo reconocido como hora extra o complementaria: lo que fue todo flexibilidad no
+            // es nada que la persona tenga que mirar (sigue en el diario y en los informes).
+            ->where('overtime_minutes', '>', 0)
             ->whereBetween('date', [sprintf('%04d-01-01', $year), sprintf('%04d-12-31', $year)])
             ->orderByDesc('date')
             ->get()

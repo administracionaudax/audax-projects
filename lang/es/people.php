@@ -282,6 +282,7 @@ return [
         'register' => [
             'person_lead' => 'Trabajado :worked de :expected teóricas · extra :overtime · complementarias :complementary · :close',
             'no_close' => 'Sin cierre',
+            'this_close' => 'para confirmar en la app',
             'note' => 'Ordinarias = trabajado − horas extra − complementarias − exceso aún sin clasificar. La flexibilidad dentro de la jornada pactada es tiempo ordinario. La pausa de la comida no es tiempo de trabajo.',
         ],
         'close' => [

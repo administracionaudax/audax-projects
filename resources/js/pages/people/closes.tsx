@@ -63,7 +63,7 @@ export default function ClosesPage(props: ClosesPageProps) {
         : {};
     const isPast = props.month < props.current_month;
     const generable = props.rows
-        .filter((row) => row.can.generate && row.state !== 'reopened')
+        .filter((row) => row.can.generate)
         .map((row) => row.user.id);
 
     return (
