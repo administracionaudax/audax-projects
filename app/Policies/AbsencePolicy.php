@@ -62,7 +62,7 @@ class AbsencePolicy
             return false;
         }
 
-        return $user->isAdmin() || $user->supervises($target);
+        return $user->isAdmin() || self::hr($user) || $user->supervises($target);
     }
 
     public function review(User $user, Absence $absence): bool

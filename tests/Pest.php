@@ -138,3 +138,4 @@ function enableForecast(bool $enabled = true): void
 
 // Registro de jornada (Fase 11): fichar a una hora de Madrid, jornadas enteras y encender el módulo.
 require_once __DIR__.'/Support/people.php';
+require_once __DIR__.'/Support/leave.php';

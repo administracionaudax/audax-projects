@@ -53,6 +53,7 @@ final class AbsenceService
     public function __construct(
         private readonly AbsenceRules $rules,
         private readonly AbsenceApprovers $approvers,
+        private readonly LeaveLedger $ledger,
     ) {}
 
     /**
@@ -78,6 +79,13 @@ final class AbsenceService
         // Con segundo nivel, la de un responsable pasa sola el primero; la de RR. HH., los dos.
         $autoApproved = $selfApproves && (! $secondLevel || PeopleAccess::managesAll($actor));
         $firstAuto = $selfApproves && ! $autoApproved;
+
+        // Con saldos, la asignación de los años que toca la solicitud (si la tarea diaria aún no la ha hecho).
+        if (LeaveMode::on($actor) && $data->leaveType?->hasAllowance() === true) {
+            for ($year = (int) substr($data->startDate, 0, 4); $year <= (int) substr($data->endDate, 0, 4); $year++) {
+                $this->ledger->syncAccrual($actor, $data->leaveType, $year);
+            }
+        }
 
         $absence = DB::transaction(function () use ($actor, $data, $autoApproved, $firstAuto): Absence {
             $this->lockPerson($actor->id);
