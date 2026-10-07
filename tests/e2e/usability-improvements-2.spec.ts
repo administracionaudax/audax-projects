@@ -36,8 +36,9 @@ function doneToggle(page: Page): Locator {
 }
 
 test.describe('kanban con la columna «Hecha» plegable (D-326)', () => {
-    // Todas las columnas a la vista, para arrastrar de la primera a la última.
-    test.use({ viewport: { width: 1920, height: 1080 } });
+    // Todas las columnas y tarjetas a la vista, para arrastrar de la primera a la última sin que
+    // el tablero se desplace solo (con los datos que dejan otros E2E, «Por hacer» crece).
+    test.use({ viewport: { width: 1920, height: 4000 } });
 
     test('«Hecha» nace plegada, se despliega y se recuerda al recargar', async ({
         page,
@@ -106,7 +107,6 @@ test.describe('kanban con la columna «Hecha» plegable (D-326)', () => {
         );
 
         const handle = card.locator('[data-test="kanban-handle"]');
-        await handle.scrollIntoViewIfNeeded();
         const from = await handle.boundingBox();
         const to = await doneColumn(page).boundingBox();
         expect(from && to).toBeTruthy();
