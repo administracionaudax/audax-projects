@@ -1,5 +1,9 @@
 import { ChevronDown, ChevronRight, CornerDownRight } from 'lucide-react';
 import { useState } from 'react';
+import {
+    CollapsibleGroupHeading,
+    GroupFoldControls,
+} from '@/components/collapsible-group';
 import { PriorityBadge, TaskStatusBadge } from '@/components/domain/badges';
 import { QuickAddTask } from '@/components/tasks/quick-add-task';
 import { AssigneeLabel } from '@/components/tasks/task-fields';
@@ -15,9 +19,11 @@ import {
 } from '@/components/tasks/task-meta';
 import { TimerButton } from '@/components/time/timer-button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useCollapsedGroups } from '@/hooks/use-collapsed-groups';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { cn } from '@/lib/utils';
 import type { TaskGroupBy, TaskListItem } from '@/types';
 
@@ -64,10 +70,12 @@ function TaskRow({
         <tr
             className={cn(
                 'border-b align-middle',
+                ROW_CLICK_CLASS,
                 selected && 'bg-accent',
                 task.is_completed && 'text-muted-foreground',
             )}
             data-test="task-row"
+            {...rowClickProps}
         >
             <td className="w-10 px-2 py-2">
                 {lookups.can.update ? (
@@ -134,6 +142,7 @@ function TaskRow({
                             FOCUS_RING,
                         )}
                         data-test="task-title"
+                        data-row-primary
                     >
                         {task.title}
                     </button>
@@ -411,6 +420,8 @@ function GroupTable({
 /**
  * Vista Lista (SPEC §6): grupos (por estado, responsable, bolsa o tipo) con sus tareas raíz y
  * subtareas desplegables, selección para las acciones masivas y creación rápida en cada grupo.
+ * Cada grupo se pliega desde su encabezado y se recuerda por persona y proyecto en este navegador
+ * (`storageKey`, D-320); el estado «done» nace plegado.
  */
 export function TaskList({
     tasks,
@@ -419,6 +430,7 @@ export function TaskList({
     selection,
     onSelect,
     onOpen,
+    storageKey = null,
 }: {
     tasks: TaskListItem[];
     groupBy: TaskGroupBy;
@@ -426,15 +438,33 @@ export function TaskList({
     selection: Set<number>;
     onSelect: (taskIds: number[], selected: boolean) => void;
     onOpen: (taskId: number) => void;
+    /** Clave del navegador para recordar los grupos plegados (null: solo en memoria). */
+    storageKey?: string | null;
 }) {
     const lookups = useTaskLookups();
     const groups = groupTasks(tasks, groupBy, lookups, showCompleted);
+    const folds = useCollapsedGroups(storageKey);
+    const foldable = groupBy !== 'none';
+    const isCollapsed = (group: TaskGroup) =>
+        foldable && folds.isCollapsed(group.key, group.collapsedByDefault);
+    const keys = groups.map((group) => group.key);
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
+            {foldable && groups.length > 1 ? (
+                <GroupFoldControls
+                    className="-mb-2 self-end"
+                    onExpandAll={() => folds.setMany(keys, false)}
+                    onCollapseAll={() => folds.setMany(keys, true)}
+                    allExpanded={groups.every((group) => !isCollapsed(group))}
+                    allCollapsed={groups.every(isCollapsed)}
+                />
+            ) : null}
             {groups.map((group) => {
                 const headingId = `task-group-${group.key}`;
+                const contentId = `task-group-content-${group.key}`;
                 const count = group.tasks.length;
+                const collapsed = isCollapsed(group);
 
                 return (
                     <section
@@ -442,47 +472,64 @@ export function TaskList({
                         aria-labelledby={headingId}
                         className="flex flex-col gap-3"
                         data-test="task-group"
+                        data-collapsed={collapsed ? 'true' : undefined}
                     >
-                        {groupBy !== 'none' ? (
-                            <h2
+                        {foldable ? (
+                            <CollapsibleGroupHeading
                                 id={headingId}
-                                className="flex items-center gap-2 text-base font-medium"
-                            >
-                                {group.color ? (
-                                    <span
-                                        aria-hidden="true"
-                                        className="size-2.5 rounded-full"
-                                        style={{ backgroundColor: group.color }}
-                                    />
-                                ) : null}
-                                {group.label}
-                                <span className="text-sm font-normal text-muted-foreground">
-                                    {t('task_list.group_count', { count })}
-                                </span>
-                            </h2>
+                                contentId={contentId}
+                                expanded={!collapsed}
+                                onToggle={() =>
+                                    folds.setCollapsed(group.key, !collapsed)
+                                }
+                                label={group.label}
+                                count={t('task_list.group_count', { count })}
+                                marker={
+                                    group.color ? (
+                                        <span
+                                            aria-hidden="true"
+                                            className="size-2.5 shrink-0 rounded-full"
+                                            style={{
+                                                backgroundColor: group.color,
+                                            }}
+                                        />
+                                    ) : undefined
+                                }
+                                data-test="task-group-toggle"
+                            />
                         ) : (
                             <h2 id={headingId} className="sr-only">
                                 {group.label}
                             </h2>
                         )}
-                        <GroupTable
-                            group={group}
-                            showCompleted={showCompleted}
-                            selection={selection}
-                            onSelect={onSelect}
-                            onOpen={onOpen}
-                            headingId={headingId}
-                        />
-                        <QuickAddTask
-                            defaults={group.defaults}
-                            label={
-                                groupBy === 'none'
-                                    ? t('quick_add.label')
-                                    : t('quick_add.label_in', {
-                                          group: group.label,
-                                      })
-                            }
-                        />
+                        <div
+                            id={contentId}
+                            hidden={collapsed}
+                            className="flex flex-col gap-3"
+                        >
+                            {collapsed ? null : (
+                                <>
+                                    <GroupTable
+                                        group={group}
+                                        showCompleted={showCompleted}
+                                        selection={selection}
+                                        onSelect={onSelect}
+                                        onOpen={onOpen}
+                                        headingId={headingId}
+                                    />
+                                    <QuickAddTask
+                                        defaults={group.defaults}
+                                        label={
+                                            groupBy === 'none'
+                                                ? t('quick_add.label')
+                                                : t('quick_add.label_in', {
+                                                      group: group.label,
+                                                  })
+                                        }
+                                    />
+                                </>
+                            )}
+                        </div>
                     </section>
                 );
             })}

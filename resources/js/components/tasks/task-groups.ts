@@ -11,6 +11,8 @@ export type TaskGroup = {
     tasks: TaskListItem[];
     /** Valores con los que la creación rápida del grupo crea la tarea. */
     defaults: QuickAddDefaults;
+    /** Plegado mientras la persona no lo despliegue: el estado «done», el que más crece (D-320). */
+    collapsedByDefault?: boolean;
 };
 
 function byPosition(a: TaskListItem, b: TaskListItem): number {
@@ -45,6 +47,7 @@ export function groupTasks(
                     .filter((task) => task.status_id === status.id)
                     .sort(byPosition),
                 defaults: { status_id: status.id },
+                collapsedByDefault: status.category === 'done',
             }));
     }
 

@@ -1,6 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { CalendarCheck2, History, ListFilter, UserX } from 'lucide-react';
 import { useState } from 'react';
+import {
+    CollapsibleGroupHeading,
+    GroupFoldControls,
+} from '@/components/collapsible-group';
 import { PriorityBadge, TaskStatusBadge } from '@/components/domain/badges';
 import { AddToMyDayButton } from '@/components/day-plan/add-to-my-day';
 import { EmptyState } from '@/components/empty-state';
@@ -23,10 +27,12 @@ import { TimerButton } from '@/components/time/timer-button';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
+import { useCollapsedGroups } from '@/hooks/use-collapsed-groups';
 import { usePersistedQuery } from '@/hooks/use-persisted-query';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { index as myTasksIndex } from '@/routes/my-tasks';
@@ -58,7 +64,11 @@ function MyTaskRow({
 
     return (
         <li
-            className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4"
+            className={cn(
+                'flex flex-col gap-2 px-2 py-3 sm:flex-row sm:items-center sm:gap-4',
+                ROW_CLICK_CLASS,
+            )}
+            {...rowClickProps}
             data-test="my-task"
             data-task-id={task.id}
         >
@@ -69,6 +79,7 @@ function MyTaskRow({
                         'block truncate text-sm font-medium hover:underline',
                         FOCUS_RING,
                     )}
+                    data-row-primary
                 >
                     {task.title}
                 </Link>
@@ -225,6 +236,8 @@ export default function MyTasks(props: MyTasksPageProps) {
     const tasks = useLoadedTasks(props);
     const [loadingMore, setLoadingMore] = useState(false);
     const [navigating, setNavigating] = useState(false);
+    // Secciones por vencimiento plegables, recordadas por persona en este navegador (D-320).
+    const folds = useCollapsedGroups(`audax.my-tasks.sections.${user.id}`);
     const statusById = new Map(statuses.map((status) => [status.id, status]));
     const filtered = hasMyTaskFilters(filters);
     const query = myTaskQuery(filters);
@@ -283,6 +296,9 @@ export default function MyTasks(props: MyTasksPageProps) {
         filters.sort === 'due'
             ? bySection(tasks)
             : [{ key: null, tasks } as const];
+    const sectionKeys = groups.flatMap((group) =>
+        group.key === null ? [] : [group.key],
+    );
 
     return (
         <>
@@ -342,6 +358,23 @@ export default function MyTasks(props: MyTasksPageProps) {
                         )}
                         aria-busy={navigating || undefined}
                     >
+                        {sectionKeys.length > 1 ? (
+                            <GroupFoldControls
+                                className="-mb-4 self-end"
+                                onExpandAll={() =>
+                                    folds.setMany(sectionKeys, false)
+                                }
+                                onCollapseAll={() =>
+                                    folds.setMany(sectionKeys, true)
+                                }
+                                allExpanded={sectionKeys.every(
+                                    (key) => !folds.isCollapsed(key),
+                                )}
+                                allCollapsed={sectionKeys.every((key) =>
+                                    folds.isCollapsed(key),
+                                )}
+                            />
+                        ) : null}
                         {groups.map((group, index) =>
                             group.key === null ? (
                                 <ul
@@ -370,29 +403,42 @@ export default function MyTasks(props: MyTasksPageProps) {
                                     className="flex flex-col gap-2"
                                     data-test={`my-tasks-${group.key}`}
                                 >
-                                    <h2
+                                    <CollapsibleGroupHeading
                                         id={`my-tasks-${group.key}-${index}`}
-                                        className="flex items-center gap-2 text-base font-medium"
+                                        contentId={`my-tasks-${group.key}-${index}-list`}
+                                        expanded={!folds.isCollapsed(group.key)}
+                                        onToggle={() =>
+                                            folds.setCollapsed(
+                                                group.key,
+                                                !folds.isCollapsed(group.key),
+                                            )
+                                        }
+                                        label={t(
+                                            `my_tasks.section.${group.key}`,
+                                        )}
+                                        count={t('task_list.group_count', {
+                                            count: group.tasks.length,
+                                        })}
+                                        data-test="my-tasks-section-toggle"
+                                    />
+                                    <ul
+                                        id={`my-tasks-${group.key}-${index}-list`}
+                                        hidden={folds.isCollapsed(group.key)}
+                                        className="divide-y border-y"
                                     >
-                                        {t(`my_tasks.section.${group.key}`)}
-                                        <span className="text-sm font-normal text-muted-foreground">
-                                            {t('task_list.group_count', {
-                                                count: group.tasks.length,
-                                            })}
-                                        </span>
-                                    </h2>
-                                    <ul className="divide-y border-y">
-                                        {group.tasks.map((task) => (
-                                            <MyTaskRow
-                                                key={task.id}
-                                                task={task}
-                                                status={statusById.get(
-                                                    task.status_id,
-                                                )}
-                                                today={today}
-                                                showLastLogged={false}
-                                            />
-                                        ))}
+                                        {folds.isCollapsed(group.key)
+                                            ? null
+                                            : group.tasks.map((task) => (
+                                                  <MyTaskRow
+                                                      key={task.id}
+                                                      task={task}
+                                                      status={statusById.get(
+                                                          task.status_id,
+                                                      )}
+                                                      today={today}
+                                                      showLastLogged={false}
+                                                  />
+                                              ))}
                                     </ul>
                                 </section>
                             ),

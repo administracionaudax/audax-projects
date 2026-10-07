@@ -87,5 +87,7 @@
     "nav.sections.admin": "Administración",
     "nav.admin_panel": "Panel",
     "nav.admin_settings": "Ajustes",
-    "project_tabs.planning": "Planificación"
+    "project_tabs.planning": "Planificación",
+    "groups.expand_all": "Desplegar todo",
+    "groups.collapse_all": "Plegar todo"
 }

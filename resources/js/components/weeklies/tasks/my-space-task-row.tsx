@@ -21,6 +21,7 @@ import { TaskNotesField } from '@/components/weeklies/tasks/task-notes-field';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import {
@@ -86,8 +87,10 @@ export function MySpaceTaskRow({
         <li
             className={cn(
                 'grid gap-3 border-b p-3 last:border-b-0 md:grid-cols-[minmax(16rem,26rem)_minmax(0,1fr)_auto] md:items-start md:gap-4 md:p-4',
+                ROW_CLICK_CLASS,
                 task.completed && 'bg-muted/40',
             )}
+            {...rowClickProps}
             data-test={`my-space-task-${task.id}`}
         >
             <div className="flex min-w-0 items-start gap-3">
@@ -109,6 +112,7 @@ export function MySpaceTaskRow({
                 <div className="grid min-w-0 gap-1.5">
                     <Link
                         href={urls.task(task.project.id, task.id)}
+                        data-row-primary
                         className={cn(
                             'text-sm break-words hover:underline',
                             task.completed &&
@@ -156,7 +160,10 @@ export function MySpaceTaskRow({
                 </div>
             </div>
 
-            <TaskNotesField task={task} />
+            {/* Las notas se escriben aquí: un clic en su zona no abre la tarea (D-324). */}
+            <div data-row-ignore className="min-w-0 cursor-auto">
+                <TaskNotesField task={task} />
+            </div>
 
             <div className="flex flex-wrap items-center gap-1 md:justify-end">
                 {!task.archived && task.can.update ? (

@@ -65,6 +65,7 @@ import {
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { cn } from '@/lib/utils';
 import { position as positionRoute } from '@/routes/tasks';
 import type { TaskListItem, TaskStatus } from '@/types';
@@ -125,6 +126,7 @@ function CardBody({
                         FOCUS_RING,
                     )}
                     data-test="kanban-card-title"
+                    data-row-primary
                 >
                     {task.title}
                 </button>
@@ -220,8 +222,10 @@ function SortableCard({
             }}
             className={cn(
                 'rounded-md border bg-card',
+                ROW_CLICK_CLASS,
                 isDragging && 'opacity-40',
             )}
+            {...rowClickProps}
             data-test="kanban-card"
             data-task-id={task.id}
             data-kanban-status={statusId}

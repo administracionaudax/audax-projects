@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/empty-state';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import type { HourBankTaskRow } from '@/types';
@@ -82,7 +83,11 @@ export function HourBankTasksTable({
                     {tasks.map((task) => (
                         <tr
                             key={task.id}
-                            className="border-b last:border-0 even:bg-muted"
+                            className={cn(
+                                'border-b last:border-0 even:bg-muted',
+                                ROW_CLICK_CLASS,
+                            )}
+                            {...rowClickProps}
                         >
                             <th
                                 scope="row"
@@ -102,6 +107,7 @@ export function HourBankTasksTable({
                                         'rounded-md text-primary-text hover:underline',
                                         FOCUS_RING,
                                     )}
+                                    data-row-primary
                                 >
                                     {task.title}
                                 </Link>
