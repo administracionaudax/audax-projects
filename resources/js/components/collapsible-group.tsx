@@ -62,7 +62,7 @@ export function CollapsibleGroupHeading({
                     className="size-4 shrink-0 text-muted-foreground"
                 />
                 {marker}
-                <span className="min-w-0 truncate">{label}</span>
+                <span className="min-w-0 break-words">{label}</span>
                 {count !== undefined ? (
                     <span className="shrink-0 text-sm font-normal text-muted-foreground">
                         {count}

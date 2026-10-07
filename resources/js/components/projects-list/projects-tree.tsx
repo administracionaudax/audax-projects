@@ -116,8 +116,17 @@ export function ProjectTreeTable({
             aria-label={label}
             tabIndex={0}
         >
-            <table className="w-full min-w-[52rem] text-sm">
+            {/* Anchos fijos: las columnas de todos los clientes quedan alineadas. */}
+            <table className="w-full min-w-[52rem] table-fixed text-sm">
                 <caption className="sr-only">{label}</caption>
+                <colgroup>
+                    <col className="w-[30%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[12%]" />
+                </colgroup>
                 <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">
                         <th scope="col" className="px-3 py-2 font-medium">
@@ -363,7 +372,7 @@ export function ProjectsTree({
                                                 banks,
                                             },
                                         )}
-                                        className="min-w-0"
+                                        className="min-w-0 flex-1"
                                         data-test="project-group-toggle"
                                     />
                                     {group.client ? (

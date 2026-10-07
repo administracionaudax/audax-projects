@@ -265,5 +265,6 @@
     "hours.days.empty": "Sin horas.",
     "hours.view.label": "Vista de la hoja",
     "hours.view.week": "Semana",
-    "hours.view.days": "Por días"
+    "hours.view.days": "Por días",
+    "hours.days.add": "Añadir horas"
 }

@@ -163,7 +163,7 @@ function EntryRow({
                 className="mt-1.5 size-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: task.project.color }}
             />
-            <div className="grid min-w-0 flex-1 gap-0.5">
+            <div className="grid min-w-48 flex-1 gap-0.5">
                 {editable ? (
                     <button
                         type="button"
@@ -304,7 +304,7 @@ export function TimesheetDays({
                                         data-test="day-add"
                                     >
                                         <Plus aria-hidden="true" />
-                                        {t('hours.sheet.add_entry')}
+                                        {t('hours.days.add')}
                                     </Button>
                                 ) : null}
                             </div>
