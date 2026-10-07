@@ -62,12 +62,15 @@ export function CollapsibleGroupHeading({
                     className="size-4 shrink-0 text-muted-foreground"
                 />
                 {marker}
-                <span className="min-w-0 break-words">{label}</span>
-                {count !== undefined ? (
-                    <span className="shrink-0 text-sm font-normal text-muted-foreground">
-                        {count}
-                    </span>
-                ) : null}
+                {/* El número va en la misma línea que el nombre y baja con él si no cabe. */}
+                <span className="min-w-0 break-words">
+                    {label}
+                    {count !== undefined ? (
+                        <span className="ml-2 text-sm font-normal whitespace-nowrap text-muted-foreground">
+                            {count}
+                        </span>
+                    ) : null}
+                </span>
             </button>
         </Heading>
     );
