@@ -3,7 +3,6 @@
     "hours.header.start_timer": "Iniciar temporizador",
     "hours.nav.approvals": "Aprobaciones",
     "hours.nav.locks": "Bloqueo",
-
     "hours.timer.label": "Temporizador en marcha",
     "hours.timer.announce": "Temporizador: :duration en «:task».",
     "hours.timer.spoken_minutes": ":minutes min",
@@ -24,7 +23,6 @@
     "hours.timer.keep_running": "Seguir en marcha",
     "hours.timer.log_and_stop": "Imputar y parar",
     "hours.timer.stop_measured_hint": "Medido: :duration. Si no cambias la duración, se imputa lo medido, repartido por días.",
-
     "hours.task_picker.placeholder": "Elige una tarea",
     "hours.task_picker.search": "Busca por tarea o proyecto",
     "hours.task_picker.results": "Tareas donde puedes imputar",
@@ -33,7 +31,6 @@
     "hours.task_picker.empty": "No hay tareas donde puedas imputar que coincidan con «:query».",
     "hours.task_picker.empty_suggestions": "Escribe para buscar una tarea de tus proyectos.",
     "hours.task_picker.completed": "Hecha",
-
     "hours.dialog.edit_title": "Editar horas",
     "hours.dialog.description": "Los formatos 1:30, 1,5, 90m o 1h30 valen para la duración.",
     "hours.dialog.person": "Persona",
@@ -68,10 +65,8 @@
     "hours.dialog.errors.range_empty": "La hora de fin tiene que ser posterior a la de inicio.",
     "hours.dialog.errors.range_midnight": "La hora de fin tiene que ser posterior a la de inicio. Si pasaste de la medianoche, regístralo en dos entradas: hasta las 00:00 y desde las 00:00 del día siguiente.",
     "hours.dialog.errors.description": "Escribe una descripción de lo que has hecho.",
-
     "hours.capacity.value": ":logged / :capacity",
     "hours.capacity.no_capacity": "(sin jornada ese día)",
-
     "hours.sheet.page_title": "Hoja semanal",
     "hours.sheet.title_own": "Mi hoja [[semanal]]",
     "hours.sheet.title_other": "Hoja semanal de [[:name]]",
@@ -114,7 +109,6 @@
     "hours.sheet.overage": "Incluye horas de exceso sobre la bolsa",
     "hours.sheet.saving": "Guardando…",
     "hours.sheet.saved": "Cambios guardados.",
-
     "hours.cell.description": ":day · :minutes en total",
     "hours.cell.empty": "No hay entradas este día.",
     "hours.cell.overage": ":minutes de exceso",
@@ -124,7 +118,6 @@
     "hours.cell.edit_label": "Editar la entrada de :minutes",
     "hours.cell.delete_label": "Eliminar la entrada de :minutes",
     "hours.cell.add": "Añadir otra entrada",
-
     "hours.status.open": "Abierta: se puede editar.",
     "hours.status.open_own": "Abierta: imputa tus horas y envíala cuando esté completa.",
     "hours.status.submitted": "Enviada el :date. Pendiente de aprobación.",
@@ -134,7 +127,6 @@
     "hours.status.returned_own": "Te han devuelto la semana.",
     "hours.status.returned_other": "Semana devuelta a :name.",
     "hours.status.comment_by": ":name comenta:",
-
     "hours.review.approve": "Aprobar",
     "hours.review.return": "Devolver",
     "hours.review.return_title": "Devolver la semana",
@@ -147,7 +139,6 @@
     "hours.review.reopen_for": "Reabrir la semana de :name",
     "hours.review.reopen_title": "¿Reabrir la semana?",
     "hours.review.reopen_description": "Sus horas vuelven a borrador y se borran la tarifa y el coste congelados. Las horas bloqueadas no cambian. Quedará en la auditoría.",
-
     "hours.approvals.title": "Aprobaciones",
     "hours.approvals.heading": "Aprobaciones de [[horas]]",
     "hours.approvals.description": "Semanas enviadas por las personas de tu equipo. Revisa sus horas y apruébalas o devuélvelas con un comentario.",
@@ -176,7 +167,6 @@
     "hours.approvals.status": "Estado",
     "hours.approvals.reviewed": "Revisada",
     "hours.approvals.hours": "Horas",
-
     "hours.table.date": "Fecha",
     "hours.table.person": "Persona",
     "hours.table.task": "Tarea",
@@ -184,7 +174,6 @@
     "hours.table.hours": "Horas",
     "hours.table.billable": "Facturable",
     "hours.table.status": "Estado",
-
     "hours.locks.title": "Bloqueo de horas",
     "hours.locks.heading": "Bloqueo de [[horas]]",
     "hours.locks.description": "Al facturar, bloquea las horas aprobadas de un cliente o un proyecto en un rango de fechas. Después solo un administrador podrá cambiarlas.",
@@ -224,7 +213,6 @@
     "hours.locks.unlock_title": "¿Deshacer el bloqueo?",
     "hours.locks.unlock_description": "Las :count entradas de :scope vuelven a estar aprobadas y se podrán reabrir. Quedará en la auditoría.",
     "hours.locks.unlocked": "Deshecho el :date por :name",
-
     "hours.project.title": "Horas · :project",
     "hours.project.export": "Exportar",
     "hours.project.scope_mine": "Ves solo tus horas en este proyecto.",
@@ -246,7 +234,6 @@
     "hours.project.showing": ":from–:to de :total entradas",
     "hours.project.previous": "Anteriores",
     "hours.project.next": "Siguientes",
-
     "home_panel.tasks.title": "Mis tareas de hoy y de esta semana",
     "home_panel.tasks.overdue": "Vencidas",
     "home_panel.tasks.today": "Hoy",
@@ -264,5 +251,19 @@
     "home_panel.unlogged.description": "Días laborables de las dos últimas semanas sin ninguna hora.",
     "home_panel.unlogged.none": "Tienes horas en todos tus días laborables. ¡Bien!",
     "home_panel.unlogged.log": "Imputar horas el :date",
-    "home_panel.unlogged.log_short": "Imputar"
+    "home_panel.unlogged.log_short": "Imputar",
+    "hours.days.total_of": ":logged de :capacity",
+    "hours.days.holiday": "Festivo: :name",
+    "hours.days.absence": "Ausencia",
+    "hours.days.absence_partial": "parte del día",
+    "hours.days.edit_entry": "Editar :minutes en «:task»",
+    "hours.days.week_total": "Total de la semana:",
+    "hours.days.today": "Hoy",
+    "hours.days.add_on": "Añadir horas el :day",
+    "hours.days.entries_of": "Horas del :day",
+    "hours.days.missing": "Sin horas en un día laborable.",
+    "hours.days.empty": "Sin horas.",
+    "hours.view.label": "Vista de la hoja",
+    "hours.view.week": "Semana",
+    "hours.view.days": "Por días"
 }

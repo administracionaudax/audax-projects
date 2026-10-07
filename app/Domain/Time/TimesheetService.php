@@ -118,6 +118,32 @@ final class TimesheetService
     }
 
     /**
+     * Por qué un día de la semana tiene otra jornada (vista «Por días» de la hoja, D-321): el
+     * festivo (a todos) y la ausencia aprobada; el tipo de ausencia solo si $viewer puede ver las
+     * ausencias de $owner (D-088), si no, null («Ausencia»).
+     *
+     * @return array<string, array{holiday: string|null, absence: array{type: string|null, partial: bool}|null}>
+     */
+    public function dayNotes(User $viewer, User $owner, Week $week): array
+    {
+        $showType = $viewer->canSeeAbsencesOf($owner);
+        $notes = [];
+
+        foreach ($this->capacity->details($owner, $week->start, $week->end()) as $date => $detail) {
+            $absence = $detail['absence'];
+            $notes[$date] = [
+                'holiday' => $detail['holiday'],
+                'absence' => $absence === null ? null : [
+                    'type' => $showType ? $absence['type'] : null,
+                    'partial' => $absence['partial_minutes'] !== null,
+                ],
+            ];
+        }
+
+        return $notes;
+    }
+
+    /**
      * Tareas con horas la semana anterior que aún admiten horas: «Copiar tareas de la semana
      * anterior» las añade como filas sin horas (D-036).
      *

@@ -6,7 +6,9 @@ import {
     CircleCheck,
     ClipboardCopy,
     Clock,
+    Grid3x3,
     Info,
+    List as ListIcon,
     Lock,
     Plus,
     RotateCcw,
@@ -23,6 +25,7 @@ import { CellEntriesDialog } from '@/components/time/cell-entries-dialog';
 import { ReturnWeekDialog } from '@/components/time/return-week-dialog';
 import { TaskPicker } from '@/components/time/task-picker';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
+import { TimesheetDays } from '@/components/time/timesheet-days';
 import { TimesheetGrid } from '@/components/time/timesheet-grid';
 import type { GridRow } from '@/components/time/timesheet-grid';
 import { useExtraRows } from '@/components/time/use-extra-rows';
@@ -37,7 +40,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useAbilities, useRequiredUser } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { formatDate, formatDateTime, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { index as timeIndex } from '@/routes/time';
@@ -58,12 +63,50 @@ type DialogState =
           minutes?: number;
       };
 
-function sheetUrl(week: string, personId: number | null) {
+/** Vista de la hoja (D-321): la rejilla de la semana o la lista por días. */
+type SheetView = 'week' | 'days';
+
+const VIEW_PARAM: Record<SheetView, string> = { week: 'semana', days: 'dias' };
+
+function viewFromUrl(url: string): SheetView | null {
+    const value = new URL(url, 'http://localhost').searchParams.get('vista');
+
+    return value === 'dias' ? 'days' : value === 'semana' ? 'week' : null;
+}
+
+function viewStorageKey(userId: number): string {
+    return `audax.time.view.${userId}`;
+}
+
+function readStoredView(userId: number): SheetView | null {
+    try {
+        const value = window.localStorage.getItem(viewStorageKey(userId));
+
+        return value === 'days' || value === 'week' ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function storeView(userId: number, view: SheetView): void {
+    try {
+        window.localStorage.setItem(viewStorageKey(userId), view);
+    } catch {
+        // Sin almacenamiento: vale la de la URL.
+    }
+}
+
+function sheetUrl(
+    week: string,
+    personId: number | null,
+    view: SheetView | null = null,
+) {
     return timeIndex.url({
-        query:
-            personId !== null
-                ? { semana: week, persona: personId }
-                : { semana: week },
+        query: {
+            semana: week,
+            ...(personId !== null ? { persona: personId } : {}),
+            ...(view !== null ? { vista: VIEW_PARAM[view] } : {}),
+        },
     });
 }
 
@@ -80,12 +123,31 @@ export default function TimesheetPage({
     rows,
     totals,
     capacity,
+    day_notes: dayNotes,
     previous_week_tasks: previousWeekTasks,
     can,
     settings,
 }: TimesheetPageProps) {
     const user = useRequiredUser();
-    const timer = usePage().props.timer ?? null;
+    const page = usePage();
+    const timer = page.props.timer ?? null;
+    const isMobile = useIsMobile();
+    // La vista: la de la URL; si no, la última elegida en este navegador; si no, por días en el
+    // móvil y la semana en el ordenador (D-321).
+    const urlView = viewFromUrl(page.url);
+    const [storedView] = useState(() => readStoredView(user.id));
+    const view: SheetView =
+        urlView ?? storedView ?? (isMobile ? 'days' : 'week');
+    // Los enlaces de la semana llevan la vista si se ha elegido (o es la de por días).
+    const linkView = urlView !== null || view === 'days' ? view : null;
+    const changeView = (next: SheetView) => {
+        storeView(user.id, next);
+        router.replace({
+            url: sheetUrl(week.iso, isOwn ? null : person.id, next),
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
     const abilities = useAbilities();
     const personParam = isOwn ? null : person.id;
     const extras = useExtraRows(person.id, week.iso);
@@ -134,6 +196,11 @@ export default function TimesheetPage({
             toast.success(t('hours.sheet.copy_done', { count: added }));
         }
     };
+
+    const canEditEntry = (entry: TimeEntry) =>
+        entry.status === 'locked'
+            ? user.roles.includes('admin')
+            : can.edit && entry.status === 'draft';
 
     const weekLabel = weekRangeLabel(week.start, week.end);
     const submitDescription = [
@@ -205,7 +272,11 @@ export default function TimesheetPage({
                     >
                         <Button asChild variant="outline" size="icon">
                             <Link
-                                href={sheetUrl(week.previous, personParam)}
+                                href={sheetUrl(
+                                    week.previous,
+                                    personParam,
+                                    linkView,
+                                )}
                                 aria-label={t('hours.sheet.previous_week')}
                                 title={t('hours.sheet.previous_week')}
                                 preserveScroll
@@ -226,7 +297,11 @@ export default function TimesheetPage({
                         </p>
                         <Button asChild variant="outline" size="icon">
                             <Link
-                                href={sheetUrl(week.next, personParam)}
+                                href={sheetUrl(
+                                    week.next,
+                                    personParam,
+                                    linkView,
+                                )}
                                 aria-label={t('hours.sheet.next_week')}
                                 title={t('hours.sheet.next_week')}
                                 preserveScroll
@@ -237,7 +312,11 @@ export default function TimesheetPage({
                         {week.iso !== week.current ? (
                             <Button asChild variant="ghost" size="sm">
                                 <Link
-                                    href={sheetUrl(week.current, personParam)}
+                                    href={sheetUrl(
+                                        week.current,
+                                        personParam,
+                                        linkView,
+                                    )}
                                 >
                                     {t('hours.sheet.this_week')}
                                 </Link>
@@ -245,50 +324,83 @@ export default function TimesheetPage({
                         ) : null}
                     </nav>
 
-                    {people.length > 0 ? (
-                        <div className="flex items-center gap-2">
-                            <span
-                                id="timesheet-person-label"
-                                className="text-sm text-muted-foreground"
+                    <div className="flex flex-wrap items-center gap-3">
+                        <ToggleGroup
+                            type="single"
+                            variant="outline"
+                            value={view}
+                            onValueChange={(next) => {
+                                if (next === 'week' || next === 'days') {
+                                    changeView(next);
+                                }
+                            }}
+                            aria-label={t('hours.view.label')}
+                            data-test="sheet-view"
+                        >
+                            <ToggleGroupItem
+                                value="week"
+                                className="gap-1.5 px-3"
+                                data-test="sheet-view-week"
                             >
-                                {t('hours.sheet.person')}
-                            </span>
-                            <Select
-                                value={String(person.id)}
-                                onValueChange={(value) => {
-                                    const id = Number(value);
-                                    router.get(
-                                        sheetUrl(
-                                            week.iso,
-                                            id === user.id ? null : id,
-                                        ),
-                                    );
-                                }}
+                                <Grid3x3 aria-hidden="true" />
+                                {t('hours.view.week')}
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                                value="days"
+                                className="gap-1.5 px-3"
+                                data-test="sheet-view-days"
                             >
-                                <SelectTrigger
-                                    className="w-56"
-                                    aria-labelledby="timesheet-person-label"
+                                <ListIcon aria-hidden="true" />
+                                {t('hours.view.days')}
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+
+                        {people.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                                <span
+                                    id="timesheet-person-label"
+                                    className="text-sm text-muted-foreground"
                                 >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={String(user.id)}>
-                                        {t('hours.dialog.me', {
-                                            name: user.name,
-                                        })}
-                                    </SelectItem>
-                                    {people.map((other) => (
-                                        <SelectItem
-                                            key={other.id}
-                                            value={String(other.id)}
-                                        >
-                                            {other.name}
+                                    {t('hours.sheet.person')}
+                                </span>
+                                <Select
+                                    value={String(person.id)}
+                                    onValueChange={(value) => {
+                                        const id = Number(value);
+                                        router.get(
+                                            sheetUrl(
+                                                week.iso,
+                                                id === user.id ? null : id,
+                                                linkView,
+                                            ),
+                                        );
+                                    }}
+                                >
+                                    <SelectTrigger
+                                        className="w-56"
+                                        aria-labelledby="timesheet-person-label"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={String(user.id)}>
+                                            {t('hours.dialog.me', {
+                                                name: user.name,
+                                            })}
                                         </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    ) : null}
+                                        {people.map((other) => (
+                                            <SelectItem
+                                                key={other.id}
+                                                value={String(other.id)}
+                                            >
+                                                {other.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        ) : null}
+                    </div>
                 </section>
 
                 <WeekStatus
@@ -322,38 +434,53 @@ export default function TimesheetPage({
                                 <Plus aria-hidden="true" />
                                 {t('hours.sheet.add_entry')}
                             </Button>
-                            <div className="w-full sm:w-72">
-                                <TaskPicker
-                                    value={null}
-                                    onChange={(task) => {
-                                        if (
-                                            extras.add([task]) === 0 &&
-                                            serverTaskIds.has(task.id)
-                                        ) {
-                                            toast.info(
-                                                t('hours.sheet.row_exists'),
-                                            );
+                            {/* Filas a mano y copiar la semana anterior: solo en la rejilla. */}
+                            {view === 'week' ? (
+                                <>
+                                    <div className="w-full sm:w-72">
+                                        <TaskPicker
+                                            value={null}
+                                            onChange={(task) => {
+                                                if (
+                                                    extras.add([task]) === 0 &&
+                                                    serverTaskIds.has(task.id)
+                                                ) {
+                                                    toast.info(
+                                                        t(
+                                                            'hours.sheet.row_exists',
+                                                        ),
+                                                    );
+                                                }
+                                            }}
+                                            userId={
+                                                isOwn ? undefined : person.id
+                                            }
+                                            placeholder={t(
+                                                'hours.sheet.add_row',
+                                            )}
+                                            aria-label={t(
+                                                'hours.sheet.add_row',
+                                            )}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={copyPrevious}
+                                        disabled={
+                                            previousWeekTasks.length === 0
                                         }
-                                    }}
-                                    userId={isOwn ? undefined : person.id}
-                                    placeholder={t('hours.sheet.add_row')}
-                                    aria-label={t('hours.sheet.add_row')}
-                                />
-                            </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={copyPrevious}
-                                disabled={previousWeekTasks.length === 0}
-                                title={
-                                    previousWeekTasks.length === 0
-                                        ? t('hours.sheet.copy_none')
-                                        : undefined
-                                }
-                            >
-                                <ClipboardCopy aria-hidden="true" />
-                                {t('hours.sheet.copy_previous')}
-                            </Button>
+                                        title={
+                                            previousWeekTasks.length === 0
+                                                ? t('hours.sheet.copy_none')
+                                                : undefined
+                                        }
+                                    >
+                                        <ClipboardCopy aria-hidden="true" />
+                                        {t('hours.sheet.copy_previous')}
+                                    </Button>
+                                </>
+                            ) : null}
                         </>
                     ) : null}
 
@@ -469,7 +596,23 @@ export default function TimesheetPage({
                     </div>
                 </div>
 
-                {gridRows.length === 0 ? (
+                {view === 'days' ? (
+                    <TimesheetDays
+                        rows={gridRows}
+                        days={week.days}
+                        totals={totals}
+                        capacity={capacity}
+                        dayNotes={dayNotes}
+                        today={settings.today}
+                        allowFuture={settings.allow_future}
+                        editable={can.edit}
+                        canEditEntry={canEditEntry}
+                        onAdd={(date) =>
+                            setDialog({ kind: 'new', task: null, date })
+                        }
+                        onEdit={(entry) => setDialog({ kind: 'entry', entry })}
+                    />
+                ) : gridRows.length === 0 ? (
                     <EmptyState
                         icon={Clock}
                         title={t('hours.sheet.empty_title')}
@@ -529,11 +672,7 @@ export default function TimesheetPage({
                     day={openCell.day}
                     entries={openCell.entries}
                     editable={can.edit}
-                    canEditEntry={(entry) =>
-                        entry.status === 'locked'
-                            ? user.roles.includes('admin')
-                            : can.edit && entry.status === 'draft'
-                    }
+                    canEditEntry={canEditEntry}
                     onEdit={(entry) => setDialog({ kind: 'entry', entry })}
                     onAdd={() =>
                         setDialog({

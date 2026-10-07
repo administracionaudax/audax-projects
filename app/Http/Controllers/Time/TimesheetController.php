@@ -83,6 +83,8 @@ class TimesheetController extends TimeController
             'rows' => $this->rows($entries, $week),
             'totals' => $this->sheets->totals($entries, $week),
             'capacity' => $this->sheets->capacity($owner, $week),
+            // Festivos y ausencias de cada día, para la vista «Por días» (D-321).
+            'day_notes' => $this->sheets->dayNotes($viewer, $owner, $week),
             'previous_week_tasks' => Plain::of(LoggableTaskResource::collection($this->sheets->previousWeekTasks($viewer, $owner, $week))),
             'can' => [
                 'edit' => $period->isEditable(),

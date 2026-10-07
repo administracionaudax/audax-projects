@@ -97,6 +97,13 @@ export type DayTotals = {
     week: number;
 };
 
+/** Festivo y ausencia de un día de la hoja (vista «Por días», D-321). */
+export type TimesheetDayNote = {
+    holiday: string | null;
+    /** Tipo solo si quien mira puede ver las ausencias de la persona (D-088); si no, null. */
+    absence: { type: string | null; partial: boolean } | null;
+};
+
 /** /horas?semana=2026-W39[&persona=12] (TimesheetController::show). */
 export type TimesheetPageProps = {
     week: WeekInfo;
@@ -110,6 +117,8 @@ export type TimesheetPageProps = {
     rows: TimesheetRow[];
     totals: DayTotals;
     capacity: DayTotals;
+    /** Por fecha "YYYY-MM-DD", los 7 días. */
+    day_notes: Record<string, TimesheetDayNote>;
     previous_week_tasks: LoggableTask[];
     can: {
         edit: boolean;
