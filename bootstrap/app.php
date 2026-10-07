@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HealthController;
 use App\Http\Middleware\EnsureClientUser;
+use App\Http\Middleware\EnsureInspectionAccess;
 use App\Http\Middleware\EnsureInternalUser;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -65,6 +66,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'collaborator' => RestrictCollaborators::class,
             // Módulos activables de la Fase 10 (F-177, D-151): `module:weeklies`, `module:help`…
             'module' => EnsureModuleEnabled::class,
+            // Acceso de solo lectura de la Inspección de Trabajo (Fase 11, R2; D-353).
+            'inspection' => EnsureInspectionAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

@@ -113,6 +113,9 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         '#^informes/descargas/#',
         // Horizon: su propia puerta (solo admin fuera de local).
         '#^horizon#',
+        // Acceso de solo lectura de la Inspección de Trabajo (D-353): sin cuenta de la app, con su
+        // enlace, su código y su sesión (tests/Feature/People/InspectionAccessTest).
+        '#^inspeccion(/|$)#',
     ];
     $unexpected = [];
 

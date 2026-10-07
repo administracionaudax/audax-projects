@@ -30,6 +30,9 @@ void createInertiaApp({
                 return AuthLayout;
             case name.startsWith('portal/'):
                 return PortalLayout;
+            // El acceso de solo lectura de la Inspección (D-353) trae su propio marco: no es la app.
+            case name.startsWith('inspection/'):
+                return null;
             // Los ajustes son comunes: los clientes los ven dentro del portal.
             case name.startsWith('settings/'):
                 return (page.props as { auth?: Auth }).auth?.user?.is_client

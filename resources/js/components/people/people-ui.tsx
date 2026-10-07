@@ -15,7 +15,13 @@ import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { incidentLabel, STATUS_TONE, statusLabel } from '@/lib/people';
 import { cn } from '@/lib/utils';
+import { index as closesIndex } from '@/routes/people/closes';
+import { index as documentsIndex } from '@/routes/people/documents';
+import { index as inspectionIndex } from '@/routes/people/inspection';
+import { index as overtimeIndex } from '@/routes/people/overtime';
 import { index as pendingIndex } from '@/routes/people/pending';
+import { index as registerIndex } from '@/routes/people/register';
+import { index as reportsIndex } from '@/routes/people/reports';
 import { index as teamIndex } from '@/routes/people/team';
 import { index as workdayIndex } from '@/routes/people/workday';
 import type { DayStatus, WorkdayIncident } from '@/types/people';
@@ -150,9 +156,96 @@ export function Figure({
     );
 }
 
+/** Una pestaña del marco: su id, el texto, el enlace y, si lo hay, un contador. */
+type FrameTab = { id: string; label: string; href: string; count?: number };
+
+export type PeopleSection =
+    | 'workday'
+    | 'register'
+    | 'documents'
+    | 'team'
+    | 'pending'
+    | 'closes'
+    | 'overtime'
+    | 'reports'
+    | 'inspection'
+    | 'person';
+
 /**
- * Marco de las pantallas: título (un solo h1), descripción, acciones y, para quien ve la jornada del
- * equipo, las pestañas.
+ * Pestañas del registro de jornada (D-341 y D-358): las de cada persona (Mi jornada, Mi registro y
+ * Documentos), las del responsable y RR. HH. (Jornada del equipo, Pendientes, Cierres y Horas extra)
+ * y las de RR. HH. (Informes e Inspección).
+ */
+export function peopleTabs(
+    can: { viewPeopleTeam?: boolean; managePeopleRegister?: boolean },
+    counters: {
+        pending?: number;
+        pendingClose?: boolean;
+        unreadDocuments?: number;
+    },
+): FrameTab[] {
+    const tabs: FrameTab[] = [
+        {
+            id: 'workday',
+            label: t('people.nav.workday'),
+            href: workdayIndex.url(),
+        },
+        {
+            id: 'register',
+            label: t('people.nav.register'),
+            href: registerIndex.url(),
+            count: counters.pendingClose ? 1 : 0,
+        },
+        {
+            id: 'documents',
+            label: t('people.nav.documents'),
+            href: documentsIndex.url(),
+            count: counters.unreadDocuments ?? 0,
+        },
+    ];
+
+    if (can.viewPeopleTeam) {
+        tabs.push(
+            { id: 'team', label: t('people.nav.team'), href: teamIndex.url() },
+            {
+                id: 'pending',
+                label: t('people.nav.pending'),
+                href: pendingIndex.url(),
+                count: counters.pending ?? 0,
+            },
+            {
+                id: 'closes',
+                label: t('people.nav.closes'),
+                href: closesIndex.url(),
+            },
+            {
+                id: 'overtime',
+                label: t('people.nav.overtime'),
+                href: overtimeIndex.url(),
+            },
+        );
+    }
+
+    if (can.managePeopleRegister) {
+        tabs.push(
+            {
+                id: 'reports',
+                label: t('people.nav.reports'),
+                href: reportsIndex.url(),
+            },
+            {
+                id: 'inspection',
+                label: t('people.nav.inspection'),
+                href: inspectionIndex.url(),
+            },
+        );
+    }
+
+    return tabs;
+}
+
+/**
+ * Marco de las pantallas: título (un solo h1), descripción, acciones y las pestañas del registro.
  */
 export function PeopleFrame({
     section,
@@ -161,28 +254,18 @@ export function PeopleFrame({
     actions,
     children,
 }: {
-    section: 'workday' | 'team' | 'pending' | 'person';
+    section: PeopleSection;
     title: string;
     description: string;
     actions?: ReactNode;
     children: ReactNode;
 }) {
     const { auth, people } = usePage().props;
-    const pending = people?.pending ?? 0;
-    const tabs = [
-        {
-            id: 'workday',
-            label: t('people.nav.workday'),
-            href: workdayIndex.url(),
-        },
-        { id: 'team', label: t('people.nav.team'), href: teamIndex.url() },
-        {
-            id: 'pending',
-            label: t('people.nav.pending'),
-            href: pendingIndex.url(),
-            count: pending,
-        },
-    ] as const;
+    const tabs = peopleTabs(auth.can, {
+        pending: people?.pending ?? 0,
+        pendingClose: Boolean(people?.pending_close),
+        unreadDocuments: people?.unread_documents ?? 0,
+    });
     const current = section === 'person' ? 'team' : section;
 
     return (
@@ -203,39 +286,38 @@ export function PeopleFrame({
                 ) : null}
             </header>
 
-            {auth.can.viewPeopleTeam ? (
-                <nav
-                    aria-label={t('people.nav.label')}
-                    className="-mx-4 overflow-x-auto border-b px-4 md:mx-0 md:px-0"
-                >
-                    <ul className="flex min-w-max gap-1">
-                        {tabs.map((tab) => (
-                            <li key={tab.id}>
-                                <Link
-                                    href={tab.href}
-                                    aria-current={
-                                        tab.id === current ? 'page' : undefined
-                                    }
-                                    className={cn(
-                                        '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm',
-                                        tab.id === current
-                                            ? 'border-primary font-medium text-foreground'
-                                            : 'border-transparent text-muted-foreground hover:text-foreground',
-                                        FOCUS_RING,
-                                    )}
-                                >
-                                    {tab.label}
-                                    {'count' in tab && tab.count > 0 ? (
-                                        <span className="tabular rounded-md bg-info-soft px-1.5 text-xs text-foreground">
-                                            {tab.count}
-                                        </span>
-                                    ) : null}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
-            ) : null}
+            <nav
+                aria-label={t('people.nav.label')}
+                className="-mx-4 overflow-x-auto border-b px-4 md:mx-0 md:px-0"
+            >
+                <ul className="flex min-w-max gap-1">
+                    {tabs.map((tab) => (
+                        <li key={tab.id}>
+                            <Link
+                                href={tab.href}
+                                aria-current={
+                                    tab.id === current ? 'page' : undefined
+                                }
+                                className={cn(
+                                    '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm',
+                                    tab.id === current
+                                        ? 'border-primary font-medium text-foreground'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground',
+                                    FOCUS_RING,
+                                )}
+                                data-test={`people-tab-${tab.id}`}
+                            >
+                                {tab.label}
+                                {tab.count && tab.count > 0 ? (
+                                    <span className="tabular rounded-md bg-info-soft px-1.5 text-xs text-foreground">
+                                        {tab.count}
+                                    </span>
+                                ) : null}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            </nav>
 
             <div className="grid min-w-0 gap-8">{children}</div>
         </div>

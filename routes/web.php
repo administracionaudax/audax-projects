@@ -61,6 +61,10 @@ Route::get('informes/descargas/{download}', ReportDownloadController::class)
     ->middleware(['signed', 'throttle:30,1,reports.downloads.show'])
     ->name('reports.downloads.show');
 
+// Acceso de solo lectura de la Inspección de Trabajo (Fase 11, R2; D-353): fuera del grupo interno,
+// con su propio enlace, código y sesión (routes/app/inspection.php).
+require __DIR__.'/app/inspection.php';
+
 Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(function () {
     Route::get('/', HomeController::class)->name('home');
     Route::redirect('dashboard', '/')->name('dashboard');

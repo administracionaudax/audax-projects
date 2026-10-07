@@ -56,7 +56,13 @@ import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import { index as teamIndex } from '@/routes/team';
 import { index as myTasksIndex } from '@/routes/my-tasks';
+import { index as closesIndex } from '@/routes/people/closes';
+import { index as documentsIndex } from '@/routes/people/documents';
+import { index as inspectionIndex } from '@/routes/people/inspection';
+import { index as overtimeIndex } from '@/routes/people/overtime';
 import { index as peoplePendingIndex } from '@/routes/people/pending';
+import { index as registerIndex } from '@/routes/people/register';
+import { index as peopleReportsIndex } from '@/routes/people/reports';
 import { index as peopleTeamIndex } from '@/routes/people/team';
 import { index as workdayIndex } from '@/routes/people/workday';
 import { index as projectsIndex } from '@/routes/projects';
@@ -150,20 +156,56 @@ export function projectsNavItems(can: Abilities): NavItem[] {
 }
 
 /**
- * Sección «Personas» (D-260): el registro de jornada (Fase 11, D-341) con el módulo `people`
- * visible, «Mi jornada» con el contador de lo que espera mi decisión y, para responsables y RR. HH.,
- * «Jornada del equipo» y «Pendientes»; y las Ausencias (D-091), con «Ausencias del equipo» para
- * quien las aprueba (D-049). Un colaborador externo no tiene nada (D-134), así que no ve la sección.
+ * Sección «Personas» (D-260): el registro de jornada (Fase 11, D-341 y D-358) con el módulo `people`
+ * visible: «Mi jornada» con el contador de lo que espera mi decisión y, debajo, «Mi registro» y
+ * «Documentos» (con su aviso si hay un resumen por confirmar o algo por leer); para responsables y
+ * RR. HH., «Jornada del equipo», «Pendientes», «Cierres» y «Horas extra»; y para RR. HH.,
+ * «Informes» e «Inspección». Y las Ausencias (D-091), con «Ausencias del equipo» para quien las
+ * aprueba (D-049). Un colaborador externo no tiene nada (D-134), así que no ve la sección.
  */
 export function peopleNavItems(
     can: Abilities,
-    counters: { peoplePending?: number } = {},
+    counters: {
+        peoplePending?: number;
+        pendingClose?: boolean;
+        unreadDocuments?: number;
+    } = {},
 ): NavItem[] {
     if (!can.viewAbsences) {
         return [];
     }
 
     const pending = counters.peoplePending ?? 0;
+    const attention =
+        (counters.pendingClose ? 1 : 0) + (counters.unreadDocuments ?? 0);
+    const children: NavItem[] = [
+        { title: t('people.nav.register'), href: registerIndex() },
+        { title: t('people.nav.documents'), href: documentsIndex() },
+        ...(can.viewPeopleTeam
+            ? [
+                  { title: t('people.nav.team'), href: peopleTeamIndex() },
+                  {
+                      title: t('people.nav.pending'),
+                      href: peoplePendingIndex(),
+                  },
+                  { title: t('people.nav.closes'), href: closesIndex() },
+                  { title: t('people.nav.overtime'), href: overtimeIndex() },
+              ]
+            : []),
+        ...(can.managePeopleRegister
+            ? [
+                  {
+                      title: t('people.nav.reports'),
+                      href: peopleReportsIndex(),
+                  },
+                  {
+                      title: t('people.nav.inspection'),
+                      href: inspectionIndex(),
+                  },
+              ]
+            : []),
+    ];
+    const badgeCount = pending + attention;
     const workday: NavItem[] =
         can.usePeople === true
             ? [
@@ -172,27 +214,22 @@ export function peopleNavItems(
                       href: workdayIndex(),
                       icon: CalendarClock,
                       badge:
-                          pending > 0
+                          badgeCount > 0
                               ? {
-                                    count: pending,
-                                    label: tCount(
-                                        'people.nav.pending_count',
-                                        pending,
-                                    ),
+                                    count: badgeCount,
+                                    label:
+                                        pending > 0
+                                            ? tCount(
+                                                  'people.nav.pending_count',
+                                                  pending,
+                                              )
+                                            : tCount(
+                                                  'people.nav.attention_count',
+                                                  attention,
+                                              ),
                                 }
                               : undefined,
-                      items: can.viewPeopleTeam
-                          ? [
-                                {
-                                    title: t('people.nav.team'),
-                                    href: peopleTeamIndex(),
-                                },
-                                {
-                                    title: t('people.nav.pending'),
-                                    href: peoplePendingIndex(),
-                                },
-                            ]
-                          : undefined,
+                      items: children,
                   },
               ]
             : [];
@@ -316,6 +353,9 @@ export type NavCounters = {
     chatUnread?: number;
     /** Registro de jornada: correcciones que esperan mi decisión (Fase 11). */
     peoplePending?: number;
+    /** R2: un resumen del mes por confirmar y documentos de RR. HH. sin leer. */
+    pendingClose?: boolean;
+    unreadDocuments?: number;
     weekliesPending?: number;
     weekliesEnabled?: boolean;
     assistantEnabled?: boolean;
@@ -368,6 +408,8 @@ export function AppSidebar() {
     const counters: NavCounters = {
         chatUnread,
         peoplePending: props.people?.pending ?? 0,
+        pendingClose: Boolean(props.people?.pending_close),
+        unreadDocuments: props.people?.unread_documents ?? 0,
         weekliesPending: props.weeklies?.pending ?? 0,
         weekliesEnabled: props.config?.modules?.weeklies,
         assistantEnabled: props.config?.modules?.assistant,

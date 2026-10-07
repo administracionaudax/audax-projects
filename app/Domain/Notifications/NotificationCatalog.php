@@ -89,6 +89,17 @@ final class NotificationCatalog
             new NotificationEvent('people.correction_requested', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
             new NotificationEvent('people.correction_accepted', 'people', $all, [$app], self::AUDIENCE_PEOPLE),
             new NotificationEvent('people.correction_disputed', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            // R2 (D-356): el resumen del mes para confirmar (obligatorio: es la copia de los arts.
+            // 12.4.c y 35.5 ET), sus recordatorios, la desconfirmación y el desacuerdo; el resumen
+            // semanal de horas extra (obligatorio, art. 35.5 ET); el tope anual; y los documentos de
+            // RR. HH. La comprobación nocturna del registro, a los admins, va con los de sistema.
+            new NotificationEvent('people.month_close_ready', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.month_close_reminder', 'people', $all, [$app, $push], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.month_close_reopened', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.month_close_disagreed', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.overtime_weekly_summary', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.overtime_cap', 'people', [$app, $email], [$app, $email], self::AUDIENCE_PEOPLE, mandatory: true),
+            new NotificationEvent('people.document_published', 'people', $all, [$app], self::AUDIENCE_PEOPLE),
 
             // Tareas (Fase 1): asignación, mención, comentario y cambio de estado de una tarea que
             // sigo, y tareas que vencen mañana o vencidas.
@@ -151,6 +162,8 @@ final class NotificationCatalog
             new NotificationEvent('system.transcriptions_failing', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
             new NotificationEvent('system.disk_space', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
             new NotificationEvent('system.backup_failed', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
+            // Registro de jornada (R2, D-352): la comprobación nocturna de la cadena falla.
+            new NotificationEvent('people.integrity_broken', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
         ];
 
         $byKind = [];

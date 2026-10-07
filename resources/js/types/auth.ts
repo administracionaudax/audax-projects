@@ -60,6 +60,8 @@ export type Abilities = {
     clock?: boolean;
     viewPeopleTeam?: boolean;
     managePeople?: boolean;
+    /** R2 (D-355): informes, Inspección y documentos de RR. HH. con el módulo visible. */
+    managePeopleRegister?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */

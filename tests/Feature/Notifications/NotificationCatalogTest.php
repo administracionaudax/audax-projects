@@ -110,8 +110,11 @@ test('cada evento tiene grupo, textos y canales coherentes', function () {
             ->and(__("notifications.events.{$kind}.description"))->not->toBe("notifications.events.{$kind}.description")
             ->and(__("notifications.groups.{$event->group}"))->not->toBe("notifications.groups.{$event->group}");
 
+        // Obligatorios: los de sistema para el admin y, desde la Fase 11 (D-356), los legales del
+        // registro de jornada (el resumen del mes, su desconfirmación, el resumen semanal de horas
+        // extra y el tope anual), para quien usa el módulo.
         if ($event->mandatory) {
-            expect($event->audience)->toBe(NotificationCatalog::AUDIENCE_ADMINS);
+            expect($event->audience)->toBeIn([NotificationCatalog::AUDIENCE_ADMINS, NotificationCatalog::AUDIENCE_PEOPLE]);
         }
     }
 });

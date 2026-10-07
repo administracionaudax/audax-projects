@@ -148,12 +148,13 @@ class UserController extends Controller
             'personalDataExports' => $actor->isAdmin() ? app(PersonalDataExportList::class)->for($user) : null,
             // Datos laborales (Fase 11, D-343): alta, baja y si está sujeto al registro de jornada.
             // Los ve y edita quien tiene manage-people, y solo para la plantilla interna.
-            'employment' => PeopleAccess::managesAll($actor) && PeopleAccess::staff($user) ? self::employment($user) : null,
+            // También de quien ya no está activo: la retención por litigio importa sobre todo ahí (D-348).
+            'employment' => PeopleAccess::managesAll($actor) && PeopleAccess::internalStaff($user) ? self::employment($user) : null,
         ]);
     }
 
     /**
-     * @return array{hire_date: string|null, termination_date: string|null, subject_to_register: bool, register_exemption_reason: string|null}
+     * @return array{hire_date: string|null, termination_date: string|null, subject_to_register: bool, register_exemption_reason: string|null, part_time: bool, legal_hold: bool, legal_hold_reason: string|null, legal_hold_since: string|null}
      */
     private static function employment(User $user): array
     {
@@ -164,6 +165,10 @@ class UserController extends Controller
             'termination_date' => $profile?->termination_date?->toDateString(),
             'subject_to_register' => $profile === null || $profile->subject_to_register,
             'register_exemption_reason' => $profile?->register_exemption_reason,
+            'part_time' => $profile !== null && $profile->part_time,
+            'legal_hold' => $profile !== null && $profile->legal_hold,
+            'legal_hold_reason' => $profile?->legal_hold_reason,
+            'legal_hold_since' => $profile?->legal_hold_since?->toIso8601ZuluString(),
         ];
     }
 

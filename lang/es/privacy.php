@@ -19,15 +19,19 @@ return [
 - registrar las horas que dedicas a cada proyecto y facturarlas a los clientes,
 - planificar la carga de trabajo del equipo teniendo en cuenta jornadas, festivos y ausencias,
 - organizar el día con el plan del día: lo que cada persona prevé hacer y si lo ha hecho,
+- llevar el registro diario de tu jornada, que exige el artículo 34.9 del Estatuto de los Trabajadores,
 - comunicarnos con el chat interno.
 
 **Base legal:** la ejecución de tu contrato de trabajo y el interés legítimo de la empresa en organizar el trabajo, dentro de las facultades de control del artículo 20.3 del Estatuto de los Trabajadores.
+
+**Registro de jornada:** su base es el cumplimiento de una obligación legal (artículo 6.1.c del RGPD y artículo 34.9 del Estatuto de los Trabajadores), sin necesidad de tu consentimiento. Solo se usa para eso: controlar la jornada, los descansos y las horas extra. No se usa para medir tu productividad ni para ninguna otra finalidad.
 
 **Qué datos se tratan:**
 - tus datos de identificación y de contacto profesionales,
 - las horas que imputas, tus tareas y tus comentarios,
 - tu plan del día: las líneas que escribes, si las haces, las horas que prevés y los comentarios de tu responsable,
 - tus ausencias: solo el tipo y las fechas, nunca diagnósticos ni justificantes médicos,
+- tu registro de jornada: la hora de entrada, de la comida y de salida que fichas, si trabajas presencial o a distancia, las correcciones con su motivo, tus resúmenes mensuales con tu confirmación y tus horas extra y saldo de horas; de la conexión desde la que fichas, solo una huella de la dirección IP que no permite saber cuál era y el navegador. No se usa geolocalización ni datos biométricos,
 - tus mensajes del chat y tus audios, con su transcripción, que se hace en el propio servidor de la empresa,
 - tus weeklies y sus dictados: el dictado se transcribe con Google Gemini y su audio se borra al transcribirlo,
 - los registros de acceso a la aplicación: fecha, dirección IP y navegador.
@@ -35,17 +39,19 @@ return [
 **Quién los ve:**
 - Cada persona ve sus propios datos.
 - Tus responsables y los gestores de tus proyectos ven lo necesario para organizar el trabajo.
+- Tu registro de jornada lo ves tú, tu responsable y RR. HH. La Inspección de Trabajo y, si la hubiera, la representación legal de la plantilla pueden acceder a él en los términos que marca la ley; la Inspección, con un acceso temporal de solo lectura que queda registrado. La comparación entre tu jornada y tus horas imputadas solo la ves tú.
 - El texto y el estado de las líneas de tu plan del día los ve el resto de la plantilla; las horas previstas, el cumplimiento y los comentarios, solo tú, tu responsable y la administración. No se hacen clasificaciones entre personas.
 - Los clientes solo ven, en su portal, las horas aprobadas de sus propios proyectos, y tu nombre únicamente si así se configura.
 - Nada se cede a terceros. Solo las funciones de IA de la Weekly (el informe, su audio, la transcripción y la limpieza de los dictados) usan Google como encargado del tratamiento; los audios del chat se transcriben en el servidor de la empresa.
 
 **Cuánto tiempo se guardan:**
 - las horas, durante los plazos legales de conservación de la documentación contable y laboral,
+- el registro de jornada, cuatro años contados desde el final de cada mes (artículo 34.9 del Estatuto de los Trabajadores); después se suprime, salvo que haya una reclamación o una inspección abierta, que lo bloquea hasta que termine,
 - el resto, según los plazos de retención que la empresa tiene configurados y que puedes consultar aquí.
 
 **Tus derechos:**
 - Puedes pedir el acceso, la rectificación, la supresión, la limitación, la oposición y la portabilidad de tus datos.
-- Desde «Mis datos» puedes descargar una copia de tus datos personales.
+- Desde «Mis datos» puedes descargar una copia de tus datos personales, y desde «Mi registro», tu registro de jornada de cualquier periodo.
 - Si no estás de acuerdo con cómo se tratan, puedes reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).
 MD,
 
@@ -81,6 +87,7 @@ MD,
             'dictations' => 'Dictados de la Weekly',
             'ai_usage' => 'Uso de la IA (quién y sobre qué)',
             'day_plans' => 'Plan del día',
+            'people_register' => 'Registro de jornada (mínimo 48 meses)',
         ],
     ],
 
@@ -116,6 +123,45 @@ MD,
             'contact' => 'Si echas en falta algún dato o quieres ejercer otro derecho (rectificación, supresión, limitación u oposición), escribe a quien figura como responsable en la página Privacidad de la aplicación.',
         ],
         'sections' => [
+            'clock_events' => [
+                'description' => 'Tu registro de jornada: cada fichaje (entrada, comida, vuelta y salida) y cada anulación de una corrección aceptada, con la hora en que pasó y en que se registró, el modo, quién lo escribió y su huella. La IP nunca se guarda.',
+                'columns' => [
+                    'seq' => 'Nº de fila', 'kind' => 'Tipo', 'occurred_at' => 'Cuándo pasó', 'recorded_at' => 'Cuándo se registró', 'work_mode' => 'Modo',
+                    'pause_type' => 'Pausa', 'source' => 'Origen', 'voids_seq' => 'Anula la fila nº', 'correction_id' => 'Corrección', 'author' => 'Escrito por',
+                    'user_agent' => 'Navegador', 'prev_hash' => 'Huella de la fila anterior', 'hash' => 'Huella',
+                ],
+            ],
+            'clock_corrections' => [
+                'description' => 'Las correcciones de tu registro: quién las propuso, el motivo, lo que anulan y añaden y la decisión o la discrepancia.',
+                'columns' => [
+                    'id' => 'Id', 'date' => 'Día', 'proposed_by' => 'Propuesta por', 'proposed_at' => 'Propuesta el', 'reason' => 'Motivo', 'voids' => 'Anula (ids)',
+                    'adds' => 'Añade', 'status' => 'Estado', 'decided_by' => 'Decidida por', 'decided_at' => 'Decidida el', 'decision_note' => 'Nota', 'dispute_reason' => 'Discrepancia',
+                ],
+            ],
+            'month_closes' => [
+                'description' => 'Tus resúmenes mensuales del registro y tu respuesta (confirmación o desacuerdo), con la huella de cada PDF.',
+                'columns' => [
+                    'month' => 'Mes', 'version' => 'Versión', 'status' => 'Estado', 'worked_minutes' => 'Trabajado (min)', 'expected_minutes' => 'Teórico (min)',
+                    'difference_minutes' => 'Diferencia (min)', 'overtime_minutes' => 'Horas extra (min)', 'generated_at' => 'Generado el', 'confirmed_at' => 'Confirmado el',
+                    'disagreed_at' => 'Desacuerdo el', 'disagreement_note' => 'Motivo del desacuerdo', 'reopened_at' => 'Desconfirmado el', 'reopen_reason' => 'Motivo de la desconfirmación',
+                    'pdf_sha256' => 'Huella del PDF',
+                ],
+            ],
+            'overtime' => [
+                'description' => 'La clasificación del exceso de tus días: horas extra o complementarias, flexibilidad y su destino.',
+                'columns' => [
+                    'date' => 'Día', 'hour_type' => 'Tipo de hora', 'excess_minutes' => 'Exceso (min)', 'overtime_minutes' => 'Horas extra (min)', 'flex_minutes' => 'Flexibilidad (min)',
+                    'destination' => 'Destino', 'decided_by' => 'Decidido por', 'decided_at' => 'Decidido el', 'supersedes_id' => 'Sustituye a', 'note' => 'Nota',
+                ],
+            ],
+            'time_balance' => [
+                'description' => 'Los movimientos de tu saldo de horas: horas extra a compensar, descansos disfrutados, pagos y ajustes.',
+                'columns' => ['date' => 'Fecha', 'kind' => 'Tipo', 'minutes' => 'Minutos', 'reason' => 'Motivo', 'created_by' => 'Anotado por', 'created_at' => 'Anotado el'],
+            ],
+            'employment' => [
+                'description' => 'Tus datos laborales del registro (alta, baja, si estás sujeto al registro, tiempo parcial y retención por litigio) y los documentos de RR. HH. que has leído.',
+                'columns' => ['field' => 'Dato', 'value' => 'Valor', 'date' => 'Fecha'],
+            ],
             'profile' => [
                 'description' => 'Datos de tu cuenta: nombre, email, departamento, puesto, rol, preferencias, lectura del texto de privacidad y tu «Estoy fuera» de la Weekly.',
                 'columns' => [

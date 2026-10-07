@@ -34,6 +34,10 @@ export type PeopleShared = {
     clock: ClockShared | null;
     /** Correcciones que esperan su decisión. */
     pending: number;
+    /** R2: el resumen del mes que espera mi respuesta (D-347). */
+    pending_close?: { id: number; month: string } | null;
+    /** R2: documentos de RR. HH. sin leer (D-354). */
+    unread_documents?: number;
 };
 
 export type WorkdayIncident =

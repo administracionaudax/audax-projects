@@ -12,8 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Datos laborales de una persona (Fase 11, D-331 y D-343; W-124 y W-125): fecha de alta y de baja y
  * si está sujeta al registro de jornada (lo está salvo que RR. HH. diga lo contrario con un motivo,
- * por ejemplo un socio que no es asalariado). Sin fila, cuenta como sujeta y sin fechas. R2 y R3
- * añaden la retención por litigio, el contrato y el calendario.
+ * por ejemplo un socio que no es asalariado). Sin fila, cuenta como sujeta y sin fechas. R2 añade el
+ * tiempo parcial (sus horas por encima de la jornada son complementarias, D-349) y la **retención
+ * por litigio** (G.5: con ella activa, la supresión del mes 49 no toca su registro, D-348); R3, el
+ * contrato y el calendario.
  *
  * @property int $id
  * @property int $user_id
@@ -21,11 +23,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $termination_date
  * @property bool $subject_to_register
  * @property string|null $register_exemption_reason
+ * @property bool $part_time
+ * @property bool $legal_hold
+ * @property string|null $legal_hold_reason
+ * @property CarbonImmutable|null $legal_hold_since
+ * @property int|null $legal_hold_by
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read User $user
  */
-#[Fillable(['user_id', 'hire_date', 'termination_date', 'subject_to_register', 'register_exemption_reason'])]
+#[Fillable(['user_id', 'hire_date', 'termination_date', 'subject_to_register', 'register_exemption_reason', 'part_time', 'legal_hold', 'legal_hold_reason', 'legal_hold_since', 'legal_hold_by'])]
 class EmploymentProfile extends Model
 {
     use LogsDomainActivity;
@@ -35,6 +42,8 @@ class EmploymentProfile extends Model
      */
     protected $attributes = [
         'subject_to_register' => true,
+        'part_time' => false,
+        'legal_hold' => false,
     ];
 
     /**
@@ -46,6 +55,9 @@ class EmploymentProfile extends Model
             'hire_date' => 'date:Y-m-d',
             'termination_date' => 'date:Y-m-d',
             'subject_to_register' => 'boolean',
+            'part_time' => 'boolean',
+            'legal_hold' => 'boolean',
+            'legal_hold_since' => 'immutable_datetime',
         ];
     }
 

@@ -265,3 +265,28 @@ table:not(.compact) td:first-child {
     font-weight: 600;
     margin-bottom: 3pt;
 }
+/* Registro de jornada (Fase 11, R2; D-351): la huella al final de cada fichero. */
+.register-hash {
+    margin-top: 16pt;
+    padding-top: 8pt;
+    border-top: 1px solid var(--line);
+    font-size: 8pt;
+    break-inside: avoid;
+}
+.register-hash dl {
+    display: grid;
+    grid-template-columns: 44mm 1fr;
+    gap: 3pt 6mm;
+}
+.register-hash dt {
+    font-weight: 500;
+}
+.register-hash .hash {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    font-size: 7.5pt;
+    overflow-wrap: anywhere;
+}
+.register-hash p {
+    color: var(--muted);
+    margin-top: 6pt;
+}
