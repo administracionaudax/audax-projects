@@ -2579,6 +2579,126 @@ Gate nueva `manage-people-register` (= `manage-people` con el módulo visible); 
 - `DemoDataSeeder` (solo local, tests y CI): el mes anterior completo fichado y **clasificado** por cada responsable (más de una hora, hora extra; menos, flexibilidad; Irene, a tiempo parcial, complementarias pagadas), **cerrado** el día 1 y confirmado salvo Elena y Daniel (pendientes; el E2E confirma el de Elena) y Lucía (en desacuerdo); el saldo de horas (descanso de Pablo, saldo inicial de Sergio «desde Woffu»); el día largo de Lucía de este mes por clasificar; los dos documentos leídos menos por Elena y Daniel; y el ancla de hoy. Los PDF de ejemplo se guardan con el motor html.
 - Decidido de forma prudente, **para la asesoría**: (1) el tope de 80 h cuenta también las horas compensadas (D-349); (2) a tiempo parcial no hay horas extra, solo complementarias pagadas, y hace falta el pacto de horas complementarias (art. 12.5); (3) la flexibilidad no es hora extra y se decide día a día, no semana a semana (F-3); (4) el saldo no puede ser negativo; (5) se conserva 48 meses desde el final del mes y luego se suprime, con bloqueo por litigio (F-5); (6) el resumen mensual se confirma con un acuse electrónico en la app, sin firma cualificada (F-4); (7) la representación legal recibiría el «Anexo de horas» minimizado; (8) el acceso remoto de la Inspección está preparado pero apagado hasta que lo pida el RD o una actuación.
 
+## 07/10/2026: RR. HH., entrega R3 (vacaciones y permisos)
+
+Plan: `docs/PLAN-FASE-11.md` (§0.5 con el contrato de R3, §7.6, §8.3 y la fila R3 de §12). Rama `rrhh-r3` (sale de `fase-10`, con R1 y R2). El módulo `people` sigue apagado y `/ausencias` funciona como en la Fase 3 mientras lo esté (D-360). Lo que la ley o el convenio no dejan claro se ha decidido de la forma más prudente y queda para la asesoría (D-377).
+
+### D-360 · Encaje con las Ausencias de la Fase 3 y el módulo apagado
+- R3 **amplía** las Ausencias de la Fase 3 (D-049, D-088, D-091), no las duplica: la misma tabla `absences`, el mismo `AbsenceService`, `AbsenceRules`, `AbsencePolicy` y las mismas páginas `/ausencias` y «Ausencias del equipo».
+- El catálogo (`leave_types`) sustituye al enum fijo **sin romperlo**: cada tipo tiene una **categoría**, que es uno de los cinco valores de siempre (`App\Enums\AbsenceType`), y esa categoría se sigue guardando en `absences.type`. La capacidad, la carga, la Previsión, la Weekly (exenciones de `WeeklyAway`), el plan del día, el calendario del equipo y la privacidad de D-088 siguen leyendo la categoría y no cambian. Los cinco tipos de siempre conservan su clave (`vacation`, `sick`, `leave`, `training`, `other`); la migración asigna a cada ausencia anterior el tipo de su categoría, y una ausencia que llega solo con la categoría (factorías, importación de WeeklySync, el formulario con el módulo apagado) se queda con ese tipo (`Absence::saving`).
+- **Con el módulo apagado** (`LeaveMode::on`, el módulo visible para quien actúa; en modo de prueba, D-239, solo los admins): la página es la de la Fase 3 (la prop `leave` llega a `null`, los mismos cinco tipos, sin saldos, justificantes, franja ni segundo nivel), las rutas nuevas dan 404, la tarea diaria no hace nada y no sale ningún aviso nuevo. Los textos de los avisos y mensajes de los cinco tipos de siempre siguen siendo los de la Fase 3 («Baja», «Permiso»: `AbsenceText::typeName`). Se ha preferido así porque la plantilla usa hoy `/ausencias` para la capacidad y Woffu sigue llevando los saldos hasta R5: enseñar saldos sin el saldo inicial de Woffu confundiría.
+- **Con el módulo encendido**, RR. HH. (`manage-people`) aprueba, registra y anula las ausencias de toda la plantilla como un admin (PLAN §9), y ve «Ausencias del equipo» aunque no sea admin ni responsable.
+
+### D-361 · Catálogo de tipos de ausencia
+- `leave_types`: nombre, categoría, **unidad** (`working_days`, `calendar_days` u `hours`, W-056), cantidad por defecto y días más con desplazamiento, **retribuido**, **pide justificante**, **preaviso** (días), **dato de salud**, **base legal**, saldo anual (y si en los tipos por horas va en días de la jornada de cada persona), arrastre (`carry_over_until`, MM-DD del año siguiente), si se puede pedir **sin saldo**, **segundo nivel**, si respeta los **días bloqueados**, **pendiente de asesor** con su nota, activo y orden. Nunca se borra (las ausencias lo citan): se desactiva. Lo edita RR. HH. en `/ausencias/tipos`; los cambios quedan en la auditoría (`leave_types`). Los cinco de siempre conservan su categoría.
+- Las cantidades se guardan como **enteros**: centésimas de día en los tipos en días (2200 = 22 días; así caben el medio día y los saldos de Woffu con decimales) y minutos en los de horas (como el resto de la app). En pantalla, «22 días», «0,5 días», «16:00 h» (`LeaveFormat` y `lib/leave.ts`, gemelos).
+- **Precargados** (`LeaveCatalog::DEFAULTS`) con el Estatuto en la redacción del RDL 5/2023: vacaciones (art. 38; 22 días laborables del convenio), baja por IT (art. 45.1.c; sin parte que entregar desde el RD 1060/2022), matrimonio o pareja de hecho (37.3.a, 15 días naturales), accidente, enfermedad grave u hospitalización de un familiar (37.3.b, 5 días, salud), fallecimiento (37.3.b bis, 2 + 2), traslado (37.3.c, 1), deber inexcusable (37.3.d, horas), exámenes prenatales (37.3.f, horas, salud), **fuerza mayor familiar** (37.9, horas de 4 días al año, salud), catástrofe o aviso de la autoridad (37.3.g, RDL 8/2024, hasta 4), lactancia (37.4), permiso parental (48 bis, 8 semanas, preaviso de 10 días, no retribuido), nacimiento (48.4, RDL 9/2025, 19 semanas, preaviso de 15), exámenes (23.1.a), otro permiso, formación externa, permiso no retribuido y otro.
+- Lo que **solo da el convenio** de publicidad (acompañamiento médico urgente, 16 h al año; boda de un familiar; asuntos propios) llega **inactivo y «pendiente de asesor»**: el convenio aplicable está sin confirmar (F-1). También van marcados los del Estatuto donde el convenio mejora la ley (fallecimiento, traslado, lactancia acumulada, exámenes retribuidos) y el criterio de contar en laborables los «cinco días» del 37.3.b.
+- La **Ley 4/2023** no añade permisos para Audax (su art. 15, el protocolo LGTBI, es para más de 50 personas); la Ley 4/2026 cambia la reducción de jornada del 37.6, que va en las jornadas versionadas, no en el catálogo.
+
+### D-362 · Asignación anual y proporcional
+- Cada año, a la plantilla interna (también a quien se fue con una baja dentro del año; nunca colaboradores externos ni clientes, D-330), un movimiento «asignación anual» por tipo con saldo (`LeaveLedger::syncAccrual`): **proporcional al alta y a la baja** contando cada fracción de mes como un mes entero (convenio, art. 23) y **al tiempo parcial cuando se trabajan menos días a la semana** (art. 12.4.d ET: los mismos días naturales; en laborables, en proporción a los días: 3 días a la semana, 22 × 3/5); con menos horas al día, los mismos 22 días. Se mira la jornada vigente al empezar cada mes. Redondeo hacia arriba al medio día (al minuto en horas). La fuerza mayor da las horas de 4 días de la jornada media de cada persona.
+- Vale desde el 1 de enero y caduca el 31/12 o, si el tipo tiene arrastre, en esa fecha del año siguiente (vacaciones: 31/03, decisión de empresa a favor de la plantilla y para la asesoría).
+- Si cambia el alta, la baja, la jornada o el tipo, se anota **la diferencia** como un movimiento nuevo (nunca se reescribe el anterior). Lo hacen la tarea diaria (año en curso y siguiente), «Recalcular» de RR. HH., la edición de un tipo y, por si la tarea aún no ha pasado, la propia solicitud y «Mis ausencias».
+- **Inicio de los saldos** (`people_leave_starts_on`): solo se asignan los años desde ese día y solo gastan los días de ausencia desde ese día; lo anterior viene de Woffu como saldo inicial (R5). Sin el ajuste, desde siempre.
+
+### D-363 · Libro de saldos de solo alta y orden de consumo
+- `leave_movements` es de **solo alta**: el modelo y un *trigger* (PostgreSQL y SQLite) impiden cambiar o borrar, y cada fila guarda la huella de su contenido (`LeaveLedger::verify` delata una cambiada quitando el *trigger*). Tipos: asignación anual, ajuste, saldo inicial y arrastre. Todo queda en la auditoría (`leave-balances`). La persona tiene FK *restrict*.
+- **Lo gastado se calcula** de las ausencias aprobadas y pendientes (día a día, con `AbsenceCost`), nunca se guarda: si se cancela una ausencia o cambia un festivo, el saldo cuadra solo. `LeaveAllocator` reparte: un día solo tira de lo que vale ese día, **gasta primero lo que caduca antes** (y lo más antiguo), las aprobadas antes que las pendientes (que reservan), los movimientos negativos gastan primero de su año y lo que no cabe queda **al descubierto** (saldo negativo, que se ve en rojo con texto, nunca se tapa).
+- **Coste** (`AbsenceCost`): laborables, cada día con jornada que no es festivo (medio día si es de media jornada); naturales, todos; horas, la franja o la jornada del día. Una de parte del día vale su parte de la jornada (4 h de 8 = 0,5).
+- **Ajustes y saldo inicial**: solo RR. HH., con motivo (5 caracteres o más), cantidad distinta de cero y caducidad posterior a la fecha desde la que vale. **Arrastre** (art. 38.3 ET, IT o nacimiento): un cargo en el año de origen (en una fecha en la que aún valía, aunque ya haya caducado) y un abono con la caducidad nueva, como mucho 18 meses tras el final del año y sin pasar de lo que queda de ese año.
+- **Saldo inicial desde Woffu** (R5): `php artisan people:import-leave-balances {csv} --date= --by= [--dry-run]` con «email;tipo;cantidad;caducidad» (días con coma o punto, horas en h:mm), con el motivo «Saldo inicial desde Woffu a dd/mm/aaaa»; también a mano desde «Saldos».
+
+### D-364 · Solicitudes: horas con franja, medio día, saldo, días bloqueados y avisos
+- **Por horas con franja** (W-055): los tipos en horas se piden por un día completo o con su franja (`start_time` y `end_time`, HH:MM de Madrid, de un solo día y en orden); las horas son las de la franja (`partial_minutes`), que es lo que ya resta `Capacity`. Un tipo en días no lleva franja. Con el módulo apagado, la franja se rechaza.
+- **Medio día** (W-034): un día de media jornada del calendario (D-366) cuesta medio día de vacaciones; además, una ausencia de parte de un día en un tipo en días cuesta su parte.
+- **Al pedirla la propia persona**: no puede caer en **días bloqueados** si el tipo los respeta (vacaciones) y, si el tipo no deja pedir **sin saldo** (vacaciones), tiene que caber en lo disponible en esas fechas contando lo pendiente. Quien registra o modifica una por otra persona (responsable o RR. HH.) no tiene esos límites: decide la empresa. La fuerza mayor deja pasar de lo retribuido con un aviso (lo que pasa, sin retribuir).
+- **Avisos que no bloquean** (`AbsenceAdvisor`), al pedirla y en la bandeja de quien aprueba: vacaciones que empiezan antes de **2 meses** (art. 38.3 ET; solo aviso, porque las pide la persona), el **preaviso** del tipo, que pide **más de lo que da** el permiso (con el desplazamiento), el **justificante** que falta, el exceso no retribuido y un permiso en días naturales que empieza en un día sin jornada (se cuenta desde el primer laborable, Tribunal Supremo).
+- **Simulación** (`POST /ausencias/simular`): mientras se rellena, el formulario enseña lo que cuesta, lo que quedará y los avisos y errores, como el «te quedarán…» de Woffu.
+
+### D-365 · Segundo nivel y «Pedir cancelación»
+- **Segundo nivel** (W-067; P4: un nivel, el responsable, con un segundo activable **solo para las vacaciones**): si el tipo lo tiene, la aprueba primero su responsable (queda «pendiente de RR. HH.», sin restar capacidad, y se avisa a RR. HH.) y después RR. HH.; si la aprueba RR. HH. directamente, cuenta por los dos. Las de un responsable pasan solas el primero; las de RR. HH., los dos. Ya con el primero, el responsable no puede volver a aprobarla. El intento de activarlo en otro tipo es un error. Viene apagado.
+- **Pedir cancelación** (W-069): una aprobada **que aún no ha empezado** se sigue cancelando sin más (como en la Fase 3); una que **ya ha empezado o pasado** se pide cancelar con un motivo y sigue aprobada hasta que quien aprueba sus ausencias la acepta (queda cancelada y lo que gastaba vuelve al saldo) o la rechaza con un comentario. Avisos a las dos partes.
+
+### D-366 · Calendario laboral: media jornada y días bloqueados
+- `leave_calendar_days` (W-034 y W-039): días o periodos de **media jornada** (la jornada teórica es la mitad en `Capacity`, en toda la app: carga, Previsión, informes, registro; un festivo manda sobre ella) y **bloqueados** para las vacaciones. Los gestiona RR. HH. en `/ausencias/calendario`; quedan en la auditoría e invalidan la caché de los informes.
+- Son pocas filas: se leen una vez por petición o trabajo de la cola (instancia `scoped` del contenedor; las órdenes de consola las vuelven a leer).
+- `/ausencias/calendario` («Calendario laboral AAAA», W-076): los doce meses con los festivos (con su nivel y su fuente), la media jornada, los bloqueados y las ausencias de quien mira, con leyenda y cada día explicado en texto; para toda la plantilla con el módulo (art. 34.6 ET: el calendario a la vista).
+
+### D-367 · Festivos de València
+- La importación «nacional» de D-050 no vale para la Comunitat Valenciana. `ValenciaHolidays` tiene las fiestas laborales de la ciudad de València **de 2026 y 2027, comprobadas una a una** el 07/10/2026 (no se calculan):
+  - 2026: nacionales, BOE-A-2025-21667 (BOE núm. 259, 28/10/2025); autonómicas, Decreto 100/2025 del Consell (DOGV núm. 10145, 07/07/2025); locales, Resolución de 12/11/2025 (DOGV núm. 10238, 14/11/2025): 22 de enero (San Vicente Mártir) y 13 de abril (San Vicente Ferrer). 14 días: 1 y 6 de enero, 22 de enero, 19 de marzo, 3 y 6 de abril, 13 de abril, 1 de mayo, 24 de junio, 15 de agosto, 9 y 12 de octubre, 8 y 25 de diciembre. El 1 de noviembre y el 6 de diciembre caen en domingo y no se trasladan.
+  - 2027: Decreto 42/2026 del Consell (DOGV núm. 10329, 25/03/2026; sin San Juan); la resolución estatal aún no está en el BOE. Locales: 22 de enero y 5 de abril, aprobados por el Pleno (valencia.es, 23/07/2026) y **pendientes de la resolución del DOGV** (sale en noviembre): se marcan así.
+- `holidays` gana `level` (nacional, autonómico, local o de empresa) y `source`. En `/admin/festivos`, «Calendario laboral de València» añade los que faltan con su nivel y su fuente.
+- El convenio de publicidad (art. 23.1) da la **fiesta profesional** (25 de enero o el primer viernes laborable siguiente: 30/01/2026 y 29/01/2027) y el **24 y el 31 de diciembre como permiso retribuido**. Van aparte, sin marcar y **pendientes de asesor** (convenio aplicable, F-1); si se añaden, son festivos de empresa (jornada 0).
+- Un solo centro de trabajo (València): no se crean calendarios por centro (`work_calendars` del plan) mientras no haga falta; la plantilla en teletrabajo usa el del centro al que está adscrita (Ley 10/2021, art. 7).
+
+### D-368 · Justificantes y su privacidad
+- `absence_documents`, en el disco privado (`people/justificantes/{persona}/…`), con su SHA-256: PDF o imagen (JPG, PNG, WebP o HEIC), 10 MB como mucho y 5 por ausencia.
+- **Los ven y descargan** la persona y RR. HH. (`manage-people`) y, **solo si el tipo no es de salud**, su responsable, que los necesita para aprobar (el certificado, la citación). De un tipo de salud, el responsable solo sabe que está entregado (art. 9 RGPD: minimización; WOFFU-INVESTIGACION L-24; el riesgo de PLAN §15). Nadie más; **nunca el equipo**: en el calendario del equipo y en `/calendario` un compañero solo ve «Ausente» (D-088).
+- Los sube la persona (o RR. HH. por ella); los borra quien lo subió o RR. HH., mientras la ausencia no esté rechazada o cancelada. Cada subida, descarga y borrado queda en la auditoría (`absence-documents`) **sin el nombre del fichero** (puede decir el motivo). Descarga con `no-store`, `nosniff` y su huella.
+- El texto RGPD por defecto deja de decir «nunca justificantes médicos»: cuenta qué justificantes se piden (nunca un diagnóstico), quién los ve y que al equipo solo le sale «Ausencia» (pendiente de asesor; `tests/fixtures/privacy-draft.json` regenerado).
+
+### D-369 · Avisos de R3
+- Nuevos (grupo «Ausencias», con las preferencias de D-073, ninguno obligatorio): **vacaciones por aprobar de RR. HH.** (segundo nivel), **cancelación pedida** (a quien aprueba), **cancelación decidida** (a la persona), **saldo a punto de caducar** (una vez por asignación, 30 días antes) y **justificante pendiente** (una vez por ausencia aprobada que ya ha empezado sin él). Siguen los de la Fase 3: **solicitud nueva** al responsable y **aprobada o rechazada** a la persona (ahora con el nombre del tipo del catálogo en los nuevos).
+- Los de caducidad y justificante los manda `people:leave-daily` (07:30 de Madrid), que además asigna el año en curso y el siguiente; `absence_reminders` evita repetirlos. Ninguno sale con el módulo apagado de verdad ni en modo de prueba (`PeopleNotifier` y `LeaveMode::enabled`).
+
+### D-370 · Permisos de R3
+| | Persona | Su responsable | RR. HH. y admins | Compañero u otro responsable | Colaborador o cliente |
+|---|---|---|---|---|---|
+| Pedir con el catálogo, simular, pedir cancelación | Las suyas | Las suyas | Las suyas | — | No |
+| Aprobar, rechazar, registrar, modificar y anular | No | Su departamento | Todos | No | No |
+| Segundo nivel de las vacaciones | No | No (da el primero) | Sí | No | No |
+| Decidir la cancelación pedida | No | Su departamento | Todos | No | No |
+| Justificantes: ver y descargar | Los suyos | Su departamento, salvo los de salud | Todos | No | No |
+| Justificantes: subir y borrar | Los suyos | No | Todos | No | No |
+| Calendario laboral | Sí | Sí | Sí, y sus días especiales | Sí | No |
+| Saldos | Los suyos (en «Mis ausencias») | Su departamento, solo lectura | Todos, con ajustes, saldo inicial, arrastres y recalcular | No | No |
+| Tipos de ausencia | No | No | Sí | No | No |
+| Informes «Saldos», «Actividad» y «Justificantes pendientes» | No | No | Sí | No | No |
+
+RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); los colaboradores externos nunca la tienen y no entran en `/ausencias`.
+
+### D-371 · Informes de R3
+- Con el patrón de R2 (D-351) en `/personas/informes`: **«Saldos»** (W-096; por persona y tipo con saldo, a la fecha «hasta»: asignado, ajustes, arrastrado con su caducidad, disfrutado, pendiente, disponible y caducado), **«Actividad»** (W-097; las solicitudes que tocan el periodo, con su estado, primer nivel, quién la revisó y la cancelación, y los movimientos del libro anotados en él) y **«Justificantes pendientes»** (W-071). En pantalla y en PDF, Excel y CSV con la huella del contenido y del fichero (`people_exports`). Solo RR. HH. Cantidades enteras en la unidad del tipo en el CSV y el Excel, con su columna de unidad; en texto en el PDF.
+
+### D-372 · RGPD de R3
+- Dos secciones nuevas en la exportación de datos personales: `saldos-ausencias` (los movimientos del libro) y `justificantes` (qué fichero, quién y cuándo, con su huella; el fichero se descarga en «Mis ausencias»). La de ausencias no cambia.
+
+### D-373 · Datos de ejemplo de R3 (solo local)
+- Al final del `DemoDataSeeder` y sin su generador aleatorio, para no cambiar las horas, los fichajes ni los cierres: nada nuevo dentro de los 12 meses de horas ni de los fichajes. Saldos desde el 1 de enero (`people_leave_starts_on`); asignación de este año y del siguiente; el arrastre de Lucía y las vacaciones aplazadas por la IT de Daniel como saldo inicial de Woffu; un ajuste de Lucía; vacaciones futuras aprobadas (Raúl, Marta y Ana) y pendientes (Sergio, con antelación; Pablo, con menos de 2 meses); un deber inexcusable de Pablo por horas con franja y su citación; un traslado de Daniel sin justificante; un permiso de salud de Irene con su justificante; la cancelación pedida por Sergio de unas vacaciones ya disfrutadas; media jornada el 24 y el 31 de diciembre y del 28 al 30 bloqueados; los festivos de València del año que viene (los de este año quedan en `/admin/festivos` como «faltan», para no mover la capacidad de esta semana en los E2E).
+
+### D-374 · Efecto en el registro de jornada y en el resto de la app
+- Una ausencia **aprobada** deja a cero la jornada teórica de ese día en `WorkdayCalculator` (o le resta sus horas, si es por horas) porque la teórica es `Capacity`, como ya preveía R1; un día con ausencia de día completo no da «Sin fichajes». Una pendiente, rechazada o cancelada no cambia nada; el segundo nivel no resta hasta la aprobación de RR. HH.
+- La media jornada (D-366) cambia la teórica, la capacidad, la carga y la Previsión de la misma forma. La Weekly (exenciones por ausencia) y el plan del día leen la categoría y la aprobación como antes. Comprobado con toda la batería de Pest.
+
+### D-375 · Rendimiento
+- `Capacity` hace **una consulta más** por proceso (los días especiales). Los presupuestos de consultas que lo miden suben en una, con su comentario (`AbsencePagesPerformanceTest`, `CapacityTest`, `WeekSubmissionReminderTest`). Los saldos se calculan con una consulta de movimientos, una de ausencias y las del coste para toda la página, sin consultas por persona.
+
+### D-376 · Pantallas, rutas y navegación
+- Pestañas de «Ausencias» (y entradas bajo «Ausencias» en la barra lateral) con el módulo: **Calendario laboral** (todos), **Saldos** (quien aprueba) y **Tipos de ausencia** (RR. HH.). Con el módulo apagado, las de la Fase 3.
+- «Mis ausencias»: los saldos del año y del siguiente («19 días disponibles» y debajo lo asignado, disfrutado, aprobado por disfrutar, pendiente, arrastrado con su caducidad y lo que caduca pronto), el formulario con el catálogo, la explicación de cada tipo, la franja y la simulación, y en cada ausencia su coste, avisos, justificantes, «Pedir cancelación» y su estado. «Ausencias del equipo»: lo mismo para quien aprueba, «Cancelaciones pedidas» y el primer nivel.
+- Rutas (`routes/app/absences.php`, `module:people`): `POST /ausencias/simular`, `POST /ausencias/{ausencia}/pedir-cancelacion`, `POST /ausencias/{ausencia}/cancelacion`, `POST /ausencias/{ausencia}/justificantes`, `GET|DELETE /ausencias/justificantes/{justificante}`, `GET /ausencias/calendario` (+ `POST /dias`, `DELETE /dias/{dia}`), `GET /ausencias/saldos` (+ `POST /movimientos`, `/arrastres`, `/recalcular`), `GET|POST /ausencias/tipos` y `PUT /ausencias/tipos/{tipo}`; y `POST /admin/festivos/valencia`.
+
+### D-377 · Dudas legales decididas de forma prudente (para la asesoría)
+1. **Convenio aplicable** (publicidad o consultoría, F-1): 22 días laborables de vacaciones; los permisos que solo da el de publicidad, inactivos; donde mejora la ley, se precarga el mínimo del Estatuto con la nota «pendiente de asesor» (la cantidad es un aviso a quien aprueba, nunca un bloqueo, así que se puede conceder lo del convenio).
+2. Los «cinco días» del art. 37.3.b se cuentan como **laborables** (lo más favorable) y un permiso en días naturales se cuenta desde el primer laborable (Tribunal Supremo).
+3. **Arrastre de las vacaciones hasta el 31/03** del año siguiente como decisión de empresa (la ley dice el año natural; la jurisprudencia europea no deja perderlas si la empresa no las facilitó) y, por IT o nacimiento, hasta 18 meses tras el año (art. 38.3).
+4. **Proporcional**: fracción de mes como mes entero (convenio) y tiempo parcial por días trabajados, no por horas (art. 12.4.d).
+5. **2 meses de antelación** (art. 38.3) como aviso, no como bloqueo: las pide la propia persona.
+6. **Justificantes de salud**: el responsable no los ve; los ve RR. HH. Sin diagnósticos. Conservación: con la ausencia (a definir con la asesoría; los de una IT no se piden, D-361).
+7. **24 y 31 de diciembre y fiesta profesional**: solo si el convenio de publicidad es el aplicable; mientras, sin añadir.
+8. **Fuerza mayor**: 4 días al año retribuidos en horas de la jornada de cada persona; lo que pasa, sin retribuir (art. 37.9).
+
+### D-378 · Lo que queda para R5 (migración y baja de Woffu)
+- Ajustar `people_leave_starts_on` al día del corte (si no es el 1 de enero, ese año no se asigna: llega en el saldo inicial) y cargar el saldo inicial de cada persona y tipo con `people:import-leave-balances` (prueba con `--dry-run`), a partir del informe «Saldos» de Woffu del día del corte; cada persona revisa su saldo.
+- Traer las **ausencias aprobadas futuras** (informe «Actividad» de Woffu) como ausencias registradas ya aprobadas, con su tipo del catálogo, y el **historial** de 4 años como archivo de solo lectura (§13); los justificantes que hubiera en Woffu, al espacio restringido de D-368.
+- Añadir los festivos de València del año (y los locales de 2027 cuando salga la resolución del DOGV) y decidir con la asesoría los días del convenio.
+- Activar los tipos del convenio que confirme la asesoría y, si se quiere, el segundo nivel de las vacaciones.
+
+### D-379 · Fuera de R3 (por ahora)
+- Vacaciones por antigüedad (W-063), reglas de cobertura mínima (W-072, R4: aviso), asignación y solicitud masivas con pantalla propia (W-066: hoy, «Recalcular» y el importador), suscripción iCal (W-079, R4) y calendarios por centro de trabajo (un solo centro, D-367).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2604,7 +2724,7 @@ Gate nueva `manage-people-register` (= `manage-people` con el módulo visible); 
 - Pantallas de la previsión: D-300 a D-309.
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
-- RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359.
+- RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-360 en adelante, libres).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-380 en adelante, libres).
