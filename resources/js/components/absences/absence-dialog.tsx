@@ -1,6 +1,12 @@
 import { useForm } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
+import {
+    LeaveTypeInfo,
+    SimulationSummary,
+} from '@/components/leave/leave-type-info';
+import { useLeaveSimulation } from '@/components/leave/use-leave-simulation';
+import { Input } from '@/components/ui/input';
 import { absenceTypeLabel } from '@/components/absences/absence-meta';
 import type {
     AbsenceLimits,
@@ -28,6 +34,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { t } from '@/lib/i18n';
+import { slotMinutes, usesSlot } from '@/lib/leave';
+import type { AbsenceLeave, LeaveTypeOption } from '@/types/leave';
 import {
     store as storeAbsence,
     update as updateAbsence,
@@ -42,10 +50,14 @@ type Length = 'full' | 'partial';
 type AbsenceForm = {
     user_id: string;
     type: AbsenceType;
+    /** Fase 11, R3: el tipo del catálogo (solo con el módulo `people`). */
+    leave_type_id: string;
     length: Length;
     start_date: string | null;
     end_date: string | null;
     partial_minutes: number | null;
+    start_time: string;
+    end_time: string;
     notes: string;
 };
 
@@ -53,7 +65,7 @@ type AbsenceForm = {
 type EditedAbsence = Pick<
     AbsenceRow,
     'id' | 'type' | 'start_date' | 'end_date' | 'partial_minutes' | 'notes'
->;
+> & { leave?: AbsenceLeave };
 
 type Props = {
     /**
@@ -73,17 +85,34 @@ type Props = {
     trigger?: ReactNode;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    /**
+     * Fase 11, R3: el catálogo de tipos (con el módulo `people`). Sin él, el formulario es el de la
+     * Fase 3, con los cinco tipos de siempre.
+     */
+    leaveTypes?: LeaveTypeOption[] | null;
 };
 
-function initial(types: AbsenceType[], absence?: EditedAbsence): AbsenceForm {
+function initial(
+    types: AbsenceType[],
+    absence?: EditedAbsence,
+    leaveTypes?: LeaveTypeOption[] | null,
+): AbsenceForm {
     if (absence) {
+        const start = absence.leave?.start_time ?? '';
+        const end = absence.leave?.end_time ?? '';
+
         return {
             user_id: '',
             type: absence.type,
+            leave_type_id: absence.leave?.type
+                ? String(absence.leave.type.id)
+                : '',
             length: absence.partial_minutes === null ? 'full' : 'partial',
             start_date: absence.start_date,
             end_date: absence.end_date,
             partial_minutes: absence.partial_minutes,
+            start_time: start,
+            end_time: end,
             notes: absence.notes ?? '',
         };
     }
@@ -91,10 +120,13 @@ function initial(types: AbsenceType[], absence?: EditedAbsence): AbsenceForm {
     return {
         user_id: '',
         type: types[0] ?? 'vacation',
+        leave_type_id: leaveTypes?.[0] ? String(leaveTypes[0].id) : '',
         length: 'full',
         start_date: null,
         end_date: null,
         partial_minutes: null,
+        start_time: '',
+        end_time: '',
         notes: '',
     };
 }
@@ -116,21 +148,43 @@ export function AbsenceDialog({
     trigger,
     open: controlledOpen,
     onOpenChange,
+    leaveTypes = null,
 }: Props) {
     const id = useId();
     const [internalOpen, setInternalOpen] = useState(false);
     const open = controlledOpen ?? internalOpen;
-    const form = useForm<AbsenceForm>(initial(types, absence));
+    const form = useForm<AbsenceForm>(initial(types, absence, leaveTypes));
     const errors = form.errors as Record<string, string | undefined>;
     const partial = form.data.length === 'partial';
     const register = mode === 'register';
     const edit = mode === 'edit' && absence !== undefined;
+    const catalog = leaveTypes !== null && leaveTypes.length > 0;
+    const leaveType = catalog
+        ? (leaveTypes.find(
+              (type) => String(type.id) === form.data.leave_type_id,
+          ) ?? null)
+        : null;
+    const slot = leaveType !== null && usesSlot(leaveType.unit) && partial;
+    // La simulación (coste, saldo y avisos) es de quien pide: solo al solicitar la propia.
+    const simulation = useLeaveSimulation(
+        open && catalog && mode === 'request'
+            ? {
+                  leave_type_id: form.data.leave_type_id,
+                  start_date: form.data.start_date,
+                  end_date: partial ? form.data.start_date : form.data.end_date,
+                  partial_minutes:
+                      partial && !slot ? form.data.partial_minutes : null,
+                  start_time: slot ? form.data.start_time : '',
+                  end_time: slot ? form.data.end_time : '',
+              }
+            : null,
+    );
 
     // Se vacía (o, al modificar, vuelve a los datos de la ausencia) al abrir desde su botón y al
     // cerrar: así también sale limpio cuando lo abre la página (open controlado, p. ej. con
     // ?solicitar=1).
     const setOpen = (next: boolean) => {
-        form.setData(initial(types, absence));
+        form.setData(initial(types, absence, leaveTypes));
         form.clearErrors();
         setInternalOpen(next);
         onOpenChange?.(next);
@@ -152,8 +206,17 @@ export function AbsenceDialog({
     const submit = (event: React.FormEvent) => {
         event.preventDefault();
 
+        if (
+            slot &&
+            slotMinutes(form.data.start_time, form.data.end_time) === 0
+        ) {
+            form.setError('start_time', t('leave.form.slot_required'));
+
+            return;
+        }
+
         // Sin horas, una «parte del día» se guardaría como el día entero: se piden antes.
-        if (partial && form.data.partial_minutes === null) {
+        if (partial && !slot && form.data.partial_minutes === null) {
             form.setError(
                 'partial_minutes',
                 t('absences.form.partial_required'),
@@ -166,14 +229,21 @@ export function AbsenceDialog({
             ...(register
                 ? { user_id: data.user_id === '' ? null : Number(data.user_id) }
                 : {}),
-            type: data.type,
+            ...(catalog
+                ? { leave_type_id: Number(data.leave_type_id) }
+                : { type: data.type }),
             start_date: data.start_date ?? '',
             end_date:
                 data.length === 'partial'
                     ? data.start_date
                     : (data.end_date ?? data.start_date),
             partial_minutes:
-                data.length === 'partial' ? data.partial_minutes : null,
+                data.length === 'partial' && !slot
+                    ? data.partial_minutes
+                    : null,
+            ...(slot
+                ? { start_time: data.start_time, end_time: data.end_time }
+                : {}),
             notes: data.notes.trim() === '' ? null : data.notes,
         }));
 
@@ -256,32 +326,77 @@ export function AbsenceDialog({
                         </Field>
                     ) : null}
 
-                    <Field
-                        id={`${id}-type`}
-                        label={t('absences.form.type')}
-                        error={errors.type}
-                    >
-                        <NativeSelect
+                    {catalog ? (
+                        <Field
                             id={`${id}-type`}
-                            value={form.data.type}
-                            onChange={(event) =>
-                                form.setData(
-                                    'type',
-                                    event.target.value as AbsenceType,
-                                )
-                            }
-                            aria-invalid={errors.type ? true : undefined}
-                            aria-describedby={describedBy(`${id}-type`, {
-                                error: errors.type,
-                            })}
+                            label={t('absences.form.type')}
+                            error={errors.leave_type_id ?? errors.type}
                         >
-                            {types.map((type) => (
-                                <option key={type} value={type}>
-                                    {absenceTypeLabel(type)}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                    </Field>
+                            <NativeSelect
+                                id={`${id}-type`}
+                                value={form.data.leave_type_id}
+                                onChange={(event) => {
+                                    const next = leaveTypes.find(
+                                        (type) =>
+                                            String(type.id) ===
+                                            event.target.value,
+                                    );
+                                    form.setData((data) => ({
+                                        ...data,
+                                        leave_type_id: event.target.value,
+                                        type: next?.category ?? data.type,
+                                    }));
+                                }}
+                                aria-invalid={
+                                    errors.leave_type_id ? true : undefined
+                                }
+                                aria-describedby={describedBy(`${id}-type`, {
+                                    help: leaveType !== null,
+                                    error: errors.leave_type_id,
+                                })}
+                                data-test="leave-type-select"
+                            >
+                                {leaveTypes.map((type) => (
+                                    <option key={type.id} value={type.id}>
+                                        {type.name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                            {leaveType ? (
+                                <LeaveTypeInfo
+                                    id={`${id}-type-help`}
+                                    type={leaveType}
+                                />
+                            ) : null}
+                        </Field>
+                    ) : (
+                        <Field
+                            id={`${id}-type`}
+                            label={t('absences.form.type')}
+                            error={errors.type}
+                        >
+                            <NativeSelect
+                                id={`${id}-type`}
+                                value={form.data.type}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'type',
+                                        event.target.value as AbsenceType,
+                                    )
+                                }
+                                aria-invalid={errors.type ? true : undefined}
+                                aria-describedby={describedBy(`${id}-type`, {
+                                    error: errors.type,
+                                })}
+                            >
+                                {types.map((type) => (
+                                    <option key={type} value={type}>
+                                        {absenceTypeLabel(type)}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                        </Field>
+                    )}
 
                     <fieldset className="grid gap-2">
                         <legend className="mb-1 text-sm font-medium">
@@ -315,13 +430,79 @@ export function AbsenceDialog({
                                     htmlFor={`${id}-partial`}
                                     className="font-normal"
                                 >
-                                    {t('absences.form.partial')}
+                                    {leaveType !== null &&
+                                    usesSlot(leaveType.unit)
+                                        ? t('leave.form.slot')
+                                        : t('absences.form.partial')}
                                 </Label>
                             </div>
                         </RadioGroup>
                     </fieldset>
 
-                    {partial ? (
+                    {slot ? (
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <Field
+                                id={`${id}-start`}
+                                label={t('absences.form.day')}
+                                error={errors.start_date}
+                            >
+                                <DatePicker
+                                    id={`${id}-start`}
+                                    value={form.data.start_date}
+                                    onChange={setStart}
+                                    max={limits.to}
+                                    clearable={false}
+                                    invalid={Boolean(errors.start_date)}
+                                    placeholder={t('absences.form.pick_date')}
+                                />
+                            </Field>
+                            <Field
+                                id={`${id}-from`}
+                                label={t('leave.form.start_time')}
+                                error={errors.start_time}
+                            >
+                                <Input
+                                    id={`${id}-from`}
+                                    type="time"
+                                    value={form.data.start_time}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'start_time',
+                                            event.target.value,
+                                        )
+                                    }
+                                    aria-invalid={
+                                        errors.start_time ? true : undefined
+                                    }
+                                    data-test="leave-start-time"
+                                />
+                            </Field>
+                            <Field
+                                id={`${id}-to`}
+                                label={t('leave.form.end_time')}
+                                error={errors.end_time}
+                            >
+                                <Input
+                                    id={`${id}-to`}
+                                    type="time"
+                                    value={form.data.end_time}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'end_time',
+                                            event.target.value,
+                                        )
+                                    }
+                                    aria-invalid={
+                                        errors.end_time ? true : undefined
+                                    }
+                                    data-test="leave-end-time"
+                                />
+                            </Field>
+                            <p className="text-sm text-muted-foreground sm:col-span-3">
+                                {t('leave.form.slot_help')}
+                            </p>
+                        </div>
+                    ) : partial ? (
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Field
                                 id={`${id}-start`}
@@ -437,6 +618,10 @@ export function AbsenceDialog({
                             })}
                         />
                     </Field>
+
+                    {simulation !== null ? (
+                        <SimulationSummary simulation={simulation} />
+                    ) : null}
 
                     {/* Errores de la ausencia en sí (p. ej., ya no se puede modificar) y, al
                         modificarla, los de la persona, que no tiene campo propio. */}

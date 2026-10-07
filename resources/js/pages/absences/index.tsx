@@ -10,6 +10,9 @@ import type {
     MyAbsencesPageProps,
 } from '@/components/absences/types';
 import { EmptyState } from '@/components/empty-state';
+import { LeaveBalanceCards } from '@/components/leave/balance-cards';
+import { RequestCancellationDialog } from '@/components/leave/cancellation';
+import { LeaveDetails } from '@/components/leave/leave-details';
 import { Button } from '@/components/ui/button';
 import { t } from '@/lib/i18n';
 import { index as absencesIndex } from '@/routes/absences';
@@ -31,12 +34,14 @@ function Section({
     hint,
     absences,
     today,
+    accept,
 }: {
     id: string;
     title: string;
     hint?: string;
     absences: AbsenceRow[];
     today: string;
+    accept?: string;
 }) {
     if (absences.length === 0) {
         return null;
@@ -58,9 +63,22 @@ function Section({
                         key={absence.id}
                         absence={absence}
                         today={today}
+                        extra={
+                            absence.leave ? (
+                                <LeaveDetails
+                                    absenceId={absence.id}
+                                    status={absence.status}
+                                    leave={absence.leave}
+                                    accept={accept}
+                                />
+                            ) : undefined
+                        }
                     >
                         {absence.can.cancel ? (
                             <CancelAbsenceButton absence={absence} />
+                        ) : null}
+                        {absence.leave?.can.request_cancellation ? (
+                            <RequestCancellationDialog absence={absence} />
                         ) : null}
                     </AbsenceItem>
                 ))}
@@ -80,6 +98,7 @@ export default function MyAbsences({
     limits,
     self_approves: selfApproves,
     can,
+    leave,
 }: MyAbsencesPageProps) {
     const page = usePage();
     const [requesting, setRequesting] = useState(() => wantsRequest(page.url));
@@ -135,6 +154,28 @@ export default function MyAbsences({
                     </p>
                 ) : null}
 
+                {leave ? (
+                    <>
+                        <LeaveBalanceCards
+                            title={t('leave.balance.title', {
+                                year: leave.year,
+                            })}
+                            balances={leave.balances}
+                        />
+                        {leave.next_balances.some(
+                            (balance) =>
+                                balance.total !== 0 || balance.pending > 0,
+                        ) ? (
+                            <LeaveBalanceCards
+                                title={t('leave.balance.title', {
+                                    year: leave.year + 1,
+                                })}
+                                balances={leave.next_balances}
+                            />
+                        ) : null}
+                    </>
+                ) : null}
+
                 {absences.length === 0 ? (
                     <EmptyState
                         icon={CalendarOff}
@@ -161,6 +202,7 @@ export default function MyAbsences({
                             hint={t('absences.mine.pending_hint')}
                             absences={pending}
                             today={today}
+                            accept={leave?.documents.accept}
                         />
                         <Section
                             id="upcoming"
@@ -169,6 +211,7 @@ export default function MyAbsences({
                             })}
                             absences={upcoming}
                             today={today}
+                            accept={leave?.documents.accept}
                         />
                         <Section
                             id="history"
@@ -177,6 +220,7 @@ export default function MyAbsences({
                             })}
                             absences={history}
                             today={today}
+                            accept={leave?.documents.accept}
                         />
                     </>
                 )}
@@ -189,6 +233,7 @@ export default function MyAbsences({
                 selfApproves={selfApproves}
                 open={requesting}
                 onOpenChange={setRequesting}
+                leaveTypes={leave?.types}
             />
         </>
     );

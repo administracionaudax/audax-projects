@@ -217,12 +217,22 @@ final class LeaveLedger
             $errors['expires_on'][] = __('leave.errors.carry_range', ['max' => CarbonImmutable::parse($max)->format('d/m/Y')]);
         }
 
+        if ($errors === []) {
+            // Lo que queda de ese año (aunque ya haya caducado: para eso se arrastra).
+            $summary = collect(app(LeaveBalances::class)->forUser($subject, $year, types: collect([$type])))->first();
+            $left = array_sum(array_map(fn (array $lot): int => max($lot['remaining'], 0), array_filter($summary['lots'] ?? [], fn (array $lot): bool => $lot['year'] === $year)));
+
+            if ($amount > $left) {
+                $errors['amount'][] = __('leave.errors.carry_left', ['amount' => LeaveFormat::amount($left, $type->unit), 'year' => $year]);
+            }
+        }
+
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
 
-        $today = LocalTime::todayString();
-        $from = max($today, sprintf('%04d-01-01', $year));
+        // El cargo, en una fecha en la que aún vale lo de ese año: hoy, o su caducidad si ya pasó.
+        $from = min(max(LocalTime::todayString(), sprintf('%04d-01-01', $year)), $type->expiryFor($year));
 
         $movements = DB::transaction(fn (): array => [
             $this->append($subject->id, $type, $year, LeaveMovementKind::CarryOver, -$amount, $from, null, $reason, $actor->id),

@@ -42,6 +42,9 @@ import { tCount } from '@/lib/people';
 import { home } from '@/routes';
 import { index as absencesIndex } from '@/routes/absences';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
+import { index as leaveBalancesIndex } from '@/routes/absences/balances';
+import { index as leaveCalendarIndex } from '@/routes/absences/calendar';
+import { index as leaveTypesIndex } from '@/routes/absences/types';
 import { index as adminIndex } from '@/routes/admin';
 import { edit as settingsEdit } from '@/routes/admin/settings';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -206,6 +209,37 @@ export function peopleNavItems(
             : []),
     ];
     const badgeCount = pending + attention;
+    // Ausencias: el equipo (quien aprueba) y, con el módulo `people` (R3), el calendario laboral,
+    // los saldos (quien aprueba) y los tipos (RR. HH.).
+    const absenceChildren: NavItem[] = [
+        ...(can.viewTeamAbsences
+            ? [{ title: t('absences.nav.team'), href: teamAbsencesIndex() }]
+            : []),
+        ...(can.usePeople === true
+            ? [
+                  {
+                      title: t('leave.nav.calendar'),
+                      href: leaveCalendarIndex(),
+                  },
+                  ...(can.viewTeamAbsences
+                      ? [
+                            {
+                                title: t('leave.nav.balances'),
+                                href: leaveBalancesIndex(),
+                            },
+                        ]
+                      : []),
+                  ...(can.managePeopleRegister
+                      ? [
+                            {
+                                title: t('leave.nav.types'),
+                                href: leaveTypesIndex(),
+                            },
+                        ]
+                      : []),
+              ]
+            : []),
+    ];
     const workday: NavItem[] =
         can.usePeople === true
             ? [
@@ -240,9 +274,7 @@ export function peopleNavItems(
             title: t('nav.absences'),
             href: absencesIndex(),
             icon: CalendarOff,
-            items: can.viewTeamAbsences
-                ? [{ title: t('absences.nav.team'), href: teamAbsencesIndex() }]
-                : undefined,
+            items: absenceChildren.length > 0 ? absenceChildren : undefined,
         },
     ];
 }

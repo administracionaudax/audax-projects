@@ -39,6 +39,7 @@ return [
         'too_many_documents' => 'Una ausencia admite :max justificantes como mucho. Borra alguno antes.',
         'second_approval_vacation' => 'El segundo nivel de aprobación solo se puede activar en las vacaciones.',
         'carry_over_format' => 'Usa el formato MM-DD (por ejemplo, 03-31).',
+        'carry_left' => 'De :year solo quedan :amount sin disfrutar.',
         'calendar_overlap' => 'Ya hay un día especial de ese tipo en esas fechas: :name.',
     ],
 

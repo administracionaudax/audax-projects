@@ -25,7 +25,7 @@ use Illuminate\Support\Collection;
  * @phpstan-import-type Uncovered from LeaveAllocator
  *
  * @phpstan-type Carried array{year: int, remaining: int, expires_on: string|null, expired: bool}
- * @phpstan-type Summary array{type: LeaveType, year: int, entitled: int, adjusted: int, total: int, used: int, pending: int, available: int, carried: list<Carried>, expired: int, expiring: list<array{amount: int, expires_on: string}>, lots: list<LotState>, uncovered: list<Uncovered>}
+ * @phpstan-type Summary array{type: LeaveType, year: int, entitled: int, adjusted: int, total: int, used: int, taken: int, pending: int, available: int, carried: list<Carried>, expired: int, expiring: list<array{amount: int, expires_on: string}>, lots: list<LotState>, uncovered: list<Uncovered>}
  */
 final class LeaveBalances
 {
@@ -61,11 +61,12 @@ final class LeaveBalances
     /**
      * Los saldos del año de una persona, uno por tipo con saldo.
      *
+     * @param  Collection<int, LeaveType>|null  $types
      * @return list<Summary>
      */
-    public function forUser(User $user, int $year, ?string $today = null): array
+    public function forUser(User $user, int $year, ?string $today = null, ?Collection $types = null): array
     {
-        return $this->forUsers([$user], $year, $today)[$user->id] ?? [];
+        return $this->forUsers([$user], $year, $today, $types)[$user->id] ?? [];
     }
 
     /**
@@ -208,13 +209,19 @@ final class LeaveBalances
         }
 
         $used = 0;
+        $taken = 0;
         $pending = 0;
         foreach ($debits as $debit) {
             if ((int) substr($debit['date'], 0, 4) !== $year) {
                 continue;
             }
 
-            $debit['pending'] ? $pending += $debit['amount'] : $used += $debit['amount'];
+            if ($debit['pending']) {
+                $pending += $debit['amount'];
+            } else {
+                $used += $debit['amount'];
+                $taken += $debit['date'] <= $today ? $debit['amount'] : 0;
+            }
         }
 
         $carried = [];
@@ -264,6 +271,7 @@ final class LeaveBalances
             'adjusted' => $adjusted,
             'total' => $entitled + $adjusted,
             'used' => $used,
+            'taken' => $taken,
             'pending' => $pending,
             'available' => $available,
             'carried' => $carried,

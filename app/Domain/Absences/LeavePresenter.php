@@ -144,6 +144,7 @@ final class LeavePresenter
                 'adjusted' => $summary['adjusted'],
                 'total' => $summary['total'],
                 'used' => $summary['used'],
+                'taken' => $summary['taken'],
                 'pending' => $summary['pending'],
                 'available' => $summary['available'],
                 'carried' => $summary['carried'],

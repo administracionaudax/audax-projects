@@ -27,6 +27,8 @@ import type {
 } from '@/components/absences/types';
 import { NativeSelect } from '@/components/admin/native-select';
 import { EmptyState } from '@/components/empty-state';
+import { DecideCancellationButtons } from '@/components/leave/cancellation';
+import { LeaveDetails } from '@/components/leave/leave-details';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useRequiredUser } from '@/hooks/use-auth';
@@ -91,6 +93,8 @@ export default function TeamAbsences({
     today,
     limits,
     pending_limit: pendingLimit,
+    cancellations,
+    leave,
 }: TeamAbsencesPageProps) {
     const filterId = useId();
     const viewer = useRequiredUser();
@@ -130,6 +134,7 @@ export default function TeamAbsences({
                             types={types}
                             limits={limits}
                             people={registerPeople}
+                            leaveTypes={leave?.types}
                             trigger={
                                 <Button type="button">
                                     <UserPlus aria-hidden="true" />
@@ -202,7 +207,18 @@ export default function TeamAbsences({
                                     absence={absence}
                                     person={absence.user}
                                     today={today}
-                                    extra={<Overlaps absence={absence} />}
+                                    extra={
+                                        <>
+                                            {absence.leave ? (
+                                                <LeaveDetails
+                                                    absenceId={absence.id}
+                                                    status={absence.status}
+                                                    leave={absence.leave}
+                                                />
+                                            ) : null}
+                                            <Overlaps absence={absence} />
+                                        </>
+                                    }
                                 >
                                     {absence.can.review ? (
                                         <>
@@ -228,6 +244,49 @@ export default function TeamAbsences({
                         </p>
                     ) : null}
                 </section>
+
+                {cancellations.length > 0 ? (
+                    <section
+                        aria-labelledby="team-cancellations-heading"
+                        className="grid min-w-0 gap-3"
+                    >
+                        <h2 id="team-cancellations-heading" className="text-lg">
+                            {t('leave.team.cancellations', {
+                                count: cancellations.length,
+                            })}
+                        </h2>
+                        <ul
+                            className="grid gap-2"
+                            data-test="team-cancellations"
+                        >
+                            {cancellations.map((absence) => (
+                                <AbsenceItem
+                                    key={absence.id}
+                                    absence={absence}
+                                    person={absence.user}
+                                    today={today}
+                                    extra={
+                                        absence.leave ? (
+                                            <LeaveDetails
+                                                absenceId={absence.id}
+                                                status={absence.status}
+                                                leave={absence.leave}
+                                                showWarnings={false}
+                                            />
+                                        ) : undefined
+                                    }
+                                >
+                                    {absence.leave?.can.decide_cancellation ? (
+                                        <DecideCancellationButtons
+                                            absence={absence}
+                                            personName={absence.user.name}
+                                        />
+                                    ) : null}
+                                </AbsenceItem>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
 
                 {calendar.people.length === 0 ? (
                     <EmptyState
@@ -264,12 +323,22 @@ export default function TeamAbsences({
                                     absence={absence}
                                     person={absence.user}
                                     today={today}
+                                    extra={
+                                        absence.leave ? (
+                                            <LeaveDetails
+                                                absenceId={absence.id}
+                                                status={absence.status}
+                                                leave={absence.leave}
+                                            />
+                                        ) : undefined
+                                    }
                                 >
                                     {absence.can.update ? (
                                         <AbsenceDialog
                                             mode="edit"
                                             types={types}
                                             limits={limits}
+                                            leaveTypes={leave?.types}
                                             absence={absence}
                                             personName={absence.user.name}
                                             trigger={
