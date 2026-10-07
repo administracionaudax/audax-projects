@@ -93,11 +93,13 @@ final class RegisterPruner implements RetentionPruner
                 }
             }
 
-            RegisterCheckpoint::query()->updateOrCreate(['user_id' => $userId], [
+            $checkpoint = RegisterCheckpoint::query()->where('user_id', $userId)->first() ?? new RegisterCheckpoint;
+            $checkpoint->forceFill([
+                'user_id' => $userId,
                 'seq' => $last['seq'],
                 'hash' => $last['hash'],
                 'pruned_through' => CarbonImmutable::parse($limitDate)->subDay()->toDateString(),
-            ]);
+            ])->save();
         }
 
         $deleted += DB::table('clock_corrections')

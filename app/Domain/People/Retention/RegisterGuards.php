@@ -54,7 +54,12 @@ final class RegisterGuards
             if ($driver === 'pgsql') {
                 DB::statement('SET LOCAL '.self::PRUNE_SETTING." = 'on'");
 
-                return $prune();
+                try {
+                    return $prune();
+                } finally {
+                    // Dentro de otra transacción (los tests), SET LOCAL duraría hasta su final.
+                    DB::statement('SET LOCAL '.self::PRUNE_SETTING." = 'off'");
+                }
             }
 
             if ($driver === 'sqlite') {
