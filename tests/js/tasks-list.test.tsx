@@ -317,3 +317,128 @@ describe('lista de tareas', () => {
         ).toBeTruthy();
     });
 });
+
+describe('grupos plegables y filas clicables (D-320, D-324)', () => {
+    const completed = [
+        ...tasks,
+        task(30, 'Publicar', { status_id: 2, is_completed: true }),
+    ];
+
+    function FoldableList({
+        onOpen = vi.fn(),
+        storageKey = 'audax.tasks.groups.1.1',
+    }: {
+        onOpen?: (taskId: number) => void;
+        storageKey?: string | null;
+    }) {
+        return (
+            <TaskLookupsProvider value={lookups}>
+                <TaskList
+                    tasks={completed}
+                    groupBy="status"
+                    showCompleted
+                    selection={new Set()}
+                    onSelect={vi.fn()}
+                    onOpen={onOpen}
+                    storageKey={storageKey}
+                />
+            </TaskLookupsProvider>
+        );
+    }
+
+    beforeEach(() => window.localStorage.clear());
+
+    it('el estado «done» nace plegado y los abiertos desplegados, con su número', () => {
+        render(<FoldableList />);
+
+        const todo = screen.getByRole('button', { name: /^Por hacer/ });
+        const done = screen.getByRole('button', { name: /^Hecha/ });
+        expect(todo.getAttribute('aria-expanded')).toBe('true');
+        expect(done.getAttribute('aria-expanded')).toBe('false');
+        expect(done.textContent).toContain('(1)');
+        expect(
+            document.getElementById(done.getAttribute('aria-controls') ?? '')
+                ?.hidden,
+        ).toBe(true);
+        expect(screen.queryByText('Publicar')).toBeNull();
+    });
+
+    it('se despliega y pliega con el teclado y se recuerda al volver', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<FoldableList />);
+
+        screen.getByRole('button', { name: /^Hecha/ }).focus();
+        await user.keyboard('{Enter}');
+        expect(screen.getByText('Publicar')).toBeTruthy();
+        await user.click(screen.getByRole('button', { name: /^Por hacer/ }));
+        expect(screen.queryByText('Maquetar la home')).toBeNull();
+        expect(
+            JSON.parse(
+                window.localStorage.getItem('audax.tasks.groups.1.1') ?? '{}',
+            ),
+        ).toEqual({ 'status-2': false, 'status-1': true });
+        unmount();
+
+        render(<FoldableList />);
+        expect(
+            screen
+                .getByRole('button', { name: /Por hacer/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('false');
+        expect(screen.getByText('Publicar')).toBeTruthy();
+    });
+
+    it('«Plegar todo» y «Desplegar todo»', async () => {
+        const user = userEvent.setup();
+        render(<FoldableList />);
+
+        await user.click(screen.getByRole('button', { name: 'Plegar todo' }));
+        const toggles = () =>
+            [
+                ...document.querySelectorAll('[data-test="task-group-toggle"]'),
+            ].map((toggle) => toggle.getAttribute('aria-expanded'));
+        expect(toggles()).toEqual(['false', 'false']);
+        await user.click(
+            screen.getByRole('button', { name: 'Desplegar todo' }),
+        );
+        expect(toggles()).toEqual(['true', 'true']);
+    });
+
+    it('sin almacenamiento (bloqueado) funciona igual, solo que no recuerda', async () => {
+        const getItem = vi
+            .spyOn(Storage.prototype, 'getItem')
+            .mockImplementation(() => {
+                throw new Error('bloqueado');
+            });
+        const setItem = vi
+            .spyOn(Storage.prototype, 'setItem')
+            .mockImplementation(() => {
+                throw new Error('bloqueado');
+            });
+        const user = userEvent.setup();
+        render(<FoldableList />);
+
+        await user.click(screen.getByRole('button', { name: /^Hecha/ }));
+        expect(screen.getByText('Publicar')).toBeTruthy();
+        getItem.mockRestore();
+        setItem.mockRestore();
+    });
+
+    it('un clic en cualquier punto de la fila abre la tarea; la casilla y el temporizador no', async () => {
+        const onOpen = vi.fn();
+        const user = userEvent.setup();
+        render(<FoldableList onOpen={onOpen} />);
+
+        const row = screen
+            .getAllByRole('row')
+            .find((item) => item.textContent?.includes('Maquetar la home'));
+        expect(row).toBeTruthy();
+
+        await user.click(within(row as HTMLElement).getAllByRole('cell')[2]);
+        expect(onOpen).toHaveBeenLastCalledWith(11);
+        const calls = onOpen.mock.calls.length;
+
+        await user.click(within(row as HTMLElement).getByRole('checkbox'));
+        expect(onOpen).toHaveBeenCalledTimes(calls);
+    });
+});

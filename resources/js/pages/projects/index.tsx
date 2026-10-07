@@ -7,7 +7,7 @@ import {
     Plus,
     SearchX,
 } from 'lucide-react';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import { useHourBankThresholds } from '@/components/hour-banks/hour-bank-actions';
 import { ListPagination } from '@/components/projects-list/list-pagination';
@@ -39,6 +39,28 @@ import type {
 
 const SORTS: ProjectListSort[] = ['name', 'recent', 'due'];
 
+function viewStorageKey(userId: number): string {
+    return `audax.projects.view.${userId}`;
+}
+
+function readStoredView(userId: number): ProjectListView | null {
+    try {
+        const value = window.localStorage.getItem(viewStorageKey(userId));
+
+        return value === 'list' || value === 'clients' ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function storeView(userId: number, view: ProjectListView): void {
+    try {
+        window.localStorage.setItem(viewStorageKey(userId), view);
+    } catch {
+        // Sin almacenamiento: vale la de la URL.
+    }
+}
+
 const SORT_PARAM: Record<ProjectListSort, string> = {
     name: 'nombre',
     recent: 'recientes',
@@ -60,8 +82,9 @@ export default function ProjectsIndex({
     options,
 }: ProjectsIndexProps) {
     const can = useAbilities();
-    // Sin sesión (tests), los plegados no se recuerdan.
-    const userId = usePage().props.auth?.user?.id ?? null;
+    const page = usePage();
+    // Sin sesión (tests), los plegados y la vista no se recuerdan.
+    const userId = page.props.auth?.user?.id ?? null;
     const thresholds = useHourBankThresholds();
 
     const visit = useCallback(
@@ -70,6 +93,10 @@ export default function ProjectsIndex({
             nextView: ProjectListView,
             nextSort: ProjectListSort,
         ) => {
+            if (userId !== null) {
+                storeView(userId, nextView);
+            }
+
             router.get(
                 index.url({
                     query: {
@@ -88,8 +115,26 @@ export default function ProjectsIndex({
                 },
             );
         },
-        [],
+        [userId],
     );
+
+    // La vista plana se recuerda en este navegador (D-322): al volver a /proyectos sin ?vista=,
+    // si la última elegida fue «Lista», se abre la lista. Solo al entrar en la página.
+    const [restored] = useState(() => {
+        const stored = userId === null ? null : readStoredView(userId);
+        const inUrl = new URL(page.url, 'http://localhost').searchParams.has(
+            'vista',
+        );
+
+        return !inUrl && stored === 'list' && view === 'clients';
+    });
+
+    useEffect(() => {
+        if (restored) {
+            visit(filters, 'list', sort);
+        }
+        // Solo una vez, al entrar: `restored` no cambia.
+    }, [restored]);
 
     const applyFilters = useCallback(
         (next: ProjectListFilters) => visit(next, view, sort),
@@ -104,9 +149,7 @@ export default function ProjectsIndex({
     // Con una búsqueda o un cliente, lo plegado no se recuerda: se ve todo lo encontrado.
     const searching = filters.buscar.trim() !== '' || filters.cliente !== null;
     const folds = useCollapsedGroups(
-        searching || userId === null
-            ? null
-            : `audax.projects.tree.${userId}`,
+        searching || userId === null ? null : `audax.projects.tree.${userId}`,
     );
 
     return (
@@ -215,7 +258,8 @@ export default function ProjectsIndex({
                                     'projects.index.no_results_description',
                                 )}
                             />
-                        ) : view === 'clients' && groups ? (
+                        ) : restored && view === 'clients' ? null : view ===
+                              'clients' && groups ? (
                             <ProjectsTree
                                 groups={groups}
                                 company={company}

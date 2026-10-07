@@ -302,6 +302,43 @@ beforeEach(() => {
     server.delete.mockReset();
 });
 
+describe('imputar desde la cabecera de la tarea (D-323)', () => {
+    it('«Iniciar» y «Añadir horas» van juntos y lo primero, antes de los campos', () => {
+        renderPanel(panelData());
+
+        const actions = document.querySelector(
+            '[data-test="task-panel-actions"]',
+        ) as HTMLElement;
+        const buttons = within(actions)
+            .getAllByRole('button')
+            .map((button) => button.textContent?.trim());
+        expect(buttons.slice(0, 2)).toEqual(['Iniciar', 'Añadir horas']);
+        const fields = screen.getByText('Estado');
+        expect(
+            actions.compareDocumentPosition(fields) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('un hito no lleva «Iniciar» ni «Añadir horas» en la cabecera', () => {
+        renderPanel(
+            panelData({
+                task: {
+                    ...panelData().task,
+                    is_milestone: true,
+                },
+            }),
+        );
+
+        const actions = document.querySelector(
+            '[data-test="task-panel-actions"]',
+        ) as HTMLElement;
+        expect(
+            within(actions).queryByRole('button', { name: 'Añadir horas' }),
+        ).toBeNull();
+    });
+});
+
 describe('abrir y cerrar el panel', () => {
     it('al pulsar una tarea pide solo la prop «panel» con ?tarea= (recarga parcial)', async () => {
         const user = userEvent.setup();

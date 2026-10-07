@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsIndex from '@/pages/projects/index';
 import type {
     Abilities,
+    ProjectClientGroup,
     ProjectListFilters,
     ProjectListItem,
     ProjectsIndexProps,
@@ -214,8 +215,9 @@ describe('listado de proyectos', () => {
             screen.getByRole('switch', { name: 'Solo mis proyectos' }),
         );
 
+        // En la vista plana, la URL conserva ?vista=lista (D-322).
         expect(inertia.get).toHaveBeenCalledWith(
-            '/proyectos?mios=1',
+            '/proyectos?mios=1&vista=lista',
             undefined,
             expect.objectContaining({ preserveState: true, replace: true }),
         );
@@ -237,7 +239,9 @@ describe('listado de proyectos', () => {
         });
 
         expect(inertia.get).toHaveBeenCalledTimes(1);
-        expect(inertia.get.mock.calls[0][0]).toBe('/proyectos?buscar=acme');
+        expect(inertia.get.mock.calls[0][0]).toBe(
+            '/proyectos?buscar=acme&vista=lista',
+        );
     });
 
     it('con filtros, «Quitar filtros» vuelve al listado por defecto', async () => {
@@ -254,7 +258,7 @@ describe('listado de proyectos', () => {
             screen.getByRole('button', { name: 'Quitar filtros' }),
         );
 
-        expect(inertia.get.mock.calls[0][0]).toBe('/proyectos');
+        expect(inertia.get.mock.calls[0][0]).toBe('/proyectos?vista=lista');
     });
 
     it('la paginación enlaza a la página siguiente conservando los filtros', () => {
@@ -297,5 +301,181 @@ describe('listado de proyectos', () => {
                 }) as HTMLButtonElement
             ).disabled,
         ).toBe(true);
+    });
+});
+
+function tree(
+    groups: ProjectClientGroup[],
+    overrides: Partial<ProjectsIndexProps> = {},
+): ProjectsIndexProps {
+    return props([], { view: 'clients', projects: null, groups, ...overrides });
+}
+
+const gestiones: ProjectClientGroup = {
+    key: 'client-4',
+    kind: 'client',
+    client: { id: 4, name: 'Gestiones Norte' },
+    projects: [
+        {
+            ...project({
+                id: 9,
+                code: 'GES-BH',
+                name: 'WE1 - 120h',
+                client: { id: 4, name: 'Gestiones Norte' },
+            }),
+            open_banks: [
+                {
+                    id: 12,
+                    name: 'WE 120H',
+                    status: 'active',
+                    total_minutes: 7200,
+                    consumed_minutes: 3600,
+                    overage_minutes: 0,
+                    end_date: null,
+                },
+            ],
+        },
+    ],
+};
+
+const internal: ProjectClientGroup = {
+    key: 'internal',
+    kind: 'internal',
+    client: null,
+    projects: [
+        {
+            ...project({
+                id: 2,
+                code: 'INT-GEN',
+                name: 'General',
+                client: null,
+                client_id: null,
+                billing_type: 'internal',
+                hour_banks: null,
+            }),
+            open_banks: null,
+        },
+    ],
+};
+
+describe('listado por clientes (D-322)', () => {
+    beforeEach(() => {
+        window.localStorage.clear();
+        inertia.props = {
+            auth: { user: { id: 5 }, can: can() },
+        };
+    });
+
+    it('agrupa por cliente, con los internos bajo el nombre de la empresa y las bolsas dentro', () => {
+        render(<ProjectsIndex {...tree([internal, gestiones])} />);
+
+        const toggles = screen.getAllByRole('button', { expanded: true });
+        expect(toggles.map((toggle) => toggle.textContent)).toEqual([
+            'Audax Studio (interno)(1)',
+            'Gestiones Norte(1 · bolsas abiertas: 1)',
+        ]);
+        expect(
+            screen
+                .getByRole('link', { name: 'GES-BH WE1 - 120h' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/9');
+        expect(
+            screen
+                .getByRole('link', { name: 'Bolsa WE 120H' })
+                .getAttribute('href'),
+        ).toBe('/proyectos/9/bolsas/12');
+        expect(
+            screen
+                .getByRole('link', { name: 'Ver ficha de Gestiones Norte' })
+                .getAttribute('href'),
+        ).toBe('/clientes/4');
+        // Sin paginación en la vista por clientes.
+        expect(
+            screen.queryByRole('navigation', { name: 'Páginas de proyectos' }),
+        ).toBeNull();
+    });
+
+    it('un cliente se pliega y se recuerda en el navegador', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(
+            <ProjectsIndex {...tree([internal, gestiones])} />,
+        );
+
+        const toggle = screen.getByRole('button', { name: /Gestiones Norte/ });
+        await user.click(toggle);
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        expect(
+            document.getElementById(toggle.getAttribute('aria-controls') ?? '')
+                ?.hidden,
+        ).toBe(true);
+        expect(
+            screen.queryByRole('link', { name: 'GES-BH WE1 - 120h' }),
+        ).toBeNull();
+        unmount();
+
+        render(<ProjectsIndex {...tree([internal, gestiones])} />);
+        expect(
+            screen
+                .getByRole('button', { name: /Gestiones Norte/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('false');
+    });
+
+    it('con muchos proyectos nacen plegados, salvo si se está buscando', () => {
+        const many: ProjectClientGroup = {
+            ...gestiones,
+            projects: Array.from({ length: 30 }, (_, index) => ({
+                ...gestiones.projects[0],
+                id: 100 + index,
+            })),
+        };
+        const { unmount } = render(
+            <ProjectsIndex {...tree([internal, many])} />,
+        );
+        expect(
+            screen
+                .getByRole('button', { name: /Gestiones Norte/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('false');
+        unmount();
+
+        render(
+            <ProjectsIndex
+                {...tree([many], { filters: { ...filters, buscar: 'norte' } })}
+            />,
+        );
+        expect(
+            screen
+                .getByRole('button', { name: /Gestiones Norte/ })
+                .getAttribute('aria-expanded'),
+        ).toBe('true');
+    });
+
+    it('«Lista» pide la vista plana con ?vista=lista y la recuerda; al volver sin ?vista= la abre', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<ProjectsIndex {...tree([gestiones])} />);
+
+        await user.click(screen.getByRole('radio', { name: 'Lista' }));
+        expect(inertia.get.mock.calls[0][0]).toBe('/proyectos?vista=lista');
+        expect(window.localStorage.getItem('audax.projects.view.5')).toBe(
+            'list',
+        );
+        unmount();
+        inertia.get.mockReset();
+
+        render(<ProjectsIndex {...tree([gestiones])} />);
+        expect(inertia.get.mock.calls[0][0]).toBe('/proyectos?vista=lista');
+    });
+
+    it('la vista por clientes no lleva parámetro y la recuerda', async () => {
+        window.localStorage.setItem('audax.projects.view.5', 'list');
+        const user = userEvent.setup();
+        render(<ProjectsIndex {...props([project()], { view: 'list' })} />);
+
+        await user.click(screen.getByRole('radio', { name: 'Por clientes' }));
+        expect(inertia.get.mock.calls.at(-1)?.[0]).toBe('/proyectos');
+        expect(window.localStorage.getItem('audax.projects.view.5')).toBe(
+            'clients',
+        );
     });
 });

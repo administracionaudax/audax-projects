@@ -120,6 +120,24 @@ const entry: TimeEntry = {
 };
 
 describe('diálogo de imputación', () => {
+    it('desde la tarea (D-323): con la tarea y la fecha puestas, el foco va a la duración', async () => {
+        render(
+            <TimeEntryDialog
+                open
+                onOpenChange={vi.fn()}
+                task={task}
+                date="2026-09-25"
+                focusDuration
+            />,
+        );
+
+        const duration = await screen.findByLabelText('Duración');
+        await waitFor(() => expect(document.activeElement).toBe(duration));
+        expect(
+            screen.getByRole('combobox', { name: 'Tarea' }).textContent,
+        ).toContain('Maquetar la home');
+    });
+
     it('crea una entrada con la tarea, la fecha, la duración y la descripción', async () => {
         const user = userEvent.setup();
         const onOpenChange = vi.fn();

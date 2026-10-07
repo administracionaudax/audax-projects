@@ -183,7 +183,7 @@ export function ProjectTreeTable({
                                     <span className="min-w-0">
                                         <span className="block text-xs font-medium text-muted-foreground">
                                             {project.code}
-                                        </span>
+                                        </span>{' '}
                                         <span className="block text-primary-text group-hover:underline">
                                             {project.name}
                                         </span>
@@ -246,8 +246,8 @@ export function ProjectTreeTable({
                                             data-row-primary
                                         >
                                             <span className="sr-only">
-                                                {t('projects.tree.bank')}{' '}
-                                            </span>
+                                                {t('projects.tree.bank')}
+                                            </span>{' '}
                                             {bank.name}
                                         </Link>
                                     </span>
