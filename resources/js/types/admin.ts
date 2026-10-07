@@ -75,6 +75,28 @@ export type AdminWorkSchedule = {
     is_current: boolean;
     /** Solo la última versión, si aún no ha empezado. */
     is_editable: boolean;
+    /** Registro de jornada (Fase 11, D-336): margen de entrada ("HH:MM") y pausa prevista. */
+    start_time_from?: string | null;
+    start_time_to?: string | null;
+    expected_pause_minutes?: number;
+    /** Temporada de verano (MM-DD a MM-DD, todos los años), o null. */
+    summer?: AdminWorkScheduleSummer | null;
+};
+
+export type AdminWorkScheduleSummer = {
+    starts_on: string;
+    ends_on: string;
+    /** Minutos de lunes a domingo. */
+    week: number[];
+    expected_pause_minutes: number;
+};
+
+/** Datos laborales (Fase 11, D-343): solo para quien tiene manage-people. */
+export type AdminEmployment = {
+    hire_date: string | null;
+    termination_date: string | null;
+    subject_to_register: boolean;
+    register_exemption_reason: string | null;
 };
 
 export type AdminUserEditProps = {
@@ -91,6 +113,8 @@ export type AdminUserEditProps = {
         deactivate: boolean;
         viewFinancials: boolean;
     };
+    /** Datos laborales (Fase 11), o null si quien mira no tiene manage-people. */
+    employment?: AdminEmployment | null;
 };
 
 export type AdminDeactivationTask = {

@@ -39,6 +39,8 @@ const MODULES: AppModule[] = [
     'day_plan',
     // Previsión (D-280): asignaciones y proyectos previstos; apagado por defecto.
     'forecast',
+    // Personas (D-330): registro de jornada; apagado hasta tener R1 y R2 en producción.
+    'people',
 ];
 
 /** Máximo de umbrales de alerta de las bolsas. */

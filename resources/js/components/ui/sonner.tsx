@@ -1,3 +1,4 @@
+import { useClockSummary } from '@/components/people/use-clock-summary';
 import { useDayPlanPrompt } from '@/hooks/use-day-plan-prompt';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 import { useAppearance } from '@/hooks/use-appearance';
@@ -10,6 +11,8 @@ function Toaster({ ...props }: ToasterProps) {
     useFlashToast();
     // Plan del día (D-254): «¿Das por hecha la línea?» al parar su temporizador.
     useDayPlanPrompt();
+    // Registro de jornada (D-340): «Hoy has trabajado… e imputado…» al fichar la salida.
+    useClockSummary();
 
     return (
         <Sonner

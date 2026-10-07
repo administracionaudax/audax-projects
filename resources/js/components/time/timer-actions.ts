@@ -1,7 +1,11 @@
 import { router } from '@inertiajs/react';
 import { useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { punch } from '@/components/people/clock-actions';
+import { formatTime } from '@/lib/format';
+import { t } from '@/lib/i18n';
 import { discard, start, stop } from '@/routes/timer';
+import type { ClockShared } from '@/types/people';
 
 /**
  * Acciones del temporizador (SPEC §7, D-035) compartidas por la cabecera, el botón de cada tarea
@@ -70,6 +74,33 @@ function firstMessages(errors: TimerErrors): string[] {
     return Object.values(errors).filter((message) => message !== '');
 }
 
+/**
+ * Registro de jornada (PLAN-FASE-11 §3.2.2; D-340): si se empieza el temporizador sin haber fichado
+ * la entrada, se ofrece fichar con un clic. Fichar es siempre un gesto de la persona: nunca se
+ * ficha solo por usar el temporizador.
+ */
+export function offerClockIn(clock: ClockShared | null): void {
+    if (
+        clock === null ||
+        (clock.status !== 'off' && clock.status !== 'closed')
+    ) {
+        return;
+    }
+
+    toast(
+        t('people.timer.clock_in_prompt', {
+            time: formatTime(new Date().toISOString()),
+        }),
+        {
+            duration: 12_000,
+            action: {
+                label: t('people.timer.clock_in_action'),
+                onClick: () => punch('clock_in', clock.work_mode ?? 'on_site'),
+            },
+        },
+    );
+}
+
 /** Clave con la que el servidor avisa de que no ha podido imputar el temporizador en marcha. */
 export const RUNNING_TIMER_ERROR = 'running_timer';
 
@@ -88,7 +119,10 @@ export function startTimer(
             ...BASE,
             onStart: () => callbacks.onStart?.(),
             onFinish: () => callbacks.onFinish?.(),
-            onSuccess: () => callbacks.onSuccess?.(),
+            onSuccess: (page) => {
+                offerClockIn(page.props.people?.clock ?? null);
+                callbacks.onSuccess?.();
+            },
             onError: (errors) => {
                 if (errors[RUNNING_TIMER_ERROR]) {
                     timerStopDialog.open(errors);

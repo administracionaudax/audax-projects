@@ -7,7 +7,7 @@
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
  *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
- *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant; y el centro de ayuda, help, y sus sugerencias, suggestions; el plan del día, day-plan; y la previsión, forecast). Laravel no los lee.
+ *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant; y el centro de ayuda, help, y sus sugerencias, suggestions; el plan del día, day-plan; y la previsión, forecast; en la Fase 11, el registro de jornada, people). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -38,6 +38,7 @@ import mySpaceTasks from '../../../lang/ui/my-space-tasks.json';
 import myTasks from '../../../lang/ui/my-tasks.json';
 import notificationSettings from '../../../lang/ui/notification-settings.json';
 import notifications from '../../../lang/ui/notifications.json';
+import people from '../../../lang/ui/people.json';
 import planning from '../../../lang/ui/planning.json';
 import portalBanks from '../../../lang/ui/portal-banks.json';
 import portalAccess from '../../../lang/ui/portal-access.json';
@@ -100,6 +101,7 @@ const messages = {
     ...suggestions,
     ...dayPlan,
     ...forecast,
+    ...people,
 };
 
 export type TranslationKey = keyof typeof messages;

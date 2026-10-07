@@ -55,6 +55,11 @@ export type Abilities = {
     /** Previsión (D-284): la global (admins, responsables y manage-forecast) y la propia carga. */
     viewForecast?: boolean;
     useForecast?: boolean;
+    /** Registro de jornada (Fase 11, D-342): usar el módulo, fichar, la jornada del equipo y RR. HH. */
+    usePeople?: boolean;
+    clock?: boolean;
+    viewPeopleTeam?: boolean;
+    managePeople?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */

@@ -68,11 +68,13 @@ final class WorkdayCalculator
      * El diario de varias personas a la vez, con una consulta de fichajes, una de correcciones, una
      * de horarios y las de Capacity en total («Jornada del equipo»).
      *
-     * @param  list<User>  $users
+     * @param  array<int, User>  $users
      * @return array<int, array<string, Day>>
      */
     public function forUsers(array $users, string $from, string $to, ?User $viewer = null, ?CarbonImmutable $now = null): array
     {
+        $users = array_values($users);
+
         if ($users === []) {
             return [];
         }

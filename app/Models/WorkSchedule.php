@@ -168,7 +168,7 @@ class WorkSchedule extends Model
      */
     public function summerWeek(): array
     {
-        $week = array_map(fn (mixed $minutes): int => max((int) $minutes, 0), array_values((array) $this->summer_week));
+        $week = array_map(fn (mixed $minutes): int => max((int) $minutes, 0), $this->summer_week ?? []);
 
         return array_pad(array_slice($week, 0, 7), 7, 0);
     }

@@ -32,12 +32,13 @@ final class WorkScheduleVersions
 
     /**
      * @param  list<int>  $week  Minutos de lunes a domingo.
+     * @param  array<string, mixed>  $register  Margen de entrada, pausa prevista y verano (D-336).
      *
      * @throws ValidationException
      */
-    public function create(User $user, string $validFrom, array $week): WorkSchedule
+    public function create(User $user, string $validFrom, array $week, array $register = []): WorkSchedule
     {
-        return DB::transaction(function () use ($user, $validFrom, $week): WorkSchedule {
+        return DB::transaction(function () use ($user, $validFrom, $week, $register): WorkSchedule {
             $latest = $this->latest($user);
             $from = CarbonImmutable::parse($validFrom);
 
@@ -67,6 +68,7 @@ final class WorkScheduleVersions
                 'valid_from' => $from->toDateString(),
                 'valid_to' => null,
                 ...$this->columns($week),
+                ...self::register($register),
             ]);
 
             return $schedule;
@@ -75,12 +77,13 @@ final class WorkScheduleVersions
 
     /**
      * @param  list<int>  $week
+     * @param  array<string, mixed>  $register  Margen de entrada, pausa prevista y verano (D-336).
      *
      * @throws ValidationException
      */
-    public function update(WorkSchedule $schedule, string $validFrom, array $week): WorkSchedule
+    public function update(WorkSchedule $schedule, string $validFrom, array $week, array $register = []): WorkSchedule
     {
-        return DB::transaction(function () use ($schedule, $validFrom, $week): WorkSchedule {
+        return DB::transaction(function () use ($schedule, $validFrom, $week, $register): WorkSchedule {
             $current = $this->assertEditable($schedule);
             $from = CarbonImmutable::parse($validFrom);
 
@@ -99,7 +102,7 @@ final class WorkScheduleVersions
                 $previous->save();
             }
 
-            $current->fill(['valid_from' => $from->toDateString(), ...$this->columns($week)])->save();
+            $current->fill(['valid_from' => $from->toDateString(), ...$this->columns($week), ...self::register($register)])->save();
 
             return $current;
         });
@@ -184,6 +187,26 @@ final class WorkScheduleVersions
             ->where('valid_from', '<', $schedule->valid_from->toDateString())
             ->orderByDesc('valid_from')
             ->first();
+    }
+
+    /**
+     * Columnas del registro de jornada que se pueden fijar (las que no vienen, como estaban o por
+     * defecto).
+     *
+     * @param  array<string, mixed>  $register
+     * @return array<string, mixed>
+     */
+    private static function register(array $register): array
+    {
+        return array_intersect_key($register, array_flip([
+            'start_time_from',
+            'start_time_to',
+            'expected_pause_minutes',
+            'summer_starts_on',
+            'summer_ends_on',
+            'summer_week',
+            'summer_expected_pause_minutes',
+        ]));
     }
 
     /**

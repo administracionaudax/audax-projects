@@ -3,6 +3,7 @@ import {
     BarChart3,
     Building2,
     CalendarDays,
+    CalendarClock,
     CalendarOff,
     CalendarRange,
     Clock,
@@ -37,6 +38,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
+import { tCount } from '@/lib/people';
 import { home } from '@/routes';
 import { index as absencesIndex } from '@/routes/absences';
 import { index as teamAbsencesIndex } from '@/routes/absences/team';
@@ -54,6 +56,9 @@ import { index as hourBanksIndex } from '@/routes/hour-banks';
 import { index as mySpaceIndex } from '@/routes/my-space';
 import { index as teamIndex } from '@/routes/team';
 import { index as myTasksIndex } from '@/routes/my-tasks';
+import { index as peoplePendingIndex } from '@/routes/people/pending';
+import { index as peopleTeamIndex } from '@/routes/people/team';
+import { index as workdayIndex } from '@/routes/people/workday';
 import { index as projectsIndex } from '@/routes/projects';
 import { index as reportsIndex } from '@/routes/reports';
 import { index as reportSchedulesIndex } from '@/routes/reports/schedules';
@@ -145,16 +150,55 @@ export function projectsNavItems(can: Abilities): NavItem[] {
 }
 
 /**
- * Sección «Personas» (D-260, nombre provisional del futuro módulo de RR. HH.): de momento, las
- * Ausencias (D-091), con «Ausencias del equipo» para quien las aprueba (D-049). Un colaborador
- * externo no las tiene (D-134), así que no ve la sección.
+ * Sección «Personas» (D-260): el registro de jornada (Fase 11, D-341) con el módulo `people`
+ * visible, «Mi jornada» con el contador de lo que espera mi decisión y, para responsables y RR. HH.,
+ * «Jornada del equipo» y «Pendientes»; y las Ausencias (D-091), con «Ausencias del equipo» para
+ * quien las aprueba (D-049). Un colaborador externo no tiene nada (D-134), así que no ve la sección.
  */
-export function peopleNavItems(can: Abilities): NavItem[] {
+export function peopleNavItems(
+    can: Abilities,
+    counters: { peoplePending?: number } = {},
+): NavItem[] {
     if (!can.viewAbsences) {
         return [];
     }
 
+    const pending = counters.peoplePending ?? 0;
+    const workday: NavItem[] =
+        can.usePeople === true
+            ? [
+                  {
+                      title: t('people.nav.workday'),
+                      href: workdayIndex(),
+                      icon: CalendarClock,
+                      badge:
+                          pending > 0
+                              ? {
+                                    count: pending,
+                                    label: tCount(
+                                        'people.nav.pending_count',
+                                        pending,
+                                    ),
+                                }
+                              : undefined,
+                      items: can.viewPeopleTeam
+                          ? [
+                                {
+                                    title: t('people.nav.team'),
+                                    href: peopleTeamIndex(),
+                                },
+                                {
+                                    title: t('people.nav.pending'),
+                                    href: peoplePendingIndex(),
+                                },
+                            ]
+                          : undefined,
+                  },
+              ]
+            : [];
+
     return [
+        ...workday,
         {
             title: t('nav.absences'),
             href: absencesIndex(),
@@ -270,6 +314,8 @@ export function weeklyNavItems(
 
 export type NavCounters = {
     chatUnread?: number;
+    /** Registro de jornada: correcciones que esperan mi decisión (Fase 11). */
+    peoplePending?: number;
     weekliesPending?: number;
     weekliesEnabled?: boolean;
     assistantEnabled?: boolean;
@@ -300,7 +346,7 @@ export function navSections(
         {
             id: 'people',
             label: t('nav.sections.people'),
-            items: peopleNavItems(can),
+            items: peopleNavItems(can, counters),
         },
         {
             id: 'billing',
@@ -321,6 +367,7 @@ export function AppSidebar() {
     const { props } = usePage();
     const counters: NavCounters = {
         chatUnread,
+        peoplePending: props.people?.pending ?? 0,
         weekliesPending: props.weeklies?.pending ?? 0,
         weekliesEnabled: props.config?.modules?.weeklies,
         assistantEnabled: props.config?.modules?.assistant,

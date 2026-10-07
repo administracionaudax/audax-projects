@@ -35,6 +35,8 @@ return [
         'suggestion' => 'Sugerencias',
         'day_plan' => 'Plan del día',
         'forecast' => 'Previsión',
+        'people' => 'Registro de jornada (correcciones y datos laborales)',
+        'work_schedule' => 'Jornadas',
         'other' => 'Otros',
     ],
 

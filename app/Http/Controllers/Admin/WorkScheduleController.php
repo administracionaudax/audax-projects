@@ -28,7 +28,7 @@ class WorkScheduleController extends Controller
     {
         $this->authorizeFor($request, $user);
 
-        $this->versions->create($user, $request->string('valid_from')->toString(), $request->week());
+        $this->versions->create($user, $request->string('valid_from')->toString(), $request->week(), $request->register());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('admin.schedules.created')]);
 
@@ -39,7 +39,7 @@ class WorkScheduleController extends Controller
     {
         $this->authorizeFor($request, $user);
 
-        $this->versions->update($workSchedule, $request->string('valid_from')->toString(), $request->week());
+        $this->versions->update($workSchedule, $request->string('valid_from')->toString(), $request->week(), $request->register());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('admin.schedules.updated')]);
 

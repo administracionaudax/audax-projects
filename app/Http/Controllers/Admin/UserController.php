@@ -6,6 +6,7 @@ use App\Domain\Access\CollaboratorOffboarding;
 use App\Domain\Admin\TextSearch;
 use App\Domain\Admin\UserGuard;
 use App\Domain\Admin\UserInviter;
+use App\Domain\People\PeopleAccess;
 use App\Domain\Privacy\PersonalDataExportList;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
@@ -16,6 +17,7 @@ use App\Http\Resources\Admin\WorkScheduleResource;
 use App\Http\Resources\DepartmentResource;
 use App\Models\ActiveTimer;
 use App\Models\Department;
+use App\Models\EmploymentProfile;
 use App\Models\LoginEvent;
 use App\Models\Project;
 use App\Models\Task;
@@ -144,7 +146,25 @@ class UserController extends Controller
             ],
             // Exportaciones de sus datos personales (D-075): solo el admin las pide y las descarga.
             'personalDataExports' => $actor->isAdmin() ? app(PersonalDataExportList::class)->for($user) : null,
+            // Datos laborales (Fase 11, D-343): alta, baja y si está sujeto al registro de jornada.
+            // Los ve y edita quien tiene manage-people, y solo para la plantilla interna.
+            'employment' => PeopleAccess::managesAll($actor) && PeopleAccess::staff($user) ? self::employment($user) : null,
         ]);
+    }
+
+    /**
+     * @return array{hire_date: string|null, termination_date: string|null, subject_to_register: bool, register_exemption_reason: string|null}
+     */
+    private static function employment(User $user): array
+    {
+        $profile = EmploymentProfile::query()->where('user_id', $user->id)->first();
+
+        return [
+            'hire_date' => $profile?->hire_date?->toDateString(),
+            'termination_date' => $profile?->termination_date?->toDateString(),
+            'subject_to_register' => $profile === null || $profile->subject_to_register,
+            'register_exemption_reason' => $profile?->register_exemption_reason,
+        ];
     }
 
     public function update(UserRequest $request, User $user): RedirectResponse

@@ -1,6 +1,7 @@
 import type { ActiveTimer, AppConfig, Auth } from '@/types/auth';
 import type { ChatSharedProps } from '@/types/chat';
 import type { IntegrationsSharedProps } from '@/types/integrations';
+import type { PeopleShared } from '@/types/people';
 import type { RealtimeConfig } from '@/lib/realtime';
 
 declare module 'react' {
@@ -33,6 +34,8 @@ declare module '@inertiajs/core' {
             integrations?: IntegrationsSharedProps;
             /** Secciones plegadas de la barra lateral de esta persona (D-260). */
             navCollapsed?: string[];
+            /** Registro de jornada (Fase 11): el botón de fichar y «Pendientes»; null sin el módulo. */
+            people?: PeopleShared | null;
             [key: string]: unknown;
         };
     }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SearchTrigger } from '@/components/global-search';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { ClockButton } from '@/components/people/clock-button';
 import { TimeEntryDialog } from '@/components/time/time-entry-dialog';
 import { TimerChip } from '@/components/time/timer-chip';
 import { TimerStartButton } from '@/components/time/timer-start-button';
@@ -15,8 +16,9 @@ import { t } from '@/lib/i18n';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 /**
- * Cabecera de la app: menú, migas, temporizador activo (SPEC §7) o «Iniciar temporizador» e
- * «Imputar horas», búsqueda y campana de notificaciones (SPEC §13).
+ * Cabecera de la app: menú, migas, el botón de fichar del registro de jornada (Fase 11, D-333),
+ * temporizador activo (SPEC §7) o «Iniciar temporizador» e «Imputar horas», búsqueda y campana de
+ * notificaciones (SPEC §13).
  * También pinta los avisos de imputación y el diálogo de «no se ha podido imputar» del
  * temporizador, que comparten todas las páginas.
  */
@@ -25,7 +27,7 @@ export function AppSidebarHeader({
 }: {
     breadcrumbs?: BreadcrumbItemType[];
 }) {
-    const { timer, config, auth } = usePage().props;
+    const { timer, config, auth, people } = usePage().props;
     const [logging, setLogging] = useState(false);
     const internal = auth.user !== null && !auth.user.is_client;
 
@@ -37,6 +39,10 @@ export function AppSidebarHeader({
                 <SidebarTrigger className="-ml-1" />
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
+            {/* Registro de jornada (D-333): fichar, junto al temporizador. */}
+            {internal && people?.clock ? (
+                <ClockButton clock={people.clock} />
+            ) : null}
             {internal ? (
                 timer ? (
                     <TimerChip

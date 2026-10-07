@@ -456,7 +456,7 @@ final class ClockCorrectionService
     /**
      * Avisa (solo con el módulo encendido de verdad: en modo de prueba no se avisa a nadie, D-239).
      *
-     * @param  list<User>  $recipients
+     * @param  array<int, User>  $recipients
      */
     private function notify(array $recipients, object $notification): void
     {

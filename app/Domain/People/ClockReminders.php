@@ -139,7 +139,8 @@ final class ClockReminders
      */
     private function send(User $user, string $date, string $type): bool
     {
-        $kind = (new ClockReminder($type, $date))->kind();
+        $notification = ClockReminder::make($type, $date);
+        $kind = $notification->kind();
 
         if (($this->preferences->channelsFor($user, $kind) ?? []) === []) {
             return false;
@@ -157,7 +158,7 @@ final class ClockReminders
         }
 
         try {
-            $user->notify(new ClockReminder($type, $date));
+            $user->notify($notification);
         } catch (Throwable $exception) {
             DB::table('clock_reminders')->where('user_id', $user->id)->where('date', $date)->where('kind', $type)->delete();
 

@@ -117,8 +117,11 @@ final class RegisterTimeline
             }
 
             $current->events[] = $event;
-            $last = array_key_last($current->segments);
-            $current->segments[$last]['to'] = $event->occurred_at;
+            $open = array_pop($current->segments);
+            if ($open !== null) {
+                $open['to'] = $event->occurred_at;
+                $current->segments[] = $open;
+            }
 
             if ($event->kind === ClockEventKind::PauseStart) {
                 $current->segments[] = ['kind' => 'pause', 'from' => $event->occurred_at, 'to' => null, 'mode' => null];

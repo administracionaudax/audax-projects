@@ -56,6 +56,10 @@ final class AuditCatalog
         'day_plan' => ['day_plans', 'day_plan_items', 'day_plan_comments'],
         // Previsión (D-280): proyectos previstos (con vincular y desvincular) y asignaciones.
         'forecast' => ['forecast_projects', 'allocations'],
+        // Registro de jornada (Fase 11): las correcciones (los fichajes no cambian nunca: su rastro
+        // es la propia cadena) y los datos laborales; y las jornadas de cada persona (D-336).
+        'people' => ['clock_corrections', 'employment_profiles'],
+        'work_schedule' => ['work_schedules'],
     ];
 
     /**

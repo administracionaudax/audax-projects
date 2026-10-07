@@ -10,6 +10,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * Lo que pintan las pantallas del registro (PLAN-FASE-11 §6; D-341): el diario del mes de una
@@ -166,18 +167,18 @@ final class WorkdayPresenter
     /**
      * Correcciones con el resumen de lo que anulan y añaden.
      *
-     * @param  iterable<ClockCorrection>  $corrections
+     * @param  array<int, ClockCorrection>|EloquentCollection<int, ClockCorrection>  $corrections
      * @return list<array<string, mixed>>
      */
-    public function list(iterable $corrections, User $viewer): array
+    public function list(array|EloquentCollection $corrections, User $viewer): array
     {
-        $collection = collect($corrections);
+        $collection = new EloquentCollection(is_array($corrections) ? array_values($corrections) : $corrections->all());
         $collection->load(['proposer:id,name', 'decider:id,name', 'user:id,name,department_id']);
 
         $voidIds = $collection->flatMap(fn (ClockCorrection $correction): array => array_map(intval(...), $correction->voids))->unique()->values()->all();
         $events = ClockEvent::query()->whereIn('id', $voidIds ?: [0])->get()->keyBy('id')->all();
 
-        return $collection->map(fn (ClockCorrection $correction): array => $this->correction($correction, $viewer, $correction->user, $events))->values()->all();
+        return array_values(array_map(fn (ClockCorrection $correction): array => $this->correction($correction, $viewer, $correction->user, $events), $collection->all()));
     }
 
     /**
