@@ -181,6 +181,15 @@ Pedidas por el propietario tras usar la app (D-320 a D-325).
   - Vitest: `row-click`, `time-sheet-days`, `tasks-list`, `tasks-panel`, `time-entry-dialog`, `projects-index` y `clients-pages`.
   - E2E: `tests/e2e/usability-improvements.spec.ts`.
 
+### Mejoras de uso, 2.ª tanda (rama `mejoras-uso-2`, 07/10, sin desplegar)
+Pedidas por el propietario y vistas en las capturas de la primera tanda (D-326 a D-329).
+- **Kanban:** las columnas se pliegan a una franja vertical con su nombre y su número; «Hecha» nace plegada, se recuerda por persona y proyecto y se pueden soltar tarjetas en ella sin desplegarla.
+- **Proyectos en el móvil:** a menos de 640 px, el listado por clientes, la vista «Lista» y la ficha del cliente muestran tarjetas (con sus bolsas y su consumo) en lugar de la tabla con scroll. La tarjeta entera abre el proyecto.
+- **Lista de tareas:** los estados vacíos nacen plegados (salvo el de por defecto) y, desplegados, dicen en una línea que no hay tareas. La tabla tiene columnas fijas y alineadas, «Sin responsable» en una línea y, agrupando por estado, sin la columna «Estado». Si no cabe, una sombra avisa del scroll horizontal.
+- **Tests:**
+  - Vitest: `tasks-kanban`, `tasks-list`, `projects-index` y `horizontal-scroll`.
+  - E2E: `tests/e2e/usability-improvements-2.spec.ts`.
+
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.
 2. **Lista de empleados:** nombre, email, departamento, rol, jornada, coste y tarifa. Con ella se hacen las altas y salen las invitaciones.

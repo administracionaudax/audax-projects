@@ -2358,6 +2358,32 @@ Pedido por el propietario: que los estados de las tareas del proyecto se puedan 
 - **Estado plegado:** `useCollapsedGroups(clave)` guarda en `localStorage` solo lo que se toca a mano (como mucho 300 grupos). Con clave null (sin sesión o mientras se busca), solo en memoria.
 - **Vistas:** las de la hoja de horas y del listado de proyectos van en la URL y se recuerdan por persona en el navegador (`audax.time.view.{id}`, `audax.projects.view.{id}`), siempre con try/catch.
 
+### D-326 · Kanban: columnas plegables y «Hecha» plegada **[mejoras de uso del 07/10, 2.ª tanda]**
+Pedido por el propietario (era la propuesta de D-320).
+- **Franja:** una columna plegada es una franja estrecha y vertical con chevron, el nombre del estado y su número de tareas. Toda la franja es un botón con `aria-expanded` y `aria-controls`; se despliega con un clic o con Intro o espacio. Desplegada, el encabezado de la columna es el mismo botón y la pliega.
+- **Por defecto:** plegada la columna de categoría `done`; las demás desplegadas, y cualquiera se pliega a mano. Con un filtro por estado (una sola columna) no hay nada que plegar.
+- **El número de la franja** suma las tareas de la columna y las completadas ocultas por el filtro («Mostrar completadas» apagado), que también son de esa columna. Desplegada, sigue el número de tarjetas y el aviso «N completadas ocultas».
+- **Se recuerda** por persona y proyecto en el navegador, con el patrón de D-325: `useCollapsedGroups('audax.tasks.kanban.{persona}.{proyecto}')`, clave `status-{id}` y solo lo que se toca a mano.
+- **Soltar en una columna plegada:** la franja sigue siendo zona de destino (el mismo `useDroppable`). La tarjeta pasa a ese estado al final de la columna sin desplegarla, y la franja se resalta y suma uno. Como la franja es estrecha y la tarjeta ancha, con el puntero encima gana la franja (`pointerWithin`); si no, por esquinas como antes. Con el teclado también se llega a ella con las flechas.
+
+### D-327 · Proyectos en tarjetas en el móvil
+Pedido por el propietario.
+- **Por debajo de 640 px** (`useIsNarrow`, `(max-width: 639px)`), el listado por clientes de `/proyectos` y los proyectos de la ficha del cliente (`ProjectTreeTable`) pintan una tarjeta por proyecto en lugar de la tabla con scroll horizontal. Contiene el código y el nombre, el estado y el tipo, el gestor principal, las fechas y cada bolsa abierta con su estado, su barra de consumo, las horas, el exceso y la fecha de fin. La bolsa es un enlace a su página.
+- **La tarjeta entera abre el proyecto** (D-324: el enlace del nombre es el control principal; el de la bolsa sigue siendo suyo). Los grupos por cliente se pliegan igual que en escritorio.
+- **La vista «Lista»** también va en tarjetas en el móvil, con el cliente y el consumo agregado de sus bolsas.
+- **En escritorio**, nada cambia. Se decide en el navegador (no con CSS) para no pintar la tabla y las tarjetas a la vez.
+
+### D-328 · Grupos de estado vacíos, plegados
+- En la lista de tareas agrupada por estado, un estado sin tareas («Bloqueada (0)») nace plegado. Lo que se toca a mano se recuerda como el resto (D-320).
+- **Excepción:** el estado por defecto («Por hacer») queda abierto aunque esté vacío, para que siempre haya un alta rápida a la vista (un proyecto nuevo no se queda con todo plegado).
+- **Desplegado y vacío**, ya no pinta la tabla con su cabecera: muestra una línea («No hay tareas en este grupo.») y el alta rápida.
+
+### D-329 · Tabla de tareas: columnas fijas y scroll que se nota
+- **Anchos fijos** (`table-fixed` con `colgroup`, en rem): selección, responsable, bolsa, tipo, estado, fechas, estimación, imputadas y temporizador tienen su ancho. La tarea se queda con lo que sobra y se corta con «…», con el título completo en el `title`. Así las columnas de todos los grupos quedan alineadas.
+- **«Sin responsable»** cabe en una línea (no hace falta acortarlo a «Nadie»). Los nombres largos se cortan.
+- **Agrupando por estado no hay columna «Estado»**: repetiría el del grupo. Una subtarea con un estado distinto del de su grupo lo muestra junto al título. Agrupando por otra cosa, la columna vuelve.
+- **A 1440 px** (con la barra lateral abierta), la tabla agrupada por estado cabe entera. Si no cabe (agrupada por otra cosa, más columnas o una pantalla más estrecha), la tarea guarda al menos 14 rem y la tabla se desplaza en horizontal. Una sombra suave en el borde (`HorizontalScroll`) avisa de que hay más columnas a ese lado.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2382,7 +2408,7 @@ Pedido por el propietario: que los estados de las tareas del proyecto se puedan 
 - Diseño de la previsión: D-290 a D-299.
 - Pantallas de la previsión: D-300 a D-309.
 - Revisión de formularios: D-310 a D-312.
-- Mejoras de uso del 07/10: D-320 a D-325.
+- Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269, D-313 a D-319 y D-326 en adelante, sin usar).
+La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269, D-313 a D-319 y D-330 en adelante, sin usar).
