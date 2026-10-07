@@ -7,6 +7,9 @@ use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Integrations\Google\GoogleOAuth;
 use App\Domain\Navigation\NavSections;
+use App\Domain\People\ClockState;
+use App\Domain\People\PeopleAccess;
+use App\Domain\People\TeamWorkday;
 use App\Domain\Portal\Projects\PortalShell;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Weeklies\AppModules;
@@ -16,6 +19,7 @@ use App\Http\Resources\FinancialResource;
 use App\Models\Absence;
 use App\Models\ActiveTimer;
 use App\Models\Client;
+use App\Models\ClockCorrection;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Models\User;
@@ -124,6 +128,12 @@ class HandleInertiaRequests extends Middleware
                 // Previsión (D-284 y D-306): la global (admins, responsables y manage-forecast) y la propia.
                 'viewForecast' => $user ? Gate::forUser($user)->allows('view-forecast') : false,
                 'useForecast' => $user ? Gate::forUser($user)->allows('use-forecast') : false,
+                // Registro de jornada (Fase 11, D-342): usar el módulo, fichar, ver la jornada del equipo
+                // y la bandeja (responsables y RR. HH.) y gestionar RR. HH. (manage-people).
+                'usePeople' => $user ? Gate::forUser($user)->allows('use-people') : false,
+                'clock' => $user ? Gate::forUser($user)->allows('clock') : false,
+                'viewPeopleTeam' => $user ? Gate::forUser($user)->allows('view-people-team') : false,
+                'managePeople' => $user ? Gate::forUser($user)->allows('manage-people') : false,
             ],
         ];
     }
@@ -173,7 +183,49 @@ class HandleInertiaRequests extends Middleware
             'integrations' => fn (): array => $this->integrations($user),
             // Secciones plegadas de la barra lateral (D-260), sin consultas (columna del usuario).
             'navCollapsed' => fn (): array => NavSections::collapsedFor($user),
+            // Registro de jornada (Fase 11, D-333 y D-341): el botón de fichar de la cabecera y el
+            // contador de «Pendientes». null si no usa el módulo.
+            'people' => fn (): ?array => $this->people($user),
         ];
+    }
+
+    /**
+     * @return array{clock: array<string, mixed>|null, pending: int}|null
+     */
+    private function people(User $user): ?array
+    {
+        if (! PeopleAccess::uses($user)) {
+            return null;
+        }
+
+        $clock = null;
+
+        if (PeopleAccess::subject($user)) {
+            $state = ClockState::of($user);
+            $since = $state->since();
+            $running = $state->runningSince();
+
+            $clock = [
+                'status' => $state->status->value,
+                'since' => $since?->utc()->toIso8601ZuluString(),
+                'running_since' => $running?->utc()->toIso8601ZuluString(),
+                // Lo trabajado hoy sin el tramo en curso: la cabecera le suma el tramo con su reloj.
+                'worked_seconds' => $state->closedSecondsToday(),
+                'work_mode' => ($state->current?->lastMode() ?? $state->lastMode)?->value,
+                'unclosed_date' => $state->unclosedDate,
+                'server_now' => $state->now->utc()->toIso8601ZuluString(),
+            ];
+        }
+
+        // Correcciones que esperan mi decisión: las del equipo (responsables y RR. HH.) y las que me
+        // proponen a mí.
+        $pending = ClockCorrection::query()->pending()->where('user_id', $user->id)->whereColumn('proposed_by', '!=', 'user_id')->count();
+
+        if (PeopleAccess::viewsTeam($user)) {
+            $pending += app(TeamWorkday::class)->pendingFor($user);
+        }
+
+        return ['clock' => $clock, 'pending' => $pending];
     }
 
     /**

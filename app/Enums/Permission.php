@@ -14,6 +14,8 @@ enum Permission: string
     case ManageWeeklies = 'manage-weeklies';
     /** La Previsión (D-284): crear y editar proyectos previstos y sus asignaciones; admins y responsables. */
     case ManageForecast = 'manage-forecast';
+    /** RR. HH. (Fase 11, D-330): la jornada de toda la plantilla, sus correcciones y los datos laborales. */
+    case ManagePeople = 'manage-people';
 
     public function label(): string
     {
@@ -23,6 +25,7 @@ enum Permission: string
             self::ViewFinancials => 'Ver datos económicos',
             self::ManageWeeklies => 'Gestionar las weeklies',
             self::ManageForecast => 'Gestionar la previsión',
+            self::ManagePeople => 'Gestionar RR. HH.',
         };
     }
 

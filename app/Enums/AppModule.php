@@ -20,6 +20,8 @@ enum AppModule: string
     case DayPlan = 'day_plan';
     /** Previsión (D-280): asignaciones y proyectos previstos; apagado por defecto. */
     case Forecast = 'forecast';
+    /** «Personas» (Fase 11, D-330): registro de jornada y RR. HH.; apagado por defecto. */
+    case People = 'people';
 
     public function label(): string
     {

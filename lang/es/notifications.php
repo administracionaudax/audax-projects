@@ -25,6 +25,7 @@ return [
     'groups' => [
         'tasks' => 'Tareas',
         'time' => 'Horas',
+        'people' => 'Registro de jornada',
         'day_plan' => 'Plan del día',
         'weeklies' => 'Weekly',
         'suggestions' => 'Sugerencias',
@@ -36,6 +37,14 @@ return [
     ],
 
     'events' => [
+        'people' => [
+            'clock_in_missing' => ['label' => 'No has fichado la entrada', 'description' => 'Pasado tu margen de entrada (o las 10:00, si tu jornada no tiene margen), si aún no has fichado en un día con jornada.'],
+            'clock_out_missing' => ['label' => 'No has fichado la salida', 'description' => 'Cuando ya ha pasado tu hora de salida prevista y sigues trabajando según el registro.'],
+            'workday_unclosed' => ['label' => 'Jornada sin cerrar', 'description' => 'A la mañana siguiente, si un día se quedó sin salida o sin ningún fichaje: para que propongas la corrección.'],
+            'correction_requested' => ['label' => 'Correcciones que esperan tu conformidad', 'description' => 'Cuando alguien propone una corrección de un registro que te toca aceptar o rechazar (el tuyo o el de tu equipo).'],
+            'correction_accepted' => ['label' => 'Corrección aceptada', 'description' => 'Cuando la otra parte acepta una corrección que has propuesto.'],
+            'correction_disputed' => ['label' => 'Corrección en discrepancia', 'description' => 'Cuando una corrección que has propuesto se rechaza o se queda 7 días sin respuesta.'],
+        ],
         'task' => [
             'assigned' => ['label' => 'Te asignan una tarea', 'description' => 'Cuando alguien te hace responsable de una tarea.'],
             'mentioned' => ['label' => 'Te mencionan en una tarea', 'description' => 'Cuando alguien te menciona en la descripción o en un comentario.'],

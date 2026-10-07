@@ -47,8 +47,11 @@ final class NotificationCatalog
     /** Quien usa el plan del día (D-251), con su módulo visible; nunca un colaborador externo. */
     public const string AUDIENCE_DAY_PLAN = 'day_plan';
 
+    /** Quien ficha (Fase 11, D-331): la plantilla sujeta al registro con el módulo `people` visible. */
+    public const string AUDIENCE_PEOPLE = 'people';
+
     /** Grupos, en el orden de la página de preferencias. */
-    public const array GROUPS = ['tasks', 'time', 'day_plan', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
+    public const array GROUPS = ['tasks', 'time', 'people', 'day_plan', 'weeklies', 'suggestions', 'hour_banks', 'absences', 'chat', 'reports', 'system'];
 
     /** @var array<string, NotificationEvent>|null */
     private ?array $events = null;
@@ -77,6 +80,16 @@ final class NotificationCatalog
         $all = [$app, $email, $push];
 
         $events = [
+            // Registro de jornada (Fase 11, D-339): fichar la entrada y la salida y la jornada sin
+            // cerrar, en la app y en el navegador; las correcciones, a la otra parte (en la app y por
+            // email la que espera tu conformidad o acaba en discrepancia).
+            new NotificationEvent('people.clock_in_missing', 'people', $all, [$app, $push], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.clock_out_missing', 'people', $all, [$app, $push], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.workday_unclosed', 'people', $all, [$app, $push], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.correction_requested', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.correction_accepted', 'people', $all, [$app], self::AUDIENCE_PEOPLE),
+            new NotificationEvent('people.correction_disputed', 'people', $all, [$app, $email], self::AUDIENCE_PEOPLE),
+
             // Tareas (Fase 1): asignación, mención, comentario y cambio de estado de una tarea que
             // sigo, y tareas que vencen mañana o vencidas.
             new NotificationEvent('task.assigned', 'tasks', $all, [$app]),

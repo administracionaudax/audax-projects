@@ -106,6 +106,19 @@ Schedule::command('day-plan:remind')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Registro de jornada (Fase 11, D-339): avisos de entrada, salida y jornada sin cerrar cada 5 minutos
+// (el comando solo envía cuando toca, una vez por persona, día y tipo, y nada con el módulo apagado);
+// y cada hora, las correcciones sin respuesta en 7 días pasan a discrepancia (D-335).
+Schedule::command('people:remind')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('people:expire-corrections')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Plazos de retención (D-075): antes de la copia nocturna de las 03:40.
 Schedule::command('app:prune-data')
     ->dailyAt('03:10')

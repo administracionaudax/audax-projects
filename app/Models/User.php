@@ -68,6 +68,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read Client|null $client
  * @property-read ActiveTimer|null $activeTimer
  * @property-read GoogleConnection|null $googleConnection
+ * @property-read EmploymentProfile|null $employmentProfile
  * @property-read ProjectMember|null $membership
  * @property-read Collection<int, WeeklySubmission> $weeklySubmissions
  */
@@ -192,6 +193,26 @@ class User extends Authenticatable
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Datos laborales (Fase 11, D-343): alta, baja y si está sujeta al registro de jornada.
+     *
+     * @return HasOne<EmploymentProfile, $this>
+     */
+    public function employmentProfile(): HasOne
+    {
+        return $this->hasOne(EmploymentProfile::class);
+    }
+
+    /**
+     * Su registro de jornada (Fase 11, D-332): solo de alta.
+     *
+     * @return HasMany<ClockEvent, $this>
+     */
+    public function clockEvents(): HasMany
+    {
+        return $this->hasMany(ClockEvent::class);
     }
 
     /**

@@ -135,3 +135,6 @@ function enableForecast(bool $enabled = true): void
 {
     Setting::set('modules', ['forecast' => $enabled]);
 }
+
+// Registro de jornada (Fase 11): fichar a una hora de Madrid, jornadas enteras y encender el módulo.
+require_once __DIR__.'/Support/people.php';

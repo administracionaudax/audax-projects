@@ -359,6 +359,7 @@ return [
             'assistant' => 'Asistente IA',
             'day_plan' => 'Plan del día',
             'forecast' => 'Previsión',
+            'people' => 'Personas (registro de jornada)',
         ],
     ],
     // Tipos de proyecto de WeeklySync (10.4, ProjectKindCode): por prefijo del código y por grupo.

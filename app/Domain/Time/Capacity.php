@@ -104,13 +104,15 @@ final class Capacity
         $absences = self::absences($userIds, $from, $to);
         /** @var array<int, list<array{from: int, to: int|null, week: list<int>}>> $versions horarios de cada persona, leídos una vez */
         $versions = [];
+        $firstDay = CapacityPlan::day($from);
+        $lastDay = CapacityPlan::day($to);
 
-        return array_map(function (array $range) use ($schedules, $default, $holidays, $absences, &$versions): CapacityPlan {
-            $versions[$range['user_id']] ??= array_values(array_map(fn (WorkSchedule $schedule): array => [
-                'from' => CapacityPlan::day($schedule->valid_from->toDateString()),
-                'to' => $schedule->valid_to === null ? null : CapacityPlan::day($schedule->valid_to->toDateString()),
-                'week' => $schedule->weekMinutes(),
-            ], ($schedules->get($range['user_id']) ?? new Collection)->all()));
+        return array_map(function (array $range) use ($schedules, $default, $holidays, $absences, &$versions, $firstDay, $lastDay): CapacityPlan {
+            // Cada versión con sus temporadas de verano delante (D-336): la primera que cubre gana.
+            $versions[$range['user_id']] ??= array_merge(...array_map(
+                fn (WorkSchedule $schedule): array => self::periodsOf($schedule, $firstDay, $lastDay),
+                array_values(($schedules->get($range['user_id']) ?? new Collection)->all()),
+            ));
 
             $from = CapacityPlan::day($range['from']);
             $to = CapacityPlan::day($range['to']);
@@ -306,10 +308,52 @@ final class Capacity
 
         $weeks = [];
         foreach ($userIds as $userId) {
-            $weeks[$userId] = $schedules->get($userId)?->first()?->weekMinutes() ?? $default;
+            $weeks[$userId] = $schedules->get($userId)?->first()?->weekOn($day) ?? $default;
         }
 
         return $weeks;
+    }
+
+    /**
+     * Intervalos de días de una versión de la jornada entre $from y $to (números de día): primero
+     * los tramos de su temporada de verano que caen dentro (D-336) y después la versión entera.
+     * Quien busca el primero que cubre un día encuentra el de verano antes que el de la versión.
+     * Pública para comprobarla en los tests.
+     *
+     * @return list<array{from: int, to: int|null, week: list<int>}>
+     */
+    public static function periodsOf(WorkSchedule $schedule, int $from, int $to): array
+    {
+        $base = [
+            'from' => CapacityPlan::day($schedule->valid_from->toDateString()),
+            'to' => $schedule->valid_to === null ? null : CapacityPlan::day($schedule->valid_to->toDateString()),
+            'week' => $schedule->weekMinutes(),
+        ];
+
+        $start = max($base['from'], $from);
+        $end = min($base['to'] ?? PHP_INT_MAX, $to);
+
+        if (! $schedule->hasSummer() || $start > $end) {
+            return [$base];
+        }
+
+        $startsOn = (string) $schedule->summer_starts_on;
+        $endsOn = (string) $schedule->summer_ends_on;
+        $wraps = $startsOn > $endsOn;
+        $week = $schedule->summerWeek();
+        $pieces = [];
+
+        // Desde el año anterior, por si la temporada cruza el fin de año.
+        for ($year = (int) gmdate('Y', $start * 86400) - 1; $year <= (int) gmdate('Y', $end * 86400); $year++) {
+            $a = max(CapacityPlan::day(sprintf('%04d-%s', $year, $startsOn)), $start);
+            $b = min(CapacityPlan::day(sprintf('%04d-%s', $wraps ? $year + 1 : $year, $endsOn)), $end);
+
+            if ($a <= $b) {
+                $pieces[] = ['from' => $a, 'to' => $b, 'week' => $week];
+            }
+        }
+
+        return [...$pieces, $base];
     }
 
     /**
@@ -358,13 +402,17 @@ final class Capacity
     private static function detailedDays(Collection $schedules, array $default, array $holidays, array $absences, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $periods = [];
+        $firstDay = CapacityPlan::day($from->toDateString());
+        $lastDay = CapacityPlan::day($to->toDateString());
         foreach ($schedules as $schedule) {
-            $periods[] = [
-                'from' => $schedule->valid_from->toDateString(),
-                'to' => $schedule->valid_to?->toDateString(),
-                // Lunes primero, lo mismo que minutesFor() día a día.
-                'week' => $schedule->weekMinutes(),
-            ];
+            // Lunes primero, lo mismo que minutesFor() día a día; el verano delante (D-336).
+            foreach (self::periodsOf($schedule, $firstDay, $lastDay) as $period) {
+                $periods[] = [
+                    'from' => CapacityPlan::date($period['from']),
+                    'to' => $period['to'] === null ? null : CapacityPlan::date($period['to']),
+                    'week' => $period['week'],
+                ];
+            }
         }
 
         $leaves = array_map(fn (Absence $absence): array => [

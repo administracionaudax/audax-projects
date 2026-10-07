@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\DayPlan\DayPlanAccess;
 use App\Domain\Forecast\ForecastAccess;
+use App\Domain\People\PeopleAccess;
 use App\Enums\Permission;
 use App\Enums\Role;
 use App\Models\User;
@@ -39,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
         'manage-forecast',
         'view-forecast',
         'use-forecast',
+        'manage-people',
+        'use-people',
+        'clock',
+        'view-people-team',
     ];
 
     /**
@@ -107,6 +112,13 @@ class AppServiceProvider extends ServiceProvider
         // la previsión global los admins, los responsables y quien tenga manage-forecast (P4).
         Gate::define('use-forecast', fn (User $user): bool => ForecastAccess::enabledFor($user));
         Gate::define('view-forecast', fn (User $user): bool => ForecastAccess::views($user));
+
+        // Registro de jornada (Fase 11, D-330, D-331 y D-342), detrás del módulo people: lo usa la
+        // plantilla interna; ficha quien está sujeto al registro; «Jornada del equipo» y «Pendientes»,
+        // los responsables y RR. HH. (manage-people). Quién ve el registro de quién: PeopleAccess.
+        Gate::define('use-people', fn (User $user): bool => PeopleAccess::uses($user));
+        Gate::define('clock', fn (User $user): bool => PeopleAccess::clocks($user));
+        Gate::define('view-people-team', fn (User $user): bool => PeopleAccess::viewsTeam($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));
