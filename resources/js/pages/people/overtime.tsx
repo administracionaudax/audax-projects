@@ -631,7 +631,7 @@ function BalanceForm({
             <h3 id={`${id}-title`} className="text-sm font-medium">
                 {t('people.balance.add_title')}
             </h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="grid gap-1.5">
                     <Label htmlFor={`${id}-kind`}>
                         {t('people.balance.kind_label')}

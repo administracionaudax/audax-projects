@@ -755,7 +755,7 @@ function AccessForm({ props }: { props: InspectionPageProps }) {
             <h3 className="text-sm font-medium">
                 {t('people.inspection.new_access')}
             </h3>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid items-start gap-3 sm:grid-cols-3">
                 <div className="grid gap-1.5">
                     <Label htmlFor={`${id}-name`}>
                         {t('people.inspection.name')}

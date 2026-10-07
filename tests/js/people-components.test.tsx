@@ -581,10 +581,14 @@ describe('pantallas', () => {
 });
 
 describe('barra lateral', () => {
-    it('«Mi jornada» con el contador y, para responsables, la jornada del equipo y pendientes', () => {
+    it('«Mi jornada» con el contador y, debajo, Mi registro y Documentos; para responsables, el equipo; para RR. HH., informes e Inspección', () => {
         const mine = peopleNavItems(abilities(), { peoplePending: 0 });
         expect(mine[0].title).toBe('Mi jornada');
-        expect(mine[0].items).toBeUndefined();
+        expect(mine[0].badge).toBeUndefined();
+        expect(mine[0].items?.map((item) => item.title)).toEqual([
+            'Mi registro',
+            'Documentos',
+        ]);
 
         const manager = peopleNavItems(abilities({ viewPeopleTeam: true }), {
             peoplePending: 3,
@@ -594,9 +598,26 @@ describe('barra lateral', () => {
             label: '3 pendientes de decidir',
         });
         expect(manager[0].items?.map((item) => item.title)).toEqual([
+            'Mi registro',
+            'Documentos',
             'Jornada del equipo',
             'Pendientes',
+            'Cierres',
+            'Horas extra',
         ]);
+
+        const hr = peopleNavItems(
+            abilities({ viewPeopleTeam: true, managePeopleRegister: true }),
+            { pendingClose: true, unreadDocuments: 1 },
+        );
+        expect(hr[0].items?.map((item) => item.title).slice(-2)).toEqual([
+            'Informes',
+            'Inspección',
+        ]);
+        expect(hr[0].badge).toEqual({
+            count: 2,
+            label: '2 cosas por revisar',
+        });
 
         expect(
             peopleNavItems(abilities({ usePeople: false })).map(
