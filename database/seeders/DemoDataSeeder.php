@@ -1576,7 +1576,7 @@ class DemoDataSeeder extends Seeder
 
             // El exceso del mes anterior, clasificado el día 1 a primera hora.
             $at(CarbonImmutable::parse($this->today->startOfMonth()->toDateString().' 05:30', $zone));
-            $toggle = false;
+            $toggle = true;
 
             foreach ($p as $key => $user) {
                 $boss = $decider($user);
