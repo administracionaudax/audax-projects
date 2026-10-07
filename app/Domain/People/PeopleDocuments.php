@@ -134,7 +134,8 @@ final class PeopleDocuments
             throw ValidationException::withMessages(['document' => __('people.errors.document_outdated')]);
         }
 
-        $read = PeopleDocumentRead::query()->firstOrNew(['people_document_id' => $document->id, 'user_id' => $user->id]);
+        $read = PeopleDocumentRead::query()->where('people_document_id', $document->id)->where('user_id', $user->id)->first()
+            ?? new PeopleDocumentRead;
 
         if (! $read->exists) {
             $read->forceFill(['people_document_id' => $document->id, 'user_id' => $user->id, 'read_at' => CarbonImmutable::now()])->save();
