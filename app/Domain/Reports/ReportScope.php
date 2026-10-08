@@ -2,6 +2,8 @@
 
 namespace App\Domain\Reports;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TimeEntry;
@@ -46,9 +48,15 @@ final class ReportScope
         return $scope;
     }
 
+    /**
+     * Importes (ingreso, coste, margen, rentabilidad, tarifas): con view-financials y sin estar
+     * excluido de Facturación (D-247): quien no ve Facturación tampoco ve el dinero de los informes,
+     * aunque sea admin.
+     */
     public function canSeeFinancials(): bool
     {
-        return $this->financials ??= Gate::forUser($this->viewer)->allows('view-financials');
+        return $this->financials ??= Gate::forUser($this->viewer)->allows('view-financials')
+            && ! AppModules::excluded($this->viewer, AppModule::Billing);
     }
 
     /**

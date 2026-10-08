@@ -2,6 +2,8 @@
 
 namespace App\Policies;
 
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
@@ -81,11 +83,13 @@ class ClientPolicy
     }
 
     /**
-     * Exportación de horas para facturar (/facturacion/horas-para-facturar, D-045 y D-402): admins y quien tenga
-     * view-financials. Las tarifas e importes, además, solo con view-financials.
+     * Exportación de horas para facturar (/facturacion/horas-para-facturar, D-045 y D-402): admins y
+     * quien tenga view-financials. Las tarifas e importes, además, solo con view-financials. Nunca
+     * quien está excluido de Facturación (D-245, D-247), aunque sea admin.
      */
     public function viewBilling(User $user): bool
     {
-        return $user->isAdmin() || Gate::forUser($user)->allows('view-financials');
+        return ($user->isAdmin() || Gate::forUser($user)->allows('view-financials'))
+            && ! AppModules::excluded($user, AppModule::Billing);
     }
 }

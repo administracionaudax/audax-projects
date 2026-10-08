@@ -5,6 +5,8 @@ use App\Domain\HourBanks\Events\HourBankThresholdReached;
 use App\Domain\Reports\Metrics;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportScope;
+use App\Domain\Weeklies\AppModules;
+use App\Enums\AppModule;
 use App\Enums\HourBankStatus;
 use App\Enums\TimeEntryStatus;
 use App\Models\Client;
@@ -19,6 +21,7 @@ use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -192,6 +195,26 @@ describe('dirección', function () {
             ->assertInertia(fn (Assert $page) => $page
                 ->where('clients.rows', fn (Collection $rows) => $linkable($rows, (string) $this->tmClient->id) === false
                     && $linkable($rows, (string) $this->bank->project->client_id) === true));
+    });
+
+    it('un admin sin acceso a Facturación ve las horas de Dirección pero ningún importe (D-247)', function () {
+        AppModules::setExcluded(AppModule::Billing, [$this->admin->id]);
+
+        $this->actingAs($this->admin)
+            ->get('/informes/direccion'.($this->week)())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('summary.logged_minutes', 1510)
+                ->where('summary.income', null)
+                ->where('summary.margin', null)
+                ->where('filters.can_see_financials', false));
+        expect(Gate::forUser($this->admin)->allows('viewBilling', Client::class))->toBeFalse();
+
+        // Otro admin, con acceso, los sigue viendo.
+        $other = User::factory()->admin()->create();
+        $this->actingAs($other)
+            ->get('/informes/direccion'.($this->week)())
+            ->assertInertia(fn (Assert $page) => $page->where('filters.can_see_financials', true));
     });
 
     it('sin filtros, el admin ve toda la agencia (también Marketing)', function () {
