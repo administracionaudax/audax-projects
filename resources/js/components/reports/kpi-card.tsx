@@ -37,8 +37,8 @@ export function KpiCard({
 }: {
     label: string;
     definition: string;
-    /** Valor ya formateado (h:mm, %, €); null = sin datos. */
-    value: string | null;
+    /** Valor ya formateado (h:mm, %, €, o un nodo con icono, D-400); null = sin datos. */
+    value: ReactNode;
     /** Línea secundaria opcional (p. ej. «de 120:00 de capacidad»). */
     detail?: string;
     delta?: KpiDelta;
