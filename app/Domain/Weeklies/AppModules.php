@@ -19,6 +19,9 @@ use App\Models\User;
  *   prueba no hacen nada.
  * - visibleTo(): ¿lo ve y lo usa esta persona? La usan las rutas, la navegación, Inicio, la
  *   búsqueda, los canales en tiempo real y las páginas.
+ *
+ * Exclusiones (D-245, ajuste `module_excluded_users`): una persona de la lista no ve el módulo aunque
+ * sea admin y esté encendido o en modo de prueba (p. ej., Facturación solo para dos de los tres admins).
  */
 final class AppModules
 {
@@ -36,7 +39,36 @@ final class AppModules
     /** ¿Ve y usa $user el módulo? Encendido, o apagado y en modo de prueba para un admin. */
     public static function visibleTo(?User $user, AppModule $module): bool
     {
-        return self::enabled($module) || self::previewing($user, $module);
+        return ! self::excluded($user, $module) && (self::enabled($module) || self::previewing($user, $module));
+    }
+
+    /** ¿Está $user en la lista de personas sin acceso a $module (D-245)? */
+    public static function excluded(?User $user, AppModule $module): bool
+    {
+        return $user !== null && in_array($user->id, self::excludedIds($module), true);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function excludedIds(AppModule $module): array
+    {
+        $stored = Setting::get('module_excluded_users', []);
+        $ids = is_array($stored) && is_array($stored[$module->value] ?? null) ? $stored[$module->value] : [];
+
+        return array_values(array_unique(array_map('intval', array_filter($ids, 'is_numeric'))));
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     */
+    public static function setExcluded(AppModule $module, array $userIds): void
+    {
+        $stored = Setting::get('module_excluded_users', []);
+        $stored = is_array($stored) ? $stored : [];
+        $stored[$module->value] = array_values(array_unique(array_map('intval', $userIds)));
+
+        Setting::set('module_excluded_users', $stored);
     }
 
     /** ¿Ve $user el módulo SOLO por el modo de prueba (apagado de verdad y $user, admin)? */
@@ -54,11 +86,17 @@ final class AppModules
     {
         $map = self::map();
 
-        if (! self::previewer($user)) {
-            return $map;
+        if (self::previewer($user)) {
+            $map = array_map(fn (): bool => true, $map);
         }
 
-        return array_map(fn (): bool => true, $map);
+        foreach (AppModule::cases() as $module) {
+            if (self::excluded($user, $module)) {
+                $map[$module->value] = false;
+            }
+        }
+
+        return $map;
     }
 
     /**
@@ -72,7 +110,10 @@ final class AppModules
             return [];
         }
 
-        return array_keys(array_filter(self::map(), fn (bool $enabled): bool => ! $enabled));
+        return array_values(array_filter(
+            array_keys(array_filter(self::map(), fn (bool $enabled): bool => ! $enabled)),
+            fn (string $module): bool => ! self::excluded($user, AppModule::from($module)),
+        ));
     }
 
     /**

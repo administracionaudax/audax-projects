@@ -25,7 +25,8 @@ class HoldedSyncCommand extends Command
 {
     public function handle(HoldedSync $sync): int
     {
-        if (! $this->option('forzar') && ! AppModules::enabled(AppModule::Billing)) {
+        // También en modo de prueba (D-245): solo lee de Holded y nadie fuera de los admins lo ve.
+        if (! $this->option('forzar') && ! AppModules::enabled(AppModule::Billing) && ! AppModules::previewMode()) {
             $this->info('Módulo Facturación apagado: no se sincroniza.');
 
             return self::SUCCESS;

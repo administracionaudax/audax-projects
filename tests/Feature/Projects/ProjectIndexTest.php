@@ -87,8 +87,12 @@ test('departamento implicado: un miembro, una bolsa o un tipo de tarea de ese de
 });
 
 test('busca por nombre o código sin distinguir mayúsculas', function () {
-    Project::factory()->create(['code' => 'ACME-WEB', 'name' => 'Web corporativa']);
-    Project::factory()->create(['code' => 'LUR-SEO', 'name' => 'Posicionamiento Bodegas']);
+    // Clientes con nombre fijo: la búsqueda también mira el cliente (D-322) y uno aleatorio podía
+    // llamarse «… Corporación».
+    $acme = Client::factory()->create(['name' => 'Acme']);
+    $lur = Client::factory()->create(['name' => 'Lur']);
+    Project::factory()->create(['code' => 'ACME-WEB', 'name' => 'Web corporativa', 'client_id' => $acme->id]);
+    Project::factory()->create(['code' => 'LUR-SEO', 'name' => 'Posicionamiento Bodegas', 'client_id' => $lur->id]);
 
     expect(($this->codes)(['buscar' => 'corpora']))->toBe(['ACME-WEB'])
         ->and(($this->codes)(['buscar' => 'lur-']))->toBe(['LUR-SEO'])

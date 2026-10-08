@@ -4,15 +4,9 @@ import { useId, useState } from 'react';
 import { BillingTabs } from '@/components/billing/billing-nav';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/projects-list/page-header';
+import { SearchableSelect } from '@/components/domain/searchable-select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -228,34 +222,30 @@ function ContactRow({
                     {t('billing.contacts.client')}
                 </Label>
                 <div className="flex gap-2">
-                    <Select value={clientId} onValueChange={setClientId}>
-                        <SelectTrigger
-                            id={`${id}-client`}
-                            className="w-full"
-                            data-test="contact-client"
-                        >
-                            <SelectValue
-                                placeholder={t(
-                                    'billing.contacts.choose_client',
-                                )}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {clients.map((client) => (
-                                <SelectItem
-                                    key={client.id}
-                                    value={String(client.id)}
-                                >
-                                    {client.is_active
+                    <SearchableSelect
+                        id={`${id}-client`}
+                        value={clientId === '' ? null : clientId}
+                        placeholder={t('billing.contacts.choose_client')}
+                        search={t('billing.contacts.search_client')}
+                        empty={t('billing.contacts.no_client_found')}
+                        dataTest="contact-client"
+                        groups={[
+                            {
+                                label: null,
+                                options: clients.map((client) => ({
+                                    value: String(client.id),
+                                    label: client.is_active
                                         ? client.name
                                         : t(
                                               'billing.contacts.inactive_client',
                                               { name: client.name },
-                                          )}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                                          ),
+                                    hint: client.tax_id,
+                                })),
+                            },
+                        ]}
+                        onChange={setClientId}
+                    />
                     <Button
                         type="button"
                         disabled={

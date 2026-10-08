@@ -7,7 +7,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { BillingTabs } from '@/components/billing/billing-nav';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/projects-list/page-header';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -45,8 +46,18 @@ type Run = {
     finished_at: string | null;
 };
 
+type AccessPerson = {
+    id: number;
+    name: string;
+    email: string;
+    admin: boolean;
+    excluded: boolean;
+    self: boolean;
+};
+
 type Props = {
     issuer: Issuer;
+    access: AccessPerson[];
     holded: {
         driver: 'fake' | 'holded';
         configured: boolean;
@@ -56,7 +67,7 @@ type Props = {
         scheduled: boolean;
     };
     runs: Run[];
-    can: { sync: boolean };
+    can: { sync: boolean; access: boolean };
 };
 
 const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
@@ -78,7 +89,13 @@ const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
  * conexión con Holded (sin enseñar nunca la clave) y las últimas sincronizaciones, con «Sincronizar
  * ahora» para los admins.
  */
-export default function BillingSettings({ issuer, holded, runs, can }: Props) {
+export default function BillingSettings({
+    issuer,
+    access,
+    holded,
+    runs,
+    can,
+}: Props) {
     const id = useId();
     const form = useForm<Record<keyof Issuer, string>>(
         Object.fromEntries(
@@ -333,8 +350,113 @@ export default function BillingSettings({ issuer, holded, runs, can }: Props) {
                         )}
                     </PageSection>
                 </div>
+
+                {can.access ? <AccessSection people={access} /> : null}
             </div>
         </>
+    );
+}
+
+/** Quién ve Facturación (D-245): un interruptor por persona; nadie se quita el acceso a sí mismo. */
+function AccessSection({ people }: { people: AccessPerson[] }) {
+    const id = useId();
+    const [excluded, setExcluded] = useState<number[]>(() =>
+        people.filter((person) => person.excluded).map((person) => person.id),
+    );
+    const [saving, setSaving] = useState(false);
+    const saved = people
+        .filter((person) => person.excluded)
+        .map((person) => person.id);
+    const dirty =
+        excluded.length !== saved.length ||
+        excluded.some((personId) => !saved.includes(personId));
+
+    const toggle = (personId: number, hasAccess: boolean) =>
+        setExcluded((current) =>
+            hasAccess
+                ? current.filter((value) => value !== personId)
+                : [...current, personId],
+        );
+
+    const save = () =>
+        router.put(
+            '/facturacion/ajustes/acceso',
+            { excluded_user_ids: excluded },
+            {
+                preserveScroll: true,
+                onStart: () => setSaving(true),
+                onFinish: () => setSaving(false),
+            },
+        );
+
+    return (
+        <PageSection
+            title={t('billing.access.title')}
+            description={t('billing.access.description')}
+        >
+            <ul
+                className="grid max-w-2xl divide-y rounded-md border"
+                data-test="billing-access"
+            >
+                {people.map((person) => {
+                    const hasAccess = !excluded.includes(person.id);
+
+                    return (
+                        <li
+                            key={person.id}
+                            className="flex items-center justify-between gap-4 px-4 py-3"
+                        >
+                            <div className="grid min-w-0 gap-0.5">
+                                <Label
+                                    htmlFor={`${id}-${person.id}`}
+                                    className="flex flex-wrap items-center gap-2"
+                                >
+                                    <span className="truncate">
+                                        {person.name}
+                                    </span>
+                                    {person.admin ? (
+                                        <span className="text-xs text-muted-foreground">
+                                            {t('billing.access.admin')}
+                                        </span>
+                                    ) : null}
+                                    {person.self ? (
+                                        <span className="text-xs text-muted-foreground">
+                                            · {t('billing.access.you')}
+                                        </span>
+                                    ) : null}
+                                </Label>
+                                <p className="truncate text-xs text-muted-foreground">
+                                    {person.self
+                                        ? t('billing.access.you_hint')
+                                        : person.email}
+                                </p>
+                            </div>
+                            <Switch
+                                id={`${id}-${person.id}`}
+                                checked={hasAccess}
+                                disabled={person.self || saving}
+                                aria-label={t('billing.access.switch', {
+                                    name: person.name,
+                                })}
+                                onCheckedChange={(checked) =>
+                                    toggle(person.id, checked)
+                                }
+                            />
+                        </li>
+                    );
+                })}
+            </ul>
+            <div>
+                <Button
+                    type="button"
+                    disabled={!dirty || saving}
+                    onClick={save}
+                    data-test="billing-access-save"
+                >
+                    {t('billing.access.save')}
+                </Button>
+            </div>
+        </PageSection>
     );
 }
 

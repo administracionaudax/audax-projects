@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,8 +37,8 @@ class BillingSettingsController extends Controller
             'holded' => [
                 ...HoldedConnection::summary(),
                 'running' => HoldedSync::busy(),
-                // En modo de prueba (D-239) la sincronización de la noche no corre.
-                'scheduled' => AppModules::enabled(AppModule::Billing),
+                // También en modo de prueba (D-245): solo lee de Holded.
+                'scheduled' => AppModules::enabled(AppModule::Billing) || AppModules::previewMode(),
             ],
             'runs' => HoldedSyncRun::query()->with('user:id,name')->orderByDesc('started_at')->orderByDesc('id')->limit(10)->get()
                 ->map(fn (HoldedSyncRun $run): array => [
@@ -50,8 +51,64 @@ class BillingSettingsController extends Controller
                     'started_at' => $run->started_at->utc()->toIso8601ZuluString(),
                     'finished_at' => $run->finished_at?->utc()->toIso8601ZuluString(),
                 ])->values()->all(),
-            'can' => ['sync' => $user->can('sync-holded')],
+            'access' => self::access($user),
+            'can' => ['sync' => $user->can('sync-holded'), 'access' => $user->isAdmin()],
         ]);
+    }
+
+    /**
+     * Quién ve Facturación (D-245): la plantilla interna activa que la vería por su rol (los admins y
+     * quien tiene view-financials), con su interruptor. Nadie se quita el acceso a sí mismo.
+     *
+     * @return array<int, array{id: int, name: string, email: string, admin: bool, excluded: bool, self: bool}>
+     */
+    private static function access(User $viewer): array
+    {
+        $excluded = AppModules::excludedIds(AppModule::Billing);
+
+        return User::query()->where('is_active', true)->whereNull('client_id')->orderBy('name')->orderBy('id')->get()
+            ->filter(fn (User $user): bool => ! $user->isCollaborator() && ($user->isAdmin() || Gate::forUser($user)->allows('view-financials')))
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'admin' => $user->isAdmin(),
+                'excluded' => in_array($user->id, $excluded, true),
+                'self' => $user->id === $viewer->id,
+            ])->values()->all();
+    }
+
+    /** Guarda quién NO ve Facturación (solo admins; nunca uno mismo). */
+    public function updateAccess(Request $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless($user->isAdmin(), 403);
+
+        $data = $request->validate([
+            'excluded_user_ids' => ['present', 'array', 'max:200'],
+            'excluded_user_ids.*' => ['integer', 'distinct', 'exists:users,id', 'not_in:'.$user->id],
+        ], [
+            'excluded_user_ids.*.not_in' => __('billing.access.not_self'),
+        ]);
+
+        /** @var list<int> $ids */
+        $ids = array_map('intval', $data['excluded_user_ids']);
+        $before = AppModules::excludedIds(AppModule::Billing);
+        AppModules::setExcluded(AppModule::Billing, $ids);
+
+        if ($before !== $ids) {
+            // Auditoría visible (D-074), como el resto de ajustes.
+            activity('settings')
+                ->causedBy($user)
+                ->event('updated')
+                ->withProperties(['old' => ['billing_excluded_user_ids' => $before], 'attributes' => ['billing_excluded_user_ids' => $ids]])
+                ->log('settings.updated');
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('billing.access.saved')]);
+
+        return back();
     }
 
     public function update(Request $request): RedirectResponse

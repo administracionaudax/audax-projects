@@ -227,7 +227,7 @@
     "billing.holded.missing_key": "Falta la clave de la API de Holded en el servidor (HOLDED_API_KEY).",
     "billing.holded.read_only": "Solo lectura: Holded sigue emitiendo las facturas.",
     "billing.holded.nightly": "Se sincroniza cada noche a las 02:30, sin pasar de :per_minute peticiones por minuto.",
-    "billing.holded.nightly_off": "Con el módulo en prueba no se sincroniza de noche: solo con «Sincronizar ahora».",
+    "billing.holded.nightly_off": "El módulo está apagado y sin modo de prueba: no se sincroniza de noche, solo con «Sincronizar ahora».",
     "billing.holded.sync_now": "Sincronizar ahora",
     "billing.holded.running": "Sincronizando…",
     "billing.runs.title": "Últimas sincronizaciones",
@@ -312,5 +312,16 @@
     "billing.line_kind.fee": "Fee",
     "billing.line_kind.hours": "Horas",
     "billing.line_kind.pass_through": "Repercutido",
-    "billing.line_kind.other": "Importe cerrado"
+    "billing.line_kind.other": "Importe cerrado",
+    "billing.access.title": "Quién ve Facturación",
+    "billing.access.description": "Los admins y quien ve datos económicos la ven por su rol. Quita aquí el acceso a quien no deba verla: no verá el menú, las facturas, el informe ni la pestaña Facturación, aunque sea admin.",
+    "billing.access.admin": "Admin",
+    "billing.access.you": "Tú",
+    "billing.access.you_hint": "No puedes quitarte el acceso a ti mismo.",
+    "billing.access.switch": "Acceso de :name a Facturación",
+    "billing.access.save": "Guardar el acceso",
+    "billing.contacts.search_client": "Busca un cliente por nombre o NIF",
+    "billing.contacts.no_client_found": "Ningún cliente con ese nombre o NIF.",
+    "billing.links.search_project": "Busca por código, nombre o cliente",
+    "billing.links.no_project_found": "Ningún proyecto con ese código, nombre o cliente."
 }

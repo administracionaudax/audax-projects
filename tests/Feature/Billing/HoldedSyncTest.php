@@ -22,6 +22,7 @@ use App\Models\HoldedSyncRun;
 use App\Models\HourBank;
 use App\Models\ImportRef;
 use App\Models\Project;
+use App\Models\Setting;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -238,6 +239,15 @@ it('la orden no hace nada con el módulo apagado y sincroniza con él encendido'
     $this->artisan('app:holded-sync', ['--sin-pdf' => true])->assertSuccessful();
     expect(HoldedSyncRun::query()->value('status'))->toBe(HoldedSyncRun::OK)
         ->and(HoldedInvoice::query()->count())->toBe(7);
+});
+
+it('en modo de prueba también sincroniza de noche: solo lee de Holded (D-245)', function () {
+    app()->instance(HoldedApi::class, holdedFake($this->data));
+    Setting::set('modules_preview', true);
+
+    $this->artisan('app:holded-sync', ['--sin-pdf' => true, '--programada' => true])->assertSuccessful();
+
+    expect(HoldedSyncRun::query()->value('status'))->toBe(HoldedSyncRun::OK);
 });
 
 it('sin clave, la orden avisa y la programada no falla', function () {

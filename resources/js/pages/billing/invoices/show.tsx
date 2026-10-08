@@ -15,6 +15,7 @@ import { invoiceUrl } from '@/components/billing/invoice-table';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import InputError from '@/components/input-error';
 import { PageSection } from '@/components/projects-list/page-section';
+import { SearchableSelect } from '@/components/domain/searchable-select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -641,15 +642,30 @@ function LinksPanel({
                     <Label htmlFor={`${id}-project`}>
                         {t('billing.links.project')}
                     </Label>
-                    <Select
+                    <SearchableSelect
+                        id={`${id}-project`}
                         value={
                             form.data.project_id
                                 ? String(form.data.project_id)
-                                : NONE
+                                : null
                         }
-                        onValueChange={(value) => {
-                            const projectId =
-                                value === NONE ? null : Number(value);
+                        placeholder={t('billing.links.project_placeholder')}
+                        search={t('billing.links.search_project')}
+                        empty={t('billing.links.no_project_found')}
+                        invalid={Boolean(form.errors.project_id)}
+                        dataTest="invoice-link-project"
+                        groups={[
+                            {
+                                label: null,
+                                options: projects.map((option) => ({
+                                    value: String(option.id),
+                                    label: `${option.code} · ${option.name}`,
+                                    hint: option.client,
+                                })),
+                            },
+                        ]}
+                        onChange={(value) => {
+                            const projectId = Number(value);
                             const chosen = projects.find(
                                 (option) => option.id === projectId,
                             );
@@ -660,34 +676,7 @@ function LinksPanel({
                                     : null,
                             });
                         }}
-                    >
-                        <SelectTrigger
-                            id={`${id}-project`}
-                            className="w-full"
-                            aria-invalid={
-                                form.errors.project_id ? true : undefined
-                            }
-                        >
-                            <SelectValue
-                                placeholder={t(
-                                    'billing.links.project_placeholder',
-                                )}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={NONE}>
-                                {t('billing.links.project_placeholder')}
-                            </SelectItem>
-                            {projects.map((option) => (
-                                <SelectItem
-                                    key={option.id}
-                                    value={String(option.id)}
-                                >
-                                    {option.code} · {option.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    />
                     <InputError message={form.errors.project_id} />
                 </div>
                 {project?.uses_banks ? (

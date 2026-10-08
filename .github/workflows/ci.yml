@@ -336,6 +336,8 @@ jobs:
           # Fase 10 (10.3): la IA y la locución de prueba (FakeLlm::demo y FakeSpeechSynthesizer).
           GEMINI_DRIVER=fake
           GOOGLE_TTS_DRIVER=fake
+          # Fase 12 (F1): Holded falso, con datos de ejemplo coherentes (nunca se llama a Holded).
+          HOLDED_DRIVER=fake
           EOF
           php artisan key:generate --ansi
 

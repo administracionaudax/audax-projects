@@ -1,19 +1,7 @@
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
+    SearchableSelect,
+    type SearchableSelectProps,
+} from '@/components/domain/searchable-select';
 import {
     Select,
     SelectContent,
@@ -34,105 +22,11 @@ const NONE = '__none';
 /** Con más opciones que estas, el selector lleva buscador (WeeklySync: `searchable={clients.length > 8}`). */
 export const SEARCHABLE_FROM = 9;
 
-type PickerOption = { value: string; label: string };
-
 /**
- * Selector con buscador (10.9b): un desplegable con un campo para filtrar por nombre o código,
- * para las listas largas de clientes y proyectos.
+ * Selector con buscador (10.9b): el compartido, para las listas largas de clientes y proyectos.
  */
-function SearchablePicker({
-    value,
-    placeholder,
-    groups,
-    onChange,
-    search,
-    empty,
-    invalid,
-    dataTest,
-    ...props
-}: FieldProps & {
-    value: string | null;
-    placeholder: string;
-    groups: { label: string | null; options: PickerOption[] }[];
-    onChange: (value: string) => void;
-    search: string;
-    empty: string;
-    dataTest?: string;
-}) {
-    const [open, setOpen] = useState(false);
-    const selected = groups
-        .flatMap((group) => group.options)
-        .find((option) => option.value === value);
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    id={props.id}
-                    type="button"
-                    variant="field"
-                    role="combobox"
-                    aria-expanded={open}
-                    aria-label={props['aria-label']}
-                    aria-invalid={invalid ? true : undefined}
-                    disabled={props.disabled}
-                    className={cn('w-full justify-between', props.className)}
-                    data-test={dataTest}
-                >
-                    <span
-                        className={cn(
-                            'truncate',
-                            !selected && 'text-muted-foreground',
-                        )}
-                    >
-                        {selected?.label ?? placeholder}
-                    </span>
-                    <ChevronsUpDown
-                        aria-hidden="true"
-                        className="size-4 opacity-60"
-                    />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent
-                className="w-(--radix-popover-trigger-width) min-w-72 p-0"
-                align="start"
-            >
-                <Command>
-                    <CommandInput placeholder={search} aria-label={search} />
-                    <CommandList>
-                        <CommandEmpty>{empty}</CommandEmpty>
-                        {groups.map((group, index) => (
-                            <CommandGroup
-                                key={group.label ?? index}
-                                heading={group.label ?? undefined}
-                            >
-                                {group.options.map((option) => (
-                                    <CommandItem
-                                        key={option.value}
-                                        value={`${option.label} ${option.value}`}
-                                        onSelect={() => {
-                                            setOpen(false);
-                                            onChange(option.value);
-                                        }}
-                                    >
-                                        <span className="truncate">
-                                            {option.label}
-                                        </span>
-                                        {option.value === value ? (
-                                            <Check
-                                                aria-hidden="true"
-                                                className="ml-auto"
-                                            />
-                                        ) : null}
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        ))}
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
+function SearchablePicker(props: FieldProps & SearchableSelectProps) {
+    return <SearchableSelect {...props} />;
 }
 
 type FieldProps = {

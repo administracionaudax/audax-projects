@@ -14,6 +14,7 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -137,6 +138,50 @@ it('con el módulo apagado, 404 para todos salvo los admins en modo de prueba', 
     $this->actingAs($this->admin)->get('/facturacion/facturas')->assertOk();
     $this->actingAs($this->finance)->get('/facturacion/facturas')->assertNotFound();
     expect(AppModules::enabled(AppModule::Billing))->toBeFalse();
+});
+
+it('un admin sin acceso a Facturación no la ve en ningún sitio, ni encendida ni en modo de prueba (D-245)', function () {
+    $other = userWithRole('admin');
+    $this->actingAs($this->admin)
+        ->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$other->id]])
+        ->assertRedirect();
+    expect(AppModules::excludedIds(AppModule::Billing))->toBe([$other->id]);
+
+    foreach ([true, false] as $enabled) {
+        enableBilling($enabled);
+        Setting::set('modules_preview', ! $enabled);
+
+        foreach (['/informes/vendido-frente-a-real', '/facturacion/facturas', '/facturacion/ajustes', "/proyectos/{$this->project->id}/facturacion", "/clientes/{$this->clientCompany->id}/facturacion"] as $uri) {
+            $this->actingAs($other)->get($uri)->assertNotFound();
+            $this->actingAs($this->admin)->get($uri)->assertOk();
+        }
+        $this->actingAs($other)->get('/mis-tareas')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('config.modules.billing', false)
+            ->where('config.modules_preview', fn ($modules) => ! collect($modules)->contains('billing')));
+        expect(Gate::forUser($other)->allows('view-sold-vs-actual'))->toBeFalse();
+    }
+
+    // Se le devuelve el acceso.
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => []])->assertRedirect();
+    $this->actingAs($other)->get('/facturacion/facturas')->assertOk();
+});
+
+it('nadie se quita el acceso a sí mismo y solo un admin cambia quién ve Facturación', function () {
+    $this->actingAs($this->admin)
+        ->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$this->admin->id]])
+        ->assertSessionHasErrors('excluded_user_ids.0');
+    $this->actingAs($this->finance)
+        ->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$this->admin->id]])
+        ->assertForbidden();
+
+    expect(AppModules::excludedIds(AppModule::Billing))->toBe([]);
+
+    $this->actingAs($this->admin)->get('/facturacion/ajustes')->assertInertia(fn (Assert $page) => $page
+        ->where('can.access', true)
+        ->where('access', fn ($people) => collect($people)->firstWhere('id', $this->admin->id)['self'] === true
+            && collect($people)->contains('id', $this->finance->id)
+            && ! collect($people)->contains('id', $this->employee->id)
+            && ! collect($people)->contains('id', $this->collaborator->id)));
 });
 
 it('el módulo viene apagado en una instalación nueva y la migración lo apaga donde ya había módulos', function () {

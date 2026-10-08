@@ -138,10 +138,13 @@ test('un contacto de Holded sin casar se resuelve eligiendo su cliente', async (
     await expect(contacts).toContainText('Estudio Nébula, S.L.');
     await expectAccessible(page);
 
+    // El selector de cliente lleva buscador (D-245): se escribe y se elige.
     await contacts.getByTestId('contact-client').first().click();
     await page
-        .getByRole('option', { name: 'Librería El Faro', exact: true })
-        .click();
+        .getByPlaceholder('Busca un cliente por nombre o NIF')
+        .fill('faro');
+    await expect(page.getByRole('option')).toHaveCount(1);
+    await page.getByRole('option', { name: /^Librería El Faro/ }).click();
     await contacts.getByRole('button', { name: 'Asignar' }).first().click();
     await expect(
         page
@@ -159,6 +162,21 @@ test('un contacto de Holded sin casar se resuelve eligiendo su cliente', async (
     await expect(page.getByTestId('invoice-table')).toContainText(
         'Librería El Faro',
     );
+});
+
+test('los ajustes dicen quién ve Facturación, y nadie se quita el acceso a sí mismo', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/ajustes');
+    const access = page.getByTestId('billing-access');
+    await expect(access).toBeVisible();
+    await expect(
+        access.getByRole('switch', { name: /^Acceso de .* a Facturación$/ }),
+    ).not.toHaveCount(0);
+    // El interruptor propio está desactivado: no se puede quitar uno mismo.
+    await expect(access.locator('[role="switch"][disabled]')).toHaveCount(1);
+    await expectAccessible(page);
 });
 
 test('se apaga el módulo Facturación', async ({ page }) => {

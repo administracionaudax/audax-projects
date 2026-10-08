@@ -74,6 +74,8 @@ class Setting extends Model
         // Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más, y
         // los procesos automáticos y los avisos a otras personas siguen como apagados.
         'modules_preview' => false,
+        // Personas sin acceso a un módulo aunque sean admins (D-245): {módulo: [user_id, …]}. Hoy, Facturación.
+        'module_excluded_users' => [],
         // Aviso global (F-178) en todas las páginas internas: null o {message, tone: info|warning}.
         'global_banner' => null,
         // Plantillas de aviso de la weekly (F-104 y F-105): null = las de lang/es/weeklies.php; si

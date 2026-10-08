@@ -87,6 +87,11 @@ return [
         'saved' => 'Datos fiscales guardados.',
     ],
 
+    'access' => [
+        'saved' => 'Acceso a Facturación guardado.',
+        'not_self' => 'No puedes quitarte el acceso a ti mismo.',
+    ],
+
     'report' => [
         'title' => 'Vendido frente a real',
         'kicker' => 'Informe de facturación',

@@ -50,6 +50,7 @@ Route::middleware('module:billing')->group(function () {
 
         Route::get('facturacion/ajustes', [BillingSettingsController::class, 'edit'])->name('billing.settings');
         Route::put('facturacion/ajustes', [BillingSettingsController::class, 'update'])->name('billing.settings.update');
+        Route::put('facturacion/ajustes/acceso', [BillingSettingsController::class, 'updateAccess'])->name('billing.settings.access');
         Route::post('facturacion/sincronizar', [BillingSettingsController::class, 'sync'])
             ->middleware(['can:sync-holded', 'throttle:6,1,billing.sync'])
             ->name('billing.sync');
