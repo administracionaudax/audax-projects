@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -44,6 +45,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Collection<int, Project> $projects
  * @property-read Collection<int, User> $portalUsers
  * @property-read Collection<int, ClientSatisfactionSnapshot> $satisfactionSnapshots
+ * @property-read ClientBillingProfile|null $billingProfile
  */
 #[Fillable([
     'name',
@@ -102,6 +104,16 @@ class Client extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /**
+     * Ficha fiscal (Fase 12, D-381).
+     *
+     * @return HasOne<ClientBillingProfile, $this>
+     */
+    public function billingProfile(): HasOne
+    {
+        return $this->hasOne(ClientBillingProfile::class);
     }
 
     /**

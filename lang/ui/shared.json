@@ -17,6 +17,7 @@
     "project.billing_type.fixed_price": "Precio cerrado",
     "project.billing_type.time_and_materials": "Por horas",
     "project.billing_type.internal": "Interno",
+    "project.billing_type.monthly_fee": "Fee mensual",
     "project.status.planned": "Planificado",
     "project.status.active": "Activo",
     "project.status.on_hold": "En pausa",

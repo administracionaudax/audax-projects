@@ -36,7 +36,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $start_date
  * @property CarbonImmutable|null $due_date
  * @property int|null $budget_minutes
+ * @property int|null $monthly_minutes Horas al mes del fee mensual, en minutos (D-382)
  * @property string|null $fixed_price_amount
+ * @property string|null $monthly_fee_amount Importe al mes del fee mensual, sin IVA (D-382)
  * @property string|null $hourly_rate
  * @property int $owner_user_id
  * @property bool $portal_project_visible
@@ -66,7 +68,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'start_date',
     'due_date',
     'budget_minutes',
+    'monthly_minutes',
     'fixed_price_amount',
+    'monthly_fee_amount',
     'hourly_rate',
     'owner_user_id',
     'portal_project_visible',
@@ -78,7 +82,7 @@ class Project extends Model
     /** @use HasFactory<ProjectFactory> */
     use HasFactory, HasFinancialAttributes, LogsDomainActivity, SoftDeletes;
 
-    public const array FINANCIAL_ATTRIBUTES = ['fixed_price_amount', 'hourly_rate'];
+    public const array FINANCIAL_ATTRIBUTES = ['fixed_price_amount', 'hourly_rate', 'monthly_fee_amount'];
 
     /**
      * Proyecto interno por defecto que crea app:install (SPEC §7).
@@ -108,7 +112,9 @@ class Project extends Model
             'start_date' => 'date:Y-m-d',
             'due_date' => 'date:Y-m-d',
             'budget_minutes' => 'integer',
+            'monthly_minutes' => 'integer',
             'fixed_price_amount' => 'decimal:2',
+            'monthly_fee_amount' => 'decimal:2',
             'hourly_rate' => 'decimal:2',
             'portal_project_visible' => 'boolean',
             'portal_show_task_hours' => 'boolean',
@@ -226,6 +232,12 @@ class Project extends Model
     public function usesHourBanks(): bool
     {
         return $this->billing_type === BillingType::HourBank;
+    }
+
+    /** Fee mensual (Fase 12, D-382). */
+    public function isMonthlyFee(): bool
+    {
+        return $this->billing_type === BillingType::MonthlyFee;
     }
 
     public function acceptsTime(): bool
