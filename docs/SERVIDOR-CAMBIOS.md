@@ -156,3 +156,9 @@ Ajuste aplicado: **Toni Fernandez sin acceso a Facturación**, con su anotación
 - barra de tipos en la lista del chat (D-246).
 
 Pruebas de facturación e informes en PostgreSQL del servidor: **573 en verde**. Cifras de 2026 con los datos reales: 194 facturas y 374.941,60 € sin IVA (rectificativas restadas). `/login` y `/health` 200. Sin cambios de sistema. |
+| 08/10 | **Casar contactos de Holded por un nombre parecido (D-248)** y seguridad de las dependencias de desarrollo:
+- `tinypool` forzado a 2.1.2 por dos avisos críticos; `npm audit fix` de `shell-quote` y `source-map-js`. Solo afecta a las herramientas de desarrollo y vuelve a poner en verde la auditoría de la CI.
+- Simulación previa en el servidor: casarían 28 contactos más.
+- Aplicado con una lectura de Holded (`--forzar --sin-pdf`, 19 peticiones): 51 contactos casados (28 «por revisar»). Facturas de 2026 sin cliente: de 146 a 44 (104.640 € sin IVA, la mayoría de 7 contactos que casa el propietario a mano).
+
+Sin migraciones ni cambios de sistema. |
