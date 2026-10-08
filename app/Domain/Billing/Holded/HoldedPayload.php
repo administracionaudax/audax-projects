@@ -55,9 +55,9 @@ final class HoldedPayload
     public static function money(array $item, string ...$keys): ?string
     {
         foreach ($keys as $key) {
-            $value = self::get($item, $key);
-            if (is_int($value) || is_float($value) || (is_string($value) && is_numeric(trim($value)))) {
-                return Money::round(Money::of(is_string($value) ? trim($value) : $value));
+            $value = self::numeric(self::get($item, $key));
+            if ($value !== null) {
+                return Money::round(Money::of($value));
             }
         }
 
@@ -73,13 +73,37 @@ final class HoldedPayload
     public static function decimal(array $item, int $scale, string ...$keys): ?string
     {
         foreach ($keys as $key) {
-            $value = self::get($item, $key);
-            if (is_int($value) || is_float($value) || (is_string($value) && is_numeric(trim($value)))) {
-                return bcadd(Money::of(is_string($value) ? trim($value) : $value), '0', $scale);
+            $value = self::numeric(self::get($item, $key));
+            if ($value !== null) {
+                return bcadd(Money::of($value), '0', $scale);
             }
         }
 
         return null;
+    }
+
+    /**
+     * Número de Holded como texto con punto decimal. La v2 los da en formato español («1275,00»,
+     * a veces «1.275,00»); también acepta números y texto con punto («1275.00»).
+     *
+     * @return numeric-string|int|float|null
+     */
+    public static function numeric(mixed $value): string|int|float|null
+    {
+        if (is_int($value) || is_float($value)) {
+            return $value;
+        }
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = str_replace([' ', "\u{00A0}", '€'], '', trim($value));
+        if (str_contains($value, ',')) {
+            // Coma decimal: los puntos son de miles.
+            $value = str_replace(['.', ','], ['', '.'], $value);
+        }
+
+        return is_numeric($value) ? $value : null;
     }
 
     /**
