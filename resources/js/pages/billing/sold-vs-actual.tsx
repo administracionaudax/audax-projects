@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { FileText, Info, SearchX } from 'lucide-react';
+import { BillingTabs } from '@/components/billing/billing-nav';
 import { SaleFilters } from '@/components/billing/sale-filters';
 import { SoldVsActualChart } from '@/components/billing/sold-vs-actual-chart';
 import { SoldVsActualKpis } from '@/components/billing/sold-vs-actual-kpis';
@@ -14,16 +15,16 @@ import { Button } from '@/components/ui/button';
 import { useAbilities } from '@/hooks/use-auth';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import { index as reportsIndex } from '@/routes/reports';
+import { index as billingIndex, soldVsActual } from '@/routes/billing';
 import type { SoldVsActualPageProps } from '@/types';
 
-const URL = '/informes/vendido-frente-a-real';
+const URL = soldVsActual.url();
 
 /**
  * «Vendido frente a real» (Fase 12, F1; D-390; PLAN-FASE-12 §4.6): horas e importe vendidos de
  * cada bolsa, precio cerrado, fee y proyecto por horas frente a las horas reales y, con
  * view-financials, lo facturado y cobrado en Holded y el margen. Filtros en la URL y exportación
- * como el resto de informes.
+ * como el resto de informes. En Facturación desde D-401 (antes en /informes, que redirige).
  */
 export default function SoldVsActual({
     filters,
@@ -62,6 +63,8 @@ export default function SoldVsActual({
                         </>
                     }
                 />
+
+                <BillingTabs current="vendido" />
 
                 <div className="grid gap-4">
                     <ReportFilterBar
@@ -134,7 +137,7 @@ export default function SoldVsActual({
 
 SoldVsActual.layout = {
     breadcrumbs: [
-        { title: t('nav.reports'), href: reportsIndex() },
+        { title: t('billing.section'), href: billingIndex() },
         { title: t('billing.report.title'), href: URL },
     ],
 };

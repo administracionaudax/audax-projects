@@ -24,11 +24,8 @@ import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
-import {
-    billing,
-    client as clientReport,
-    project as projectReport,
-} from '@/routes/reports';
+import { hours as billingHours } from '@/routes/billing';
+import { client as clientReport, project as projectReport } from '@/routes/reports';
 import type { ReportFilterKey } from '@/types';
 
 /** El cliente es fijo (la URL): la barra no ofrece el filtro de cliente. */
@@ -103,7 +100,7 @@ export default function ClientReport({
                             {canBill ? (
                                 <Button variant="outline" asChild>
                                     <Link
-                                        href={billing.url({
+                                        href={billingHours.url({
                                             query: {
                                                 ...filters.query,
                                                 cliente: [client.id],

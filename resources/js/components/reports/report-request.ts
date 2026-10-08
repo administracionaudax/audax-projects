@@ -1,10 +1,14 @@
 /**
  * URL de un informe (ReportRequestData, D-139) con `formato=` para descargarlo (xlsx, csv, pdf) o
  * imprimirlo (imprimir). Cada ReportKind es una ruta de routes/app/reports.php (Wayfinder); la weekly,
- * de routes/app/weeklies.php (D-192).
+ * de routes/app/weeklies.php (D-192), y los de facturación, de routes/app/billing.php (D-401).
  */
 import {
-    billing,
+    hours as billingHours,
+    report as invoicingReport,
+    soldVsActual,
+} from '@/routes/billing';
+import {
     client,
     department,
     detail,
@@ -12,7 +16,6 @@ import {
     hourBankPdf,
     person,
     project,
-    soldVsActual,
 } from '@/routes/reports';
 import { exportMethod as exportHours } from '@/routes/reports/hours';
 import { exportMethod as exportProjectTime } from '@/routes/projects/time';
@@ -45,7 +48,7 @@ export function reportRequestUrl(
         case 'project':
             return project.url(id('project'), { query });
         case 'billing':
-            return billing.url({ query });
+            return billingHours.url({ query });
         case 'detail':
             return detail.url({ query });
         case 'hours':
@@ -62,6 +65,9 @@ export function reportRequestUrl(
         // Vendido frente a real (Fase 12, D-390).
         case 'sold_vs_actual':
             return soldVsActual.url({ query });
+        // Informe de facturación (D-400).
+        case 'invoicing':
+            return invoicingReport.url({ query });
         default:
             throw new Error(`Informe desconocido: ${request.kind}`);
     }

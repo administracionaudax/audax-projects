@@ -339,7 +339,7 @@ describe('componentes', () => {
         visits.length = 0;
         render(
             <SaleFilters
-                url="/informes/vendido-frente-a-real"
+                url="/facturacion/vendido-frente-a-real"
                 query={{ periodo: 'anio' }}
                 kinds={[]}
                 manager={null}
@@ -349,7 +349,7 @@ describe('componentes', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Fee mensual' }));
         expect(visits).toEqual([
             {
-                url: '/informes/vendido-frente-a-real',
+                url: '/facturacion/vendido-frente-a-real',
                 data: { periodo: 'anio', venta: ['fee'] },
             },
         ]);
@@ -377,22 +377,31 @@ describe('componentes', () => {
 });
 
 describe('barra lateral', () => {
-    it('Facturación: el informe con view-sold-vs-actual y las facturas con view-billing', () => {
+    it('Facturación: el informe y las facturas con view-billing, vendido frente a real y horas para facturar con su permiso (D-401)', () => {
         expect(billingNavItems({} as never)).toEqual([]);
         expect(
             billingNavItems({ viewSoldVsActual: true } as never).map(
                 (item) => item.href,
             ),
-        ).toEqual(['/informes/vendido-frente-a-real']);
+        ).toEqual(['/facturacion/vendido-frente-a-real']);
+        // Sin el módulo, las horas para facturar siguen con su permiso de siempre (D-402).
+        expect(
+            billingNavItems({ exportBillingHours: true } as never).map(
+                (item) => item.href,
+            ),
+        ).toEqual(['/facturacion/horas-para-facturar']);
         const items = billingNavItems({
             viewSoldVsActual: true,
             viewBilling: true,
+            exportBillingHours: true,
         } as never);
         expect(items.map((item) => item.href)).toEqual([
-            '/informes/vendido-frente-a-real',
+            '/facturacion/informe',
+            '/facturacion/vendido-frente-a-real',
+            '/facturacion/horas-para-facturar',
             '/facturacion/facturas',
         ]);
-        expect(items[1].items?.map((item) => item.href)).toEqual([
+        expect(items[3].items?.map((item) => item.href)).toEqual([
             '/facturacion/contactos',
             '/facturacion/ajustes',
         ]);

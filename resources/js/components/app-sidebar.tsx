@@ -3,6 +3,7 @@ import {
     BarChart3,
     Building2,
     CalendarDays,
+    ChartColumnBig,
     CalendarClock,
     CalendarOff,
     CalendarRange,
@@ -282,17 +283,28 @@ export function peopleNavItems(
 }
 
 /**
- * Sección «Facturación» (D-260; Fase 12, D-393), con el módulo `billing` visible (las habilidades ya
- * lo tienen en cuenta): «Vendido frente a real» para quien ve las bolsas o los datos económicos y
- * «Facturas» (con «Contactos de Holded» y «Ajustes») solo con view-financials. Sin entradas, la
- * sección no se pinta.
+ * Sección «Facturación» (D-260; Fase 12, D-393 y D-401), con el módulo `billing` visible (las
+ * habilidades ya lo tienen en cuenta): el informe de facturación y «Facturas» (con «Contactos de
+ * Holded» y «Ajustes») con view-financials; «Vendido frente a real» para quien ve las bolsas o los
+ * datos económicos; y «Horas para facturar» con su permiso de siempre, también sin el módulo
+ * (D-402). Sin entradas, la sección no se pinta.
  */
 export function billingNavItems(can: Abilities): NavItem[] {
     const items: (NavItem | false)[] = [
+        can.viewBilling === true && {
+            title: t('billing.nav.report'),
+            href: '/facturacion/informe',
+            icon: ChartColumnBig,
+        },
         can.viewSoldVsActual === true && {
             title: t('billing.nav.sold_vs_actual'),
-            href: '/informes/vendido-frente-a-real',
+            href: '/facturacion/vendido-frente-a-real',
             icon: Scale,
+        },
+        can.exportBillingHours === true && {
+            title: t('billing.nav.hours'),
+            href: '/facturacion/horas-para-facturar',
+            icon: Clock,
         },
         can.viewBilling === true && {
             title: t('billing.nav.invoices'),

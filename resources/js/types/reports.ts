@@ -23,13 +23,15 @@ export type ReportQuery = {
     /** «Vendido frente a real» (Fase 12, D-390): tipo de venta y responsable. */
     venta?: string[];
     responsable?: number;
+    /** Informe de facturación (D-400): servicios (BillingService). */
+    servicio?: string[];
 };
 
 /**
  * Un informe con sus filtros (App\Domain\Reports\Delivery\ReportRequest::toArray(), D-139): la
  * prop `report_request` de cada página de informe, para el menú «Exportar ▾» y los diálogos de
  * envío y programación. `kind` es un ReportKind (direction, department, person, client, project,
- * billing, detail, hours, project_hours, hour_bank y weekly).
+ * billing, detail, hours, project_hours, hour_bank, weekly, sold_vs_actual e invoicing).
  */
 export type ReportRequestData = {
     kind: string;

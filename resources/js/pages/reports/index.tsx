@@ -1,13 +1,11 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
     Building2,
     CalendarClock,
-    Receipt,
     Table2,
     UserRound,
-    Scale,
 } from 'lucide-react';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
@@ -68,19 +66,17 @@ function DashboardCard({
 /**
  * Índice de informes (SPEC §10, D-044): los dashboards a los que tiene acceso quien mira. Siempre
  * su informe personal y el detallado; dirección y departamentos para admins y responsables;
- * clientes y proyectos para admins, responsables y gestores; y las personas de su equipo.
+ * clientes y proyectos para admins, responsables y gestores; y las personas de su equipo. Nada de
+ * facturación: lo ven todos los empleados, así que esos informes están en Facturación (D-401).
  */
 export default function ReportsIndex({
     me,
     direction,
-    billing,
     departments,
     clients,
     projects,
     people,
 }: ReportIndexProps) {
-    // Vendido frente a real (Fase 12, D-390), con el módulo Facturación.
-    const soldVsActual = usePage().props.auth?.can?.viewSoldVsActual === true;
     const team = people.filter((person) => person.id !== me.id);
 
     return (
@@ -122,28 +118,6 @@ export default function ReportsIndex({
                             href={reportUrls.detail()}
                             test="r1-index-detail"
                         />
-                        {billing ? (
-                            <DashboardCard
-                                icon={Receipt}
-                                title={t('reports_r1.index.billing')}
-                                description={t(
-                                    'reports_r1.index.billing_description',
-                                )}
-                                href="/informes/facturacion"
-                                test="r1-index-billing"
-                            />
-                        ) : null}
-                        {soldVsActual ? (
-                            <DashboardCard
-                                icon={Scale}
-                                title={t('billing.report.title')}
-                                description={t(
-                                    'billing.report.index_description',
-                                )}
-                                href="/informes/vendido-frente-a-real"
-                                test="r1-index-sold-vs-actual"
-                            />
-                        ) : null}
                         <DashboardCard
                             icon={CalendarClock}
                             title={t('deliveries.list.title')}

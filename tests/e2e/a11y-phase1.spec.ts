@@ -228,7 +228,7 @@ const PAGES: readonly PageDef[] = [
     {
         id: 'informes-facturacion',
         roles: ADMIN,
-        path: (i) => `/informes/facturacion?cliente[]=${i.client}`,
+        path: (i) => `/facturacion/horas-para-facturar?cliente[]=${i.client}`,
     },
     // Fase 3: ausencias, festivos y carga.
     { id: 'ausencias', roles: ALL, path: () => '/ausencias' },
