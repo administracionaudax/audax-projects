@@ -2845,6 +2845,47 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - **Fuera de F1**: emitir o escribir en Holded (F4), catálogo, series e impuestos propios (F2), presupuestos (F3), recordatorios de cobro y conciliación, rol de gestoría y la importación del histórico previo a la cuenta de la API (F7).
 
 
+## 08/10/2026: Informe de facturación y la facturación fuera de Informes (rama `facturacion-informe`)
+
+Encargo del propietario (08/10): «hazla dentro de facturación; ojo, que Informes lo pueden ver los empleados y no es lo mejor que haya allí nada de facturación, rentabilidad, etc.».
+
+### D-400 · Informe de facturación **[amplía D-390 y D-393]**
+- **Dónde y quién:** `/facturacion/informe` (`billing.report`), primera entrada de Facturación en la barra lateral y en las pestañas. Solo con `view-billing` (detrás del módulo `billing` y de las exclusiones de D-245). `/facturacion` lleva aquí (D-401).
+- **Periodo:** el de la barra de los informes (año, trimestre, mes, semana o rango) y, **sin periodo en la URL, el año en curso comparado**. «Comparar con el año anterior» compara siempre con **el mismo periodo del año anterior** (no con el periodo anterior, como el resto de informes): un trimestre con el mismo trimestre. **Filtros:** cliente (`cliente[]`) y servicio (`servicio[]`, varios a la vez).
+- **Cifras** (`App\Domain\Billing\InvoicingReport`):
+  - **Facturado**: base sin IVA de lo que cuenta (`HoldedInvoice::countingIn`, D-397): emitidas menos rectificativas, sin restar dos veces una anulada. Al lado, lo que restan las rectificativas.
+  - **Variación** frente al mismo periodo del año anterior (siempre, aunque no se compare); sin facturado el año anterior, «Sin facturas».
+  - **Cobrado, pendiente y vencido**, con IVA (lo que entra en el banco, como D-390), de las facturas del periodo. Pendiente = lo que queda por cobrar de cada una (solo lo positivo); vencido = lo pendiente con el vencimiento antes de hoy.
+  - **Previsto** = base de los borradores de Holded del periodo (las recurrentes los crean el día 29, D-395). Nunca es facturado.
+  - **Número de facturas** (sin las rectificativas) y **ticket medio** = facturado ÷ facturas. Al comparar, las dos llevan su variación frente al año anterior.
+- **Gráficas** (skill dataviz, paleta de D-012 validada en los dos temas):
+  - **Facturado por mes**: columnas de lo facturado (`--chart-1`) con lo previsto encima (`--chart-2`) y, al comparar, el mismo mes del año anterior como línea discontinua (`--chart-3`) en el **mismo eje** (nada de doble eje).
+  - **Por servicio**: cada línea de factura por el nombre (y el código) del servicio de Holded (`App\Enums\BillingService`): bolsas de horas, fees, desarrollo, diseño, mantenimiento, auditorías, SEO, herramientas, inversión repercutida y «Otros». Las líneas de una rectificativa siempre restan (Holded puede darlas en positivo). Si las líneas no llegan a la base (descuentos generales), la diferencia sale como «Sin desglose por línea», para que el total cuadre.
+  - **Clientes**: los 10 que más facturan, «Resto (N clientes)» y **«Sin cliente casado»** (las facturas de contactos de Holded sin cliente, que sí cuentan en los totales), en gris porque no son una entidad, con un enlace a `/facturacion/contactos`.
+  - **Antigüedad de lo pendiente**: en plazo, 1–30, 31–60, 61–90 y más de 90 días de retraso a hoy, con la rampa secuencial de `--chart-1` (más intensa cuanto más antigua) y el importe encima de cada columna.
+  - **Facturas vencidas por cliente**: quien más debe primero y, dentro, la más antigua; cada factura enlaza a su ficha y el cliente, a su página de facturación. Se listan como mucho 200 (todas, en el Excel).
+  - En las barras horizontales, una sola serie: la longitud da la magnitud y el nombre del eje, la identidad; cada barra lleva su importe (sin eje de euros, que en el móvil se pisaba). Todas las gráficas tienen tooltip y **vista de tabla**.
+- **Con filtro de servicio**, lo facturado, lo previsto, los meses, los servicios y los clientes salen de las líneas de ese servicio; cobrado, pendiente, vencido, antigüedad y número de facturas, de las facturas que lo llevan (el cobro es de la factura entera: no se reparte por línea). La página lo avisa.
+- **Exportación** con el patrón de D-139/D-140 (`ReportKind::Invoicing`, `InvoicingDocument`): Excel con las hojas Resumen, Por mes, Por servicio, Por cliente, Antigüedad y Vencidas; CSV de la tabla `?tabla=meses|servicios|clientes|antiguedad|vencidas` (por defecto, los meses); PDF e impresión con las cifras y las tablas. Se puede enviar y programar solo con el módulo encendido de verdad, como «Vendido frente a real».
+- **Rendimiento:** todo agregado en SQL (sumas en céntimos enteros, el mes con `SUBSTR(CAST(fecha AS TEXT), 1, 7)` y los tramos en una subconsulta), igual en PostgreSQL y en SQLite y siempre con `orderBy`. Los nombres de servicio se clasifican en PHP a partir de una consulta de los pares distintos (nombre, código). 26 consultas la página (con las props compartidas) y 12 la exportación, que no crecen con los datos (`tests/Feature/Performance/InvoicingReportPerformanceTest.php`).
+
+### D-401 · La facturación sale de Informes **[cambia D-393 y la tarjeta de D-390]**
+- `/informes` lo ven todos los empleados, así que ya no tiene nada de facturación: sin las tarjetas «Horas para facturar» ni «Vendido frente a real».
+- **«Vendido frente a real»** pasa a `/facturacion/vendido-frente-a-real` (`billing.sold-vs-actual`) con los mismos permisos (`view-sold-vs-actual`: también responsables y gestores, solo en horas y, un gestor, solo sus proyectos).
+- **«Horas para facturar»** pasa a `/facturacion/horas-para-facturar` (`billing.hours`) con su permiso de siempre (`ClientPolicy::viewBilling`). Ver D-402.
+- **Las URL antiguas** (`/informes/vendido-frente-a-real` y `/informes/facturacion`) responden con un **301** a las nuevas **con su query**: siguen valiendo los favoritos, los enlaces de los correos y las descargas con `?formato=`. Los envíos programados guardan el tipo (`sold_vs_actual`, `billing`), no la URL, así que siguen generándose igual (`ReportKind::routeName` apunta a las rutas nuevas).
+- **Navegación:** la sección Facturación y sus pestañas enseñan a cada uno solo lo que puede abrir: Informe, Facturas, Contactos de Holded y Ajustes con `view-billing`; Vendido frente a real con `view-sold-vs-actual`; Horas para facturar con `exportBillingHours` (habilidad compartida nueva). Con una sola pestaña visible no se pintan. `/facturacion` lleva al informe de facturación o, a quien solo ve el vendido frente a real, a ese; al resto, 403.
+
+### D-402 · «Horas para facturar» no exige el módulo `billing`
+- No dependía de Facturación (D-045): la usan los admins y quien tiene view-financials para pasar horas a Holded. Para no romper nada, su ruta nueva **no lleva `module:billing`**: con el módulo apagado (y sin modo de prueba) sigue en su URL nueva y la sección Facturación de la barra lateral enseña solo esa entrada.
+- Sí respeta la exclusión por persona de Facturación (D-245): desde D-247, `ClientPolicy::viewBilling` deja fuera a quien está excluido, aunque sea admin.
+- Sus migas de pan enlazan la sección a la propia página, porque sin el módulo `/facturacion` no existe.
+
+### D-403 · Lo que no se mueve: los importes de Dirección y Clientes
+- Los importes que ya hay en Dirección y en los informes de cliente (ingreso, coste, margen y rentabilidad) **se quedan en Informes**: ya exigen view-financials (y, desde D-247, no estar excluido de Facturación), así que un empleado no los ve.
+- Si el propietario lo pide, se pueden llevar a Facturación (o a un informe de rentabilidad propio) más adelante.
+
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2875,7 +2916,7 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-248 a D-249.
 
-La siguiente libre es **D-248** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-400 en adelante, libres).
+La siguiente libre es **D-248** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-404 en adelante, libres).
