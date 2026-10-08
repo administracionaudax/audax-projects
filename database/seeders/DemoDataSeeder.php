@@ -322,12 +322,15 @@ class DemoDataSeeder extends Seeder
         foreach (HourBank::query()->whereNotNull('price_amount')->orderBy('start_date')->orderBy('id')->get() as $bank) {
             HourBank::withoutEvents(fn () => $bank->forceFill(['invoice_reference' => $next($bank->start_date)])->save());
         }
-        foreach (Project::query()->where('billing_type', BillingType::FixedPrice->value)->whereNotNull('fixed_price_amount')->orderBy('id')->get() as $project) {
+        // Su presupuesto de horas, como lo dejó ClickUp («WE1 - 120h - …», D-135): uno holgado, uno
+        // justo y uno que se pasa, frente a sus horas reales.
+        $ratios = [1.25, 0.95, 0.8];
+        foreach (Project::query()->where('billing_type', BillingType::FixedPrice->value)->whereNotNull('fixed_price_amount')->orderBy('id')->get() as $index => $project) {
             $start = $project->start_date ?? $this->today;
+            $real = (int) TimeEntry::query()->where('project_id', $project->id)->sum('minutes');
             Project::withoutEvents(fn () => $project->forceFill([
                 'description' => trim(($project->description ?? '').' Factura: '.$next($start).'.'),
-                // Su presupuesto de horas, como lo dejó ClickUp («WE1 - 120h - …», D-135): el importe a 60 €/h.
-                'budget_minutes' => $project->budget_minutes ?? (int) round((float) $project->fixed_price_amount / 60) * 60,
+                'budget_minutes' => $project->budget_minutes ?? max(600, (int) round($real * $ratios[$index % 3] / 600) * 600),
             ])->save());
         }
 

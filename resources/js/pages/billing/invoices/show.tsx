@@ -178,7 +178,7 @@ export default function InvoiceShow({ invoice, projects, suggestions }: Props) {
                     <div className="grid content-start gap-6">
                         <Card className="py-4">
                             <CardContent className="grid gap-4 px-4">
-                                <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
+                                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                                     <Fact
                                         label={t('billing.invoice.date')}
                                         value={formatDate(invoice.issued_on)}
