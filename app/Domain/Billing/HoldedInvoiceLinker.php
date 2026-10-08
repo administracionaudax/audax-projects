@@ -146,7 +146,7 @@ final class HoldedInvoiceLinker
             }
         }
 
-        $holdedProjectIds = $invoice->lines()->whereNotNull('holded_project_id')->distinct()->pluck('holded_project_id')->all();
+        $holdedProjectIds = $invoice->lines()->reorder()->whereNotNull('holded_project_id')->orderBy('holded_project_id')->distinct()->pluck('holded_project_id')->all();
         foreach ($holdedProjectIds as $holdedProjectId) {
             $projectId = $this->holdedProjects[(string) $holdedProjectId] ?? null;
             if ($projectId === null || $this->hasProject($desired, $projectId)) {
