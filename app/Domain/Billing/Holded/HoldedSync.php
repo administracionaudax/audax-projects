@@ -356,7 +356,23 @@ final class HoldedSync
         });
     }
 
+    /**
+     * Los cobros sueltos piden otro permiso de Holded (`accounting:payments.read`). Sin él se sigue:
+     * lo cobrado y lo pendiente ya vienen en cada factura, y la ejecución lo apunta en sus datos.
+     */
     private function payments(HoldedApi $api): void
+    {
+        try {
+            $this->readPayments($api);
+        } catch (HoldedRequestFailed $e) {
+            if ($e->status !== 403) {
+                throw $e;
+            }
+            $this->stats['payments_forbidden'] = 1;
+        }
+    }
+
+    private function readPayments(HoldedApi $api): void
     {
         $invoices = HoldedInvoice::query()->pluck('id', 'holded_id')->all();
 

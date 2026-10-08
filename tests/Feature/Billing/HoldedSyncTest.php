@@ -264,6 +264,23 @@ it('un error de Holded deja la ejecución como fallida con el mensaje', function
         ->and(HoldedSync::busy())->toBeFalse();
 });
 
+it('sin permiso para los cobros sueltos sigue con lo cobrado de cada factura y lo apunta', function () {
+    $d = $this->data;
+    $noPayments = new class($d['contacts'], $d['projects'], $d['invoices'], $d['creditNotes']) extends FakeHolded
+    {
+        public function payments(): iterable
+        {
+            throw HoldedRequestFailed::forStatus(403, '/payments');
+        }
+    };
+    $run = syncHolded($noPayments);
+
+    expect($run->status)->toBe('ok')
+        ->and($run->stats['payments_forbidden'] ?? null)->toBe(1)
+        ->and(HoldedInvoice::query()->count())->toBeGreaterThan(0)
+        ->and(HoldedPayment::query()->count())->toBe(0);
+});
+
 it('un borrador aprobado en Holded recibe su número; uno borrado en Holded desaparece', function () {
     $draft = holdedInvoice('d1', '', 'c5', '2026-03-19', '1500.00', ['draft' => true, 'approval_status' => 'draft', 'tags' => ['#fee']]);
     syncHolded(holdedFake([...$this->data, 'invoices' => [...$this->data['invoices'], $draft]]));
