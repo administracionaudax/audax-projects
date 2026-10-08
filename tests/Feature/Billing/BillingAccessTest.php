@@ -289,7 +289,7 @@ it('las URL antiguas de Informes responden con un 301 a Facturación, con su que
     $csv->assertOk();
 });
 
-it('las horas para facturar no dependen del módulo ni de las exclusiones de Facturación (D-402)', function () {
+it('las horas para facturar no dependen del módulo, pero sí de las exclusiones de Facturación (D-402 y D-247)', function () {
     enableBilling(false);
 
     $this->actingAs($this->finance)->get('/facturacion/horas-para-facturar')->assertOk()
@@ -303,7 +303,8 @@ it('las horas para facturar no dependen del módulo ni de las exclusiones de Fac
     $excluded = userWithRole('admin');
     $this->actingAs($this->admin)->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$excluded->id]])->assertRedirect();
     $this->actingAs($excluded)->get('/facturacion/informe')->assertNotFound();
-    $this->actingAs($excluded)->get('/facturacion/horas-para-facturar')->assertOk();
+    $this->actingAs($excluded)->get('/facturacion/horas-para-facturar')->assertForbidden();
+    $this->actingAs($excluded)->get('/')->assertInertia(fn (Assert $page) => $page->where('auth.can.exportBillingHours', false));
 });
 
 it('Informes ya no enseña nada de facturación (D-401)', function () {
