@@ -136,13 +136,44 @@ Fuente: (a) [BOE-A-2012-14696](https://www.boe.es/buscar/act.php?id=BOE-A-2012-1
 
 ---
 
+### 3.1 Cómo factura Audax hoy en Holded (observado el 08/10/2026, solo lectura)
+- **Numeración:**
+  - una sola serie, «F» + año con 2 cifras + 4 cifras (F260194 es la 194 de 2026, unas 200 al año),
+  - los borradores no tienen número y lo reciben al aprobarlos,
+  - en 2026 no hay ninguna factura anulada y no he visto rectificativas.
+- **Líneas:** concepto del catálogo de servicios más una descripción libre.
+  - **Bolsas:** se facturan como `bolsadehoras` con **unidades = horas y precio = €/h**: 25 × 51 €, 100 × 60 € con un 15 % de descuento de línea, 30 × 42,50 € (trimestral).
+  - **Por horas:** «Desarrollo» 8 × 70 € y «Diseño Producto UX/UI» 58 × 60 €.
+  - **Fees:** 1 unidad × el importe del mes.
+  - IVA del 21 % en todas.
+- **Catálogo:**
+  - **Auditorías:** MK y comunicación, UX y CRO, y Definición de producto digital.
+  - **Fees:** MK y RRSS, y Producto digital.
+  - **Trabajo:** Mantenimiento, bolsa de horas, Diseño de producto UX/UI, Desarrollo, Diseño gráfico e identidad, y SEO.
+  - **A 0 € (repercutidos):** Herramienta e Inversión (gasto de medios).
+  - El precio por defecto es de 60 €.
+- **Tags:** indican el tipo de servicio (#fee, #bolsadehoras, #desarrollo…) y el cliente o lead (#pinturasmonto, #hrl_lead…), pero **nunca el proyecto**. El enlace con el proyecto se sugiere por cliente, servicio y fecha, y se confirma a mano (o se hace por el código F de la bolsa).
+- **Recurrentes:**
+  - hay 16 (unos 32.700 €), casi todas mensuales, más 1 anual y 2 trimestrales,
+  - el día 29 generan una **factura en borrador** enlazada a la recurrente,
+  - alguien la retoca (número de sprint, número de pedido del cliente) y la aprueba,
+  - **un borrador no cuenta como facturado.**
+- **Cobro:**
+  - el vencimiento varía (el mismo día, +1, +7, +14 o +30 días),
+  - los estados son Pagado, Pendiente, Vencido, Pago parcial y Anulado,
+  - los cobros se concilian con el banco,
+  - se ve si el cliente ha abierto la factura,
+  - el envío por email puede ir a varias direcciones.
+- **Contabilidad:** todo va a «Ventas de mercaderías», y cada cliente a su subcuenta 430.
+- **Presupuestos:** no se usan en Holded (ninguno en 2026).
+
 ## 4. Cómo se generan las facturas desde la app
 
 Todas acaban en un **borrador** de factura (sin número). Se revisa, se **Aprueba** y, al aprobar, se bloquean las horas que cubre. Son los flujos de Holded con los datos de Audax.
 
 ### 4.1 Bolsa vendida → factura
 1. Al crear o **renovar** una bolsa con `price_amount`, la ficha de la bolsa muestra **«Facturar bolsa»** (y la bandeja «Pendiente de facturar» la lista hasta que tenga factura).
-2. Crea un borrador con una línea «Bolsa de N h · {proyecto} · desde {fecha}», unidades 1 y el importe de la bolsa, el servicio «Bolsa de horas» y el proyecto y la bolsa enlazados.
+2. Crea un borrador como lo hace Audax hoy (§3.1): servicio «bolsadehoras», **unidades = horas de la bolsa y precio = €/h**, con descuento de línea si el precio de la bolsa es menor que horas × tarifa, y la descripción «Bolsa de horas N h {mes o trimestre}». Lleva el proyecto y la bolsa enlazados.
 3. Al aprobar, la bolsa queda enlazada a la factura (`hour_banks.sales_document_id`); `invoice_reference` se conserva como histórico.
 4. **Exceso:** cuando la bolsa tiene exceso (o al cerrarla o renovarla), **«Facturar exceso»**: líneas con las horas de exceso aprobadas y no facturadas, a su tarifa congelada (`EntryValuation`). Al aprobar, se bloquean esas entradas. Si la política es descontarlo de la renovación, no se factura y queda anotado (SPEC §8).
 
