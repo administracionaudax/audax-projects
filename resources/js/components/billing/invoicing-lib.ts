@@ -14,6 +14,7 @@ export const BILLING_SERVICES: readonly BillingService[] = [
     'diseno',
     'mantenimiento',
     'auditorias',
+    'marketing',
     'seo',
     'herramientas',
     'inversion',

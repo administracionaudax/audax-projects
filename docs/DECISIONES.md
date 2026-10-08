@@ -2886,6 +2886,11 @@ Encargo del propietario (08/10): «hazla dentro de facturación; ojo, que Inform
 - Si el propietario lo pide, se pueden llevar a Facturación (o a un informe de rentabilidad propio) más adelante.
 
 
+### D-404 · Ajustes del informe de facturación con los datos reales de Holded **[amplía D-400]**
+Revisados el 08/10/2026 con las 910 facturas leídas de Holded:
+- **Comparación con el año anterior:** con el periodo en curso, las cifras (facturado, número de facturas, ticket medio) se comparan **hasta el mismo día** del año anterior. Por ejemplo, del 1/1 al 8/10 de 2026 se compara con el mismo tramo de 2025, y no con todo 2025, que daba un −31,9 % engañoso. Un periodo ya cerrado se compara entero. La gráfica por meses sigue enseñando el año anterior completo como referencia.
+- **Servicios:** nueva categoría **«Marketing y campañas»** (Marketing, Gestión Campañas…: unos 37.000 € de 2026 que caían en «Otros»). Hosting, licencias y servidores pasan a «Herramientas».
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2919,4 +2924,4 @@ Encargo del propietario (08/10): «hazla dentro de facturación; ojo, que Inform
 - Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-248 a D-249.
 
-La siguiente libre es **D-248** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-404 en adelante, libres).
+La siguiente libre es **D-248** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-405 en adelante, libres).

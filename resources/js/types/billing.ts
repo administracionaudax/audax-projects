@@ -204,6 +204,7 @@ export type BillingService =
     | 'diseno'
     | 'mantenimiento'
     | 'auditorias'
+    | 'marketing'
     | 'seo'
     | 'herramientas'
     | 'inversion'

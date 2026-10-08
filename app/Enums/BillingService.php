@@ -17,8 +17,9 @@ use Illuminate\Support\Str;
  * | Diseño | contiene «diseno» (Diseño Producto UX/UI, Diseño Gráfico) | D_UX_UI, D_GR |
  * | Mantenimiento | contiene «mantenimiento» | |
  * | Auditorías | contiene «auditoria» | |
+ * | Marketing y campañas | contiene «marketing» o «campana» (Gestión Campañas…) | |
  * | SEO | la palabra «seo» | SEO |
- * | Herramientas | empieza por «herramienta» | |
+ * | Herramientas | empieza por «herramienta», o hosting, licencias y servidores | |
  * | Inversión repercutida | empieza por «inversion» | |
  */
 enum BillingService: string
@@ -29,6 +30,7 @@ enum BillingService: string
     case Design = 'diseno';
     case Maintenance = 'mantenimiento';
     case Audits = 'auditorias';
+    case Marketing = 'marketing';
     case Seo = 'seo';
     case Tools = 'herramientas';
     case PassThrough = 'inversion';
@@ -49,7 +51,10 @@ enum BillingService: string
             str_contains($text, 'mantenimiento') => self::Maintenance,
             str_contains($text, 'auditoria') => self::Audits,
             $code === 'SEO' || in_array('seo', $words, true) => self::Seo,
-            str_starts_with($text, 'herramienta') => self::Tools,
+            // «Fee MK y RRSS» ya es fee; aquí, el resto de marketing y la gestión de campañas.
+            str_contains($text, 'marketing') || str_contains($text, 'campana') => self::Marketing,
+            str_starts_with($text, 'herramienta') || in_array('hosting', $words, true)
+                || in_array('licencia', $words, true) || in_array('servidor', $words, true) => self::Tools,
             str_starts_with($text, 'inversion') => self::PassThrough,
             default => self::Other,
         };

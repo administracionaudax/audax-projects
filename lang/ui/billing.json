@@ -422,5 +422,6 @@
     "billing.invoicing.definitions.overdue": "Lo pendiente de cobro con el vencimiento ya pasado, con IVA.",
     "billing.invoicing.definitions.planned": "Base imponible de los borradores de Holded del periodo, entre ellos los que crean las facturas recurrentes cada día 29. No cuenta como facturado.",
     "billing.invoicing.definitions.count": "Facturas emitidas del periodo, sin contar las rectificativas.",
-    "billing.invoicing.definitions.average": "Lo facturado entre el número de facturas."
+    "billing.invoicing.definitions.average": "Lo facturado entre el número de facturas.",
+    "billing.invoicing.services.marketing": "Marketing y campañas"
 }

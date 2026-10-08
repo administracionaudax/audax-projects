@@ -4,6 +4,7 @@ namespace App\Domain\Billing;
 
 use App\Domain\Reports\ReportFilters;
 use App\Enums\BillingService;
+use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 
 /**
@@ -21,6 +22,7 @@ final readonly class InvoicingQuery
     public function __construct(
         public ReportFilters $filters,
         public array $services = [],
+        public ?CarbonImmutable $today = null,
     ) {}
 
     /**
@@ -41,7 +43,7 @@ final readonly class InvoicingQuery
     {
         $query = self::withDefaults($query);
 
-        return new self(ReportFilters::fromQuery($query, $today), BillingService::fromQuery($query['servicio'] ?? []));
+        return new self(ReportFilters::fromQuery($query, $today), BillingService::fromQuery($query['servicio'] ?? []), $today);
     }
 
     /** ¿Se pinta el año anterior (gráfica, variaciones de cada cifra y columnas de las tablas)? */
@@ -56,8 +58,21 @@ final readonly class InvoicingQuery
         return $this->filters->from->subYearNoOverflow();
     }
 
-    /** Último día del mismo periodo del año anterior. */
+    /**
+     * Último día del periodo del año anterior con el que se comparan las cifras: con el periodo en
+     * curso, hasta el mismo día de hoy del año anterior (del 1/1 al 8/10 de 2026 se compara con del
+     * 1/1 al 8/10 de 2025, no con todo 2025); con uno pasado, su mismo final.
+     */
     public function previousTo(): CarbonImmutable
+    {
+        $today = ($this->today ?? LocalTime::today())->startOfDay();
+        $to = $this->filters->to->greaterThan($today) && $this->filters->from->lessThanOrEqualTo($today) ? $today : $this->filters->to;
+
+        return $to->subYearNoOverflow();
+    }
+
+    /** Último día del periodo entero del año anterior (la referencia de la gráfica por meses). */
+    public function previousFullTo(): CarbonImmutable
     {
         return $this->filters->to->subYearNoOverflow();
     }

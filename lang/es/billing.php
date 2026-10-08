@@ -233,6 +233,7 @@ return [
             'seo' => 'SEO',
             'herramientas' => 'Herramientas',
             'inversion' => 'Inversión repercutida',
+            'marketing' => 'Marketing y campañas',
             'otros' => 'Otros',
             'sin_desglose' => 'Sin desglose por línea',
         ],

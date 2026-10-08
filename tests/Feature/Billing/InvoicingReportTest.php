@@ -114,6 +114,12 @@ it('clasifica las líneas por el servicio del catálogo de Holded', function (?s
     ['Herramienta Figma', null, BillingService::Tools],
     ['Inversión en medios', null, BillingService::PassThrough],
     ['Formación', null, BillingService::Other],
+    // Con los datos reales de Holded (08/10/2026): marketing, campañas, hosting y licencias.
+    ['Marketing', null, BillingService::Marketing],
+    ['Configuración y gestión Campañas', null, BillingService::Marketing],
+    ['Hosting web', null, BillingService::Tools],
+    ['Licencia WPML anual', null, BillingService::Tools],
+    ['Amazon Web Service Mautic Servidor', null, BillingService::Tools],
     [null, null, BillingService::Other],
 ]);
 
@@ -257,13 +263,14 @@ it('filtra por cliente y por servicio', function () {
     expect(($this->report)(['servicio' => ['seo']])['kpis']['invoiced'])->toBe('0.00');
 });
 
-it('compara un trimestre con el mismo trimestre del año anterior', function () {
+it('compara un trimestre con el mismo trimestre del año anterior (el que va en curso, hasta el mismo día)', function () {
     $report = ($this->report)(['periodo' => 'trimestre', 'fecha' => '2026-02-10', 'comparar' => '1']);
 
+    // Hoy es 20/03/2026: el trimestre va en curso y se compara hasta el 20/03/2025.
     expect($report['from'])->toBe('2026-01-01')
         ->and($report['to'])->toBe('2026-03-31')
         ->and($report['previous_from'])->toBe('2025-01-01')
-        ->and($report['previous_to'])->toBe('2025-03-31')
+        ->and($report['previous_to'])->toBe('2025-03-20')
         ->and($report['months'])->toHaveCount(3)
         ->and($report['kpis']['previous_invoiced'])->toBe('1200.00');
 });
@@ -277,11 +284,11 @@ it('la página: solo con view-billing, con el año en curso comparado por defect
         ->assertInertia(fn (Assert $page) => $page->component('billing/report')
             ->where('filters.period', 'anio')
             ->where('filters.compare', true)
-            ->where('filters.comparison', ['from' => '2025-01-01', 'to' => '2025-12-31'])
+            ->where('filters.comparison', ['from' => '2025-01-01', 'to' => '2025-03-20'])
             ->where('filters.query.periodo', 'anio')
             ->where('report.kpis.invoiced', '3400.00')
             ->where('report_request.kind', 'invoicing')
-            ->has('services', 10));
+            ->has('services', 11));
 
     $this->actingAs($finance)->get('/facturacion/informe?periodo=mes&fecha=2026-02-01&servicio[]=fees')
         ->assertInertia(fn (Assert $page) => $page->where('filters.compare', false)
@@ -320,4 +327,19 @@ it('exporta en Excel, CSV, PDF y para imprimir con los mismos filtros', function
 
     $manager = userWithRole('department_manager');
     $this->actingAs($manager)->get($url.'&formato=csv')->assertForbidden();
+});
+
+it('con el año en curso compara las cifras hasta el mismo día del año anterior, y la gráfica enseña el año anterior entero', function () {
+    // Hoy es 20/03/2026: una factura de 2025 antes del 20/03 cuenta; la de octubre de 2025, no.
+    invoicingDoc(['number' => 'F250100', 'issued_on' => '2025-10-15', 'subtotal' => '5000.00', 'collection_status' => CollectionStatus::Paid, 'paid_total' => '6050.00', 'pending_total' => '0.00'], [['Desarrollo', '5000.00']]);
+
+    $report = ($this->report)();
+
+    expect($report['previous_to'])->toBe('2025-03-20')
+        ->and($report['kpis']['previous_invoiced'])->toBe('1200.00')
+        ->and(collect($report['months'])->firstWhere('month', '2026-10')['previous'])->toBe('5000.00');
+
+    // Un periodo ya cerrado se compara entero.
+    $past = app(InvoicingReport::class)->report(InvoicingQuery::fromQuery(['periodo' => 'anio', 'fecha' => '2025-06-01', 'comparar' => '1']));
+    expect($past['previous_to'])->toBe('2024-12-31');
 });

@@ -72,13 +72,15 @@ final class InvoicingReport
         $to = $query->filters->to;
 
         $current = $this->monthly($query, $from, $to, planned: false);
-        $previous = $this->monthly($query, $query->previousFrom(), $query->previousTo(), planned: false);
+        // La gráfica enseña el año anterior entero; las cifras se comparan hasta el mismo día.
+        $previous = $this->monthly($query, $query->previousFrom(), $query->previousFullTo(), planned: false);
+        $comparable = $this->monthly($query, $query->previousFrom(), $query->previousTo(), planned: false);
         $planned = $this->monthly($query, $from, $to, planned: true);
         $collection = $this->collection($query);
         $aging = $this->aging($query, $today);
 
         $invoiced = array_sum(array_column($current, 'cents'));
-        $previousInvoiced = array_sum(array_column($previous, 'cents'));
+        $previousInvoiced = array_sum(array_column($comparable, 'cents'));
         $count = (int) $collection['count'];
         $overdue = array_sum(array_map(fn (array $bucket): int => $bucket['key'] === 'current' ? 0 : $bucket['cents'], $aging));
 
