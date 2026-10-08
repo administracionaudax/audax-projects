@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
@@ -14,7 +14,6 @@ import { PageSection } from '@/components/projects-list/page-section';
 import { R1LinkList } from '@/components/reports/r1-link-list';
 import type { ReportIndexProps } from '@/components/reports/r1-types';
 import { reportUrls } from '@/components/reports/r1-urls';
-import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -81,7 +80,7 @@ export default function ReportsIndex({
     people,
 }: ReportIndexProps) {
     // Vendido frente a real (Fase 12, D-390), con el módulo Facturación.
-    const soldVsActual = useAbilities().viewSoldVsActual === true;
+    const soldVsActual = usePage().props.auth?.can?.viewSoldVsActual === true;
     const team = people.filter((person) => person.id !== me.id);
 
     return (

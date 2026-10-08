@@ -252,7 +252,7 @@ export default function InvoicesIndex({
                         ]}
                         onChange={(value) => visit({ enlace: value })}
                     />
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-from`}>
                             {t('billing.filters.from')}
                         </Label>
@@ -262,7 +262,7 @@ export default function InvoicesIndex({
                             onChange={(value) => visit({ desde: value })}
                         />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-to`}>
                             {t('billing.filters.to')}
                         </Label>
@@ -368,7 +368,7 @@ function FilterSelect({
     onChange: (value: string | null) => void;
 }) {
     return (
-        <div className="grid gap-1">
+        <div className="grid content-start gap-1">
             <Label htmlFor={id}>{label}</Label>
             <Select
                 value={value ?? ALL}

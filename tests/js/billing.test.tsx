@@ -234,7 +234,7 @@ describe('componentes', () => {
                 caption="Tabla"
             />,
         );
-        expect(screen.queryByText('Facturado')).toBeNull();
+        expect(screen.queryByText('Facturado sin IVA')).toBeNull();
         expect(
             screen
                 .getByRole('link', { name: /Bolsa 10 h/ })
@@ -258,7 +258,7 @@ describe('componentes', () => {
                 caption="Tabla"
             />,
         );
-        expect(screen.getByText('Facturado')).toBeTruthy();
+        expect(screen.getByText('Facturado sin IVA')).toBeTruthy();
         expect(screen.getByText(/en borrador/)).toBeTruthy();
         expect(screen.getByText('Total (2)')).toBeTruthy();
     });
