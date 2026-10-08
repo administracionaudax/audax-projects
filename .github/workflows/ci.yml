@@ -31,7 +31,8 @@ jobs:
   php:
     name: PHP (Pint, PHPStan, Pest)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Pest en paralelo (4 procesos, una base de PostgreSQL por proceso): ~5.200 tests.
+    timeout-minutes: 40
 
     services:
       postgres:
@@ -127,7 +128,7 @@ jobs:
       - name: Pest
         run: |
           php artisan config:clear --ansi
-          php artisan test
+          php artisan test --parallel --processes=4
 
   js:
     name: JS (formato, lint, tipos, Vitest, build)
@@ -228,7 +229,7 @@ jobs:
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50
 
     services:
       postgres:
