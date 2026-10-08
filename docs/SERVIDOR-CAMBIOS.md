@@ -143,3 +143,9 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 - **Cobros sueltos:** piden `accounting:payments.read`. Sin ese permiso se usa lo cobrado de cada factura.
 
 **Resultado:** 910 facturas (194 en 2026, como en Holded), 12 rectificativas CN enlazadas a su factura, 7 borradores y 283 contactos (23 casados con clientes). Unas 19 llamadas por lectura, de las 7.500 al mes del plan. Módulo `billing` apagado y visible solo para los tres admins en modo de prueba. Sin cambios de sistema. |
+| 08/10 | **Quién ve Facturación (D-245)**, a petición del propietario. Despliegue sin migraciones con:
+- exclusiones por módulo (ajuste `module_excluded_users`),
+- buscador al casar contactos y facturas,
+- lectura nocturna de Holded también en modo de prueba.
+
+Ajuste aplicado: **Toni Fernandez sin acceso a Facturación**, con su anotación en la auditoría de ajustes. Comprobado: `/facturacion/facturas` y `/informes/vendido-frente-a-real` le dan 404, y Chele y Alfredo la siguen viendo. Sin cambios de sistema. |
