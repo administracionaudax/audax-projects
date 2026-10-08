@@ -149,3 +149,10 @@ Cada acción que modifique algo en el servidor se anota aquí **antes y después
 - lectura nocturna de Holded también en modo de prueba.
 
 Ajuste aplicado: **Toni Fernandez sin acceso a Facturación**, con su anotación en la auditoría de ajustes. Comprobado: `/facturacion/facturas` y `/informes/vendido-frente-a-real` le dan 404, y Chele y Alfredo la siguen viendo. Sin cambios de sistema. |
+| 08/10 | **Informe de facturación** (D-400 a D-404), sin migraciones:
+- vive en Facturación y no en Informes, que pueden ver los empleados;
+- «Vendido frente a real» y «Horas para facturar» pasan a Facturación, con redirección 301 desde las URL antiguas;
+- quien no ve Facturación (Toni) tampoco ve importes en los informes (D-247);
+- barra de tipos en la lista del chat (D-246).
+
+Pruebas de facturación e informes en PostgreSQL del servidor: **573 en verde**. Cifras de 2026 con los datos reales: 194 facturas y 374.941,60 € sin IVA (rectificativas restadas). `/login` y `/health` 200. Sin cambios de sistema. |
