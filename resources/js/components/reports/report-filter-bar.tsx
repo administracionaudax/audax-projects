@@ -94,6 +94,7 @@ export function ReportFilterBar({
     show = ALL_FILTERS,
     url,
     compare = true,
+    compareLabel,
 }: {
     filters: ReportFiltersProps;
     /** Filtros visibles (los dashboards fijos ocultan el suyo, p. ej. «cliente» en la ficha de cliente). */
@@ -102,6 +103,8 @@ export function ReportFilterBar({
     url?: string;
     /** Interruptor «Comparar con el periodo anterior»: solo en las páginas que comparan (no en Facturación). */
     compare?: boolean;
+    /** Texto del interruptor (el informe de facturación compara con el año anterior, D-400). */
+    compareLabel?: string;
 }) {
     const id = useId();
     const [options, setOptions] = useState<ReportOptions | null>(null);
@@ -323,7 +326,7 @@ export function ReportFilterBar({
                             }
                         />
                         <Label htmlFor={`${id}-compare`}>
-                            {t('reports.filters.compare')}
+                            {compareLabel ?? t('reports.filters.compare')}
                         </Label>
                     </div>
                 ) : null}

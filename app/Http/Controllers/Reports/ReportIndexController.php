@@ -22,7 +22,8 @@ use Inertia\Response;
  *   gestiona; un empleado, ninguno.
  * - Personas: todas las internas (admin), su equipo y él mismo (responsable) o solo él mismo.
  * - Informe detallado: todos los internos (con sus horas visibles, TimeEntry::visibleTo).
- * Así un empleado ve su propio informe y el detallado. Los dashboards de cliente, proyecto y
+ * Así un empleado ve su propio informe y el detallado. Los informes de facturación (horas para
+ * facturar, vendido frente a real y el informe de facturación) están en Facturación (D-401). Los dashboards de cliente, proyecto y
  * detallado los sirven otras áreas (R2 y R3): aquí solo se enlazan.
  */
 class ReportIndexController extends Controller
@@ -80,7 +81,6 @@ class ReportIndexController extends Controller
         return Inertia::render('reports/index', [
             'me' => ['id' => $user->id, 'name' => $user->name],
             'direction' => Gate::forUser($user)->allows('viewDirectionReport', Department::class),
-            'billing' => Gate::forUser($user)->allows('viewBilling', Client::class),
             'departments' => array_values(Department::query()
                 ->when(! $isAdmin, fn (Builder $query) => $query->whereKey($managedDepartments))
                 ->orderBy('name')

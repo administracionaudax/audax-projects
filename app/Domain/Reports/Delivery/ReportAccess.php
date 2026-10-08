@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Gate;
 final class ReportAccess
 {
     /**
-     * Parámetros de ruta de cada informe (los de routes/app/reports.php).
+     * Parámetros de ruta de cada informe (los de routes/app/reports.php y routes/app/billing.php).
      *
      * @return list<string>
      */
@@ -86,6 +86,10 @@ final class ReportAccess
             // Vendido frente a real (Fase 12, D-390): como la Weekly, solo con el módulo encendido de verdad.
             ReportKind::SoldVsActual => AppModules::enabled(AppModule::Billing)
                 ? $gate->authorize('view-sold-vs-actual')
+                : throw new AuthorizationException,
+            // Informe de facturación (D-400): igual, y solo con view-billing.
+            ReportKind::Invoicing => AppModules::enabled(AppModule::Billing)
+                ? $gate->authorize('view-billing')
                 : throw new AuthorizationException,
         };
     }

@@ -28,11 +28,9 @@ import {
 } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import {
-    billing,
-    client as clientReport,
-    index as reportsIndex,
-} from '@/routes/reports';
+import { BillingTabs } from '@/components/billing/billing-nav';
+import { hours as billingHours } from '@/routes/billing';
+import { client as clientReport } from '@/routes/reports';
 import type { ReportFilterKey } from '@/types';
 
 /** El cliente se elige aparte (uno y obligatorio); el resto de filtros, en la barra. */
@@ -44,7 +42,7 @@ const FILTERS: ReportFilterKey[] = [
 ];
 
 /**
- * Exportación de horas para facturar (SPEC §10 «Exportación», D-045): un cliente y un periodo,
+ * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; en Facturación desde D-401): un cliente y un periodo,
  * con el resumen por proyecto y bolsa (dentro de la bolsa y exceso por separado, pendientes de
  * aprobar y, con view-financials, tarifas e importes) y la descarga del detalle de cada entrada.
  */
@@ -59,7 +57,7 @@ export default function BillingReport({
     report_request: reportRequest,
 }: R2BillingProps) {
     const id = useId();
-    const url = billing.url();
+    const url = billingHours.url();
     const financials = filters.can_see_financials;
     // Más entradas de las que caben en el fichero: se pide acotar en lugar de recortarlo.
     const tooManyRows =
@@ -117,6 +115,8 @@ export default function BillingReport({
                         ) : null
                     }
                 />
+
+                <BillingTabs current="horas" />
 
                 <div className="grid gap-1 sm:max-w-sm">
                     <Label htmlFor={`${id}-client`}>
@@ -319,7 +319,8 @@ export default function BillingReport({
 
 BillingReport.layout = {
     breadcrumbs: [
-        { title: t('nav.reports'), href: reportsIndex() },
-        { title: t('reports_r2.billing.title'), href: billing() },
+        // Sin el módulo `billing`, /facturacion no existe (D-402): la sección enlaza a esta página.
+        { title: t('billing.section'), href: billingHours() },
+        { title: t('reports_r2.billing.title'), href: billingHours() },
     ],
 };

@@ -407,8 +407,25 @@ Decisiones D-380 a D-399 en `docs/DECISIONES.md`. Todo va detrás del módulo `b
 - `app:convert-monthly-fees --dry-run` (propuesta) y sin `--dry-run`, con confirmación (o `--force`, `--codigo=`).
 
 **Pantallas y rutas** (`routes/app/billing.php`)
-- `/informes/vendido-frente-a-real` (con Excel, CSV, PDF e impresión), pestaña `/proyectos/{id}/facturacion`, `/clientes/{id}/facturacion` (ficha fiscal) y el panel en el detalle de cada bolsa.
+- `/informes/vendido-frente-a-real` (desde D-401, `/facturacion/vendido-frente-a-real`; con Excel, CSV, PDF e impresión), pestaña `/proyectos/{id}/facturacion`, `/clientes/{id}/facturacion` (ficha fiscal) y el panel en el detalle de cada bolsa.
 - `/facturacion/facturas` (listado, sumatorio, sugerencias) y su ficha con el PDF, `/facturacion/contactos` y `/facturacion/ajustes` (emisor, conexión y sincronizaciones).
-- Sección «Facturación» de la barra lateral, tarjeta en `/informes` y el tipo «Fee mensual» en el formulario del proyecto.
+- Sección «Facturación» de la barra lateral, tarjeta en `/informes` (quitada en D-401) y el tipo «Fee mensual» en el formulario del proyecto.
 
 **Para encenderlo:** D-399.
+
+## 9. Informe de facturación y la facturación fuera de Informes (rama `facturacion-informe`, 08/10/2026)
+
+Decisiones D-400 a D-403 en `docs/DECISIONES.md`. Encargo del propietario: «hazla dentro de facturación; ojo, que Informes lo pueden ver los empleados».
+
+**Informe de facturación** (`/facturacion/informe`, `view-billing`)
+- Cifras: facturado sin IVA (emitidas − rectificativas), variación frente al mismo periodo del año anterior, cobrado, pendiente y vencido (con IVA), previsto (borradores y recurrentes), número de facturas y ticket medio.
+- Gráficas con su vista de tabla: facturado por mes con el año anterior en el mismo eje, por servicio, ranking de clientes (10 primeros, resto y «Sin cliente casado») y antigüedad de lo pendiente, con las facturas vencidas por cliente.
+- Periodo (año por defecto, trimestre, mes o rango), «Comparar con el año anterior», filtros de cliente y servicio, y Excel, CSV y PDF (`ReportKind::Invoicing`).
+- Código: `App\Domain\Billing\InvoicingReport` e `InvoicingQuery`, `App\Enums\BillingService`, `InvoicingDocument`, `InvoicingReportController`, `resources/js/pages/billing/report.tsx` y `resources/js/components/billing/invoicing-*`.
+
+**Fuera de Informes**
+- «Vendido frente a real» → `/facturacion/vendido-frente-a-real`; «Horas para facturar» → `/facturacion/horas-para-facturar` (sin exigir el módulo, D-402). Las URL antiguas redirigen con un 301 y su query.
+- `/informes` ya no tiene tarjetas de facturación. La barra lateral y las pestañas de Facturación enseñan solo lo que cada uno puede abrir; `/facturacion` lleva al informe o al vendido frente a real.
+- Los importes de Dirección y Clientes se quedan donde están (D-403).
+
+**Pruebas:** `tests/Feature/Billing/InvoicingReportTest.php`, `BillingAccessTest.php` (matriz, redirecciones, módulo apagado y exclusiones), `tests/Feature/Performance/InvoicingReportPerformanceTest.php`, `tests/js/billing-invoicing.test.tsx` y `tests/e2e/billing.spec.ts`.

@@ -106,9 +106,15 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
                     'false',
                 );
             }
-            await expect(
-                nav.getByRole('button', { name: 'Facturación' }),
-            ).toHaveCount(0);
+            // Con el módulo apagado, Facturación solo puede traer «Horas para facturar» (a quien
+            // tiene view-financials, D-402): nada del módulo.
+            for (const href of [
+                '/facturacion/informe',
+                '/facturacion/vendido-frente-a-real',
+                '/facturacion/facturas',
+            ]) {
+                await expect(nav.locator(`a[href="${href}"]`)).toHaveCount(0);
+            }
             await expect(nav.getByRole('link', { name: 'Inicio' })).toHaveCount(
                 0,
             );

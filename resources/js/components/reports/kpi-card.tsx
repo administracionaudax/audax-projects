@@ -18,6 +18,8 @@ export type KpiDelta = {
     previous: number | null;
     /** true si subir es bueno (ocupación, ingreso); false si es malo (exceso, coste). */
     higherIsBetter?: boolean;
+    /** Frente a qué se compara (por defecto, el periodo anterior; el informe de facturación, el año anterior, D-400). */
+    versus?: 'previous_period' | 'previous_year';
 };
 
 /**
@@ -37,8 +39,8 @@ export function KpiCard({
 }: {
     label: string;
     definition: string;
-    /** Valor ya formateado (h:mm, %, €); null = sin datos. */
-    value: string | null;
+    /** Valor ya formateado (h:mm, %, €, o un nodo con icono, D-400); null = sin datos. */
+    value: ReactNode;
     /** Línea secundaria opcional (p. ej. «de 120:00 de capacidad»). */
     detail?: string;
     delta?: KpiDelta;
@@ -90,7 +92,13 @@ export function KpiCard({
 }
 
 export function KpiDeltaLine({ delta }: { delta: KpiDelta }) {
-    const { current, previous, higherIsBetter = true } = delta;
+    const {
+        current,
+        previous,
+        higherIsBetter = true,
+        versus = 'previous_period',
+    } = delta;
+    const year = versus === 'previous_year';
 
     if (current === null || previous === null) {
         return null;
@@ -108,7 +116,11 @@ export function KpiDeltaLine({ delta }: { delta: KpiDelta }) {
         return (
             <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Minus aria-hidden="true" className="size-3.5" />
-                {t('reports.kpi.delta_same')}
+                {t(
+                    year
+                        ? 'reports.kpi.delta_same_year'
+                        : 'reports.kpi.delta_same',
+                )}
             </p>
         );
     }
@@ -126,9 +138,18 @@ export function KpiDeltaLine({ delta }: { delta: KpiDelta }) {
                     good ? 'text-success' : 'text-danger',
                 )}
             />
-            {t(up ? 'reports.kpi.delta_up' : 'reports.kpi.delta_down', {
-                delta: formatPercent(Math.abs(change), 0),
-            })}
+            {t(
+                year
+                    ? up
+                        ? 'reports.kpi.delta_up_year'
+                        : 'reports.kpi.delta_down_year'
+                    : up
+                      ? 'reports.kpi.delta_up'
+                      : 'reports.kpi.delta_down',
+                {
+                    delta: formatPercent(Math.abs(change), 0),
+                },
+            )}
         </p>
     );
 }

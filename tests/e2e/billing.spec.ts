@@ -4,7 +4,8 @@ import { expect, test } from '@playwright/test';
 import { login, USERS } from './support';
 
 /*
- * Facturación (Fase 12, F1; D-380 a D-399): «Vendido frente a real», las facturas leídas de Holded
+ * Facturación (Fase 12, F1; D-380 a D-403): el informe de facturación, «Vendido frente a real» (ya
+ * fuera de Informes), las facturas leídas de Holded
  * (el Holded falso de los datos de ejemplo, HOLDED_DRIVER=fake), el PDF de una factura y resolver un
  * contacto sin casar. El módulo `billing` viene apagado: el primer test lo enciende en
  * /admin/ajustes y el último lo vuelve a apagar. Nunca contra el servidor (playwright.config.ts).
@@ -55,13 +56,110 @@ test('se enciende el módulo Facturación', async ({ page }) => {
     await setBillingModule(page, true);
 });
 
-test('«Vendido frente a real»: cifras, gráfica, tabla y filtro por tipo de venta', async ({
+test('el informe de facturación: cifras, gráficas con su tabla, filtro de servicio y exportación (D-400)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    // /facturacion lleva al informe a quien ve los importes.
+    await page.goto('/facturacion');
+    await expect(page).toHaveURL(/\/facturacion\/informe$/);
+    await expect(
+        page.getByRole('heading', { name: 'Informe de facturación', level: 1 }),
+    ).toBeVisible();
+
+    const kpis = page.getByTestId('invoicing-kpis');
+    await expect(kpis).toContainText('Facturado');
+    await expect(kpis).toContainText('Cobrado');
+    await expect(kpis).toContainText('Ticket medio');
+    await expect(
+        page.getByRole('switch', { name: 'Comparar con el año anterior' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('Facturado por mes')).toBeVisible();
+    await expect(page.getByTestId('invoicing-services')).toBeVisible();
+    await expect(page.getByTestId('invoicing-clients')).toBeVisible();
+    await expect(page.getByTestId('invoicing-overdue')).toBeVisible();
+    await expectAccessible(page);
+
+    // Cada gráfica, también como tabla.
+    const months = page.getByRole('figure', { name: 'Facturado por mes' });
+    await months.getByRole('button', { name: 'Ver como tabla' }).click();
+    await expect(months.getByRole('table')).toContainText('Año anterior');
+    await expectAccessible(page);
+
+    // Filtro de servicio en la URL.
+    await page.getByRole('button', { name: 'Fees', exact: true }).click();
+    await expect(page).toHaveURL(/servicio/);
+    await expect(
+        page.getByRole('button', { name: 'Fees', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    // La exportación con los mismos filtros.
+    const csv = await page.request.get(
+        '/facturacion/informe?periodo=anio&comparar=1&formato=csv&tabla=clientes',
+    );
+    expect(csv.status()).toBe(200);
+    expect(await csv.text()).toContain('Facturado sin IVA');
+});
+
+test('el informe de facturación en el móvil: sin scroll horizontal', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/informe');
+    await expect(page.getByTestId('invoicing-kpis')).toBeVisible();
+    const overflow = await page.evaluate(
+        () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('Informes ya no tiene nada de facturación y las URL antiguas llevan a Facturación (D-401)', async ({
     page,
 }) => {
     await login(page, USERS.admin);
     await page.goto('/informes');
-    await page.getByTestId('r1-index-sold-vs-actual').click();
-    await expect(page).toHaveURL(/\/informes\/vendido-frente-a-real/);
+    // La barra lateral sí enlaza a Facturación; el contenido de Informes, no.
+    await expect(
+        page.getByRole('main').locator('a[href^="/facturacion"]'),
+    ).toHaveCount(0);
+
+    await page.goto('/informes/vendido-frente-a-real?periodo=anio');
+    await expect(page).toHaveURL(
+        /\/facturacion\/vendido-frente-a-real\?periodo=anio/,
+    );
+    await page.goto('/informes/facturacion');
+    await expect(page).toHaveURL(/\/facturacion\/horas-para-facturar$/);
+    await expect(
+        page.getByRole('navigation', { name: 'Secciones de facturación' }),
+    ).toContainText('Horas para facturar');
+});
+
+test('un responsable solo ve «Vendido frente a real» en Facturación, en horas', async ({
+    page,
+}) => {
+    await login(page, USERS.manager);
+    await page.goto('/facturacion');
+    await expect(page).toHaveURL(/\/facturacion\/vendido-frente-a-real/);
+    // Una sola entrada: sin pestañas.
+    await expect(
+        page.getByRole('navigation', { name: 'Secciones de facturación' }),
+    ).toHaveCount(0);
+    expect((await page.goto('/facturacion/informe'))?.status()).toBe(403);
+});
+
+test('«Vendido frente a real»: cifras, gráfica, tabla y filtro por tipo de venta', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/informe');
+    await page
+        .getByRole('navigation', { name: 'Secciones de facturación' })
+        .getByRole('link', { name: 'Vendido frente a real' })
+        .click();
+    await expect(page).toHaveURL(/\/facturacion\/vendido-frente-a-real/);
     await expect(
         page.getByRole('heading', { name: 'Vendido frente a real', level: 1 }),
     ).toBeVisible();

@@ -177,7 +177,7 @@ export default function ClientBilling({
                             </Button>
                             <Button variant="outline" asChild>
                                 <Link
-                                    href={`/informes/vendido-frente-a-real?periodo=anio&cliente[]=${client.id}`}
+                                    href={`/facturacion/vendido-frente-a-real?periodo=anio&cliente[]=${client.id}`}
                                 >
                                     <BarChart3 aria-hidden="true" />
                                     {t('billing.client.report')}

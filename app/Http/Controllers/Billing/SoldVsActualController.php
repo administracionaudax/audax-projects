@@ -19,7 +19,8 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * «Vendido frente a real» (Fase 12, F1; D-390): /informes/vendido-frente-a-real, con los filtros de
+ * «Vendido frente a real» (Fase 12, F1; D-390): /facturacion/vendido-frente-a-real (antes en
+ * /informes, que redirige, D-401), con los filtros de
  * los informes (periodo y cliente) más el tipo de venta y el responsable, y ?formato=xlsx|csv|pdf|
  * imprimir (ExportsReports). Quién: view-sold-vs-actual (en la ruta); importes con view-billing.
  */

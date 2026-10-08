@@ -62,7 +62,8 @@ import {
     reactivate,
     show,
 } from '@/routes/clients';
-import { billing, client as clientReport } from '@/routes/reports';
+import { hours as billingHours } from '@/routes/billing';
+import { client as clientReport } from '@/routes/reports';
 import { show as showPerson } from '@/routes/team';
 import type { ClientShowProps } from '@/types';
 import type { ClientTab, ClientWeeklyData } from '@/types/weekly-insights';
@@ -325,7 +326,7 @@ export default function ClientShow({
                         {can.viewBilling ? (
                             <Button variant="outline" asChild>
                                 <Link
-                                    href={billing.url({
+                                    href={billingHours.url({
                                         query: { cliente: [client.id] },
                                     })}
                                 >

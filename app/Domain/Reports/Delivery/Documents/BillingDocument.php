@@ -15,7 +15,7 @@ use App\Models\User;
 use Generator;
 
 /**
- * Horas para facturar (/informes/facturacion, SPEC §10 «Exportación», D-045; R2): el cliente
+ * Horas para facturar (/facturacion/horas-para-facturar, SPEC §10 «Exportación», D-045; R2): el cliente
  * (obligatorio, ?cliente[]=id), el detalle de cada entrada para Excel y CSV (422 si no cabe, D-045)
  * y el PDF con el resumen por proyecto y bolsa y el detalle. Quién: ClientPolicy::viewBilling.
  */

@@ -177,7 +177,6 @@ describe('índice de informes', () => {
     const base: ReportIndexProps = {
         me: { id: 5, name: 'Ana' },
         direction: false,
-        billing: false,
         departments: [],
         clients: null,
         projects: null,
@@ -198,14 +197,18 @@ describe('índice de informes', () => {
         expect(screen.queryByRole('heading', { name: 'Personas' })).toBeNull();
     });
 
-    it('quien puede facturar ve también la exportación para facturar', () => {
-        render(<ReportsIndex {...base} billing />);
+    it('nada de facturación en Informes (D-401): ni horas para facturar ni vendido frente a real', () => {
+        render(<ReportsIndex {...base} />);
 
+        expect(screen.queryByRole('link', { name: /facturar/i })).toBeNull();
+        expect(screen.queryByRole('link', { name: /Vendido/ })).toBeNull();
         expect(
             screen
-                .getByRole('link', { name: /Horas para facturar/ })
-                .getAttribute('href'),
-        ).toBe('/informes/facturacion');
+                .getAllByRole('link')
+                .some((link) =>
+                    link.getAttribute('href')?.startsWith('/facturacion'),
+                ),
+        ).toBe(false);
     });
 
     it('un admin ve dirección, departamentos, clientes, proyectos y personas', () => {

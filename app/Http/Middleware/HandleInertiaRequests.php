@@ -144,6 +144,8 @@ class HandleInertiaRequests extends Middleware
                 'viewBilling' => $user ? Gate::forUser($user)->allows('view-billing') : false,
                 'viewSoldVsActual' => $user ? Gate::forUser($user)->allows('view-sold-vs-actual') : false,
                 'syncHolded' => $user ? Gate::forUser($user)->allows('sync-holded') : false,
+                // Horas para facturar (D-045), en Facturación desde D-401 pero sin el módulo (D-402).
+                'exportBillingHours' => $user ? Gate::forUser($user)->allows('viewBilling', Client::class) : false,
             ],
         ];
     }

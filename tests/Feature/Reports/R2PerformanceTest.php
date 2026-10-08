@@ -49,9 +49,9 @@ beforeEach(function () {
             'reports.project.pdf' => "/informes/proyectos/{$project->id}?{$year}&formato=pdf",
             'reports.project.client.pdf' => "/informes/proyectos/{$project->id}?{$year}&formato=pdf&version=cliente",
             'reports.project.client.export' => "/informes/proyectos/{$project->id}?{$year}&formato=xlsx&version=cliente",
-            'reports.billing' => "/informes/facturacion?cliente[]={$client->id}",
-            'reports.billing.empty' => '/informes/facturacion',
-            'reports.billing.export' => "/informes/facturacion?cliente[]={$client->id}&{$year}&formato=csv",
+            'reports.billing' => "/facturacion/horas-para-facturar?cliente[]={$client->id}",
+            'reports.billing.empty' => '/facturacion/horas-para-facturar',
+            'reports.billing.export' => "/facturacion/horas-para-facturar?cliente[]={$client->id}&{$year}&formato=csv",
             'reports.hour-bank-pdf' => "/proyectos/{$project->id}/bolsas/{$bank->id}/pdf",
         ];
     };

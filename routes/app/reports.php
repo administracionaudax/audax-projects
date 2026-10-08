@@ -4,7 +4,6 @@ use App\Http\Controllers\Reports\ClientReportController;
 use App\Http\Controllers\Reports\DepartmentReportController;
 use App\Http\Controllers\Reports\DetailReportController;
 use App\Http\Controllers\Reports\DirectionReportController;
-use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Http\Controllers\Reports\Exports\HourBankPdfController;
 use App\Http\Controllers\Reports\HoursExportController;
 use App\Http\Controllers\Reports\PersonReportController;
@@ -39,9 +38,10 @@ Route::get('informes/opciones', ReportOptionsController::class)
     ->name('reports.options');
 
 // --- R2 ---
-// Dashboards de cliente y de proyecto (con ?formato=xlsx|csv&tabla=…), exportación para facturar y
-// PDF de consumo de bolsa (la bolsa siempre del proyecto de la URL: scopeBindings). Permisos en
-// ClientPolicy::viewReport / viewBilling, ProjectPolicy::viewReport y HourBankPolicy::downloadPdf.
+// Dashboards de cliente y de proyecto (con ?formato=xlsx|csv&tabla=…) y PDF de consumo de bolsa (la
+// bolsa siempre del proyecto de la URL: scopeBindings). Permisos en ClientPolicy::viewReport,
+// ProjectPolicy::viewReport y HourBankPolicy::downloadPdf. Las horas para facturar pasaron a
+// /facturacion/horas-para-facturar (routes/app/billing.php, D-401).
 Route::get('informes/clientes/{client}', ClientReportController::class)
     ->whereNumber('client')
     ->middleware($exports)
@@ -51,10 +51,6 @@ Route::get('informes/proyectos/{project}', ProjectReportController::class)
     ->whereNumber('project')
     ->middleware($exports)
     ->name('reports.project');
-
-Route::get('informes/facturacion', BillingReportController::class)
-    ->middleware($exports)
-    ->name('reports.billing');
 
 Route::get('proyectos/{project}/bolsas/{hourBank}/pdf', HourBankPdfController::class)
     ->whereNumber(['project', 'hourBank'])

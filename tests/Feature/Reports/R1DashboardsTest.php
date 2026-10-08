@@ -510,7 +510,8 @@ describe('índice', function () {
         $this->actingAs($this->admin)->get('/informes')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('reports/index')
             ->where('direction', true)
-            ->where('billing', true)
+            // Nada de facturación en Informes (D-401): está en Facturación.
+            ->missing('billing')
             ->has('departments', 2)
             ->where('clients', fn ($clients) => collect($clients)->pluck('id')->contains($this->tmClient->id))
             ->where('projects', fn ($projects) => collect($projects)->pluck('id')->contains($this->fixed->id))
@@ -525,7 +526,7 @@ describe('índice', function () {
         $this->actingAs($this->ana)->get('/informes')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('me', ['id' => $this->ana->id, 'name' => 'Ana'])
             ->where('direction', false)
-            ->where('billing', false)
+            ->missing('billing')
             ->where('departments', [])
             ->where('clients', null)
             ->where('projects', null)

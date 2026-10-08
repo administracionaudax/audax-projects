@@ -69,7 +69,7 @@ import type {
     R2ClientReportProps,
     R2ProjectReportProps,
 } from '@/components/reports/r2-types';
-import BillingReport from '@/pages/reports/billing';
+import BillingReport from '@/pages/billing/hours';
 import ClientReport from '@/pages/reports/client';
 import ProjectReport from '@/pages/reports/project';
 
@@ -271,7 +271,7 @@ describe('informe de cliente', () => {
             screen.getByRole('link', { name: 'Horas para facturar' }),
         ).toHaveProperty(
             'href',
-            expect.stringContaining('/informes/facturacion?'),
+            expect.stringContaining('/facturacion/horas-para-facturar?'),
         );
         expect(
             screen.getByRole('link', { name: 'NAN-WEB · Web corporativa' }),
@@ -623,7 +623,7 @@ describe('horas para facturar', () => {
         );
 
         expect(inertia.get).toHaveBeenCalledWith(
-            '/informes/facturacion',
+            '/facturacion/horas-para-facturar',
             {
                 periodo: 'semana',
                 fecha: '2026-09-21',
@@ -693,7 +693,7 @@ describe('horas para facturar', () => {
         ).toHaveProperty(
             'href',
             expect.stringContaining(
-                '/informes/facturacion?periodo=semana&fecha=2026-09-21&persona%5B%5D=3&cliente%5B%5D=4&formato=csv',
+                '/facturacion/horas-para-facturar?periodo=semana&fecha=2026-09-21&persona%5B%5D=3&cliente%5B%5D=4&formato=csv',
             ),
         );
     });
