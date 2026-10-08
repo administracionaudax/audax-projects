@@ -2,22 +2,38 @@ import { useCallback, useState } from 'react';
 import type { ChatSectionKey } from '@/components/chat/conversation-tree';
 
 /**
- * Cómo deja cada persona la lista del chat en este navegador (D-273): niveles plegados, «Solo los
- * míos» y «Ocultar archivados». En localStorage, con try/catch: sin almacenamiento (modo privado o
- * bloqueado) vale lo de por defecto y lo que cambie dura lo que la visita.
+ * Cómo deja cada persona la lista del chat en este navegador (D-273, D-246): qué tipo ve en la barra
+ * de iconos (todo, directos, proyectos y clientes o canales), «Solo los míos» y «Ocultar
+ * archivados». En localStorage, con try/catch: sin almacenamiento (modo privado o bloqueado) vale lo
+ * de por defecto y lo que cambie dura lo que la visita.
  */
 
+export type ChatListView = 'all' | ChatSectionKey;
+
+export const CHAT_LIST_VIEWS: ChatListView[] = [
+    'all',
+    'direct',
+    'clients',
+    'channels',
+];
+
 export type ChatListPrefs = {
-    collapsed: Record<ChatSectionKey, boolean>;
+    view: ChatListView;
     mineOnly: boolean;
     hideArchived: boolean;
 };
 
 export const DEFAULT_CHAT_LIST_PREFS: ChatListPrefs = {
-    collapsed: { channels: false, clients: false, direct: false },
+    view: 'all',
     mineOnly: false,
     hideArchived: false,
 };
+
+function view(value: unknown): ChatListView {
+    return CHAT_LIST_VIEWS.includes(value as ChatListView)
+        ? (value as ChatListView)
+        : 'all';
+}
 
 const PREFIX = 'audax.chat.list';
 
@@ -39,17 +55,9 @@ export function readChatListPrefs(key: string): ChatListPrefs {
         }
 
         const data = parsed as Partial<Record<keyof ChatListPrefs, unknown>>;
-        const collapsed =
-            typeof data.collapsed === 'object' && data.collapsed !== null
-                ? (data.collapsed as Partial<Record<ChatSectionKey, unknown>>)
-                : {};
 
         return {
-            collapsed: {
-                channels: bool(collapsed.channels, false),
-                clients: bool(collapsed.clients, false),
-                direct: bool(collapsed.direct, false),
-            },
+            view: view(data.view),
             mineOnly: bool(data.mineOnly, false),
             hideArchived: bool(data.hideArchived, false),
         };
@@ -92,15 +100,8 @@ export function useChatListPrefs(personId: number | null) {
         [],
     );
 
-    const toggleSection = useCallback(
-        (section: ChatSectionKey) =>
-            update((prefs) => ({
-                ...prefs,
-                collapsed: {
-                    ...prefs.collapsed,
-                    [section]: !prefs.collapsed[section],
-                },
-            })),
+    const setView = useCallback(
+        (next: ChatListView) => update((prefs) => ({ ...prefs, view: next })),
         [update],
     );
 
@@ -117,7 +118,7 @@ export function useChatListPrefs(personId: number | null) {
 
     return {
         prefs: current.prefs,
-        toggleSection,
+        setView,
         setMineOnly,
         setHideArchived,
     };

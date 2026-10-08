@@ -2013,6 +2013,20 @@ Pedido por el propietario el 08/10/2026: «para Toni quítale el acceso» (Toni 
 - **Lectura nocturna de Holded también en modo de prueba:** solo lee, y los datos solo los ven los admins con acceso. Antes solo corría con el módulo encendido.
 - **Buscador al casar:** el cliente de un contacto de Holded se elige con buscador (nombre o NIF), y el proyecto de una factura también (código, nombre o cliente). Se usa el selector compartido `SearchableSelect`, el mismo de la Weekly.
 
+### D-246 · Lista del chat con barra de tipos (como Teams) **[cambia D-273]**
+Pedido por el propietario el 08/10/2026, en dos partes:
+- **Desplazamiento lateral:** «la lista de chats se mueve lateralmente dentro de su caja». Corregido: la lista solo se desplaza en vertical, y los títulos y mensajes largos se cortan con puntos suspensivos.
+- **Desplegables de tipos:** pidió darles una vuelta. Le presenté tres propuestas (pastillas de filtro, pestañas y barra de iconos) y eligió la barra de iconos.
+
+Cómo queda:
+- **Barra a la izquierda de la lista** con cuatro iconos, cada uno con su nombre debajo y sus no leídos (sin las silenciadas): **Todo, Directos, Proyectos (y clientes) y Canales**.
+- **Al elegir un tipo,** la lista enseña solo ese tipo.
+- **«Todo»** enseña los tres tipos seguidos, con un título fijo cada uno, sin desplegables. El orden es Directos, Proyectos y clientes y Canales, de lo más usado a lo menos.
+- **Se recuerda por persona** el tipo elegido (preferencia `view` en este navegador). Las preferencias antiguas, de niveles plegados, pasan a «Todo».
+- **Accesibilidad:** es un grupo de pestañas vertical. Las flechas arriba y abajo, Inicio y Fin cambian de tipo.
+- **Búsqueda:** filtra dentro del tipo elegido. Si en él no hay nada pero sí en otros, ofrece «Ver en "Todo" (N)».
+- **Con un solo tipo** (una colaboradora solo tiene proyectos), la barra no sale.
+
 ### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
 Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
 - **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
@@ -2845,6 +2859,7 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Dictado de la weekly con Gemini: D-243.
 - Anular o rectificar facturas: D-244.
 - Quién ve Facturación y buscador al casar: D-245.
+- Barra de tipos en la lista del chat: D-246.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Previsión: D-280 a D-289.
@@ -2854,6 +2869,6 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
 - Facturación (Fase 12): F1, D-380 a D-399.
-- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-246 a D-249.
+- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-247 a D-249.
 
-La siguiente libre es **D-246** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-400 en adelante, libres).
+La siguiente libre es **D-247** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-400 en adelante, libres).

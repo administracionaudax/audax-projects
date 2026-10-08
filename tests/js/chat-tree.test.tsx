@@ -215,17 +215,23 @@ describe('preferencias de la lista', () => {
         window.localStorage.setItem(
             chatListPrefsKey(3),
             JSON.stringify({
-                collapsed: { channels: true },
+                view: 'channels',
                 mineOnly: true,
                 hideArchived: 'no',
             }),
         );
 
         expect(readChatListPrefs(chatListPrefsKey(3))).toEqual({
-            collapsed: { channels: true, clients: false, direct: false },
+            view: 'channels',
             mineOnly: true,
             hideArchived: false,
         });
+        // Un tipo que no existe (o las preferencias antiguas, con niveles plegados): «Todo».
+        window.localStorage.setItem(
+            chatListPrefsKey(5),
+            JSON.stringify({ collapsed: { channels: true }, view: 'otro' }),
+        );
+        expect(readChatListPrefs(chatListPrefsKey(5)).view).toBe('all');
         expect(readChatListPrefs(chatListPrefsKey(4))).toEqual(
             DEFAULT_CHAT_LIST_PREFS,
         );
@@ -250,20 +256,39 @@ describe('preferencias de la lista', () => {
     });
 });
 
-describe('ConversationList en tres niveles', () => {
-    it('pinta los tres niveles plegables con su recuento y sus no leídos', () => {
+describe('ConversationList con la barra de tipos', () => {
+    it('la barra tiene Todo y los tres tipos con sus no leídos, y «Todo» los enseña seguidos', () => {
         render(<ConversationList items={items} activeId={3} />);
 
-        const channels = screen.getByTestId('chat-section-toggle-channels');
-        expect(channels.getAttribute('aria-expanded')).toBe('true');
-        expect(channels.textContent).toContain('Canales');
-        expect(channels.textContent).toContain('2 sin leer');
+        const rail = screen.getByRole('tablist', { name: 'Tipos de chat' });
+        const tabs = within(rail).getAllByRole('tab');
         expect(
-            screen.getByTestId('chat-section-toggle-clients').textContent,
-        ).toContain('5 sin leer');
+            tabs.map((tab) =>
+                tab.textContent?.replace(/\d+ sin leer|\d+/g, ''),
+            ),
+        ).toEqual(['Todo', 'Directos', 'Proyectos', 'Canales']);
         expect(
-            screen.getByTestId('chat-section-toggle-direct').textContent,
+            screen.getByTestId('chat-rail-all').getAttribute('aria-selected'),
+        ).toBe('true');
+        expect(screen.getByTestId('chat-rail-all').textContent).toContain(
+            '7 sin leer',
+        );
+        expect(screen.getByTestId('chat-rail-channels').textContent).toContain(
+            '2 sin leer',
+        );
+        expect(screen.getByTestId('chat-rail-clients').textContent).toContain(
+            '5 sin leer',
+        );
+        expect(
+            screen.getByTestId('chat-rail-direct').textContent,
         ).not.toContain('sin leer');
+        // En «Todo», cada tipo con su título y sin desplegables.
+        expect(
+            screen
+                .getAllByRole('heading', { level: 2 })
+                .map((h) => h.textContent),
+        ).toEqual(['Directos', 'Proyectos y clientes', 'Canales']);
+        expect(screen.queryByRole('button', { expanded: true })).toBeNull();
 
         // El canal del cliente encabeza sus proyectos; sin canal, un enlace lo abre (y lo crea).
         const groups = screen.getAllByTestId('chat-client-group');
@@ -294,7 +319,7 @@ describe('ConversationList en tres niveles', () => {
         ).toBe('true');
     });
 
-    it('plegar un nivel se recuerda por persona en este navegador', async () => {
+    it('elegir un tipo enseña solo ese y se recuerda por persona en este navegador', async () => {
         const user = userEvent.setup();
         page.props.auth = { user: { id: 12, name: 'Ana', roles: [] } };
 
@@ -302,30 +327,64 @@ describe('ConversationList en tres niveles', () => {
             const { unmount } = render(
                 <ConversationList items={items} activeId={null} />,
             );
-            await user.click(screen.getByTestId('chat-section-toggle-direct'));
+            await user.click(screen.getByTestId('chat-rail-channels'));
 
             expect(
                 screen
-                    .getByTestId('chat-section-toggle-direct')
-                    .getAttribute('aria-expanded'),
-            ).toBe('false');
+                    .getByTestId('chat-rail-channels')
+                    .getAttribute('aria-selected'),
+            ).toBe('true');
             expect(screen.queryByText('Luis Gil')).toBeNull();
+            expect(screen.getByTestId('chat-section-channels')).toBeTruthy();
+            expect(screen.queryByTestId('chat-section-direct')).toBeNull();
             unmount();
 
             render(<ConversationList items={items} activeId={null} />);
             expect(
                 screen
-                    .getByTestId('chat-section-toggle-direct')
-                    .getAttribute('aria-expanded'),
-            ).toBe('false');
+                    .getByTestId('chat-rail-channels')
+                    .getAttribute('aria-selected'),
+            ).toBe('true');
             expect(
                 JSON.parse(
                     window.localStorage.getItem('audax.chat.list.12') ?? '{}',
-                ).collapsed.direct,
-            ).toBe(true);
+                ).view,
+            ).toBe('channels');
         } finally {
             delete page.props.auth;
         }
+    });
+
+    it('con el teclado, las flechas cambian de tipo; y una búsqueda sin nada en el tipo ofrece «Todo»', async () => {
+        const user = userEvent.setup();
+        render(<ConversationList items={items} activeId={null} />);
+
+        screen.getByTestId('chat-rail-all').focus();
+        await user.keyboard('{ArrowDown}');
+        expect(document.activeElement).toBe(
+            screen.getByTestId('chat-rail-direct'),
+        );
+        expect(
+            screen
+                .getByTestId('chat-rail-direct')
+                .getAttribute('aria-selected'),
+        ).toBe('true');
+        await user.keyboard('{End}');
+        expect(
+            screen
+                .getByTestId('chat-rail-channels')
+                .getAttribute('aria-selected'),
+        ).toBe('true');
+
+        // «Naranjas» no está en Canales, pero sí en Proyectos y clientes.
+        await user.type(screen.getByTestId('chat-list-search'), 'Naranjas');
+        await user.click(screen.getByTestId('chat-search-all'));
+        expect(
+            screen.getByTestId('chat-rail-all').getAttribute('aria-selected'),
+        ).toBe('true');
+        expect(
+            screen.getAllByTestId('chat-client-group').length,
+        ).toBeGreaterThan(0);
     });
 
     it('«Solo los míos» y «Ocultar archivados» filtran la lista', async () => {

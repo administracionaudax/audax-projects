@@ -59,8 +59,8 @@ test('la plantilla lo ve en «Canales», escribe, sale y vuelve a entrar', async
     await page.goto('/chat');
 
     const channels = section(page, 'channels');
-    await expect(tid(page, 'chat-section-toggle-channels')).toHaveAttribute(
-        'aria-expanded',
+    await expect(tid(page, 'chat-rail-all')).toHaveAttribute(
+        'aria-selected',
         'true',
     );
     await channels.getByRole('link', { name: new RegExp(channelName) }).click();
@@ -78,25 +78,28 @@ test('la plantilla lo ve en «Canales», escribe, sale y vuelve a entrar', async
     await expect(tid(page, 'chat-channel-leave')).toBeVisible();
 });
 
-test('los niveles se pliegan y se recuerdan al recargar', async ({ page }) => {
+test('la barra de tipos filtra la lista y se recuerda al recargar (D-246)', async ({
+    page,
+}) => {
     await login(page, USERS.employee);
     await page.goto('/chat');
 
-    const toggle = tid(page, 'chat-section-toggle-direct');
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const channelsTab = page.getByRole('tab', { name: /^Canales/ });
+    await channelsTab.click();
+    await expect(channelsTab).toHaveAttribute('aria-selected', 'true');
+    await expect(section(page, 'channels')).toBeVisible();
+    await expect(section(page, 'clients')).toHaveCount(0);
 
     await page.reload();
-    await expect(tid(page, 'chat-section-toggle-direct')).toHaveAttribute(
-        'aria-expanded',
-        'false',
+    await expect(tid(page, 'chat-rail-channels')).toHaveAttribute(
+        'aria-selected',
+        'true',
     );
 
     // Lo deja como estaba para el resto de E2E.
-    await tid(page, 'chat-section-toggle-direct').click();
-    await expect(tid(page, 'chat-section-toggle-direct')).toHaveAttribute(
-        'aria-expanded',
+    await tid(page, 'chat-rail-all').click();
+    await expect(tid(page, 'chat-rail-all')).toHaveAttribute(
+        'aria-selected',
         'true',
     );
 });
@@ -136,12 +139,18 @@ test('a 375 px la lista se lee sin scroll horizontal', async ({ page }) => {
 
     await expect(section(page, 'channels')).toBeVisible();
     await expect(section(page, 'clients')).toBeVisible();
+    await expect(tid(page, 'chat-rail')).toBeVisible();
     const overflow = await page.evaluate(
         () =>
             document.documentElement.scrollWidth -
             document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    // La lista tampoco se desplaza de lado dentro de su caja.
+    const inner = await tid(page, 'chat-conversation-list').evaluate(
+        (element) => element.scrollWidth - element.clientWidth,
+    );
+    expect(inner).toBeLessThanOrEqual(0);
 });
 
 test('una colaboradora no ve los canales de equipo', async ({ page }) => {

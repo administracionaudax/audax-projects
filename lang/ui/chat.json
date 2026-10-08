@@ -272,5 +272,11 @@
     "chat.composer.read_only.client_inactive": "El cliente está desactivado: su canal es de solo lectura.",
     "chat.composer.read_only.channel_archived": "El canal está archivado: es de solo lectura.",
     "chat.list.hide_archived": "Ocultar archivados",
-    "chat.list.hidden_archived": "Ocultar archivados (:count ocultos)"
+    "chat.list.hidden_archived": "Ocultar archivados (:count ocultos)",
+    "chat.rail.label": "Tipos de chat",
+    "chat.rail.all": "Todo",
+    "chat.rail.direct": "Directos",
+    "chat.rail.clients": "Proyectos",
+    "chat.rail.channels": "Canales",
+    "chat.list.search_in_all": "Ver en «Todo» (:count)"
 }
