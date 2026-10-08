@@ -59,7 +59,7 @@ export function WorkloadTrays({
     return (
         <div
             className={cn(
-                'grid min-w-0 gap-6',
+                'grid min-w-0 grid-cols-1 gap-6',
                 (trays.unassigned.visible || trays.managed.visible) &&
                     'xl:grid-cols-2',
             )}
@@ -85,7 +85,7 @@ export function WorkloadTrays({
                     />
                 ) : (
                     <>
-                        <ul className="grid gap-2">
+                        <ul className="grid min-w-0 grid-cols-1 gap-2">
                             {trays.unplanned.tasks.map((task) => (
                                 <UnplannedItem
                                     key={task.id}
@@ -121,7 +121,7 @@ export function WorkloadTrays({
                             )}
                         />
                     ) : (
-                        <div className="grid gap-4">
+                        <div className="grid min-w-0 grid-cols-1 gap-4">
                             {trays.unassigned.groups.map((group) => {
                                 const name =
                                     group.department.name ??
@@ -131,10 +131,10 @@ export function WorkloadTrays({
                                     <section
                                         key={group.department.id ?? 'none'}
                                         aria-label={name}
-                                        className="grid gap-2"
+                                        className="grid min-w-0 grid-cols-1 gap-2"
                                         data-test="workload-unassigned-group"
                                     >
-                                        <h3 className="flex flex-wrap items-center gap-x-2 text-sm font-medium">
+                                        <h3 className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm font-medium break-words">
                                             <span
                                                 aria-hidden="true"
                                                 className="size-2.5 rounded-full bg-neutral-soft"
@@ -162,7 +162,7 @@ export function WorkloadTrays({
                                                 )}
                                             </span>
                                         </h3>
-                                        <ul className="grid gap-2">
+                                        <ul className="grid min-w-0 grid-cols-1 gap-2">
                                             {group.tasks.map((task) => (
                                                 <TrayItem
                                                     key={task.id}
@@ -221,7 +221,7 @@ export function WorkloadTrays({
                                     })}
                                 </p>
                             ) : null}
-                            <ul className="grid gap-2">
+                            <ul className="grid min-w-0 grid-cols-1 gap-2">
                                 {trays.managed.tasks.map((task) => (
                                     <ManagedItem
                                         key={task.id}
@@ -261,10 +261,10 @@ function TraySection({
     return (
         <section
             aria-labelledby={`${id}-title`}
-            className="grid min-w-0 content-start gap-3 rounded-md border bg-card p-4"
+            className="grid min-w-0 grid-cols-1 content-start gap-3 rounded-md border bg-card p-4"
             data-test={id}
         >
-            <header className="grid gap-1">
+            <header className="grid min-w-0 gap-1">
                 <h2
                     id={`${id}-title`}
                     tabIndex={-1}
@@ -442,7 +442,7 @@ function TrayItem({
     return (
         <li
             className={cn(
-                'grid gap-2 rounded-md border p-3',
+                'grid min-w-0 grid-cols-1 gap-2 rounded-md border p-3',
                 task.overdue && 'border-danger/60',
             )}
             data-test="workload-tray-task"
