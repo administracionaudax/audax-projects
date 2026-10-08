@@ -5,6 +5,10 @@ namespace Database\Seeders;
 use App\Domain\Absences\LeaveLedger;
 use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Absences\ValenciaHolidays;
+use App\Domain\Billing\Holded\FakeHolded;
+use App\Domain\Billing\Holded\HoldedSync;
+use App\Domain\Billing\HoldedInvoiceLinker;
+use App\Domain\Billing\InvoiceLinkSuggester;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\Chat\MessageWriter;
 use App\Domain\Forecast\AllocationWriter;
@@ -33,6 +37,7 @@ use App\Enums\ClockSource;
 use App\Enums\DayPlanItemOrigin;
 use App\Enums\DayPlanItemStatus;
 use App\Enums\HourBankStatus;
+use App\Enums\InvoiceLineKind;
 use App\Enums\LeaveCalendarDayKind;
 use App\Enums\LeaveMovementKind;
 use App\Enums\OveragePolicy;
@@ -61,6 +66,7 @@ use App\Models\DayPlanItem;
 use App\Models\Department;
 use App\Models\EmploymentProfile;
 use App\Models\ForecastProject;
+use App\Models\HoldedInvoice;
 use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\LeaveCalendarDay;
@@ -243,9 +249,105 @@ class DemoDataSeeder extends Seeder
             $this->clockRegister();
             $this->registerR2();
             $this->leaveR3();
+            // Facturación (Fase 12, F1): al final, para no cambiar el resto de los datos de ejemplo.
+            $this->billing();
         });
 
         $this->chat();
+    }
+
+    /**
+     * Facturación (Fase 12, F1; D-394), SOLO local: datos que hacen hablar a «Vendido frente a real»
+     * sin cambiar el resto de los datos de ejemplo (va al final y no usa la semilla común):
+     * - los datos fiscales de Audax como emisor (ficticios),
+     * - un fee mensual ya convertido (FER-FE1, 20 h y 1.400 € al mes) con las reuniones internas de
+     *   Pablo de los últimos 8 meses pasadas a él, y otro importado de ClickUp sin convertir (MIR-FE1,
+     *   «Fee mensual de 10 h.», para app:convert-monthly-fees),
+     * - el código F de cada bolsa vendida y de los precios cerrados (como los dejó ClickUp, D-135),
+     * - y una sincronización con el Holded falso (FakeHolded::fromDatabase): contactos, facturas
+     *   coherentes con las bolsas y los fees, una rectificativa, cobros y vencidas, una factura sin
+     *   enlazar y un contacto sin casar. Sin PDF: se piden la primera vez que alguien los abre.
+     */
+    private function billing(): void
+    {
+        Setting::set('billing_issuer', [
+            'legal_name' => 'Audax Studio, S.L. (ficticia)', 'tax_id' => 'B00000000', 'address' => 'Calle de Ejemplo, 1, 2.º',
+            'postal_code' => '46001', 'city' => 'València', 'province' => 'Valencia', 'country_code' => 'ES',
+            'registry' => 'Registro Mercantil de Valencia (ejemplo)', 'iban' => 'ES0000000000000000000000', 'email' => 'facturacion@example.com', 'phone' => null,
+        ]);
+
+        $ferran = Client::query()->where('name', 'Grupo Ferrán Logística')->first();
+        $mirador = Client::query()->where('name', 'Hoteles Mirador')->first();
+        $internal = Project::query()->where('code', Project::INTERNAL_CODE)->first();
+        if ($ferran === null || $mirador === null || $internal === null) {
+            return;
+        }
+
+        $fee = Project::withoutEvents(fn () => Project::query()->create([
+            'client_id' => $ferran->id, 'name' => 'Mantenimiento mensual', 'code' => 'FER-FE1', 'color' => '#3C41AE',
+            'billing_type' => BillingType::MonthlyFee, 'status' => ProjectStatus::Active,
+            'start_date' => $this->monthsAgo(8)->startOfMonth()->toDateString(),
+            'monthly_minutes' => 20 * 60, 'monthly_fee_amount' => '1400.00', 'hourly_rate' => '62.00',
+            'owner_user_id' => $this->people['marta']->id,
+        ]));
+        $fee->addMember($this->people['marta'], isManager: true);
+        $fee->addMember($this->people['pablo']);
+        $task = Task::withoutEvents(fn () => Task::query()->forceCreate([
+            'project_id' => $fee->id, 'title' => 'Mantenimiento y soporte del mes', 'task_type_id' => $this->types['Soporte']->id,
+            'status_id' => $this->statuses['doing'], 'is_billable' => true, 'position' => 0, 'created_by' => $this->people['marta']->id,
+        ]));
+        // Las reuniones internas de Pablo de esos meses pasan a ser horas del fee (sin cambiar el total del día).
+        DB::table('time_entries')
+            ->where('project_id', $internal->id)
+            ->where('user_id', $this->people['pablo']->id)
+            ->where('date', '>=', $fee->start_date?->toDateString())
+            ->update(['project_id' => $fee->id, 'task_id' => $task->id, 'is_billable' => true, 'description' => 'Mantenimiento y soporte']);
+
+        $legacy = Project::withoutEvents(fn () => Project::query()->create([
+            'client_id' => $mirador->id, 'name' => 'Redes sociales', 'code' => 'MIR-FE1', 'color' => '#0892C4',
+            'description' => 'Fee mensual de 10 h.', 'billing_type' => BillingType::TimeAndMaterials, 'status' => ProjectStatus::Active,
+            'start_date' => $this->monthsAgo(3)->startOfMonth()->toDateString(), 'owner_user_id' => $this->people['nuria']->id,
+        ]));
+        $legacy->addMember($this->people['nuria'], isManager: true);
+
+        // Código F de ClickUp (D-135): el número de la factura de Holded de cada bolsa vendida y del
+        // primer pago de cada precio cerrado.
+        $numbers = [];
+        $next = function (CarbonImmutable $date) use (&$numbers): string {
+            $year = $date->format('y');
+            $numbers[$year] = ($numbers[$year] ?? 100) + 1;
+
+            return 'F'.$year.sprintf('%04d', $numbers[$year]);
+        };
+        foreach (HourBank::query()->whereNotNull('price_amount')->orderBy('start_date')->orderBy('id')->get() as $bank) {
+            HourBank::withoutEvents(fn () => $bank->forceFill(['invoice_reference' => $next($bank->start_date)])->save());
+        }
+        foreach (Project::query()->where('billing_type', BillingType::FixedPrice->value)->whereNotNull('fixed_price_amount')->orderBy('id')->get() as $project) {
+            $start = $project->start_date ?? $this->today;
+            Project::withoutEvents(fn () => $project->forceFill(['description' => trim(($project->description ?? '').' Factura: '.$next($start).'.')])->save());
+        }
+
+        app(HoldedSync::class)->run(FakeHolded::fromDatabase($this->today), 'seeder', null, pdfs: false);
+
+        // Las facturas de los fees no llevan proyecto en Holded: alguien ha aceptado la sugerencia de
+        // casi todas (enlace a mano, D-388); las dos últimas de cada fee siguen sin enlazar.
+        $suggester = app(InvoiceLinkSuggester::class);
+        $linker = app(HoldedInvoiceLinker::class);
+        $unlinked = HoldedInvoice::query()->whereDoesntHave('links')->with('lines')->orderByDesc('issued_on')->orderByDesc('id')->get();
+        $skipped = [];
+        foreach ($unlinked as $invoice) {
+            $suggestion = $suggester->for($invoice)[0] ?? null;
+            if ($suggestion === null || InvoiceLinkSuggester::dominantKind($invoice) !== InvoiceLineKind::Fee) {
+                continue;
+            }
+            $projectId = $suggestion['project']['id'];
+            if (! $invoice->is_draft && ($skipped[$projectId] ?? 0) < 2) {
+                $skipped[$projectId] = ($skipped[$projectId] ?? 0) + 1;
+
+                continue;
+            }
+            $linker->link($invoice, Project::query()->findOrFail($projectId), null, $this->people['marta']);
+        }
     }
 
     /**

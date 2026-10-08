@@ -12,6 +12,7 @@ use App\Models\HourBank;
 use App\Models\Project;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
  * Holded falso (Fase 12, F1; D-384) para los tests y el desarrollo local (HOLDED_DRIVER=fake). Habla
@@ -211,7 +212,7 @@ class FakeHolded implements HoldedApi
         }
         $projects[] = ['id' => self::holdedId('project-legacy'), 'name' => 'Proyecto antiguo 2024'];
 
-        /** @var list<array{date: CarbonImmutable, number: string|null, contact: array{id: string, name: string}, lines: list<array<string, mixed>>, seed: string}> $drafts */
+        /** @var list<array{date: CarbonImmutable, number: string|null, contact: array{id: string, name: string}, lines: list<array<string, mixed>>, seed: string, tags?: list<string>, draft?: bool}> $drafts */
         $drafts = [];
 
         $banks = HourBank::query()->withTrashed()->with(['project' => fn ($query) => $query->withTrashed()])
@@ -226,7 +227,10 @@ class FakeHolded implements HoldedApi
                 'number' => self::fCode($bank->invoice_reference),
                 'contact' => $contactOf[$project->client_id],
                 'seed' => 'bank-'.$bank->id,
-                'lines' => [self::line('Bolsa de '.intdiv($bank->total_minutes, 60).' h · '.$project->name, (string) $bank->price_amount, null, $bank->name)],
+                'tags' => ['#bolsadehoras'],
+                // Como en Holded (D-396): «bolsadehoras» con las HORAS como unidades y el €/h como precio;
+                // una de cada tres, con un 15 % de descuento de línea.
+                'lines' => [self::bankLine($bank, $project->name, count($drafts) % 3 === 1)],
             ];
         }
 
@@ -239,12 +243,12 @@ class FakeHolded implements HoldedApi
 
             if ($project->billing_type === BillingType::FixedPrice && $project->fixed_price_amount !== null && $start->lessThanOrEqualTo($today)) {
                 $half = bcdiv((string) $project->fixed_price_amount, '2', 2);
-                $drafts[] = ['date' => $start, 'number' => self::fCodeIn($project->description), 'contact' => $contact, 'seed' => 'fixed-a-'.$project->id,
-                    'lines' => [self::line('50 % al empezar · '.$project->name, $half, $holdedProjectOf[$project->id] ?? null)]];
+                $drafts[] = ['date' => $start, 'number' => self::fCodeIn($project->description), 'contact' => $contact, 'seed' => 'fixed-a-'.$project->id, 'tags' => ['#productodigital'],
+                    'lines' => [self::line('Diseño Producto UX/UI', $half, $holdedProjectOf[$project->id] ?? null, 'Pago inicio de proyecto · '.$project->name, code: 'D_UX_UI')]];
                 $second = $project->due_date ?? $start->addMonthsNoOverflow(3);
                 if ($second->lessThanOrEqualTo($today)) {
-                    $drafts[] = ['date' => $second, 'number' => null, 'contact' => $contact, 'seed' => 'fixed-b-'.$project->id,
-                        'lines' => [self::line('50 % a la entrega · '.$project->name, Money::round(Money::sub((string) $project->fixed_price_amount, $half)), $holdedProjectOf[$project->id] ?? null)]];
+                    $drafts[] = ['date' => $second, 'number' => null, 'contact' => $contact, 'seed' => 'fixed-b-'.$project->id, 'tags' => ['#productodigital'],
+                        'lines' => [self::line('Diseño Producto UX/UI', Money::round(Money::sub((string) $project->fixed_price_amount, $half)), $holdedProjectOf[$project->id] ?? null, 'Pago a la entrega · '.$project->name, code: 'D_UX_UI')]];
                 }
             }
 
@@ -254,9 +258,14 @@ class FakeHolded implements HoldedApi
                 $month = $start->startOfMonth()->lessThan($floor) ? $floor : $start->startOfMonth();
                 $end = $project->due_date !== null && $project->due_date->lessThan($today) ? $project->due_date : $today;
                 for (; $month->lessThan($end->startOfMonth()); $month = $month->addMonthNoOverflow()) {
-                    $drafts[] = ['date' => $month, 'number' => null, 'contact' => $contact, 'seed' => 'fee-'.$project->id.'-'.$month->format('Ym'),
-                        'lines' => [self::line('Fee de '.$month->locale('es')->translatedFormat('F Y').' · '.$project->name, $amount, $holdedProjectOf[$project->id] ?? null)]];
+                    // Las recurrentes no llevan proyecto de Holded: se enlazan con la sugerencia (D-388).
+                    $drafts[] = ['date' => $month, 'number' => null, 'contact' => $contact, 'seed' => 'fee-'.$project->id.'-'.$month->format('Ym'), 'tags' => ['#fee', '#productodigital'],
+                        'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.$month->locale('es')->translatedFormat('F Y').' · '.$project->name, code: 'F_UX')]];
                 }
+                // El borrador que la recurrente genera para el mes siguiente (sin número hasta aprobarlo).
+                $next = $today->addMonthNoOverflow()->startOfMonth();
+                $drafts[] = ['date' => $today, 'number' => null, 'contact' => $contact, 'seed' => 'fee-draft-'.$project->id, 'tags' => ['#fee'], 'draft' => true,
+                    'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.$next->locale('es')->translatedFormat('F Y').' · '.$project->name, code: 'F_UX')]];
             }
 
             if ($project->billing_type === BillingType::TimeAndMaterials && ! self::isFee($project) && $project->hourly_rate !== null) {
@@ -266,8 +275,8 @@ class FakeHolded implements HoldedApi
                     ->whereBetween('date', [$hoursMonth->toDateString(), $hoursMonth->endOfMonth()->toDateString()])
                     ->sum('minutes');
                 if ($minutes > 0) {
-                    $drafts[] = ['date' => $hoursMonth->endOfMonth()->startOfDay(), 'number' => null, 'contact' => $contact, 'seed' => 'hours-'.$project->id,
-                        'lines' => [self::line('Horas de '.$hoursMonth->locale('es')->translatedFormat('F Y').' · desarrollo', Money::round(Money::forMinutes($minutes, (string) $project->hourly_rate)), null, null, round($minutes / 60, 2), (string) $project->hourly_rate)]];
+                    $drafts[] = ['date' => $hoursMonth->endOfMonth()->startOfDay(), 'number' => null, 'contact' => $contact, 'seed' => 'hours-'.$project->id, 'tags' => ['#desarrollo'],
+                        'lines' => [self::line('Desarrollo', Money::round(Money::forMinutes($minutes, (string) $project->hourly_rate)), null, 'Horas de '.$hoursMonth->locale('es')->translatedFormat('F Y'), round($minutes / 60, 2), (string) $project->hourly_rate, code: 'DES')]];
                 }
             }
         }
@@ -283,9 +292,10 @@ class FakeHolded implements HoldedApi
         $partialDone = false;
 
         foreach ($drafts as $draft) {
+            $isDraft = $draft['draft'] ?? false;
             $year = $draft['date']->format('y');
             $counters[$year] ??= 300;
-            $number = $draft['number'] ?? 'F'.$year.sprintf('%04d', ++$counters[$year]);
+            $number = $isDraft ? null : ($draft['number'] ?? 'F'.$year.sprintf('%04d', ++$counters[$year]));
             $id = self::holdedId('invoice-'.$draft['seed']);
             $subtotal = Money::round(Money::add(...array_map(fn (array $line): string => (string) $line['subtotal'], $draft['lines'])));
             $tax = Money::round(Money::mul($subtotal, '0.21'));
@@ -295,7 +305,9 @@ class FakeHolded implements HoldedApi
 
             // Lo antiguo, cobrado; una vencida sin cobrar; una cobrada a medias; lo reciente, pendiente.
             $paid = '0.00';
-            if ($age > 75 && ! $overdueDone && str_starts_with($draft['seed'], 'fee-')) {
+            if ($isDraft) {
+                // Un borrador no se cobra.
+            } elseif ($age > 75 && ! $overdueDone && str_starts_with($draft['seed'], 'fee-')) {
                 $overdueDone = true;
             } elseif ($age > 60) {
                 $paid = $total;
@@ -321,17 +333,18 @@ class FakeHolded implements HoldedApi
                 'tax' => $tax,
                 'total' => $total,
                 'status' => bccomp($paid, $total, 2) === 0 ? 'completed' : (bccomp($paid, '0', 2) > 0 ? 'partial' : 'pending'),
-                'approval_status' => 'approved',
-                'draft' => false,
+                'approval_status' => $isDraft ? 'draft' : 'approved',
+                'draft' => $isDraft,
+                'tags' => [...($draft['tags'] ?? []), '#'.Str::slug($draft['contact']['name'], '')],
                 'payments_total' => $paid,
                 'payments_pending' => Money::round(Money::sub($total, $paid)),
                 'items' => $draft['lines'],
-                'notes' => null,
+                'notes' => str_starts_with($draft['seed'], 'fee-') ? 'PEDIDO DE COMPRA Nº '.(4500 + count($invoices)) : null,
             ];
             $invoices[] = $invoice;
 
             // Una rectificativa del 10 % de la segunda factura de fee (descuento acordado).
-            if (str_starts_with($draft['seed'], 'fee-') && ++$feeSeen === 2) {
+            if (! $isDraft && str_starts_with($draft['seed'], 'fee-') && ++$feeSeen === 2) {
                 $creditSubtotal = Money::round(Money::mul($subtotal, '-0.1'));
                 $creditTax = Money::round(Money::mul($creditSubtotal, '0.21'));
                 $creditDate = $draft['date']->addDays(12);
@@ -350,7 +363,7 @@ class FakeHolded implements HoldedApi
                     'payments_total' => '0.00',
                     'payments_pending' => '0.00',
                     'rectified_document_id' => $id,
-                    'items' => [self::line('Descuento acordado del 10 % · '.$draft['lines'][0]['name'], $creditSubtotal, $draft['lines'][0]['project_id'] ?? null)],
+                    'items' => [self::line('Fee Producto digital', $creditSubtotal, null, 'Descuento acordado del 10 %', code: 'F_UX')],
                     'notes' => 'Rectificación por diferencias.',
                 ];
             }
@@ -363,17 +376,35 @@ class FakeHolded implements HoldedApi
     /**
      * @return array<string, mixed>
      */
-    private static function line(string $name, string $subtotal, ?string $projectId, ?string $description = null, ?float $units = null, ?string $price = null): array
+    private static function line(string $name, string $subtotal, ?string $projectId, ?string $description = null, ?float $units = null, ?string $price = null, ?string $code = null, string $discount = '0'): array
     {
         return [
             'name' => $name,
+            'code' => $code,
             'description' => $description,
             'units' => $units ?? 1,
             'price' => $price ?? $subtotal,
+            'discount' => $discount,
             'subtotal' => $subtotal,
             'taxes' => ['s_iva_21'],
             'project_id' => $projectId,
         ];
+    }
+
+    /**
+     * La línea «bolsadehoras» de una bolsa: horas × €/h (y, si toca, un 15 % de descuento) que dan
+     * exactamente su precio.
+     *
+     * @return array<string, mixed>
+     */
+    private static function bankLine(HourBank $bank, string $projectName, bool $discount): array
+    {
+        $hours = max(1, intdiv($bank->total_minutes, 60));
+        $factor = $discount ? '0.85' : '1';
+        $price = bcdiv((string) $bank->price_amount, bcmul((string) $hours, $factor, 4), 4);
+        $month = $bank->start_date->locale('es')->translatedFormat('F Y');
+
+        return self::line('bolsadehoras', (string) $bank->price_amount, null, 'Bolsa de horas '.$hours.'h '.$month.' · '.$projectName, (float) $hours, $price, 'BDH', $discount ? '15' : '0');
     }
 
     private static function isFee(Project $project): bool

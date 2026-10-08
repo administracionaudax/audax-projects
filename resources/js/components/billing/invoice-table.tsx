@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
-import { Link2Off, Undo2 } from 'lucide-react';
+import { Link, router } from '@inertiajs/react';
+import { Link2, Link2Off, Undo2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -99,7 +100,9 @@ export function InvoiceTable({
                                             className="size-3.5 text-muted-foreground"
                                         />
                                     ) : null}
-                                    {invoice.number ?? '—'}
+                                    {invoice.is_draft
+                                        ? t('billing.invoice.draft_number')
+                                        : (invoice.number ?? '—')}
                                 </Link>
                             </th>
                             <td className="px-3 py-2 whitespace-nowrap">
@@ -129,12 +132,52 @@ export function InvoiceTable({
                             ) : null}
                             <td className="px-3 py-2">
                                 {invoice.links.length === 0 ? (
-                                    <span className="inline-flex items-center gap-1 text-muted-foreground">
-                                        <Link2Off
-                                            aria-hidden="true"
-                                            className="size-3.5"
-                                        />
-                                        {t('billing.invoice.unlinked')}
+                                    <span className="grid justify-items-start gap-1">
+                                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                            <Link2Off
+                                                aria-hidden="true"
+                                                className="size-3.5"
+                                            />
+                                            {t('billing.invoice.unlinked')}
+                                        </span>
+                                        {invoice.suggestion ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-auto py-0.5"
+                                                data-test="accept-suggestion"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `${invoiceUrl(invoice.id)}/enlaces`,
+                                                        {
+                                                            project_id:
+                                                                invoice
+                                                                    .suggestion
+                                                                    ?.project
+                                                                    .id,
+                                                            hour_bank_id:
+                                                                invoice
+                                                                    .suggestion
+                                                                    ?.bank
+                                                                    ?.id ??
+                                                                null,
+                                                        },
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                <Link2 aria-hidden="true" />
+                                                {t(
+                                                    'billing.invoice.accept_suggestion',
+                                                    {
+                                                        project: `${invoice.suggestion.project.code}${invoice.suggestion.bank ? ` · ${invoice.suggestion.bank.name}` : ''}`,
+                                                    },
+                                                )}
+                                            </Button>
+                                        ) : null}
                                     </span>
                                 ) : (
                                     <ul className="grid gap-0.5">

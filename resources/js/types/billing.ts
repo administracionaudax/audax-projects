@@ -15,13 +15,28 @@ export type CollectionStatus =
     | 'partial'
     | 'unpaid'
     | 'overdue'
-    | 'cancelled';
+    | 'cancelled'
+    | 'draft';
 
 export type InvoiceLinkMethod =
     | 'f_code'
     | 'holded_project'
     | 'rectified'
     | 'manual';
+
+export type InvoiceLineKind =
+    | 'bank'
+    | 'fee'
+    | 'hours'
+    | 'pass_through'
+    | 'other';
+
+/** InvoiceLinkSuggester: un proyecto (y su bolsa) para enlazar una factura sin enlazar. */
+export type InvoiceLinkSuggestion = {
+    project: { id: number; code: string; name: string };
+    bank: { id: number; name: string } | null;
+    reason: InvoiceLineKind;
+};
 
 /** Una unidad de venta (SoldVsActual::finish). Los importes, solo con view-billing. */
 export type SoldVsActualUnit = {
@@ -41,7 +56,13 @@ export type SoldVsActualUnit = {
     consumption_pct: number | null;
     status: SaleStatus;
     invoices_count: number;
+    /** Horas de las líneas de horas y de bolsa de sus facturas (D-396). */
+    invoiced_minutes: number;
     sold_amount?: string | null;
+    /** De dónde sale el importe vendido: la bolsa o el proyecto en Audax, o la línea de Holded. */
+    sold_source?: 'audax' | 'holded' | null;
+    /** Borradores de Holded enlazados: previsto, no facturado (D-395). */
+    planned?: string;
     hours_value?: string | null;
     invoiced?: string;
     invoiced_total?: string;
@@ -73,6 +94,7 @@ export type SoldVsActualTotals = {
     outstanding?: string;
     overdue?: string;
     to_invoice?: string;
+    planned?: string;
     cost?: string;
     margin?: string;
     margin_pct?: number | null;
@@ -110,7 +132,11 @@ export type HoldedInvoiceSummary = {
     paid_total: string;
     pending_total: string;
     collection_status: CollectionStatus;
+    is_draft: boolean;
+    tags: string[];
     links: InvoiceLinkData[];
+    /** En el listado, la primera sugerencia de una factura sin enlazar. */
+    suggestion?: InvoiceLinkSuggestion | null;
 };
 
 /** InvoicePresenter::detail. */
@@ -122,6 +148,8 @@ export type HoldedInvoiceDetail = HoldedInvoiceSummary & {
     lines: {
         id: number;
         name: string | null;
+        service_code: string | null;
+        kind: InvoiceLineKind;
         description: string | null;
         units: string;
         unit_price: string;

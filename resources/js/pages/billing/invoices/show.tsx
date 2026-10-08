@@ -35,7 +35,7 @@ import {
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
-import type { HoldedInvoiceDetail } from '@/types';
+import type { HoldedInvoiceDetail, InvoiceLinkSuggestion } from '@/types';
 
 type ProjectOption = {
     id: number;
@@ -49,6 +49,7 @@ type ProjectOption = {
 type Props = {
     invoice: HoldedInvoiceDetail;
     projects: ProjectOption[];
+    suggestions: InvoiceLinkSuggestion[];
     holded: { driver: string; configured: boolean };
 };
 
@@ -59,7 +60,7 @@ const NONE = '__none__';
  * rectificativas, su PDF original y con qué proyecto o bolsa está enlazada (automático por el
  * código F o el proyecto de Holded, o a mano desde aquí). Solo lectura de Holded.
  */
-export default function InvoiceShow({ invoice, projects }: Props) {
+export default function InvoiceShow({ invoice, projects, suggestions }: Props) {
     const credit = invoice.kind === 'credit_note';
     const pdf = `${invoiceUrl(invoice.id)}/pdf`;
 
@@ -67,7 +68,9 @@ export default function InvoiceShow({ invoice, projects }: Props) {
         <>
             <Head
                 title={t('billing.invoice.title', {
-                    number: invoice.number ?? '—',
+                    number: invoice.is_draft
+                        ? t('billing.invoice.draft_number')
+                        : (invoice.number ?? '—'),
                 })}
             />
 
@@ -99,7 +102,9 @@ export default function InvoiceShow({ invoice, projects }: Props) {
                             )}
                         </p>
                         <h1 className="text-2xl font-normal tracking-tight">
-                            {invoice.number ?? '—'}
+                            {invoice.is_draft
+                                ? t('billing.invoice.draft_number')
+                                : (invoice.number ?? '—')}
                         </h1>
                         <div className="flex flex-wrap items-center gap-2">
                             <CollectionStatusBadge
@@ -134,6 +139,28 @@ export default function InvoiceShow({ invoice, projects }: Props) {
                         </Button>
                     </div>
                 </header>
+
+                {invoice.is_draft ? (
+                    <p className="rounded-md bg-info-soft px-3 py-2 text-sm text-foreground">
+                        {t('billing.invoice.draft_notice')}
+                    </p>
+                ) : null}
+
+                {invoice.tags.length > 0 ? (
+                    <ul
+                        aria-label={t('billing.invoice.tags')}
+                        className="flex flex-wrap gap-1.5"
+                    >
+                        {invoice.tags.map((tag) => (
+                            <li
+                                key={tag}
+                                className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                            >
+                                {tag}
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
 
                 {!invoice.client ? (
                     <p className="rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground">
@@ -258,6 +285,16 @@ export default function InvoiceShow({ invoice, projects }: Props) {
                                                     className="px-3 py-2 text-left font-normal"
                                                 >
                                                     {line.name ?? '—'}
+                                                    <span className="block text-xs text-muted-foreground">
+                                                        {[
+                                                            line.service_code,
+                                                            t(
+                                                                `billing.line_kind.${line.kind}`,
+                                                            ),
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </span>
                                                     {line.description ? (
                                                         <span className="block text-xs text-muted-foreground">
                                                             {line.description}
@@ -332,6 +369,68 @@ export default function InvoiceShow({ invoice, projects }: Props) {
                     </div>
 
                     <aside className="grid content-start gap-6">
+                        {suggestions.length > 0 ? (
+                            <PageSection
+                                title={t('billing.suggestions.title')}
+                                description={t(
+                                    'billing.suggestions.description',
+                                )}
+                            >
+                                <ul
+                                    className="grid gap-2"
+                                    data-test="invoice-suggestions"
+                                >
+                                    {suggestions.map((suggestion) => (
+                                        <li
+                                            key={`${suggestion.project.id}-${suggestion.bank?.id ?? 0}`}
+                                            className="flex items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-sm"
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="text-muted-foreground">
+                                                    {suggestion.project.code}
+                                                </span>{' '}
+                                                {suggestion.bank
+                                                    ? suggestion.bank.name
+                                                    : suggestion.project.name}
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {t(
+                                                        `billing.suggestions.reason.${suggestion.reason}`,
+                                                    )}
+                                                </span>
+                                            </span>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `${invoiceUrl(invoice.id)}/enlaces`,
+                                                        {
+                                                            project_id:
+                                                                suggestion
+                                                                    .project.id,
+                                                            hour_bank_id:
+                                                                suggestion.bank
+                                                                    ?.id ??
+                                                                null,
+                                                        },
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                <Link2 aria-hidden="true" />
+                                                {t(
+                                                    'billing.suggestions.accept',
+                                                )}
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </PageSection>
+                        ) : null}
+
                         <LinksPanel invoice={invoice} projects={projects} />
 
                         {invoice.rectified ||

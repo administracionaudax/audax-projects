@@ -32,6 +32,8 @@ final class InvoicePresenter
             'paid_total' => (string) $invoice->paid_total,
             'pending_total' => (string) $invoice->pending_total,
             'collection_status' => $invoice->collection_status->value,
+            'is_draft' => $invoice->is_draft,
+            'tags' => $invoice->tags ?? [],
             'links' => $invoice->relationLoaded('links') ? $invoice->links->map(fn (HoldedInvoiceLink $link): array => self::link($link))->values()->all() : [],
         ];
     }
@@ -61,6 +63,8 @@ final class InvoicePresenter
             'lines' => $invoice->lines->map(fn ($line): array => [
                 'id' => $line->id,
                 'name' => $line->name,
+                'service_code' => $line->service_code,
+                'kind' => InvoiceLinkSuggester::lineKind($line)->value,
                 'description' => $line->description,
                 'units' => (string) $line->units,
                 'unit_price' => (string) $line->unit_price,

@@ -15,6 +15,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /*
@@ -163,7 +164,7 @@ it('las habilidades compartidas siguen los permisos', function () {
 });
 
 it('el PDF de la factura se pide a Holded la primera vez, se guarda y solo con view-billing', function () {
-    Illuminate\Support\Facades\Storage::fake('local');
+    Storage::fake('local');
     app()->instance(HoldedApi::class, holdedFake(['invoices' => [holdedInvoice('inv-1', 'F260001', 'c1', '2026-01-10', '1000.00')]]));
 
     $response = $this->actingAs($this->finance)->get("/facturacion/facturas/{$this->invoice->id}/pdf");

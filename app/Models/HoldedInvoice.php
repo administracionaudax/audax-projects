@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $holded_status
  * @property CollectionStatus $collection_status
  * @property bool $is_draft
+ * @property list<string>|null $tags
  * @property string|null $rectified_holded_id
  * @property int|null $rectified_invoice_id
  * @property string|null $notes
@@ -70,6 +71,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'holded_status',
     'collection_status',
     'is_draft',
+    'tags',
     'rectified_holded_id',
     'rectified_invoice_id',
     'notes',
@@ -99,6 +101,7 @@ class HoldedInvoice extends Model
             'paid_total' => 'decimal:2',
             'pending_total' => 'decimal:2',
             'is_draft' => 'boolean',
+            'tags' => 'array',
             'pdf_fetched_at' => 'immutable_datetime',
             'synced_at' => 'immutable_datetime',
         ];
@@ -155,7 +158,7 @@ class HoldedInvoice extends Model
     /** ¿Cuenta como facturado? Aprobada y no anulada (H-037, H-042). */
     public function counts(): bool
     {
-        return ! $this->is_draft && $this->collection_status !== CollectionStatus::Cancelled;
+        return ! $this->is_draft && ! in_array($this->collection_status, [CollectionStatus::Cancelled, CollectionStatus::Draft], true);
     }
 
     /** Nombre del PDF al descargarlo: «F260170.pdf». */

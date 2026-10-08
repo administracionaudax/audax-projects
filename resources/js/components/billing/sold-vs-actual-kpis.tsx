@@ -158,9 +158,22 @@ export function SoldVsActualKpis({
                         label={t('billing.kpis.invoiced')}
                         definition={t('billing.kpis.invoiced_definition')}
                         value={formatCurrency(totals.invoiced ?? '0')}
-                        detail={t('billing.kpis.to_invoice_detail', {
-                            amount: formatCurrency(totals.to_invoice ?? '0'),
-                        })}
+                        detail={[
+                            t('billing.kpis.to_invoice_detail', {
+                                amount: formatCurrency(
+                                    totals.to_invoice ?? '0',
+                                ),
+                            }),
+                            amount(totals.planned) !== 0
+                                ? t('billing.kpis.planned_detail', {
+                                      amount: formatCurrency(
+                                          totals.planned ?? '0',
+                                      ),
+                                  })
+                                : null,
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
                     />
                     <KpiCard
                         label={t('billing.kpis.collected')}

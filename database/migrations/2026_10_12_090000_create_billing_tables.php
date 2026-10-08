@@ -93,7 +93,10 @@ return new class extends Migration
             $table->decimal('pending_total', 12, 2)->default(0);
             $table->string('holded_status', 24)->nullable();
             $table->string('collection_status', 16)->default('unpaid');
+            // Borradores de Holded (las recurrentes los generan el día 29): sin número y fuera de lo
+            // facturado; cuentan como «previsto» (D-395).
             $table->boolean('is_draft')->default(false);
+            $table->json('tags')->nullable();
             $table->string('rectified_holded_id', 64)->nullable();
             $table->foreignId('rectified_invoice_id')->nullable()->constrained('holded_invoices')->nullOnDelete();
             $table->text('notes')->nullable();
@@ -111,7 +114,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('holded_invoice_id')->constrained()->cascadeOnDelete();
             $table->unsignedSmallInteger('position');
+            // Concepto (el servicio del catálogo de Holded) y su código (BDH, DES, F_UX…).
             $table->string('name', 255)->nullable();
+            $table->string('service_code', 32)->nullable();
             $table->text('description')->nullable();
             $table->decimal('units', 12, 4)->default(1);
             $table->decimal('unit_price', 14, 4)->default(0);

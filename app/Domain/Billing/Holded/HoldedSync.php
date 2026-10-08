@@ -13,6 +13,7 @@ use App\Models\HoldedInvoiceLine;
 use App\Models\HoldedPayment;
 use App\Models\HoldedProject;
 use App\Models\HoldedSyncRun;
+use App\Models\ImportRef;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\LocalTime;
@@ -31,8 +32,9 @@ use Throwable;
  *
  * Orden: contactos (y su cliente), proyectos de Holded, facturas y rectificativas con sus líneas,
  * cobros, estado de cobro, enlaces con proyectos y bolsas (HoldedInvoiceLinker) y, al final, los PDF
- * que faltan (como mucho `pdfs_per_run` por ejecución). Los borradores de Holded no se leen: no
- * tienen número ni cuentan como facturado (H-037). Un candado impide dos sincronizaciones a la vez.
+ * que faltan (como mucho `pdfs_per_run` por ejecución). Los borradores de Holded (los que generan
+ * las recurrentes el día 29) se guardan sin número y como «previsto»: nunca cuentan como facturado
+ * (H-037, D-395); si desaparecen de Holded, se borran aquí. Un candado impide dos a la vez.
  */
 final class HoldedSync
 {
@@ -45,6 +47,9 @@ final class HoldedSync
 
     /** @var array<string, int> */
     private array $stats = [];
+
+    /** @var array<string, true> ids de Holded de los documentos leídos en esta ejecución */
+    private array $seen = [];
 
     private ImportRefs $refs;
 
@@ -76,6 +81,7 @@ final class HoldedSync
 
         try {
             $this->stats = [];
+            $this->seen = [];
             $this->refs->load();
             $this->matcher->reset();
             $this->linker->reset();
@@ -85,6 +91,7 @@ final class HoldedSync
             $this->projects($api);
             $this->documents($api->invoices(), HoldedDocumentKind::Invoice);
             $this->documents($api->creditNotes(), HoldedDocumentKind::CreditNote);
+            $this->forgetVanishedDrafts();
             $this->resolveRectified();
             $this->payments($api);
             $this->collectionStatus($today);
@@ -204,18 +211,20 @@ final class HoldedSync
             $id = HoldedPayload::id($item);
             $draft = HoldedPayload::bool($item, 'draft') === true || HoldedPayload::string($item, 'approval_status', 'approvalStatus') === 'draft';
             $date = HoldedPayload::date($item, 'date', 'issued_at');
-            if ($id === null || $draft || $date === null) {
+            if ($id === null || $date === null) {
                 $this->count($label, 'skipped');
 
                 continue;
             }
+            $this->seen[$id] = true;
 
             $sign = $kind === HoldedDocumentKind::CreditNote ? '-' : '';
             $subtotal = self::signed(HoldedPayload::money($item, 'subtotal', 'sub_total') ?? '0.00', $sign);
             $tax = self::signed(HoldedPayload::money($item, 'tax', 'tax_total', 'taxes_total') ?? '0.00', $sign);
             $total = self::signed(HoldedPayload::money($item, 'total') ?? Money::round(Money::add($subtotal, $tax)), $sign);
             $contactId = HoldedPayload::string($item, 'contact_id', 'contact', 'contact.id');
-            $number = HoldedPayload::string($item, 'document_number', 'docNumber', 'number');
+            // Un borrador no tiene número (Holded enseña «Borrador»): se numera al aprobarlo.
+            $number = $draft ? null : HoldedPayload::string($item, 'document_number', 'docNumber', 'number');
             $lines = $this->lines($item);
 
             $attributes = [
@@ -234,11 +243,12 @@ final class HoldedSync
                 'paid_total' => self::signed(HoldedPayload::money($item, 'payments_total', 'paymentsTotal') ?? '0.00', $sign),
                 'pending_total' => self::signed(HoldedPayload::money($item, 'payments_pending', 'paymentsPending') ?? Money::round(Money::abs($total)), $sign),
                 'holded_status' => self::limit(HoldedPayload::string($item, 'status'), 24),
-                'is_draft' => false,
+                'is_draft' => $draft,
+                'tags' => array_values(array_filter(array_map(fn (mixed $tag): ?string => is_string($tag) && trim($tag) !== '' ? Str::limit(trim($tag), 60, '') : null, is_array($item['tags'] ?? null) ? $item['tags'] : []))) ?: null,
                 'rectified_holded_id' => self::limit(HoldedPayload::string($item, 'rectified_document_id', 'rectified_invoice_id', 'original_document_id', 'from.id', 'from_id', 'invoice_id'), 64),
                 'notes' => HoldedPayload::string($item, 'notes', 'body'),
             ];
-            $hash = hash('sha256', (string) json_encode([$attributes['number'], $attributes['issued_on'], $attributes['due_on'], $subtotal, $tax, $total, $attributes['holded_contact_id'], $attributes['rectified_holded_id'], $attributes['notes'], $lines]));
+            $hash = hash('sha256', (string) json_encode([$draft, $attributes['tags'], $attributes['number'], $attributes['issued_on'], $attributes['due_on'], $subtotal, $tax, $total, $attributes['holded_contact_id'], $attributes['rectified_holded_id'], $attributes['notes'], $lines]));
 
             $invoice = HoldedInvoice::query()->firstOrNew(['holded_id' => $id]);
             $created = ! $invoice->exists;
@@ -261,8 +271,24 @@ final class HoldedSync
             }
 
             $this->refs->put($kind === HoldedDocumentKind::Invoice ? 'invoice' : 'credit_note', $id, 'holded_invoice', $invoice->id);
-            $this->count($label, $created ? 'created' : ($dirty ? 'updated' : 'unchanged'));
+            $this->count($draft ? 'drafts' : $label, $created ? 'created' : ($dirty ? 'updated' : 'unchanged'));
         }
+    }
+
+    /** Los borradores que ya no están en Holded (se borraron allí): fuera, con sus líneas y enlaces. */
+    private function forgetVanishedDrafts(): void
+    {
+        $vanished = HoldedInvoice::query()->where('is_draft', true)->pluck('holded_id', 'id')
+            ->filter(fn (string $holdedId): bool => ! isset($this->seen[$holdedId]));
+
+        if ($vanished->isEmpty()) {
+            return;
+        }
+
+        HoldedInvoice::query()->whereKey($vanished->keys()->all())->delete();
+        ImportRef::query()->where('source', self::SOURCE)->whereIn('kind', ['invoice', 'credit_note'])->whereIn('external_id', $vanished->values()->all())->delete();
+        $this->refs->load();
+        $this->stats['drafts_removed'] = $vanished->count();
     }
 
     /**
@@ -286,7 +312,8 @@ final class HoldedSync
 
             $lines[] = [
                 'position' => $index + 1,
-                'name' => self::limit(HoldedPayload::string($line, 'name'), 250),
+                'name' => self::limit(HoldedPayload::string($line, 'name', 'service_name', 'service.name'), 250),
+                'service_code' => self::limit(HoldedPayload::string($line, 'code', 'sku', 'service_code', 'service.code'), 32),
                 'description' => HoldedPayload::string($line, 'description', 'desc'),
                 'units' => $units,
                 'unit_price' => $price,
@@ -387,6 +414,7 @@ final class HoldedSync
             }
 
             $status = match (true) {
+                $invoice->is_draft => CollectionStatus::Draft,
                 in_array($invoice->holded_status, ['cancelled', 'canceled', 'void'], true) => CollectionStatus::Cancelled,
                 Money::isZero($pending) => CollectionStatus::Paid,
                 $invoice->due_on !== null && $invoice->due_on->lessThan($today) => CollectionStatus::Overdue,
@@ -411,7 +439,7 @@ final class HoldedSync
     {
         $limit = max(0, (int) config('services.holded.pdfs_per_run', 200));
 
-        $missing = HoldedInvoice::query()->whereNull('pdf_path')->orderByDesc('issued_on')->orderByDesc('id')->limit($limit)->get();
+        $missing = HoldedInvoice::query()->whereNull('pdf_path')->where('is_draft', false)->orderByDesc('issued_on')->orderByDesc('id')->limit($limit)->get();
         foreach ($missing as $invoice) {
             try {
                 HoldedPdfStore::fetch($api, $invoice);
@@ -422,7 +450,7 @@ final class HoldedSync
             }
         }
 
-        $this->stats['pdfs_pending'] = HoldedInvoice::query()->whereNull('pdf_path')->count();
+        $this->stats['pdfs_pending'] = HoldedInvoice::query()->whereNull('pdf_path')->where('is_draft', false)->count();
     }
 
     private function count(string $group, string $what): void

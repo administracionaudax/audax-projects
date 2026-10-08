@@ -6,6 +6,7 @@ use App\Domain\Billing\Holded\HoldedApi;
 use App\Domain\Billing\Holded\HoldedConnection;
 use App\Domain\Billing\Holded\HoldedPdfStore;
 use App\Domain\Billing\Holded\HoldedRequestFailed;
+use App\Domain\Billing\InvoiceLinkSuggester;
 use App\Domain\Billing\InvoicePresenter;
 use App\Domain\Reports\Money;
 use App\Enums\CollectionStatus;
@@ -59,15 +60,20 @@ class HoldedInvoiceController extends Controller
             ->when($filters['hasta'] ?? null, fn (Builder $q, string $to) => $q->where('issued_on', '<=', $to));
 
         $totals = (clone $query)->toBase()->selectRaw('COUNT(*) as count, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(total), 0) as total, COALESCE(SUM(paid_total), 0) as paid, COALESCE(SUM(pending_total), 0) as pending')
-            ->where('collection_status', '!=', CollectionStatus::Cancelled->value)->first();
+            ->whereNotIn('collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])->first();
 
-        $page = $query->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name'])
+        $page = $query->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name', 'lines'])
             ->orderByDesc('issued_on')->orderByDesc('id')
             ->paginate(self::PER_PAGE, pageName: 'pagina')->withQueryString();
+        $suggester = app(InvoiceLinkSuggester::class);
 
         return Inertia::render('billing/invoices/index', [
             'invoices' => [
-                'data' => array_map(fn (HoldedInvoice $invoice): array => InvoicePresenter::summary($invoice), $page->items()),
+                // Sin enlazar: con su primera sugerencia, para aceptarla desde el listado (D-388).
+                'data' => array_map(fn (HoldedInvoice $invoice): array => [
+                    ...InvoicePresenter::summary($invoice),
+                    'suggestion' => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled ? ($suggester->for($invoice)[0] ?? null) : null,
+                ], $page->items()),
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
                 'total' => $page->total(),
@@ -101,6 +107,7 @@ class HoldedInvoiceController extends Controller
     {
         return Inertia::render('billing/invoices/show', [
             'invoice' => InvoicePresenter::detail($invoice),
+            'suggestions' => $invoice->links()->exists() ? [] : app(InvoiceLinkSuggester::class)->for($invoice),
             // Proyectos del cliente (y sus bolsas) para enlazarla a mano; sin cliente, todos los que tienen cliente.
             'projects' => Project::query()
                 ->whereNotNull('client_id')

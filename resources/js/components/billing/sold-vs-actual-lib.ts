@@ -50,6 +50,7 @@ export const COLLECTION_STATUSES: CollectionStatus[] = [
     'partial',
     'paid',
     'cancelled',
+    'draft',
 ];
 
 /** Importe «1234.50» como número (solo para pintar proporciones; los totales vienen del servidor). */

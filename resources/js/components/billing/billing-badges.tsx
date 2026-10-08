@@ -6,6 +6,7 @@ import {
     CircleDashed,
     CircleDot,
     Clock,
+    PencilLine,
     TriangleAlert,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/styleguide/status-badges';
@@ -40,6 +41,7 @@ const COLLECTION: Record<CollectionStatus, Meta> = {
     unpaid: { tone: 'neutral', icon: Clock },
     overdue: { tone: 'danger', icon: CircleAlert },
     cancelled: { tone: 'neutral', icon: Ban },
+    draft: { tone: 'neutral', icon: PencilLine },
 };
 
 export function CollectionStatusBadge({

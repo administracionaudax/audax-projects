@@ -1,6 +1,8 @@
 <?php
 
+use App\Domain\Billing\Holded\FakeHolded;
 use App\Domain\Billing\Holded\HoldedApi;
+use App\Domain\Billing\Holded\HoldedRequestFailed;
 use App\Domain\Billing\Holded\HoldedSync;
 use App\Domain\Billing\Holded\HoldedSyncBusy;
 use App\Domain\Billing\HoldedInvoiceLinker;
@@ -94,10 +96,10 @@ it('casa los contactos por NIF y por nombre, deja los demás sin casar y no lee 
         ->and($this->arrieta->fresh()->tax_id)->toBe('B26123456');
 });
 
-it('lee facturas y rectificativas con sus importes, líneas, cliente y estado de cobro; sin borradores', function () {
+it('lee facturas y rectificativas con sus importes, líneas, cliente y estado de cobro', function () {
     syncHolded(holdedFake($this->data));
 
-    expect(HoldedInvoice::query()->count())->toBe(6);
+    expect(HoldedInvoice::query()->count())->toBe(7);
 
     $i1 = HoldedInvoice::query()->where('holded_id', 'i1')->firstOrFail();
     expect($i1->number)->toBe('F260170')
@@ -113,7 +115,10 @@ it('lee facturas y rectificativas con sus importes, líneas, cliente y estado de
         ->and(HoldedInvoice::query()->where('holded_id', 'i3')->value('collection_status'))->toBe(CollectionStatus::Partial)
         ->and(HoldedInvoice::query()->where('holded_id', 'i4')->value('collection_status'))->toBe(CollectionStatus::Unpaid)
         ->and(HoldedInvoice::query()->where('holded_id', 'i6')->value('collection_status'))->toBe(CollectionStatus::Cancelled)
-        ->and(HoldedInvoice::query()->where('holded_id', 'i5')->exists())->toBeFalse();
+        // El borrador (de una recurrente): sin número, fuera de lo facturado.
+        ->and(HoldedInvoice::query()->where('holded_id', 'i5')->value('collection_status'))->toBe(CollectionStatus::Draft)
+        ->and(HoldedInvoice::query()->where('holded_id', 'i5')->value('number'))->toBeNull()
+        ->and(HoldedInvoice::query()->where('holded_id', 'i5')->firstOrFail()->counts())->toBeFalse();
 
     $credit = HoldedInvoice::query()->where('holded_id', 'cn1')->firstOrFail();
     expect($credit->kind)->toBe(HoldedDocumentKind::CreditNote)
@@ -230,7 +235,7 @@ it('la orden no hace nada con el módulo apagado y sincroniza con él encendido'
     enableBilling();
     $this->artisan('app:holded-sync', ['--sin-pdf' => true])->assertSuccessful();
     expect(HoldedSyncRun::query()->value('status'))->toBe(HoldedSyncRun::OK)
-        ->and(HoldedInvoice::query()->count())->toBe(6);
+        ->and(HoldedInvoice::query()->count())->toBe(7);
 });
 
 it('sin clave, la orden avisa y la programada no falla', function () {
@@ -242,17 +247,53 @@ it('sin clave, la orden avisa y la programada no falla', function () {
 });
 
 it('un error de Holded deja la ejecución como fallida con el mensaje', function () {
-    $broken = new class extends App\Domain\Billing\Holded\FakeHolded
+    $broken = new class extends FakeHolded
     {
         public function contacts(): iterable
         {
-            throw App\Domain\Billing\Holded\HoldedRequestFailed::forStatus(401, '/contacts');
+            throw HoldedRequestFailed::forStatus(401, '/contacts');
         }
     };
 
-    expect(fn () => syncHolded($broken))->toThrow(App\Domain\Billing\Holded\HoldedRequestFailed::class);
+    expect(fn () => syncHolded($broken))->toThrow(HoldedRequestFailed::class);
     $run = HoldedSyncRun::query()->firstOrFail();
     expect($run->status)->toBe(HoldedSyncRun::FAILED)
         ->and($run->error)->toContain('rechazado la clave')
         ->and(HoldedSync::busy())->toBeFalse();
+});
+
+it('un borrador aprobado en Holded recibe su número; uno borrado en Holded desaparece', function () {
+    $draft = holdedInvoice('d1', '', 'c5', '2026-03-19', '1500.00', ['draft' => true, 'approval_status' => 'draft', 'tags' => ['#fee']]);
+    syncHolded(holdedFake([...$this->data, 'invoices' => [...$this->data['invoices'], $draft]]));
+    expect(HoldedInvoice::query()->where('holded_id', 'd1')->firstOrFail())
+        ->is_draft->toBeTrue()
+        ->tags->toBe(['#fee']);
+
+    $approved = [...$draft, 'draft' => false, 'approval_status' => 'approved', 'document_number' => 'F260210'];
+    syncHolded(holdedFake([...$this->data, 'invoices' => [...$this->data['invoices'], $approved]]));
+    $invoice = HoldedInvoice::query()->where('holded_id', 'd1')->firstOrFail();
+    expect($invoice->is_draft)->toBeFalse()
+        ->and($invoice->number)->toBe('F260210')
+        ->and($invoice->collection_status)->toBe(CollectionStatus::Unpaid);
+
+    // El borrador i5 ya no está en Holded: se borra (y su correspondencia).
+    $data = $this->data;
+    unset($data['invoices'][4]);
+    $run = syncHolded(holdedFake([...$data, 'invoices' => array_values($data['invoices'])]));
+    expect(HoldedInvoice::query()->where('holded_id', 'i5')->exists())->toBeFalse()
+        ->and(ImportRef::query()->where(['source' => 'holded', 'external_id' => 'i5'])->exists())->toBeFalse()
+        ->and($run->stats['drafts_removed'])->toBe(1);
+});
+
+it('guarda el servicio de cada línea (código del catálogo de Holded)', function () {
+    $data = $this->data;
+    $data['invoices'][0]['items'] = [['name' => 'bolsadehoras', 'code' => 'BDH', 'units' => 100, 'price' => '60.00', 'discount' => '15', 'description' => 'Bolsa de horas 100h Octubre 2026']];
+    syncHolded(holdedFake($data));
+
+    $line = HoldedInvoice::query()->where('holded_id', 'i1')->firstOrFail()->lines->firstOrFail();
+    expect($line->service_code)->toBe('BDH')
+        ->and((string) $line->units)->toBe('100.0000')
+        ->and((string) $line->discount_pct)->toBe('15.00')
+        // Sin subtotal en la línea: unidades × precio con el descuento.
+        ->and((string) $line->subtotal)->toBe('5100.00');
 });

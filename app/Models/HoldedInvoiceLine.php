@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $holded_invoice_id
  * @property int $position
  * @property string|null $name
+ * @property string|null $service_code
  * @property string|null $description
  * @property string $units
  * @property string $unit_price
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $holded_project_id
  * @property-read HoldedInvoice $invoice
  */
-#[Fillable(['holded_invoice_id', 'position', 'name', 'description', 'units', 'unit_price', 'discount_pct', 'subtotal', 'tax_rate', 'holded_project_id'])]
+#[Fillable(['holded_invoice_id', 'position', 'name', 'service_code', 'description', 'units', 'unit_price', 'discount_pct', 'subtotal', 'tax_rate', 'holded_project_id'])]
 class HoldedInvoiceLine extends Model
 {
     /**

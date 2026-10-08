@@ -14,6 +14,8 @@ enum CollectionStatus: string
     case Unpaid = 'unpaid';
     case Overdue = 'overdue';
     case Cancelled = 'cancelled';
+    /** Borrador de Holded (sin número, sin aprobar): no es facturado, es previsto (D-395). */
+    case Draft = 'draft';
 
     public function label(): string
     {

@@ -30,6 +30,7 @@ return [
             'unpaid' => 'Pendiente',
             'overdue' => 'Vencida',
             'cancelled' => 'Anulada',
+            'draft' => 'Borrador',
         ],
         'link_method' => [
             'f_code' => 'Código F',

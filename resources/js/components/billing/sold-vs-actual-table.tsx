@@ -192,6 +192,11 @@ export function SoldVsActualTable({
                                                 unit.hours_value
                                             }
                                         />
+                                        {unit.sold_source === 'holded' ? (
+                                            <span className="block text-xs text-muted-foreground">
+                                                {t('billing.sold_from_holded')}
+                                            </span>
+                                        ) : null}
                                         {unit.kind === 'horas' ? (
                                             <span className="block text-xs text-muted-foreground">
                                                 {t('billing.hours_value')}
@@ -200,6 +205,15 @@ export function SoldVsActualTable({
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={unit.invoiced} />
+                                        {Number(unit.planned ?? 0) !== 0 ? (
+                                            <span className="block text-xs text-muted-foreground">
+                                                {t('billing.planned_amount', {
+                                                    amount: formatCurrency(
+                                                        unit.planned ?? '0',
+                                                    ),
+                                                })}
+                                            </span>
+                                        ) : null}
                                         <span className="block text-xs text-muted-foreground">
                                             {t(
                                                 unit.invoices_count === 1

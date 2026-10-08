@@ -2,16 +2,24 @@
 
 use App\Domain\Absences\SpanishNationalHolidays;
 use App\Domain\Absences\ValenciaHolidays;
+use App\Domain\Billing\MonthlyFeeConversion;
 use App\Domain\Privacy\PrivacyNotice;
 use App\Domain\Time\Capacity;
 use App\Enums\AbsenceStatus;
 use App\Enums\AbsenceType;
+use App\Enums\BillingType;
+use App\Enums\CollectionStatus;
+use App\Enums\HoldedDocumentKind;
 use App\Enums\Role;
 use App\Models\Absence;
 use App\Models\Allocation;
 use App\Models\Client;
 use App\Models\Department;
 use App\Models\ForecastProject;
+use App\Models\HoldedContact;
+use App\Models\HoldedInvoice;
+use App\Models\HoldedInvoiceLink;
+use App\Models\HoldedSyncRun;
 use App\Models\Holiday;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -74,7 +82,7 @@ test('los datos de ejemplo cubren el SPEC §15 y son coherentes con el motor de 
     $this->seed(DatabaseSeeder::class);
 
     expect(Client::query()->count())->toBe(8)
-        ->and(Project::query()->count())->toBe(15)
+        ->and(Project::query()->count())->toBe(17)
         ->and(HourBank::query()->pluck('status')->map->value->unique()->sort()->values()->all())
         ->toBe(['active', 'closed', 'exhausted', 'renewed']);
 
@@ -218,7 +226,7 @@ test('el seeder de desarrollo es repetible', function () {
 
     expect(User::query()->count())->toBe(13)
         ->and(Department::query()->count())->toBe(3)
-        ->and(Project::query()->count())->toBe(15)
+        ->and(Project::query()->count())->toBe(17)
         ->and(WeeklyCycle::query()->count())->toBe(4)
         ->and(WeeklyReminderRule::query()->count())->toBe(2);
 });
@@ -283,4 +291,32 @@ test('el scope active y el scope internal filtran usuarios', function () {
     expect(User::query()->active()->count())->toBe(2)
         ->and(User::query()->internal()->count())->toBe(2)
         ->and(User::query()->active()->internal()->count())->toBe(1);
+});
+
+test('los datos de ejemplo de facturación son coherentes con las bolsas y los fees (Fase 12)', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    $banks = HourBank::query()->whereNotNull('price_amount')->where('start_date', '<=', now()->toDateString())->get();
+    $invoices = HoldedInvoice::query()->get();
+
+    // Cada bolsa vendida tiene su factura con el código F como número, enlazada con ella.
+    foreach ($banks as $bank) {
+        expect($bank->invoice_reference)->toMatch('/^F\d{6}$/');
+        $invoice = $invoices->firstWhere('number', $bank->invoice_reference);
+        expect($invoice)->not->toBeNull()
+            ->and((string) $invoice?->subtotal)->toBe((string) $bank->price_amount)
+            ->and(HoldedInvoiceLink::query()->where('holded_invoice_id', $invoice?->id)->where('hour_bank_id', $bank->id)->exists())->toBeTrue();
+    }
+
+    $fee = Project::query()->where('code', 'FER-FE1')->sole();
+    expect($fee->billing_type)->toBe(BillingType::MonthlyFee)
+        ->and(HoldedInvoiceLink::query()->where('project_id', $fee->id)->count())->toBeGreaterThan(5)
+        ->and(TimeEntry::query()->where('project_id', $fee->id)->sum('minutes'))->toBeGreaterThan(0)
+        ->and(HoldedSyncRun::query()->value('status'))->toBe('ok')
+        ->and($invoices->where('kind', HoldedDocumentKind::CreditNote)->count())->toBe(1)
+        ->and($invoices->where('collection_status', CollectionStatus::Overdue)->count())->toBeGreaterThan(0)
+        ->and(HoldedInvoice::query()->whereDoesntHave('links')->count())->toBeGreaterThan(0)
+        ->and(HoldedContact::query()->whereNull('client_id')->count())->toBe(1)
+        // El fee sin convertir que app:convert-monthly-fees propone.
+        ->and(app(MonthlyFeeConversion::class)->candidates())->toHaveCount(1);
 });

@@ -8,7 +8,9 @@ use App\Domain\Reports\Money;
 use App\Domain\Reports\RevenueCalculator;
 use App\Enums\BillingType;
 use App\Enums\CollectionStatus;
+use App\Enums\HoldedDocumentKind;
 use App\Enums\HourBankStatus;
+use App\Enums\InvoiceLineKind;
 use App\Enums\ProjectStatus;
 use App\Enums\SaleKind;
 use App\Enums\TimeEntryStatus;
@@ -319,7 +321,8 @@ final class SoldVsActual
      */
     private function invoices(array &$units, CarbonImmutable $from, CarbonImmutable $to): void
     {
-        $zero = ['invoiced' => '0.00', 'invoiced_total' => '0.00', 'collected' => '0.00', 'outstanding' => '0.00', 'overdue' => '0.00', 'invoice_ids' => []];
+        $zero = ['invoiced' => '0.00', 'invoiced_total' => '0.00', 'collected' => '0.00', 'outstanding' => '0.00', 'overdue' => '0.00', 'planned' => '0.00',
+            'bank_amount' => '0.00', 'invoiced_minutes' => 0, 'invoice_ids' => []];
         foreach ($units as $index => $unit) {
             $units[$index] += $zero;
         }
@@ -330,9 +333,10 @@ final class SoldVsActual
         }
 
         $links = HoldedInvoiceLink::query()->whereIn('project_id', $projectIds)
-            ->with('invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft')
+            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft', 'invoice.lines:id,holded_invoice_id,name,service_code,units,subtotal'])
             ->orderBy('id')->get()
-            ->filter(fn (HoldedInvoiceLink $link): bool => $link->invoice->counts());
+            // Lo facturado y, aparte, los borradores (previsto, D-395); nunca lo anulado.
+            ->filter(fn (HoldedInvoiceLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);
 
         // Unidad de cada enlace: la bolsa (si la hay) o el proyecto.
         $unitIndex = [];
@@ -362,7 +366,32 @@ final class SoldVsActual
         foreach ($byInvoice as $invoiceId => $indexes) {
             /** @var HoldedInvoice $invoice */
             $invoice = $invoices[$invoiceId];
+            if ($invoice->is_draft) {
+                foreach (self::split((string) $invoice->subtotal, count($indexes)) as $n => $amount) {
+                    $units[$indexes[$n]]['planned'] = Money::round(Money::add($units[$indexes[$n]]['planned'], $amount));
+                }
+
+                continue;
+            }
+
+            // Lo que dicen sus líneas (D-396): horas facturadas (unidades de las líneas de horas y de
+            // bolsa) y el importe de las líneas de bolsa (con su descuento).
+            $minutes = 0;
+            $bankAmount = '0';
+            foreach ($invoice->lines as $line) {
+                $kind = InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units);
+                $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
+                if ($kind->countsHours()) {
+                    $minutes += $sign * (int) round((float) $line->units * 60);
+                }
+                if ($kind === InvoiceLineKind::HourBank) {
+                    $bankAmount = Money::add($bankAmount, Money::abs((string) $line->subtotal));
+                }
+            }
+            $minuteShares = self::splitMinutes($minutes, count($indexes));
+
             $parts = [
+                'bank_amount' => self::split(($invoice->kind === HoldedDocumentKind::CreditNote ? '-' : '').Money::round($bankAmount), count($indexes)),
                 'invoiced' => self::split((string) $invoice->subtotal, count($indexes)),
                 'invoiced_total' => self::split((string) $invoice->total, count($indexes)),
                 'collected' => self::split((string) $invoice->paid_total, count($indexes)),
@@ -373,6 +402,7 @@ final class SoldVsActual
                 foreach ($parts as $field => $amounts) {
                     $units[$index][$field] = Money::round(Money::add($units[$index][$field], $amounts[$n]));
                 }
+                $units[$index]['invoiced_minutes'] += $minuteShares[$n];
                 $units[$index]['invoice_ids'][] = $invoiceId;
             }
         }
@@ -426,6 +456,16 @@ final class SoldVsActual
         $project = $unit['project'];
         /** @var SaleKind $kind */
         $kind = $unit['kind'];
+        // Por horas, lo vendido son las horas facturadas (sus líneas de horas, D-396).
+        if ($kind === SaleKind::Hourly && $unit['sold_minutes'] === null && $unit['invoiced_minutes'] > 0) {
+            $unit['sold_minutes'] = $unit['invoiced_minutes'];
+        }
+        // Una bolsa sin precio en Audax (las de ClickUp): el de su línea «bolsadehoras» en Holded.
+        $soldSource = $unit['sold_amount'] !== null ? 'audax' : null;
+        if ($kind === SaleKind::HourBank && $unit['sold_amount'] === null && bccomp(Money::of($unit['bank_amount']), '0', 2) > 0) {
+            $unit['sold_amount'] = $unit['bank_amount'];
+            $soldSource = 'holded';
+        }
         $sold = $unit['sold_minutes'];
         $real = (int) $unit['real_minutes'];
         $pct = $sold !== null && $sold > 0 ? round($real / $sold * 100, 1) : null;
@@ -447,6 +487,7 @@ final class SoldVsActual
             'consumption_pct' => $pct,
             'status' => self::status($pct),
             'invoices_count' => count($unit['invoice_ids']),
+            'invoiced_minutes' => (int) $unit['invoiced_minutes'],
         ];
 
         if (! $financials) {
@@ -463,6 +504,8 @@ final class SoldVsActual
 
         return $row + [
             'sold_amount' => $kind === SaleKind::Hourly ? null : $unit['sold_amount'],
+            'sold_source' => $kind === SaleKind::Hourly ? null : $soldSource,
+            'planned' => $unit['planned'],
             'hours_value' => $kind === SaleKind::Hourly ? $unit['hours_value'] : null,
             'invoiced' => $unit['invoiced'],
             'invoiced_total' => $unit['invoiced_total'],
@@ -525,6 +568,7 @@ final class SoldVsActual
             'outstanding' => $sum('outstanding'),
             'overdue' => $sum('overdue'),
             'to_invoice' => $sum('to_invoice'),
+            'planned' => $sum('planned'),
             'cost' => $cost,
             'margin' => $margin,
             'margin_pct' => bccomp($income, '0', 2) > 0 ? round((float) bcdiv(bcmul($margin, '100', 6), $income, 4), 1) : null,
@@ -547,6 +591,22 @@ final class SoldVsActual
         $split = array_values(Cents::largestRemainder(array_fill(0, $parts, $share), Money::round(Money::abs($amount))));
 
         return $negative ? array_map(fn (string $value): string => Money::isZero($value) ? '0.00' : Money::round('-'.$value), $split) : $split;
+    }
+
+    /**
+     * Minutos repartidos en $parts partes enteras que suman exactamente $minutes.
+     *
+     * @return list<int>
+     */
+    private static function splitMinutes(int $minutes, int $parts): array
+    {
+        $base = intdiv($minutes, max(1, $parts));
+        $shares = array_fill(0, max(1, $parts), $base);
+        for ($i = 0, $left = $minutes - $base * count($shares); $left !== 0; $i++, $left += $left > 0 ? -1 : 1) {
+            $shares[$i % count($shares)] += $left > 0 ? 1 : -1;
+        }
+
+        return $shares;
     }
 
     private static function positive(string $value): string
