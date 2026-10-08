@@ -114,8 +114,10 @@ test('el cliente ve las tareas y el Gantt de solo lectura de un proyecto abierto
 
     try {
         await openClient(admin);
+        // El enlace lleva el código delante («ARR-MKT Campañas 2026», D-322).
         const href = await admin
-            .getByRole('link', { name: CLOSED_PROJECT, exact: true })
+            .getByRole('link', { name: new RegExp(`${CLOSED_PROJECT}$`) })
+            .first()
             .getAttribute('href');
         closedId = /\/proyectos\/(\d+)/.exec(href ?? '')?.[1] ?? '';
     } finally {

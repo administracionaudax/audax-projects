@@ -35,7 +35,9 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Los tests nunca deben tocar la base de desarrollo o producción (D-002):
-     * solo se permiten bases cuyo nombre termine en "_test" o SQLite en memoria.
+     * solo se permiten bases cuyo nombre termine en "_test" o SQLite en memoria. Con Pest en
+     * paralelo, Laravel crea una por proceso con el sufijo «_test_N» (audax_projects_test_test_3):
+     * también valen.
      */
     private function guardAgainstNonTestDatabase(?Application $app = null): void
     {
@@ -43,7 +45,7 @@ abstract class TestCase extends BaseTestCase
         $connection = $config->get('database.default');
         $database = (string) $config->get("database.connections.{$connection}.database");
 
-        if ($database !== ':memory:' && ! str_ends_with($database, '_test')) {
+        if ($database !== ':memory:' && preg_match('/_test(_test_\d+)?$/', $database) !== 1) {
             throw new RuntimeException("Tests abortados: la base activa [{$database}] no es de test.");
         }
     }
