@@ -84,6 +84,18 @@ final class Money
         return bcround(self::of($value), 2);
     }
 
+    /**
+     * Valor absoluto (Fase 12: las rectificativas van en negativo).
+     *
+     * @return numeric-string
+     */
+    public static function abs(string $value): string
+    {
+        $value = self::of($value);
+
+        return bccomp($value, '0', self::SCALE) < 0 ? bcmul($value, '-1', self::SCALE) : $value;
+    }
+
     public static function isZero(string $value): bool
     {
         return bccomp(self::of($value), '0', self::SCALE) === 0;

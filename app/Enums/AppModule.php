@@ -22,6 +22,8 @@ enum AppModule: string
     case Forecast = 'forecast';
     /** «Personas» (Fase 11, D-330): registro de jornada y RR. HH.; apagado por defecto. */
     case People = 'people';
+    /** Facturación (Fase 12, D-380): lectura de Holded y «Vendido frente a real»; apagado por defecto. */
+    case Billing = 'billing';
 
     public function label(): string
     {

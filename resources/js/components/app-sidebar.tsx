@@ -12,6 +12,8 @@ import {
     ListChecks,
     MessagesSquare,
     NotebookPen,
+    Receipt,
+    Scale,
     Settings2,
     SlidersHorizontal,
     Sparkles,
@@ -280,10 +282,36 @@ export function peopleNavItems(
 }
 
 /**
- * Sección «Facturación» (D-260): preparada para el futuro módulo. Sin entradas, no se pinta.
+ * Sección «Facturación» (D-260; Fase 12, D-393), con el módulo `billing` visible (las habilidades ya
+ * lo tienen en cuenta): «Vendido frente a real» para quien ve las bolsas o los datos económicos y
+ * «Facturas» (con «Contactos de Holded» y «Ajustes») solo con view-financials. Sin entradas, la
+ * sección no se pinta.
  */
-export function billingNavItems(_can: Abilities): NavItem[] {
-    return [];
+export function billingNavItems(can: Abilities): NavItem[] {
+    const items: (NavItem | false)[] = [
+        can.viewSoldVsActual === true && {
+            title: t('billing.nav.sold_vs_actual'),
+            href: '/informes/vendido-frente-a-real',
+            icon: Scale,
+        },
+        can.viewBilling === true && {
+            title: t('billing.nav.invoices'),
+            href: '/facturacion/facturas',
+            icon: Receipt,
+            items: [
+                {
+                    title: t('billing.nav.contacts'),
+                    href: '/facturacion/contactos',
+                },
+                {
+                    title: t('billing.nav.settings'),
+                    href: '/facturacion/ajustes',
+                },
+            ],
+        },
+    ];
+
+    return items.filter((item): item is NavItem => Boolean(item));
 }
 
 /**

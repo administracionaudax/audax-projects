@@ -360,6 +360,7 @@ return [
             'day_plan' => 'Plan del día',
             'forecast' => 'Previsión',
             'people' => 'Personas (registro de jornada)',
+            'billing' => 'Facturación (lectura de Holded)',
         ],
     ],
     // Tipos de proyecto de WeeklySync (10.4, ProjectKindCode): por prefijo del código y por grupo.

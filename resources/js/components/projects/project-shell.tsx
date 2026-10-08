@@ -21,6 +21,8 @@ const TABS: Tab[] = [
     { id: 'bolsas', label: 'project_tabs.hour_banks' },
     { id: 'horas', label: 'project_tabs.time' },
     { id: 'planificacion', label: 'project_tabs.planning' },
+    // Facturación (Fase 12, D-392): «Vendido frente a real» y facturas de Holded.
+    { id: 'facturacion', label: 'project_tabs.billing' },
     { id: 'chat', label: 'project_tabs.chat' },
     { id: 'archivos', label: 'project_tabs.files' },
     { id: 'ajustes', label: 'project_tabs.settings' },
@@ -51,12 +53,22 @@ export function ProjectShell({
     const collaborator = auth?.user?.is_collaborator ?? false;
     // Planificación (D-296): quien gestiona el proyecto, con el módulo `forecast` visible.
     const plans = auth?.can?.useForecast === true && canManage;
+    // Facturación (D-392): con el módulo y view-sold-vs-actual; nunca en un interno. El servidor
+    // comprueba además que un gestor solo vea la de sus proyectos.
+    const bills =
+        auth?.can?.viewSoldVsActual === true &&
+        project.billing_type !== 'internal' &&
+        !collaborator &&
+        (auth.can.viewBilling === true ||
+            canManage ||
+            (auth.user?.roles ?? []).includes('department_manager'));
     const tabs = TABS.filter(
         (item) =>
             (item.id !== 'bolsas' ||
                 (project.billing_type === 'hour_bank' && !collaborator)) &&
             (item.id !== 'horas' || !collaborator) &&
             (item.id !== 'planificacion' || plans) &&
+            (item.id !== 'facturacion' || bills) &&
             (item.id !== 'ajustes' || canManage),
     );
 

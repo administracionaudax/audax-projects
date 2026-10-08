@@ -189,3 +189,13 @@ Schedule::command('help:prune-uploads')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping()
     ->onOneServer();
+
+/*
+| Fase 12 (D-387): sincronización de solo lectura con Holded cada noche, antes de la copia nocturna.
+| Con el módulo Facturación apagado o sin HOLDED_API_KEY, la orden no hace nada.
+*/
+Schedule::command('app:holded-sync --programada')
+    ->dailyAt('02:30')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping(120)
+    ->onOneServer();

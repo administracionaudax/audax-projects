@@ -13,6 +13,7 @@ export type ProjectTab =
     | 'chat'
     | 'archivos'
     | 'planificacion'
+    | 'facturacion'
     | 'ajustes';
 
 export const urls = {

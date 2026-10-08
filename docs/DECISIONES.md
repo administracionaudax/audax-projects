@@ -2719,6 +2719,104 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 ### D-379 · Fuera de R3 (por ahora)
 - Vacaciones por antigüedad (W-063), reglas de cobertura mínima (W-072, R4: aviso), asignación y solicitud masivas con pantalla propia (W-066: hoy, «Recalcular» y el importador), suscripción iCal (W-079, R4) y calendarios por centro de trabajo (un solo centro, D-367).
 
+## Fase 12: Facturación · F1, lectura de Holded y vendido frente a real (rama `facturacion-f1`)
+
+> El propietario aún no ha contestado el §7 de `docs/PLAN-FASE-12.md`: F1 toma las opciones recomendadas (D-398). Cada supuesto está aquí para poder cambiarlo.
+
+### D-380 · Fase 12 y módulo `billing` **[cambia en parte el SPEC §18]**
+- La facturación pasa a ser la **Fase 12** (`docs/PLAN-FASE-12.md`, antes `PLAN-FACTURACION.md`). F1 solo **lee** Holded: el SPEC §18 («solo exportamos datos para facturar») cambia en que ahora se consultan las facturas, pero Audax **no emite** ni escribe nada en Holded.
+- Módulo nuevo `billing` (`AppModule::Billing`), **apagado** por defecto y en las instalaciones en uso (migración `add_billing_off_to_stored_modules`). Con él apagado, sus rutas dan 404 y la sección no sale; en modo de prueba (D-239) solo lo ven los admins y la sincronización de la noche no corre.
+
+### D-381 · Ficha fiscal del cliente
+- Tabla 1:1 `client_billing_profiles`: razón social, NIF-IVA, dirección fiscal (dirección, CP, población, provincia y país), régimen (`general`, `intra_eu`, `export`, `exempt`, `not_subject`), forma de pago (lista cerrada hasta F2), días y día fijo de pago, idioma y emails de facturación.
+- **El NIF sigue en `clients.tax_id`** (el plan lo movía): ya lo usan el cliente, el portal y las importaciones; moverlo no aporta nada en F1.
+- Se edita en `/clientes/{id}/facturacion` (botón «Facturación» de la ficha) con `view-billing`. La sincronización rellena **solo los campos vacíos** desde el contacto de Holded (y el NIF del cliente si no lo tiene); lo escrito en Audax manda.
+
+### D-382 · Tipo de facturación «Fee mensual»
+- `billing_type = monthly_fee` con `monthly_minutes` (horas al mes) y `monthly_fee_amount` (importe al mes sin IVA, dato económico: solo con view-financials). En el formulario del proyecto, para todos (no depende del módulo: corrige D-135).
+- Para no cambiar los informes que ya existen, sus horas se **valoran como «por horas»** (tarifa congelada); el ingreso del fee en «Vendido frente a real» es su importe al mes.
+- La Weekly (D-188) lo reconoce por el tipo y usa `monthly_minutes` antes que el presupuesto o la descripción. Una nueva importación de ClickUp no lo devuelve a «Por horas».
+- **Conversión de propuesta**: `app:convert-monthly-fees --dry-run` lista los que parecen fees (descripción «Fee mensual…» o código FE) con sus horas al mes y, si hay facturas de Holded enlazadas, el importe de la última como propuesta; sin `--dry-run`, pide confirmación (o `--force`; `--codigo=` para elegir). Nada se convierte solo.
+
+### D-383 · Datos del emisor
+- Ajuste `billing_issuer` (razón social, NIF, domicilio, Registro Mercantil, IBAN, email y teléfono) en `/facturacion/ajustes`, con view-billing y en la auditoría de ajustes. No va en `/admin` porque quien lleva las finanzas puede no ser admin. Se usará al emitir (F4/F5).
+
+### D-384 · Cliente de la API v2 de Holded
+- `HttpHoldedClient`: `https://api.holded.com/api/v2`, `Authorization: Bearer` con `HOLDED_API_KEY` (nunca en Git, en mensajes ni en registros), `Accept` y `User-Agent` propios, **solo GET**.
+- Paginación por cursor (`?limit=100&cursor=`): acepta el siguiente cursor en `meta.next_cursor`, `next_cursor`, `meta.cursor.next`, `pagination.next_cursor` o el `cursor` de `links.next`, y corta si se repite.
+- **Límite**: nunca más de `HOLDED_PER_MINUTE` peticiones por minuto (60 por defecto, el plan más bajo), con un limitador compartido entre procesos. 429: espera `Retry-After` (como mucho 120 s) y reintenta hasta 5 veces; 5xx y errores de conexión, 2 reintentos con espera creciente; tiempo máximo 30 s (10 s de conexión).
+- Errores claros en español (`HoldedRequestFailed`): sin clave, 401 (clave rechazada), 402 (plan sin API), 403 (sin permiso para ese recurso), 404, 429 y 5xx.
+- **Supuesto:** la referencia pública de la v2 no detalla todos los campos (HOLDED-INVENTARIO), así que `HoldedPayload` lee cada dato por su nombre de la v2 y, si no, por el de la v1 (fechas ISO o Unix, importes en cadena). El PDF se acepta en binario o en base64 (v1). **Hay que comprobarlo con la clave real** en la primera sincronización (el registro de la ejecución dice cuántos documentos leyó).
+- `FakeHolded` (`HOLDED_DRIVER=fake`) habla con los mismos campos: vacío en los tests y, en local, coherente con los datos de la base.
+
+### D-385 · Espejo de solo lectura
+- Tablas `holded_contacts`, `holded_projects`, `holded_invoices` (facturas, rectificativas y borradores, con `kind`), `holded_invoice_lines`, `holded_payments`, `holded_invoice_links` y `holded_sync_runs`. Cada objeto, único por su id de Holded y con su correspondencia en `import_refs` (fuente `holded`), como la importación de ClickUp (D-136).
+- **Importes con signo**: las rectificativas, en negativo, para que sumar dé lo facturado neto. Decimales, nunca float.
+- Lo que no cambia en Holded no se reescribe (huella del contenido); si cambia, se rehacen sus líneas y se vuelve a pedir el PDF.
+
+### D-386 · Estado de cobro
+- Se calcula al sincronizar con lo cobrado y lo pendiente de Holded (o, si no lo da, con la suma de sus cobros) y el vencimiento: cobrada, cobrada en parte, pendiente, **vencida** (queda algo y el vencimiento pasó), anulada o borrador. Los vencimientos variables de Audax (mismo día, +1, +7, +14, +30) llegan tal cual.
+
+### D-387 · Sincronización
+- `app:holded-sync`, cada noche a las **02:30** de Madrid (antes de la copia), y «Sincronizar ahora» para los admins (job `SyncHolded` en la cola). Sin el módulo encendido de verdad o sin clave, no hace nada. Un candado impide dos a la vez; cada ejecución queda en `holded_sync_runs` (quién, cuándo, recuentos y error).
+- Lee todo cada noche (son pocos cientos de documentos al año): contactos, proyectos de Holded, facturas, rectificativas, cobros y los PDF que faltan.
+- **Contactos → clientes**: por NIF (sin espacios, guiones ni el «ES» del NIF-IVA) y, si no, por nombre o nombre comercial sin tildes ni forma jurídica, solo si casa con **un** cliente. Los proveedores, acreedores y leads no se leen. **Nunca crea clientes**: los que no casan se resuelven en `/facturacion/contactos` (asignar, descartar o volver a casar solo) y sus facturas pasan al cliente elegido. Lo resuelto a mano no lo toca la sincronización.
+
+### D-388 · Enlace de las facturas con proyectos y bolsas
+- Automáticos (se rehacen cada noche): **código F** (el número es el `invoice_reference` de una bolsa o el «Factura: F…» de un proyecto, D-135), **proyecto de Holded** (si su nombre lleva el código del proyecto de Audax; en un proyecto de bolsas, la bolsa vigente en la fecha) y **rectificativa** (hereda los de su factura).
+- Como las etiquetas de Holded no llevan el proyecto (el propietario, 08/10), para el resto hay **sugerencias** por cliente, servicio de las líneas y fecha (`InvoiceLinkSuggester`): se aceptan con un clic en el listado o en la ficha, como enlace **a mano**. Nada se enlaza solo por sugerencia.
+- Solo se quitan los manuales. Una factura enlazada con varias unidades se reparte a partes iguales al céntimo.
+
+### D-389 · PDF original
+- En el disco privado (`holded/{año}/{id}.pdf`), descargado por la noche (como mucho `HOLDED_PDFS_PER_RUN`, 200, por ejecución para cuidar el cupo del plan) o la primera vez que alguien lo abre. Solo con view-billing. No entra en ninguna purga (se conserva 6 años como mínimo, PLAN §2.3 L-11).
+
+### D-390 · «Vendido frente a real»
+- **Unidades**: cada bolsa, cada precio cerrado, cada fee y cada proyecto por horas con actividad. Las bolsas y los precios cerrados se miden **enteros** si están vivos en el periodo; los fees y las horas, **en el periodo** (fee: horas e importe al mes × meses naturales del periodo dentro de sus fechas).
+- **Real** = horas aprobadas o bloqueadas de toda la plantilla (son totales de la unidad, como el consumo de una bolsa); las enviadas y en borrador van aparte. **Desviación** = real − vendido. Semáforo de la Weekly: en riesgo desde el 85 %, pasado por encima del 100 % (casos compartidos PHP/TS en `tests/fixtures/billing/sold-vs-actual-status.json`).
+- **Importes** (solo con view-billing): facturado = **base sin IVA** de lo que cuenta (D-397); cobrado y pendiente, **con IVA** (lo que entra en el banco), y así se rotulan. Ingreso = lo vendido (por horas, el valor de las horas a su tarifa congelada); coste = el de las horas reales; margen = ingreso − coste; precio efectivo = ingreso ÷ horas reales; pendiente de facturar = ingreso − facturado.
+- Filtros en la URL: periodo y clientes (los de los informes; por defecto, el año) más tipo de venta (`?venta[]=`) y responsable (gestor principal). Excel, CSV, PDF e impresión con el patrón de D-139/D-140 (`ReportKind::SoldVsActual`); se puede programar solo con el módulo encendido de verdad.
+- Gráfica de barras de bala (lo real sobre la pista de lo vendido, el exceso en el rojo de estado tras un hueco de 2 px y la marca del 100 %), validada con el validador de paleta de dataviz en los dos temas; tooltip también con el teclado y vista de tabla.
+
+### D-391 · Permisos
+- `use-billing`: plantilla interna activa con el módulo visible (nunca un colaborador externo ni un cliente).
+- `view-billing` (= use-billing + view-financials): importes, facturas, cobros, PDF, contactos, ficha fiscal, emisor y enlaces.
+- `view-sold-vs-actual`: además quien ve las bolsas (responsables y gestores, D-035), **solo en horas**; un gestor, solo sus proyectos.
+- `sync-holded`: admins. Matriz por rol en `tests/Feature/Billing/BillingAccessTest.php`.
+
+### D-392 · En las fichas
+- Pestaña **Facturación** del proyecto (`/proyectos/{id}/facturacion`, nunca en un interno), página `/clientes/{id}/facturacion` (ficha fiscal, contactos de Holded, vendido frente a real y facturas) y panel diferido en el detalle de cada bolsa.
+
+### D-393 · Navegación
+- Sección «Facturación» (D-260): «Vendido frente a real» (view-sold-vs-actual) y «Facturas» con «Contactos de Holded» y «Ajustes» (view-billing). Tarjeta en `/informes`.
+
+### D-394 · Datos de ejemplo (solo local)
+- Al final del `DemoDataSeeder`, para no cambiar el resto: emisor ficticio, un fee convertido (FER-FE1, con las reuniones internas de Pablo pasadas a él) y otro sin convertir (MIR-FE1, para la orden), el código F de cada bolsa vendida y de cada precio cerrado (con su presupuesto de horas) y una sincronización con el Holded falso: facturas coherentes con bolsas y fees, una rectificativa CN, cobros y vencidas, borradores, una factura sin enlazar con sugerencia y un contacto sin casar con su factura.
+
+### D-395 · Borradores de Holded
+- Las 16 recurrentes de Audax generan cada día 29 una factura **en borrador** que alguien edita y aprueba. Se guardan sin número, con el estado «Borrador»; **nunca cuentan como facturado**: en el informe van como «previsto» (`planned`). Si se borran en Holded, se borran aquí; al aprobarse, la misma factura recibe su número.
+
+### D-396 · Las líneas: el servicio del catálogo
+- Se guarda el concepto y su código (`service_code`). **bolsadehoras (BDH)**: unidades = horas y precio = €/h, con su descuento de línea; **Fee MK y RRSS (FMKRRSS) y Fee Producto digital (F_UX)**: una unidad por mes; **Inversión y Herramienta**: gasto repercutido, no horas; el resto (DES, D_UX_UI, D_GR, SEO, auditorías, mantenimiento): con más de una unidad, horas.
+- Por horas, **lo vendido son las horas facturadas** (unidades de sus líneas de horas); una bolsa sin precio en Audax toma el de su línea «bolsadehoras» (con descuento). Las horas de la bolsa siguen siendo las de Audax (las de la línea salen como horas facturadas).
+
+### D-397 · Rectificativas (serie CN)
+- Serie aparte «CN» + año + 4 cifras (CN250004). Un documento con número CN es rectificativa aunque la API lo dé como factura, con importes negativos y enlazado con su original si la API da la referencia.
+- Holded la enseña «Anulado»: eso no la deja fuera. **Facturado = emitidas − rectificativas, sin restar dos veces**: una factura anulada no cuenta y su rectificativa tampoco; si la original no está anulada, la rectificativa resta (por diferencias o por el total). Misma regla en el informe y en el sumatorio del listado (`HoldedInvoice::counts` y `countingIn`).
+
+### D-398 · Supuestos en las preguntas sin respuesta (PLAN-FASE-12 §7)
+- **P1:** opción A (Holded sigue emitiendo; F1 solo lee).
+- **P2:** A, fee con importe fijo al mes y N horas; el exceso se ve en el informe, no se factura solo.
+- **P3:** A (recurrentes en borrador que alguien aprueba): confirmado por lo observado en Holded.
+- **P4:** serie «F[YY]%%%%» y el código F de ClickUp es el número de Holded (confirmado: F260194); rectificativas «CN».
+- **P5 a P8:** no afectan a F1 (sin rol de gestoría, sin conciliación ni remesas, sin presupuestos —Audax no los usa en Holded— y sin emisión).
+
+### D-399 · Para encenderlo, y lo que no entra en F1
+- **Clave**: en Holded, Configuración → Desarrolladores → nueva clave de API **solo de lectura** con los ámbitos de **Contactos**, **Proyectos** y **Ventas** (facturas, rectificativas, cobros y descarga de PDF). Sin permisos de escritura. Se pone en `shared/.env` como `HOLDED_API_KEY` (y `HOLDED_PER_MINUTE` si el plan permite más de 60).
+- **Plan**: uno con acceso a la API; Audax ya usa recurrentes, que son del plan **Estándar** o superior (H-146). Comprobar en Holded el cupo de peticiones al mes: la sincronización hace unas 10-20 por noche más los PDF nuevos (la primera noche, hasta 200); con un cupo de 500 al mes, bajar `HOLDED_PDFS_PER_RUN`.
+- **Pasos**: poner la clave → encender «Facturación» en `/admin/ajustes` → «Sincronizar ahora» en `/facturacion/ajustes` → resolver los contactos sin casar → aceptar las sugerencias de las facturas sin enlazar → `php artisan app:convert-monthly-fees --dry-run` y, revisada, sin `--dry-run`.
+- **Fuera de F1**: emitir o escribir en Holded (F4), catálogo, series e impuestos propios (F2), presupuestos (F3), recordatorios de cobro y conciliación, rol de gestoría y la importación del histórico previo a la cuenta de la API (F7).
+
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2746,6 +2844,7 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
+- Facturación (Fase 12): F1, D-380 a D-399.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-245 a D-249.
 
-La siguiente libre es **D-245** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-380 en adelante, libres).
+La siguiente libre es **D-245** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-400 en adelante, libres).

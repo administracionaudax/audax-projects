@@ -112,7 +112,8 @@ export type AppModule =
     | 'assistant'
     | 'day_plan'
     | 'forecast'
-    | 'people';
+    | 'people'
+    | 'billing';
 
 // --- Semanas, envíos e informe ----------------------------------------------------------------
 

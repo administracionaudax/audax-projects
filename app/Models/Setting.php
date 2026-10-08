@@ -70,7 +70,7 @@ class Setting extends Model
         'week_reminder_enabled' => true,
         // Fase 10 (D-151). Módulos activos (F-177): apagado, sus rutas dan 404 y no salen en la
         // navegación (App\Domain\Weeklies\AppModules).
-        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true, 'day_plan' => true, 'forecast' => false, 'people' => false],
+        'modules' => ['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => true, 'day_plan' => true, 'forecast' => false, 'people' => false, 'billing' => false],
         // Modo de prueba (D-239): con un módulo apagado, los admins lo ven y lo usan; nadie más, y
         // los procesos automáticos y los avisos a otras personas siguen como apagados.
         'modules_preview' => false,
@@ -109,6 +109,10 @@ class Setting extends Model
         // de la app (AAAA-MM-DD; null, desde siempre). En R5, el día del corte con Woffu: lo anterior
         // llega como saldo inicial.
         'people_leave_starts_on' => null,
+        // Facturación (Fase 12, D-383): datos fiscales del emisor (Audax), null hasta que se rellenan
+        // en /facturacion/ajustes. Claves: legal_name, tax_id, address, postal_code, city, province,
+        // country_code, registry, iban, email y phone.
+        'billing_issuer' => null,
     ];
 
     protected static function booted(): void

@@ -139,6 +139,11 @@ class HandleInertiaRequests extends Middleware
                 'managePeople' => $user ? Gate::forUser($user)->allows('manage-people') : false,
                 // R2 (D-355): informes, Inspección y documentos de RR. HH. con el módulo visible.
                 'managePeopleRegister' => $user ? Gate::forUser($user)->allows('manage-people-register') : false,
+                // Facturación (Fase 12, D-391): facturas e importes (view-financials), el informe
+                // «Vendido frente a real» (también en horas) y «Sincronizar ahora» (admins).
+                'viewBilling' => $user ? Gate::forUser($user)->allows('view-billing') : false,
+                'viewSoldVsActual' => $user ? Gate::forUser($user)->allows('view-sold-vs-actual') : false,
+                'syncHolded' => $user ? Gate::forUser($user)->allows('sync-holded') : false,
             ],
         ];
     }

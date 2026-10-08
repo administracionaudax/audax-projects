@@ -20,6 +20,8 @@ enum ReportKind: string
     case ProjectHours = 'project_hours';
     case HourBank = 'hour_bank';
     case Weekly = 'weekly';
+    /** Vendido frente a real (Fase 12, D-390). */
+    case SoldVsActual = 'sold_vs_actual';
 
     public function routeName(): string
     {
@@ -35,6 +37,7 @@ enum ReportKind: string
             self::ProjectHours => 'projects.time.export',
             self::HourBank => 'reports.hour-bank-pdf',
             self::Weekly => 'weeklies.report.pdf',
+            self::SoldVsActual => 'reports.sold-vs-actual',
         };
     }
 }

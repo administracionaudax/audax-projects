@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
@@ -7,6 +7,7 @@ import {
     Receipt,
     Table2,
     UserRound,
+    Scale,
 } from 'lucide-react';
 import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
@@ -78,6 +79,8 @@ export default function ReportsIndex({
     projects,
     people,
 }: ReportIndexProps) {
+    // Vendido frente a real (Fase 12, D-390), con el módulo Facturación.
+    const soldVsActual = usePage().props.auth?.can?.viewSoldVsActual === true;
     const team = people.filter((person) => person.id !== me.id);
 
     return (
@@ -128,6 +131,17 @@ export default function ReportsIndex({
                                 )}
                                 href="/informes/facturacion"
                                 test="r1-index-billing"
+                            />
+                        ) : null}
+                        {soldVsActual ? (
+                            <DashboardCard
+                                icon={Scale}
+                                title={t('billing.report.title')}
+                                description={t(
+                                    'billing.report.index_description',
+                                )}
+                                href="/informes/vendido-frente-a-real"
+                                test="r1-index-sold-vs-actual"
                             />
                         ) : null}
                         <DashboardCard

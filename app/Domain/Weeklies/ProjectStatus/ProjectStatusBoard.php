@@ -57,7 +57,7 @@ final class ProjectStatusBoard
         }
 
         $projects = $this->openProjects(array_values(array_map(intval(...), $clients->modelKeys())))
-            ->get(['id', 'client_id', 'code', 'name', 'billing_type', 'budget_minutes', 'description', 'status']);
+            ->get(['id', 'client_id', 'code', 'name', 'billing_type', 'budget_minutes', 'monthly_minutes', 'description', 'status']);
 
         $weekStart = $today->startOfWeek(CarbonImmutable::MONDAY);
         $monthStart = $today->startOfMonth();

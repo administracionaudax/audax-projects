@@ -11,6 +11,8 @@ enum BillingType: string
     case FixedPrice = 'fixed_price';
     case TimeAndMaterials = 'time_and_materials';
     case Internal = 'internal';
+    /** Fee mensual (Fase 12, D-382): importe fijo al mes con N horas (monthly_fee_amount y monthly_minutes). */
+    case MonthlyFee = 'monthly_fee';
 
     public function label(): string
     {
@@ -19,6 +21,7 @@ enum BillingType: string
             self::FixedPrice => 'Precio cerrado',
             self::TimeAndMaterials => 'Por horas',
             self::Internal => 'Interno',
+            self::MonthlyFee => 'Fee mensual',
         };
     }
 

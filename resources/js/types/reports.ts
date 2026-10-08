@@ -20,6 +20,9 @@ export type ReportQuery = {
     bolsa?: number[];
     tipo?: number[];
     facturable?: 'si' | 'no';
+    /** «Vendido frente a real» (Fase 12, D-390): tipo de venta y responsable. */
+    venta?: string[];
+    responsable?: number;
 };
 
 /**

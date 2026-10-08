@@ -1,9 +1,9 @@
 # Holded → Audax Proyectos: inventario funcional de facturación y ventas
 
-_Investigación del 06/10/2026, en solo lectura, sobre fuentes públicas: centro de ayuda (`help.holded.com/es`), web y precios de Holded, y su API (`holded.com/es/desarrolladores`). No se ha entrado en la cuenta de Audax. La propuesta de construcción está en `docs/PLAN-FACTURACION.md`._
+_Investigación del 06/10/2026, en solo lectura, sobre fuentes públicas: centro de ayuda (`help.holded.com/es`), web y precios de Holded, y su API (`holded.com/es/desarrolladores`). No se ha entrado en la cuenta de Audax. La propuesta de construcción está en `docs/PLAN-FASE-12.md`._
 
 > **Tres avisos antes de empezar**
-> 1. **La API de Holded cambió en junio de 2026.** `developers.holded.com` redirige a `https://www.holded.com/es/desarrolladores`. Hay una **API v2** (`https://api.holded.com/api/v2/…`, `Authorization: Bearer`, paginación por cursor y unos 360 endpoints) y la **v1** (`/api/invoicing/v1/…`) queda obsoleta, pero sigue funcionando. La migración (PLAN-FACTURACION §5) usa la v2.
+> 1. **La API de Holded cambió en junio de 2026.** `developers.holded.com` redirige a `https://www.holded.com/es/desarrolladores`. Hay una **API v2** (`https://api.holded.com/api/v2/…`, `Authorization: Bearer`, paginación por cursor y unos 360 endpoints) y la **v1** (`/api/invoicing/v1/…`) queda obsoleta, pero sigue funcionando. La migración (PLAN-FASE-12 §5) usa la v2.
 > 2. **En Holded, un borrador no consume número.** Tampoco genera asiento ni sale en informes, impuestos o portal. En España el modo borrador es obligatorio y, al **Aprobar**, la factura queda bloqueada (candado verde). Es el flujo central que hay que imitar.
 > 3. **El código F de ClickUp parece el número de factura de Holded.** Las listas importadas llevan `F260170` (D-135), que encaja con una serie de Holded `F[YY]%%%%` (año 26, factura 170). Está en `hour_banks.invoice_reference` y en la descripción de los proyectos («Factura: F…»): servirá para enlazar el histórico. **Hay que confirmarlo** (pregunta P4 del plan).
 

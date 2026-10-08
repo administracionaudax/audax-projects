@@ -58,6 +58,16 @@ class ProjectFactory extends Factory
         ]);
     }
 
+    /** Fee mensual (Fase 12, D-382): 20 h y 1.500 € al mes. */
+    public function monthlyFee(int $hours = 20, string $amount = '1500.00'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'billing_type' => BillingType::MonthlyFee,
+            'monthly_minutes' => $hours * 60,
+            'monthly_fee_amount' => $amount,
+        ]);
+    }
+
     public function internal(): static
     {
         return $this->state(fn (array $attributes) => [

@@ -1,4 +1,6 @@
-# Facturación en Audax Proyectos: investigación legal, encaje y propuesta
+# Fase 12: Facturación (investigación legal, encaje, propuesta y entregas)
+
+> **Estado (08/10/2026):** F0 pendiente del propietario (preguntas del §7; para F1 se toman las opciones recomendadas, D-398). **F1 · Lectura de Holded y vendido frente a real: en curso** (rama `facturacion-f1`, D-380 a D-399; lo construido, en el §8). F2 a F8, pendientes. Este documento era `docs/PLAN-FACTURACION.md`.
 
 _Investigación del 06/10/2026, en solo lectura (rama `investigacion-facturacion`). No se ha escrito código ni se ha tocado el servidor. El inventario de Holded, con sus ids `H-001…H-146`, está en `docs/HOLDED-INVENTARIO.md`._
 
@@ -303,7 +305,7 @@ Importes en `decimal`, minutos enteros e instantes en UTC, como el resto de la a
 | Entrega | Contenido | Por qué en este orden |
 |---|---|---|
 | **F0 · Decisiones** | Respuestas a P1-P8, revisión de §2 con la gestoría y decisión que cambia el SPEC §18 | Sin esto no se elige la estrategia |
-| **F1 · Lectura de Holded y vendido frente a real** | Ficha fiscal del cliente, datos del emisor, tipo `monthly_fee`, sincronización **de solo lectura** con la API v2 (contactos ↔ clientes, facturas, rectificativas, cobros y PDF), enlace por el código F e informe **vendido frente a real** | Da el objetivo de negocio ya, sin riesgo legal ni cambiar cómo se factura |
+| **F1 · Lectura de Holded y vendido frente a real** (**en curso**, §8) | Ficha fiscal del cliente, datos del emisor, tipo `monthly_fee`, sincronización **de solo lectura** con la API v2 (contactos ↔ clientes, facturas, rectificativas, cobros y PDF), enlace por el código F e informe **vendido frente a real** | Da el objetivo de negocio ya, sin riesgo legal ni cambiar cómo se factura |
 | **F2 · Catálogo y ajustes** | Servicios, impuestos, formas de pago, series (espejo de Holded), textos legales, plantilla PDF, rol Gestoría y permisos | Base de todo lo demás |
 | **F3 · Presupuestos** | Editor, PDF, envío, portal con aceptación, previsión por hitos, convertir a proyecto o a factura | Es lo que más usa quien vende y no toca la numeración fiscal |
 | **F4 · Pendiente de facturar y emisión vía Holded** | Bandeja, «Facturar horas», bolsas, excesos, fees e hitos → borrador; **Aprobar** emite en Holded por la API, guarda número y PDF y bloquea las horas | La plantilla ya trabaja en Audax; Holded solo emite |
@@ -385,3 +387,28 @@ Importes en `decimal`, minutos enteros e instantes en UTC, como el resto de la a
 - Ley 37/1992 del IVA: https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740
 - Prensa (no oficial) sobre el anuncio: https://www.infobae.com/espana/agencias/2026/10/05/hacienda-retrasa-verifactu-hasta-2028-para-alinearlo-con-la-factura-electronica/
 - Holded: ver `docs/HOLDED-INVENTARIO.md`.
+
+---
+
+## 8. F1 · Lo construido (rama `facturacion-f1`, 08/10/2026)
+
+Decisiones D-380 a D-399 en `docs/DECISIONES.md`. Todo va detrás del módulo `billing`, **apagado**.
+
+**Datos**
+- `client_billing_profiles` (ficha fiscal 1:1; el NIF sigue en `clients.tax_id`), ajuste `billing_issuer` (emisor), `projects.monthly_minutes` y `monthly_fee_amount` (tipo `monthly_fee`).
+- Espejo de solo lectura: `holded_contacts`, `holded_projects`, `holded_invoices` (facturas, rectificativas y borradores) con `holded_invoice_lines`, `holded_payments`, `holded_invoice_links` y `holded_sync_runs`; correspondencias en `import_refs` (fuente `holded`).
+
+**Servicios** (`app/Domain/Billing`)
+- `Holded\HttpHoldedClient` (API v2, Bearer, cursor, límite por minuto, 429 con `Retry-After`, errores claros) y `Holded\FakeHolded` (`HOLDED_DRIVER=fake`).
+- `Holded\HoldedSync` (idempotente), `Holded\HoldedContactMatcher`, `HoldedInvoiceLinker`, `InvoiceLinkSuggester`, `SoldVsActual`, `BillingPanel`, `MonthlyFeeConversion` y `BillingAccess`.
+
+**Órdenes**
+- `app:holded-sync` (cada noche a las 02:30; `--sin-pdf`, `--forzar`) y el job `SyncHolded` («Sincronizar ahora»).
+- `app:convert-monthly-fees --dry-run` (propuesta) y sin `--dry-run`, con confirmación (o `--force`, `--codigo=`).
+
+**Pantallas y rutas** (`routes/app/billing.php`)
+- `/informes/vendido-frente-a-real` (con Excel, CSV, PDF e impresión), pestaña `/proyectos/{id}/facturacion`, `/clientes/{id}/facturacion` (ficha fiscal) y el panel en el detalle de cada bolsa.
+- `/facturacion/facturas` (listado, sumatorio, sugerencias) y su ficha con el PDF, `/facturacion/contactos` y `/facturacion/ajustes` (emisor, conexión y sincronizaciones).
+- Sección «Facturación» de la barra lateral, tarjeta en `/informes` y el tipo «Fee mensual» en el formulario del proyecto.
+
+**Para encenderlo:** D-399.

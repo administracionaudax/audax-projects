@@ -918,6 +918,10 @@ final class ClickUpImporter
             $this->report->count('projects', ImportReport::CREATED);
         } else {
             unset($attributes['client_id']);
+            // Un fee ya convertido a su tipo propio (Fase 12, D-382) no vuelve a «Por horas».
+            if ($project->billing_type === BillingType::MonthlyFee && ($attributes['billing_type'] ?? null) === BillingType::TimeAndMaterials) {
+                unset($attributes['billing_type']);
+            }
             $project->fill($attributes);
             $changed = $project->isDirty();
             $project->save();

@@ -83,8 +83,9 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
         ->name('nav.sections.update');
 
     // Una ruta por área (routes/app/*.php), de la Fase 1 a la 10 (weeklies: la Weekly, D-145) y el plan
-    // del día (day-plan, D-250), la previsión (forecast, D-280) y el registro de jornada (people, D-330).
-    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations', 'calendar', 'weeklies', 'day-plan', 'forecast', 'people'] as $area) {
+    // del día (day-plan, D-250), la previsión (forecast, D-280), el registro de jornada (people, D-330) y la
+    // facturación (billing, D-380).
+    foreach (['admin', 'clients', 'projects', 'hour-banks', 'tasks', 'time', 'notifications', 'reports', 'absences', 'workload', 'schedule', 'gantt', 'planning', 'templates', 'portal-access', 'chat', 'realtime', 'chat-media', 'notification-settings', 'privacy', 'audit', 'report-deliveries', 'integrations', 'calendar', 'weeklies', 'day-plan', 'forecast', 'people', 'billing'] as $area) {
         require __DIR__."/app/{$area}.php";
     }
 

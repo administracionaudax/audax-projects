@@ -1,6 +1,13 @@
-import { Head, Link, setLayoutProps, usePage } from '@inertiajs/react';
+import {
+    Deferred,
+    Head,
+    Link,
+    setLayoutProps,
+    usePage,
+} from '@inertiajs/react';
 import { ArrowLeft, ChartColumn, Info, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { BillingPanel } from '@/components/billing/billing-panel';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { HourBankStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
@@ -26,7 +33,7 @@ import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { index as projectsIndex, show as projectShow } from '@/routes/projects';
 import { index as banksIndex, show } from '@/routes/projects/hour-banks';
-import type { HourBankShowProps } from '@/types';
+import type { BillingPanelData, HourBankShowProps } from '@/types';
 
 /**
  * Detalle de una bolsa (SPEC §8, UI): cifras y barra, consumo por semana (dentro de la bolsa
@@ -44,6 +51,7 @@ export default function HourBankShow({
     tasks,
     departments,
     overageDefault,
+    billingEnabled = false,
 }: HourBankShowProps) {
     const can = useAbilities();
     const errors = usePage().props.errors as Record<string, string> | undefined;
@@ -244,6 +252,25 @@ export default function HourBankShow({
                         </section>
                     )}
 
+                    {/* Vendido frente a real y facturas de Holded (Fase 12, D-392): con el módulo. */}
+                    {billingEnabled ? (
+                        <PageSection
+                            title={t('billing.bank.title')}
+                            description={t('billing.bank.description')}
+                        >
+                            <Deferred
+                                data="billing"
+                                fallback={
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('billing.loading')}
+                                    </p>
+                                }
+                            >
+                                <BillingPanelSlot />
+                            </Deferred>
+                        </PageSection>
+                    ) : null}
+
                     <div className="grid gap-8 lg:grid-cols-2">
                         {byPerson !== null ? (
                             <PageSection
@@ -362,4 +389,12 @@ function BankLink({
             <HourBankStatusBadge status={bank.status} />
         </span>
     );
+}
+
+/** El panel diferido de la bolsa (lee la prop ya cargada). */
+function BillingPanelSlot() {
+    const billing = usePage<{ billing?: BillingPanelData | null }>().props
+        .billing;
+
+    return billing ? <BillingPanel panel={billing} compact /> : null;
 }

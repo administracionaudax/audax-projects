@@ -1,0 +1,16 @@
+{
+    "_comment": "Semáforo de «Vendido frente a real» (Fase 12, D-390): consumo = real ÷ vendido × 100 con un decimal; pasado por encima del 100 %, en riesgo desde el 85 % y sin horas vendidas, «none». Lo comprueban SoldVsActual::status (Pest) y saleStatus (Vitest).",
+    "cases": [
+        { "sold": 600, "real": 0, "pct": 0, "status": "ok" },
+        { "sold": 600, "real": 504, "pct": 84, "status": "ok" },
+        { "sold": 600, "real": 509, "pct": 84.8, "status": "ok" },
+        { "sold": 600, "real": 510, "pct": 85, "status": "risk" },
+        { "sold": 600, "real": 540, "pct": 90, "status": "risk" },
+        { "sold": 600, "real": 600, "pct": 100, "status": "risk" },
+        { "sold": 600, "real": 601, "pct": 100.2, "status": "over" },
+        { "sold": 1200, "real": 1320, "pct": 110, "status": "over" },
+        { "sold": 7, "real": 3, "pct": 42.9, "status": "ok" },
+        { "sold": null, "real": 120, "pct": null, "status": "none" },
+        { "sold": 0, "real": 120, "pct": null, "status": "none" }
+    ]
+}

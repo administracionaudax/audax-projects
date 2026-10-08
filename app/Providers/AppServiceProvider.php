@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\Absences\LeaveCalendar;
+use App\Domain\Billing\BillingAccess;
 use App\Domain\DayPlan\DayPlanAccess;
 use App\Domain\Forecast\ForecastAccess;
 use App\Domain\People\PeopleAccess;
@@ -48,6 +49,10 @@ class AppServiceProvider extends ServiceProvider
         'clock',
         'view-people-team',
         'manage-people-register',
+        'use-billing',
+        'view-billing',
+        'view-sold-vs-actual',
+        'sync-holded',
     ];
 
     /**
@@ -128,6 +133,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-people-team', fn (User $user): bool => PeopleAccess::viewsTeam($user));
         // R2 (D-355): informes, exportación para la Inspección, sus accesos y los documentos: RR. HH.
         Gate::define('manage-people-register', fn (User $user): bool => PeopleAccess::managesRegister($user));
+
+        // Facturación (Fase 12, F1; D-391), detrás del módulo billing: usarla, ver importes, facturas,
+        // cobros y datos fiscales (view-financials), el informe «Vendido frente a real» (también quien
+        // ve las bolsas, en horas) y sincronizar con Holded (admins). Ver BillingAccess.
+        Gate::define('use-billing', fn (User $user): bool => BillingAccess::uses($user));
+        Gate::define('view-billing', fn (User $user): bool => BillingAccess::viewsBilling($user));
+        Gate::define('view-sold-vs-actual', fn (User $user): bool => BillingAccess::viewsSoldVsActual($user));
+        Gate::define('sync-holded', fn (User $user): bool => BillingAccess::syncs($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));

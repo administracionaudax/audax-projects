@@ -40,6 +40,12 @@ beforeEach(function () {
         ReportKind::HourBank => new ReportRequest($kind, ['project' => $s->web->id, 'hourBank' => $s->b1->id]),
         // La weekly (Fase 10, D-192): su informe de una semana.
         ReportKind::Weekly => new ReportRequest($kind, ['cycle' => WeeklyCycle::factory()->create()->id]),
+        // Vendido frente a real (Fase 12, D-390), con el módulo Facturación encendido.
+        ReportKind::SoldVsActual => (function () use ($kind): ReportRequest {
+            enableBilling();
+
+            return new ReportRequest($kind, [], $this->week);
+        })(),
     };
 });
 

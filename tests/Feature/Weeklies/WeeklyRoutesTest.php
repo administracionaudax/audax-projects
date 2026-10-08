@@ -216,7 +216,7 @@ it('los ajustes guardan los módulos y el aviso global, y las props compartidas 
         ->assertSessionHasNoErrors();
 
     // Los módulos que no llegan conservan su valor: la previsión sigue apagada (D-280).
-    expect(Setting::get('modules'))->toBe(['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => false, 'day_plan' => true, 'forecast' => false, 'people' => false])
+    expect(Setting::get('modules'))->toBe(['weeklies' => true, 'project_status' => true, 'help' => true, 'suggestions' => true, 'assistant' => false, 'day_plan' => true, 'forecast' => false, 'people' => false, 'billing' => false])
         ->and(Setting::get('global_banner'))->toBe(['message' => 'Mantenimiento el viernes', 'tone' => 'warning']);
 
     $this->actingAs($admin)

@@ -62,6 +62,10 @@ export type Abilities = {
     managePeople?: boolean;
     /** R2 (D-355): informes, Inspección y documentos de RR. HH. con el módulo visible. */
     managePeopleRegister?: boolean;
+    /** Facturación (Fase 12, D-391): facturas e importes, «Vendido frente a real» y sincronizar. */
+    viewBilling?: boolean;
+    viewSoldVsActual?: boolean;
+    syncHolded?: boolean;
 };
 
 /** Temporizador activo del usuario (props compartidas `timer`, SPEC §7). */

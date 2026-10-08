@@ -33,6 +33,8 @@
         <env name="GEMINI_API_KEY" value="" force="true"/>
         <env name="GOOGLE_TTS_DRIVER" value="fake" force="true"/>
         <env name="GOOGLE_TTS_API_KEY" value="" force="true"/>
+        <env name="HOLDED_DRIVER" value="fake" force="true"/>
+        <env name="HOLDED_API_KEY" value="" force="true"/>
         <!-- Google Sheets (D-142): sin credenciales salvo en los tests que las ponen; nunca la API real. -->
         <env name="GOOGLE_CLIENT_ID" value="" force="true"/>
         <env name="GOOGLE_CLIENT_SECRET" value="" force="true"/>

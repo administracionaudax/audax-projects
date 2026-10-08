@@ -70,7 +70,7 @@ final class WeeklyProjectStatus
             ->notArchived()
             ->whereIn('client_id', $clientIds)
             ->orderBy('code')
-            ->get(['id', 'client_id', 'code', 'name', 'billing_type', 'budget_minutes', 'description']);
+            ->get(['id', 'client_id', 'code', 'name', 'billing_type', 'budget_minutes', 'monthly_minutes', 'description']);
 
         if ($projects->isEmpty()) {
             return [];
@@ -134,6 +134,8 @@ final class WeeklyProjectStatus
     {
         return match (true) {
             $project->billing_type === BillingType::HourBank => self::KIND_HOUR_BANK,
+            // El tipo propio del fee mensual (Fase 12, D-382).
+            $project->billing_type === BillingType::MonthlyFee => self::KIND_MONTHLY_FEE,
             // Por la descripción («Fee mensual…», D-135) con horas por proyecto, o por el código
             // FE (10.9b, como el prefijo de WeeklySync) con cualquier tipo que no sea de bolsas.
             ($project->billing_type === BillingType::TimeAndMaterials && self::isMonthlyFee($project)) || self::hasFeeCode($project) => self::KIND_MONTHLY_FEE,
@@ -155,9 +157,13 @@ final class WeeklyProjectStatus
         return preg_match('/^FE\d*$/', (string) end($segments)) === 1;
     }
 
-    /** Minutos al mes del fee: budget_minutes o las horas de «Fee mensual de 20 h.» (D-135). */
+    /** Minutos al mes del fee: monthly_minutes (D-382), budget_minutes o las horas de «Fee mensual de 20 h.» (D-135). */
     public static function feeBudget(Project $project): ?int
     {
+        if ($project->monthly_minutes !== null && $project->monthly_minutes > 0) {
+            return $project->monthly_minutes;
+        }
+
         if ($project->budget_minutes !== null) {
             return $project->budget_minutes;
         }
