@@ -13,6 +13,7 @@
     "project_tabs.chat": "Chat",
     "project_tabs.files": "Archivos",
     "project_tabs.settings": "Ajustes",
+    "project_tabs.billing": "Facturación",
     "project.billing_type.hour_bank": "Bolsas de horas",
     "project.billing_type.fixed_price": "Precio cerrado",
     "project.billing_type.time_and_materials": "Por horas",

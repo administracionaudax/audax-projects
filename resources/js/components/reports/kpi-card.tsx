@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Info, Minus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -32,6 +33,7 @@ export function KpiCard({
     delta,
     loading = false,
     className,
+    children,
 }: {
     label: string;
     definition: string;
@@ -42,6 +44,8 @@ export function KpiCard({
     delta?: KpiDelta;
     loading?: boolean;
     className?: string;
+    /** Debajo de las cifras (p. ej. un medidor, Fase 12). */
+    children?: ReactNode;
 }) {
     return (
         <Card className={cn('gap-2 py-4', className)}>
@@ -79,6 +83,7 @@ export function KpiCard({
                     <p className="text-xs text-muted-foreground">{detail}</p>
                 ) : null}
                 {delta && !loading ? <KpiDeltaLine delta={delta} /> : null}
+                {children}
             </CardContent>
         </Card>
     );

@@ -17,6 +17,7 @@ import {
     Power,
     PowerOff,
     Receipt,
+    Landmark,
     Wallet,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -204,6 +205,7 @@ export default function ClientShow({
 }) {
     const page = usePage();
     const showFinancials = page.props.auth?.can?.viewFinancials === true;
+    const abilities = page.props.auth?.can ?? {};
     const thresholds = page.props.config?.hour_bank_thresholds;
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -329,6 +331,18 @@ export default function ClientShow({
                                 >
                                     <Receipt aria-hidden="true" />
                                     {t('reports_r2.link.billing')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {/* Facturación (Fase 12, D-392): ficha fiscal, facturas de Holded y vendido frente a real. */}
+                        {abilities.viewBilling === true ? (
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={`/clientes/${client.id}/facturacion`}
+                                    data-test="client-billing"
+                                >
+                                    <Landmark aria-hidden="true" />
+                                    {t('billing.client.crumb')}
                                 </Link>
                             </Button>
                         ) : null}

@@ -1,3 +1,4 @@
+import type { BillingPanelData } from './billing';
 /**
  * Props de las páginas del área «hour-banks» (Fase 1). Los tipos de entidad están en ./domain.
  * Contrato con app/Http/Controllers/HourBanks y app/Http/Resources/HourBanks.
@@ -129,6 +130,9 @@ export type HourBankShowProps = {
     departments: HourBankDepartmentOption[];
     /** Política efectiva de las bolsas con «Según el ajuste general». */
     overageDefault: 'allow' | 'block';
+    /** Vendido frente a real y facturas (Fase 12, D-392): diferida; null sin el módulo o el permiso. */
+    billing?: BillingPanelData | null;
+    billingEnabled?: boolean;
 };
 
 /** Filtros de la vista global (/bolsas), tal como van en la URL. */

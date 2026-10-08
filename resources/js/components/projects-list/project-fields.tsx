@@ -29,6 +29,7 @@ export const BILLING_TYPES: BillingType[] = [
     'hour_bank',
     'fixed_price',
     'time_and_materials',
+    'monthly_fee',
     'internal',
 ];
 
@@ -51,7 +52,10 @@ export type ProjectFormData = {
     start_date: string | null;
     due_date: string | null;
     budget_minutes: number | null;
+    /** Fee mensual (Fase 12, D-382). */
+    monthly_minutes: number | null;
     fixed_price_amount: string;
+    monthly_fee_amount: string;
     hourly_rate: string;
 };
 
@@ -384,6 +388,34 @@ export function ProjectFields({
                         />
                         <InputError message={errors.budget_minutes} />
                     </div>
+
+                    {data.billing_type === 'monthly_fee' ? (
+                        <div className="grid content-start gap-2">
+                            <Label htmlFor={`${id}-monthly`}>
+                                {t('projects.form.monthly_minutes')}
+                            </Label>
+                            <DurationInput
+                                id={`${id}-monthly`}
+                                value={data.monthly_minutes}
+                                onChange={(minutes) =>
+                                    set('monthly_minutes', minutes)
+                                }
+                                max={MAX_BUDGET_MINUTES}
+                                placeholder={t(
+                                    'projects.form.monthly_minutes_placeholder',
+                                )}
+                                invalid={Boolean(errors.monthly_minutes)}
+                                aria-describedby={`${id}-monthly-help`}
+                            />
+                            <p
+                                id={`${id}-monthly-help`}
+                                className="text-xs text-muted-foreground"
+                            >
+                                {t('projects.form.monthly_minutes_help')}
+                            </p>
+                            <InputError message={errors.monthly_minutes} />
+                        </div>
+                    ) : null}
                 </div>
             </fieldset>
 
@@ -401,6 +433,20 @@ export function ProjectFields({
                                 error={errors.fixed_price_amount}
                                 onChange={(value) =>
                                     set('fixed_price_amount', value)
+                                }
+                            />
+                        ) : null}
+                        {data.billing_type === 'monthly_fee' ? (
+                            <MoneyField
+                                id={`${id}-monthly-amount`}
+                                label={t('projects.form.monthly_fee_amount')}
+                                help={t(
+                                    'projects.form.monthly_fee_amount_help',
+                                )}
+                                value={data.monthly_fee_amount}
+                                error={errors.monthly_fee_amount}
+                                onChange={(value) =>
+                                    set('monthly_fee_amount', value)
                                 }
                             />
                         ) : null}

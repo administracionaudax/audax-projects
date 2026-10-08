@@ -7,7 +7,7 @@
  *     projects, hour-banks, tasks, time, notifications y reports; en la Fase 5, portal-access; en
  *     la Fase 6, el chat; en la Fase 7, las preferencias de notificación, la auditoría y la
  *     privacidad; en la Fase 8, el orden de las tarjetas de Inicio; en la Fase 9, el envío de
- *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant; y el centro de ayuda, help, y sus sugerencias, suggestions; el plan del día, day-plan; y la previsión, forecast; en la Fase 11, el registro de jornada, people, y las vacaciones y permisos, leave). Laravel no los lee.
+ *     informes, Mis tareas y el calendario del equipo; en la Fase 10, la Weekly y sus fichas, weekly-insights, sus avisos, weekly-reminders, las tareas de Mi espacio, my-space-tasks, y el asistente, assistant; y el centro de ayuda, help, y sus sugerencias, suggestions; el plan del día, day-plan; y la previsión, forecast; en la Fase 11, el registro de jornada, people, y las vacaciones y permisos, leave; en la Fase 12, la facturación, billing). Laravel no los lee.
  *   Una clave solo puede estar en un fichero (tests/js/i18n.test.ts).
  * - Se importan en la compilación (Vite los incrusta en el bundle): no hay petición en runtime.
  * - Claves del frontend: semánticas, en inglés y con puntos (`nav.projects`, `login.title`).
@@ -21,6 +21,7 @@
 import base from '../../../lang/es.json';
 import absences from '../../../lang/ui/absences.json';
 import assistant from '../../../lang/ui/assistant.json';
+import billing from '../../../lang/ui/billing.json';
 import admin from '../../../lang/ui/admin.json';
 import audit from '../../../lang/ui/audit.json';
 import calendar from '../../../lang/ui/calendar.json';
@@ -64,6 +65,7 @@ import workload from '../../../lang/ui/workload.json';
 const messages = {
     ...base,
     ...shared,
+    ...billing,
     ...admin,
     ...audit,
     ...privacy,

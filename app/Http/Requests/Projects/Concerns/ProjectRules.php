@@ -85,11 +85,14 @@ trait ProjectRules
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'due_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'budget_minutes' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BUDGET_MINUTES],
+            // Fee mensual (Fase 12, D-382): horas al mes.
+            'monthly_minutes' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BUDGET_MINUTES],
         ];
 
         if ($this->canSetFinancials()) {
             $rules['fixed_price_amount'] = ['nullable', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'];
             $rules['hourly_rate'] = ['nullable', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'];
+            $rules['monthly_fee_amount'] = ['nullable', 'numeric', 'min:0', 'max:9999999999.99', 'decimal:0,2'];
         }
 
         return $rules;
@@ -108,6 +111,7 @@ trait ProjectRules
             'status.in' => $this->transText('projects.errors.archived_status'),
             'due_date.after_or_equal' => $this->transText('projects.errors.due_before_start'),
             'budget_minutes.max' => $this->transText('hour_banks.errors.total_range', ['max' => Duration::format(self::MAX_BUDGET_MINUTES)]),
+            'monthly_minutes.max' => $this->transText('hour_banks.errors.total_range', ['max' => Duration::format(self::MAX_BUDGET_MINUTES)]),
         ];
     }
 
@@ -118,7 +122,7 @@ trait ProjectRules
     {
         return $this->translatedAttributes('projects', [
             'client_id', 'name', 'code', 'description', 'color', 'billing_type', 'status', 'start_date',
-            'due_date', 'budget_minutes', 'fixed_price_amount', 'hourly_rate', 'owner_user_id', 'member_ids',
+            'due_date', 'budget_minutes', 'monthly_minutes', 'fixed_price_amount', 'monthly_fee_amount', 'hourly_rate', 'owner_user_id', 'member_ids',
         ]);
     }
 

@@ -154,6 +154,7 @@ class HourBankController extends Controller
         return Inertia::render('projects/hour-bank', [
             // Vendido frente a real de la bolsa y sus facturas de Holded (Fase 12, D-392): diferido y
             // solo con el módulo Facturación y view-sold-vs-actual (las facturas, con view-billing).
+            'billingEnabled' => BillingAccess::viewsProject($user, $project),
             'billing' => BillingAccess::viewsProject($user, $project)
                 ? Inertia::defer(fn (): array => app(BillingPanel::class)->forBank($hourBank, $user), 'billing')
                 : null,

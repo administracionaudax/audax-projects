@@ -41,6 +41,8 @@ const MODULES: AppModule[] = [
     'forecast',
     // Personas (D-330): registro de jornada; apagado hasta tener R1 y R2 en producción.
     'people',
+    // Facturación (D-380): lectura de Holded y «Vendido frente a real»; apagado hasta tener la clave.
+    'billing',
 ];
 
 /** Máximo de umbrales de alerta de las bolsas. */

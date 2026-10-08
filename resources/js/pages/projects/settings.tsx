@@ -248,7 +248,9 @@ function ProjectDataForm({
         start_date: project.start_date,
         due_date: project.due_date,
         budget_minutes: project.budget_minutes,
+        monthly_minutes: project.monthly_minutes ?? null,
         fixed_price_amount: project.fixed_price_amount ?? '',
+        monthly_fee_amount: project.monthly_fee_amount ?? '',
         hourly_rate: project.hourly_rate ?? '',
         hour_bank: emptyHourBankForm(project.start_date ?? todayInMadrid()),
     });
@@ -285,6 +287,7 @@ function ProjectDataForm({
 
                     if (!canViewFinancials) {
                         delete payload.fixed_price_amount;
+                        delete payload.monthly_fee_amount;
                         delete payload.hourly_rate;
                     }
 

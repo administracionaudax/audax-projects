@@ -8,7 +8,8 @@ export type BillingType =
     | 'hour_bank'
     | 'fixed_price'
     | 'time_and_materials'
-    | 'internal';
+    | 'internal'
+    | 'monthly_fee';
 
 export type ProjectStatus =
     | 'planned'
@@ -87,6 +88,9 @@ export type Project = {
     start_date: string | null;
     due_date: string | null;
     budget_minutes: number | null;
+    /** Fee mensual (Fase 12, D-382): horas al mes y, con view-financials, el importe al mes. */
+    monthly_minutes?: number | null;
+    monthly_fee_amount?: string | null;
     fixed_price_amount?: string | null;
     hourly_rate?: string | null;
     owner?: UserSummary;

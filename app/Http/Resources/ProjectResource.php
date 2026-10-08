@@ -36,7 +36,10 @@ class ProjectResource extends FinancialResource
             'due_date' => $this->due_date?->toDateString(),
             // El presupuesto de horas no es para un colaborador externo (D-134).
             'budget_minutes' => $request->user()?->isCollaborator() ? null : $this->budget_minutes,
+            // Fee mensual (Fase 12, D-382): horas al mes y, con view-financials, el importe al mes.
+            'monthly_minutes' => $request->user()?->isCollaborator() ? null : $this->monthly_minutes,
             'fixed_price_amount' => $this->when($financials, $this->fixed_price_amount),
+            'monthly_fee_amount' => $this->when($financials, $this->monthly_fee_amount),
             'hourly_rate' => $this->when($financials, $this->hourly_rate),
             'owner' => UserSummaryResource::make($this->whenLoaded('owner')),
             'owner_user_id' => $this->owner_user_id,
