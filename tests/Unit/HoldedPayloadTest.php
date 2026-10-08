@@ -25,3 +25,10 @@ it('lee las unidades con coma decimal', function () {
     expect(HoldedPayload::decimal(['units' => '25,00'], 4, 'units'))->toBe('25.0000')
         ->and(HoldedPayload::decimal(['units' => '0,5'], 4, 'units'))->toBe('0.5000');
 });
+
+it('el tipo de IVA de la línea sale de taxes cuando tax viene a 0 (formato real de la v2)', function () {
+    expect(HoldedPayload::taxRate(['tax' => '0', 'taxes' => ['s_iva_21']]))->toBe('21.00')
+        ->and(HoldedPayload::taxRate(['tax' => '0', 'taxes' => []]))->toBe('0.00')
+        ->and(HoldedPayload::taxRate(['tax' => '10']))->toBe('10.00')
+        ->and(HoldedPayload::taxRate([]))->toBeNull();
+});

@@ -179,12 +179,13 @@ final class HoldedPayload
      */
     public static function taxRate(array $line): ?string
     {
+        // La v2 real da `tax: "0"` y el tipo en `taxes` (["s_iva_21"]): un 0 solo vale si no hay `taxes`.
         $rate = self::decimal($line, 2, 'tax_rate', 'tax', 'vat');
-        if ($rate !== null) {
+        $taxes = $line['taxes'] ?? null;
+        if ($rate !== null && (bccomp($rate, '0', 2) !== 0 || ! is_array($taxes) || $taxes === [])) {
             return $rate;
         }
 
-        $taxes = $line['taxes'] ?? null;
         foreach (is_array($taxes) ? $taxes : [] as $tax) {
             $key = is_array($tax) ? ($tax['key'] ?? $tax['id'] ?? null) : $tax;
             if (is_string($key) && preg_match('/iva_?(\d+(?:[._]\d+)?)/i', $key, $match) === 1) {
@@ -195,7 +196,7 @@ final class HoldedPayload
             }
         }
 
-        return null;
+        return $rate;
     }
 
     /**
