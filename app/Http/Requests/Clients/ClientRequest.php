@@ -63,7 +63,13 @@ class ClientRequest extends FormRequest
             // Icono del cliente (F-126): un emoji, como en WeeklySync. Un emoji compuesto (banderas,
             // familias…) ocupa varios caracteres: se limita a 16 y a un solo grafema.
             'icon' => ['nullable', 'string', 'max:16', function (string $attribute, mixed $value, \Closure $fail): void {
-                if (is_string($value) && $value !== '' && (preg_match('/^\X$/u', $value) !== 1 || preg_match('/[\p{L}\s]/u', $value) === 1)) {
+                // Un solo grafema (con intl, que no depende de la versión de PCRE de cada máquina) y
+                // sin letras ni espacios.
+                if (! is_string($value) || $value === '') {
+                    return;
+                }
+                $graphemes = function_exists('grapheme_strlen') ? grapheme_strlen($value) : (preg_match('/^\X$/u', $value) === 1 ? 1 : 2);
+                if ($graphemes !== 1 || preg_match('/[\p{L}\s]/u', $value) === 1) {
                     $fail(__('clients.errors.icon'));
                 }
             }],
