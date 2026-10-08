@@ -249,12 +249,15 @@ export function InvoicingMonthChart({
                             stroke={MONTH_SERIES[2].color}
                             strokeWidth={LINE_WIDTH}
                             strokeDasharray="5 4"
-                            dot={{
-                                r: 3,
-                                fill: MONTH_SERIES[2].color,
-                                stroke: CHART_INK.surface,
-                                strokeWidth: SURFACE_GAP,
-                            }}
+                            // Puntos solo con pocos meses (si no, se amontonan sobre las columnas).
+                            dot={
+                                rows.length <= 3 && {
+                                    r: 3,
+                                    fill: MONTH_SERIES[2].color,
+                                    stroke: CHART_INK.surface,
+                                    strokeWidth: SURFACE_GAP,
+                                }
+                            }
                             activeDot={{
                                 r: 5,
                                 fill: MONTH_SERIES[2].color,

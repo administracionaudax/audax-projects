@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import {
     Bar,
     BarChart,
-    CartesianGrid,
     Cell,
     LabelList,
     ReferenceLine,
@@ -26,7 +25,6 @@ import {
     amount,
     amountTicks,
     compactCurrency,
-    euroTick,
     shareLabel,
 } from './invoicing-lib';
 
@@ -152,7 +150,7 @@ export function InvoicingBars({
             >
                 <ResponsiveContainer
                     width="100%"
-                    height={rows.length * ROW_HEIGHT + 28}
+                    height={rows.length * ROW_HEIGHT + 4}
                 >
                     <BarChart
                         accessibilityLayer={false}
@@ -161,18 +159,11 @@ export function InvoicingBars({
                         margin={{ top: 0, right: 96, bottom: 0, left: 0 }}
                         barCategoryGap={7}
                     >
-                        <CartesianGrid
-                            horizontal={false}
-                            stroke={CHART_INK.grid}
-                        />
+                        {/* Cada barra lleva su importe: sin eje de euros ni rejilla (en el móvil se pisaban). */}
                         <XAxis
                             type="number"
-                            ticks={ticks}
                             domain={[ticks[0] ?? 0, ticks.at(-1) ?? 'auto']}
-                            tickFormatter={euroTick}
-                            tick={{ fill: CHART_INK.axis, fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={false}
+                            hide
                         />
                         <YAxis
                             type="category"
