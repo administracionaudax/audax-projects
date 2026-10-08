@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\HourBanks;
 
+use App\Domain\Billing\BillingAccess;
+use App\Domain\Billing\BillingPanel;
 use App\Domain\HourBanks\HourBankBreakdown;
 use App\Domain\HourBanks\HourBankCommitment;
 use App\Domain\HourBanks\HourBankDeletion;
@@ -150,6 +152,11 @@ class HourBankController extends Controller
         $project->load(['client:id,name', 'owner' => fn ($owner) => $owner->select(ProjectController::USER_SUMMARY_COLUMNS)]);
 
         return Inertia::render('projects/hour-bank', [
+            // Vendido frente a real de la bolsa y sus facturas de Holded (Fase 12, D-392): diferido y
+            // solo con el módulo Facturación y view-sold-vs-actual (las facturas, con view-billing).
+            'billing' => BillingAccess::viewsProject($user, $project)
+                ? Inertia::defer(fn (): array => app(BillingPanel::class)->forBank($hourBank, $user), 'billing')
+                : null,
             'project' => ResourceData::of(ProjectResource::make($project), $request),
             'canManage' => $canManage,
             'bank' => [

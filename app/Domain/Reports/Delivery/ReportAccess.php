@@ -83,6 +83,10 @@ final class ReportAccess
             ReportKind::Weekly => AppModules::enabled(AppModule::Weeklies)
                 ? $gate->authorize('view', $this->model(WeeklyCycle::class, $request, 'cycle'))
                 : throw new AuthorizationException,
+            // Vendido frente a real (Fase 12, D-390): como la Weekly, solo con el módulo encendido de verdad.
+            ReportKind::SoldVsActual => AppModules::enabled(AppModule::Billing)
+                ? $gate->authorize('view-sold-vs-actual')
+                : throw new AuthorizationException,
         };
     }
 
