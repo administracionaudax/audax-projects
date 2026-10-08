@@ -164,6 +164,7 @@ export function SoldVsActualChart({
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <div
+                                        role="img"
                                         tabIndex={0}
                                         aria-label={t(
                                             'billing.chart.bar_label',

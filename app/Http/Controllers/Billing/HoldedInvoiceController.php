@@ -59,8 +59,7 @@ class HoldedInvoiceController extends Controller
             ->when($filters['desde'] ?? null, fn (Builder $q, string $from) => $q->where('issued_on', '>=', $from))
             ->when($filters['hasta'] ?? null, fn (Builder $q, string $to) => $q->where('issued_on', '<=', $to));
 
-        $totals = (clone $query)->toBase()->selectRaw('COUNT(*) as count, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(total), 0) as total, COALESCE(SUM(paid_total), 0) as paid, COALESCE(SUM(pending_total), 0) as pending')
-            ->whereNotIn('collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])->first();
+        $totals = HoldedInvoice::countingIn(clone $query)->toBase()->selectRaw('COUNT(*) as count, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(total), 0) as total, COALESCE(SUM(paid_total), 0) as paid, COALESCE(SUM(pending_total), 0) as pending')->first();
 
         $page = $query->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name', 'lines'])
             ->orderByDesc('issued_on')->orderByDesc('id')

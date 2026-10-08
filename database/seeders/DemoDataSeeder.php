@@ -324,7 +324,11 @@ class DemoDataSeeder extends Seeder
         }
         foreach (Project::query()->where('billing_type', BillingType::FixedPrice->value)->whereNotNull('fixed_price_amount')->orderBy('id')->get() as $project) {
             $start = $project->start_date ?? $this->today;
-            Project::withoutEvents(fn () => $project->forceFill(['description' => trim(($project->description ?? '').' Factura: '.$next($start).'.')])->save());
+            Project::withoutEvents(fn () => $project->forceFill([
+                'description' => trim(($project->description ?? '').' Factura: '.$next($start).'.'),
+                // Su presupuesto de horas, como lo dejó ClickUp («WE1 - 120h - …», D-135): el importe a 60 €/h.
+                'budget_minutes' => $project->budget_minutes ?? (int) round((float) $project->fixed_price_amount / 60) * 60,
+            ])->save());
         }
 
         app(HoldedSync::class)->run(FakeHolded::fromDatabase($this->today), 'seeder', null, pdfs: false);

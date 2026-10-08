@@ -12,6 +12,7 @@ import {
     hourBankPdf,
     person,
     project,
+    soldVsActual,
 } from '@/routes/reports';
 import { exportMethod as exportHours } from '@/routes/reports/hours';
 import { exportMethod as exportProjectTime } from '@/routes/projects/time';
@@ -58,6 +59,9 @@ export function reportRequestUrl(
             );
         case 'weekly':
             return weeklyReportPdf.url(id('cycle'), { query });
+        // Vendido frente a real (Fase 12, D-390).
+        case 'sold_vs_actual':
+            return soldVsActual.url({ query });
         default:
             throw new Error(`Informe desconocido: ${request.kind}`);
     }

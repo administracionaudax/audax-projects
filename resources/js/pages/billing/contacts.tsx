@@ -83,7 +83,7 @@ export default function HoldedContacts({
                             key={item}
                             size="sm"
                             variant={item === view ? 'default' : 'outline'}
-                            aria-pressed={item === view}
+                            aria-current={item === view ? 'page' : undefined}
                             asChild
                         >
                             <Link

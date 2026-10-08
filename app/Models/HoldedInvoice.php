@@ -6,6 +6,7 @@ use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -155,10 +156,41 @@ class HoldedInvoice extends Model
         return $this->hasMany(HoldedInvoiceLink::class)->orderBy('id');
     }
 
-    /** ¿Cuenta como facturado? Aprobada y no anulada (H-037, H-042). */
+    /**
+     * ¿Cuenta en lo facturado? (H-037, H-042, D-397). Una factura, si está aprobada y no anulada. Una
+     * rectificativa resta, salvo que la factura que rectifica ya esté anulada: así una factura
+     * anulada con su rectificativa por el total no se resta dos veces.
+     */
     public function counts(): bool
     {
-        return ! $this->is_draft && ! in_array($this->collection_status, [CollectionStatus::Cancelled, CollectionStatus::Draft], true);
+        if ($this->is_draft || in_array($this->collection_status, [CollectionStatus::Cancelled, CollectionStatus::Draft], true)) {
+            return false;
+        }
+
+        if ($this->kind === HoldedDocumentKind::CreditNote && $this->rectified_invoice_id !== null) {
+            $original = $this->rectified;
+
+            return $original === null || $original->collection_status !== CollectionStatus::Cancelled;
+        }
+
+        return true;
+    }
+
+    /**
+     * Lo que cuenta en lo facturado, en SQL (la misma regla que counts()).
+     *
+     * @param  Builder<HoldedInvoice>  $query
+     * @return Builder<HoldedInvoice>
+     */
+    public static function countingIn(Builder $query): Builder
+    {
+        $cancelled = CollectionStatus::Cancelled->value;
+
+        return $query->where('holded_invoices.is_draft', false)
+            ->whereNotIn('holded_invoices.collection_status', [$cancelled, CollectionStatus::Draft->value])
+            ->where(fn (Builder $q) => $q->where('holded_invoices.kind', '!=', HoldedDocumentKind::CreditNote->value)
+                ->orWhereNull('holded_invoices.rectified_invoice_id')
+                ->orWhereNotIn('holded_invoices.rectified_invoice_id', fn ($sub) => $sub->select('id')->from('holded_invoices')->where('collection_status', $cancelled)));
     }
 
     /** Nombre del PDF al descargarlo: «F260170.pdf». */

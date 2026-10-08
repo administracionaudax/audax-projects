@@ -218,17 +218,19 @@ final class HoldedSync
             }
             $this->seen[$id] = true;
 
-            $sign = $kind === HoldedDocumentKind::CreditNote ? '-' : '';
+            // Una rectificativa es de la serie «CN» (CN250004) aunque la API la dé como otro tipo (D-397).
+            $number = $draft ? null : HoldedPayload::string($item, 'document_number', 'docNumber', 'number');
+            $docKind = self::isCreditNoteNumber($number) ? HoldedDocumentKind::CreditNote : $kind;
+            $sign = $docKind === HoldedDocumentKind::CreditNote ? '-' : '';
             $subtotal = self::signed(HoldedPayload::money($item, 'subtotal', 'sub_total') ?? '0.00', $sign);
             $tax = self::signed(HoldedPayload::money($item, 'tax', 'tax_total', 'taxes_total') ?? '0.00', $sign);
             $total = self::signed(HoldedPayload::money($item, 'total') ?? Money::round(Money::add($subtotal, $tax)), $sign);
             $contactId = HoldedPayload::string($item, 'contact_id', 'contact', 'contact.id');
             // Un borrador no tiene número (Holded enseña «Borrador»): se numera al aprobarlo.
-            $number = $draft ? null : HoldedPayload::string($item, 'document_number', 'docNumber', 'number');
             $lines = $this->lines($item);
 
             $attributes = [
-                'kind' => $kind,
+                'kind' => $docKind,
                 'number' => self::limit($number, 64),
                 'number_normalized' => self::limit(HoldedPayload::normalizeNumber($number), 64),
                 'holded_contact_id' => self::limit($contactId, 64),
@@ -270,7 +272,7 @@ final class HoldedSync
                 $this->replaceLines($invoice, $lines);
             }
 
-            $this->refs->put($kind === HoldedDocumentKind::Invoice ? 'invoice' : 'credit_note', $id, 'holded_invoice', $invoice->id);
+            $this->refs->put($docKind === HoldedDocumentKind::Invoice ? 'invoice' : 'credit_note', $id, 'holded_invoice', $invoice->id);
             $this->count($draft ? 'drafts' : $label, $created ? 'created' : ($dirty ? 'updated' : 'unchanged'));
         }
     }
@@ -415,6 +417,9 @@ final class HoldedSync
 
             $status = match (true) {
                 $invoice->is_draft => CollectionStatus::Draft,
+                // Una rectificativa sale «Anulado» en Holded cuando anula su factura: ella misma cuenta
+                // (resta), salvo que su original ya esté anulada (HoldedInvoice::counts, D-397).
+                $invoice->kind === HoldedDocumentKind::CreditNote => Money::isZero($pending) ? CollectionStatus::Paid : CollectionStatus::Unpaid,
                 in_array($invoice->holded_status, ['cancelled', 'canceled', 'void'], true) => CollectionStatus::Cancelled,
                 Money::isZero($pending) => CollectionStatus::Paid,
                 $invoice->due_on !== null && $invoice->due_on->lessThan($today) => CollectionStatus::Overdue,
@@ -491,6 +496,12 @@ final class HoldedSync
         $abs = Money::round(Money::abs($amount));
 
         return $sign === '-' && ! Money::isZero($abs) ? Money::round('-'.$abs) : $abs;
+    }
+
+    /** ¿Es de la serie de rectificativas (CN + año + número)? */
+    public static function isCreditNoteNumber(?string $number): bool
+    {
+        return $number !== null && preg_match('/^CN\d/i', trim($number)) === 1;
     }
 
     private static function limit(?string $value, int $length): ?string

@@ -281,6 +281,10 @@ class FakeHolded implements HoldedApi
             }
         }
 
+        // Una factura de un contacto que no es de ningún cliente de Audax (se resuelve a mano).
+        $drafts[] = ['date' => $today->subMonthsNoOverflow(2)->startOfMonth()->addDays(9), 'number' => null, 'contact' => ['id' => self::holdedId('contact-nebula'), 'name' => 'Estudio Nébula, S.L.'],
+            'seed' => 'nebula', 'tags' => ['#productodigital'], 'lines' => [self::line('Auditoría UX y CRO', '2400.00', null, 'Auditoría de la tienda online', code: 'AUX')]];
+
         usort($drafts, fn (array $a, array $b): int => [$a['date']->toDateString(), $a['seed']] <=> [$b['date']->toDateString(), $b['seed']]);
 
         $counters = [];
@@ -350,7 +354,7 @@ class FakeHolded implements HoldedApi
                 $creditDate = $draft['date']->addDays(12);
                 $creditNotes[] = [
                     'id' => self::holdedId('credit-'.$draft['seed']),
-                    'document_number' => 'R'.$creditDate->format('y').'0001',
+                    'document_number' => 'CN'.$creditDate->format('y').'0001',
                     'contact_id' => $draft['contact']['id'],
                     'contact_name' => $draft['contact']['name'],
                     'date' => $creditDate->toDateString(),

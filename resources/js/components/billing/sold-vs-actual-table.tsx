@@ -73,14 +73,17 @@ export function SoldVsActualTable({
             <table
                 className={cn(
                     'tabular w-full text-sm',
-                    financials ? 'min-w-[78rem]' : 'min-w-[52rem]',
+                    financials ? 'min-w-[86rem]' : 'min-w-[56rem]',
                 )}
                 data-test="sold-vs-actual-table"
             >
                 <caption className="sr-only">{caption}</caption>
                 <thead>
                     <tr className="border-b text-left">
-                        <th scope="col" className="px-3 py-2 font-medium">
+                        <th
+                            scope="col"
+                            className="min-w-60 px-3 py-2 font-medium"
+                        >
                             {t('billing.columns.unit')}
                         </th>
                         <th scope="col" className="px-3 py-2 font-medium">

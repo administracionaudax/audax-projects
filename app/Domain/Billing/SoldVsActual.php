@@ -333,7 +333,7 @@ final class SoldVsActual
         }
 
         $links = HoldedInvoiceLink::query()->whereIn('project_id', $projectIds)
-            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft', 'invoice.lines:id,holded_invoice_id,name,service_code,units,subtotal'])
+            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,holded_invoice_id,name,service_code,units,subtotal', 'invoice.rectified:id,collection_status'])
             ->orderBy('id')->get()
             // Lo facturado y, aparte, los borradores (previsto, D-395); nunca lo anulado.
             ->filter(fn (HoldedInvoiceLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);

@@ -6,6 +6,8 @@ use App\Domain\Billing\Holded\HoldedRequestFailed;
 use App\Domain\Billing\Holded\HoldedSync;
 use App\Domain\Billing\Holded\HoldedSyncBusy;
 use App\Domain\Billing\HoldedInvoiceLinker;
+use App\Domain\Billing\SoldVsActual;
+use App\Domain\Billing\SoldVsActualQuery;
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
 use App\Enums\InvoiceLinkMethod;
@@ -296,4 +298,41 @@ it('guarda el servicio de cada línea (código del catálogo de Holded)', functi
         ->and((string) $line->discount_pct)->toBe('15.00')
         // Sin subtotal en la línea: unidades × precio con el descuento.
         ->and((string) $line->subtotal)->toBe('5100.00');
+});
+
+it('una rectificativa de la serie CN es rectificativa aunque llegue con las facturas, y se resta una sola vez', function () {
+    enableBilling();
+    $admin = userWithRole('admin');
+    $data = $this->data;
+    // F260045 (MIR-WE1, 2.000 €) se anula en Holded con su rectificativa por el total, CN260004.
+    $data['invoices'][2] = [...$data['invoices'][2], 'status' => 'cancelled'];
+    // Una rectificativa por diferencias de la F260170 (bolsa): −15 h × 60 € con un 5 % = −855 €.
+    $data['invoices'][] = holdedInvoice('cn-a', 'CN260004', 'c2', '2026-03-12', '-2000.00', ['status' => 'cancelled', 'rectified_document_id' => 'i3', 'payments_total' => '0', 'payments_pending' => '0']);
+    $data['invoices'][] = holdedInvoice('cn-b', 'CN260005', 'c1', '2026-03-14', '-855.00', ['total' => '-1034.55', 'tax' => '-179.55', 'status' => 'cancelled', 'rectified_document_id' => 'i1',
+        'payments_total' => '0', 'payments_pending' => '0',
+        'items' => [['name' => 'bolsadehoras', 'code' => 'BDH', 'units' => -15, 'price' => '60.00', 'discount' => '5', 'subtotal' => '-855.00']]]);
+    syncHolded(holdedFake($data));
+
+    $cnA = HoldedInvoice::query()->where('holded_id', 'cn-a')->firstOrFail();
+    $cnB = HoldedInvoice::query()->where('holded_id', 'cn-b')->firstOrFail();
+    expect($cnA->kind)->toBe(HoldedDocumentKind::CreditNote)
+        ->and((string) $cnB->subtotal)->toBe('-855.00')
+        ->and((string) $cnB->total)->toBe('-1034.55')
+        ->and($cnB->collection_status)->not->toBe(CollectionStatus::Cancelled)
+        ->and($cnB->rectified_invoice_id)->toBe(HoldedInvoice::query()->where('holded_id', 'i1')->value('id'))
+        // Hereda el enlace de su original (la bolsa) y cuenta; la de la anulada, no (ya no cuenta la original).
+        ->and(HoldedInvoiceLink::query()->where('holded_invoice_id', $cnB->id)->value('hour_bank_id'))->toBe($this->bank->id)
+        ->and($cnB->counts())->toBeTrue()
+        ->and($cnA->counts())->toBeFalse()
+        ->and(HoldedInvoice::query()->where('holded_id', 'i3')->firstOrFail()->counts())->toBeFalse();
+
+    $report = app(SoldVsActual::class)->report(SoldVsActualQuery::fromQuery(['periodo' => 'anio', 'fecha' => '2026-03-20']), $admin, true);
+    $unit = fn (string $key): array => collect($report['units'])->firstWhere('key', $key);
+    expect($unit('bank:'.$this->bank->id)['invoiced'])->toBe('2145.00')
+        // La anulada y su rectificativa: 0, no −2.000.
+        ->and($unit('project:'.$this->fixed->id)['invoiced'])->toBe('0.00');
+
+    // El sumatorio del listado sigue la misma regla.
+    $this->actingAs($admin)->get('/facturacion/facturas?cliente='.$this->mirador->id)
+        ->assertInertia(fn ($page) => $page->where('totals.subtotal', '0.00'));
 });

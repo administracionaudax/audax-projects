@@ -70,9 +70,12 @@ export function Meter({
 export function SoldVsActualKpis({
     totals,
     financials,
+    compact = false,
 }: {
     totals: SoldVsActualTotals;
     financials: boolean;
+    /** Una sola unidad (la ficha de una bolsa): sin la tarjeta de unidades. */
+    compact?: boolean;
 }) {
     const pct = totals.consumption_pct;
     const invoicedTotal = amount(totals.collected) + amount(totals.outstanding);
@@ -120,30 +123,34 @@ export function SoldVsActualKpis({
                           )
                 }
             />
-            <KpiCard
-                label={t('billing.kpis.units')}
-                definition={t('billing.kpis.units_definition')}
-                value={formatNumber(totals.units)}
-                detail={[
-                    totals.by_status.over > 0
-                        ? t('billing.kpis.units_over', {
-                              count: totals.by_status.over,
-                          })
-                        : null,
-                    totals.by_status.risk > 0
-                        ? t('billing.kpis.units_risk', {
-                              count: totals.by_status.risk,
-                          })
-                        : null,
-                    t('billing.kpis.units_ok', { count: totals.by_status.ok }),
-                ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                className={cn(
-                    totals.by_status.over > 0 &&
-                        '[&_[data-slot=card-content]>p:first-child]:text-danger',
-                )}
-            />
+            {compact ? null : (
+                <KpiCard
+                    label={t('billing.kpis.units')}
+                    definition={t('billing.kpis.units_definition')}
+                    value={formatNumber(totals.units)}
+                    detail={[
+                        totals.by_status.over > 0
+                            ? t('billing.kpis.units_over', {
+                                  count: totals.by_status.over,
+                              })
+                            : null,
+                        totals.by_status.risk > 0
+                            ? t('billing.kpis.units_risk', {
+                                  count: totals.by_status.risk,
+                              })
+                            : null,
+                        t('billing.kpis.units_ok', {
+                            count: totals.by_status.ok,
+                        }),
+                    ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    className={cn(
+                        totals.by_status.over > 0 &&
+                            '[&_[data-slot=card-content]>p:first-child]:text-danger',
+                    )}
+                />
+            )}
             {financials ? (
                 <>
                     <KpiCard

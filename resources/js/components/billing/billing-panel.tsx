@@ -49,6 +49,7 @@ export function BillingPanel({
                     <SoldVsActualKpis
                         totals={report.totals}
                         financials={financials}
+                        compact={compact && report.units.length === 1}
                     />
                     {!compact && charted > 1 ? (
                         <SoldVsActualChart
