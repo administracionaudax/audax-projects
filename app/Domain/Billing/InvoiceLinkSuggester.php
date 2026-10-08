@@ -65,7 +65,7 @@ final class InvoiceLinkSuggester
 
         usort($candidates, fn (array $a, array $b): int => [$b['score'], $a['project']['code']] <=> [$a['score'], $b['project']['code']]);
 
-        return array_values(array_map(fn (array $row): array => ['project' => $row['project'], 'bank' => $row['bank'], 'reason' => $row['reason']], array_slice($candidates, 0, self::MAX)));
+        return array_map(fn (array $row): array => ['project' => $row['project'], 'bank' => $row['bank'], 'reason' => $row['reason']], array_slice($candidates, 0, self::MAX));
     }
 
     /** El tipo de línea que más importa en la factura (por su base). */

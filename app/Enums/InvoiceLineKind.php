@@ -36,7 +36,7 @@ enum InvoiceLineKind: string
             in_array($code, self::BANK_CODES, true) || str_contains($compact, 'bolsadehoras') || str_starts_with($normalized, 'bolsa horas') => self::HourBank,
             in_array($code, self::FEE_CODES, true) || str_starts_with($normalized, 'fee') => self::Fee,
             str_starts_with($normalized, 'inversion') || str_starts_with($normalized, 'herramienta') => self::PassThrough,
-            bccomp($units, '1', 4) > 0 => self::Hours,
+            is_numeric($units) && (float) $units > 1 => self::Hours,
             default => self::Other,
         };
     }

@@ -606,7 +606,7 @@ final class SoldVsActual
             $shares[$i % count($shares)] += $left > 0 ? 1 : -1;
         }
 
-        return $shares;
+        return array_values($shares);
     }
 
     private static function positive(string $value): string

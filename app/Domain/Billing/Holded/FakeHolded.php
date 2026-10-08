@@ -3,6 +3,7 @@
 namespace App\Domain\Billing\Holded;
 
 use App\Domain\Reports\Money;
+use App\Domain\Reports\Pdf\PdfFormat;
 use App\Domain\Weeklies\Report\WeeklyProjectStatus;
 use App\Enums\BillingType;
 use App\Enums\HoldedDocumentKind;
@@ -113,7 +114,7 @@ class FakeHolded implements HoldedApi
     public function withInvoices(array $invoices): self
     {
         $clone = clone $this;
-        $clone->invoices = array_values($invoices);
+        $clone->invoices = $invoices;
 
         return $clone;
     }
@@ -260,12 +261,12 @@ class FakeHolded implements HoldedApi
                 for (; $month->lessThan($end->startOfMonth()); $month = $month->addMonthNoOverflow()) {
                     // Las recurrentes no llevan proyecto de Holded: se enlazan con la sugerencia (D-388).
                     $drafts[] = ['date' => $month, 'number' => null, 'contact' => $contact, 'seed' => 'fee-'.$project->id.'-'.$month->format('Ym'), 'tags' => ['#fee', '#productodigital'],
-                        'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.$month->locale('es')->translatedFormat('F Y').' · '.$project->name, code: 'F_UX')]];
+                        'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.self::monthLabel($month).' · '.$project->name, code: 'F_UX')]];
                 }
                 // El borrador que la recurrente genera para el mes siguiente (sin número hasta aprobarlo).
                 $next = $today->addMonthNoOverflow()->startOfMonth();
                 $drafts[] = ['date' => $today, 'number' => null, 'contact' => $contact, 'seed' => 'fee-draft-'.$project->id, 'tags' => ['#fee'], 'draft' => true,
-                    'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.$next->locale('es')->translatedFormat('F Y').' · '.$project->name, code: 'F_UX')]];
+                    'lines' => [self::line('Fee Producto digital', $amount, null, 'Sprint de '.self::monthLabel($next).' · '.$project->name, code: 'F_UX')]];
             }
 
             if ($project->billing_type === BillingType::TimeAndMaterials && ! self::isFee($project) && $project->hourly_rate !== null) {
@@ -276,7 +277,7 @@ class FakeHolded implements HoldedApi
                     ->sum('minutes');
                 if ($minutes > 0) {
                     $drafts[] = ['date' => $hoursMonth->endOfMonth()->startOfDay(), 'number' => null, 'contact' => $contact, 'seed' => 'hours-'.$project->id, 'tags' => ['#desarrollo'],
-                        'lines' => [self::line('Desarrollo', Money::round(Money::forMinutes($minutes, (string) $project->hourly_rate)), null, 'Horas de '.$hoursMonth->locale('es')->translatedFormat('F Y'), round($minutes / 60, 2), (string) $project->hourly_rate, code: 'DES')]];
+                        'lines' => [self::line('Desarrollo', Money::round(Money::forMinutes($minutes, (string) $project->hourly_rate)), null, 'Horas de '.self::monthLabel($hoursMonth), round($minutes / 60, 2), (string) $project->hourly_rate, code: 'DES')]];
                 }
             }
         }
@@ -406,9 +407,15 @@ class FakeHolded implements HoldedApi
         $hours = max(1, intdiv($bank->total_minutes, 60));
         $factor = $discount ? '0.85' : '1';
         $price = bcdiv((string) $bank->price_amount, bcmul((string) $hours, $factor, 4), 4);
-        $month = $bank->start_date->locale('es')->translatedFormat('F Y');
+        $month = self::monthLabel($bank->start_date);
 
         return self::line('bolsadehoras', (string) $bank->price_amount, null, 'Bolsa de horas '.$hours.'h '.$month.' · '.$projectName, (float) $hours, $price, 'BDH', $discount ? '15' : '0');
+    }
+
+    /** «Octubre 2026». */
+    private static function monthLabel(CarbonImmutable $date): string
+    {
+        return ucfirst(PdfFormat::monthName($date->month)).' '.$date->year;
     }
 
     private static function isFee(Project $project): bool
