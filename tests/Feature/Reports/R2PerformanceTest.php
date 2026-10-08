@@ -79,7 +79,10 @@ beforeEach(function () {
     ];
 
     // Mide la segunda petición (la primera calienta ajustes y permisos) con la caché de informes fría.
+    // El reloj se congela durante cada pareja de peticiones: en una máquina lenta, una caché con
+    // caducidad (la de la weekly, 5 min) podría vencer entre la que calienta y la que se mide.
     $this->measure = function (User $user, string $url): array {
+        $this->freezeTime();
         $this->actingAs($user)->get($url);
         ReportCache::bump();
 
@@ -95,6 +98,7 @@ beforeEach(function () {
         }
         $ms = (hrtime(true) - $start) / 1e6;
         app('events')->forget(QueryExecuted::class);
+        $this->travelBack();
 
         $counts = array_count_values($queries);
         arsort($counts);
