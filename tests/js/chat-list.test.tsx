@@ -153,13 +153,12 @@ describe('ConversationList', () => {
         // Primero «Directos» (directas y grupos) y luego «Proyectos y clientes» (el proyecto
         // archivado, al final de su grupo), como en la barra de tipos (D-246).
         expect(links).toHaveLength(4);
-        expect(links[0].textContent).toContain('Marta: Audio');
-        expect(links[1].textContent).toContain('Tú: Voy');
-
-        expect(links[2].getAttribute('href')).toBe('/chat/1');
-        expect(links[2].getAttribute('aria-current')).toBe('page');
-        expect(links[2].textContent).toContain('¿Lo tienes?');
-        expect(links[2].textContent).toContain('3 sin leer');
+        expect(links[0].getAttribute('href')).toBe('/chat/1');
+        expect(links[0].getAttribute('aria-current')).toBe('page');
+        expect(links[0].textContent).toContain('¿Lo tienes?');
+        expect(links[0].textContent).toContain('3 sin leer');
+        expect(links[1].textContent).toContain('Marta: Audio');
+        expect(links[2].textContent).toContain('Tú: Voy');
 
         // Silenciada, archivada, con más de 99 y un aviso del sistema.
         expect(links[3].getAttribute('href')).toBe('/chat/2');
