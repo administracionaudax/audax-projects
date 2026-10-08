@@ -140,7 +140,8 @@ Fuente: (a) [BOE-A-2012-14696](https://www.boe.es/buscar/act.php?id=BOE-A-2012-1
 - **Numeración:**
   - una sola serie, «F» + año con 2 cifras + 4 cifras (F260194 es la 194 de 2026, unas 200 al año),
   - los borradores no tienen número y lo reciben al aprobarlos,
-  - en 2026 no hay ninguna factura anulada y no he visto rectificativas.
+  - las rectificativas, en una serie aparte, «CN» + año + 4 cifras (CN250004),
+  - anular una factura emite una rectificativa por el total en negativo (D-244); en 2026 no hay ninguna.
 - **Líneas:** concepto del catálogo de servicios más una descripción libre.
   - **Bolsas:** se facturan como `bolsadehoras` con **unidades = horas y precio = €/h**: 25 × 51 €, 100 × 60 € con un 15 % de descuento de línea, 30 × 42,50 € (trimestral).
   - **Por horas:** «Desarrollo» 8 × 70 € y «Diseño Producto UX/UI» 58 × 60 €.
@@ -348,6 +349,9 @@ Importes en `decimal`, minutos enteros e instantes en UTC, como el resto de la a
 **P4 · Series de numeración: ¿cuántas tenéis y qué formato?**
 - ¿Es `F[YY]%%%%` (F260170 = factura 170 de 2026, el código F que hay en ClickUp)? ¿Hay serie aparte de rectificativas? ¿Se reinicia cada año?
 - **Recomendado:** seguir la misma serie en Audax a partir del corte, con la de rectificativas separada.
+- **Respondida el 08/10 (D-244):**
+  - facturas en `F[YY]####` y rectificativas en `CN[YY]####`, las dos reiniciadas cada año,
+  - se corrige anulando (con una rectificativa por el total) o rectificando por diferencias; lo habitual es anular.
 
 **P5 · ¿Cómo trabaja la gestoría?**
 - A: entra en Holded y lleva allí la contabilidad y los impuestos (asientos, 303, 349).

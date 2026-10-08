@@ -1985,6 +1985,26 @@ Pedido por el propietario el 06/10 tras probarlo: un dictado de 7 s llevaba más
 - **Interruptor:** `DICTATION_TRANSCRIPTION_DRIVER=gemini|whisper` (por defecto `gemini`). Sin clave de Gemini se usa Whisper.
 - **Los audios del chat siguen con Whisper** en el servidor (elección del propietario).
 
+### D-244 · Corregir una factura emitida: anular o rectificar, como en Holded **[responde a la P4 del plan de facturación]**
+Respuesta del propietario el 08/10/2026: hay dos vías, rectificativa o anulación, y cuál se usa depende de lo que haya que corregir. Por norma general, se anula y se hace la rectificativa. En Holded (observado el 08/10) **anular una factura emite una rectificativa por el total en negativo**: por ejemplo, la CN250004 (FANTE FOODS, «Desarrollo», −15 h × 60 € con un 5 % de descuento) aparece como «Venta rectificativa · Anulado».
+- **Series:**
+  - facturas en `F` + año con 2 cifras + 4 cifras (F260194),
+  - rectificativas en una **serie aparte `CN`** con el mismo formato (CN250004),
+  - las dos se reinician cada año.
+  - Audax las sigue igual a partir del corte (L-05).
+- **Dos botones, como Holded:**
+  1. **Anular** (la vía habitual): emite una rectificativa `CN` por el total en negativo, que identifica la original y lleva un motivo obligatorio. La original queda «Anulada».
+     - Las horas que cubría **se desbloquean**, para poder facturarlas otra vez.
+     - Ofrece «Duplicar como borrador» para hacer la factura buena.
+  2. **Rectificar** (diferencias): emite una rectificativa `CN` solo por la diferencia (líneas en negativo o el importe corregido), con un motivo. La original sigue emitida y **las horas siguen bloqueadas**.
+- **Ley:** las dos vías son rectificativas (RD 1619/2012, art. 15), así que la factura emitida nunca se borra ni se cambia.
+  - El «registro de anulación» de VeriFactu es otra cosa: solo vale para una factura expedida por error que no debió existir.
+  - Ese registro queda para la F6, solo para el admin y con aviso.
+- **F1 (solo lectura):**
+  - la sincronización trae las `CN` como rectificativas (`HoldedDocumentKind::CreditNote`) enlazadas a su original,
+  - una factura anulada no cuenta como facturada,
+  - en «Vendido frente a real», facturado = emitidas − rectificativas.
+
 ### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
 Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
 - **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
@@ -2717,6 +2737,7 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Mejoras de tareas: D-170 a D-173.
 - Informe de proyecto interno y para el cliente: D-240 a D-242 (D-239, en otra rama).
 - Dictado de la weekly con Gemini: D-243.
+- Anular o rectificar facturas: D-244.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Previsión: D-280 a D-289.
@@ -2725,6 +2746,6 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-244 a D-249.
+- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-245 a D-249.
 
-La siguiente libre es **D-244** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-380 en adelante, libres).
+La siguiente libre es **D-245** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-380 en adelante, libres).
