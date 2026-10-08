@@ -88,7 +88,7 @@ export function ConversationRow({
             preserveScroll
             aria-current={active ? 'page' : undefined}
             className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted',
+                'flex min-w-0 items-center gap-3 rounded-md px-3 py-2.5 hover:bg-muted',
                 nested && 'py-2 pl-7',
                 active && 'bg-accent hover:bg-accent',
                 FOCUS_RING,
@@ -99,10 +99,10 @@ export function ConversationRow({
         >
             <ConversationAvatar conversation={item} small={nested} />
             <span className="grid min-w-0 flex-1 gap-0.5">
-                <span className="flex items-baseline gap-1.5">
+                <span className="flex min-w-0 items-baseline gap-1.5">
                     <span
                         className={cn(
-                            'truncate text-sm text-foreground',
+                            'min-w-0 truncate text-sm text-foreground',
                             unread > 0 && 'font-medium',
                         )}
                     >
@@ -130,8 +130,8 @@ export function ConversationRow({
                         {formatListTime(item.last_activity_at)}
                     </span>
                 </span>
-                <span className="flex items-center gap-2">
-                    <span className="truncate text-xs text-muted-foreground">
+                <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
                         {item.type === 'client' || item.type === 'team'
                             ? !item.is_participant && !item.last_message
                                 ? t('chat.list.not_joined')

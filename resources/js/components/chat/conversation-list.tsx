@@ -291,7 +291,8 @@ export function ConversationList({
 
             <nav
                 aria-label={t('chat.list.label')}
-                className="min-h-0 flex-1 overflow-y-auto"
+                // Solo en vertical: la lista nunca se mueve de lado (los textos largos se cortan).
+                className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none"
                 data-test="chat-conversation-list"
             >
                 {items.length === 0 ? (
