@@ -102,6 +102,29 @@ return [
     ],
 
     /*
+    | Holded (Fase 12, F1; D-384): lectura de facturas, rectificativas, cobros, contactos y PDF por la
+    | API v2 (https://api.holded.com/api/v2, Bearer, paginación por cursor). SOLO lectura: Audax nunca
+    | escribe en Holded en F1. La clave va en el .env del servidor (HOLDED_API_KEY, nunca en Git ni en
+    | los logs). Sin clave, la sincronización no se ejecuta. En los tests y en local, HOLDED_DRIVER=fake
+    | (App\Domain\Billing\Holded\FakeHolded, con datos coherentes con las bolsas y los fees).
+    | per_minute: peticiones por minuto que nunca se superan (el plan más bajo de Holded permite 60).
+    */
+    'holded' => [
+        'driver' => env('HOLDED_DRIVER', 'holded'),
+        'key' => env('HOLDED_API_KEY'),
+        'base_url' => env('HOLDED_BASE_URL', 'https://api.holded.com/api/v2'),
+        'timeout' => (int) env('HOLDED_TIMEOUT', 30),
+        'connect_timeout' => (int) env('HOLDED_CONNECT_TIMEOUT', 10),
+        'per_minute' => (int) env('HOLDED_PER_MINUTE', 60),
+        'page_size' => (int) env('HOLDED_PAGE_SIZE', 100),
+        // Reintentos ante 429 (respetando Retry-After) y ante errores 5xx o de conexión.
+        'max_retries' => (int) env('HOLDED_MAX_RETRIES', 5),
+        'max_retry_after' => (int) env('HOLDED_MAX_RETRY_AFTER', 120),
+        // PDF descargados por ejecución (el resto, en la siguiente): protege el cupo mensual del plan.
+        'pdfs_per_run' => (int) env('HOLDED_PDFS_PER_RUN', 200),
+    ],
+
+    /*
     | Locución del informe semanal (Fase 10, D-146, F-084): Google Cloud Text-to-Speech con su propia
     | clave de API (GOOGLE_TTS_API_KEY, en el .env del servidor). Sin clave, el audio no se genera.
     | En los tests, GOOGLE_TTS_DRIVER=fake.
