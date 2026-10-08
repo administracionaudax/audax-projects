@@ -48,7 +48,11 @@ export function agingLabel(key: AgingBucket): string {
  * Marcas «limpias» de euros (1, 2, 2,5, 5 × 10ⁿ) que cubren de min a max, siempre con el 0 (las
  * rectificativas pueden dejar un mes o un servicio en negativo).
  */
-export function amountTicks(min: number, max: number, targetCount = 5): number[] {
+export function amountTicks(
+    min: number,
+    max: number,
+    targetCount = 5,
+): number[] {
     const low = Math.min(0, Number.isFinite(min) ? min : 0);
     const high = Math.max(0, Number.isFinite(max) ? max : 0);
 
@@ -149,7 +153,10 @@ export function previousYearMonth(month: string): string {
  * Variación entre dos importes en tanto por uno (0,125 = +12,5 %); null sin base o sin cambio
  * medible. Solo para pintar: el servidor da la cifra exacta (variation_pct).
  */
-export function variation(current: string, previous: string | null): number | null {
+export function variation(
+    current: string,
+    previous: string | null,
+): number | null {
     if (previous === null) {
         return null;
     }
@@ -166,4 +173,3 @@ export function signedPercent(pct: string | number): string {
 
     return `${sign}${formatNumber(Math.abs(value), 1)} %`;
 }
-

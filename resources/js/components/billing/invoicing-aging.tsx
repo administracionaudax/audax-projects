@@ -56,7 +56,11 @@ export function InvoicingAgingChart({
         count: bucket.count,
         color: sequentialColor(index + 1),
     }));
-    const ticks = amountTicks(0, Math.max(0, ...rows.map((row) => row.value)), 4);
+    const ticks = amountTicks(
+        0,
+        Math.max(0, ...rows.map((row) => row.value)),
+        4,
+    );
     const total = rows.reduce((sum, row) => sum + row.value, 0);
 
     return (
@@ -247,7 +251,10 @@ export function InvoicingOverdueList({
             data-test="invoicing-overdue"
         >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 id="invoicing-overdue-title" className="text-base font-medium">
+                <h3
+                    id="invoicing-overdue-title"
+                    className="text-base font-medium"
+                >
                     {t('billing.invoicing.charts.overdue')}
                 </h3>
                 {overdue.total > 0 ? (
@@ -285,7 +292,7 @@ export function InvoicingOverdueList({
                                 <p className="min-w-0 text-sm font-medium break-words">
                                     <GroupTitle group={group} />
                                 </p>
-                                <p className="shrink-0 text-sm font-medium tabular">
+                                <p className="tabular shrink-0 text-sm font-medium">
                                     {formatCurrency(group.amount)}
                                 </p>
                             </div>
@@ -327,7 +334,9 @@ export function InvoicingOverdueList({
                                                 </span>
                                             </span>
                                             <span className="tabular text-right">
-                                                {formatCurrency(invoice.pending)}
+                                                {formatCurrency(
+                                                    invoice.pending,
+                                                )}
                                             </span>
                                             <span className="col-span-2 text-xs text-muted-foreground">
                                                 {t('billing.invoicing.due_on', {

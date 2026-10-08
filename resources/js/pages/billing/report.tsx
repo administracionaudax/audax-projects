@@ -191,7 +191,9 @@ export default function InvoicingReportPage({
                             <Panel>
                                 <InvoicingBars
                                     test="invoicing-services"
-                                    title={t('billing.invoicing.charts.services')}
+                                    title={t(
+                                        'billing.invoicing.charts.services',
+                                    )}
                                     description={t(
                                         filtered
                                             ? 'billing.invoicing.charts.services_filtered'
@@ -212,7 +214,9 @@ export default function InvoicingReportPage({
                             <Panel>
                                 <InvoicingBars
                                     test="invoicing-clients"
-                                    title={t('billing.invoicing.charts.clients')}
+                                    title={t(
+                                        'billing.invoicing.charts.clients',
+                                    )}
                                     description={t(
                                         'billing.invoicing.charts.clients_description',
                                     )}
@@ -265,7 +269,9 @@ export default function InvoicingReportPage({
                                 <InvoicingAgingChart aging={report.aging} />
                             </Panel>
                             <Panel>
-                                <InvoicingOverdueList overdue={report.overdue} />
+                                <InvoicingOverdueList
+                                    overdue={report.overdue}
+                                />
                             </Panel>
                         </div>
                     </>

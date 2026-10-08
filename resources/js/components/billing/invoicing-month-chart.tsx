@@ -90,7 +90,10 @@ export function InvoicingMonthChart({
         Math.min(0, ...rows.map((row) => row.invoiced)),
         Math.max(0, ...tops),
     );
-    const total = months.reduce((sum, month) => sum + amount(month.invoiced), 0);
+    const total = months.reduce(
+        (sum, month) => sum + amount(month.invoiced),
+        0,
+    );
     const legend: LegendItem[] = legendItems(series, 'rect').map((item) =>
         item.key === 'previous' ? { ...item, shape: 'line' } : item,
     );
@@ -110,7 +113,10 @@ export function InvoicingMonthChart({
             legend={<ChartLegend items={legend} />}
             table={{
                 columns: [
-                    { key: 'month', label: t('billing.invoicing.columns.month') },
+                    {
+                        key: 'month',
+                        label: t('billing.invoicing.columns.month'),
+                    },
                     {
                         key: 'invoiced',
                         label: t('billing.invoicing.series.invoiced'),
@@ -134,7 +140,9 @@ export function InvoicingMonthChart({
                               },
                               {
                                   key: 'variation',
-                                  label: t('billing.invoicing.columns.variation'),
+                                  label: t(
+                                      'billing.invoicing.columns.variation',
+                                  ),
                                   numeric: true,
                               },
                           ]
@@ -197,13 +205,17 @@ export function InvoicingMonthChart({
                                 return null;
                             }
 
-                            const row = rows.find((item) => item.label === label);
+                            const row = rows.find(
+                                (item) => item.label === label,
+                            );
 
                             return (
                                 <ChartTooltipCard
                                     title={row ? monthTitle(row.id) : ''}
-                                    rows={buildTooltipRows(payload, series, (value) =>
-                                        formatCurrency(value),
+                                    rows={buildTooltipRows(
+                                        payload,
+                                        series,
+                                        (value) => formatCurrency(value),
                                     )}
                                 />
                             );

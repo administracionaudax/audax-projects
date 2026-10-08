@@ -206,7 +206,9 @@ export function InvoicingBars({
                                                 color: row.muted
                                                     ? MUTED_FILL
                                                     : CHART_COLORS[0],
-                                                value: formatCurrency(row.amount),
+                                                value: formatCurrency(
+                                                    row.amount,
+                                                ),
                                             },
                                             {
                                                 key: 'share',
@@ -230,7 +232,9 @@ export function InvoicingBars({
                             {data.map((row) => (
                                 <Cell
                                     key={row.id}
-                                    fill={row.muted ? MUTED_FILL : CHART_COLORS[0]}
+                                    fill={
+                                        row.muted ? MUTED_FILL : CHART_COLORS[0]
+                                    }
                                 />
                             ))}
                             <LabelList

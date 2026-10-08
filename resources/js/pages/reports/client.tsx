@@ -25,7 +25,10 @@ import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import { hours as billingHours } from '@/routes/billing';
-import { client as clientReport, project as projectReport } from '@/routes/reports';
+import {
+    client as clientReport,
+    project as projectReport,
+} from '@/routes/reports';
 import type { ReportFilterKey } from '@/types';
 
 /** El cliente es fijo (la URL): la barra no ofrece el filtro de cliente. */

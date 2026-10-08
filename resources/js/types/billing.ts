@@ -209,7 +209,12 @@ export type BillingService =
     | 'inversion'
     | 'otros';
 
-export type AgingBucket = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90_plus';
+export type AgingBucket =
+    | 'current'
+    | 'd1_30'
+    | 'd31_60'
+    | 'd61_90'
+    | 'd90_plus';
 
 /** App\Domain\Billing\InvoicingReport::report() (D-400). Importes sin IVA salvo cobro y pendiente. */
 export type InvoicingReport = {
@@ -260,7 +265,11 @@ export type InvoicingReport = {
             clients: number;
             count: number;
         } | null;
-        unmatched: { amount: string; share: string | null; count: number } | null;
+        unmatched: {
+            amount: string;
+            share: string | null;
+            count: number;
+        } | null;
     };
     aging: { key: AgingBucket; amount: string; count: number }[];
     overdue: {

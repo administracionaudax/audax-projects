@@ -142,7 +142,11 @@ export function InvoicingKpis({ report }: { report: InvoicingReport }) {
                 value={formatNumber(k.count, 0)}
                 delta={
                     report.compare && k.previous_count !== null
-                        ? { current: k.count, previous: k.previous_count }
+                        ? {
+                              current: k.count,
+                              previous: k.previous_count,
+                              versus: 'previous_year',
+                          }
                         : undefined
                 }
             />
@@ -158,6 +162,7 @@ export function InvoicingKpis({ report }: { report: InvoicingReport }) {
                                   k.previous_average === null
                                       ? null
                                       : amount(k.previous_average),
+                              versus: 'previous_year',
                           }
                         : undefined
                 }
