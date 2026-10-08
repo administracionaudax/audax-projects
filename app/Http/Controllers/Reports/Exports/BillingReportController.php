@@ -19,7 +19,8 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; R2): /informes/facturacion.
+ * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; R2): /facturacion/horas-para-facturar
+ * (antes /informes/facturacion, que redirige con un 301, D-401). No exige el módulo `billing` (D-402).
  * Un cliente (obligatorio, ?cliente[]=id) y un periodo con los filtros globales. La página muestra
  * el resumen por proyecto y bolsa (dentro, exceso, facturables y pendientes de aprobar; tarifas e
  * importes con view-financials) y ?formato=xlsx|csv descarga el detalle de cada entrada.
@@ -67,7 +68,7 @@ class BillingReportController extends Controller
     {
         $props = $this->filterProps(new ReportScope($user, $filters));
 
-        return Inertia::render('reports/billing', [
+        return Inertia::render('billing/hours', [
             'filters' => $props,
             'report_request' => $client === null ? null : $this->reportRequestProp(ReportKind::Billing, [], $props['query']),
             'client' => $client === null ? null : ['id' => $client->id, 'name' => $client->name, 'is_active' => $client->is_active],

@@ -23,7 +23,7 @@ use Tests\Feature\Reports\R2Scenario;
 
 beforeEach(function () {
     $this->s = R2Scenario::build($this);
-    $this->url = fn (array $extra = []): string => '/informes/facturacion?'.R2Scenario::week(['cliente' => [$this->s->client->id], ...$extra]);
+    $this->url = fn (array $extra = []): string => '/facturacion/horas-para-facturar?'.R2Scenario::week(['cliente' => [$this->s->client->id], ...$extra]);
     $this->read = function (string $content, string $format): array {
         $path = tempnam(sys_get_temp_dir(), 'r2').'.'.$format;
         file_put_contents($path, $content);
@@ -72,16 +72,16 @@ test('no compara con el periodo anterior: sin comparar en la barra ni en sus enl
 test('sin cliente, la página pide elegir uno y la exportación no se hace', function () {
     $s = $this->s;
 
-    $this->actingAs($s->admin)->get('/informes/facturacion')
+    $this->actingAs($s->admin)->get('/facturacion/horas-para-facturar')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('reports/billing')
+            ->component('billing/hours')
             ->where('client', null)
             ->where('summary', null)
             ->where('clients.0.name', 'Bodega Ñandú')
             ->has('clients', 2));
 
-    $this->actingAs($s->admin)->get('/informes/facturacion?formato=xlsx')->assertStatus(422);
+    $this->actingAs($s->admin)->get('/facturacion/horas-para-facturar?formato=xlsx')->assertStatus(422);
 });
 
 test('resumen por proyecto y bolsa con tarifas e importes (D-043), calculado a mano', function () {
@@ -238,7 +238,7 @@ test('el total del importe es el mismo en la página y en la exportación, y las
         $bank = HourBank::factory()->create(['project_id' => $project->id, 'name' => $name, 'total_minutes' => 3600, 'price_amount' => '1000.00', 'start_date' => '2026-09-01']);
         TimeEntry::factory()->forTask(Task::factory()->inBank($bank)->create())->on('2026-09-22')->minutes(7)->create(['user_id' => $s->ana->id]);
     }
-    $url = '/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id]]);
+    $url = '/facturacion/horas-para-facturar?'.R2Scenario::week(['cliente' => [$client->id]]);
 
     $this->actingAs($s->admin)->get($url)
         ->assertInertia(fn (Assert $page) => $page
@@ -266,7 +266,7 @@ test('si el total del resumen difiere por el truncado de cada entrada, la últim
     }
     // Una entrada no facturable al final: nunca recibe importe.
     TimeEntry::factory()->forTask($task)->on('2026-09-24')->minutes(1)->create(['user_id' => $s->ana->id, 'is_billable' => false]);
-    $url = '/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id]]);
+    $url = '/facturacion/horas-para-facturar?'.R2Scenario::week(['cliente' => [$client->id]]);
 
     $this->actingAs($s->admin)->get($url)->assertInertia(fn (Assert $page) => $page->where('summary.totals.income', '0.01'));
 
@@ -303,7 +303,7 @@ test('las horas en decimal no siempre suman el total; los minutos, sí (INT-06, 
     }
 
     $rows = ($this->read)($this->actingAs($s->admin)
-        ->get('/informes/facturacion?'.R2Scenario::week(['cliente' => [$client->id], 'formato' => 'xlsx']))->streamedContent(), 'xlsx');
+        ->get('/facturacion/horas-para-facturar?'.R2Scenario::week(['cliente' => [$client->id], 'formato' => 'xlsx']))->streamedContent(), 'xlsx');
     $lines = array_slice($rows, 1, -1);
     $total = end($rows);
     $hours = array_search('Horas', $rows[0], true);
@@ -348,7 +348,7 @@ test('el enlace al informe del cliente solo va a quien puede verlo', function ()
         ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false));
     $this->actingAs($s->luis->fresh())->get('/informes/clientes/'.$s->client->id)->assertForbidden();
 
-    $this->actingAs($s->admin)->get('/informes/facturacion')
+    $this->actingAs($s->admin)->get('/facturacion/horas-para-facturar')
         ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false)->where('client', null));
 });
 

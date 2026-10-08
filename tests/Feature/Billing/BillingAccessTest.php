@@ -1,6 +1,9 @@
 <?php
 
 use App\Domain\Billing\Holded\HoldedApi;
+use App\Domain\Reports\Delivery\ReportAccess;
+use App\Domain\Reports\Delivery\ReportKind;
+use App\Domain\Reports\Delivery\ReportRequest;
 use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Enums\CollectionStatus;
@@ -16,6 +19,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -61,7 +65,9 @@ beforeEach(function () {
 
 dataset('páginas de facturación', [
     //                                                    admin resp. empl. gestor finan. colab. cliente
-    'vendido frente a real' => ['/informes/vendido-frente-a-real', [200, 200, 403, 200, 200, 403, 302]],
+    'vendido frente a real' => ['/facturacion/vendido-frente-a-real', [200, 200, 403, 200, 200, 403, 302]],
+    'informe de facturación' => ['/facturacion/informe', [200, 403, 403, 403, 200, 403, 302]],
+    'horas para facturar' => ['/facturacion/horas-para-facturar', [200, 403, 403, 403, 200, 403, 302]],
     'pestaña del proyecto' => ['/proyectos/{project}/facturacion', [200, 200, 403, 200, 200, 403, 302]],
     'facturas' => ['/facturacion/facturas', [200, 403, 403, 403, 200, 403, 302]],
     'ficha de factura' => ['/facturacion/facturas/{invoice}', [200, 403, 403, 403, 200, 403, 302]],
@@ -101,7 +107,7 @@ it('matriz de las escrituras por rol', function () {
 });
 
 it('sin view-financials el informe va en horas, sin importes ni facturas', function () {
-    $this->actingAs($this->projectManager)->get('/informes/vendido-frente-a-real')
+    $this->actingAs($this->projectManager)->get('/facturacion/vendido-frente-a-real')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('billing/sold-vs-actual')
             ->where('report.financials', false)
@@ -114,7 +120,7 @@ it('sin view-financials el informe va en horas, sin importes ni facturas', funct
     $this->actingAs($this->projectManager)->get("/proyectos/{$this->project->id}/facturacion")
         ->assertInertia(fn (Assert $page) => $page->where('panel.invoices', null)->missing('panel.report.units.0.sold_amount'));
 
-    $this->actingAs($this->admin)->get('/informes/vendido-frente-a-real')
+    $this->actingAs($this->admin)->get('/facturacion/vendido-frente-a-real')
         ->assertInertia(fn (Assert $page) => $page->where('report.financials', true)->where('report.units.0.invoiced', '0.00'));
 });
 
@@ -129,7 +135,7 @@ it('un gestor no ve la pestaña de un proyecto que no gestiona ni la de un inter
 it('con el módulo apagado, 404 para todos salvo los admins en modo de prueba', function () {
     enableBilling(false);
 
-    foreach (['/informes/vendido-frente-a-real', '/facturacion/facturas', '/facturacion/ajustes', "/proyectos/{$this->project->id}/facturacion"] as $uri) {
+    foreach (['/facturacion/vendido-frente-a-real', '/facturacion/facturas', '/facturacion/ajustes', "/proyectos/{$this->project->id}/facturacion"] as $uri) {
         $this->actingAs($this->admin)->get($uri)->assertNotFound();
         $this->actingAs($this->finance)->get($uri)->assertNotFound();
     }
@@ -151,7 +157,7 @@ it('un admin sin acceso a Facturación no la ve en ningún sitio, ni encendida n
         enableBilling($enabled);
         Setting::set('modules_preview', ! $enabled);
 
-        foreach (['/informes/vendido-frente-a-real', '/facturacion/facturas', '/facturacion/ajustes', "/proyectos/{$this->project->id}/facturacion", "/clientes/{$this->clientCompany->id}/facturacion"] as $uri) {
+        foreach (['/facturacion/vendido-frente-a-real', '/facturacion/facturas', '/facturacion/ajustes', "/proyectos/{$this->project->id}/facturacion", "/clientes/{$this->clientCompany->id}/facturacion"] as $uri) {
             $this->actingAs($other)->get($uri)->assertNotFound();
             $this->actingAs($this->admin)->get($uri)->assertOk();
         }
@@ -204,8 +210,16 @@ it('las habilidades compartidas siguen los permisos', function () {
     expect($abilities($this->admin))->toMatchArray(['viewBilling' => true, 'viewSoldVsActual' => true, 'syncHolded' => true])
         ->and($abilities($this->finance))->toMatchArray(['viewBilling' => true, 'viewSoldVsActual' => true, 'syncHolded' => false])
         ->and($abilities($this->projectManager))->toMatchArray(['viewBilling' => false, 'viewSoldVsActual' => true, 'syncHolded' => false])
-        ->and($abilities($this->employee))->toMatchArray(['viewBilling' => false, 'viewSoldVsActual' => false])
+        ->and($abilities($this->employee))->toMatchArray(['viewBilling' => false, 'viewSoldVsActual' => false, 'exportBillingHours' => false])
         ->and($abilities($this->collaborator))->toMatchArray(['viewBilling' => false, 'viewSoldVsActual' => false]);
+
+    expect($abilities($this->admin)['exportBillingHours'])->toBeTrue()
+        ->and($abilities($this->finance)['exportBillingHours'])->toBeTrue()
+        ->and($abilities($this->projectManager)['exportBillingHours'])->toBeFalse();
+
+    // Sin el módulo, las horas para facturar siguen con su permiso (D-402); lo demás, no.
+    enableBilling(false);
+    expect($abilities($this->finance))->toMatchArray(['viewBilling' => false, 'viewSoldVsActual' => false, 'exportBillingHours' => true]);
 });
 
 it('el PDF de la factura se pide a Holded la primera vez, se guarda y solo con view-billing', function () {
@@ -230,7 +244,7 @@ it('sin clave de Holded, un PDF que no está guardado da un 503 claro', function
 });
 
 it('exporta el informe en Excel, CSV, PDF y para imprimir, con los permisos de quien lo pide', function () {
-    $url = '/informes/vendido-frente-a-real?periodo=anio';
+    $url = '/facturacion/vendido-frente-a-real?periodo=anio';
 
     $this->actingAs($this->admin)->get($url.'&formato=xlsx')->assertOk()->streamedContent();
     $csv = $this->actingAs($this->admin)->get($url.'&formato=csv');
@@ -243,4 +257,76 @@ it('exporta el informe en Excel, CSV, PDF y para imprimir, con los permisos de q
     $this->actingAs($this->admin)->get($url.'&formato=pdf')->assertOk();
     $this->actingAs($this->admin)->get($url.'&formato=imprimir')->assertOk()->assertSee('Vendido frente a real');
     $this->actingAs($this->employee)->get($url.'&formato=csv')->assertForbidden();
+});
+
+it('/facturacion lleva al informe de facturación o, a quien solo ve el vendido frente a real, a ese (D-401)', function () {
+    $this->actingAs($this->admin)->get('/facturacion')->assertRedirect('/facturacion/informe');
+    $this->actingAs($this->finance)->get('/facturacion')->assertRedirect('/facturacion/informe');
+    $this->actingAs($this->manager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
+    $this->actingAs($this->projectManager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
+    $this->actingAs($this->employee)->get('/facturacion')->assertForbidden();
+});
+
+it('las URL antiguas de Informes responden con un 301 a Facturación, con su query (D-401)', function () {
+    $moved = [
+        '/informes/vendido-frente-a-real' => '/facturacion/vendido-frente-a-real',
+        '/informes/facturacion' => '/facturacion/horas-para-facturar',
+    ];
+
+    foreach ($moved as $old => $new) {
+        $this->actingAs($this->finance)->get($old)->assertStatus(301)->assertRedirect($new);
+        $location = (string) $this->actingAs($this->finance)->get($old.'?periodo=anio&cliente%5B%5D='.$this->clientCompany->id.'&formato=csv')
+            ->assertStatus(301)
+            ->headers->get('Location');
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+        expect(parse_url($location, PHP_URL_PATH))->toBe($new)
+            ->and($query)->toBe(['cliente' => [(string) $this->clientCompany->id], 'formato' => 'csv', 'periodo' => 'anio']);
+    }
+
+    // La URL nueva sigue comprobando los permisos y la descarga funciona al seguir la redirección.
+    $this->actingAs($this->employee)->followingRedirects()->get('/informes/vendido-frente-a-real')->assertForbidden();
+    $csv = $this->actingAs($this->finance)->followingRedirects()->get('/informes/vendido-frente-a-real?periodo=anio&formato=csv');
+    $csv->assertOk();
+});
+
+it('las horas para facturar no dependen del módulo ni de las exclusiones de Facturación (D-402)', function () {
+    enableBilling(false);
+
+    $this->actingAs($this->finance)->get('/facturacion/horas-para-facturar')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('billing/hours'));
+    $this->actingAs($this->admin)->get('/facturacion/horas-para-facturar?cliente[]='.$this->clientCompany->id.'&formato=csv')->assertOk();
+    $this->actingAs($this->employee)->get('/facturacion/horas-para-facturar')->assertForbidden();
+    $this->actingAs($this->finance)->get('/facturacion/informe')->assertNotFound();
+    $this->actingAs($this->finance)->get('/facturacion')->assertNotFound();
+
+    enableBilling();
+    $excluded = userWithRole('admin');
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$excluded->id]])->assertRedirect();
+    $this->actingAs($excluded)->get('/facturacion/informe')->assertNotFound();
+    $this->actingAs($excluded)->get('/facturacion/horas-para-facturar')->assertOk();
+});
+
+it('Informes ya no enseña nada de facturación (D-401)', function () {
+    $this->actingAs($this->admin)->get('/informes')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('reports/index')->missing('billing'));
+});
+
+it('los envíos programados de los informes movidos siguen generándose por su tipo (D-401)', function () {
+    expect(ReportKind::SoldVsActual->routeName())->toBe('billing.sold-vs-actual')
+        ->and(ReportKind::Billing->routeName())->toBe('billing.hours')
+        ->and(ReportKind::Invoicing->routeName())->toBe('billing.report');
+
+    foreach (ReportKind::cases() as $kind) {
+        expect(Route::has($kind->routeName()))->toBeTrue($kind->value);
+    }
+
+    $access = app(ReportAccess::class);
+    $request = fn (ReportKind $kind): ReportRequest => new ReportRequest($kind, [], ['periodo' => 'anio']);
+    expect($access->allows($request(ReportKind::Invoicing), $this->finance))->toBeTrue()
+        ->and($access->allows($request(ReportKind::Invoicing), $this->manager))->toBeFalse()
+        ->and($access->allows($request(ReportKind::SoldVsActual), $this->manager))->toBeTrue();
+
+    enableBilling(false);
+    expect($access->allows($request(ReportKind::Invoicing), $this->admin))->toBeFalse()
+        ->and($access->allows($request(ReportKind::Billing), $this->finance))->toBeTrue();
 });

@@ -19,7 +19,7 @@ it('las rutas de los informes con exportación llevan el limitador de exportacio
         ->and($route->gatherMiddleware())->toContain('throttle:'.ReportsServiceProvider::EXPORT_LIMITER);
 })->with([
     'reports.direction', 'reports.department', 'reports.person', 'reports.client',
-    'reports.project', 'reports.billing', 'reports.detail',
+    'reports.project', 'billing.hours', 'billing.report', 'billing.sold-vs-actual', 'reports.detail',
 ]);
 
 it('limita a 30 exportaciones por minuto y usuario, sin contar las visitas a la página', function () {
@@ -57,7 +57,7 @@ it('el cupo es común a todos los informes', function () {
         "/informes/personas/{$admin->id}?formato=csv",
         "/informes/clientes/{$client->id}?formato=csv",
         "/informes/proyectos/{$project->id}?formato=csv",
-        "/informes/facturacion?formato=csv&cliente[]={$client->id}",
+        "/facturacion/horas-para-facturar?formato=csv&cliente[]={$client->id}",
     ];
 
     foreach (range(0, 29) as $n) {

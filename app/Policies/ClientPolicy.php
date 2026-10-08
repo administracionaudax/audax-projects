@@ -81,7 +81,7 @@ class ClientPolicy
     }
 
     /**
-     * Exportación de horas para facturar (/informes/facturacion, D-045): admins y quien tenga
+     * Exportación de horas para facturar (/facturacion/horas-para-facturar, D-045 y D-402): admins y quien tenga
      * view-financials. Las tarifas e importes, además, solo con view-financials.
      */
     public function viewBilling(User $user): bool

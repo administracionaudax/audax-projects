@@ -1,7 +1,7 @@
 <?php
 
 /*
-| Facturación (Fase 12, F1; D-380 a D-399): textos del backend. Los del frontend, en lang/ui/billing.json.
+| Facturación (Fase 12, F1; D-380 a D-399 y D-400 a D-403): textos del backend. Los del frontend, en lang/ui/billing.json.
 */
 
 return [
@@ -152,6 +152,100 @@ return [
         'pdf' => [
             'units' => 'Unidades de venta',
             'units_lead' => 'Primero lo pasado y lo que está en riesgo. Las bolsas y los precios cerrados, enteros; los fees y las horas, en el periodo.',
+        ],
+    ],
+    // Informe de facturación (D-400): PDF, Excel y CSV.
+    'invoicing' => [
+        'title' => 'Informe de facturación',
+        'kicker' => 'Facturación',
+        'export_name' => 'informe-de-facturacion',
+        'empty' => 'No hay facturas en este periodo con estos filtros.',
+        'no_overdue' => 'No hay facturas vencidas.',
+        'with_vat' => 'Con IVA',
+        'drafts' => '{0} Sin borradores|{1} :count borrador|[2,*] :count borradores',
+        'rest' => '{1} Resto (:count cliente)|[2,*] Resto (:count clientes)',
+        'unmatched' => 'Sin cliente casado',
+        'no_previous' => 'Sin facturas el año anterior',
+        'variation' => ':pct frente al año anterior (:previous)',
+        'overdue_more' => '{1} Y :count factura vencida más (descarga el Excel para verlas todas).|[2,*] Y :count facturas vencidas más (descarga el Excel para verlas todas).',
+        'services_filtered' => 'Solo las líneas de los servicios elegidos.',
+        'aging_lead' => 'Lo pendiente de cobro (con IVA) de las facturas del periodo, por días de retraso a hoy.',
+        'kpis' => [
+            'invoiced' => 'Facturado (sin IVA)',
+            'previous_invoiced' => 'Facturado el año anterior (sin IVA)',
+            'variation' => 'Variación frente al año anterior (%)',
+            'credit_notes' => 'Rectificativas (sin IVA)',
+            'collected' => 'Cobrado',
+            'outstanding' => 'Pendiente de cobro',
+            'overdue' => 'Vencido',
+            'planned' => 'Previsto',
+            'count' => 'Facturas',
+            'average' => 'Ticket medio',
+        ],
+        'definitions' => [
+            'invoiced' => 'Base imponible de las facturas de Holded aprobadas y no anuladas del periodo, menos sus rectificativas (una factura anulada no se resta dos veces).',
+            'collected' => 'Lo cobrado de esas facturas, con IVA.',
+            'outstanding' => 'Lo que queda por cobrar de esas facturas, con IVA. Vencido: lo pendiente con el vencimiento ya pasado.',
+            'planned' => 'Base imponible de los borradores de Holded del periodo, entre ellos los que crean las facturas recurrentes. No cuenta como facturado.',
+            'average' => 'Lo facturado entre el número de facturas (sin contar las rectificativas).',
+            'services' => 'Las líneas de las facturas por el servicio del catálogo de Holded; las de las rectificativas restan.',
+        ],
+        'charts' => [
+            'months' => 'Facturado por mes',
+            'services' => 'Por servicio',
+            'clients' => 'Clientes',
+            'aging' => 'Antigüedad de lo pendiente',
+            'overdue' => 'Facturas vencidas',
+        ],
+        'columns' => [
+            'figure' => 'Cifra',
+            'value' => 'Valor',
+            'month' => 'Mes',
+            'invoiced' => 'Facturado sin IVA (€)',
+            'previous' => 'Año anterior sin IVA (€)',
+            'planned' => 'Previsto sin IVA (€)',
+            'count' => 'Facturas',
+            'service' => 'Servicio',
+            'share' => 'Peso (%)',
+            'client' => 'Cliente',
+            'bucket' => 'Antigüedad',
+            'outstanding' => 'Pendiente con IVA (€)',
+            'number' => 'Factura',
+            'issued_on' => 'Fecha',
+            'due_on' => 'Vencimiento',
+            'days' => 'Días de retraso',
+        ],
+        'sheets' => [
+            'resumen' => 'Resumen',
+            'meses' => 'Por mes',
+            'servicios' => 'Por servicio',
+            'clientes' => 'Por cliente',
+            'antiguedad' => 'Antigüedad',
+            'vencidas' => 'Vencidas',
+        ],
+        'services' => [
+            'bolsas' => 'Bolsas de horas',
+            'fees' => 'Fees',
+            'desarrollo' => 'Desarrollo',
+            'diseno' => 'Diseño',
+            'mantenimiento' => 'Mantenimiento',
+            'auditorias' => 'Auditorías',
+            'seo' => 'SEO',
+            'herramientas' => 'Herramientas',
+            'inversion' => 'Inversión repercutida',
+            'otros' => 'Otros',
+            'sin_desglose' => 'Sin desglose por línea',
+        ],
+        'aging' => [
+            'current' => 'Sin vencer',
+            'd1_30' => '1 a 30 días',
+            'd31_60' => '31 a 60 días',
+            'd61_90' => '61 a 90 días',
+            'd90_plus' => 'Más de 90 días',
+        ],
+        'filters' => [
+            'service' => 'Servicio',
+            'compare' => 'Comparado con',
         ],
     ],
 ];

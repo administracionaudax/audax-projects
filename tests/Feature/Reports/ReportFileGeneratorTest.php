@@ -46,6 +46,12 @@ beforeEach(function () {
 
             return new ReportRequest($kind, [], $this->week);
         })(),
+        // Informe de facturación (D-400), también con el módulo encendido.
+        ReportKind::Invoicing => (function () use ($kind): ReportRequest {
+            enableBilling();
+
+            return new ReportRequest($kind, [], $this->week);
+        })(),
     };
 });
 
