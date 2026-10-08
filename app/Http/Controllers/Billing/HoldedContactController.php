@@ -24,7 +24,7 @@ use Inertia\Response;
  */
 class HoldedContactController extends Controller
 {
-    public const array VIEWS = ['sin-casar', 'todos', 'descartados'];
+    public const array VIEWS = ['sin-casar', 'por-revisar', 'todos', 'descartados'];
 
     public function index(Request $request): Response
     {
@@ -34,6 +34,7 @@ class HoldedContactController extends Controller
             ->with('client:id,name,is_active')
             ->when($view === 'sin-casar', fn (Builder $q) => $q->whereNull('client_id')->whereNull('ignored_at'))
             ->when($view === 'descartados', fn (Builder $q) => $q->whereNotNull('ignored_at'))
+            ->when($view === 'por-revisar', fn (Builder $q) => $q->where('match_method', HoldedContact::MATCH_APPROX))
             ->orderBy('name')->orderBy('id')
             ->limit(500)
             ->get();
@@ -46,10 +47,15 @@ class HoldedContactController extends Controller
             'view' => $view,
             'counts' => [
                 'sin-casar' => HoldedContact::query()->whereNull('client_id')->whereNull('ignored_at')->count(),
+                'por-revisar' => HoldedContact::query()->where('match_method', HoldedContact::MATCH_APPROX)->count(),
                 'todos' => HoldedContact::query()->count(),
                 'descartados' => HoldedContact::query()->whereNotNull('ignored_at')->count(),
             ],
-            'contacts' => $contacts->map(fn (HoldedContact $contact): array => [
+            // Primero los que más facturan (los que importan para los informes), después por nombre.
+            'contacts' => $contacts->sortBy([
+                fn (HoldedContact $a, HoldedContact $b): int => (float) ($invoices[$b->holded_id]->subtotal ?? 0) <=> (float) ($invoices[$a->holded_id]->subtotal ?? 0),
+                fn (HoldedContact $a, HoldedContact $b): int => strcmp(mb_strtolower($a->name), mb_strtolower($b->name)),
+            ])->map(fn (HoldedContact $contact): array => [
                 'id' => $contact->id,
                 'name' => $contact->name,
                 'trade_name' => $contact->trade_name,
@@ -71,7 +77,7 @@ class HoldedContactController extends Controller
     public function update(Request $request, HoldedContact $contact, HoldedContactMatcher $matcher, HoldedInvoiceLinker $linker): RedirectResponse
     {
         $data = $request->validate([
-            'action' => ['required', 'string', 'in:assign,ignore,auto'],
+            'action' => ['required', 'string', 'in:assign,ignore,auto,confirm'],
             'client_id' => ['required_if:action,assign', 'nullable', 'integer', 'exists:clients,id'],
         ]);
 
@@ -81,6 +87,8 @@ class HoldedContactController extends Controller
         DB::transaction(function () use ($data, $contact, $matcher, $user): void {
             match ($data['action']) {
                 'assign' => $contact->forceFill(['client_id' => (int) $data['client_id'], 'match_method' => HoldedContact::MATCH_MANUAL, 'ignored_at' => null, 'resolved_by' => $user->id]),
+                // Da por bueno el cliente de un nombre parecido (D-248): pasa a hecho a mano.
+                'confirm' => $contact->forceFill(['match_method' => $contact->client_id !== null ? HoldedContact::MATCH_MANUAL : $contact->match_method, 'resolved_by' => $user->id]),
                 'ignore' => $contact->forceFill(['client_id' => null, 'match_method' => null, 'ignored_at' => now(), 'resolved_by' => $user->id]),
                 default => $contact->forceFill(['client_id' => null, 'match_method' => null, 'ignored_at' => null, 'resolved_by' => null]),
             };

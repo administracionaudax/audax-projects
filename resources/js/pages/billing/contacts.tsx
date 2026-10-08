@@ -12,7 +12,7 @@ import { formatCurrency, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-type View = 'sin-casar' | 'todos' | 'descartados';
+type View = 'sin-casar' | 'por-revisar' | 'todos' | 'descartados';
 
 type Contact = {
     id: number;
@@ -22,7 +22,7 @@ type Contact = {
     email: string | null;
     city: string | null;
     client: { id: number; name: string } | null;
-    match_method: 'tax_id' | 'name' | 'manual' | null;
+    match_method: 'tax_id' | 'name' | 'approx' | 'manual' | null;
     ignored: boolean;
     invoices: number;
     invoiced: string;
@@ -41,7 +41,7 @@ type Props = {
 };
 
 const URL = '/facturacion/contactos';
-const VIEWS: View[] = ['sin-casar', 'todos', 'descartados'];
+const VIEWS: View[] = ['sin-casar', 'por-revisar', 'todos', 'descartados'];
 
 /**
  * Contactos de Holded y su cliente de Audax (Fase 12, F1; D-387): los que no casan por NIF ni por
@@ -64,7 +64,9 @@ export default function HoldedContacts({
                 />
                 <BillingTabs
                     current="contactos"
-                    badges={{ contactos: counts['sin-casar'] }}
+                    badges={{
+                        contactos: counts['sin-casar'] + counts['por-revisar'],
+                    }}
                 />
 
                 <div
@@ -140,7 +142,7 @@ function ContactRow({
     );
     const [processing, setProcessing] = useState(false);
 
-    const send = (action: 'assign' | 'ignore' | 'auto') => {
+    const send = (action: 'assign' | 'ignore' | 'auto' | 'confirm') => {
         router.put(
             `${URL}/${contact.id}`,
             {
@@ -259,6 +261,21 @@ function ContactRow({
                     </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    {contact.match_method === 'approx' && contact.client ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={processing}
+                            onClick={() => send('confirm')}
+                            data-test="contact-confirm"
+                        >
+                            <Check aria-hidden="true" />
+                            {t('billing.contacts.confirm', {
+                                client: contact.client.name,
+                            })}
+                        </Button>
+                    ) : null}
                     {!contact.ignored ? (
                         <Button
                             type="button"

@@ -55,6 +55,9 @@ class HoldedContact extends Model
 
     public const string MATCH_MANUAL = 'manual';
 
+    /** Casado por un nombre parecido (D-248): sale en «Por revisar» hasta que alguien lo confirme. */
+    public const string MATCH_APPROX = 'approx';
+
     /**
      * @return array<string, string>
      */

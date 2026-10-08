@@ -423,5 +423,8 @@
     "billing.invoicing.definitions.planned": "Base imponible de los borradores de Holded del periodo, entre ellos los que crean las facturas recurrentes cada día 29. No cuenta como facturado.",
     "billing.invoicing.definitions.count": "Facturas emitidas del periodo, sin contar las rectificativas.",
     "billing.invoicing.definitions.average": "Lo facturado entre el número de facturas.",
-    "billing.invoicing.services.marketing": "Marketing y campañas"
+    "billing.invoicing.services.marketing": "Marketing y campañas",
+    "billing.contacts.view.por-revisar": "Por revisar",
+    "billing.contacts.match.approx": "por un nombre parecido: revísalo",
+    "billing.contacts.confirm": "Sí, es :client"
 }

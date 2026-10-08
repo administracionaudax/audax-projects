@@ -2033,6 +2033,17 @@ Pedido por el propietario el 08/10/2026: «por ahora, que Toni deje de verlos»,
 - **El resto de la app no cambia por ahora:** precio de las bolsas, tarifas en las fichas, coste de las personas en Administración, etc.
 - **Si se quiere ocultar también eso,** se aplicaría la misma regla al gate `view-financials`.
 
+### D-248 · Casar contactos de Holded por un nombre parecido, para revisar **[amplía D-387]**
+Con los datos reales del 08/10/2026 solo casaban 23 de 283 contactos de Holded (solo 22 clientes tienen NIF y los nombres no coinciden: «Montó» frente a «PINTURAS MONTÓ, S.A.U»), y 146 de las 194 facturas de 2026 quedaban sin cliente.
+- **Tercer paso del emparejado** (después del NIF y del nombre exacto), solo si señala a **un** cliente:
+  - el mismo nombre sin espacios («Naranjas y Frutas» y «Naranjasyfrutas»),
+  - todas las palabras con peso del cliente dentro del nombre o el nombre comercial del contacto («Montó» en «PINTURAS MONTÓ»),
+  - o las del nombre comercial del contacto dentro del cliente («SITRA» en «Sitra - SIQUIMICA»).
+- **Qué no cuenta:** las palabras de menos de 3 letras ni las genéricas (grupo, soluciones, agencia…), y nunca casan los clientes internos de Audax.
+- **Si encajan varios clientes,** gana el más concreto (sus palabras incluyen las de los demás). Si no hay uno claro, no casa con ninguno.
+- **Se marcan para revisar** (`match_method = approx`): salen en la pestaña nueva **«Por revisar»** de Contactos de Holded, con «Sí, es …» para confirmarlos. Al confirmar pasan a «a mano». Sus facturas ya cuentan para el cliente en los informes.
+- **Orden de la lista:** «Sin casar» enseña primero los contactos que más facturan.
+
 ### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
 Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
 - **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
@@ -2913,6 +2924,7 @@ Revisados el 08/10/2026 con las 910 facturas leídas de Holded:
 - Quién ve Facturación y buscador al casar: D-245.
 - Barra de tipos en la lista del chat: D-246.
 - Sin importes en los informes para quien no ve Facturación: D-247.
+- Casar contactos de Holded por un nombre parecido: D-248.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Previsión: D-280 a D-289.
@@ -2922,6 +2934,6 @@ Revisados el 08/10/2026 con las 910 facturas leídas de Holded:
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
 - Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403.
-- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-248 a D-249.
+- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-249.
 
-La siguiente libre es **D-248** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-405 en adelante, libres).
+La siguiente libre es **D-249** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-405 en adelante, libres).

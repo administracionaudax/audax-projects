@@ -12,6 +12,16 @@ use Illuminate\Support\Str;
  * 1. por NIF (sin espacios, guiones ni el prefijo «ES» del NIF-IVA),
  * 2. si no, por el nombre o el nombre comercial normalizados (sin tildes, signos ni la forma
  *    jurídica: «Hoteles Mirador, S.A.» = «Hoteles Mirador»), solo si casa con UN cliente.
+ * 3. si no, por un nombre parecido (D-248), también solo si casa con UN cliente, y queda «por
+ *    revisar» (MATCH_APPROX):
+ *    - el mismo nombre sin espacios («Naranjas y Frutas» = «Naranjasyfrutas», «AGENCIA SEO» =
+ *      «AgenciaSEO»),
+ *    - todas las palabras con peso del cliente están en el nombre o el nombre comercial del
+ *      contacto («Montó» en «PINTURAS MONTÓ, S.A.U», «Atica» en «NOVA ATICA SA»),
+ *    - o todas las del nombre comercial del contacto están en el del cliente («SITRA» en «Sitra -
+ *      SIQUIMICA»).
+ *    No cuentan las palabras de menos de 3 letras ni las genéricas (grupo, soluciones, agencia…), y
+ *    nunca los clientes internos de Audax.
  * Nunca crea clientes ni cambia un enlace hecho a mano o un contacto descartado. Al casar, rellena
  * los datos fiscales que el cliente aún no tiene (NIF, razón social, dirección y país); lo que ya
  * está escrito en Audax no se toca.
@@ -26,6 +36,15 @@ final class HoldedContactMatcher
 
     /** @var array<string, list<int>>|null nombre normalizado → clientes */
     private ?array $byName = null;
+
+    /** @var array<string, list<int>>|null nombre sin espacios → clientes */
+    private ?array $byCompact = null;
+
+    /** @var array<int, list<string>>|null cliente → sus palabras con peso */
+    private ?array $tokens = null;
+
+    /** Palabras que no bastan para casar por sí solas. */
+    private const array GENERIC = ['grupo', 'group', 'solutions', 'soluciones', 'solucion', 'international', 'internacional', 'spain', 'espana', 'iberica', 'sociedad', 'limitada', 'anonima', 'agencia', 'digital', 'partners', 'partner', 'servicios', 'gestiones', 'marketing', 'comunicacion', 'consultores', 'consulting', 'the', 'and', 'del', 'las', 'los', 'con', 'para', 'por', 'hnos', 'hermanos', 'tech', 'technologies', 'global', 'studio', 'estudio', 'region', 'unipessoal', 'lda', 'gmbh', 'ltd', 'inc', 'srl', 'web', 'leads', 'general'];
 
     public function match(HoldedContact $contact): void
     {
@@ -87,6 +106,21 @@ final class HoldedContactMatcher
     {
         $this->byTaxId = null;
         $this->byName = null;
+        $this->byCompact = null;
+        $this->tokens = null;
+    }
+
+    /**
+     * Palabras con peso de un nombre normalizado: de 3 letras o más y no genéricas.
+     *
+     * @return list<string>
+     */
+    public static function weightyTokens(string $normalized): array
+    {
+        return array_values(array_unique(array_filter(
+            explode(' ', $normalized),
+            fn (string $word): bool => strlen($word) >= 3 && ! in_array($word, self::GENERIC, true),
+        )));
     }
 
     public static function normalizeName(?string $name): string
@@ -122,17 +156,65 @@ final class HoldedContactMatcher
             }
         }
 
-        return [null, null];
+        $approx = $this->approximate($contact);
+
+        return $approx !== null ? [$approx, HoldedContact::MATCH_APPROX] : [null, null];
+    }
+
+    /** El único cliente con un nombre parecido (D-248), o null si no hay ninguno o hay varios. */
+    private function approximate(HoldedContact $contact): ?int
+    {
+        $names = array_values(array_filter([self::normalizeName($contact->name), self::normalizeName($contact->trade_name)]));
+
+        foreach ($names as $name) {
+            $compact = str_replace(' ', '', $name);
+            if (strlen($compact) >= 4 && count($this->byCompact[$compact] ?? []) === 1) {
+                return $this->byCompact[$compact][0];
+            }
+        }
+
+        $contactWords = self::weightyTokens(implode(' ', $names));
+        $tradeWords = self::weightyTokens(self::normalizeName($contact->trade_name));
+        $found = [];
+
+        foreach ($this->tokens ?? [] as $clientId => $clientWords) {
+            $clientInContact = $clientWords !== [] && array_diff($clientWords, $contactWords) === [];
+            $tradeInClient = $tradeWords !== [] && array_diff($tradeWords, $clientWords) === [];
+
+            if ($clientInContact || $tradeInClient) {
+                $found[] = $clientId;
+            }
+        }
+
+        if (count($found) <= 1) {
+            return $found[0] ?? null;
+        }
+
+        // Varios: gana el más concreto si sus palabras incluyen las de todos los demás («Montó
+        // Export» frente a «Montó»); si no, es dudoso y no casa con ninguno.
+        foreach ($found as $candidate) {
+            $words = $this->tokens[$candidate] ?? [];
+            $coversAll = array_filter($found, fn (int $other): bool => $other !== $candidate
+                && (array_diff($this->tokens[$other] ?? [], $words) !== [] || count($this->tokens[$other] ?? []) >= count($words)));
+
+            if ($coversAll === []) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function load(): void
     {
-        if ($this->byTaxId !== null && $this->byName !== null) {
+        if ($this->byTaxId !== null && $this->byName !== null && $this->byCompact !== null && $this->tokens !== null) {
             return;
         }
 
         $this->byTaxId = [];
         $this->byName = [];
+        $this->byCompact = [];
+        $this->tokens = [];
 
         foreach (Client::query()->orderBy('id')->get(['id', 'name', 'tax_id']) as $client) {
             $taxId = HoldedPayload::normalizeTaxId($client->tax_id);
@@ -144,6 +226,13 @@ final class HoldedContactMatcher
             if ($name !== '') {
                 $this->byName[$name][] = $client->id;
             }
+
+            // Los clientes internos de Audax (Audax Web, Audax Leads…) nunca casan por parecido.
+            if ($name === '' || str_starts_with($name, 'audax')) {
+                continue;
+            }
+            $this->byCompact[str_replace(' ', '', $name)][] = $client->id;
+            $this->tokens[$client->id] = self::weightyTokens($name);
         }
     }
 }
