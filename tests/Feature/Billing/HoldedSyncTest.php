@@ -281,6 +281,40 @@ it('sin permiso para los cobros sueltos sigue con lo cobrado de cada factura y l
         ->and(HoldedPayment::query()->count())->toBe(0);
 });
 
+it('la rectificativa que el listado no enlaza sabe su factura por su ficha (from), pedida una sola vez', function () {
+    $d = $this->data;
+    $d['creditNotes'][0] = [...$d['creditNotes'][0], 'document_number' => 'CN260001', 'from' => ['id' => 'i2', 'doc_type' => 'invoice']];
+    unset($d['creditNotes'][0]['rectified_document_id']);
+    // Como la API real: el listado no trae `from`; la ficha sí.
+    $api = new class($d['contacts'], $d['projects'], $d['invoices'], $d['creditNotes'], $d['payments']) extends FakeHolded
+    {
+        public int $details = 0;
+
+        public function creditNotes(): iterable
+        {
+            return array_map(function (array $item): array {
+                unset($item['from']);
+
+                return $item;
+            }, iterator_to_array(parent::creditNotes(), false));
+        }
+
+        public function creditNote(string $holdedId): array
+        {
+            $this->details++;
+
+            return parent::creditNote($holdedId);
+        }
+    };
+
+    syncHolded($api);
+    syncHolded($api);
+
+    $credit = HoldedInvoice::query()->where('number', 'CN260001')->sole();
+    expect($credit->rectified_invoice_id)->toBe(HoldedInvoice::query()->where('holded_id', 'i2')->value('id'))
+        ->and($api->details)->toBe(1);
+});
+
 it('un borrador aprobado en Holded recibe su número; uno borrado en Holded desaparece', function () {
     $draft = holdedInvoice('d1', '', 'c5', '2026-03-19', '1500.00', ['draft' => true, 'approval_status' => 'draft', 'tags' => ['#fee']]);
     syncHolded(holdedFake([...$this->data, 'invoices' => [...$this->data['invoices'], $draft]]));

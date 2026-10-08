@@ -90,7 +90,7 @@ final class HoldedSync
             $this->contacts($api);
             $this->projects($api);
             $this->documents($api->invoices(), HoldedDocumentKind::Invoice);
-            $this->documents($api->creditNotes(), HoldedDocumentKind::CreditNote);
+            $this->documents($api->creditNotes(), HoldedDocumentKind::CreditNote, $api);
             $this->forgetVanishedDrafts();
             $this->resolveRectified();
             $this->payments($api);
@@ -201,10 +201,14 @@ final class HoldedSync
 
     /**
      * @param  iterable<int, array<string, mixed>>  $items
+     * @param  HoldedApi|null  $api  con las rectificativas: para pedir la ficha que dice qué factura rectifican
      */
-    private function documents(iterable $items, HoldedDocumentKind $kind): void
+    private function documents(iterable $items, HoldedDocumentKind $kind, ?HoldedApi $api = null): void
     {
         $clients = HoldedContact::query()->whereNotNull('client_id')->pluck('client_id', 'holded_id')->all();
+        $rectified = $api !== null
+            ? HoldedInvoice::query()->whereNotNull('rectified_holded_id')->pluck('rectified_holded_id', 'holded_id')->all()
+            : [];
         $label = $kind === HoldedDocumentKind::Invoice ? 'invoices' : 'credit_notes';
 
         foreach ($items as $item) {
@@ -217,6 +221,13 @@ final class HoldedSync
                 continue;
             }
             $this->seen[$id] = true;
+
+            // La rectificativa que aún no sabe qué factura rectifica: su ficha (una petición, una vez).
+            if ($api !== null && ! $draft && ! isset($rectified[$id]) && self::rectifiedId($item) === null) {
+                $item['from'] = $api->creditNote($id)['from'] ?? null;
+            } elseif (isset($rectified[$id]) && self::rectifiedId($item) === null) {
+                $item['from'] = ['id' => $rectified[$id]];
+            }
 
             // Una rectificativa es de la serie «CN» (CN250004) aunque la API la dé como otro tipo (D-397).
             $number = $draft ? null : HoldedPayload::string($item, 'document_number', 'docNumber', 'number');
@@ -247,7 +258,7 @@ final class HoldedSync
                 'holded_status' => self::limit(HoldedPayload::string($item, 'status'), 24),
                 'is_draft' => $draft,
                 'tags' => array_values(array_filter(array_map(fn (mixed $tag): ?string => is_string($tag) && trim($tag) !== '' ? Str::limit(trim($tag), 60, '') : null, is_array($item['tags'] ?? null) ? $item['tags'] : []))) ?: null,
-                'rectified_holded_id' => self::limit(HoldedPayload::string($item, 'rectified_document_id', 'rectified_invoice_id', 'original_document_id', 'from.id', 'from_id', 'invoice_id'), 64),
+                'rectified_holded_id' => self::limit(self::rectifiedId($item), 64),
                 'notes' => HoldedPayload::string($item, 'notes', 'body'),
             ];
             $hash = hash('sha256', (string) json_encode([$draft, $attributes['tags'], $attributes['number'], $attributes['issued_on'], $attributes['due_on'], $subtotal, $tax, $total, $attributes['holded_contact_id'], $attributes['rectified_holded_id'], $attributes['notes'], $lines]));
@@ -472,6 +483,14 @@ final class HoldedSync
         }
 
         $this->stats['pdfs_pending'] = HoldedInvoice::query()->whereNull('pdf_path')->where('is_draft', false)->count();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private static function rectifiedId(array $item): ?string
+    {
+        return HoldedPayload::string($item, 'rectified_document_id', 'rectified_invoice_id', 'original_document_id', 'from.id', 'from_id', 'invoice_id');
     }
 
     private function count(string $group, string $what): void

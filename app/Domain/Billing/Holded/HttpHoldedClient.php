@@ -88,6 +88,15 @@ final class HttpHoldedClient implements HoldedApi
         return $this->paginate('/credit-notes');
     }
 
+    public function creditNote(string $holdedId): array
+    {
+        $json = $this->send('/credit-notes/'.rawurlencode($holdedId), [])->json();
+        $item = is_array($json) && is_array($json['data'] ?? null) ? $json['data'] : $json;
+
+        /** @var array<string, mixed> */
+        return is_array($item) ? $item : [];
+    }
+
     public function payments(): iterable
     {
         return $this->paginate('/payments');

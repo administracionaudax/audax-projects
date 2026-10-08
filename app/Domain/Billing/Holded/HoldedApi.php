@@ -38,6 +38,14 @@ interface HoldedApi
     public function creditNotes(): iterable;
 
     /**
+     * Ficha completa de una rectificativa: el listado no dice qué factura rectifica; la ficha sí
+     * (`from`: {id, doc_type}).
+     *
+     * @return array<string, mixed>
+     */
+    public function creditNote(string $holdedId): array;
+
+    /**
      * Cobros (H-076).
      *
      * @return iterable<int, array<string, mixed>>

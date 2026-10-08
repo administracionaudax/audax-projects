@@ -76,6 +76,19 @@ class FakeHolded implements HoldedApi
         return $this->creditNotes;
     }
 
+    public function creditNote(string $holdedId): array
+    {
+        $this->requests++;
+
+        foreach ($this->creditNotes as $creditNote) {
+            if (($creditNote['id'] ?? null) === $holdedId) {
+                return $creditNote;
+            }
+        }
+
+        return [];
+    }
+
     public function payments(): iterable
     {
         $this->requests++;
