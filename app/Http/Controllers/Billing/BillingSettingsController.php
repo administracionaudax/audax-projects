@@ -23,7 +23,7 @@ use Inertia\Response;
  */
 class BillingSettingsController extends Controller
 {
-    /** Campos del emisor (PLAN-FACTURACION §6.2, company_billing_settings). */
+    /** Campos del emisor (PLAN-FASE-12 §6.2, company_billing_settings). */
     public const array ISSUER_FIELDS = ['legal_name', 'tax_id', 'address', 'postal_code', 'city', 'province', 'country_code', 'registry', 'iban', 'email', 'phone'];
 
     public function edit(Request $request): Response

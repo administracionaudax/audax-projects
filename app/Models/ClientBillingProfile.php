@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Ficha fiscal del cliente (Fase 12, D-381; PLAN-FACTURACION §6.2, H-001 a H-008). 1:1 con `clients`;
+ * Ficha fiscal del cliente (Fase 12, D-381; PLAN-FASE-12 §6.2, H-001 a H-008). 1:1 con `clients`;
  * el NIF sigue en `clients.tax_id`. Solo la ven y la editan quienes tienen view-billing.
  *
  * @property int $id

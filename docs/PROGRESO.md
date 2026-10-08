@@ -1,6 +1,6 @@
 # Progreso
 
-_Última actualización: 07/10/2026_
+_Última actualización: 08/10/2026_
 
 ## Hecho
 
@@ -223,7 +223,17 @@ Fase 11 (`docs/PLAN-FASE-11.md`, §0.5), decisiones D-360 a D-379. La última en
 - **Pendiente:** R5 (D-378: corte, saldo inicial, ausencias futuras e historial de Woffu) y la asesoría (D-377).
 
 ### Facturación: investigación (rama `investigacion-facturacion`, 06/10, solo documentación)
-Inventario de Holded (`docs/HOLDED-INVENTARIO.md`, H-001 a H-146) y propuesta con el estado legal, el encaje, la migración y las entregas F0 a F8 (`docs/PLAN-FACTURACION.md`). **Pendiente del propietario:** preguntas P1 a P8 del plan. VeriFactu: el aplazamiento a octubre de 2028 es un anuncio del 05/10/2026, sin norma en el BOE; la fecha legal sigue siendo el 01/01/2027.
+Inventario de Holded (`docs/HOLDED-INVENTARIO.md`, H-001 a H-146) y propuesta con el estado legal, el encaje, la migración y las entregas F0 a F8 (`docs/PLAN-FASE-12.md`). **Pendiente del propietario:** preguntas P1 a P8 del plan. VeriFactu: el aplazamiento a octubre de 2028 es un anuncio del 05/10/2026, sin norma en el BOE; la fecha legal sigue siendo el 01/01/2027.
+
+### Facturación F1: lectura de Holded y vendido frente a real (rama `facturacion-f1`, 08/10)
+Fase 12 (`docs/PLAN-FASE-12.md` §8; D-380 a D-399). **Solo lectura de Holded**: Holded sigue emitiendo. Módulo `billing` **apagado** hasta tener la clave.
+- **Datos fiscales:** ficha fiscal del cliente (`/clientes/{id}/facturacion`) y datos del emisor (`/facturacion/ajustes`), con view-financials.
+- **Fee mensual** como tipo propio (horas e importe al mes) y `app:convert-monthly-fees --dry-run` para proponer la conversión de los FE de ClickUp.
+- **Cliente de la API v2 de Holded** (cursor, límite por minuto, 429 con `Retry-After`, errores claros) y Holded falso para local y tests.
+- **Sincronización** cada noche y «Sincronizar ahora» (admins): contactos ↔ clientes (NIF o nombre; los demás se resuelven a mano), facturas, rectificativas CN, borradores de las recurrentes (como previsto), cobros, PDF en el disco privado y enlace por el código F, el proyecto de Holded o la sugerencia (cliente, servicio y fecha).
+- **«Vendido frente a real»** en Informes, en la pestaña Facturación del proyecto, en el cliente y en cada bolsa: vendido, real, desviación con semáforo y, con view-financials, facturado, cobrado, pendiente, margen y precio efectivo; Excel, CSV, PDF e impresión.
+- **Tests:** Pest en `tests/Feature/Billing` (cliente con `Http::fake`, sincronización idempotente, enlaces, CN sin restar dos veces, cálculos del informe con casos compartidos con Vitest, formularios, conversión y matriz de permisos); Vitest `billing.test.tsx`; E2E `tests/e2e/billing.spec.ts`.
+- **Pendiente del propietario (D-399):** la clave de la API de Holded (solo lectura: Contactos, Proyectos y Ventas) en `shared/.env` y encender el módulo.
 
 ## Siguiente: puesta en marcha (lo que falta del propietario, D-030)
 1. **Datos SMTP:** hasta entonces, los emails van al registro. Hay que poner las líneas `MAIL_*` del `.env` y hacer una prueba de envío.

@@ -24,6 +24,7 @@ Las reglas de la **sección 16 del SPEC (servidor)** prevalecen sobre todo lo de
 | 9. Exportar y enviar | En curso: `docs/PLAN-FASE-9.md` (PDF, imprimir, Google Sheets, correo y envíos programados) |
 | 10. Weekly | En curso: `docs/PLAN-FASE-10.md` (fusión de WeeklySync; lista de paridad en `docs/WEEKLY-INVENTARIO.md`) |
 | 11. RR. HH. («Personas») | En curso: `docs/PLAN-FASE-11.md` (sustituye a Woffu). R1 (registro de jornada, rama `rrhh-r1`) y R2 (acceso, cierres e Inspección, rama `rrhh-r2`) hechas; el módulo `people` sigue apagado hasta desplegarlas juntas y probar el mes en paralelo con Woffu |
+| 12. Facturación | En curso: `docs/PLAN-FASE-12.md` (sustituye a Holded por entregas). F1 (lectura de Holded y «Vendido frente a real», rama `facturacion-f1`, D-380 a D-399) hecha; el módulo `billing` sigue apagado hasta tener la clave de la API de Holded (D-399) |
 
 ## Modo autónomo (D-027)
 Desde la Fase 1 se trabaja fase tras fase sin esperar aprobaciones. El plan de cada fase queda en `docs/PLAN-FASE-N.md` y las decisiones de producto se registran en `docs/DECISIONES.md`. Solo se contacta al propietario para SMTP, lista de empleados y texto RGPD (al final), o por un imprevisto del servidor que no se pueda revertir.

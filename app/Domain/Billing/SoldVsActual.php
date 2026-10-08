@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * Informe «Vendido frente a real» (Fase 12, F1; D-390; PLAN-FACTURACION §4.6). Una fila por unidad de
+ * Informe «Vendido frente a real» (Fase 12, F1; D-390; PLAN-FASE-12 §4.6). Una fila por unidad de
  * venta:
  *
  * | Unidad | Vendido (horas e importe) | Real | Facturas |

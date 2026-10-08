@@ -20,7 +20,7 @@ import type { SoldVsActualPageProps } from '@/types';
 const URL = '/informes/vendido-frente-a-real';
 
 /**
- * «Vendido frente a real» (Fase 12, F1; D-390; PLAN-FACTURACION §4.6): horas e importe vendidos de
+ * «Vendido frente a real» (Fase 12, F1; D-390; PLAN-FASE-12 §4.6): horas e importe vendidos de
  * cada bolsa, precio cerrado, fee y proyecto por horas frente a las horas reales y, con
  * view-financials, lo facturado y cobrado en Holded y el margen. Filtros en la URL y exportación
  * como el resto de informes.

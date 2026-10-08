@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * Unidad de venta del informe «Vendido frente a real» (Fase 12, D-390; PLAN-FACTURACION §4.6). Los
+ * Unidad de venta del informe «Vendido frente a real» (Fase 12, D-390; PLAN-FASE-12 §4.6). Los
  * valores van en la URL (?venta=bolsa), por eso en español.
  */
 enum SaleKind: string

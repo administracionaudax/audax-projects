@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * Régimen de IVA del cliente (Fase 12, D-381; PLAN-FACTURACION §2.4 y H-066): decide la mención de la
+ * Régimen de IVA del cliente (Fase 12, D-381; PLAN-FASE-12 §2.4 y H-066): decide la mención de la
  * factura cuando Audax emita (F5). En F1 solo se guarda y se lee de Holded.
  */
 enum TaxRegime: string
