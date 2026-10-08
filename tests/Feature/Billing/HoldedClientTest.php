@@ -45,6 +45,20 @@ it('recorre todas las páginas con el cursor y manda la clave como Bearer', func
     Http::assertSent(fn (Request $request): bool => ($request->data()['cursor'] ?? null) === 'c3');
 });
 
+it('recorre las páginas con el formato real de la v2 (items, has_more y cursor)', function () {
+    Http::fake([
+        'api.holded.test/api/v2/contacts*' => Http::sequence()
+            ->push(['items' => [['id' => 'a'], ['id' => 'b']], 'has_more' => true, 'cursor' => 'k2'])
+            ->push(['items' => [['id' => 'c']], 'has_more' => false, 'cursor' => null]),
+    ]);
+
+    $ids = array_map(fn (array $item): string => $item['id'], iterator_to_array(holdedClient()->contacts(), false));
+
+    expect($ids)->toBe(['a', 'b', 'c']);
+    Http::assertSent(fn (Request $request): bool => ($request->data()['cursor'] ?? null) === 'k2');
+    Http::assertSentCount(2);
+});
+
 it('no entra en bucle si Holded repite un cursor', function () {
     Http::fake(['*' => Http::response(['data' => [['id' => 'x']], 'meta' => ['next_cursor' => 'mismo']])]);
 

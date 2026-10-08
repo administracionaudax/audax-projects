@@ -40,7 +40,7 @@ final class HttpHoldedClient implements HoldedApi
         private readonly int $timeout = 30,
         private readonly int $connectTimeout = 10,
         private readonly int $perMinute = 60,
-        private readonly int $pageSize = 100,
+        private readonly int $pageSize = 200,
         private readonly int $maxRetries = 5,
         private readonly int $maxRetryAfter = 120,
     ) {
@@ -173,7 +173,13 @@ final class HttpHoldedClient implements HoldedApi
             return null;
         }
 
+        // El formato real de la v2 (OpenAPI de Holded): {items, has_more, cursor}; cursor es null en la última.
+        if (array_key_exists('has_more', $json) && $json['has_more'] === false) {
+            return null;
+        }
+
         $candidates = [
+            $json['cursor'] ?? null,
             $json['meta']['next_cursor'] ?? null,
             $json['next_cursor'] ?? null,
             $json['meta']['cursor']['next'] ?? null,
