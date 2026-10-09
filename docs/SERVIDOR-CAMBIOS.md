@@ -171,3 +171,12 @@ Sin migraciones ni cambios de sistema. |
 - estado de Holded en todas las pantallas.
 
 Comprobado con los datos reales: todas las pantallas 200 y las URL antiguas 301. Validación del icono del cliente con intl. CI de GitHub en verde por primera vez en `fase-10` (Pest en paralelo). Sin cambios de sistema. |
+| 09/10 | **Rediseño de Facturación, tramo 2** (D-411 a D-416), sin migraciones de sistema:
+- portada Resumen;
+- Por revisar como bandeja, con «Aceptar las de confianza alta» y «Deshacer»;
+- Por facturar empezando por la lista de clientes;
+- tarjetas y filtros en hoja para el móvil;
+- ayuda en contexto;
+- Vendido frente a real lee bien los proyectos por horas.
+
+Probado con los datos reales: todas las pantallas 200, entre 113 y 405 ms. Pruebas de Facturación del tramo 1 en PostgreSQL del servidor: 161 en verde. Plan de la emisión propia en `docs/PLAN-EMISION.md` (D-249). Sin cambios de sistema. |
