@@ -33,13 +33,13 @@ use Illuminate\Database\Eloquent\Collection;
  * | Bolsa | `total_minutes` y `price_amount` | horas de la bolsa | las enlazadas con la bolsa |
  * | Precio cerrado | `budget_minutes` y `fixed_price_amount` | horas del proyecto | las del proyecto |
  * | Fee mensual | horas e importe al mes × meses del periodo | horas del periodo | las del periodo |
- * | Por horas | — (nada: sin porcentaje, D-411) | horas facturables del periodo | las del periodo |
+ * | Por horas | — (nada: sin porcentaje, D-416) | horas facturables del periodo | las del periodo |
  *
  * - Bolsas y precios cerrados se miden **enteros** (toda su vida) si están vivos en el periodo; fees
  *   y horas, **dentro del periodo**.
  * - **Real** = horas aprobadas o bloqueadas; las enviadas y en borrador van aparte («pendientes de
  *   aprobar»), como en todos los informes. Desviación = real − vendido; semáforo de la Weekly:
- *   riesgo desde el 85 %, pasado por encima del 100 %. Por horas no hay semáforo (D-411): lo que
+ *   riesgo desde el 85 %, pasado por encima del 100 %. Por horas no hay semáforo (D-416): lo que
  *   pasa de lo facturado son horas pendientes de facturar (`unbilled_minutes`, estado «unbilled»).
  * - **Importes** (solo con view-financials): lo facturado es la base imponible (sin IVA) de las
  *   facturas aprobadas y no anuladas menos sus rectificativas; cobrado y pendiente de cobro, con IVA
@@ -58,7 +58,7 @@ final class SoldVsActual
 
     public const int OVER_PCT = 100;
 
-    /** Estados de una unidad: el semáforo de lo vendido y, por horas, lo pendiente de facturar (D-411). */
+    /** Estados de una unidad: el semáforo de lo vendido y, por horas, lo pendiente de facturar (D-416). */
     public const array STATUSES = ['over', 'risk', 'unbilled', 'ok', 'billed', 'none'];
 
     private const array REAL = [TimeEntryStatus::Approved->value, TimeEntryStatus::Locked->value];
@@ -134,7 +134,7 @@ final class SoldVsActual
     }
 
     /**
-     * Estado de una unidad por horas (D-411): no hay nada vendido, así que no hay porcentaje. Con
+     * Estado de una unidad por horas (D-416): no hay nada vendido, así que no hay porcentaje. Con
      * horas reales por encima de las facturadas, «unbilled» (pendiente de facturar); con todo
      * facturado, «billed»; sin horas ni facturas, «none».
      */
@@ -474,7 +474,7 @@ final class SoldVsActual
         $project = $unit['project'];
         /** @var SaleKind $kind */
         $kind = $unit['kind'];
-        // Por horas no hay nada vendido (D-411, cambia la lectura de D-390): lo facturado no es un
+        // Por horas no hay nada vendido (D-416, cambia la lectura de D-390): lo facturado no es un
         // límite, así que pasar de ello no es un exceso, son horas pendientes de facturar.
         // Una bolsa sin precio en Audax (las de ClickUp): el de su línea «bolsadehoras» en Holded.
         $soldSource = $unit['sold_amount'] !== null ? 'audax' : null;

@@ -38,7 +38,7 @@ export function saleStatus(pct: number | null): SaleStatus {
 }
 
 /**
- * Estado de una unidad por horas (D-411, como SoldVsActual::hourlyStatus): no hay nada vendido, así
+ * Estado de una unidad por horas (D-416, como SoldVsActual::hourlyStatus): no hay nada vendido, así
  * que no hay porcentaje. Horas reales por encima de las facturadas: pendiente de facturar.
  */
 export function hourlyStatus(

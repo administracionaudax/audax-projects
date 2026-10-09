@@ -68,7 +68,7 @@
             "status": "none"
         }
     ],
-    "_comment_hourly": "Por horas (D-411) no hay nada vendido ni porcentaje: con horas reales por encima de las facturadas, «unbilled» (pendiente de facturar, con la diferencia en minutos); con todo facturado, «billed»; sin horas ni facturas, «none». Lo comprueban SoldVsActual::hourlyStatus (Pest) y hourlyStatus (Vitest).",
+    "_comment_hourly": "Por horas (D-416) no hay nada vendido ni porcentaje: con horas reales por encima de las facturadas, «unbilled» (pendiente de facturar, con la diferencia en minutos); con todo facturado, «billed»; sin horas ni facturas, «none». Lo comprueban SoldVsActual::hourlyStatus (Pest) y hourlyStatus (Vitest).",
     "hourly_cases": [
         {
             "invoiced": 60,

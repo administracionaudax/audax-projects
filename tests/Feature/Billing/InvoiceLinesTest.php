@@ -105,7 +105,7 @@ it('el informe lee las horas de las líneas: lo facturado por horas y el precio 
     $unit = fn (string $key): array => collect($report['units'])->firstWhere('key', $key);
 
     expect($unit('bank:'.$bank->id))->toMatchArray(['sold_minutes' => 6000, 'sold_amount' => '5100.00', 'sold_source' => 'holded', 'invoiced' => '5100.00', 'invoiced_minutes' => 6000])
-        // Por horas (D-411): 8 h facturadas de 10 reales no son un «pasado», son 2 h pendientes de facturar.
+        // Por horas (D-416): 8 h facturadas de 10 reales no son un «pasado», son 2 h pendientes de facturar.
         ->and($unit('project:'.$hourly->id))->toMatchArray(['sold_minutes' => null, 'real_minutes' => 600, 'deviation_minutes' => null, 'status' => 'unbilled', 'unbilled_minutes' => 120, 'invoiced' => '590.00', 'invoiced_minutes' => 480])
         ->and($unit('project:'.$fee->id))->toMatchArray(['invoiced' => '0.00', 'planned' => '1500.00', 'invoices_count' => 0])
         ->and($report['totals']['planned'])->toBe('1500.00')

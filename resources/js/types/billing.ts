@@ -8,7 +8,7 @@ import type { ReportFiltersProps, ReportRequestData } from './reports';
 
 export type SaleKind = 'bolsa' | 'precio_cerrado' | 'fee' | 'horas';
 
-/** El semáforo de lo vendido y, por horas, lo pendiente de facturar o facturado al día (D-411). */
+/** El semáforo de lo vendido y, por horas, lo pendiente de facturar o facturado al día (D-416). */
 export type SaleStatus =
     | 'ok'
     | 'risk'
@@ -65,7 +65,7 @@ export type SoldVsActualUnit = {
     invoices_count: number;
     /** Horas de las líneas de horas y de bolsa de sus facturas (D-396). */
     invoiced_minutes: number;
-    /** Por horas (D-411): las horas reales que pasan de las facturadas; null en las demás. */
+    /** Por horas (D-416): las horas reales que pasan de las facturadas; null en las demás. */
     unbilled_minutes: number | null;
     sold_amount?: string | null;
     /** De dónde sale el importe vendido: la bolsa o el proyecto en Audax, o la línea de Holded. */
@@ -95,7 +95,7 @@ export type SoldVsActualTotals = {
     consumption_pct: number | null;
     status: SaleStatus;
     by_status: Record<SaleStatus, number>;
-    /** Horas pendientes de facturar de las unidades por horas (D-411). */
+    /** Horas pendientes de facturar de las unidades por horas (D-416). */
     unbilled_minutes: number;
     sold_amount?: string;
     income?: string;

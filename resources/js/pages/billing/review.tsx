@@ -671,7 +671,7 @@ function InvoiceProposal({ row }: { row: ReviewInvoiceRow }) {
                 <Link
                     href={`${URL}?tipo=contactos`}
                     className={cn(
-                        'rounded-md text-primary-text hover:underline',
+                        'rounded-md text-primary-text underline underline-offset-2',
                         FOCUS_RING,
                     )}
                 >

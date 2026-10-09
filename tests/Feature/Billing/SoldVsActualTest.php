@@ -102,7 +102,7 @@ it('calcula vendido, real, pendiente, desviación y semáforo de cada unidad', f
     ]);
     expect($unit('project:'.$this->fixed->id))->toMatchArray(['kind' => 'precio_cerrado', 'sold_minutes' => 1200, 'real_minutes' => 1320, 'deviation_minutes' => 120, 'consumption_pct' => 110.0, 'status' => 'over']);
     expect($unit('project:'.$this->fee->id))->toMatchArray(['kind' => 'fee', 'months' => 3, 'sold_minutes' => 1800, 'real_minutes' => 900, 'consumption_pct' => 50.0, 'status' => 'ok']);
-    // Por horas no hay nada vendido (D-411): las 2 h sin facturar son lo pendiente de facturar.
+    // Por horas no hay nada vendido (D-416): las 2 h sin facturar son lo pendiente de facturar.
     expect($unit('project:'.$this->hourly->id))->toMatchArray(['kind' => 'horas', 'sold_minutes' => null, 'real_minutes' => 120, 'consumption_pct' => null,
         'deviation_minutes' => null, 'status' => 'unbilled', 'unbilled_minutes' => 120]);
 
@@ -179,7 +179,7 @@ it('el semáforo sigue los casos compartidos con el navegador', function (?int $
     return array_map(fn (array $case): array => [$case['sold'], $case['real'], $case['pct'] === null ? null : (float) $case['pct'], $case['status']], $cases);
 });
 
-it('por horas, una factura parcial no da un porcentaje ni un «pasado»: el resto es pendiente de facturar (D-411)', function () {
+it('por horas, una factura parcial no da un porcentaje ni un «pasado»: el resto es pendiente de facturar (D-416)', function () {
     // Como la F260314 enlazada con LAM-INT (VFR-4): 1 h 30 min facturada de 2 h reales.
     $invoice = HoldedInvoice::query()->where('number', 'F260004')->firstOrFail();
     $invoice->lines()->create(['position' => 1, 'name' => 'Horas desarrollo', 'units' => '1.5', 'unit_price' => '66.67', 'discount_pct' => '0', 'subtotal' => '100.00', 'tax_rate' => '21']);

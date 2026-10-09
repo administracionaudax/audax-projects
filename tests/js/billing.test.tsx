@@ -154,7 +154,7 @@ describe('semáforo de «Vendido frente a real»', () => {
     );
 
     it.each(fixture.hourly_cases)(
-        'por horas (D-411): facturado $invoiced y real $real → $status',
+        'por horas (D-416): facturado $invoiced y real $real → $status',
         ({ invoiced, real, status, unbilled }) => {
             expect(hourlyStatus(invoiced, real)).toBe(status);
             expect(Math.max(0, real - invoiced)).toBe(unbilled);
