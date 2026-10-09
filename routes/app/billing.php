@@ -8,6 +8,7 @@ use App\Http\Controllers\Billing\HoldedInvoiceController;
 use App\Http\Controllers\Billing\HoldedInvoiceLinkController;
 use App\Http\Controllers\Billing\InvoicingReportController;
 use App\Http\Controllers\Billing\MovedReportController;
+use App\Http\Controllers\Billing\NoProjectNeededController;
 use App\Http\Controllers\Billing\ProjectBillingController;
 use App\Http\Controllers\Billing\ReviewController;
 use App\Http\Controllers\Billing\SoldVsActualController;
@@ -102,5 +103,10 @@ Route::middleware('module:billing')->group(function () use ($exports) {
 
         Route::get('clientes/{client}/facturacion', [ClientBillingController::class, 'show'])->whereNumber('client')->name('clients.billing');
         Route::put('clientes/{client}/datos-fiscales', [ClientBillingController::class, 'update'])->whereNumber('client')->name('clients.billing.update');
+
+        // Respuestas del propietario del 09/10 (D-430 y D-431): crear el cliente desde un contacto de
+        // Holded (además, ClientPolicy::create) y «No necesita proyecto» de una factura.
+        Route::post('facturacion/facturas/{invoice}/sin-proyecto', [NoProjectNeededController::class, 'store'])->whereNumber('invoice')->name('billing.invoices.no-project.store');
+        Route::delete('facturacion/facturas/{invoice}/sin-proyecto', [NoProjectNeededController::class, 'destroy'])->whereNumber('invoice')->name('billing.invoices.no-project.destroy');
     });
 });

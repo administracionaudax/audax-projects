@@ -96,7 +96,7 @@ final class HoldedSync
             $this->payments($api);
             $this->collectionStatus($today);
             $this->stats['linked_invoices'] = $this->linker->relink();
-            $this->stats['unlinked_invoices'] = HoldedInvoice::query()->whereDoesntHave('links')->count();
+            $this->stats['unlinked_invoices'] = HoldedInvoice::query()->whereDoesntHave('links')->whereNull('no_project_needed_at')->count();
             if ($pdfs) {
                 $this->pdfs($api);
             }

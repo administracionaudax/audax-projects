@@ -3,6 +3,7 @@
 namespace App\Domain\Billing;
 
 use App\Enums\InvoiceLinkMethod;
+use App\Models\HoldedInvoice;
 use App\Models\HoldedInvoiceLink;
 use Illuminate\Contracts\Session\Session;
 
@@ -11,12 +12,13 @@ use Illuminate\Contracts\Session\Session;
  * confirmar o descartar contactos y enlazar facturas, una a una o en bloque) se guarda en su sesión
  * durante 30 minutos con lo necesario para volver atrás:
  * - de los contactos, cómo estaban (HoldedContactResolver::snapshot),
- * - de las facturas, los enlaces que se crearon (solo se quitan si siguen siendo manuales).
+ * - de las facturas, los enlaces que se crearon (solo se quitan si siguen siendo manuales) y las
+ *   que se marcaron «No necesita proyecto» (D-431; se les quita la marca).
  * Una acción nueva sustituye a la anterior; deshacer la borra.
  *
  * @phpstan-import-type ContactSnapshot from HoldedContactResolver
  *
- * @phpstan-type UndoAction array{message: string, count: int, at: int, contacts: list<ContactSnapshot>, links: list<int>}
+ * @phpstan-type UndoAction array{message: string, count: int, at: int, contacts: list<ContactSnapshot>, links: list<int>, marks?: list<int>}
  */
 final class ReviewUndo
 {
@@ -29,19 +31,21 @@ final class ReviewUndo
     /**
      * @param  list<ContactSnapshot>  $contacts
      * @param  list<int>  $links
+     * @param  list<int>  $marks  facturas marcadas «No necesita proyecto»
      */
-    public function remember(string $message, array $contacts = [], array $links = []): void
+    public function remember(string $message, array $contacts = [], array $links = [], array $marks = []): void
     {
-        if ($contacts === [] && $links === []) {
+        if ($contacts === [] && $links === [] && $marks === []) {
             return;
         }
 
         $this->session->put(self::KEY, [
             'message' => $message,
-            'count' => count($contacts) + count($links),
+            'count' => count($contacts) + count($links) + count($marks),
             'at' => now()->getTimestamp(),
             'contacts' => $contacts,
             'links' => $links,
+            'marks' => $marks,
         ]);
     }
 
@@ -76,9 +80,15 @@ final class ReviewUndo
             ->where('method', InvoiceLinkMethod::Manual->value)
             ->delete();
 
+        $marks = $action['marks'] ?? [];
+        $cleared = $marks === [] ? 0 : HoldedInvoice::query()
+            ->whereIn('id', $marks)
+            ->whereNotNull('no_project_needed_at')
+            ->update(['no_project_needed_at' => null, 'no_project_needed_by' => null, 'no_project_note' => null]);
+
         BillingNav::forget();
 
-        return count($action['contacts']) + (int) $removed;
+        return count($action['contacts']) + (int) $removed + $cleared;
     }
 
     /**

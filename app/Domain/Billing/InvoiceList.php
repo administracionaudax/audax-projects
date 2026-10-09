@@ -29,6 +29,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * - Los de antes, como alias (D-385): `enlace=sin` es la vista «Sin proyecto», `tipo=credit_note`
  *   la de rectificativas y `estado=overdue|draft` las de vencidas y borradores; el resto (`estado`,
  *   `tipo=invoice`, `enlace=con`) sigue filtrando y se ve como un filtro más.
+ * - `enlace=no-necesita`: las marcadas «No necesita proyecto» (D-431), que no salen en «Sin proyecto».
  */
 final class InvoiceList
 {
@@ -94,7 +95,7 @@ final class InvoiceList
         $view = $oneOf('vista', self::VIEWS);
         $status = $oneOf('estado', CollectionStatus::values());
         $kind = $oneOf('tipo', HoldedDocumentKind::values());
-        $link = $oneOf('enlace', ['con', 'sin']);
+        $link = $oneOf('enlace', ['con', 'sin', 'no-necesita']);
 
         // Los parámetros de antes que equivalen a una vista pasan a serlo.
         if ($view === null) {
@@ -366,7 +367,9 @@ final class InvoiceList
             ->when($this->status !== null, fn (Builder $q) => $q->where('holded_invoices.collection_status', $this->status))
             ->when($this->kind !== null, fn (Builder $q) => $q->where('holded_invoices.kind', $this->kind))
             ->when($this->link === 'con', fn (Builder $q) => $q->whereHas('links'))
-            ->when($this->link === 'sin', fn (Builder $q) => $q->whereDoesntHave('links'));
+            ->when($this->link === 'sin', fn (Builder $q) => $q->whereDoesntHave('links'))
+            // Las marcadas «No necesita proyecto» (D-431): fuera de «Sin proyecto», se ven con este filtro.
+            ->when($this->link === 'no-necesita', fn (Builder $q) => $q->whereNotNull('holded_invoices.no_project_needed_at'));
     }
 
     /**
@@ -411,7 +414,8 @@ final class InvoiceList
             'por-cobrar' => [$pending, [false, $draft, $cancelled]],
             'vencidas' => ["{$pending} AND holded_invoices.due_on IS NOT NULL AND holded_invoices.due_on < ?", [false, $draft, $cancelled, $this->today->toDateString()]],
             // Como el aviso de antes (D-388): también los borradores, que cuentan como previsto.
-            'sin-proyecto' => ['holded_invoices.collection_status <> ? AND NOT EXISTS (SELECT 1 FROM holded_invoice_links WHERE holded_invoice_links.holded_invoice_id = holded_invoices.id)', [$cancelled]],
+            // Sin las marcadas «No necesita proyecto» (D-431), que se ven con `enlace=no-necesita`.
+            'sin-proyecto' => ['holded_invoices.collection_status <> ? AND holded_invoices.no_project_needed_at IS NULL AND NOT EXISTS (SELECT 1 FROM holded_invoice_links WHERE holded_invoice_links.holded_invoice_id = holded_invoices.id)', [$cancelled]],
             'borradores' => ['holded_invoices.is_draft = ? OR holded_invoices.collection_status = ?', [true, $draft]],
             'rectificativas' => ['holded_invoices.kind = ?', [HoldedDocumentKind::CreditNote->value]],
             default => [$issued, [false, $draft]],

@@ -58,21 +58,30 @@ final class ReviewInbox
 
     /**
      * Las facturas sin proyecto ni bolsa: como la vista «Sin proyecto» del listado (sin anuladas;
-     * también los borradores).
+     * también los borradores), sin las marcadas «No necesita proyecto» (D-431).
      *
      * @return Builder<HoldedInvoice>
      */
     public static function unlinked(): Builder
     {
-        return HoldedInvoice::query()
+        return HoldedInvoice::whereProjectNeeded(HoldedInvoice::query()
             ->where('holded_invoices.collection_status', '!=', CollectionStatus::Cancelled->value)
             ->whereNotExists(fn (QueryBuilder $links) => $links->selectRaw('1')->from('holded_invoice_links')
-                ->whereColumn('holded_invoice_links.holded_invoice_id', 'holded_invoices.id'));
+                ->whereColumn('holded_invoice_links.holded_invoice_id', 'holded_invoices.id')));
+    }
+
+    /** Facturas sin anular marcadas «No necesita proyecto» (D-431), para enlazar a su filtro. */
+    public static function noProjectNeededCount(): int
+    {
+        return HoldedInvoice::query()
+            ->where('collection_status', '!=', CollectionStatus::Cancelled->value)
+            ->whereNotNull('no_project_needed_at')
+            ->count();
     }
 
     /**
      * Cobertura de la cabecera: contactos casados de los que no están descartados y facturas con
-     * proyecto de las que no están anuladas.
+     * proyecto de las que no están anuladas ni marcadas «No necesita proyecto» (D-431).
      *
      * @return array{contacts_matched: int, contacts_total: int, invoices_linked: int, invoices_total: int}
      */
@@ -84,6 +93,10 @@ final class ReviewInbox
             ->first();
         $invoices = HoldedInvoice::query()->toBase()
             ->where('collection_status', '!=', CollectionStatus::Cancelled->value)
+            // Las marcadas sin enlace no cuentan (si se enlazan después, cuentan como enlazadas).
+            ->where(fn (QueryBuilder $q) => $q->whereNull('no_project_needed_at')
+                ->orWhereExists(fn (QueryBuilder $links) => $links->selectRaw('1')->from('holded_invoice_links')
+                    ->whereColumn('holded_invoice_links.holded_invoice_id', 'holded_invoices.id')))
             ->selectRaw('COUNT(*) as total, COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM holded_invoice_links WHERE holded_invoice_links.holded_invoice_id = holded_invoices.id) THEN 1 ELSE 0 END), 0) as linked')
             ->first();
 
