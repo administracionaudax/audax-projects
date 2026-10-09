@@ -2832,7 +2832,7 @@ RR. HH. es `manage-people-register` (= `manage-people` con el módulo visible); 
 ### D-387 · Sincronización
 - `app:holded-sync`, cada noche a las **02:30** de Madrid (antes de la copia), y «Sincronizar ahora» para los admins (job `SyncHolded` en la cola). Sin el módulo encendido de verdad o sin clave, no hace nada. Un candado impide dos a la vez; cada ejecución queda en `holded_sync_runs` (quién, cuándo, recuentos y error).
 - Lee todo cada noche (son pocos cientos de documentos al año): contactos, proyectos de Holded, facturas, rectificativas, cobros y los PDF que faltan.
-- **Contactos → clientes**: por NIF (sin espacios, guiones ni el «ES» del NIF-IVA) y, si no, por nombre o nombre comercial sin tildes ni forma jurídica, solo si casa con **un** cliente. Los proveedores, acreedores y leads no se leen. **Nunca crea clientes**: los que no casan se resuelven en `/facturacion/contactos` (asignar, descartar o volver a casar solo) y sus facturas pasan al cliente elegido. Lo resuelto a mano no lo toca la sincronización.
+- **Contactos → clientes**: por NIF (sin espacios, guiones ni el «ES» del NIF-IVA) y, si no, por nombre o nombre comercial sin tildes ni forma jurídica, solo si casa con **un** cliente. Los proveedores, acreedores y leads no se leen. **Nunca crea clientes** (la sincronización; a mano, desde D-430, sí): los que no casan se resuelven en `/facturacion/contactos` (asignar, descartar o volver a casar solo) y sus facturas pasan al cliente elegido. Lo resuelto a mano no lo toca la sincronización.
 
 ### D-388 · Enlace de las facturas con proyectos y bolsas
 - Automáticos (se rehacen cada noche): **código F** (el número es el `invoice_reference` de una bolsa o el «Factura: F…» de un proyecto, D-135), **proyecto de Holded** (si su nombre lleva el código del proyecto de Audax; en un proyecto de bolsas, la bolsa vigente en la fecha) y **rectificativa** (hereda los de su factura).
@@ -2999,10 +2999,10 @@ Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md`: I1, I5, I10, I7, I9 y R7, co
 - **`/facturacion/por-facturar` sin cliente abre la lista** de clientes con algo trabajado o vendido sin facturar (`App\Domain\Billing\UnbilledReport`), como el informe de lo no facturado de Harvest. Con `?cliente[]=`, el detalle y la exportación de siempre (R2), con «Todos los clientes» para volver.
 - **Qué cuenta** (la lectura de «Pendiente de facturar» de `SoldVsActual`, por cliente):
   - proyectos por horas: horas facturables aprobadas del periodo menos las de las líneas de horas de sus facturas del periodo (D-396); el importe, su valor a la tarifa congelada (`RevenueCalculator`) menos la base facturada;
-  - excesos de bolsa: el exceso del periodo menos lo que la bolsa ya ha facturado por encima de lo vendido (sus horas facturadas de más), valorado a la tarifa de la bolsa, el proyecto o el cliente;
+  - excesos de bolsa: ~~el exceso del periodo menos lo que la bolsa ya ha facturado por encima de lo vendido (sus horas facturadas de más)~~ (cambia en D-433: solo el de la bolsa sin sucesora, entero), valorado a la tarifa de la bolsa, el proyecto o el cliente;
   - bolsas con precio que empezaron en el periodo sin ninguna factura enlazada (un borrador cuenta como factura);
   - fees mensuales: cada mes **ya empezado** del periodo, dentro de la vida del proyecto, sin una factura enlazada emitida ese mes.
-  Los precios cerrados no entran (se facturan por hitos, F3). Por cliente: horas, importe, la fecha de lo más antiguo, de dónde sale y las horas aún sin aprobar (aparte).
+  ~~Los precios cerrados no entran (se facturan por hitos, F3).~~ **Entran desde D-432**; el exceso de una bolsa renovada pasa a la siguiente y ya no se descuenta lo facturado de más (D-433). Por cliente: horas, importe, la fecha de lo más antiguo, de dónde sale y las horas aún sin aprobar (aparte).
 - **Sin periodo en la URL, el año en curso** en la lista (lo de un mes se factura al siguiente); el detalle de un cliente mantiene su periodo de siempre (el mes) si se abre sin él, y desde la lista lleva el de la lista.
 - **Permisos**: los de siempre (`exportBillingHours`, `ClientPolicy::viewBilling`, también sin el módulo, D-402; quien está excluido, 403, D-247). Los **importes solo con `view-billing`**: sin el módulo no se mira Holded (solo horas, sin descontar lo facturado, y sin bolsas ni fees). Las horas pasan por `ReportScope` (D-044).
 
@@ -3016,7 +3016,7 @@ Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md`: I1, I5, I10, I7, I9 y R7, co
 - **Cobertura** arriba («8 de 9 contactos casados · 27 de 33 facturas con proyecto»), con su ayuda.
 - **«Todos» y «Descartados» pasan a Ajustes**, al apartado «Contactos de Holded»: la misma tabla en modo directorio, con búsqueda, el cliente de cada uno y cómo se casó, y cambiarlo, descartarlo o dejar que se vuelva a casar solo. `/facturacion/contactos` responde con un 301 a la pestaña de contactos y, con `?vista=todos|descartados`, a Ajustes.
 - **El contador de la barra lateral** suma los contactos pendientes y las facturas sin proyecto (`ReviewInbox::counts`); se olvida al casar un contacto y al crear o quitar un enlace.
-- **Nunca se crea un cliente desde Holded** (D-387): la duda de si «Rechazar» debería ofrecer «Crear el cliente con estos datos» sigue abierta para el propietario.
+- ~~**Nunca se crea un cliente desde Holded** (D-387): la duda de si «Rechazar» debería ofrecer «Crear el cliente con estos datos» sigue abierta para el propietario.~~ **Resuelta en D-430** (09/10): «Crear cliente» desde un contacto sin cliente.
 
 ### D-414 · «Deshacer» en la bandeja
 - La última acción de cada persona (casar, confirmar o descartar un contacto, enlazar una factura, una a una o en bloque) se guarda en su sesión durante 30 minutos con lo necesario para volver atrás (`App\Domain\Billing\ReviewUndo`): cómo estaba cada contacto (y sus facturas vuelven a su cliente de antes) y los enlaces creados (solo se quitan si siguen siendo manuales). La bandeja la enseña como «Última acción: … · Deshacer» (`POST /facturacion/por-revisar/deshacer`). Una acción nueva sustituye a la anterior. Los datos fiscales que se rellenaron en el cliente al casar se quedan (solo se escriben campos vacíos y siguen siendo ciertos).
@@ -3030,6 +3030,45 @@ Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md`: I1, I5, I10, I7, I9 y R7, co
 - En un proyecto por horas **no hay nada vendido**: lo facturado no es un límite, así que pasar de ello no es un exceso. La fila ya no toma las horas facturadas como «vendidas» (adiós al «Pasado 1.556 %» de VFR-4): sin porcentaje ni desviación, con el estado «Por facturar» y «N h sin facturar» (las reales menos las facturadas), o «Facturado al día» si está todo facturado (`SoldVsActual::hourlyStatus`, `unbilled_minutes`; casos compartidos en `tests/fixtures/billing/sold-vs-actual-status.json`).
 - No entra en la gráfica de bala ni en el consumo de lo vendido; las cifras cuentan aparte cuántas unidades por horas tienen algo por facturar. El importe pendiente de facturar sigue siendo el valor de las horas menos lo facturado.
 - El interruptor «Horas | Importes» de la propuesta no hace falta: la tabla ya cabe a 1440 px (D-410).
+
+## 09/10/2026: Respuestas del propietario en Facturación (rama `facturacion-respuestas`)
+
+Respuestas del propietario del 09/10 a las dudas que dejaron abiertas D-412 y D-413. Las decisiones D-417 a D-429 son de la emisión propia (E1), que va en otra rama.
+
+### D-430 · Crear el cliente desde un contacto de Holded **[cambia D-387 y D-413]**
+- **Se acaba «nunca se crea un cliente desde Holded»** para el trabajo a mano: en «Por revisar» (pestaña Contactos) y en el directorio de Ajustes, un contacto **sin cliente** (también uno descartado) tiene «Crear cliente». La sincronización sigue sin crear ninguno: solo casa (D-387).
+- **El diálogo llega relleno y editable** (`HoldedClientCreator::draft`, `GET /facturacion/contactos/{id}/cliente`, JSON): nombre (el comercial; si no hay, la razón social sin la forma jurídica: «PINTURAS MONTÓ, S.A.U» → «PINTURAS MONTÓ»), NIF, email y la ficha fiscal (`ClientBillingProfile`: razón social, dirección, código postal, ciudad, provincia y país).
+- **Antes de crear, los parecidos** (`HoldedContactMatcher::similarClients`): clientes con el mismo NIF, el mismo nombre (sin tildes ni forma jurídica) o uno muy parecido (el mismo sin espacios, todas las palabras con peso de uno en el otro o un 85 % de parecido), mirando el nombre, el nombre comercial y el nombre que se va a dar. Cada uno con «Casar con este» (la acción de siempre, `PUT /facturacion/contactos/{id}`). Con parecidos, el botón dice «Crear otro cliente» y el servidor solo crea con `confirmed`; un nombre que ya existe, nunca (como en el alta de clientes).
+- **Al confirmar** (`POST /facturacion/contactos/{id}/cliente`, en una transacción): el cliente **activo** con su ficha fiscal (lo del diálogo manda: lo vaciado no lo vuelve a rellenar Holded), el contacto **casado a mano** (`HoldedContactResolver`, sus facturas pasan al cliente) y la sincronización ya no lo toca.
+- **Auditoría**: el alta del cliente (activitylog, `created`) y una entrada `created_from_holded` en el cliente con el origen (contacto, su id de Holded, nombre y NIF) y quién lo hizo.
+- **Quién**: `view-billing` (la ruta, con las exclusiones de D-245) **y además** `ClientPolicy::create` (D-022: admins y responsables). Un empleado con view-financials ve la bandeja pero no el botón; un admin excluido de Facturación, 404.
+- **Sin «Deshacer»** en la bandeja: deshacer el casado dejaría un cliente sin facturas. Si hubo un error, se cambia el cliente del contacto en el directorio y se desactiva el cliente (D-037).
+
+### D-431 · «No necesita proyecto» en las facturas **[amplía D-406 y D-413]**
+- Una factura **sin anular y sin enlace** (gastos repercutidos, una factura suelta) se marca desde «Por revisar» (pestaña Facturas) o desde su ficha, con un **motivo opcional** (500 caracteres). Deja de contar en la vista «Sin proyecto», en el contador de la barra lateral, en «Requiere atención» del Resumen, en la cobertura de «Por revisar» y en las sugerencias. Se deshace con «Necesita proyecto» en la ficha y con «Deshacer» en la bandeja (D-414).
+- **Se ven con un filtro**: `/facturacion/facturas?enlace=no-necesita` (un chip más, D-406); la bandeja lo enlaza («N facturas marcadas… Verlas») y la celda de proyecto del listado dice «No necesita proyecto». La ficha cambia el bloque «Proyecto y bolsa» por la marca con quién, cuándo y por qué.
+- **Dónde se guarda**: tres columnas en la propia tabla del documento (`no_project_needed_at`, `no_project_needed_by`, `no_project_note`), hoy en `holded_invoices`. Se descartó una tabla aparte por documento: la condición «sin proyecto» se evalúa en SQL junto a los enlaces de la misma fila (vistas, recuentos y barra en una consulta, D-406) y la vista `billing_documents` de PLAN-EMISION §4.6 une las dos tablas de documentos columna a columna. Las facturas propias de E1 (`sales_documents`) llevarán las mismas tres columnas y el trait `App\Models\Concerns\MarksNoProjectNeeded` (marcar, quitar, `whereProjectNeeded`); no son datos fiscales, así que el *trigger* de las emitidas debe dejarlas cambiar.
+- **La sincronización nunca la borra**: las columnas no son `fillable` y Holded solo rellena lo suyo. Si después la factura se enlaza (a mano o por la noche), cuenta como enlazada.
+- **Quién**: `view-billing`, como enlazar (D-391).
+
+### D-432 · «Por facturar» incluye los precios cerrados **[cambia D-412]**
+- **Pendiente** = `fixed_price_amount` − lo facturado y enlazado al proyecto (emitidas menos rectificativas, sin borradores ni anuladas: `HoldedInvoice::countingIn`, D-397; una factura con varios enlaces se reparte a partes iguales). Solo con importe pendiente mayor que 0.
+- **Qué proyectos**: activos y en pausa, y los acabados **hace poco** (su fecha de fin o su última hora aprobada en los últimos **90 días**, `UnbilledReport::RECENT_DAYS`). No los previstos, archivados ni los que empiezan después del periodo. Es lo vendido entero, **a hoy**: no depende del periodo (como lo pendiente de cobro).
+- **Contexto, no suma**: las horas aprobadas de toda la plantilla (como el consumo de «Vendido frente a real») y, con `budget_minutes`, el % consumido. No entran en «Horas sin facturar».
+- **En el detalle del cliente** (`UnbilledReport::detail`), una tabla nueva «Por facturar de …» con una línea por proyecto por horas, precio cerrado, fee, bolsa sin factura y exceso de bolsa, con su total; en el móvil, tarjetas. La lista cuenta «N precios cerrados» en «Qué hay».
+- **Importes solo con `view-billing`**: sin el módulo (D-402), los precios cerrados no salen.
+- Datos de ejemplo: el segundo precio cerrado activo se amplió un 50 % después de su primera factura y le queda ese hito.
+
+### D-433 · El exceso de bolsa se factura en la bolsa siguiente **[cambia D-412]**
+Respuesta del propietario: «por norma general, si nos pasamos, lo facturamos en la bolsa siguiente».
+- **Bolsa renovada** (hay otra con `renewed_from_id` igual a ella): su exceso pasa a la siguiente. **No es pendiente**: no suma en la lista, el detalle ni el Resumen, y en el detalle sale como «Pasado a la bolsa siguiente: …», sin importe («En la bolsa siguiente»).
+- **Bolsa sin sucesora** (la activa): todo el exceso del periodo es pendiente, a la tarifa de la bolsa, el proyecto o el cliente, con la etiqueta «Se facturará con la próxima bolsa».
+- **Se quita la regla anterior** de D-412: ya no se descuenta lo que la bolsa haya facturado por encima de lo vendido.
+
+### D-434 · «Vendido frente a real» y el Resumen, coherentes con D-432 y D-433
+- **«Vendido frente a real»** ya no sumaba el exceso como pendiente: en una bolsa, lo pendiente de facturar es lo vendido menos lo facturado (D-390). Con D-433, la factura de la bolsa siguiente que lleva el exceso puede pasar de su precio: lo pendiente se queda en 0 (nunca negativo). El precio cerrado ya contaba precio − facturado, la misma regla que D-432. No cambia nada.
+- **El Resumen** toma lo que queda por facturar de `UnbilledReport`, así que cuenta los precios cerrados y deja fuera el exceso traspasado; «Requiere atención» y el contador de la barra lateral leen `ReviewInbox::unlinked`, que ya no cuenta las marcadas (D-431).
+- **Ayudas**: las definiciones de «Por facturar» del Resumen y de la pantalla, y la descripción de «Por revisar», dicen las reglas nuevas.
 
 ### Numeración
 - Fase 2: D-078 a D-087.
@@ -3063,7 +3102,7 @@ Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md`: I1, I5, I10, I7, I9 y R7, co
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia (E1, en otra rama), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-417** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-417 en adelante, libres).
+La siguiente libre es **D-435** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-417 a D-429 para la emisión propia E1, en otra rama; D-435 a D-439, reservadas para las respuestas del propietario; D-440 en adelante, libres).
