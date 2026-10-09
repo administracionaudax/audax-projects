@@ -4,6 +4,7 @@ import {
     ArrowUp,
     Ban,
     CircleCheck,
+    FileCheck2,
     Link2,
     Link2Off,
     Undo2,
@@ -54,9 +55,47 @@ export function toQueryString(query: InvoiceQuery): string {
     return string === '' ? '' : `?${string}`;
 }
 
-/** Ficha de una factura; con la query del listado, conserva sus filtros (D-408). */
+/**
+ * Ficha de una factura; con la query del listado, conserva sus filtros (D-408). Un id negativo es
+ * una factura propia de la vista billing_documents (D-427), con su ficha en /facturacion/documentos.
+ */
 export const invoiceUrl = (id: number, query: InvoiceQuery = {}) =>
-    `/facturacion/facturas/${id}${toQueryString(query)}`;
+    id < 0
+        ? `/facturacion/documentos/${-id}${toQueryString(query)}`
+        : `/facturacion/facturas/${id}${toQueryString(query)}`;
+
+/** El número de una factura del listado con su origen: un icono si es propia y «Prueba» si es de prueba. */
+function NumberLabel({ invoice }: { invoice: HoldedInvoiceSummary }) {
+    return (
+        <>
+            {invoice.kind === 'credit_note' ? (
+                <Undo2
+                    aria-label={t('billing.invoice.credit_note')}
+                    className="size-3.5 text-muted-foreground"
+                />
+            ) : null}
+            {invoice.is_draft
+                ? t('billing.invoice.draft_number')
+                : (invoice.number ?? '—')}
+            {invoice.source === 'audax' ? (
+                <span
+                    title={t('invoicing.origin.audax_hint')}
+                    data-test="origin-audax"
+                >
+                    <FileCheck2
+                        aria-label={t('invoicing.origin.audax_hint')}
+                        className="size-3.5 text-muted-foreground"
+                    />
+                </span>
+            ) : null}
+            {invoice.is_test ? (
+                <span className="rounded-md bg-info-soft px-1 text-xs text-foreground">
+                    {t('invoicing.origin.test')}
+                </span>
+            ) : null}
+        </>
+    );
+}
 
 export type InvoiceSortColumn =
     | 'fecha'
@@ -152,7 +191,10 @@ export function RelativeStatus({
     invoice,
     today,
 }: {
-    invoice: HoldedInvoiceSummary;
+    invoice: Pick<
+        HoldedInvoiceSummary,
+        'collection_status' | 'due_on' | 'total' | 'pending_total' | 'is_draft'
+    >;
     today: string;
 }) {
     const relative = relativeCollection(invoice, today);
@@ -404,17 +446,7 @@ export function InvoiceTable({
                                             FOCUS_RING,
                                         )}
                                     >
-                                        {invoice.kind === 'credit_note' ? (
-                                            <Undo2
-                                                aria-label={t(
-                                                    'billing.invoice.credit_note',
-                                                )}
-                                                className="size-3.5 text-muted-foreground"
-                                            />
-                                        ) : null}
-                                        {invoice.is_draft
-                                            ? t('billing.invoice.draft_number')
-                                            : (invoice.number ?? '—')}
+                                        <NumberLabel invoice={invoice} />
                                     </Link>
                                 </th>
                                 <td className="px-3 py-1.5 whitespace-nowrap">
@@ -561,17 +593,7 @@ function InvoiceCards({
                                             FOCUS_RING,
                                         )}
                                     >
-                                        {invoice.kind === 'credit_note' ? (
-                                            <Undo2
-                                                aria-label={t(
-                                                    'billing.invoice.credit_note',
-                                                )}
-                                                className="size-3.5 text-muted-foreground"
-                                            />
-                                        ) : null}
-                                        {invoice.is_draft
-                                            ? t('billing.invoice.draft_number')
-                                            : (invoice.number ?? '—')}
+                                        <NumberLabel invoice={invoice} />
                                     </Link>
                                     <span className="truncate">
                                         {invoice.client?.name ??

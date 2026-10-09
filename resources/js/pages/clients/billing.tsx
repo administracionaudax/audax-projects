@@ -1,5 +1,11 @@
 import { Head, Link, setLayoutProps, useForm } from '@inertiajs/react';
-import { ArrowLeft, BarChart3, CircleAlert, CircleCheck } from 'lucide-react';
+import {
+    ArrowLeft,
+    BarChart3,
+    CircleAlert,
+    CircleCheck,
+    Plus,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId } from 'react';
 import { BillingPanel } from '@/components/billing/billing-panel';
@@ -18,6 +24,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
@@ -159,6 +166,8 @@ export default function ClientBilling({
         </div>
     );
 
+    const can = useAbilities();
+
     return (
         <>
             <Head title={t('billing.client.title', { client: client.name })} />
@@ -183,6 +192,18 @@ export default function ClientBilling({
                                     {t('billing.client.report')}
                                 </Link>
                             </Button>
+                            {/* Emisión propia (E1, D-428): con el módulo y el permiso. */}
+                            {can.useInvoicing ? (
+                                <Button asChild>
+                                    <Link
+                                        href={`/facturacion/facturas/nueva?cliente=${client.id}`}
+                                        data-test="client-new-invoice"
+                                    >
+                                        <Plus aria-hidden="true" />
+                                        {t('invoicing.new_invoice')}
+                                    </Link>
+                                </Button>
+                            ) : null}
                         </>
                     }
                 />

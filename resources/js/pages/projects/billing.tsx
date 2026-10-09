@@ -1,7 +1,10 @@
-import { Head, setLayoutProps } from '@inertiajs/react';
+import { Head, Link, setLayoutProps } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { BillingPanel } from '@/components/billing/billing-panel';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
+import { Button } from '@/components/ui/button';
+import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import type { BillingPanelData, Project, ReportFiltersProps } from '@/types';
@@ -24,6 +27,7 @@ export default function ProjectBilling({
     panel,
 }: Props) {
     const url = `/proyectos/${project.id}/facturacion`;
+    const can = useAbilities();
 
     setLayoutProps({
         breadcrumbs: [
@@ -47,9 +51,23 @@ export default function ProjectBilling({
                         url={url}
                         compare={false}
                     />
-                    <p className="text-sm text-muted-foreground">
-                        {t(`billing.project.lead.${project.billing_type}`)}
-                    </p>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <p className="text-sm text-muted-foreground">
+                            {t(`billing.project.lead.${project.billing_type}`)}
+                        </p>
+                        {/* Emisión propia (E1, D-428): con el módulo y el permiso. */}
+                        {can.useInvoicing ? (
+                            <Button asChild size="sm">
+                                <Link
+                                    href={`/facturacion/facturas/nueva?proyecto=${project.id}`}
+                                    data-test="project-new-invoice"
+                                >
+                                    <Plus aria-hidden="true" />
+                                    {t('invoicing.new_invoice')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                    </div>
                     <BillingPanel panel={panel} invoicesHref={undefined} />
                 </div>
             </ProjectShell>

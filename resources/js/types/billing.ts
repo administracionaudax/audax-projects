@@ -131,7 +131,14 @@ export type InvoiceLinkData = {
 
 /** InvoicePresenter::summary. */
 export type HoldedInvoiceSummary = {
+    /** En negativo, una factura propia (la vista billing_documents, D-427). */
     id: number;
+    /** De dónde viene: Holded o la emisión propia (D-427). */
+    source?: 'holded' | 'audax';
+    /** Su ficha (la de Holded o la propia). */
+    url?: string;
+    /** De la serie de pruebas (solo en la pestaña «Pruebas»). */
+    is_test?: boolean;
     number: string | null;
     kind: 'invoice' | 'credit_note';
     issued_on: string;

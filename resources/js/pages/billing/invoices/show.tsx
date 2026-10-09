@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     ChevronLeft,
     ChevronRight,
+    Copy,
     Download,
     ExternalLink,
     FileSearch,
@@ -73,6 +74,8 @@ type Props = {
     suggestions: InvoiceLinkSuggestion[];
     holded: { driver: string; configured: boolean };
     holded_url: string;
+    /** Duplicar como borrador propio (E1, D-428): con la emisión visible y un cliente casado. */
+    can_duplicate?: boolean;
     today: string;
     list: {
         query: Record<string, string | number | string[]>;
@@ -103,6 +106,7 @@ export default function InvoiceShow({
     projects,
     suggestions,
     holded_url: holdedUrl,
+    can_duplicate: canDuplicate = false,
     today,
     list,
 }: Props) {
@@ -240,6 +244,27 @@ export default function InvoiceShow({
                                     <Download aria-hidden="true" />
                                 </a>
                             </Button>
+                            {canDuplicate ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                router.post(
+                                                    `${invoiceUrl(invoice.id)}/duplicar`,
+                                                )
+                                            }
+                                            data-test="invoice-duplicate"
+                                        >
+                                            <Copy aria-hidden="true" />
+                                            {t('invoicing.duplicate_holded')}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-72">
+                                        {t('invoicing.duplicate_holded_hint')}
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : null}
                             {invoice.number ? (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
