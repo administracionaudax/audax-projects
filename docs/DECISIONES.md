@@ -2061,6 +2061,10 @@ Decisión del propietario el 09/10/2026: «queremos ir hacia la segunda opción�
 - **Mientras tanto, Holded sigue emitiendo.** No se cambia de programa hasta que la emisión propia esté terminada, probada en el entorno de pruebas de la AEAT y revisada con la gestoría.
 - **Corte:** a principio de trimestre, después de un mes en paralelo. Se propone el 1/4/2027, o el 1/1/2027 si todo está listo y la gestoría lo ve bien.
 - **Orden:** F2 (catálogo, series, impuestos, plantilla), F5 (emisión), F6 (VeriFactu) y F7 (corte y baja de Holded), según PLAN-FASE-12 §6.5. F3 (presupuestos) y F4 (emitir vía Holded) quedan fuera.
+- **Alcance funcional** (propietario, 09/10/2026: «con todas las típicas opciones por factura como duplicar o copiar, enviar por correo, facturas programadas, gastos, etc.»): paridad con Holded en ventas.
+  - **Acciones por factura:** duplicar, copiar a otro documento, enviar por email con plantilla, descargar, rectificar o anular (D-244) y registrar cobros.
+  - **Facturas programadas y recurrentes.**
+  - **Gastos y compras:** facturas de proveedores y tickets, con su adjunto. Amplía el plan, que los dejaba a la gestoría.
 - **Pendiente del propietario y de la gestoría:**
   - serie nueva o la misma F/CN a partir del corte;
   - cómo recibe los datos la gestoría (P5);
