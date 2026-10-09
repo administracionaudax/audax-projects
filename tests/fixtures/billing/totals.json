@@ -1,0 +1,370 @@
+{
+    "_comment": "Totales de una factura (PLAN-EMISION §4.2; D-422): casos compartidos por App\\Domain\\Billing\\Issuing\\DocumentTotals (Pest) y resources/js/components/invoicing/totals.ts (Vitest). Base de la línea = cantidad × precio × (1 − descuento %), al céntimo; cuota = base del tipo × tipo / 100, al céntimo, solo en S1; retención = base × tipo / 100; redondeo mitad hacia arriba alejándose del cero.",
+    "cases": [
+        {
+            "name": "una línea al 21 %",
+            "lines": [
+                {
+                    "quantity": "10",
+                    "unit_price": "60",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [{ "gross": "600.00", "base": "600.00" }],
+                "subtotal": "600.00",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "600.00",
+                        "tax": "126.00"
+                    }
+                ],
+                "tax_total": "126.00",
+                "withholding_total": "0.00",
+                "gross_total": "726.00",
+                "total": "726.00"
+            }
+        },
+        {
+            "name": "descuento de línea y cantidades con decimales",
+            "lines": [
+                {
+                    "quantity": "15",
+                    "unit_price": "60",
+                    "discount_pct": "5",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                },
+                {
+                    "quantity": "0.3333",
+                    "unit_price": "33.33",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [
+                    { "gross": "900.00", "base": "855.00" },
+                    { "gross": "11.11", "base": "11.11" }
+                ],
+                "subtotal": "866.11",
+                "discount_total": "45.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "866.11",
+                        "tax": "181.88"
+                    }
+                ],
+                "tax_total": "181.88",
+                "withholding_total": "0.00",
+                "gross_total": "1047.99",
+                "total": "1047.99"
+            }
+        },
+        {
+            "name": "varios tipos y una exenta, de mayor a menor",
+            "lines": [
+                {
+                    "quantity": "1",
+                    "unit_price": "50",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "exempt",
+                        "rate": "0",
+                        "operation_type": "E1"
+                    }
+                },
+                {
+                    "quantity": "2",
+                    "unit_price": "12.345",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva10",
+                        "rate": "10",
+                        "operation_type": "S1"
+                    }
+                },
+                {
+                    "quantity": "1",
+                    "unit_price": "100",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [
+                    { "gross": "50.00", "base": "50.00" },
+                    { "gross": "24.69", "base": "24.69" },
+                    { "gross": "100.00", "base": "100.00" }
+                ],
+                "subtotal": "174.69",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "100.00",
+                        "tax": "21.00"
+                    },
+                    {
+                        "key": "iva10",
+                        "operation_type": "S1",
+                        "rate": "10.00",
+                        "base": "24.69",
+                        "tax": "2.47"
+                    },
+                    {
+                        "key": "exempt",
+                        "operation_type": "E1",
+                        "rate": "0.00",
+                        "base": "50.00",
+                        "tax": "0.00"
+                    }
+                ],
+                "tax_total": "23.47",
+                "withholding_total": "0.00",
+                "gross_total": "198.16",
+                "total": "198.16"
+            }
+        },
+        {
+            "name": "medio céntimo hacia arriba en la base y en la cuota",
+            "lines": [
+                {
+                    "quantity": "1",
+                    "unit_price": "0.125",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                },
+                {
+                    "quantity": "1",
+                    "unit_price": "2.5",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21b",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [
+                    { "gross": "0.13", "base": "0.13" },
+                    { "gross": "2.50", "base": "2.50" }
+                ],
+                "subtotal": "2.63",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "0.13",
+                        "tax": "0.03"
+                    },
+                    {
+                        "key": "iva21b",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "2.50",
+                        "tax": "0.53"
+                    }
+                ],
+                "tax_total": "0.56",
+                "withholding_total": "0.00",
+                "gross_total": "3.19",
+                "total": "3.19"
+            }
+        },
+        {
+            "name": "rectificativa por el total: los mismos importes en negativo",
+            "lines": [
+                {
+                    "quantity": "-15",
+                    "unit_price": "60",
+                    "discount_pct": "5",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [{ "gross": "-900.00", "base": "-855.00" }],
+                "subtotal": "-855.00",
+                "discount_total": "-45.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "-855.00",
+                        "tax": "-179.55"
+                    }
+                ],
+                "tax_total": "-179.55",
+                "withholding_total": "0.00",
+                "gross_total": "-1034.55",
+                "total": "-1034.55"
+            }
+        },
+        {
+            "name": "en negativo, medio céntimo alejándose del cero",
+            "lines": [
+                {
+                    "quantity": "-1",
+                    "unit_price": "0.125",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [{ "gross": "-0.13", "base": "-0.13" }],
+                "subtotal": "-0.13",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "-0.13",
+                        "tax": "-0.03"
+                    }
+                ],
+                "tax_total": "-0.03",
+                "withholding_total": "0.00",
+                "gross_total": "-0.16",
+                "total": "-0.16"
+            }
+        },
+        {
+            "name": "retención de IRPF del 15 %",
+            "lines": [
+                {
+                    "quantity": "1",
+                    "unit_price": "1000",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "iva21",
+                        "rate": "21",
+                        "operation_type": "S1"
+                    }
+                }
+            ],
+            "withholding": "15",
+            "expected": {
+                "lines": [{ "gross": "1000.00", "base": "1000.00" }],
+                "subtotal": "1000.00",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "iva21",
+                        "operation_type": "S1",
+                        "rate": "21.00",
+                        "base": "1000.00",
+                        "tax": "210.00"
+                    }
+                ],
+                "tax_total": "210.00",
+                "withholding_total": "150.00",
+                "gross_total": "1210.00",
+                "total": "1060.00"
+            }
+        },
+        {
+            "name": "empresa de la UE: no sujeta, sin cuota",
+            "lines": [
+                {
+                    "quantity": "10",
+                    "unit_price": "75",
+                    "discount_pct": "0",
+                    "tax": {
+                        "key": "intra_eu",
+                        "rate": "0",
+                        "operation_type": "N2"
+                    }
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [{ "gross": "750.00", "base": "750.00" }],
+                "subtotal": "750.00",
+                "discount_total": "0.00",
+                "taxes": [
+                    {
+                        "key": "intra_eu",
+                        "operation_type": "N2",
+                        "rate": "0.00",
+                        "base": "750.00",
+                        "tax": "0.00"
+                    }
+                ],
+                "tax_total": "0.00",
+                "withholding_total": "0.00",
+                "gross_total": "750.00",
+                "total": "750.00"
+            }
+        },
+        {
+            "name": "una línea sin impuesto no entra en el desglose",
+            "lines": [
+                {
+                    "quantity": "3",
+                    "unit_price": "19.99",
+                    "discount_pct": "12.5",
+                    "tax": null
+                }
+            ],
+            "withholding": null,
+            "expected": {
+                "lines": [{ "gross": "59.97", "base": "52.47" }],
+                "subtotal": "52.47",
+                "discount_total": "7.50",
+                "taxes": [],
+                "tax_total": "0.00",
+                "withholding_total": "0.00",
+                "gross_total": "52.47",
+                "total": "52.47"
+            }
+        }
+    ]
+}
