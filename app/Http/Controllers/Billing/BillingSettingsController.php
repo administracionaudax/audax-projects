@@ -9,6 +9,7 @@ use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncHolded;
+use App\Models\Client;
 use App\Models\HoldedSyncRun;
 use App\Models\Setting;
 use App\Models\User;
@@ -61,7 +62,7 @@ class BillingSettingsController extends Controller
                 'rows' => $inbox->directory(),
                 'clients' => ReviewController::clientOptions(),
             ],
-            'can' => ['sync' => $user->can('sync-holded'), 'access' => $user->isAdmin()],
+            'can' => ['sync' => $user->can('sync-holded'), 'access' => $user->isAdmin(), 'create_client' => $user->can('create', Client::class)],
         ]);
     }
 

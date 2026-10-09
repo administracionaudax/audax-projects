@@ -148,6 +148,8 @@ export type HoldedInvoiceSummary = {
     is_draft: boolean;
     tags: string[];
     links: InvoiceLinkData[];
+    /** Marcada «No necesita proyecto» (D-431). */
+    no_project_needed?: boolean;
     /** En el listado, la primera sugerencia de una factura sin enlazar. */
     suggestion?: InvoiceLinkSuggestion | null;
 };
@@ -158,6 +160,8 @@ export type HoldedInvoiceDetail = HoldedInvoiceSummary & {
     notes: string | null;
     synced_at: string | null;
     pdf_stored: boolean;
+    /** «No necesita proyecto» (D-431): cuándo, quién y por qué; null sin marcar. */
+    no_project: { at: string; by: string | null; note: string | null } | null;
     lines: {
         id: number;
         name: string | null;
@@ -466,7 +470,14 @@ export type UnbilledClient = {
     /** Fecha (AAAA-MM-DD) de lo más antiguo sin facturar. */
     oldest: string | null;
     /** De dónde sale: proyectos por horas y bolsas con exceso, bolsas sin factura y meses de fee sin factura. */
-    sources: { hours: number; overage: number; banks: number; fees: number };
+    sources: {
+        hours: number;
+        overage: number;
+        banks: number;
+        fees: number;
+        /** Precios cerrados con algo pendiente (D-432). */
+        fixed: number;
+    };
 };
 
 export type UnbilledReportData = {

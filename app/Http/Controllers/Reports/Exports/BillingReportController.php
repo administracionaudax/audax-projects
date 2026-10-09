@@ -62,8 +62,11 @@ class BillingReportController extends Controller
         }
 
         $scope = $this->reportScope($request, ['clientIds' => [$client->id]]);
+        // Lo pendiente de facturar del cliente, por línea (D-432 y D-433): horas, precios cerrados,
+        // fees, bolsas y excesos (también los pasados a la bolsa siguiente).
+        $pending = $unbilled->detail($scope, BillingAccess::viewsBilling($user), $client->id);
 
-        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $document->summary($scope, $client), $exporter->maxRows() - 1);
+        return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $document->summary($scope, $client), $exporter->maxRows() - 1, $pending);
     }
 
     /**
@@ -89,8 +92,9 @@ class BillingReportController extends Controller
 
     /**
      * @param  array<string, mixed>|null  $summary
+     * @param  array<string, mixed>|null  $unbilled
      */
-    private function page(User $user, ReportFilters $filters, ?Client $client, ?array $summary, int $exportLimit): Response
+    private function page(User $user, ReportFilters $filters, ?Client $client, ?array $summary, int $exportLimit, ?array $unbilled = null): Response
     {
         $props = $this->filterProps(new ReportScope($user, $filters));
 
@@ -102,6 +106,7 @@ class BillingReportController extends Controller
                 ->map(fn (Client $option): array => ['id' => $option->id, 'name' => $option->name, 'is_active' => $option->is_active])
                 ->values()->all(),
             'summary' => $summary,
+            'unbilled' => $unbilled,
             'scope' => ['team_only' => ! $user->isAdmin()],
             // Entradas que caben en la exportación (sin la fila de totales).
             'export_limit' => $exportLimit,

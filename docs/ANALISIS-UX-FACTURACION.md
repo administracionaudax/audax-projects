@@ -550,7 +550,7 @@ Notas: «Montó» es el ejemplo real de D-248. Si la propuesta no convence, el b
 4. Cuarto bloque: I9, I7, R1 y R3.
 5. Después: R2, R4, R5, R8 y R9; la fase de emisión retoma L1-L6.
 
-Decisiones nuevas que habría que registrar en `docs/DECISIONES.md`: la nueva arquitectura y las redirecciones (cambia D-393 y D-401), el mejor candidato propuesto en contactos (amplía D-248), la lectura de «Vendido frente a real» por tipo de venta (amplía D-390) y el periodo por defecto del listado de facturas. Para el propietario queda una sola pregunta abierta: si «Rechazar» en un contacto debe poder ofrecer «Crear el cliente en Audax con estos datos», lo que cambiaría la regla de D-387 de no crear nunca un cliente desde Holded. La propuesta no lo incluye.
+Decisiones nuevas que habría que registrar en `docs/DECISIONES.md`: la nueva arquitectura y las redirecciones (cambia D-393 y D-401), el mejor candidato propuesto en contactos (amplía D-248), la lectura de «Vendido frente a real» por tipo de venta (amplía D-390) y el periodo por defecto del listado de facturas. Para el propietario queda una sola pregunta abierta: si «Rechazar» en un contacto debe poder ofrecer «Crear el cliente en Audax con estos datos», lo que cambiaría la regla de D-387 de no crear nunca un cliente desde Holded. La propuesta no lo incluye. **Respondida el 09/10/2026**: sí, con «Crear cliente» en la bandeja y en el directorio (D-430); además, «No necesita proyecto» en las facturas (D-431), los precios cerrados en «Por facturar» (D-432) y el exceso de bolsa en la bolsa siguiente (D-433).
 
 ---
 

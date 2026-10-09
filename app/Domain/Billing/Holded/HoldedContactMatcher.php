@@ -43,6 +43,9 @@ final class HoldedContactMatcher
     /** @var array<int, list<string>>|null cliente → sus palabras con peso */
     private ?array $tokens = null;
 
+    /** @var array<int, string>|null cliente → su nombre normalizado (sin los internos de Audax) */
+    private ?array $clientNames = null;
+
     /** Palabras que no bastan para casar por sí solas. */
     private const array GENERIC = ['grupo', 'group', 'solutions', 'soluciones', 'solucion', 'international', 'internacional', 'spain', 'espana', 'iberica', 'sociedad', 'limitada', 'anonima', 'agencia', 'digital', 'partners', 'partner', 'servicios', 'gestiones', 'marketing', 'comunicacion', 'consultores', 'consulting', 'the', 'and', 'del', 'las', 'los', 'con', 'para', 'por', 'hnos', 'hermanos', 'tech', 'technologies', 'global', 'studio', 'estudio', 'region', 'unipessoal', 'lda', 'gmbh', 'ltd', 'inc', 'srl', 'web', 'leads', 'general'];
 
@@ -108,6 +111,7 @@ final class HoldedContactMatcher
         $this->byName = null;
         $this->byCompact = null;
         $this->tokens = null;
+        $this->clientNames = null;
     }
 
     /**
@@ -287,6 +291,61 @@ final class HoldedContactMatcher
     }
 
     /**
+     * Clientes que ya podrían ser el de un contacto antes de crear uno nuevo desde él (D-430): los
+     * que tienen su NIF, los que se llaman igual (sin tildes ni forma jurídica) y los de un nombre
+     * muy parecido (el mismo sin espacios, todas las palabras con peso de uno en el otro o un 85 %
+     * de parecido). Mira el nombre y el nombre comercial del contacto y los $names que se quieran
+     * dar al cliente nuevo. Sin los clientes internos de Audax en los parecidos.
+     *
+     * @param  list<string|null>  $names
+     * @return array<int, 'nif'|'nombre'|'parecido'> cliente => motivo, por orden de peso
+     */
+    public function similarClients(array $names, ?string $taxId): array
+    {
+        $this->load();
+        $found = [];
+
+        $taxId = HoldedPayload::normalizeTaxId($taxId);
+        foreach ($taxId === null ? [] : ($this->byTaxId[$taxId] ?? []) as $id) {
+            $found[$id] = 'nif';
+        }
+
+        $normalized = array_values(array_unique(array_filter(array_map(fn (?string $name): string => self::normalizeName($name), $names))));
+        foreach ($normalized as $name) {
+            foreach ($this->byName[$name] ?? [] as $id) {
+                $found[$id] ??= 'nombre';
+            }
+        }
+
+        $words = self::weightyTokens(implode(' ', $normalized));
+        $compacts = array_map(fn (string $name): string => str_replace(' ', '', $name), $normalized);
+        foreach ($this->clientNames ?? [] as $id => $clientName) {
+            if (isset($found[$id])) {
+                continue;
+            }
+            $clientWords = $this->tokens[$id] ?? [];
+            $similar = in_array(str_replace(' ', '', $clientName), $compacts, true)
+                || ($clientWords !== [] && array_diff($clientWords, $words) === [])
+                || ($clientWords !== [] && $words !== [] && array_diff($words, $clientWords) === [])
+                || array_filter($normalized, fn (string $name): bool => self::similarity($name, $clientName) >= 85.0) !== [];
+
+            if ($similar) {
+                $found[$id] = 'parecido';
+            }
+        }
+
+        return $found;
+    }
+
+    /** Parecido (0–100) entre dos nombres normalizados. */
+    private static function similarity(string $a, string $b): float
+    {
+        similar_text($a, $b, $percent);
+
+        return $percent;
+    }
+
+    /**
      * De unos clientes, el que más palabras con peso comparte con $words (Jaccard); a igualdad, el
      * primero (el de menor id).
      *
@@ -312,7 +371,7 @@ final class HoldedContactMatcher
 
     private function load(): void
     {
-        if ($this->byTaxId !== null && $this->byName !== null && $this->byCompact !== null && $this->tokens !== null) {
+        if ($this->byTaxId !== null && $this->byName !== null && $this->byCompact !== null && $this->tokens !== null && $this->clientNames !== null) {
             return;
         }
 
@@ -320,6 +379,7 @@ final class HoldedContactMatcher
         $this->byName = [];
         $this->byCompact = [];
         $this->tokens = [];
+        $this->clientNames = [];
 
         foreach (Client::query()->orderBy('id')->get(['id', 'name', 'tax_id']) as $client) {
             $taxId = HoldedPayload::normalizeTaxId($client->tax_id);
@@ -338,6 +398,7 @@ final class HoldedContactMatcher
             }
             $this->byCompact[str_replace(' ', '', $name)][] = $client->id;
             $this->tokens[$client->id] = self::weightyTokens($name);
+            $this->clientNames[$client->id] = $name;
         }
     }
 }

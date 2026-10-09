@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
+use App\Models\Concerns\MarksNoProjectNeeded;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,6 +45,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $pdf_path
  * @property CarbonImmutable|null $pdf_fetched_at
  * @property CarbonImmutable|null $synced_at
+ * @property CarbonImmutable|null $no_project_needed_at «No necesita proyecto» (D-431), de Audax: la sincronización no lo toca
+ * @property int|null $no_project_needed_by
+ * @property string|null $no_project_note
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Client|null $client
@@ -83,6 +87,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class HoldedInvoice extends Model
 {
+    use MarksNoProjectNeeded;
+
     /** Disco privado de los PDF originales (D-389). */
     public const string PDF_DISK = 'local';
 

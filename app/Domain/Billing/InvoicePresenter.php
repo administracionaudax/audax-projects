@@ -35,6 +35,7 @@ final class InvoicePresenter
             'is_draft' => $invoice->is_draft,
             'tags' => $invoice->tags ?? [],
             'links' => $invoice->relationLoaded('links') ? $invoice->links->map(fn (HoldedInvoiceLink $link): array => self::link($link))->values()->all() : [],
+            'no_project_needed' => $invoice->noProjectNeeded(),
         ];
     }
 
@@ -52,6 +53,7 @@ final class InvoicePresenter
             'links.creator:id,name',
             'rectified:id,number,kind,issued_on',
             'rectifications:id,number,kind,issued_on,subtotal,total,rectified_invoice_id',
+            'noProjectNeededBy:id,name',
         ]);
 
         return [
@@ -60,6 +62,12 @@ final class InvoicePresenter
             'notes' => $invoice->notes,
             'synced_at' => $invoice->synced_at?->utc()->toIso8601ZuluString(),
             'pdf_stored' => $invoice->pdf_path !== null,
+            // «No necesita proyecto» (D-431): quién, cuándo y por qué.
+            'no_project' => $invoice->no_project_needed_at === null ? null : [
+                'at' => $invoice->no_project_needed_at->utc()->toIso8601ZuluString(),
+                'by' => $invoice->noProjectNeededBy?->name,
+                'note' => $invoice->no_project_note,
+            ],
             'lines' => $invoice->lines->map(fn ($line): array => [
                 'id' => $line->id,
                 'name' => $line->name,

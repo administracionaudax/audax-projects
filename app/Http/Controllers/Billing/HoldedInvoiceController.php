@@ -48,7 +48,7 @@ class HoldedInvoiceController extends Controller
 
         /** @var list<HoldedInvoice> $items */
         $items = $page->items();
-        $unlinked = array_values(array_filter($items, fn (HoldedInvoice $invoice): bool => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled));
+        $unlinked = array_values(array_filter($items, fn (HoldedInvoice $invoice): bool => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled && ! $invoice->noProjectNeeded()));
         $suggester->prime($unlinked);
 
         return Inertia::render('billing/invoices/index', [
@@ -93,7 +93,7 @@ class HoldedInvoiceController extends Controller
 
         return Inertia::render('billing/invoices/show', [
             'invoice' => InvoicePresenter::detail($invoice),
-            'suggestions' => $invoice->links()->exists() ? [] : $suggester->for($invoice),
+            'suggestions' => $invoice->noProjectNeeded() || $invoice->links()->exists() ? [] : $suggester->for($invoice),
             'projects' => $this->linkableProjects($invoice),
             'holded' => HoldedConnection::summary(),
             'holded_url' => self::HOLDED_SALES_URL,

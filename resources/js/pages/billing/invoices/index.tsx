@@ -201,7 +201,9 @@ export default function InvoicesIndex({
             value: t(
                 filters.enlace === 'con'
                     ? 'billing.filters.linked'
-                    : 'billing.filters.unlinked',
+                    : filters.enlace === 'no-necesita'
+                      ? 'billing.filters.no_project_needed'
+                      : 'billing.filters.unlinked',
             ),
         });
     }

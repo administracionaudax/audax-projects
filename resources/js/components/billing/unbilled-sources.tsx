@@ -3,8 +3,9 @@ import { tCount } from '@/lib/people';
 import type { UnbilledClient } from '@/types';
 
 /**
- * De dónde sale lo que un cliente tiene por facturar (I10, D-412), en texto corto: «Horas · Exceso
- * de bolsa · 1 bolsa sin factura · 2 meses de fee». Sin color: es una descripción, no un estado.
+ * De dónde sale lo que un cliente tiene por facturar (I10, D-412 y D-432), en texto corto: «Horas ·
+ * Exceso de bolsa · 1 bolsa sin factura · 2 meses de fee · 1 precio cerrado». Sin color: es una
+ * descripción, no un estado.
  */
 export function unbilledSources(sources: UnbilledClient['sources']): string {
     return [
@@ -15,6 +16,9 @@ export function unbilledSources(sources: UnbilledClient['sources']): string {
             : null,
         sources.fees > 0
             ? tCount('billing.unbilled.source.fees', sources.fees)
+            : null,
+        sources.fixed > 0
+            ? tCount('billing.unbilled.source.fixed', sources.fixed)
             : null,
     ]
         .filter(Boolean)

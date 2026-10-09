@@ -1,6 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { Ban, Check, RotateCcw, Search } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
+import { CreateClientButton } from '@/components/billing/create-client-dialog';
 import { SearchableSelect } from '@/components/domain/searchable-select';
 import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
@@ -65,9 +66,11 @@ function ContactStatus({ row }: { row: HoldedContactRow }) {
 function DirectoryActions({
     row,
     clients,
+    canCreateClient,
 }: {
     row: HoldedContactRow;
     clients: BillingClientOption[];
+    canCreateClient: boolean;
 }) {
     const [processing, setProcessing] = useState(false);
     const send = (action: 'assign' | 'ignore' | 'auto', clientId?: number) =>
@@ -114,6 +117,14 @@ function DirectoryActions({
                 ]}
                 onChange={(value) => send('assign', Number(value))}
             />
+            {/* D-430: sin cliente (también los descartados), crearlo con sus datos. */}
+            {canCreateClient && row.client === null ? (
+                <CreateClientButton
+                    contact={row}
+                    disabled={processing}
+                    compact
+                />
+            ) : null}
             {row.ignored || row.match_method === 'manual' ? (
                 <Button
                     type="button"
@@ -155,10 +166,12 @@ export function HoldedContactsDirectory({
     view: initialView,
     rows,
     clients,
+    canCreateClient = false,
 }: {
     view: View;
     rows: HoldedContactRow[];
     clients: BillingClientOption[];
+    canCreateClient?: boolean;
 }) {
     const id = useId();
     const [view, setView] = useState<View>(initialView);
@@ -370,6 +383,9 @@ export function HoldedContactsDirectory({
                                             <DirectoryActions
                                                 row={row}
                                                 clients={clients}
+                                                canCreateClient={
+                                                    canCreateClient
+                                                }
                                             />
                                         </td>
                                     </tr>
@@ -395,7 +411,11 @@ export function HoldedContactsDirectory({
                                     </span>
                                 </div>
                                 <ContactStatus row={row} />
-                                <DirectoryActions row={row} clients={clients} />
+                                <DirectoryActions
+                                    row={row}
+                                    clients={clients}
+                                    canCreateClient={canCreateClient}
+                                />
                             </li>
                         ))}
                     </ul>

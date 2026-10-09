@@ -21,8 +21,9 @@ use Inertia\Response;
  * Aceptar, descartar o elegir otro van por las acciones de siempre (PUT /facturacion/contactos/{id}
  * y POST /facturacion/facturas/{id}/enlaces), que guardan su «Deshacer»; aquí van además «Aceptar
  * las de confianza alta» (fila a fila, con los mismos permisos y la propuesta recalculada en el
- * servidor) y «Deshacer» la última acción. Quién: view-billing (en la ruta). Nunca se crea un
- * cliente desde Holded (D-387).
+ * servidor) y «Deshacer» la última acción. Quién: view-billing (en la ruta). Desde D-430 se puede
+ * crear el cliente desde un contacto (HoldedContactClientController) y, desde D-431, marcar que una
+ * factura no necesita proyecto (NoProjectNeededController).
  */
 class ReviewController extends Controller
 {
@@ -43,6 +44,10 @@ class ReviewController extends Controller
             'clients' => $tab === 'contactos' ? self::clientOptions() : [],
             'targets' => $tab === 'facturas' ? ReviewInbox::linkTargets() : [],
             'undo' => $undo->last(),
+            // D-430 y D-431: «Crear cliente» (además de view-billing, quien puede crear clientes) y
+            // las facturas marcadas «No necesita proyecto», que ya no salen aquí.
+            'can' => ['create_client' => $request->user()?->can('create', Client::class) ?? false],
+            'no_project_count' => $tab === 'facturas' ? ReviewInbox::noProjectNeededCount() : 0,
         ]);
     }
 

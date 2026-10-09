@@ -259,7 +259,11 @@ function ProjectCell({ invoice }: { invoice: HoldedInvoiceSummary }) {
     return (
         <span className="inline-flex items-center gap-1 text-muted-foreground">
             <Link2Off aria-hidden="true" className="size-3.5" />
-            {t('billing.invoice.unlinked')}
+            {t(
+                invoice.no_project_needed
+                    ? 'billing.no_project.marked'
+                    : 'billing.invoice.unlinked',
+            )}
         </span>
     );
 }
