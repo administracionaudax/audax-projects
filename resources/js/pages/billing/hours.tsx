@@ -1,8 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Building2, Clock, FileWarning, Receipt, SearchX } from 'lucide-react';
 import { useId } from 'react';
+import { BillingHeader } from '@/components/billing/billing-header';
 import { EmptyState } from '@/components/empty-state';
-import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
 import { KpiCard } from '@/components/reports/kpi-card';
@@ -28,8 +28,7 @@ import {
 } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { BillingTabs } from '@/components/billing/billing-nav';
-import { hours as billingHours } from '@/routes/billing';
+import { unbilled as billingHours } from '@/routes/billing';
 import { client as clientReport } from '@/routes/reports';
 import type { ReportFilterKey } from '@/types';
 
@@ -42,7 +41,8 @@ const FILTERS: ReportFilterKey[] = [
 ];
 
 /**
- * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; en Facturación desde D-401): un cliente y un periodo,
+ * Por facturar (D-405; antes «Horas para facturar», SPEC §10 «Exportación», D-045; en Facturación
+ * desde D-401). Hasta que llegue la lista de clientes pendientes (I10), un cliente y un periodo,
  * con el resumen por proyecto y bolsa (dentro de la bolsa y exceso por separado, pendientes de
  * aprobar y, con view-financials, tarifas e importes) y la descarga del detalle de cada entrada.
  */
@@ -80,12 +80,13 @@ export default function BillingReport({
 
     return (
         <>
-            <Head title={t('reports_r2.billing.title')} />
+            <Head title={t('billing.nav.unbilled')} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
-                    title={t('reports_r2.billing.heading')}
-                    description={t('reports_r2.billing.description')}
+                <BillingHeader
+                    current="por-facturar"
+                    title={t('billing.nav.unbilled')}
+                    description={t('billing.unbilled.description')}
                     actions={
                         client ? (
                             <>
@@ -107,7 +108,7 @@ export default function BillingReport({
                                 reportRequest === null ? null : (
                                     <ExportMenu
                                         request={reportRequest}
-                                        title={`${t('reports_r2.billing.heading')} · ${client.name}`}
+                                        title={`${t('reports_r2.billing.title')} · ${client.name}`}
                                         label={t('reports_r2.billing.export')}
                                     />
                                 )}
@@ -115,8 +116,6 @@ export default function BillingReport({
                         ) : null
                     }
                 />
-
-                <BillingTabs current="horas" />
 
                 <div className="grid gap-1 sm:max-w-sm">
                     <Label htmlFor={`${id}-client`}>
@@ -321,6 +320,6 @@ BillingReport.layout = {
     breadcrumbs: [
         // Sin el módulo `billing`, /facturacion no existe (D-402): la sección enlaza a esta página.
         { title: t('billing.section'), href: billingHours() },
-        { title: t('reports_r2.billing.title'), href: billingHours() },
+        { title: t('billing.nav.unbilled'), href: billingHours() },
     ],
 };

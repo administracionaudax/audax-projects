@@ -3,7 +3,6 @@ import {
     BarChart3,
     Building2,
     CalendarDays,
-    ChartColumnBig,
     CalendarClock,
     CalendarOff,
     CalendarRange,
@@ -13,8 +12,6 @@ import {
     ListChecks,
     MessagesSquare,
     NotebookPen,
-    Receipt,
-    Scale,
     Settings2,
     SlidersHorizontal,
     Sparkles,
@@ -27,6 +24,7 @@ import {
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { useChatUnreadTotal } from '@/components/chat/use-chat-unread';
+import { billingSections } from '@/components/billing/billing-nav';
 import { NavMain } from '@/components/nav-main';
 import type { NavSection } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -283,47 +281,31 @@ export function peopleNavItems(
 }
 
 /**
- * Sección «Facturación» (D-260; Fase 12, D-393 y D-401), con el módulo `billing` visible (las
- * habilidades ya lo tienen en cuenta): el informe de facturación y «Facturas» (con «Contactos de
- * Holded» y «Ajustes») con view-financials; «Vendido frente a real» para quien ve las bolsas o los
- * datos económicos; y «Horas para facturar» con su permiso de siempre, también sin el módulo
- * (D-402). Sin entradas, la sección no se pinta.
+ * Sección «Facturación» (D-260; D-405, que cambia D-393 y D-401), con el módulo `billing` visible
+ * (las habilidades ya lo tienen en cuenta), en este orden: Facturas, Por facturar, Vendido frente a
+ * real, Por revisar (con su contador), Ventas y Ajustes al final. Cada persona ve solo lo que puede
+ * abrir (billingSections): «Vendido frente a real» también responsables y gestores, y «Por
+ * facturar» con su permiso de siempre, también sin el módulo (D-402). Sin entradas, la sección no se
+ * pinta.
  */
-export function billingNavItems(can: Abilities): NavItem[] {
-    const items: (NavItem | false)[] = [
-        can.viewBilling === true && {
-            title: t('billing.nav.report'),
-            href: '/facturacion/informe',
-            icon: ChartColumnBig,
-        },
-        can.viewSoldVsActual === true && {
-            title: t('billing.nav.sold_vs_actual'),
-            href: '/facturacion/vendido-frente-a-real',
-            icon: Scale,
-        },
-        can.exportBillingHours === true && {
-            title: t('billing.nav.hours'),
-            href: '/facturacion/horas-para-facturar',
-            icon: Clock,
-        },
-        can.viewBilling === true && {
-            title: t('billing.nav.invoices'),
-            href: '/facturacion/facturas',
-            icon: Receipt,
-            items: [
-                {
-                    title: t('billing.nav.contacts'),
-                    href: '/facturacion/contactos',
-                },
-                {
-                    title: t('billing.nav.settings'),
-                    href: '/facturacion/ajustes',
-                },
-            ],
-        },
-    ];
+export function billingNavItems(
+    can: Abilities,
+    counters: { billingReview?: number } = {},
+): NavItem[] {
+    const review = counters.billingReview ?? 0;
 
-    return items.filter((item): item is NavItem => Boolean(item));
+    return billingSections(can).map((section) => ({
+        title: t(section.label),
+        href: section.href,
+        icon: section.icon,
+        badge:
+            section.id === 'por-revisar' && review > 0
+                ? {
+                      count: review,
+                      label: tCount('billing.nav.review_badge', review),
+                  }
+                : undefined,
+    }));
 }
 
 /**
@@ -432,6 +414,8 @@ export type NavCounters = {
     weekliesEnabled?: boolean;
     assistantEnabled?: boolean;
     helpEnabled?: boolean;
+    /** Facturación (D-405): contactos de Holded por revisar. */
+    billingReview?: number;
 };
 
 /**
@@ -463,7 +447,7 @@ export function navSections(
         {
             id: 'billing',
             label: t('nav.sections.billing'),
-            items: billingNavItems(can),
+            items: billingNavItems(can, counters),
         },
         {
             id: 'admin',
@@ -486,6 +470,7 @@ export function AppSidebar() {
         weekliesEnabled: props.config?.modules?.weeklies,
         assistantEnabled: props.config?.modules?.assistant,
         helpEnabled: props.config?.modules?.help,
+        billingReview: props.billingNav?.review ?? 0,
     };
 
     return (
@@ -506,11 +491,13 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
+            {/* La lista se desplaza sola, con un fundido abajo, y el pie va separado por una línea: nunca tapa la
+                última entrada (T-10, D-405). */}
+            <SidebarContent className="[mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)] pb-6">
                 <NavMain sections={navSections(can, counters)} />
             </SidebarContent>
 
-            <SidebarFooter>
+            <SidebarFooter className="border-t border-sidebar-border">
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

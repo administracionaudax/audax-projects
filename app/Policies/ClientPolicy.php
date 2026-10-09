@@ -83,7 +83,7 @@ class ClientPolicy
     }
 
     /**
-     * Exportación de horas para facturar (/facturacion/horas-para-facturar, D-045 y D-402): admins y
+     * Exportación de horas para facturar (/facturacion/por-facturar, D-045, D-402 y D-405): admins y
      * quien tenga view-financials. Las tarifas e importes, además, solo con view-financials. Nunca
      * quien está excluido de Facturación (D-245, D-247), aunque sea admin.
      */

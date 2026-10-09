@@ -17,7 +17,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Contactos de Holded y su cliente de Audax (Fase 12, D-387): /facturacion/contactos con los que no
+ * Contactos de Holded y su cliente de Audax (Fase 12, D-387): /facturacion/por-revisar (D-405) con los que no
  * casan (por defecto), todos o los descartados. Resolver uno es elegir su cliente (sus facturas
  * pasan a ese cliente), descartarlo (no es un cliente de la agencia) o volver a casarlo solo. Nunca
  * se crea un cliente desde aquí.

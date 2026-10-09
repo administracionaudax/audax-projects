@@ -114,6 +114,8 @@ export type InvoiceLinkData = {
     project: { id: number; code: string; name: string } | null;
     bank: { id: number; name: string } | null;
     created_by?: string | null;
+    /** Cuándo se enlazó (la línea de tiempo de la ficha, D-408). */
+    created_at?: string | null;
 };
 
 /** InvoicePresenter::summary. */
@@ -184,6 +186,15 @@ export type HoldedSyncSummary = {
     status: 'running' | 'ok' | 'failed';
     started_at: string;
     finished_at: string | null;
+    /** La última lectura que acabó bien (la misma si esta acabó bien). Solo en la prop compartida. */
+    last_ok_at?: string | null;
+};
+
+/** Prop compartida `billing` (D-405 y D-409), solo para quien tiene view-billing. */
+export type BillingShared = {
+    /** Contador de «Por revisar»: contactos de Holded sin casar o por confirmar. */
+    review: number;
+    sync: HoldedSyncSummary | null;
 };
 
 export type SoldVsActualPageProps = {
@@ -307,5 +318,4 @@ export type InvoicingReportPageProps = {
     services: BillingService[];
     report: InvoicingReport;
     report_request: ReportRequestData;
-    last_sync: HoldedSyncSummary | null;
 };

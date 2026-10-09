@@ -108,14 +108,14 @@ it('BIZ-01: la exportación de horas y la de facturar cuadran con el informe', f
         ->and(round(array_sum(array_column($rows, 'Ingreso estimado (€)')), 2))->toBe(1161.67);
 
     $billing = ($this->readXlsx)($this->actingAs($this->admin)
-        ->get('/facturacion/horas-para-facturar?periodo=mes&fecha=2026-09-01&formato=xlsx&cliente[]='.$this->client->id)->assertOk()->streamedContent());
+        ->get('/facturacion/por-facturar?periodo=mes&fecha=2026-09-01&formato=xlsx&cliente[]='.$this->client->id)->assertOk()->streamedContent());
     $amount = array_search('Importe (€)', $billing[0], true);
 
     expect(array_column(array_slice($billing, 1, -1), $amount))->toBe([833.33, 258.34, 70])
         ->and(end($billing)[$amount])->toBe(1161.67);
 
     $this->actingAs($this->admin)
-        ->get('/facturacion/horas-para-facturar?periodo=mes&fecha=2026-09-01&cliente[]='.$this->client->id)
+        ->get('/facturacion/por-facturar?periodo=mes&fecha=2026-09-01&cliente[]='.$this->client->id)
         ->assertInertia(fn ($page) => $page->where('summary.totals.income', '1161.67'));
 });
 

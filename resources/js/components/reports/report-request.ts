@@ -4,9 +4,9 @@
  * de routes/app/weeklies.php (D-192), y los de facturación, de routes/app/billing.php (D-401).
  */
 import {
-    hours as billingHours,
-    report as invoicingReport,
+    sales as invoicingReport,
     soldVsActual,
+    unbilled as billingHours,
 } from '@/routes/billing';
 import {
     client,

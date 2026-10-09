@@ -279,7 +279,7 @@ it('la página: solo con view-billing, con el año en curso comparado por defect
     $finance = userWithRole('employee');
     $finance->givePermissionTo(Permission::ViewFinancials->value);
 
-    $this->actingAs($finance)->get('/facturacion/informe')
+    $this->actingAs($finance)->get('/facturacion/ventas')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('billing/report')
             ->where('filters.period', 'anio')
@@ -290,22 +290,22 @@ it('la página: solo con view-billing, con el año en curso comparado por defect
             ->where('report_request.kind', 'invoicing')
             ->has('services', 11));
 
-    $this->actingAs($finance)->get('/facturacion/informe?periodo=mes&fecha=2026-02-01&servicio[]=fees')
+    $this->actingAs($finance)->get('/facturacion/ventas?periodo=mes&fecha=2026-02-01&servicio[]=fees')
         ->assertInertia(fn (Assert $page) => $page->where('filters.compare', false)
             ->where('filters.comparison', null)
             ->where('filters.query.servicio', ['fees'])
             ->where('report.kpis.invoiced', '500.00'));
 
     foreach ([userWithRole('department_manager'), userWithRole('employee'), User::factory()->collaborator()->create()] as $user) {
-        $this->actingAs($user)->get('/facturacion/informe')->assertForbidden();
+        $this->actingAs($user)->get('/facturacion/ventas')->assertForbidden();
     }
 
     enableBilling(false);
-    $this->actingAs($this->admin)->get('/facturacion/informe')->assertNotFound();
+    $this->actingAs($this->admin)->get('/facturacion/ventas')->assertNotFound();
 });
 
 it('exporta en Excel, CSV, PDF y para imprimir con los mismos filtros', function () {
-    $url = '/facturacion/informe?periodo=anio&fecha=2026-01-01&comparar=1';
+    $url = '/facturacion/ventas?periodo=anio&fecha=2026-01-01&comparar=1';
 
     $this->actingAs($this->admin)->get($url.'&formato=xlsx')->assertOk()->streamedContent();
 
@@ -321,7 +321,7 @@ it('exporta en Excel, CSV, PDF y para imprimir con los mismos filtros', function
 
     $this->actingAs($this->admin)->get($url.'&formato=pdf')->assertOk();
     $this->actingAs($this->admin)->get($url.'&formato=imprimir')->assertOk()
-        ->assertSee('Informe de facturación')
+        ->assertSee('Ventas')
         ->assertSee('Beta Foods')
         ->assertSee('Antigüedad de lo pendiente');
 

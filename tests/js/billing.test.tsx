@@ -309,22 +309,30 @@ describe('componentes', () => {
             },
         };
         render(
-            <InvoiceTable
-                invoices={[
-                    invoice,
-                    {
-                        ...invoice,
-                        id: 6,
-                        number: null,
-                        is_draft: true,
-                        collection_status: 'draft',
-                        suggestion: null,
-                    },
-                ]}
-                caption="Facturas"
-            />,
+            <TooltipProvider>
+                <InvoiceTable
+                    invoices={[
+                        invoice,
+                        {
+                            ...invoice,
+                            id: 6,
+                            number: null,
+                            is_draft: true,
+                            collection_status: 'draft',
+                            suggestion: null,
+                        },
+                    ]}
+                    caption="Facturas"
+                    today="2026-10-09"
+                />
+            </TooltipProvider>,
         );
 
+        // La sugerencia, compacta en la celda del proyecto (D-406), y el estado con días (D-407).
+        expect(screen.getByTestId('accept-suggestion').textContent).toBe(
+            'Enlazar MON-BH',
+        );
+        expect(screen.getByText('Vence en 23 días')).toBeTruthy();
         fireEvent.click(screen.getByTestId('accept-suggestion'));
         expect(visits).toEqual([
             {
@@ -377,33 +385,44 @@ describe('componentes', () => {
 });
 
 describe('barra lateral', () => {
-    it('Facturación: el informe y las facturas con view-billing, vendido frente a real y horas para facturar con su permiso (D-401)', () => {
+    it('Facturación: una sola navegación con cada pantalla según su permiso y el contador de Por revisar (D-405)', () => {
         expect(billingNavItems({} as never)).toEqual([]);
         expect(
             billingNavItems({ viewSoldVsActual: true } as never).map(
                 (item) => item.href,
             ),
         ).toEqual(['/facturacion/vendido-frente-a-real']);
-        // Sin el módulo, las horas para facturar siguen con su permiso de siempre (D-402).
+        // Sin el módulo, lo pendiente de facturar sigue con su permiso de siempre (D-402).
         expect(
             billingNavItems({ exportBillingHours: true } as never).map(
                 (item) => item.href,
             ),
-        ).toEqual(['/facturacion/horas-para-facturar']);
-        const items = billingNavItems({
-            viewSoldVsActual: true,
-            viewBilling: true,
-            exportBillingHours: true,
-        } as never);
-        expect(items.map((item) => item.href)).toEqual([
-            '/facturacion/informe',
-            '/facturacion/vendido-frente-a-real',
-            '/facturacion/horas-para-facturar',
-            '/facturacion/facturas',
+        ).toEqual(['/facturacion/por-facturar']);
+        const items = billingNavItems(
+            {
+                viewSoldVsActual: true,
+                viewBilling: true,
+                exportBillingHours: true,
+            } as never,
+            { billingReview: 3 },
+        );
+        expect(items.map((item) => item.title)).toEqual([
+            'Facturas',
+            'Por facturar',
+            'Vendido frente a real',
+            'Por revisar',
+            'Ventas',
+            'Ajustes',
         ]);
-        expect(items[3].items?.map((item) => item.href)).toEqual([
-            '/facturacion/contactos',
-            '/facturacion/ajustes',
-        ]);
+        expect(items.every((item) => item.items === undefined)).toBe(true);
+        expect(items[3].badge).toEqual({
+            count: 3,
+            label: '3 contactos por revisar',
+        });
+        expect(
+            billingNavItems({ viewBilling: true } as never, {
+                billingReview: 0,
+            }).find((item) => item.href === '/facturacion/por-revisar')?.badge,
+        ).toBeUndefined();
     });
 });

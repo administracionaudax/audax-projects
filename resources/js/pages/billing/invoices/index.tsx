@@ -1,400 +1,410 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, FileText, Search, X } from 'lucide-react';
-import type { FormEvent } from 'react';
-import { useId, useState } from 'react';
-import { BillingTabs } from '@/components/billing/billing-nav';
-import { InvoiceTable } from '@/components/billing/invoice-table';
-import { LastSync } from '@/components/billing/last-sync';
-import { COLLECTION_STATUSES } from '@/components/billing/sold-vs-actual-lib';
-import { DatePicker } from '@/components/domain/date-picker';
+import { FileText, Search, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { BillingHeader } from '@/components/billing/billing-header';
+import { CollectionBar } from '@/components/billing/collection-bar';
+import type {
+    CollectionBarData,
+    CollectionKey,
+} from '@/components/billing/collection-bar';
+import {
+    ChipSelect,
+    PeriodChip,
+    RemovableChip,
+} from '@/components/billing/filter-chips';
+import type { PeriodKey } from '@/components/billing/filter-chips';
+import {
+    InvoiceTable,
+    toQueryString,
+} from '@/components/billing/invoice-table';
+import type {
+    InvoiceQuery,
+    InvoiceSortColumn,
+    InvoiceTotals,
+} from '@/components/billing/invoice-table';
+import { ViewTabs } from '@/components/billing/view-tabs';
 import { EmptyState } from '@/components/empty-state';
-import { PageHeader } from '@/components/projects-list/page-header';
-import { KpiCard } from '@/components/reports/kpi-card';
+import { ListPagination } from '@/components/projects-list/list-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { formatCurrency, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
-import type { HoldedInvoiceSummary, HoldedSyncSummary } from '@/types';
+import { tCount } from '@/lib/people';
+import type { HoldedInvoiceSummary } from '@/types';
+
+export type InvoiceView =
+    | 'todas'
+    | 'por-cobrar'
+    | 'vencidas'
+    | 'sin-proyecto'
+    | 'borradores'
+    | 'rectificativas';
+
+const VIEWS: InvoiceView[] = [
+    'todas',
+    'por-cobrar',
+    'vencidas',
+    'sin-proyecto',
+    'borradores',
+    'rectificativas',
+];
 
 type Filters = {
-    buscar: string;
-    estado: string | null;
-    tipo: string | null;
-    cliente: number | null;
-    enlace: string | null;
+    vista: InvoiceView;
+    periodo: PeriodKey | null;
     desde: string | null;
     hasta: string | null;
+    buscar: string;
+    cliente: number | null;
+    servicio: string[];
+    cobro: CollectionKey | null;
+    orden: InvoiceSortColumn;
+    dir: 'asc' | 'desc';
+    estado: string | null;
+    tipo: string | null;
+    enlace: string | null;
 };
 
 type Props = {
     invoices: {
         data: HoldedInvoiceSummary[];
-        current_page: number;
-        last_page: number;
-        total: number;
-        prev_url: string | null;
-        next_url: string | null;
-    };
-    totals: {
-        count: number;
-        subtotal: string;
-        total: string;
-        paid: string;
-        pending: string;
+        meta: {
+            current_page: number;
+            last_page: number;
+            from: number | null;
+            to: number | null;
+            total: number;
+        };
+        links: { prev: string | null; next: string | null };
     };
     filters: Filters;
+    /** La query de la URL que reproduce el listado (sin la página). */
+    list_query: InvoiceQuery;
+    period: { key: string; from: string | null; to: string | null };
+    views: Record<InvoiceView, number>;
+    bar: CollectionBarData;
+    totals: InvoiceTotals;
     clients: { id: number; name: string }[];
-    unlinked: number;
-    last_sync: HoldedSyncSummary | null;
+    services: string[];
+    today: string;
 };
 
 const URL = '/facturacion/facturas';
-const ALL = '__all__';
+
+/** Cliente y número, de la A a la Z; fechas e importes, de más a menos (como InvoiceList). */
+const defaultDirection = (column: InvoiceSortColumn) =>
+    column === 'cliente' || column === 'numero' ? 'asc' : 'desc';
 
 /**
- * Facturas leídas de Holded (Fase 12, F1; D-385): solo lectura (Holded sigue emitiendo). Búsqueda
- * por número o cliente, filtros por estado de cobro, tipo, cliente, enlace y fechas, y el sumatorio
- * de lo filtrado (sin las anuladas).
+ * Facturas leídas de Holded (Fase 12, F1; D-385, D-406 y D-407): solo lectura (Holded sigue
+ * emitiendo). Vistas por tarea con su número, la barra de importes que filtra, los filtros en una
+ * línea de chips (búsqueda al escribir, periodo, cliente y servicio), orden por columnas, totales
+ * al pie y paginación de 50. Todo en la URL: se puede compartir y la ficha vuelve aquí con los mismos
+ * filtros.
  */
 export default function InvoicesIndex({
     invoices,
-    totals,
     filters,
+    list_query: listQuery,
+    period,
+    views,
+    bar,
+    totals,
     clients,
-    unlinked,
-    last_sync: lastSync,
+    services,
+    today,
 }: Props) {
     const id = useId();
     const [search, setSearch] = useState(filters.buscar);
 
-    const visit = (patch: Partial<Filters>) => {
-        const next = { ...filters, ...patch };
-        const query = Object.fromEntries(
-            Object.entries(next).filter(
-                ([, value]) => value !== null && value !== '',
-            ),
+    const visit = (patch: InvoiceQuery) => {
+        const next: InvoiceQuery = { ...listQuery, ...patch };
+
+        router.get(URL + toQueryString(next), undefined, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    // La búsqueda filtra al dejar de escribir (300 ms), como los demás filtros, sin pulsar nada.
+    useEffect(() => {
+        if (search.trim() === filters.buscar.trim()) {
+            return;
+        }
+
+        const timer = window.setTimeout(
+            () =>
+                router.get(
+                    URL +
+                        toQueryString({
+                            ...listQuery,
+                            buscar: search.trim() || null,
+                        }),
+                    undefined,
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true,
+                    },
+                ),
+            300,
         );
-        router.get(URL, query, { preserveState: true, preserveScroll: true });
+
+        return () => window.clearTimeout(timer);
+    }, [search, filters.buscar, listQuery]);
+
+    // Otra vista conserva la búsqueda, el periodo y los filtros; no el tramo de cobro, que es de la vista.
+    const viewHref = (view: InvoiceView) =>
+        URL +
+        toQueryString({
+            ...listQuery,
+            vista: view === 'todas' ? null : view,
+            cobro: null,
+        });
+
+    const sortBy = (column: InvoiceSortColumn) => {
+        const direction =
+            column === filters.orden
+                ? filters.dir === 'asc'
+                    ? 'desc'
+                    : 'asc'
+                : defaultDirection(column);
+
+        visit({
+            orden: column === 'fecha' ? null : column,
+            dir: direction === defaultDirection(column) ? null : direction,
+        });
     };
 
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        visit({ buscar: search.trim() });
-    };
+    const legacy: { key: 'estado' | 'tipo' | 'enlace'; value: string }[] = [];
+    if (filters.estado) {
+        legacy.push({
+            key: 'estado',
+            value: t(
+                `billing.collection.${filters.estado as 'paid' | 'partial' | 'unpaid' | 'overdue' | 'cancelled' | 'draft'}`,
+            ),
+        });
+    }
+    if (filters.tipo) {
+        legacy.push({
+            key: 'tipo',
+            value: t(
+                `billing.document.${filters.tipo as 'invoice' | 'credit_note'}`,
+            ),
+        });
+    }
+    if (filters.enlace) {
+        legacy.push({
+            key: 'enlace',
+            value: t(
+                filters.enlace === 'con'
+                    ? 'billing.filters.linked'
+                    : 'billing.filters.unlinked',
+            ),
+        });
+    }
 
-    const active =
+    const filtered =
         filters.buscar !== '' ||
-        [
-            filters.estado,
-            filters.tipo,
-            filters.cliente,
-            filters.enlace,
-            filters.desde,
-            filters.hasta,
-        ].some((value) => value !== null);
+        filters.periodo !== null ||
+        filters.cliente !== null ||
+        filters.servicio.length > 0 ||
+        filters.cobro !== null ||
+        legacy.length > 0;
+    const excluded = invoices.meta.total - totals.count;
 
     return (
         <>
             <Head title={t('billing.invoices.title')} />
 
-            <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
-                    title={t('billing.section')}
+            <div className="flex min-w-0 flex-1 flex-col gap-5 p-4 md:p-6">
+                <BillingHeader
+                    current="facturas"
+                    title={t('billing.invoices.title')}
                     description={t('billing.invoices.description')}
-                    actions={<LastSync sync={lastSync} />}
                 />
-                <BillingTabs current="facturas" />
 
-                <section
-                    aria-label={t('billing.invoices.totals')}
-                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                <ViewTabs
+                    label={t('billing.invoices.views_label')}
+                    current={filters.vista}
+                    dataTest="invoice-views"
+                    tabs={VIEWS.map((view) => ({
+                        id: view,
+                        label: t(`billing.invoices.view.${view}`),
+                        href: viewHref(view),
+                        count: views[view],
+                    }))}
+                />
+
+                <CollectionBar
+                    data={bar}
+                    selected={filters.cobro}
+                    onSelect={(key) => visit({ cobro: key })}
+                />
+
+                <div
+                    role="search"
+                    aria-label={t('billing.filters.label')}
+                    className="flex flex-wrap items-center gap-2"
                 >
-                    <KpiCard
-                        label={t('billing.invoices.kpi_invoiced')}
-                        definition={t(
-                            'billing.invoices.kpi_invoiced_definition',
-                        )}
-                        value={formatCurrency(totals.subtotal)}
-                        detail={t('billing.invoices.kpi_count', {
-                            count: formatNumber(totals.count),
-                        })}
-                    />
-                    <KpiCard
-                        label={t('billing.invoices.kpi_total')}
-                        definition={t('billing.invoices.kpi_total_definition')}
-                        value={formatCurrency(totals.total)}
-                    />
-                    <KpiCard
-                        label={t('billing.invoices.kpi_paid')}
-                        definition={t('billing.invoices.kpi_paid_definition')}
-                        value={formatCurrency(totals.paid)}
-                    />
-                    <KpiCard
-                        label={t('billing.invoices.kpi_pending')}
-                        definition={t(
-                            'billing.invoices.kpi_pending_definition',
-                        )}
-                        value={formatCurrency(totals.pending)}
-                    />
-                </section>
-
-                {unlinked > 0 && filters.enlace !== 'sin' ? (
-                    <p className="flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-foreground">
-                        {t('billing.invoices.unlinked_notice', {
-                            count: unlinked,
-                        })}
-                        <Button
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0"
-                            onClick={() => visit({ enlace: 'sin' })}
-                        >
-                            {t('billing.invoices.show_unlinked')}
-                        </Button>
-                    </p>
-                ) : null}
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-                    <form
-                        role="search"
-                        onSubmit={submit}
-                        className="grid gap-1 sm:col-span-2"
-                    >
-                        <Label htmlFor={`${id}-search`}>
+                    <div className="relative w-full sm:w-72">
+                        <Label htmlFor={`${id}-search`} className="sr-only">
                             {t('billing.filters.search')}
                         </Label>
-                        <div className="flex gap-2">
-                            <Input
-                                id={`${id}-search`}
-                                value={search}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                                placeholder={t(
-                                    'billing.filters.search_placeholder',
-                                )}
-                            />
-                            <Button
-                                type="submit"
-                                variant="outline"
-                                size="icon"
-                                aria-label={t('billing.filters.search_submit')}
-                            >
-                                <Search aria-hidden="true" />
-                            </Button>
-                        </div>
-                    </form>
-                    <FilterSelect
-                        id={`${id}-status`}
-                        label={t('billing.filters.status')}
-                        value={filters.estado}
-                        options={COLLECTION_STATUSES.map((status) => ({
-                            value: status,
-                            label: t(`billing.collection.${status}`),
-                        }))}
-                        onChange={(value) => visit({ estado: value })}
-                    />
-                    <FilterSelect
-                        id={`${id}-kind`}
-                        label={t('billing.filters.document')}
-                        value={filters.tipo}
-                        options={[
-                            {
-                                value: 'invoice',
-                                label: t('billing.document.invoice'),
-                            },
-                            {
-                                value: 'credit_note',
-                                label: t('billing.document.credit_note'),
-                            },
-                        ]}
-                        onChange={(value) => visit({ tipo: value })}
-                    />
-                    <FilterSelect
-                        id={`${id}-client`}
-                        label={t('billing.filters.client')}
-                        value={
-                            filters.cliente === null
-                                ? null
-                                : String(filters.cliente)
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <Input
+                            id={`${id}-search`}
+                            type="search"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder={t(
+                                'billing.filters.search_placeholder',
+                            )}
+                            className="h-8 pl-8"
+                            autoComplete="off"
+                        />
+                    </div>
+                    <PeriodChip
+                        period={period}
+                        explicit={filters.periodo !== null}
+                        today={today}
+                        onChange={(patch) => visit(patch)}
+                        onClear={() =>
+                            visit({ periodo: null, desde: null, hasta: null })
                         }
+                    />
+                    <ChipSelect
+                        label={t('billing.filters.client')}
+                        allLabel={t('billing.filters.all_clients')}
+                        searchPlaceholder={t('billing.filters.search_client')}
                         options={clients.map((client) => ({
                             value: String(client.id),
                             label: client.name,
                         }))}
-                        onChange={(value) =>
-                            visit({
-                                cliente: value === null ? null : Number(value),
-                            })
+                        value={
+                            filters.cliente === null
+                                ? []
+                                : [String(filters.cliente)]
                         }
+                        onChange={(value) =>
+                            visit({ cliente: value[0] ?? null })
+                        }
+                        dataTest="invoice-client"
                     />
-                    <FilterSelect
-                        id={`${id}-link`}
-                        label={t('billing.filters.link')}
-                        value={filters.enlace}
-                        options={[
-                            {
-                                value: 'con',
-                                label: t('billing.filters.linked'),
-                            },
-                            {
-                                value: 'sin',
-                                label: t('billing.filters.unlinked'),
-                            },
-                        ]}
-                        onChange={(value) => visit({ enlace: value })}
+                    <ChipSelect
+                        label={t('billing.filters.service')}
+                        allLabel={t('billing.filters.all_services')}
+                        searchPlaceholder={t('billing.filters.search_service')}
+                        multiple
+                        options={services.map((service) => ({
+                            value: service,
+                            label: t(
+                                `billing.invoicing.services.${service}` as 'billing.invoicing.services.fees',
+                            ),
+                        }))}
+                        value={filters.servicio}
+                        onChange={(value) => visit({ servicio: value })}
+                        dataTest="invoice-service"
                     />
-                    <div className="grid content-start gap-1">
-                        <Label htmlFor={`${id}-from`}>
-                            {t('billing.filters.from')}
-                        </Label>
-                        <DatePicker
-                            id={`${id}-from`}
-                            value={filters.desde}
-                            onChange={(value) => visit({ desde: value })}
+                    {legacy.map((chip) => (
+                        <RemovableChip
+                            key={chip.key}
+                            label={t(`billing.filters.legacy.${chip.key}`)}
+                            value={chip.value}
+                            onRemove={() => visit({ [chip.key]: null })}
                         />
-                    </div>
-                    <div className="grid content-start gap-1">
-                        <Label htmlFor={`${id}-to`}>
-                            {t('billing.filters.to')}
-                        </Label>
-                        <DatePicker
-                            id={`${id}-to`}
-                            value={filters.hasta}
-                            onChange={(value) => visit({ hasta: value })}
-                        />
-                    </div>
-                </div>
-                {active ? (
-                    <div>
+                    ))}
+                    {filtered ? (
                         <Button variant="ghost" size="sm" asChild>
-                            <Link href={URL} preserveScroll>
+                            <Link
+                                href={
+                                    URL +
+                                    toQueryString(
+                                        filters.vista === 'todas'
+                                            ? {}
+                                            : { vista: filters.vista },
+                                    )
+                                }
+                                preserveScroll
+                                onClick={() => setSearch('')}
+                            >
                                 <X aria-hidden="true" />
                                 {t('billing.filters.clear')}
                             </Link>
                         </Button>
-                    </div>
-                ) : null}
+                    ) : null}
+                </div>
+
+                <p className="sr-only" aria-live="polite">
+                    {tCount('billing.invoices.results', invoices.meta.total)}
+                </p>
 
                 {invoices.data.length === 0 ? (
                     <EmptyState
                         icon={FileText}
                         title={t(
-                            active
+                            filtered || filters.vista !== 'todas'
                                 ? 'billing.invoices.none_filtered'
                                 : 'billing.invoices.none',
                         )}
                         description={t(
-                            active
+                            filtered || filters.vista !== 'todas'
                                 ? 'billing.invoices.none_filtered_description'
                                 : 'billing.invoices.none_description',
                         )}
                     />
                 ) : (
-                    <>
+                    <div className="grid gap-3">
                         <InvoiceTable
                             invoices={invoices.data}
-                            caption={t('billing.invoices.title')}
+                            caption={t('billing.invoices.caption', {
+                                view: t(
+                                    `billing.invoices.view.${filters.vista}`,
+                                ),
+                            })}
+                            today={today}
+                            linkQuery={{
+                                ...listQuery,
+                                ...(invoices.meta.current_page > 1
+                                    ? { pagina: invoices.meta.current_page }
+                                    : {}),
+                            }}
+                            sort={{
+                                column: filters.orden,
+                                direction: filters.dir,
+                                onSort: sortBy,
+                            }}
+                            totals={totals}
+                            footerNote={
+                                excluded > 0
+                                    ? tCount(
+                                          'billing.invoices.footer_excluded',
+                                          excluded,
+                                      )
+                                    : undefined
+                            }
                         />
-                        {invoices.last_page > 1 ? (
-                            <nav
-                                aria-label={t('billing.invoices.pagination')}
-                                className="flex items-center justify-between gap-2"
-                            >
-                                <p className="text-sm text-muted-foreground">
-                                    {t('billing.invoices.page', {
-                                        page: invoices.current_page,
-                                        pages: invoices.last_page,
-                                    })}
-                                </p>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        asChild
-                                        disabled={!invoices.prev_url}
-                                    >
-                                        <Link
-                                            href={invoices.prev_url ?? URL}
-                                            preserveScroll
-                                        >
-                                            <ChevronLeft aria-hidden="true" />
-                                            {t('billing.invoices.previous')}
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        asChild
-                                        disabled={!invoices.next_url}
-                                    >
-                                        <Link
-                                            href={invoices.next_url ?? URL}
-                                            preserveScroll
-                                        >
-                                            {t('billing.invoices.next')}
-                                            <ChevronRight aria-hidden="true" />
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </nav>
-                        ) : null}
-                    </>
+                        <ListPagination
+                            page={{
+                                meta: { ...invoices.meta, per_page: 50 },
+                                links: invoices.links,
+                            }}
+                            label={t('billing.invoices.pagination')}
+                        />
+                    </div>
                 )}
             </div>
         </>
     );
 }
 
-function FilterSelect({
-    id,
-    label,
-    value,
-    options,
-    onChange,
-}: {
-    id: string;
-    label: string;
-    value: string | null;
-    options: { value: string; label: string }[];
-    onChange: (value: string | null) => void;
-}) {
-    return (
-        <div className="grid content-start gap-1">
-            <Label htmlFor={id}>{label}</Label>
-            <Select
-                value={value ?? ALL}
-                onValueChange={(next) => onChange(next === ALL ? null : next)}
-            >
-                <SelectTrigger id={id} className="w-full">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value={ALL}>
-                        {t('billing.filters.all')}
-                    </SelectItem>
-                    {options.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    );
-}
-
 InvoicesIndex.layout = {
     breadcrumbs: [
-        { title: t('billing.section'), href: URL },
+        { title: t('billing.section'), href: '/facturacion' },
         { title: t('billing.invoices.title'), href: URL },
     ],
 };

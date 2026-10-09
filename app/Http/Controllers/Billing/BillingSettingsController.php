@@ -198,20 +198,4 @@ class BillingSettingsController extends Controller
 
         return $issuer;
     }
-
-    /**
-     * La última sincronización (para los listados).
-     *
-     * @return array{status: string, finished_at: string|null, started_at: string}|null
-     */
-    public static function lastSync(): ?array
-    {
-        $run = HoldedSyncRun::query()->orderByDesc('started_at')->orderByDesc('id')->first();
-
-        return $run === null ? null : [
-            'status' => $run->status,
-            'started_at' => $run->started_at->utc()->toIso8601ZuluString(),
-            'finished_at' => $run->finished_at?->utc()->toIso8601ZuluString(),
-        ];
-    }
 }

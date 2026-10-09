@@ -16,40 +16,51 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Facturación (Fase 12, F1; D-380 a D-399 y D-400 a D-403): lectura de Holded, el informe de
-| facturación, «Vendido frente a real» y las horas para facturar. Nombres billing.* (y
-| projects.billing y clients.billing en sus áreas).
+| Facturación (Fase 12, F1; D-380 a D-399, D-400 a D-404 y D-405 a D-410): lectura de Holded, el
+| informe de ventas, «Vendido frente a real», lo pendiente de facturar y lo que queda por revisar.
+| Nombres billing.* (y projects.billing y clients.billing en sus áreas).
 |--------------------------------------------------------------------------
 | Se carga desde routes/web.php dentro del grupo ['auth', 'active', 'internal', 'collaborator', '2fa'].
 | Casi todo detrás del módulo `billing` (apagado, 404; en modo de prueba, solo admins, D-239).
-| Importes, facturas, cobros, contactos, datos fiscales y el informe de facturación: view-billing
+| Importes, facturas, cobros, contactos, datos fiscales y el informe de ventas: view-billing
 | (view-financials). «Vendido frente a real»: también quien ve las bolsas, en horas
 | (view-sold-vs-actual). Nunca se escribe en Holded.
 |
-| Fuera de Informes (D-401): los informes con importes de facturación ya no cuelgan de /informes,
-| que ven todos los empleados. Las URL antiguas responden con un 301 a las nuevas (con su query,
-| así siguen valiendo los enlaces guardados y las exportaciones con ?formato=). Las horas para
-| facturar no exigen el módulo (D-402): se ven con ClientPolicy::viewBilling, como antes.
+| Una sola navegación (D-405, cambia D-393 y D-401): Resumen (/facturacion), Facturas, Por facturar,
+| Vendido frente a real, Por revisar, Ventas y Ajustes. Las URL anteriores responden con un 301 a
+| las nuevas con su query (MovedReportController), así siguen valiendo los favoritos, los enlaces
+| de los correos y las descargas con ?formato=. Por facturar no exige el módulo (D-402): se ve con
+| ClientPolicy::viewBilling, como antes.
 */
 
 $exports = 'throttle:'.ReportsServiceProvider::EXPORT_LIMITER;
 
-Route::get('facturacion/horas-para-facturar', BillingReportController::class)
+Route::get('facturacion/por-facturar', BillingReportController::class)
     ->middleware($exports)
-    ->name('billing.hours');
+    ->name('billing.unbilled');
 
+// URL anteriores (D-401 y D-405): sin el módulo, como la página a la que llevan.
+Route::get('facturacion/horas-para-facturar', MovedReportController::class)
+    ->defaults('to', '/facturacion/por-facturar');
 Route::get('informes/facturacion', MovedReportController::class)
-    ->defaults('to', '/facturacion/horas-para-facturar');
+    ->defaults('to', '/facturacion/por-facturar');
 Route::get('informes/vendido-frente-a-real', MovedReportController::class)
     ->defaults('to', '/facturacion/vendido-frente-a-real');
 
 Route::middleware('module:billing')->group(function () use ($exports) {
-    // /facturacion: el informe (view-billing) o, si solo ve el vendido frente a real, ese.
+    // /facturacion: el Resumen. Hasta que llegue (I1), Ventas (view-billing) o, si solo ve el
+    // vendido frente a real, ese (D-401 y D-405).
     Route::get('facturacion', BillingHomeController::class)->name('billing.index');
 
-    Route::get('facturacion/informe', InvoicingReportController::class)
+    Route::get('facturacion/ventas', InvoicingReportController::class)
         ->middleware(['can:view-billing', $exports])
-        ->name('billing.report');
+        ->name('billing.sales');
+
+    // URL anteriores (D-405): con el módulo, como las páginas a las que llevan.
+    Route::get('facturacion/informe', MovedReportController::class)
+        ->defaults('to', '/facturacion/ventas');
+    Route::get('facturacion/contactos', MovedReportController::class)
+        ->defaults('to', '/facturacion/por-revisar');
 
     Route::get('facturacion/vendido-frente-a-real', SoldVsActualController::class)
         ->middleware(['can:view-sold-vs-actual', $exports])
@@ -72,7 +83,9 @@ Route::middleware('module:billing')->group(function () use ($exports) {
             ->whereNumber(['invoice', 'link'])
             ->name('billing.invoices.links.destroy');
 
-        Route::get('facturacion/contactos', [HoldedContactController::class, 'index'])->name('billing.contacts.index');
+        // Por revisar (D-405): hoy, los contactos de Holded sin casar o por confirmar; con I5, también
+        // las facturas sin proyecto.
+        Route::get('facturacion/por-revisar', [HoldedContactController::class, 'index'])->name('billing.review');
         Route::put('facturacion/contactos/{contact}', [HoldedContactController::class, 'update'])->whereNumber('contact')->name('billing.contacts.update');
 
         Route::get('facturacion/ajustes', [BillingSettingsController::class, 'edit'])->name('billing.settings');

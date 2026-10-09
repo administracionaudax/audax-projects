@@ -93,7 +93,7 @@ describe('ficha de cliente: enlaces a los informes (R2)', () => {
             screen
                 .getByRole('link', { name: 'Horas para facturar' })
                 .getAttribute('href'),
-        ).toBe('/facturacion/horas-para-facturar?cliente%5B%5D=1');
+        ).toBe('/facturacion/por-facturar?cliente%5B%5D=1');
     });
 
     it('sin permisos no hay enlaces', () => {

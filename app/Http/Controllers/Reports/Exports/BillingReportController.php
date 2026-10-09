@@ -19,7 +19,7 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; R2): /facturacion/horas-para-facturar
+ * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; R2): /facturacion/por-facturar (D-405)
  * (antes /informes/facturacion, que redirige con un 301, D-401). No exige el módulo `billing` (D-402).
  * Un cliente (obligatorio, ?cliente[]=id) y un periodo con los filtros globales. La página muestra
  * el resumen por proyecto y bolsa (dentro, exceso, facturables y pendientes de aprobar; tarifas e

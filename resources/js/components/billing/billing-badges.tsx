@@ -34,8 +34,8 @@ export function SaleStatusBadge({ status }: { status: SaleStatus }) {
     );
 }
 
-/** Estado de cobro de una factura de Holded (D-386). */
-const COLLECTION: Record<CollectionStatus, Meta> = {
+/** Estado de cobro de una factura de Holded (D-386): tono e icono de su insignia. */
+export const COLLECTION_META: Record<CollectionStatus, Meta> = {
     paid: { tone: 'success', icon: CircleCheck },
     partial: { tone: 'info', icon: CircleDot },
     unpaid: { tone: 'neutral', icon: Clock },
@@ -49,7 +49,7 @@ export function CollectionStatusBadge({
 }: {
     status: CollectionStatus;
 }) {
-    const meta = COLLECTION[status];
+    const meta = COLLECTION_META[status];
 
     return (
         <StatusBadge tone={meta.tone} icon={meta.icon}>

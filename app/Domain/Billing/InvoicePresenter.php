@@ -102,6 +102,8 @@ final class InvoicePresenter
                 : null,
             'bank' => $link->relationLoaded('hourBank') && $link->hourBank !== null ? ['id' => $link->hourBank->id, 'name' => $link->hourBank->name] : null,
             'created_by' => $link->relationLoaded('creator') && $link->creator !== null ? $link->creator->name : null,
+            // Para la línea de tiempo de la ficha (D-408): cuándo se enlazó a mano.
+            'created_at' => $link->created_at?->utc()->toIso8601ZuluString(),
         ];
     }
 }

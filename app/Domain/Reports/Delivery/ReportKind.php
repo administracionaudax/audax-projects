@@ -16,7 +16,7 @@ enum ReportKind: string
     case Person = 'person';
     case Client = 'client';
     case Project = 'project';
-    /** Horas para facturar (D-045), en /facturacion/horas-para-facturar desde D-401. */
+    /** Horas para facturar (D-045), en Facturación desde D-401: /facturacion/por-facturar (D-405). */
     case Billing = 'billing';
     case Detail = 'detail';
     case Hours = 'hours';
@@ -36,14 +36,14 @@ enum ReportKind: string
             self::Person => 'reports.person',
             self::Client => 'reports.client',
             self::Project => 'reports.project',
-            self::Billing => 'billing.hours',
+            self::Billing => 'billing.unbilled',
             self::Detail => 'reports.detail',
             self::Hours => 'reports.hours.export',
             self::ProjectHours => 'projects.time.export',
             self::HourBank => 'reports.hour-bank-pdf',
             self::Weekly => 'weeklies.report.pdf',
             self::SoldVsActual => 'billing.sold-vs-actual',
-            self::Invoicing => 'billing.report',
+            self::Invoicing => 'billing.sales',
         };
     }
 }

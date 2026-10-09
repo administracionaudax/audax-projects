@@ -8,7 +8,10 @@ import {
 } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { billingTabs, BillingTabs } from '@/components/billing/billing-nav';
+import {
+    billingSections,
+    BillingSectionSwitcher,
+} from '@/components/billing/billing-nav';
 import {
     InvoicingAgingChart,
     InvoicingOverdueList,
@@ -62,7 +65,7 @@ vi.mock('@inertiajs/react', async (importOriginal) => ({
 }));
 
 /*
-| Informe de facturación (D-400) y las pestañas de Facturación (D-401): las escalas y etiquetas,
+| Ventas, el informe de facturación (D-400), y las pantallas de Facturación (D-405): las escalas y etiquetas,
 | las cifras, la vista de tabla de cada gráfica, las vencidas con sus enlaces, el filtro de
 | servicio y qué pestañas ve cada permiso.
 */
@@ -219,17 +222,22 @@ describe('cifras', () => {
         const kpis = screen.getByTestId('invoicing-kpis');
 
         const text = (kpis.textContent ?? '').replace(/\s/g, ' ');
+        // Dos grupos rotulados una vez (D-410): sin IVA y con IVA.
+        expect(
+            within(kpis)
+                .getAllByRole('heading', { level: 2 })
+                .map((heading) => heading.textContent),
+        ).toEqual(['Facturación (sin IVA)', 'Cobros (con IVA)']);
         expect(text).toContain('3.400 €');
-        expect(text).toContain('Frente a 2025');
-        expect(text).toContain('+183,3 %');
-        expect(text).toContain('Mismo periodo de 2025: 1.200 €');
-        expect(text).toContain('con -200,00 € de rectificativas');
+        // La comparación con el año anterior, siempre escrita igual.
+        expect(text).toContain('+183,3 % frente a 2025');
+        expect(text).toContain('Con -200,00 € de rectificativas');
         expect(text).toContain('2 facturas vencidas');
-        expect(text).toContain('1 borrador, sin IVA');
+        expect(text).toContain('1 borrador');
         expect(text).toContain('850 €');
-        // Al comparar, el número de facturas y el ticket medio llevan su variación frente al año anterior.
-        expect(text).toContain('300 % más que el año anterior');
-        expect(text).toContain('29 % menos que el año anterior');
+        expect(text).toContain('+300 % frente a 2025');
+        expect(text).toContain('−29,2 % frente a 2025');
+        expect(text).not.toContain('Con IVA');
     });
 
     it('sin facturas el año anterior, lo dice en lugar de un porcentaje', () => {
@@ -247,7 +255,7 @@ describe('cifras', () => {
         );
 
         expect(screen.getByTestId('invoicing-kpis').textContent).toContain(
-            'Sin facturas',
+            'Sin facturas en 2025 para comparar',
         );
     });
 });
@@ -328,9 +336,9 @@ describe('vencidas', () => {
         expect(list.textContent).toContain('1 día de retraso');
         expect(
             within(list)
-                .getByRole('link', { name: 'Casar en Contactos de Holded' })
+                .getByRole('link', { name: 'Casar en Por revisar' })
                 .getAttribute('href'),
-        ).toBe('/facturacion/contactos');
+        ).toBe('/facturacion/por-revisar');
     });
 
     it('sin vencidas, lo dice', () => {
@@ -385,39 +393,39 @@ describe('filtro de servicio', () => {
     });
 });
 
-describe('pestañas de Facturación (D-401)', () => {
-    it('cada pestaña con su permiso', () => {
-        expect(billingTabs({} as Abilities)).toEqual([]);
+describe('pantallas de Facturación (D-405)', () => {
+    it('cada pantalla con su permiso, en el orden de la barra lateral', () => {
+        expect(billingSections({} as Abilities)).toEqual([]);
         expect(
-            billingTabs({ viewSoldVsActual: true } as Abilities).map(
-                (tab) => tab.id,
+            billingSections({ viewSoldVsActual: true } as Abilities).map(
+                (section) => section.id,
             ),
         ).toEqual(['vendido']);
         expect(
-            billingTabs({ exportBillingHours: true } as Abilities).map(
-                (tab) => tab.id,
+            billingSections({ exportBillingHours: true } as Abilities).map(
+                (section) => section.href,
             ),
-        ).toEqual(['horas']);
+        ).toEqual(['/facturacion/por-facturar']);
         expect(
-            billingTabs({
+            billingSections({
                 viewBilling: true,
                 viewSoldVsActual: true,
                 exportBillingHours: true,
-            } as Abilities).map((tab) => tab.id),
+            } as Abilities).map((section) => section.href),
         ).toEqual([
-            'informe',
-            'vendido',
-            'horas',
-            'facturas',
-            'contactos',
-            'ajustes',
+            '/facturacion/facturas',
+            '/facturacion/por-facturar',
+            '/facturacion/vendido-frente-a-real',
+            '/facturacion/por-revisar',
+            '/facturacion/ventas',
+            '/facturacion/ajustes',
         ]);
     });
 
-    it('con una sola pestaña no se pintan; con varias, la actual marcada', () => {
+    it('el selector del móvil no sale con una sola pantalla; con varias, lleva a las demás', () => {
         abilities = { viewSoldVsActual: true };
         const { container, rerender } = render(
-            <BillingTabs current="vendido" />,
+            <BillingSectionSwitcher current="vendido" />,
         );
         expect(container.innerHTML).toBe('');
 
@@ -426,16 +434,12 @@ describe('pestañas de Facturación (D-401)', () => {
             viewBilling: true,
             exportBillingHours: true,
         };
-        rerender(<BillingTabs current="informe" />);
-        const nav = screen.getByRole('navigation', {
-            name: 'Secciones de facturación',
-        });
-        expect(within(nav).getAllByRole('link')).toHaveLength(6);
+        rerender(<BillingSectionSwitcher current="ventas" />);
         expect(
-            within(nav)
-                .getByRole('link', { name: 'Informe' })
-                .getAttribute('aria-current'),
-        ).toBe('page');
+            screen.getByRole('button', {
+                name: 'Otras pantallas de Facturación',
+            }),
+        ).toBeTruthy();
     });
 });
 
@@ -461,7 +465,6 @@ describe('la página', () => {
             route_params: {},
             query: { periodo: 'anio' },
         },
-        last_sync: null,
         ...overrides,
     });
 
@@ -470,7 +473,7 @@ describe('la página', () => {
         withTooltips(<InvoicingReportPage {...props()} />);
 
         expect(
-            screen.getByRole('heading', { name: 'Informe de facturación' }),
+            screen.getByRole('heading', { name: 'Ventas', level: 1 }),
         ).toBeTruthy();
         expect(screen.getByText('Comparar con el año anterior')).toBeTruthy();
         expect(
@@ -478,7 +481,7 @@ describe('la página', () => {
         ).toBeTruthy();
         expect(
             screen.getByTestId('invoicing-unmatched').getAttribute('href'),
-        ).toBe('/facturacion/contactos');
+        ).toBe('/facturacion/por-revisar');
         expect(screen.getByTestId('invoicing-clients')).toBeTruthy();
         expect(screen.getByTestId('invoicing-services')).toBeTruthy();
     });

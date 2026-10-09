@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domain\Access\CollaboratorAccess;
+use App\Domain\Billing\BillingNav;
 use App\Domain\Chat\ConversationDirectory;
 use App\Domain\HourBanks\HourBankLedger;
 use App\Domain\Integrations\Google\GoogleOAuth;
@@ -198,6 +199,9 @@ class HandleInertiaRequests extends Middleware
             // Registro de jornada (Fase 11, D-333 y D-341): el botón de fichar de la cabecera y el
             // contador de «Pendientes». null si no usa el módulo.
             'people' => fn (): ?array => $this->people($user),
+            // Facturación (D-405 y D-409): el contador de «Por revisar» y la última lectura de Holded,
+            // solo con view-billing (null si no). En caché un minuto: son datos de toda la agencia.
+            'billingNav' => fn (): ?array => BillingNav::for($user),
         ];
     }
 

@@ -1,130 +1,171 @@
 import { Link } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    ChartColumnBig,
+    Check,
+    ChevronsUpDown,
+    Clock,
+    Inbox,
+    Receipt,
+    Scale,
+    Settings,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAbilities } from '@/hooks/use-auth';
-import { FOCUS_RING } from '@/lib/focus-ring';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import type { Abilities } from '@/types';
 
-export type BillingTab =
-    | 'informe'
-    | 'vendido'
-    | 'horas'
+/**
+ * Pantallas de Facturación (D-405, cambia D-393 y D-401). Hay un hueco reservado para el Resumen
+ * (`/facturacion`, I1), que entrará primero en cuanto exista; hasta entonces /facturacion lleva a
+ * Ventas (o a «Vendido frente a real» a quien solo ve las horas).
+ */
+export type BillingSectionId =
     | 'facturas'
-    | 'contactos'
+    | 'por-facturar'
+    | 'vendido'
+    | 'por-revisar'
+    | 'ventas'
     | 'ajustes';
 
-type TabDef = {
-    id: BillingTab;
+export type BillingSection = {
+    id: BillingSectionId;
     href: string;
     label:
-        | 'billing.nav.report'
-        | 'billing.nav.sold_vs_actual'
-        | 'billing.nav.hours'
         | 'billing.nav.invoices'
-        | 'billing.nav.contacts'
+        | 'billing.nav.unbilled'
+        | 'billing.nav.sold_vs_actual'
+        | 'billing.nav.review'
+        | 'billing.nav.sales'
         | 'billing.nav.settings';
+    icon: LucideIcon;
     allowed: (can: Abilities) => boolean;
 };
 
-const TABS: TabDef[] = [
-    {
-        id: 'informe',
-        href: '/facturacion/informe',
-        label: 'billing.nav.report',
-        allowed: (can) => can.viewBilling === true,
-    },
-    {
-        id: 'vendido',
-        href: '/facturacion/vendido-frente-a-real',
-        label: 'billing.nav.sold_vs_actual',
-        allowed: (can) => can.viewSoldVsActual === true,
-    },
-    {
-        id: 'horas',
-        href: '/facturacion/horas-para-facturar',
-        label: 'billing.nav.hours',
-        allowed: (can) => can.exportBillingHours === true,
-    },
+const SECTIONS: BillingSection[] = [
     {
         id: 'facturas',
         href: '/facturacion/facturas',
         label: 'billing.nav.invoices',
+        icon: Receipt,
         allowed: (can) => can.viewBilling === true,
     },
     {
-        id: 'contactos',
-        href: '/facturacion/contactos',
-        label: 'billing.nav.contacts',
+        // Sin el módulo `billing` también (D-402): con su permiso de siempre.
+        id: 'por-facturar',
+        href: '/facturacion/por-facturar',
+        label: 'billing.nav.unbilled',
+        icon: Clock,
+        allowed: (can) => can.exportBillingHours === true,
+    },
+    {
+        // También responsables y gestores, en horas (D-391).
+        id: 'vendido',
+        href: '/facturacion/vendido-frente-a-real',
+        label: 'billing.nav.sold_vs_actual',
+        icon: Scale,
+        allowed: (can) => can.viewSoldVsActual === true,
+    },
+    {
+        id: 'por-revisar',
+        href: '/facturacion/por-revisar',
+        label: 'billing.nav.review',
+        icon: Inbox,
+        allowed: (can) => can.viewBilling === true,
+    },
+    {
+        id: 'ventas',
+        href: '/facturacion/ventas',
+        label: 'billing.nav.sales',
+        icon: ChartColumnBig,
         allowed: (can) => can.viewBilling === true,
     },
     {
         id: 'ajustes',
         href: '/facturacion/ajustes',
         label: 'billing.nav.settings',
+        icon: Settings,
         allowed: (can) => can.viewBilling === true,
     },
 ];
 
 /**
- * Pestañas de Facturación que ve cada persona (D-393 y D-401): el informe, las facturas, los
- * contactos y los ajustes con view-billing; «Vendido frente a real» con view-sold-vs-actual (también
- * responsables y gestores, en horas) y «Horas para facturar» con su permiso de siempre (D-402).
+ * Las pantallas de Facturación que ve cada persona, en el orden de la barra lateral (D-405): todo
+ * con view-billing; «Vendido frente a real» con view-sold-vs-actual y «Por facturar» con su
+ * permiso (exportBillingHours), también sin el módulo.
  */
-export function billingTabs(can: Abilities): TabDef[] {
-    return TABS.filter((tab) => tab.allowed(can));
+export function billingSections(can: Abilities): BillingSection[] {
+    return SECTIONS.filter((section) => section.allowed(can));
 }
 
 /**
- * Pestañas de la sección Facturación. Con una sola pestaña visible (quien solo ve «Vendido frente a
- * real», o las horas para facturar sin el módulo), no se pintan: no hay adónde ir.
+ * Selector compacto de pantalla para el móvil (D-405): la barra lateral está escondida en el cajón,
+ * así que la cabecera de cada pantalla lleva un menú con las demás. Con una sola pantalla visible
+ * (quien solo ve «Vendido frente a real») no se pinta.
  */
-export function BillingTabs({
+export function BillingSectionSwitcher({
     current,
-    badges = {},
+    className,
 }: {
-    current: BillingTab;
-    badges?: Partial<Record<BillingTab, number>>;
+    current: BillingSectionId;
+    className?: string;
 }) {
-    const tabs = billingTabs(useAbilities());
+    const sections = billingSections(useAbilities());
 
-    if (tabs.length <= 1) {
+    if (sections.length <= 1) {
         return null;
     }
 
     return (
-        <nav
-            aria-label={t('billing.nav.label')}
-            className="-mx-4 overflow-x-auto border-b px-4 md:mx-0 md:px-0"
-        >
-            <ul className="flex min-w-max gap-1">
-                {tabs.map((tab) => {
-                    const active = tab.id === current;
-                    const badge = badges[tab.id] ?? 0;
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn('shrink-0', className)}
+                    aria-label={t('billing.nav.switch')}
+                    data-test="billing-section-switcher"
+                >
+                    <ChevronsUpDown aria-hidden="true" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-56">
+                {sections.map((section) => {
+                    const active = section.id === current;
 
                     return (
-                        <li key={tab.id}>
+                        <DropdownMenuItem key={section.id} asChild>
                             <Link
-                                href={tab.href}
+                                href={section.href}
                                 aria-current={active ? 'page' : undefined}
-                                className={cn(
-                                    '-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm whitespace-nowrap',
-                                    active
-                                        ? 'border-primary font-medium text-foreground'
-                                        : 'border-transparent text-muted-foreground hover:text-foreground',
-                                    FOCUS_RING,
-                                )}
+                                className="flex items-center gap-2"
                             >
-                                {t(tab.label)}
-                                {badge > 0 ? (
-                                    <span className="rounded-md bg-warning-soft px-1.5 text-xs text-foreground">
-                                        {badge}
-                                    </span>
+                                <section.icon
+                                    aria-hidden="true"
+                                    strokeWidth={1.5}
+                                />
+                                <span className="flex-1">
+                                    {t(section.label)}
+                                </span>
+                                {active ? (
+                                    <Check
+                                        aria-hidden="true"
+                                        className="text-primary"
+                                    />
                                 ) : null}
                             </Link>
-                        </li>
+                        </DropdownMenuItem>
                     );
                 })}
-            </ul>
-        </nav>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }

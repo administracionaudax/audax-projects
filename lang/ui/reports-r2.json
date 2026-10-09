@@ -144,7 +144,6 @@
     "reports_r2.milestones.pending": "Pendiente",
     "reports_r2.milestones.gantt": "Los hitos se planifican en el Gantt.",
     "reports_r2.billing.title": "Horas para facturar",
-    "reports_r2.billing.heading": "Horas para [[facturar]]",
     "reports_r2.billing.description": "Elige un cliente y un periodo: resumen por proyecto y bolsa, y el detalle de cada entrada en Excel o CSV.",
     "reports_r2.billing.client": "Cliente",
     "reports_r2.billing.client_placeholder": "Elige un cliente",

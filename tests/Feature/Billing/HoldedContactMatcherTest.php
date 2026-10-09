@@ -73,7 +73,7 @@ it('los parecidos salen en «Por revisar» y se confirman con un clic; sus factu
     $contact->save();
     $monto = Client::query()->where('name', 'Montó')->value('id');
 
-    $this->actingAs($admin)->get('/facturacion/contactos?vista=por-revisar')
+    $this->actingAs($admin)->get('/facturacion/por-revisar?vista=por-revisar')
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('view', 'por-revisar')
