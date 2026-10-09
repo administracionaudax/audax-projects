@@ -62,7 +62,7 @@ import {
     reactivate,
     show,
 } from '@/routes/clients';
-import { hours as billingHours } from '@/routes/billing';
+import { unbilled as billingHours } from '@/routes/billing';
 import { client as clientReport } from '@/routes/reports';
 import { show as showPerson } from '@/routes/team';
 import type { ClientShowProps } from '@/types';

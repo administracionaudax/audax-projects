@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
-import { Fragment, useId } from 'react';
+import { Fragment, useEffect, useId, useRef } from 'react';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -68,9 +68,19 @@ export function NavMain({
         blocks.find((section) => section.label && section.items.some(contains))
             ?.id ?? null;
     const { isOpen, setOpen } = useNavSections(activeSection);
+    const navRef = useRef<HTMLElement>(null);
+
+    // La entrada de la página actual, siempre a la vista: con muchas entradas la lista se desplaza y
+    // la de abajo (p. ej. Ajustes de Facturación) quedaba escondida bajo el pie (T-10).
+    useEffect(() => {
+        const current = navRef.current?.querySelector<HTMLElement>(
+            '[aria-current="page"]',
+        );
+        current?.scrollIntoView?.({ block: 'nearest' });
+    }, [activeSection]);
 
     return (
-        <nav aria-label={t('nav.main_label')}>
+        <nav aria-label={t('nav.main_label')} ref={navRef}>
             {blocks.map((section, index) => (
                 <Fragment key={section.id}>
                     {index > 0 ? (

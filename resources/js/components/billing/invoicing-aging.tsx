@@ -217,7 +217,7 @@ function GroupTitle({ group }: { group: InvoicingOverdueGroup }) {
                 {group.contact_name ?? t('billing.invoicing.unmatched')}
             </span>
             <Link
-                href="/facturacion/contactos"
+                href="/facturacion/por-revisar"
                 className={cn(
                     'rounded-sm text-xs text-muted-foreground underline hover:text-foreground',
                     FOCUS_RING,

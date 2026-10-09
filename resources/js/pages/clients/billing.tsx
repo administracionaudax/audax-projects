@@ -368,7 +368,7 @@ export default function ClientBilling({
                         <p className="text-sm text-muted-foreground">
                             {t('billing.client.no_contacts')}{' '}
                             <Link
-                                href="/facturacion/contactos"
+                                href="/facturacion/por-revisar"
                                 className="underline"
                             >
                                 {t('billing.client.resolve_contacts')}
@@ -406,7 +406,7 @@ export default function ClientBilling({
                     />
                     <BillingPanel
                         panel={panel}
-                        invoicesHref={`/facturacion/facturas?cliente=${client.id}`}
+                        invoicesHref={`/facturacion/facturas?cliente=${client.id}&periodo=todo`}
                     />
                 </PageSection>
             </div>

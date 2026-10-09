@@ -1,14 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Ban, Check, RotateCcw, UserRoundCheck, Users } from 'lucide-react';
 import { useId, useState } from 'react';
-import { BillingTabs } from '@/components/billing/billing-nav';
+import { BillingHeader } from '@/components/billing/billing-header';
+import { ViewTabs } from '@/components/billing/view-tabs';
 import { EmptyState } from '@/components/empty-state';
-import { PageHeader } from '@/components/projects-list/page-header';
 import { SearchableSelect } from '@/components/domain/searchable-select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { FOCUS_RING } from '@/lib/focus-ring';
-import { formatCurrency, formatNumber } from '@/lib/format';
+import { formatCurrency } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -40,12 +40,13 @@ type Props = {
     }[];
 };
 
-const URL = '/facturacion/contactos';
+const URL = '/facturacion/por-revisar';
 const VIEWS: View[] = ['sin-casar', 'por-revisar', 'todos', 'descartados'];
 
 /**
- * Contactos de Holded y su cliente de Audax (Fase 12, F1; D-387): los que no casan por NIF ni por
- * nombre se resuelven aquí, eligiendo su cliente o descartándolos. Nunca se crea un cliente.
+ * Por revisar (D-405): hoy, los contactos de Holded y su cliente de Audax (Fase 12, F1; D-387). Los
+ * que no casan por NIF ni por nombre se resuelven aquí, eligiendo su cliente o descartándolos; nunca
+ * se crea un cliente. La bandeja única con las facturas sin proyecto llega con I5.
  */
 export default function HoldedContacts({
     view,
@@ -55,49 +56,26 @@ export default function HoldedContacts({
 }: Props) {
     return (
         <>
-            <Head title={t('billing.contacts.title')} />
+            <Head title={t('billing.nav.review')} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
-                    title={t('billing.section')}
+                <BillingHeader
+                    current="por-revisar"
+                    title={t('billing.nav.review')}
                     description={t('billing.contacts.description')}
                 />
-                <BillingTabs
-                    current="contactos"
-                    badges={{
-                        contactos: counts['sin-casar'] + counts['por-revisar'],
-                    }}
-                />
 
-                <div
-                    role="group"
-                    aria-label={t('billing.contacts.views')}
-                    className="flex flex-wrap gap-1"
-                >
-                    {VIEWS.map((item) => (
-                        <Button
-                            key={item}
-                            size="sm"
-                            variant={item === view ? 'default' : 'outline'}
-                            aria-current={item === view ? 'page' : undefined}
-                            asChild
-                        >
-                            <Link
-                                href={
-                                    item === 'sin-casar'
-                                        ? URL
-                                        : `${URL}?vista=${item}`
-                                }
-                                preserveScroll
-                            >
-                                {t(`billing.contacts.view.${item}`)}
-                                <span className="tabular">
-                                    {formatNumber(counts[item])}
-                                </span>
-                            </Link>
-                        </Button>
-                    ))}
-                </div>
+                <ViewTabs
+                    label={t('billing.contacts.views')}
+                    current={view}
+                    tabs={VIEWS.map((item) => ({
+                        id: item,
+                        label: t(`billing.contacts.view.${item}`),
+                        href:
+                            item === 'sin-casar' ? URL : `${URL}?vista=${item}`,
+                        count: counts[item],
+                    }))}
+                />
 
                 {contacts.length === 0 ? (
                     <EmptyState
@@ -144,7 +122,7 @@ function ContactRow({
 
     const send = (action: 'assign' | 'ignore' | 'auto' | 'confirm') => {
         router.put(
-            `${URL}/${contact.id}`,
+            `/facturacion/contactos/${contact.id}`,
             {
                 action,
                 client_id: action === 'assign' ? Number(clientId) : null,
@@ -308,7 +286,7 @@ function ContactRow({
 
 HoldedContacts.layout = {
     breadcrumbs: [
-        { title: t('billing.section'), href: '/facturacion/facturas' },
-        { title: t('billing.contacts.title'), href: URL },
+        { title: t('billing.section'), href: '/facturacion' },
+        { title: t('billing.nav.review'), href: URL },
     ],
 };

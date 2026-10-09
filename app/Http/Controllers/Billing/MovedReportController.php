@@ -7,9 +7,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Informes que pasaron de /informes a /facturacion (D-401): un 301 a la URL nueva (el `to` de la
- * ruta) con la misma query, para que sigan valiendo los favoritos, los enlaces de los correos y las
- * descargas con ?formato=. No comprueba permisos: los comprueba la URL nueva, igual que antes.
+ * Páginas que cambiaron de URL: las que pasaron de /informes a /facturacion (D-401) y las de la nueva
+ * navegación de Facturación (D-405: Ventas, Por facturar y Por revisar). Un 301 a la URL nueva (el
+ * `to` de la ruta) con la misma query, para que sigan valiendo los favoritos, los enlaces de los
+ * correos y las descargas con ?formato=. No comprueba permisos: los comprueba la URL nueva.
  */
 class MovedReportController extends Controller
 {

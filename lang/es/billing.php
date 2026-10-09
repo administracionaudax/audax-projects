@@ -156,9 +156,9 @@ return [
     ],
     // Informe de facturación (D-400): PDF, Excel y CSV.
     'invoicing' => [
-        'title' => 'Informe de facturación',
+        'title' => 'Ventas',
         'kicker' => 'Facturación',
-        'export_name' => 'informe-de-facturacion',
+        'export_name' => 'ventas',
         'empty' => 'No hay facturas en este periodo con estos filtros.',
         'no_overdue' => 'No hay facturas vencidas.',
         'with_vat' => 'Con IVA',

@@ -17,7 +17,7 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * Informe de facturación (D-400): /facturacion/informe, con el periodo y los clientes de la barra de
+ * Ventas, el informe de facturación (D-400 y D-405): /facturacion/ventas, con el periodo y los clientes de la barra de
  * los informes más el servicio (?servicio[]=), y ?formato=xlsx|csv|pdf|imprimir (ExportsReports).
  * Sin periodo en la URL, el año en curso comparado con el anterior. Quién: view-billing (en la ruta).
  */
@@ -47,7 +47,6 @@ class InvoicingReportController extends Controller
             'services' => array_map(fn (BillingService $service): string => $service->value, BillingService::cases()),
             'report' => $document->data($query),
             'report_request' => $this->reportRequestProp(ReportKind::Invoicing, [], $query->toQuery()),
-            'last_sync' => BillingSettingsController::lastSync(),
         ]);
     }
 }

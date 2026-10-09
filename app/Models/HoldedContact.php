@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Contacto de Holded (Fase 12, D-387), espejo de solo lectura. Se casa con un cliente de Audax por
  * NIF y, si no, por nombre (HoldedContactMatcher); los que no casan se resuelven a mano en
- * /facturacion/contactos. Nunca crea clientes.
+ * /facturacion/por-revisar (D-405). Nunca crea clientes.
  *
  * @property int $id
  * @property string $holded_id

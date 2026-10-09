@@ -271,7 +271,7 @@ describe('informe de cliente', () => {
             screen.getByRole('link', { name: 'Horas para facturar' }),
         ).toHaveProperty(
             'href',
-            expect.stringContaining('/facturacion/horas-para-facturar?'),
+            expect.stringContaining('/facturacion/por-facturar?'),
         );
         expect(
             screen.getByRole('link', { name: 'NAN-WEB · Web corporativa' }),
@@ -623,7 +623,7 @@ describe('horas para facturar', () => {
         );
 
         expect(inertia.get).toHaveBeenCalledWith(
-            '/facturacion/horas-para-facturar',
+            '/facturacion/por-facturar',
             {
                 periodo: 'semana',
                 fecha: '2026-09-21',
@@ -693,7 +693,7 @@ describe('horas para facturar', () => {
         ).toHaveProperty(
             'href',
             expect.stringContaining(
-                '/facturacion/horas-para-facturar?periodo=semana&fecha=2026-09-21&persona%5B%5D=3&cliente%5B%5D=4&formato=csv',
+                '/facturacion/por-facturar?periodo=semana&fecha=2026-09-21&persona%5B%5D=3&cliente%5B%5D=4&formato=csv',
             ),
         );
     });

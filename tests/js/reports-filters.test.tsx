@@ -111,7 +111,7 @@ describe('ReportFilterBar', () => {
                 }}
                 show={['facturable']}
                 compare={false}
-                url="/facturacion/horas-para-facturar"
+                url="/facturacion/por-facturar"
             />,
         );
 

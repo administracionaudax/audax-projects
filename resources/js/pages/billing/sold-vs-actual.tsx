@@ -1,18 +1,15 @@
-import { Head, Link } from '@inertiajs/react';
-import { FileText, Info, SearchX } from 'lucide-react';
-import { BillingTabs } from '@/components/billing/billing-nav';
+import { Head } from '@inertiajs/react';
+import { Info, SearchX } from 'lucide-react';
+import { BillingHeader } from '@/components/billing/billing-header';
 import { SaleFilters } from '@/components/billing/sale-filters';
 import { SoldVsActualChart } from '@/components/billing/sold-vs-actual-chart';
 import { SoldVsActualKpis } from '@/components/billing/sold-vs-actual-kpis';
 import { SoldVsActualTable } from '@/components/billing/sold-vs-actual-table';
 import { EmptyState } from '@/components/empty-state';
-import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
 import { R2ScopeNote } from '@/components/reports/r2-report-body';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
-import { Button } from '@/components/ui/button';
-import { useAbilities } from '@/hooks/use-auth';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { index as billingIndex, soldVsActual } from '@/routes/billing';
@@ -35,7 +32,6 @@ export default function SoldVsActual({
     report_request: reportRequest,
     scope,
 }: SoldVsActualPageProps) {
-    const can = useAbilities();
     const financials = report.financials;
 
     return (
@@ -43,28 +39,17 @@ export default function SoldVsActual({
             <Head title={t('billing.report.title')} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
+                <BillingHeader
+                    current="vendido"
                     title={t('billing.report.title')}
                     description={t('billing.report.description')}
                     actions={
-                        <>
-                            {can.viewBilling ? (
-                                <Button variant="outline" asChild>
-                                    <Link href="/facturacion/facturas">
-                                        <FileText aria-hidden="true" />
-                                        {t('billing.nav.invoices')}
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            <ExportMenu
-                                request={reportRequest}
-                                title={t('billing.report.title')}
-                            />
-                        </>
+                        <ExportMenu
+                            request={reportRequest}
+                            title={t('billing.report.title')}
+                        />
                     }
                 />
-
-                <BillingTabs current="vendido" />
 
                 <div className="grid gap-4">
                     <ReportFilterBar

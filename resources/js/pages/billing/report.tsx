@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowRight, Info, SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { BillingTabs } from '@/components/billing/billing-nav';
+import { BillingHeader } from '@/components/billing/billing-header';
 import {
     InvoicingAgingChart,
     InvoicingOverdueList,
@@ -11,17 +11,15 @@ import type { AmountBar } from '@/components/billing/invoicing-bars';
 import { InvoicingKpis } from '@/components/billing/invoicing-kpis';
 import { amount, serviceLabel } from '@/components/billing/invoicing-lib';
 import { InvoicingMonthChart } from '@/components/billing/invoicing-month-chart';
-import { LastSync } from '@/components/billing/last-sync';
 import { ServiceFilters } from '@/components/billing/service-filters';
 import { EmptyState } from '@/components/empty-state';
-import { PageHeader } from '@/components/projects-list/page-header';
 import { ExportMenu } from '@/components/reports/export-menu';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { index as billingIndex, report as reportRoute } from '@/routes/billing';
+import { index as billingIndex, sales as reportRoute } from '@/routes/billing';
 import type { InvoicingReport, InvoicingReportPageProps } from '@/types';
 
 /** Panel de una gráfica: sobre la tarjeta (el hueco de 2 px entre marcas es del color de la tarjeta). */
@@ -85,7 +83,7 @@ function clientBars(clients: InvoicingReport['clients']): AmountBar[] {
             cells: {
                 label: (
                     <Link
-                        href="/facturacion/contactos"
+                        href="/facturacion/por-revisar"
                         className={cn('rounded-sm hover:underline', FOCUS_RING)}
                     >
                         {t('billing.invoicing.unmatched')}
@@ -110,7 +108,6 @@ export default function InvoicingReportPage({
     services,
     report,
     report_request: reportRequest,
-    last_sync: lastSync,
 }: InvoicingReportPageProps) {
     const url = reportRoute.url();
     const k = report.kpis;
@@ -126,7 +123,8 @@ export default function InvoicingReportPage({
             <Head title={t('billing.invoicing.title')} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
+                <BillingHeader
+                    current="ventas"
                     title={t('billing.invoicing.title')}
                     description={t('billing.invoicing.description')}
                     actions={
@@ -137,8 +135,6 @@ export default function InvoicingReportPage({
                     }
                 />
 
-                <BillingTabs current="informe" />
-
                 <div className="grid gap-4">
                     <ReportFilterBar
                         filters={filters}
@@ -146,15 +142,12 @@ export default function InvoicingReportPage({
                         url={url}
                         compareLabel={t('billing.invoicing.filters.compare')}
                     />
-                    <div className="flex flex-wrap items-end justify-between gap-3">
-                        <ServiceFilters
-                            url={url}
-                            query={filters.query}
-                            services={services}
-                            selected={report.services_filter}
-                        />
-                        <LastSync sync={lastSync} />
-                    </div>
+                    <ServiceFilters
+                        url={url}
+                        query={filters.query}
+                        services={services}
+                        selected={report.services_filter}
+                    />
                 </div>
 
                 {filtered ? (
@@ -236,7 +229,7 @@ export default function InvoicingReportPage({
                                     footer={
                                         report.clients.unmatched !== null ? (
                                             <Link
-                                                href="/facturacion/contactos"
+                                                href="/facturacion/por-revisar"
                                                 data-test="invoicing-unmatched"
                                                 className={cn(
                                                     'inline-flex items-center gap-1.5 justify-self-start rounded-sm text-sm text-muted-foreground hover:text-foreground',

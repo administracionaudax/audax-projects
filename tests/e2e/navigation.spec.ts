@@ -106,10 +106,11 @@ test('las secciones de la barra lateral se pliegan, se recuerdan y se despliegan
                     'false',
                 );
             }
-            // Con el módulo apagado, Facturación solo puede traer «Horas para facturar» (a quien
+            // Con el módulo apagado, Facturación solo puede traer «Por facturar» (a quien
             // tiene view-financials, D-402): nada del módulo.
             for (const href of [
-                '/facturacion/informe',
+                '/facturacion/ventas',
+                '/facturacion/por-revisar',
                 '/facturacion/vendido-frente-a-real',
                 '/facturacion/facturas',
             ]) {

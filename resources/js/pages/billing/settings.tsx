@@ -8,9 +8,8 @@ import {
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId, useState } from 'react';
-import { BillingTabs } from '@/components/billing/billing-nav';
+import { BillingHeader } from '@/components/billing/billing-header';
 import InputError from '@/components/input-error';
-import { PageHeader } from '@/components/projects-list/page-header';
 import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -116,11 +115,11 @@ export default function BillingSettings({
             <Head title={t('billing.settings.title')} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
-                <PageHeader
-                    title={t('billing.section')}
+                <BillingHeader
+                    current="ajustes"
+                    title={t('billing.nav.settings')}
                     description={t('billing.settings.description')}
                 />
-                <BillingTabs current="ajustes" />
 
                 <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
                     <PageSection
@@ -462,7 +461,7 @@ function AccessSection({ people }: { people: AccessPerson[] }) {
 
 BillingSettings.layout = {
     breadcrumbs: [
-        { title: t('billing.section'), href: '/facturacion/facturas' },
-        { title: t('billing.settings.title'), href: '/facturacion/ajustes' },
+        { title: t('billing.section'), href: '/facturacion' },
+        { title: t('billing.nav.settings'), href: '/facturacion/ajustes' },
     ],
 };

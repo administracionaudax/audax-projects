@@ -1,4 +1,5 @@
 import type { ActiveTimer, AppConfig, Auth } from '@/types/auth';
+import type { BillingShared } from '@/types/billing';
 import type { ChatSharedProps } from '@/types/chat';
 import type { IntegrationsSharedProps } from '@/types/integrations';
 import type { PeopleShared } from '@/types/people';
@@ -36,6 +37,8 @@ declare module '@inertiajs/core' {
             navCollapsed?: string[];
             /** Registro de jornada (Fase 11): el botón de fichar y «Pendientes»; null sin el módulo. */
             people?: PeopleShared | null;
+            /** Facturación (D-405 y D-409): «Por revisar» y la última lectura de Holded; null sin view-billing. */
+            billingNav?: BillingShared | null;
             [key: string]: unknown;
         };
     }

@@ -24,7 +24,7 @@ import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
-import { hours as billingHours } from '@/routes/billing';
+import { unbilled as billingHours } from '@/routes/billing';
 import {
     client as clientReport,
     project as projectReport,

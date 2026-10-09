@@ -122,10 +122,10 @@ beforeEach(function () {
 
 it('el informe de facturación cabe en su presupuesto de consultas y no crece con los datos', function () {
     $urls = [
-        'billing.report' => '/facturacion/informe',
-        'billing.report.service' => '/facturacion/informe?periodo=anio&fecha=2026-01-01&comparar=1&servicio[]=desarrollo&servicio[]=fees',
-        'billing.report.client' => '/facturacion/informe?periodo=anio&fecha=2026-01-01&comparar=1&cliente[]='.$this->firstClient,
-        'billing.report.export' => '/facturacion/informe?periodo=anio&fecha=2026-01-01&comparar=1&formato=csv',
+        'billing.report' => '/facturacion/ventas',
+        'billing.report.service' => '/facturacion/ventas?periodo=anio&fecha=2026-01-01&comparar=1&servicio[]=desarrollo&servicio[]=fees',
+        'billing.report.client' => '/facturacion/ventas?periodo=anio&fecha=2026-01-01&comparar=1&cliente[]='.$this->firstClient,
+        'billing.report.export' => '/facturacion/ventas?periodo=anio&fecha=2026-01-01&comparar=1&formato=csv',
     ];
 
     $this->actingAs($this->admin);

@@ -66,12 +66,12 @@ beforeEach(function () {
 dataset('páginas de facturación', [
     //                                                    admin resp. empl. gestor finan. colab. cliente
     'vendido frente a real' => ['/facturacion/vendido-frente-a-real', [200, 200, 403, 200, 200, 403, 302]],
-    'informe de facturación' => ['/facturacion/informe', [200, 403, 403, 403, 200, 403, 302]],
-    'horas para facturar' => ['/facturacion/horas-para-facturar', [200, 403, 403, 403, 200, 403, 302]],
+    'ventas' => ['/facturacion/ventas', [200, 403, 403, 403, 200, 403, 302]],
+    'por facturar' => ['/facturacion/por-facturar', [200, 403, 403, 403, 200, 403, 302]],
     'pestaña del proyecto' => ['/proyectos/{project}/facturacion', [200, 200, 403, 200, 200, 403, 302]],
     'facturas' => ['/facturacion/facturas', [200, 403, 403, 403, 200, 403, 302]],
     'ficha de factura' => ['/facturacion/facturas/{invoice}', [200, 403, 403, 403, 200, 403, 302]],
-    'contactos de Holded' => ['/facturacion/contactos', [200, 403, 403, 403, 200, 403, 302]],
+    'por revisar' => ['/facturacion/por-revisar', [200, 403, 403, 403, 200, 403, 302]],
     'ajustes' => ['/facturacion/ajustes', [200, 403, 403, 403, 200, 403, 302]],
     'facturación del cliente' => ['/clientes/{client}/facturacion', [200, 403, 403, 403, 200, 403, 302]],
 ]);
@@ -259,18 +259,21 @@ it('exporta el informe en Excel, CSV, PDF y para imprimir, con los permisos de q
     $this->actingAs($this->employee)->get($url.'&formato=csv')->assertForbidden();
 });
 
-it('/facturacion lleva al informe de facturación o, a quien solo ve el vendido frente a real, a ese (D-401)', function () {
-    $this->actingAs($this->admin)->get('/facturacion')->assertRedirect('/facturacion/informe');
-    $this->actingAs($this->finance)->get('/facturacion')->assertRedirect('/facturacion/informe');
+it('/facturacion lleva a Ventas o, a quien solo ve el vendido frente a real, a ese (D-401 y D-405)', function () {
+    $this->actingAs($this->admin)->get('/facturacion')->assertRedirect('/facturacion/ventas');
+    $this->actingAs($this->finance)->get('/facturacion')->assertRedirect('/facturacion/ventas');
     $this->actingAs($this->manager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->projectManager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->employee)->get('/facturacion')->assertForbidden();
 });
 
-it('las URL antiguas de Informes responden con un 301 a Facturación, con su query (D-401)', function () {
+it('las URL antiguas responden con un 301 a las de Facturación, con su query (D-401 y D-405)', function () {
     $moved = [
         '/informes/vendido-frente-a-real' => '/facturacion/vendido-frente-a-real',
-        '/informes/facturacion' => '/facturacion/horas-para-facturar',
+        '/informes/facturacion' => '/facturacion/por-facturar',
+        '/facturacion/horas-para-facturar' => '/facturacion/por-facturar',
+        '/facturacion/informe' => '/facturacion/ventas',
+        '/facturacion/contactos' => '/facturacion/por-revisar',
     ];
 
     foreach ($moved as $old => $new) {
@@ -287,23 +290,36 @@ it('las URL antiguas de Informes responden con un 301 a Facturación, con su que
     $this->actingAs($this->employee)->followingRedirects()->get('/informes/vendido-frente-a-real')->assertForbidden();
     $csv = $this->actingAs($this->finance)->followingRedirects()->get('/informes/vendido-frente-a-real?periodo=anio&formato=csv');
     $csv->assertOk();
+    $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/informe?periodo=anio&formato=csv')->assertOk();
+    $this->actingAs($this->employee)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertForbidden();
+    $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('billing/contacts')->where('view', 'todos'));
+});
+
+it('con el módulo apagado, las URL antiguas de Facturación no dicen nada (404), salvo la de las horas (D-402 y D-405)', function () {
+    enableBilling(false);
+
+    $this->actingAs($this->finance)->get('/facturacion/informe')->assertNotFound();
+    $this->actingAs($this->finance)->get('/facturacion/contactos')->assertNotFound();
+    $this->actingAs($this->finance)->get('/facturacion/horas-para-facturar')->assertStatus(301)->assertRedirect('/facturacion/por-facturar');
 });
 
 it('las horas para facturar no dependen del módulo, pero sí de las exclusiones de Facturación (D-402 y D-247)', function () {
     enableBilling(false);
 
-    $this->actingAs($this->finance)->get('/facturacion/horas-para-facturar')->assertOk()
+    $this->actingAs($this->finance)->get('/facturacion/por-facturar')->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('billing/hours'));
-    $this->actingAs($this->admin)->get('/facturacion/horas-para-facturar?cliente[]='.$this->clientCompany->id.'&formato=csv')->assertOk();
-    $this->actingAs($this->employee)->get('/facturacion/horas-para-facturar')->assertForbidden();
-    $this->actingAs($this->finance)->get('/facturacion/informe')->assertNotFound();
+    $this->actingAs($this->admin)->get('/facturacion/por-facturar?cliente[]='.$this->clientCompany->id.'&formato=csv')->assertOk();
+    $this->actingAs($this->employee)->get('/facturacion/por-facturar')->assertForbidden();
+    $this->actingAs($this->finance)->get('/facturacion/ventas')->assertNotFound();
     $this->actingAs($this->finance)->get('/facturacion')->assertNotFound();
 
     enableBilling();
     $excluded = userWithRole('admin');
     $this->actingAs($this->admin)->put('/facturacion/ajustes/acceso', ['excluded_user_ids' => [$excluded->id]])->assertRedirect();
-    $this->actingAs($excluded)->get('/facturacion/informe')->assertNotFound();
-    $this->actingAs($excluded)->get('/facturacion/horas-para-facturar')->assertForbidden();
+    $this->actingAs($excluded)->get('/facturacion/ventas')->assertNotFound();
+    $this->actingAs($excluded)->get('/facturacion/por-revisar')->assertNotFound();
+    $this->actingAs($excluded)->get('/facturacion/por-facturar')->assertForbidden();
     $this->actingAs($excluded)->get('/')->assertInertia(fn (Assert $page) => $page->where('auth.can.exportBillingHours', false));
 });
 
@@ -314,8 +330,8 @@ it('Informes ya no enseña nada de facturación (D-401)', function () {
 
 it('los envíos programados de los informes movidos siguen generándose por su tipo (D-401)', function () {
     expect(ReportKind::SoldVsActual->routeName())->toBe('billing.sold-vs-actual')
-        ->and(ReportKind::Billing->routeName())->toBe('billing.hours')
-        ->and(ReportKind::Invoicing->routeName())->toBe('billing.report');
+        ->and(ReportKind::Billing->routeName())->toBe('billing.unbilled')
+        ->and(ReportKind::Invoicing->routeName())->toBe('billing.sales');
 
     foreach (ReportKind::cases() as $kind) {
         expect(Route::has($kind->routeName()))->toBeTrue($kind->value);
