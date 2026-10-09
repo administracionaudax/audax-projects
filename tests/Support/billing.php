@@ -3,8 +3,11 @@
 use App\Domain\Billing\Holded\FakeHolded;
 use App\Domain\Billing\Holded\HoldedApi;
 use App\Domain\Billing\Holded\HoldedSync;
+use App\Enums\Permission;
+use App\Models\Client;
 use App\Models\HoldedSyncRun;
 use App\Models\Setting;
+use App\Models\User;
 
 /*
 | Utilidades de los tests de Facturación (Fase 12, F1). Holded siempre falso (HOLDED_DRIVER=fake en
@@ -80,6 +83,30 @@ function holdedFake(array $data = []): FakeHolded
         $data['creditNotes'] ?? [],
         $data['payments'] ?? [],
     );
+}
+
+/**
+ * Quién mira, para las matrices de permisos de las pantallas de Facturación (I1, I5 e I10): admin,
+ * finanzas (view-financials), responsable, empleado, colaborador externo, cliente del portal y un
+ * admin excluido de Facturación (D-245; se excluye en Ajustes antes de llamar aquí).
+ *
+ * @return array<string, User>
+ */
+function billingActors(User $excludedAdmin): array
+{
+    $finance = userWithRole('employee');
+    $finance->givePermissionTo(Permission::ViewFinancials->value);
+    $client = Client::factory()->create();
+
+    return [
+        'admin' => User::query()->whereKeyNot($excludedAdmin->id)->whereHas('roles', fn ($q) => $q->where('name', 'admin'))->orderBy('id')->firstOrFail(),
+        'finanzas' => $finance,
+        'responsable' => userWithRole('department_manager'),
+        'empleado' => userWithRole('employee'),
+        'colaborador' => User::factory()->collaborator()->create(),
+        'cliente' => User::factory()->portalOf($client)->create(),
+        'admin excluido' => $excludedAdmin,
+    ];
 }
 
 /** Sincroniza con ese Holded (o el del contenedor). */

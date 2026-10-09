@@ -164,12 +164,29 @@ final class HoldedContactMatcher
     /** El único cliente con un nombre parecido (D-248), o null si no hay ninguno o hay varios. */
     private function approximate(HoldedContact $contact): ?int
     {
+        $found = $this->approximateCandidates($contact);
+
+        if (count($found) <= 1) {
+            return $found[0] ?? null;
+        }
+
+        return $this->mostSpecific($found);
+    }
+
+    /**
+     * Los clientes con un nombre parecido (D-248): el mismo nombre sin espacios o todas las
+     * palabras con peso de uno en el otro.
+     *
+     * @return list<int>
+     */
+    private function approximateCandidates(HoldedContact $contact): array
+    {
         $names = array_values(array_filter([self::normalizeName($contact->name), self::normalizeName($contact->trade_name)]));
 
         foreach ($names as $name) {
             $compact = str_replace(' ', '', $name);
             if (strlen($compact) >= 4 && count($this->byCompact[$compact] ?? []) === 1) {
-                return $this->byCompact[$compact][0];
+                return $this->byCompact[$compact];
             }
         }
 
@@ -186,12 +203,17 @@ final class HoldedContactMatcher
             }
         }
 
-        if (count($found) <= 1) {
-            return $found[0] ?? null;
-        }
+        return $found;
+    }
 
-        // Varios: gana el más concreto si sus palabras incluyen las de todos los demás («Montó
-        // Export» frente a «Montó»); si no, es dudoso y no casa con ninguno.
+    /**
+     * Varios: gana el más concreto si sus palabras incluyen las de todos los demás («Montó Export»
+     * frente a «Montó»); si no, es dudoso y no casa con ninguno.
+     *
+     * @param  list<int>  $found
+     */
+    private function mostSpecific(array $found): ?int
+    {
         foreach ($found as $candidate) {
             $words = $this->tokens[$candidate] ?? [];
             $coversAll = array_filter($found, fn (int $other): bool => $other !== $candidate
@@ -203,6 +225,89 @@ final class HoldedContactMatcher
         }
 
         return null;
+    }
+
+    /**
+     * La propuesta para casar a mano un contacto (I5, D-413, amplía D-248): casar solo sigue
+     * exigiendo un único candidato (match()), pero en «Por revisar» se propone el mejor, con su
+     * motivo y su confianza, para confirmarlo con un clic:
+     * - **alta**: sus facturas ya están enlazadas con proyectos de un solo cliente (por el código F
+     *   o el proyecto de Holded), o un único cliente con su NIF o su nombre (casaría en la próxima
+     *   lectura: el cliente se creó o se corrigió después),
+     * - **media**: un nombre parecido único (D-248), o varios clientes con el mismo NIF o nombre (el
+     *   que más palabras comparte),
+     * - **baja**: varios nombres parecidos o solo alguna palabra en común (el que más comparte).
+     * Un contacto ya casado por un nombre parecido propone ese cliente (media).
+     *
+     * @param  array<int, string>  $linkedClients  cliente de los proyectos enlazados con sus facturas => método («f_code» o «proyecto»)
+     * @return array{client_id: int, reason: string, confidence: string}|null
+     */
+    public function propose(HoldedContact $contact, array $linkedClients = []): ?array
+    {
+        if ($contact->client_id !== null) {
+            return ['client_id' => $contact->client_id, 'reason' => 'parecido', 'confidence' => 'media'];
+        }
+
+        $this->load();
+
+        if (count($linkedClients) === 1) {
+            return ['client_id' => (int) array_key_first($linkedClients), 'reason' => (string) reset($linkedClients), 'confidence' => 'alta'];
+        }
+
+        $names = array_values(array_filter([self::normalizeName($contact->name), self::normalizeName($contact->trade_name)]));
+        $words = self::weightyTokens(implode(' ', $names));
+
+        $taxId = $contact->tax_id_normalized;
+        if ($taxId !== null && ($this->byTaxId[$taxId] ?? []) !== []) {
+            $ids = $this->byTaxId[$taxId];
+
+            return ['client_id' => $this->closest($ids, $words), 'reason' => 'nif', 'confidence' => count($ids) === 1 ? 'alta' : 'media'];
+        }
+
+        foreach ($names as $name) {
+            $ids = $this->byName[$name] ?? [];
+            if ($ids !== []) {
+                return ['client_id' => $this->closest($ids, $words), 'reason' => 'nombre', 'confidence' => count($ids) === 1 ? 'alta' : 'media'];
+            }
+        }
+
+        $similar = $this->approximateCandidates($contact);
+        if ($similar !== []) {
+            $best = count($similar) === 1 ? $similar[0] : $this->mostSpecific($similar);
+
+            return $best !== null
+                ? ['client_id' => $best, 'reason' => 'parecido', 'confidence' => 'media']
+                : ['client_id' => $this->closest($similar, $words), 'reason' => 'parecido', 'confidence' => 'baja'];
+        }
+
+        // Ninguna regla: el cliente que más palabras con peso comparte, si comparte alguna.
+        $shared = array_keys(array_filter($this->tokens ?? [], fn (array $clientWords): bool => array_intersect($clientWords, $words) !== []));
+
+        return $shared === [] ? null : ['client_id' => $this->closest($shared, $words), 'reason' => 'palabras', 'confidence' => 'baja'];
+    }
+
+    /**
+     * De unos clientes, el que más palabras con peso comparte con $words (Jaccard); a igualdad, el
+     * primero (el de menor id).
+     *
+     * @param  list<int>  $ids
+     * @param  list<string>  $words
+     */
+    private function closest(array $ids, array $words): int
+    {
+        $best = $ids[0];
+        $bestScore = -1.0;
+        foreach ($ids as $id) {
+            $clientWords = $this->tokens[$id] ?? [];
+            $union = count(array_unique([...$clientWords, ...$words]));
+            $score = $union === 0 ? 0.0 : count(array_intersect($clientWords, $words)) / $union;
+            if ($score > $bestScore) {
+                $best = $id;
+                $bestScore = $score;
+            }
+        }
+
+        return $best;
     }
 
     private function load(): void

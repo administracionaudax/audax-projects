@@ -273,7 +273,6 @@ it('las URL antiguas responden con un 301 a las de Facturación, con su query (D
         '/informes/facturacion' => '/facturacion/por-facturar',
         '/facturacion/horas-para-facturar' => '/facturacion/por-facturar',
         '/facturacion/informe' => '/facturacion/ventas',
-        '/facturacion/contactos' => '/facturacion/por-revisar',
     ];
 
     foreach ($moved as $old => $new) {
@@ -291,9 +290,13 @@ it('las URL antiguas responden con un 301 a las de Facturación, con su query (D
     $csv = $this->actingAs($this->finance)->followingRedirects()->get('/informes/vendido-frente-a-real?periodo=anio&formato=csv');
     $csv->assertOk();
     $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/informe?periodo=anio&formato=csv')->assertOk();
+    // Contactos (I5, D-413): las vistas de trabajo, a la bandeja; Todos y Descartados, al directorio de Ajustes.
+    $this->actingAs($this->finance)->get('/facturacion/contactos')->assertStatus(301)->assertRedirect('/facturacion/por-revisar?tipo=contactos');
+    $this->actingAs($this->finance)->get('/facturacion/contactos?vista=sin-casar')->assertStatus(301)->assertRedirect('/facturacion/por-revisar?tipo=contactos');
+    $this->actingAs($this->finance)->get('/facturacion/contactos?vista=descartados')->assertStatus(301)->assertRedirect('/facturacion/ajustes?contactos=descartados#contactos-holded');
     $this->actingAs($this->employee)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertForbidden();
     $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('billing/contacts')->where('view', 'todos'));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/settings')->where('contacts.view', 'todos'));
 });
 
 it('con el módulo apagado, las URL antiguas de Facturación no dicen nada (404), salvo la de las horas (D-402 y D-405)', function () {

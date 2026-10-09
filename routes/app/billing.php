@@ -9,6 +9,7 @@ use App\Http\Controllers\Billing\HoldedInvoiceLinkController;
 use App\Http\Controllers\Billing\InvoicingReportController;
 use App\Http\Controllers\Billing\MovedReportController;
 use App\Http\Controllers\Billing\ProjectBillingController;
+use App\Http\Controllers\Billing\ReviewController;
 use App\Http\Controllers\Billing\SoldVsActualController;
 use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Providers\ReportsServiceProvider;
@@ -59,8 +60,8 @@ Route::middleware('module:billing')->group(function () use ($exports) {
     // URL anteriores (D-405): con el módulo, como las páginas a las que llevan.
     Route::get('facturacion/informe', MovedReportController::class)
         ->defaults('to', '/facturacion/ventas');
-    Route::get('facturacion/contactos', MovedReportController::class)
-        ->defaults('to', '/facturacion/por-revisar');
+    // Con I5 (D-413): las vistas de trabajo, a la pestaña de contactos; Todos y Descartados, a Ajustes.
+    Route::get('facturacion/contactos', [HoldedContactController::class, 'moved']);
 
     Route::get('facturacion/vendido-frente-a-real', SoldVsActualController::class)
         ->middleware(['can:view-sold-vs-actual', $exports])
@@ -83,9 +84,13 @@ Route::middleware('module:billing')->group(function () use ($exports) {
             ->whereNumber(['invoice', 'link'])
             ->name('billing.invoices.links.destroy');
 
-        // Por revisar (D-405): hoy, los contactos de Holded sin casar o por confirmar; con I5, también
-        // las facturas sin proyecto.
-        Route::get('facturacion/por-revisar', [HoldedContactController::class, 'index'])->name('billing.review');
+        // Por revisar (I5, D-413 y D-414): contactos sin casar o por confirmar y facturas sin proyecto,
+        // con «Aceptar las de confianza alta» y «Deshacer».
+        Route::get('facturacion/por-revisar', [ReviewController::class, 'index'])->name('billing.review');
+        Route::post('facturacion/por-revisar/aceptar', [ReviewController::class, 'accept'])
+            ->middleware('throttle:30,1,billing.review.accept')
+            ->name('billing.review.accept');
+        Route::post('facturacion/por-revisar/deshacer', [ReviewController::class, 'undo'])->name('billing.review.undo');
         Route::put('facturacion/contactos/{contact}', [HoldedContactController::class, 'update'])->whereNumber('contact')->name('billing.contacts.update');
 
         Route::get('facturacion/ajustes', [BillingSettingsController::class, 'edit'])->name('billing.settings');

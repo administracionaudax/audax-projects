@@ -331,6 +331,81 @@ export type InvoicingReportPageProps = {
     report_request: ReportRequestData;
 };
 
+/** Confianza de una propuesta de «Por revisar» (I5, D-413). */
+export type ReviewConfidence = 'alta' | 'media' | 'baja';
+
+/** Por qué se propone un cliente para un contacto (HoldedContactMatcher::propose). */
+export type ReviewContactReason =
+    | 'codigo_f'
+    | 'proyecto'
+    | 'nif'
+    | 'nombre'
+    | 'parecido'
+    | 'palabras';
+
+/** Un contacto de Holded (ReviewInbox::contactRow): bandeja y directorio de Ajustes. */
+export type HoldedContactRow = {
+    id: number;
+    name: string;
+    trade_name: string | null;
+    tax_id: string | null;
+    email: string | null;
+    city: string | null;
+    client: { id: number; name: string } | null;
+    match_method: 'tax_id' | 'name' | 'approx' | 'manual' | null;
+    ignored: boolean;
+    invoices: number;
+    /** Base facturada (sin IVA) de todas sus facturas. */
+    invoiced: string;
+};
+
+export type ReviewContactRow = HoldedContactRow & {
+    proposal: {
+        client: { id: number; name: string };
+        reason: ReviewContactReason;
+        confidence: ReviewConfidence;
+    } | null;
+};
+
+export type ReviewInvoiceRow = {
+    id: number;
+    number: string | null;
+    kind: 'invoice' | 'credit_note';
+    is_draft: boolean;
+    issued_on: string;
+    client: { id: number; name: string } | null;
+    contact_name: string | null;
+    subtotal: string;
+    /** El tipo de línea que más pesa (bolsa, fee, horas…). */
+    service: InvoiceLineKind;
+    proposal:
+        | (InvoiceLinkSuggestion & {
+              confidence: ReviewConfidence;
+              /** El proyecto estaba vivo en la fecha de la factura. */
+              dated: boolean;
+          })
+        | null;
+    alternatives: InvoiceLinkSuggestion[];
+};
+
+/** Un proyecto (y sus bolsas) con el que enlazar a mano (ReviewInbox::linkTargets). */
+export type ReviewLinkTarget = {
+    id: number;
+    code: string;
+    name: string;
+    client_id: number | null;
+    client: string | null;
+    uses_banks: boolean;
+    banks: { id: number; name: string; start_date: string }[];
+};
+
+export type BillingClientOption = {
+    id: number;
+    name: string;
+    is_active: boolean;
+    tax_id: string | null;
+};
+
 /** Un cliente con algo por facturar (App\Domain\Billing\UnbilledReport, I10, D-412). */
 export type UnbilledClient = {
     client: { id: number; name: string; is_active: boolean };

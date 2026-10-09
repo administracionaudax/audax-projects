@@ -8,6 +8,7 @@ use App\Domain\Billing\Holded\HoldedApi;
 use App\Domain\Billing\Holded\HoldedConnection;
 use App\Domain\Billing\Holded\HttpHoldedClient;
 use App\Models\HoldedContact;
+use App\Models\HoldedInvoiceLink;
 use App\Models\HoldedSyncRun;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\ServiceProvider;
@@ -18,7 +19,7 @@ use Illuminate\Support\ServiceProvider;
  * (FakeHolded::fromDatabase). Si no, el cliente real con la clave del .env (si falta, lanza
  * HoldedRequestFailed::notConfigured al pedirlo; la sincronización lo comprueba antes).
  * El contador de «Por revisar» y el estado de la lectura de la navegación (BillingNav, D-405) se
- * olvidan al casar un contacto y al empezar o acabar una lectura.
+ * olvidan al casar un contacto, al enlazar o desenlazar una factura y al empezar o acabar una lectura.
  */
 class BillingServiceProvider extends ServiceProvider
 {
@@ -33,5 +34,8 @@ class BillingServiceProvider extends ServiceProvider
     {
         HoldedContact::saved(fn () => BillingNav::forget());
         HoldedSyncRun::saved(fn () => BillingNav::forget());
+        // Las facturas sin proyecto también cuentan en «Por revisar» (I5, D-413).
+        HoldedInvoiceLink::saved(fn () => BillingNav::forget());
+        HoldedInvoiceLink::deleted(fn () => BillingNav::forget());
     }
 }

@@ -78,6 +78,15 @@ return [
         'reset' => ':contact vuelve a casarse solo.',
     ],
 
+    // La bandeja «Por revisar» (I5, D-413 y D-414).
+    'review' => [
+        'accepted_contacts' => '{0} Ningún contacto casado.|{1} 1 contacto casado con su cliente.|[2,*] :count contactos casados con su cliente.',
+        'accepted_invoices' => '{0} Ninguna factura enlazada.|{1} 1 factura enlazada con su proyecto.|[2,*] :count facturas enlazadas con su proyecto.',
+        'nothing_high' => 'No hay propuestas de confianza alta: revisa las demás una a una.',
+        'undone' => '{1} Deshecho: 1 cambio vuelve a estar como antes.|[2,*] Deshecho: :count cambios vuelven a estar como antes.',
+        'nothing_to_undo' => 'No hay nada que deshacer.',
+    ],
+
     'settings' => [
         'saved' => 'Datos del emisor guardados.',
         'sync_started' => 'Sincronización con Holded en marcha. El resultado sale abajo en unos minutos.',
