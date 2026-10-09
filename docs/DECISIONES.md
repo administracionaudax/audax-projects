@@ -2065,6 +2065,12 @@ Decisión del propietario el 09/10/2026: «queremos ir hacia la segunda opción�
   - **Acciones por factura:** duplicar, copiar a otro documento, enviar por email con plantilla, descargar, rectificar o anular (D-244) y registrar cobros.
   - **Facturas programadas y recurrentes.**
   - **Gastos y compras:** facturas de proveedores y tickets, con su adjunto. Amplía el plan, que los dejaba a la gestoría.
+- **Calendario, según el propietario (09/10/2026):** «da por hecho que se aprobará lo de 2028, así que no hace falta hacer todo esto ahora; así podremos empezar con este módulo en breve». Por tanto:
+  - la emisión propia se construye **ya**, sin el envío a la AEAT;
+  - VeriFactu (F6) pasa a una entrega posterior, antes de la fecha que fije el BOE;
+  - desde el primer día se cumple el Reglamento de facturación (RD 1619/2012: contenido, series correlativas, rectificativas) y se guarda el registro encadenado con huella, que es barato, evita migraciones y deja preparado VeriFactu.
+- **Riesgo asumido:** si el BOE no publicara el aplazamiento, VeriFactu obligaría desde el 1/1/2027. En ese caso se volvería a Holded o se adelantaría F6.
+- **Gastos con foto** (propietario, 09/10/2026): subir un gasto haciendo una foto del ticket o de la factura, desde el móvil, con la cámara. La IA (Gemini, ya usada en la app) propone proveedor, NIF, fecha, base, IVA y total, y se revisan antes de guardar. El adjunto se conserva.
 - **Pendiente del propietario y de la gestoría:**
   - serie nueva o la misma F/CN a partir del corte;
   - cómo recibe los datos la gestoría (P5);
