@@ -440,6 +440,20 @@ Decisiones D-405 a D-410. Análisis y propuesta en `docs/ANALISIS-UX-FACTURACION
 - [x] **Listado de facturas (I3, D-406 y D-407):** vistas con su número, periodo por defecto, barra de importes que filtra, chips, búsqueda al escribir, orden, totales al pie, estado con días, paginación y todo en la URL (`App\Domain\Billing\InvoiceList`).
 - [x] **Ficha (I4, D-408):** cabecera con el cobro, enlace en un bloque con sus propuestas y todos los proyectos, línea de tiempo, anterior y siguiente del listado, miga con los filtros y «Abrir en Holded».
 - [x] **Estado de la lectura de Holded (R6, D-409)** en todas las pantallas, con la prop compartida `billingNav`.
-- [ ] Siguiente tanda: Resumen (I1), Por revisar (I5), Por facturar (I10), con R7; después I9, I7, R1 y R3.
+- [x] Siguiente tanda: Resumen (I1), Por revisar (I5), Por facturar (I10), con R7; después I9 e I7 (hecho en la tanda 2, §11). R1 y R3, pendientes.
 
 **Pruebas:** `tests/Feature/Billing/InvoiceListTest.php`, `BillingAccessTest.php` (rutas y 301 nuevos), `tests/Feature/Performance/InvoiceListPerformanceTest.php`, `tests/js/billing-ux.test.tsx`, `billing.test.tsx`, `billing-invoicing.test.tsx` y `tests/e2e/billing.spec.ts` (navegación, listado, ficha y móvil a 375 px).
+
+## 11. Rediseño de usabilidad, tanda 2 (rama `facturacion-ux-2`, 09/10/2026)
+
+Decisiones D-411 a D-416. Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md` (I1, I5, I10, I7, I9 y R7), con el aspecto de Audax.
+
+- [x] **Resumen (I1, D-411):** `/facturacion` para quien ve los importes, primera entrada de la sección: «Requiere atención» (vencidas, facturas sin proyecto, contactos sin casar y bolsas por encima del 85 %) o «Todo al día»; cuatro cifras con enlace en dos grupos (sin IVA y con IVA); facturado y cobrado por mes con su tabla; «Por cobrar» por antigüedad con los clientes que más deben y «Por facturar» con los que más tienen (`App\Domain\Billing\BillingSummary`). A quien solo ve horas, «Vendido frente a real» como antes.
+- [x] **Por facturar (I10, D-412):** la lista de clientes con horas aprobadas sin facturar, excesos de bolsa, bolsas vendidas sin factura y fees sin factura, con horas, importe (con view-billing) y la fecha más antigua; al abrir un cliente, el detalle y la exportación de siempre (`App\Domain\Billing\UnbilledReport`). Es la bandeja del §4.5 sin «Crear factura» (F4) ni los hitos (F3).
+- [x] **Por revisar (I5, D-413 y D-414):** contactos y facturas sin proyecto en una bandeja con propuesta, motivo y confianza, aceptar, descartar o elegir otro, «Aceptar las de confianza alta» y «Deshacer»; el directorio de contactos (todos y descartados) en Ajustes; el contador suma las facturas sin proyecto (`ReviewInbox`, `HoldedContactResolver`, `ReviewUndo`).
+- [x] **Móvil (I7, D-415):** tarjetas en lugar de tablas y filtros en una hoja por debajo de 768 px; sin desplazamiento lateral a 375 px.
+- [x] **Vendido frente a real por horas (I9, D-416):** «Por facturar · N h sin facturar» en lugar de un porcentaje; fuera de la gráfica de bala.
+- [x] **Estados vacíos y ayuda (R7, D-415):** el paso siguiente en cada estado vacío y un «?» con la explicación en cada grupo de cifras y en las vistas.
+- [ ] Siguiente: R1 (vista lateral), R3 (selección múltiple), R2, R4, R5, R8 y R9.
+
+**Pruebas:** `tests/Feature/Billing/BillingSummaryTest.php`, `ReviewInboxTest.php`, `UnbilledReportTest.php`, `BillingUxPermissionsTest.php` (admin, finanzas, responsable, empleado, colaborador, cliente y un admin excluido), `SoldVsActualTest.php` y `InvoiceLinesTest.php` (por horas), `tests/Feature/Performance/BillingUxPerformanceTest.php`, `tests/js/billing.test.tsx` (casos compartidos por horas) y `tests/e2e/billing.spec.ts` (Resumen, Por facturar, Por revisar, Deshacer y móvil a 375 px).
