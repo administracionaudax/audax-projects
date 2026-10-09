@@ -20,7 +20,19 @@ import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import type { BillingClientOption, HoldedContactRow } from '@/types';
+import { ViewTabs } from '@/components/billing/view-tabs';
+import {
+    DocumentSettings,
+    PaymentMethodSettings,
+    SeriesSettings,
+    ServiceSettings,
+    TaxSettings,
+} from '@/components/invoicing/invoicing-settings';
+import type {
+    BillingClientOption,
+    HoldedContactRow,
+    InvoicingSettingsData,
+} from '@/types';
 
 type Issuer = {
     legal_name: string | null;
@@ -34,6 +46,9 @@ type Issuer = {
     iban: string | null;
     email: string | null;
     phone: string | null;
+    legal_form: string | null;
+    trade_name: string | null;
+    website: string | null;
 };
 
 type Run = {
@@ -74,10 +89,14 @@ type Props = {
         clients: BillingClientOption[];
     };
     can: { sync: boolean; access: boolean; create_client: boolean };
+    section: Section;
+    invoicing: InvoicingSettingsData | null;
 };
 
 const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
     { key: 'legal_name', wide: true, autoComplete: 'organization' },
+    { key: 'legal_form' },
+    { key: 'trade_name' },
     { key: 'tax_id' },
     { key: 'registry' },
     { key: 'address', wide: true, autoComplete: 'street-address' },
@@ -88,6 +107,25 @@ const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
     { key: 'iban' },
     { key: 'email', autoComplete: 'email' },
     { key: 'phone', autoComplete: 'tel' },
+    { key: 'website', autoComplete: 'url' },
+];
+
+/** Apartados de Ajustes con la emisión propia (D-428): el de siempre y los de la emisión. */
+type Section =
+    | 'general'
+    | 'series'
+    | 'impuestos'
+    | 'servicios'
+    | 'formas-de-pago'
+    | 'documento';
+
+const SECTIONS: { id: Section; label: Parameters<typeof t>[0] }[] = [
+    { id: 'general', label: 'invoicing.settings.section.general' },
+    { id: 'series', label: 'invoicing.settings.section.series' },
+    { id: 'impuestos', label: 'invoicing.settings.section.taxes' },
+    { id: 'servicios', label: 'invoicing.settings.section.services' },
+    { id: 'formas-de-pago', label: 'invoicing.settings.section.payment' },
+    { id: 'documento', label: 'invoicing.settings.section.document' },
 ];
 
 /**
@@ -102,6 +140,8 @@ export default function BillingSettings({
     runs,
     contacts,
     can,
+    section,
+    invoicing,
 }: Props) {
     const id = useId();
     const form = useForm<Record<keyof Issuer, string>>(
@@ -126,246 +166,313 @@ export default function BillingSettings({
                 <BillingHeader
                     current="ajustes"
                     title={t('billing.nav.settings')}
-                    description={t('billing.settings.description')}
+                    description={t(
+                        invoicing
+                            ? 'invoicing.settings.page_description'
+                            : 'billing.settings.description',
+                    )}
                 />
 
-                <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-                    <PageSection
-                        title={t('billing.issuer.title')}
-                        description={t('billing.issuer.description')}
-                    >
-                        <form
-                            onSubmit={submit}
-                            noValidate
-                            className="grid gap-4 sm:grid-cols-2"
-                        >
-                            {FIELDS.map(({ key, wide, autoComplete }) => (
-                                <div
-                                    key={key}
-                                    className={cn(
-                                        'grid content-start gap-1',
-                                        wide && 'sm:col-span-2',
-                                    )}
-                                >
-                                    <Label htmlFor={`${id}-${key}`}>
-                                        {t(`billing.issuer.${key}`)}
-                                    </Label>
-                                    <Input
-                                        id={`${id}-${key}`}
-                                        value={form.data[key]}
-                                        autoComplete={autoComplete}
-                                        maxLength={
-                                            key === 'country_code'
-                                                ? 2
-                                                : undefined
-                                        }
-                                        aria-invalid={
-                                            form.errors[key] ? true : undefined
-                                        }
-                                        onChange={(event) =>
-                                            form.setData(
-                                                key,
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                    <InputError message={form.errors[key]} />
-                                </div>
-                            ))}
-                            <div className="sm:col-span-2">
-                                <Button
-                                    type="submit"
-                                    disabled={form.processing}
-                                >
-                                    {t('billing.issuer.save')}
-                                </Button>
-                            </div>
-                        </form>
-                    </PageSection>
+                {invoicing ? (
+                    <ViewTabs
+                        label={t('invoicing.settings.sections')}
+                        current={section}
+                        dataTest="settings-sections"
+                        tabs={SECTIONS.map((one) => ({
+                            id: one.id,
+                            label: t(one.label),
+                            href:
+                                one.id === 'general'
+                                    ? '/facturacion/ajustes'
+                                    : `/facturacion/ajustes?apartado=${one.id}`,
+                            count: null,
+                        }))}
+                    />
+                ) : null}
 
-                    <PageSection
-                        title={t('billing.holded.title')}
-                        description={t('billing.holded.description')}
-                    >
-                        <Card className="py-4">
-                            <CardContent className="grid gap-3 px-4 text-sm">
-                                <p className="flex items-center gap-2">
-                                    {holded.configured ? (
-                                        <CircleCheck
-                                            aria-hidden="true"
-                                            className="size-4 text-success"
-                                        />
-                                    ) : (
-                                        <CircleAlert
-                                            aria-hidden="true"
-                                            className="size-4 text-warning"
-                                        />
-                                    )}
-                                    {t(
-                                        holded.driver === 'fake'
-                                            ? 'billing.holded.fake'
-                                            : holded.configured
-                                              ? 'billing.holded.configured'
-                                              : 'billing.holded.missing_key',
-                                    )}
-                                </p>
-                                <p className="flex items-center gap-2 text-muted-foreground">
-                                    <ShieldCheck
-                                        aria-hidden="true"
-                                        className="size-4"
-                                    />
-                                    {t('billing.holded.read_only')}
-                                </p>
-                                <p className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock
-                                        aria-hidden="true"
-                                        className="size-4"
-                                    />
-                                    {t(
-                                        holded.scheduled
-                                            ? 'billing.holded.nightly'
-                                            : 'billing.holded.nightly_off',
-                                        {
-                                            per_minute: holded.per_minute,
-                                        },
-                                    )}
-                                </p>
-                                {can.sync ? (
-                                    <div>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={
-                                                !holded.configured ||
-                                                holded.running
-                                            }
-                                            onClick={() =>
-                                                router.post(
-                                                    '/facturacion/sincronizar',
-                                                    {},
-                                                    { preserveScroll: true },
-                                                )
-                                            }
-                                            data-test="holded-sync"
-                                        >
-                                            <RefreshCw
-                                                aria-hidden="true"
+                {invoicing && section === 'series' ? (
+                    <SeriesSettings data={invoicing} />
+                ) : null}
+                {invoicing && section === 'impuestos' ? (
+                    <TaxSettings data={invoicing} />
+                ) : null}
+                {invoicing && section === 'servicios' ? (
+                    <ServiceSettings data={invoicing} />
+                ) : null}
+                {invoicing && section === 'formas-de-pago' ? (
+                    <PaymentMethodSettings data={invoicing} />
+                ) : null}
+                {invoicing && section === 'documento' ? (
+                    <DocumentSettings data={invoicing} />
+                ) : null}
+
+                {!invoicing || section === 'general' ? (
+                    <>
+                        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+                            <PageSection
+                                title={t('billing.issuer.title')}
+                                description={t('billing.issuer.description')}
+                            >
+                                <form
+                                    onSubmit={submit}
+                                    noValidate
+                                    className="grid gap-4 sm:grid-cols-2"
+                                >
+                                    {FIELDS.map(
+                                        ({ key, wide, autoComplete }) => (
+                                            <div
+                                                key={key}
                                                 className={cn(
-                                                    holded.running &&
-                                                        'animate-spin',
+                                                    'grid content-start gap-1',
+                                                    wide && 'sm:col-span-2',
                                                 )}
-                                            />
-                                            {t(
-                                                holded.running
-                                                    ? 'billing.holded.running'
-                                                    : 'billing.holded.sync_now',
-                                            )}
+                                            >
+                                                <Label htmlFor={`${id}-${key}`}>
+                                                    {t(`billing.issuer.${key}`)}
+                                                </Label>
+                                                <Input
+                                                    id={`${id}-${key}`}
+                                                    value={form.data[key]}
+                                                    autoComplete={autoComplete}
+                                                    maxLength={
+                                                        key === 'country_code'
+                                                            ? 2
+                                                            : undefined
+                                                    }
+                                                    aria-invalid={
+                                                        form.errors[key]
+                                                            ? true
+                                                            : undefined
+                                                    }
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            key,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={form.errors[key]}
+                                                />
+                                            </div>
+                                        ),
+                                    )}
+                                    <div className="sm:col-span-2">
+                                        <Button
+                                            type="submit"
+                                            disabled={form.processing}
+                                        >
+                                            {t('billing.issuer.save')}
                                         </Button>
                                     </div>
-                                ) : null}
-                            </CardContent>
-                        </Card>
+                                </form>
+                            </PageSection>
 
-                        <h3 className="text-base font-normal">
-                            {t('billing.runs.title')}
-                        </h3>
-                        {runs.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                {t('billing.runs.none')}
-                            </p>
-                        ) : (
-                            <ol className="grid gap-2" data-test="holded-runs">
-                                {runs.map((run) => (
-                                    <li
-                                        key={run.id}
-                                        className="grid gap-1 rounded-md border px-3 py-2 text-sm"
-                                    >
-                                        <p className="flex flex-wrap items-center gap-2">
-                                            {run.status === 'ok' ? (
+                            <PageSection
+                                title={t('billing.holded.title')}
+                                description={t('billing.holded.description')}
+                            >
+                                <Card className="py-4">
+                                    <CardContent className="grid gap-3 px-4 text-sm">
+                                        <p className="flex items-center gap-2">
+                                            {holded.configured ? (
                                                 <CircleCheck
                                                     aria-hidden="true"
                                                     className="size-4 text-success"
                                                 />
-                                            ) : run.status === 'failed' ? (
+                                            ) : (
                                                 <CircleAlert
                                                     aria-hidden="true"
-                                                    className="size-4 text-danger"
-                                                />
-                                            ) : (
-                                                <RefreshCw
-                                                    aria-hidden="true"
-                                                    className="size-4 animate-spin text-info"
+                                                    className="size-4 text-warning"
                                                 />
                                             )}
-                                            <span>
-                                                {t(
-                                                    `billing.runs.status.${run.status}`,
-                                                )}
-                                            </span>
-                                            <span className="text-muted-foreground">
-                                                ·{' '}
-                                                {formatDateTime(run.started_at)}{' '}
-                                                ·{' '}
-                                                {t(
-                                                    `billing.runs.trigger.${run.trigger}`,
-                                                )}
-                                                {run.user
-                                                    ? ` (${run.user})`
-                                                    : ''}
-                                            </span>
+                                            {t(
+                                                holded.driver === 'fake'
+                                                    ? 'billing.holded.fake'
+                                                    : holded.configured
+                                                      ? 'billing.holded.configured'
+                                                      : 'billing.holded.missing_key',
+                                            )}
                                         </p>
-                                        {run.status === 'ok' ? (
-                                            <p className="text-muted-foreground">
-                                                {t('billing.runs.stats', {
-                                                    invoices: formatNumber(
-                                                        (run.stats
-                                                            .invoices_created ??
-                                                            0) +
-                                                            (run.stats
-                                                                .invoices_updated ??
-                                                                0) +
-                                                            (run.stats
-                                                                .invoices_unchanged ??
-                                                                0),
-                                                    ),
-                                                    created: formatNumber(
-                                                        run.stats
-                                                            .invoices_created ??
-                                                            0,
-                                                    ),
-                                                    linked: formatNumber(
-                                                        run.stats
-                                                            .linked_invoices ??
-                                                            0,
-                                                    ),
-                                                    unresolved: formatNumber(
-                                                        run.stats
-                                                            .contacts_unresolved ??
-                                                            0,
-                                                    ),
-                                                })}
-                                            </p>
+                                        <p className="flex items-center gap-2 text-muted-foreground">
+                                            <ShieldCheck
+                                                aria-hidden="true"
+                                                className="size-4"
+                                            />
+                                            {t('billing.holded.read_only')}
+                                        </p>
+                                        <p className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock
+                                                aria-hidden="true"
+                                                className="size-4"
+                                            />
+                                            {t(
+                                                holded.scheduled
+                                                    ? 'billing.holded.nightly'
+                                                    : 'billing.holded.nightly_off',
+                                                {
+                                                    per_minute:
+                                                        holded.per_minute,
+                                                },
+                                            )}
+                                        </p>
+                                        {can.sync ? (
+                                            <div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={
+                                                        !holded.configured ||
+                                                        holded.running
+                                                    }
+                                                    onClick={() =>
+                                                        router.post(
+                                                            '/facturacion/sincronizar',
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                            },
+                                                        )
+                                                    }
+                                                    data-test="holded-sync"
+                                                >
+                                                    <RefreshCw
+                                                        aria-hidden="true"
+                                                        className={cn(
+                                                            holded.running &&
+                                                                'animate-spin',
+                                                        )}
+                                                    />
+                                                    {t(
+                                                        holded.running
+                                                            ? 'billing.holded.running'
+                                                            : 'billing.holded.sync_now',
+                                                    )}
+                                                </Button>
+                                            </div>
                                         ) : null}
-                                        {run.error ? (
-                                            <p className="text-danger">
-                                                {run.error}
-                                            </p>
-                                        ) : null}
-                                    </li>
-                                ))}
-                            </ol>
-                        )}
-                    </PageSection>
-                </div>
+                                    </CardContent>
+                                </Card>
 
-                <HoldedContactsDirectory
-                    view={contacts.view}
-                    rows={contacts.rows}
-                    clients={contacts.clients}
-                    canCreateClient={can.create_client}
-                />
+                                <h3 className="text-base font-normal">
+                                    {t('billing.runs.title')}
+                                </h3>
+                                {runs.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        {t('billing.runs.none')}
+                                    </p>
+                                ) : (
+                                    <ol
+                                        className="grid gap-2"
+                                        data-test="holded-runs"
+                                    >
+                                        {runs.map((run) => (
+                                            <li
+                                                key={run.id}
+                                                className="grid gap-1 rounded-md border px-3 py-2 text-sm"
+                                            >
+                                                <p className="flex flex-wrap items-center gap-2">
+                                                    {run.status === 'ok' ? (
+                                                        <CircleCheck
+                                                            aria-hidden="true"
+                                                            className="size-4 text-success"
+                                                        />
+                                                    ) : run.status ===
+                                                      'failed' ? (
+                                                        <CircleAlert
+                                                            aria-hidden="true"
+                                                            className="size-4 text-danger"
+                                                        />
+                                                    ) : (
+                                                        <RefreshCw
+                                                            aria-hidden="true"
+                                                            className="size-4 animate-spin text-info"
+                                                        />
+                                                    )}
+                                                    <span>
+                                                        {t(
+                                                            `billing.runs.status.${run.status}`,
+                                                        )}
+                                                    </span>
+                                                    <span className="text-muted-foreground">
+                                                        ·{' '}
+                                                        {formatDateTime(
+                                                            run.started_at,
+                                                        )}{' '}
+                                                        ·{' '}
+                                                        {t(
+                                                            `billing.runs.trigger.${run.trigger}`,
+                                                        )}
+                                                        {run.user
+                                                            ? ` (${run.user})`
+                                                            : ''}
+                                                    </span>
+                                                </p>
+                                                {run.status === 'ok' ? (
+                                                    <p className="text-muted-foreground">
+                                                        {t(
+                                                            'billing.runs.stats',
+                                                            {
+                                                                invoices:
+                                                                    formatNumber(
+                                                                        (run
+                                                                            .stats
+                                                                            .invoices_created ??
+                                                                            0) +
+                                                                            (run
+                                                                                .stats
+                                                                                .invoices_updated ??
+                                                                                0) +
+                                                                            (run
+                                                                                .stats
+                                                                                .invoices_unchanged ??
+                                                                                0),
+                                                                    ),
+                                                                created:
+                                                                    formatNumber(
+                                                                        run
+                                                                            .stats
+                                                                            .invoices_created ??
+                                                                            0,
+                                                                    ),
+                                                                linked: formatNumber(
+                                                                    run.stats
+                                                                        .linked_invoices ??
+                                                                        0,
+                                                                ),
+                                                                unresolved:
+                                                                    formatNumber(
+                                                                        run
+                                                                            .stats
+                                                                            .contacts_unresolved ??
+                                                                            0,
+                                                                    ),
+                                                            },
+                                                        )}
+                                                    </p>
+                                                ) : null}
+                                                {run.error ? (
+                                                    <p className="text-danger">
+                                                        {run.error}
+                                                    </p>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
+                            </PageSection>
+                        </div>
 
-                {can.access ? <AccessSection people={access} /> : null}
+                        <HoldedContactsDirectory
+                            view={contacts.view}
+                            rows={contacts.rows}
+                            clients={contacts.clients}
+                            canCreateClient={can.create_client}
+                        />
+
+                        {can.access ? <AccessSection people={access} /> : null}
+                    </>
+                ) : null}
             </div>
         </>
     );
