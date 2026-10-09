@@ -83,7 +83,7 @@ it('sugiere el proyecto por el cliente, el servicio y la fecha; la bolsa más ce
     expect($suggester->for($bankInvoice->fresh()))->toBe([]);
 });
 
-it('el informe lee las horas de las líneas: lo vendido por horas y el precio de una bolsa sin precio; los borradores, como previsto', function () {
+it('el informe lee las horas de las líneas: lo facturado por horas y el precio de una bolsa sin precio; los borradores, como previsto', function () {
     $worker = userWithRole('employee');
     $bankProject = Project::factory()->hourBank()->create(['client_id' => $this->client->id, 'code' => 'MON-BH']);
     $bank = HourBank::factory()->create(['project_id' => $bankProject->id, 'total_minutes' => 100 * 60, 'price_amount' => null, 'start_date' => '2026-10-01']);
@@ -105,7 +105,8 @@ it('el informe lee las horas de las líneas: lo vendido por horas y el precio de
     $unit = fn (string $key): array => collect($report['units'])->firstWhere('key', $key);
 
     expect($unit('bank:'.$bank->id))->toMatchArray(['sold_minutes' => 6000, 'sold_amount' => '5100.00', 'sold_source' => 'holded', 'invoiced' => '5100.00', 'invoiced_minutes' => 6000])
-        ->and($unit('project:'.$hourly->id))->toMatchArray(['sold_minutes' => 480, 'real_minutes' => 600, 'deviation_minutes' => 120, 'status' => 'over', 'invoiced' => '590.00', 'invoiced_minutes' => 480])
+        // Por horas (D-411): 8 h facturadas de 10 reales no son un «pasado», son 2 h pendientes de facturar.
+        ->and($unit('project:'.$hourly->id))->toMatchArray(['sold_minutes' => null, 'real_minutes' => 600, 'deviation_minutes' => null, 'status' => 'unbilled', 'unbilled_minutes' => 120, 'invoiced' => '590.00', 'invoiced_minutes' => 480])
         ->and($unit('project:'.$fee->id))->toMatchArray(['invoiced' => '0.00', 'planned' => '1500.00', 'invoices_count' => 0])
         ->and($report['totals']['planned'])->toBe('1500.00')
         ->and($report['totals']['invoiced'])->toBe('5690.00');

@@ -128,6 +128,8 @@ return [
             'ok' => 'Dentro',
             'risk' => 'En riesgo',
             'over' => 'Pasado',
+            'unbilled' => 'Pendiente de facturar',
+            'billed' => 'Facturado al día',
             'none' => 'Sin horas vendidas',
         ],
         'kpis' => [

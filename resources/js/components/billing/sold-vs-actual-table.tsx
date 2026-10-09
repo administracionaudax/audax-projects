@@ -228,6 +228,20 @@ export function SoldVsActualTable({
                             </td>
                             <td className="px-3 py-2">
                                 <SaleStatusBadge status={unit.status} />
+                                {unit.kind === 'horas' &&
+                                (unit.unbilled_minutes ?? 0) > 0 ? (
+                                    <span
+                                        className="mt-0.5 block text-xs text-muted-foreground"
+                                        title={t('billing.unbilled_hours_hint')}
+                                        data-test="unit-unbilled"
+                                    >
+                                        {t('billing.unbilled_hours', {
+                                            hours: formatMinutes(
+                                                unit.unbilled_minutes ?? 0,
+                                            ),
+                                        })}
+                                    </span>
+                                ) : null}
                             </td>
                             {financials ? (
                                 <>

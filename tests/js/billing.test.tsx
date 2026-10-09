@@ -19,6 +19,7 @@ import {
     bulletSegments,
     chartUnits,
     consumptionPct,
+    hourlyStatus,
     saleStatus,
     signedMinutes,
 } from '@/components/billing/sold-vs-actual-lib';
@@ -95,6 +96,7 @@ function unit(overrides: Partial<SoldVsActualUnit>): SoldVsActualUnit {
         status: 'over',
         invoices_count: 1,
         invoiced_minutes: 0,
+        unbilled_minutes: null,
         ...overrides,
     };
 }
@@ -108,7 +110,8 @@ const totals: SoldVsActualTotals = {
     deviation_minutes: 60,
     consumption_pct: 103.3,
     status: 'over',
-    by_status: { over: 1, risk: 1, ok: 0, none: 0 },
+    by_status: { over: 1, risk: 1, unbilled: 0, ok: 0, billed: 0, none: 0 },
+    unbilled_minutes: 0,
     income: '3000.00',
     invoiced: '2500.00',
     collected: '1210.00',
@@ -149,6 +152,45 @@ describe('semáforo de «Vendido frente a real»', () => {
             expect(saleStatus(computed)).toBe(status);
         },
     );
+
+    it.each(fixture.hourly_cases)(
+        'por horas (D-411): facturado $invoiced y real $real → $status',
+        ({ invoiced, real, status, unbilled }) => {
+            expect(hourlyStatus(invoiced, real)).toBe(status);
+            expect(Math.max(0, real - invoiced)).toBe(unbilled);
+        },
+    );
+
+    it('una unidad por horas con una factura parcial no sale en la gráfica y dice lo pendiente de facturar', () => {
+        const hourly = unit({
+            key: 'project:9',
+            kind: 'horas',
+            sold_minutes: null,
+            real_minutes: 934,
+            invoiced_minutes: 60,
+            unbilled_minutes: 874,
+            deviation_minutes: null,
+            consumption_pct: null,
+            status: 'unbilled',
+        });
+        expect(chartUnits([hourly, bank]).map((row) => row.key)).toEqual([
+            'bank:7',
+        ]);
+
+        render(
+            <TooltipProvider>
+                <SoldVsActualTable
+                    units={[hourly]}
+                    totals={{ ...totals, units: 1 }}
+                    financials={false}
+                    caption="Unidades"
+                />
+            </TooltipProvider>,
+        );
+        expect(screen.getByText('Por facturar')).toBeTruthy();
+        expect(screen.getByText('14:34 sin facturar')).toBeTruthy();
+        expect(screen.queryByText(/%/)).toBeNull();
+    });
 
     it('la barra de bala usa una escala común y separa lo que pasa de lo vendido', () => {
         expect(bulletSegments(600, 540, 1320)).toEqual({

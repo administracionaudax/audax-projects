@@ -165,6 +165,11 @@ export function SoldVsActualKpis({
                         t('billing.kpis.units_ok', {
                             count: totals.by_status.ok,
                         }),
+                        totals.by_status.unbilled > 0
+                            ? t('billing.kpis.units_unbilled', {
+                                  count: totals.by_status.unbilled,
+                              })
+                            : null,
                     ]
                         .filter(Boolean)
                         .join(' · ')}

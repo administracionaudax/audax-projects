@@ -1,16 +1,110 @@
 {
     "_comment": "Semáforo de «Vendido frente a real» (Fase 12, D-390): consumo = real ÷ vendido × 100 con un decimal; pasado por encima del 100 %, en riesgo desde el 85 % y sin horas vendidas, «none». Lo comprueban SoldVsActual::status (Pest) y saleStatus (Vitest).",
     "cases": [
-        { "sold": 600, "real": 0, "pct": 0, "status": "ok" },
-        { "sold": 600, "real": 504, "pct": 84, "status": "ok" },
-        { "sold": 600, "real": 509, "pct": 84.8, "status": "ok" },
-        { "sold": 600, "real": 510, "pct": 85, "status": "risk" },
-        { "sold": 600, "real": 540, "pct": 90, "status": "risk" },
-        { "sold": 600, "real": 600, "pct": 100, "status": "risk" },
-        { "sold": 600, "real": 601, "pct": 100.2, "status": "over" },
-        { "sold": 1200, "real": 1320, "pct": 110, "status": "over" },
-        { "sold": 7, "real": 3, "pct": 42.9, "status": "ok" },
-        { "sold": null, "real": 120, "pct": null, "status": "none" },
-        { "sold": 0, "real": 120, "pct": null, "status": "none" }
+        {
+            "sold": 600,
+            "real": 0,
+            "pct": 0,
+            "status": "ok"
+        },
+        {
+            "sold": 600,
+            "real": 504,
+            "pct": 84,
+            "status": "ok"
+        },
+        {
+            "sold": 600,
+            "real": 509,
+            "pct": 84.8,
+            "status": "ok"
+        },
+        {
+            "sold": 600,
+            "real": 510,
+            "pct": 85,
+            "status": "risk"
+        },
+        {
+            "sold": 600,
+            "real": 540,
+            "pct": 90,
+            "status": "risk"
+        },
+        {
+            "sold": 600,
+            "real": 600,
+            "pct": 100,
+            "status": "risk"
+        },
+        {
+            "sold": 600,
+            "real": 601,
+            "pct": 100.2,
+            "status": "over"
+        },
+        {
+            "sold": 1200,
+            "real": 1320,
+            "pct": 110,
+            "status": "over"
+        },
+        {
+            "sold": 7,
+            "real": 3,
+            "pct": 42.9,
+            "status": "ok"
+        },
+        {
+            "sold": null,
+            "real": 120,
+            "pct": null,
+            "status": "none"
+        },
+        {
+            "sold": 0,
+            "real": 120,
+            "pct": null,
+            "status": "none"
+        }
+    ],
+    "_comment_hourly": "Por horas (D-411) no hay nada vendido ni porcentaje: con horas reales por encima de las facturadas, «unbilled» (pendiente de facturar, con la diferencia en minutos); con todo facturado, «billed»; sin horas ni facturas, «none». Lo comprueban SoldVsActual::hourlyStatus (Pest) y hourlyStatus (Vitest).",
+    "hourly_cases": [
+        {
+            "invoiced": 60,
+            "real": 934,
+            "status": "unbilled",
+            "unbilled": 874
+        },
+        {
+            "invoiced": 0,
+            "real": 120,
+            "status": "unbilled",
+            "unbilled": 120
+        },
+        {
+            "invoiced": 600,
+            "real": 600,
+            "status": "billed",
+            "unbilled": 0
+        },
+        {
+            "invoiced": 900,
+            "real": 600,
+            "status": "billed",
+            "unbilled": 0
+        },
+        {
+            "invoiced": 120,
+            "real": 0,
+            "status": "billed",
+            "unbilled": 0
+        },
+        {
+            "invoiced": 0,
+            "real": 0,
+            "status": "none",
+            "unbilled": 0
+        }
     ]
 }
