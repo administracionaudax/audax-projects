@@ -307,8 +307,9 @@ it('con el módulo apagado, las URL antiguas de Facturación no dicen nada (404)
 it('las horas para facturar no dependen del módulo, pero sí de las exclusiones de Facturación (D-402 y D-247)', function () {
     enableBilling(false);
 
+    // Sin cliente, la lista de clientes por facturar (I10), en horas: sin el módulo no hay importes.
     $this->actingAs($this->finance)->get('/facturacion/por-facturar')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('billing/hours'));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/unbilled')->where('report.financials', false));
     $this->actingAs($this->admin)->get('/facturacion/por-facturar?cliente[]='.$this->clientCompany->id.'&formato=csv')->assertOk();
     $this->actingAs($this->employee)->get('/facturacion/por-facturar')->assertForbidden();
     $this->actingAs($this->finance)->get('/facturacion/ventas')->assertNotFound();

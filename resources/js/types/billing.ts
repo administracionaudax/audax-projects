@@ -330,3 +330,31 @@ export type InvoicingReportPageProps = {
     report: InvoicingReport;
     report_request: ReportRequestData;
 };
+
+/** Un cliente con algo por facturar (App\Domain\Billing\UnbilledReport, I10, D-412). */
+export type UnbilledClient = {
+    client: { id: number; name: string; is_active: boolean };
+    /** Horas sin facturar: las de los proyectos por horas y los excesos de bolsa. */
+    minutes: number;
+    /** Horas facturables aún sin aprobar (no cuentan en `minutes`). */
+    pending_minutes: number;
+    /** Importe sin IVA; null sin view-billing. */
+    amount: string | null;
+    /** Fecha (AAAA-MM-DD) de lo más antiguo sin facturar. */
+    oldest: string | null;
+    /** De dónde sale: proyectos por horas y bolsas con exceso, bolsas sin factura y meses de fee sin factura. */
+    sources: { hours: number; overage: number; banks: number; fees: number };
+};
+
+export type UnbilledReportData = {
+    clients: UnbilledClient[];
+    totals: {
+        clients: number;
+        minutes: number;
+        pending_minutes: number;
+        amount: string | null;
+    };
+    financials: boolean;
+    from: string;
+    to: string;
+};

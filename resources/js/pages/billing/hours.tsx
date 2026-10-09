@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, Clock, FileWarning, Receipt, SearchX } from 'lucide-react';
+import {
+    ArrowLeft,
+    Building2,
+    Clock,
+    FileWarning,
+    Receipt,
+    SearchX,
+} from 'lucide-react';
 import { useId } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
 import { EmptyState } from '@/components/empty-state';
@@ -13,6 +20,7 @@ import type { R2BillingProps } from '@/components/reports/r2-types';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { FOCUS_RING } from '@/lib/focus-ring';
 import {
     Select,
     SelectContent,
@@ -41,9 +49,9 @@ const FILTERS: ReportFilterKey[] = [
 ];
 
 /**
- * Por facturar (D-405; antes «Horas para facturar», SPEC §10 «Exportación», D-045; en Facturación
- * desde D-401). Hasta que llegue la lista de clientes pendientes (I10), un cliente y un periodo,
- * con el resumen por proyecto y bolsa (dentro de la bolsa y exceso por separado, pendientes de
+ * Por facturar, el detalle de un cliente (D-405 y D-412; antes «Horas para facturar», SPEC §10
+ * «Exportación», D-045; en Facturación desde D-401). Sin cliente, la página es la lista de clientes
+ * pendientes (billing/unbilled, I10). Un cliente y un periodo, con el resumen por proyecto y bolsa (dentro de la bolsa y exceso por separado, pendientes de
  * aprobar y, con view-financials, tarifas e importes) y la descarga del detalle de cada entrada.
  */
 export default function BillingReport({
@@ -85,7 +93,33 @@ export default function BillingReport({
             <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-6">
                 <BillingHeader
                     current="por-facturar"
-                    title={t('billing.nav.unbilled')}
+                    title={client ? client.name : t('billing.nav.unbilled')}
+                    kicker={
+                        <Link
+                            href={billingHours.url({
+                                query: Object.fromEntries(
+                                    Object.entries(filters.query).filter(
+                                        ([key]) =>
+                                            ![
+                                                'cliente',
+                                                'proyecto',
+                                                'bolsa',
+                                                'persona',
+                                                'facturable',
+                                            ].includes(key),
+                                    ),
+                                ),
+                            })}
+                            className={cn(
+                                'inline-flex items-center gap-1 rounded-md hover:text-foreground',
+                                FOCUS_RING,
+                            )}
+                            data-test="unbilled-back"
+                        >
+                            <ArrowLeft aria-hidden="true" className="size-4" />
+                            {t('billing.unbilled.back')}
+                        </Link>
+                    }
                     description={t('billing.unbilled.description')}
                     actions={
                         client ? (
