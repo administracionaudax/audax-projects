@@ -361,6 +361,7 @@ return [
             'forecast' => 'Previsión',
             'people' => 'Personas (registro de jornada)',
             'billing' => 'Facturación (lectura de Holded)',
+            'invoicing' => 'Emisión de facturas',
         ],
     ],
     // Tipos de proyecto de WeeklySync (10.4, ProjectKindCode): por prefijo del código y por grupo.

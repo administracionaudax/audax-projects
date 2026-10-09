@@ -16,6 +16,8 @@ enum Permission: string
     case ManageForecast = 'manage-forecast';
     /** RR. HH. (Fase 11, D-330): la jornada de toda la plantilla, sus correcciones y los datos laborales. */
     case ManagePeople = 'manage-people';
+    /** Emisión propia (PLAN-EMISION, E1; D-418): emitir, anular y rectificar facturas. Admins por defecto. */
+    case ManageBilling = 'manage-billing';
 
     public function label(): string
     {
@@ -26,6 +28,7 @@ enum Permission: string
             self::ManageWeeklies => 'Gestionar las weeklies',
             self::ManageForecast => 'Gestionar la previsión',
             self::ManagePeople => 'Gestionar RR. HH.',
+            self::ManageBilling => 'Emitir facturas',
         };
     }
 

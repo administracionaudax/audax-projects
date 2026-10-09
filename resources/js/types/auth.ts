@@ -66,6 +66,10 @@ export type Abilities = {
     viewBilling?: boolean;
     viewSoldVsActual?: boolean;
     syncHolded?: boolean;
+    /** Emisión propia (D-417 y D-418): preparar borradores, emitir y anular el registro (admins). */
+    useInvoicing?: boolean;
+    manageBilling?: boolean;
+    voidInvoices?: boolean;
     /** Horas para facturar (D-045 y D-402): admins y view-financials, sin depender del módulo. */
     exportBillingHours?: boolean;
 };

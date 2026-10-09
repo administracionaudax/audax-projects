@@ -24,6 +24,8 @@ enum AppModule: string
     case People = 'people';
     /** Facturación (Fase 12, D-380): lectura de Holded y «Vendido frente a real»; apagado por defecto. */
     case Billing = 'billing';
+    /** Emisión propia de facturas (PLAN-EMISION, E1; D-417): depende de `billing`; apagado por defecto. */
+    case Invoicing = 'invoicing';
 
     public function label(): string
     {

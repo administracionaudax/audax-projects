@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\Absences\LeaveCalendar;
 use App\Domain\Billing\BillingAccess;
+use App\Domain\Billing\Issuing\InvoicingAccess;
 use App\Domain\DayPlan\DayPlanAccess;
 use App\Domain\Forecast\ForecastAccess;
 use App\Domain\People\PeopleAccess;
@@ -53,6 +54,9 @@ class AppServiceProvider extends ServiceProvider
         'view-billing',
         'view-sold-vs-actual',
         'sync-holded',
+        'use-invoicing',
+        'manage-billing',
+        'void-invoices',
     ];
 
     /**
@@ -141,6 +145,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-billing', fn (User $user): bool => BillingAccess::viewsBilling($user));
         Gate::define('view-sold-vs-actual', fn (User $user): bool => BillingAccess::viewsSoldVsActual($user));
         Gate::define('sync-holded', fn (User $user): bool => BillingAccess::syncs($user));
+
+        // Emisión propia (PLAN-EMISION E1; D-417 y D-418), detrás de los módulos billing e invoicing:
+        // preparar borradores (view-billing), emitir, anular y rectificar (permiso manage-billing, que
+        // aquí se redefine para exigir además el módulo) y anular el registro (admins). InvoicingAccess.
+        Gate::define('use-invoicing', fn (User $user): bool => InvoicingAccess::uses($user));
+        Gate::define('manage-billing', fn (User $user): bool => InvoicingAccess::manages($user));
+        Gate::define('void-invoices', fn (User $user): bool => InvoicingAccess::voids($user));
 
         // Contenido del centro de ayuda (F-158): quien gestiona la Weekly (D-147).
         Gate::define('manage-help', fn (User $user): bool => $user->checkPermissionTo(Permission::ManageWeeklies->value));
