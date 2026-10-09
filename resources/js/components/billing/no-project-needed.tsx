@@ -82,10 +82,12 @@ export function MarkNoProjectButton({
                 aria-label={t('billing.no_project.action_for', {
                     invoice: label,
                 })}
+                title={compact ? t('billing.no_project.action') : undefined}
+                className="whitespace-nowrap"
                 data-test="no-project-mark"
             >
                 <CircleSlash aria-hidden="true" />
-                <span className={compact ? 'sm:sr-only lg:not-sr-only' : ''}>
+                <span className={compact ? 'sm:sr-only 2xl:not-sr-only' : ''}>
                     {t('billing.no_project.action')}
                 </span>
             </Button>

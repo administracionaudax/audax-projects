@@ -98,10 +98,12 @@ export function CreateClientButton({
                 aria-label={t('billing.create_client.action_for', {
                     contact: contact.name,
                 })}
+                title={compact ? t('billing.create_client.action') : undefined}
+                className="whitespace-nowrap"
                 data-test="create-client"
             >
                 <UserRoundPlus aria-hidden="true" />
-                <span className={compact ? 'sm:sr-only lg:not-sr-only' : ''}>
+                <span className={compact ? 'sm:sr-only 2xl:not-sr-only' : ''}>
                     {t('billing.create_client.action')}
                 </span>
             </Button>

@@ -460,6 +460,7 @@ function ContactActions({
                         contact: row.name,
                         client: row.proposal.client.name,
                     })}
+                    className="whitespace-nowrap"
                     data-test="review-accept"
                 >
                     <Check aria-hidden="true" />
@@ -500,7 +501,7 @@ function ContactActions({
                 data-test="review-ignore"
             >
                 <Ban aria-hidden="true" />
-                <span className="sm:sr-only lg:not-sr-only">
+                <span className="sm:sr-only 2xl:not-sr-only">
                     {t('billing.contacts.ignore')}
                 </span>
             </Button>
@@ -816,6 +817,7 @@ function InvoiceActions({
                             invoice: label,
                             project: row.proposal.project.code,
                         })}
+                        className="whitespace-nowrap"
                         data-test="review-accept"
                     >
                         <Check aria-hidden="true" />
@@ -831,6 +833,7 @@ function InvoiceActions({
                             invoice: label,
                         })}
                         title={t('billing.review.reject_hint')}
+                        className="whitespace-nowrap"
                         data-test="review-reject"
                     >
                         <Ban aria-hidden="true" />
