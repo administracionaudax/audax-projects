@@ -17,31 +17,42 @@ use App\Models\HoldedInvoice;
 use App\Models\HoldedInvoiceLink;
 use App\Models\HourBank;
 use App\Models\Project;
+use App\Models\TimeEntry;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
  * «Por facturar» por cliente (I10, D-412), como el informe de lo no facturado de Harvest: lo que se
- * ha trabajado o vendido en un periodo y aún no se ha facturado. Cuatro fuentes:
+ * ha trabajado o vendido en un periodo y aún no se ha facturado. Cinco fuentes:
  *
  * | Fuente | Horas | Importe (con view-billing) | Fecha más antigua |
  * |---|---|---|---|
  * | Proyectos por horas | aprobadas y facturables − las de las líneas de horas de sus facturas del periodo (D-396) | su valor a la tarifa congelada (RevenueCalculator) − lo facturado del periodo | la primera entrada |
- * | Excesos de bolsa | exceso del periodo − lo facturado de más en la bolsa | a la tarifa de la bolsa, el proyecto o el cliente | la primera entrada con exceso |
+ * | Excesos de bolsa sin bolsa siguiente (D-433) | el exceso del periodo | a la tarifa de la bolsa, el proyecto o el cliente | la primera entrada con exceso |
  * | Bolsas vendidas sin factura | — | su precio | su inicio |
  * | Fees del periodo sin factura | — | el importe al mes de cada mes ya empezado sin factura | el primer mes |
+ * | Precios cerrados (D-432) | — (las aprobadas, como contexto) | el precio − lo facturado y enlazado (emitidas − rectificativas) | su inicio |
+ *
+ * El exceso de una bolsa **renovada** (otra bolsa tiene `renewed_from_id` igual a ella) se factura
+ * con la siguiente (el propietario, 09/10): no es pendiente y sale en el detalle como «Pasado a la
+ * bolsa siguiente», sin importe (D-433, cambia D-412).
  *
  * Es la lectura de «Pendiente de facturar» de SoldVsActual (lo vendido o el valor de las horas menos
  * lo facturado), pero por cliente y sin contar lo que aún no ha llegado (meses futuros de un fee).
  * Sin view-billing (el módulo apagado, D-402) no se mira Holded: solo horas (las facturables
- * aprobadas del periodo y los excesos), sin un solo importe.
+ * aprobadas del periodo y los excesos), sin un solo importe ni precios cerrados.
+ *
+ * Además de los totales por cliente, cada fuente deja sus líneas (por proyecto o bolsa) para el
+ * detalle de un cliente (detail()).
  *
  * Las horas salen de ReportScope::entries() (D-044): quien no es admin solo cuenta las que ve. Todo
  * agregado en SQL con un número fijo de consultas (tests/Feature/Performance).
  *
- * @phpstan-type UnbilledClient array{client: array{id: int, name: string, is_active: bool}, minutes: int, pending_minutes: int, amount: string|null, oldest: string|null, sources: array{hours: int, overage: int, banks: int, fees: int}}
+ * @phpstan-type UnbilledSources array{hours: int, overage: int, banks: int, fees: int, fixed: int}
+ * @phpstan-type UnbilledClient array{client: array{id: int, name: string, is_active: bool}, minutes: int, pending_minutes: int, amount: string|null, oldest: string|null, sources: UnbilledSources}
  * @phpstan-type UnbilledData array{clients: list<UnbilledClient>, totals: array{clients: int, minutes: int, pending_minutes: int, amount: string|null}, financials: bool, from: string, to: string}
+ * @phpstan-type UnbilledLine array{source: 'hours'|'overage'|'carried'|'banks'|'fees'|'fixed', project: array{id: int, code: string, name: string}, bank: array{id: int, name: string}|null, minutes: int, pending_minutes: int, amount: string|null, oldest: string|null, months: int|null, next_bank: array{id: int, name: string}|null, fixed: array{price: string, invoiced: string, real_minutes: int, budget_minutes: int|null, consumption_pct: float|null}|null}
  */
 final class UnbilledReport
 {
@@ -49,8 +60,14 @@ final class UnbilledReport
 
     private const array PENDING = [TimeEntryStatus::Draft->value, TimeEntryStatus::Submitted->value];
 
-    /** @var array<int, array{minutes: int, pending_minutes: int, amount: string, oldest: string|null, sources: array{hours: int, overage: int, banks: int, fees: int}}> */
+    /** Días que un precio cerrado acabado sigue en «Por facturar» (D-432): «cerrado recientemente». */
+    public const int RECENT_DAYS = 90;
+
+    /** @var array<int, array{minutes: int, pending_minutes: int, amount: string, oldest: string|null, sources: UnbilledSources}> */
     private array $rows = [];
+
+    /** @var array<int, list<UnbilledLine>> cliente → sus líneas */
+    private array $lines = [];
 
     public function __construct(private readonly RevenueCalculator $revenue) {}
 
@@ -61,6 +78,7 @@ final class UnbilledReport
     {
         $today ??= LocalTime::today();
         $this->rows = [];
+        $this->lines = [];
         $from = $scope->filters->from->startOfDay();
         $to = $scope->filters->to->startOfDay();
 
@@ -69,6 +87,7 @@ final class UnbilledReport
         if ($financials) {
             $this->soldBanks($scope, $from, $to->min($today));
             $this->fees($scope, $from, $to->min($today));
+            $this->fixedPrice($scope, $to, $today);
         }
 
         $clients = Client::query()->withTrashed()->whereIn('id', array_keys($this->rows))->orderBy('id')->get(['id', 'name', 'is_active'])->keyBy('id');
@@ -110,6 +129,32 @@ final class UnbilledReport
     }
 
     /**
+     * El detalle de un cliente (D-432 y D-433): una línea por proyecto por horas, exceso de bolsa
+     * (pendiente o pasado a la bolsa siguiente), bolsa sin factura, fee y precio cerrado, con los
+     * totales de lo pendiente (las líneas «Pasado a la bolsa siguiente» no suman).
+     *
+     * @return array{lines: list<UnbilledLine>, totals: array{minutes: int, pending_minutes: int, amount: string|null}, financials: bool}
+     */
+    public function detail(ReportScope $scope, bool $financials, int $clientId, ?CarbonImmutable $today = null): array
+    {
+        $this->report($scope, $financials, $today);
+        $row = $this->rows[$clientId] ?? null;
+        $order = ['hours' => 0, 'fixed' => 1, 'fees' => 2, 'banks' => 3, 'overage' => 4, 'carried' => 5];
+        $lines = $this->lines[$clientId] ?? [];
+        usort($lines, fn (array $a, array $b): int => [$order[$a['source']], $a['project']['code'], $a['bank']['name'] ?? ''] <=> [$order[$b['source']], $b['project']['code'], $b['bank']['name'] ?? '']);
+
+        return [
+            'lines' => $lines,
+            'totals' => [
+                'minutes' => $row['minutes'] ?? 0,
+                'pending_minutes' => $row['pending_minutes'] ?? 0,
+                'amount' => $financials ? Money::round($row['amount'] ?? '0') : null,
+            ],
+            'financials' => $financials,
+        ];
+    }
+
+    /**
      * Proyectos por horas: horas facturables aprobadas del periodo menos las facturadas en él.
      */
     private function hourly(ReportScope $scope, bool $financials, CarbonImmutable $from, CarbonImmutable $to): void
@@ -131,7 +176,7 @@ final class UnbilledReport
         }
 
         $ids = $rows->pluck('project_id')->map(fn (mixed $id): int => (int) $id)->all();
-        $clientOf = Project::query()->withTrashed()->whereIn('id', $ids)->pluck('client_id', 'id')->map(fn (mixed $id): int => (int) $id);
+        $projects = Project::query()->withTrashed()->whereIn('id', $ids)->orderBy('id')->get(['id', 'client_id', 'code', 'name'])->keyBy('id');
         $income = [];
         if ($financials) {
             foreach ($this->revenue->exact($entries()->whereIn('time_entries.status', self::REAL), Dimension::Project)['groups'] as $key => $group) {
@@ -142,8 +187,10 @@ final class UnbilledReport
 
         foreach ($rows as $row) {
             $projectId = (int) $row->project_id;
-            $clientId = $clientOf[$projectId] ?? null;
-            if ($clientId === null) {
+            /** @var Project|null $project */
+            $project = $projects->get($projectId);
+            $clientId = $project?->client_id;
+            if ($project === null || $clientId === null) {
                 continue;
             }
             $billed = $invoiced[$projectId] ?? ['minutes' => 0, 'amount' => '0'];
@@ -155,12 +202,20 @@ final class UnbilledReport
                 continue;
             }
 
-            $this->add($clientId, $minutes, $pending, $amount, $minutes > 0 || bccomp($amount, '0', 2) > 0 ? self::date($row->oldest) : null, 'hours', $minutes > 0 ? 1 : 0);
+            $oldest = $minutes > 0 || bccomp($amount, '0', 2) > 0 ? self::date($row->oldest) : null;
+            $this->add($clientId, $minutes, $pending, $amount, $oldest, 'hours', $minutes > 0 ? 1 : 0);
+            $this->line($clientId, 'hours', $project, null, $minutes, $pending, $financials ? Money::round($amount) : null, $oldest);
         }
     }
 
     /**
-     * Excesos de bolsa del periodo, menos lo que la bolsa ya ha facturado por encima de lo vendido.
+     * Excesos de bolsa del periodo (D-433, cambia D-412): «si nos pasamos, lo facturamos en la bolsa
+     * siguiente» (el propietario, 09/10).
+     * - Bolsa renovada (otra bolsa tiene `renewed_from_id` igual a ella): el exceso pasa a la
+     *   siguiente. No es pendiente; en el detalle, «Pasado a la bolsa siguiente», sin importe.
+     * - Sin bolsa siguiente (la activa): sí es pendiente, todo el exceso del periodo, valorado a la
+     *   tarifa de la bolsa, el proyecto o el cliente («Se facturará con la próxima bolsa»).
+     * Ya no se descuenta lo que la bolsa haya facturado por encima de lo vendido.
      */
     private function overage(ReportScope $scope, bool $financials): void
     {
@@ -177,28 +232,36 @@ final class UnbilledReport
             return;
         }
 
-        $banks = HourBank::query()->withTrashed()->whereIn('id', $rows->pluck('bank_id')->map(fn (mixed $id): int => (int) $id)->all())
-            ->with(['project' => fn ($q) => $q->withTrashed()->select(['id', 'client_id', 'hourly_rate']), 'project.client' => fn ($q) => $q->withTrashed()->select(['id', 'default_hourly_rate'])])
-            ->orderBy('id')->get(['id', 'project_id', 'total_minutes', 'hourly_rate'])->keyBy('id');
-        // Lo facturado de cada bolsa en toda su vida (las horas de sus líneas, D-396).
-        $invoiced = $financials ? $this->invoiced(HoldedInvoiceLink::query()->whereIn('hour_bank_id', $banks->keys()->all()), 'hour_bank_id', null, null) : [];
+        $ids = $rows->pluck('bank_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $banks = HourBank::query()->withTrashed()->whereIn('id', $ids)
+            ->with(['project' => fn ($q) => $q->withTrashed()->select(['id', 'client_id', 'code', 'name', 'hourly_rate']), 'project.client' => fn ($q) => $q->withTrashed()->select(['id', 'default_hourly_rate'])])
+            ->orderBy('id')->get(['id', 'project_id', 'name', 'total_minutes', 'hourly_rate'])->keyBy('id');
+        // La bolsa siguiente de cada una (la renovación), si la hay.
+        $next = HourBank::query()->whereIn('renewed_from_id', $ids)->orderBy('start_date')->orderBy('id')
+            ->get(['id', 'name', 'renewed_from_id'])->keyBy('renewed_from_id');
 
         foreach ($rows as $row) {
             /** @var HourBank|null $bank */
             $bank = $banks->get((int) $row->bank_id);
             $clientId = $bank?->project->client_id;
-            if ($bank === null || $clientId === null) {
+            $minutes = (int) $row->overage;
+            if ($bank === null || $clientId === null || $minutes <= 0) {
                 continue;
             }
-            $billedExtra = max(0, ($invoiced[$bank->id]['minutes'] ?? 0) - $bank->total_minutes);
-            $minutes = max(0, (int) $row->overage - $billedExtra);
-            if ($minutes <= 0) {
+
+            /** @var HourBank|null $successor */
+            $successor = $next->get($bank->id);
+            if ($successor !== null) {
+                $this->line($clientId, 'carried', $bank->project, $bank, $minutes, 0, null, self::date($row->oldest), nextBank: ['id' => $successor->id, 'name' => $successor->name]);
+
                 continue;
             }
+
             $rate = $this->revenue->rate($bank, $bank->project, $bank->project->client, null);
             $amount = $financials && $rate !== null ? Money::forMinutes($minutes, $rate) : '0';
 
             $this->add($clientId, $minutes, 0, $amount, self::date($row->oldest), 'overage', 1);
+            $this->line($clientId, 'overage', $bank->project, $bank, $minutes, 0, $financials ? Money::round($amount) : null, self::date($row->oldest));
         }
     }
 
@@ -224,10 +287,14 @@ final class UnbilledReport
                 ->whereColumn('holded_invoice_links.hour_bank_id', 'hour_banks.id')
                 ->where('holded_invoices.collection_status', '!=', CollectionStatus::Cancelled->value))
             ->orderBy('hour_banks.start_date')->orderBy('hour_banks.id')
-            ->get(['hour_banks.id', 'hour_banks.price_amount', 'hour_banks.start_date', 'projects.client_id as bank_client_id']);
+            ->get(['hour_banks.id', 'hour_banks.name', 'hour_banks.price_amount', 'hour_banks.start_date', 'projects.client_id as bank_client_id',
+                'projects.id as bank_project_id', 'projects.code as bank_project_code', 'projects.name as bank_project_name']);
 
         foreach ($banks as $bank) {
-            $this->add((int) $bank->getAttribute('bank_client_id'), 0, 0, (string) $bank->price_amount, $bank->start_date->toDateString(), 'banks', 1);
+            $clientId = (int) $bank->getAttribute('bank_client_id');
+            $this->add($clientId, 0, 0, (string) $bank->price_amount, $bank->start_date->toDateString(), 'banks', 1);
+            $this->line($clientId, 'banks', ['id' => (int) $bank->getAttribute('bank_project_id'), 'code' => (string) $bank->getAttribute('bank_project_code'), 'name' => (string) $bank->getAttribute('bank_project_name')],
+                $bank, 0, 0, Money::round((string) $bank->price_amount), $bank->start_date->toDateString());
         }
     }
 
@@ -250,7 +317,7 @@ final class UnbilledReport
             ->where(fn (Builder $q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $to->toDateString()))
             ->where(fn (Builder $q) => $q->whereNull('due_date')->orWhere('due_date', '>=', $from->toDateString()))
             ->orderBy('id')
-            ->get(['id', 'client_id', 'start_date', 'due_date', 'monthly_fee_amount']);
+            ->get(['id', 'client_id', 'code', 'name', 'start_date', 'due_date', 'monthly_fee_amount']);
 
         if ($projects->isEmpty()) {
             return;
@@ -288,6 +355,74 @@ final class UnbilledReport
 
             $amount = Money::mul((string) $project->monthly_fee_amount, (string) count($missing));
             $this->add($project->client_id, 0, 0, $amount, $missing[0]->toDateString(), 'fees', count($missing));
+            $this->line($project->client_id, 'fees', $project, null, 0, 0, Money::round($amount), $missing[0]->toDateString(), months: count($missing));
+        }
+    }
+
+    /**
+     * Precios cerrados (D-432): el precio menos lo facturado y enlazado al proyecto (facturas
+     * emitidas menos rectificativas, sin borradores, D-397), de los proyectos activos o en pausa y
+     * de los acabados hace poco (su fecha de fin o su última hora aprobada en los últimos
+     * RECENT_DAYS días). Solo con importe pendiente. Es lo vendido entero, a hoy (no depende del
+     * periodo, salvo que el proyecto empiece después). Las horas aprobadas de toda la plantilla y, con
+     * presupuesto de horas, el % consumido van como contexto: no suman a las horas sin facturar.
+     */
+    private function fixedPrice(ReportScope $scope, CarbonImmutable $to, CarbonImmutable $today): void
+    {
+        $recent = $today->subDays(self::RECENT_DAYS)->toDateString();
+
+        $projects = Project::query()
+            ->where('billing_type', BillingType::FixedPrice->value)
+            ->whereNotNull('client_id')
+            ->whereNotNull('fixed_price_amount')
+            ->where('fixed_price_amount', '>', 0)
+            ->when($scope->filters->clientIds !== [], fn (Builder $q) => $q->whereIn('client_id', $scope->filters->clientIds))
+            ->when($scope->filters->projectIds !== [], fn (Builder $q) => $q->whereIn('id', $scope->filters->projectIds))
+            ->where(fn (Builder $q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $to->toDateString()))
+            ->where(fn (Builder $q) => $q->whereIn('status', [ProjectStatus::Active->value, ProjectStatus::OnHold->value])
+                ->orWhere(fn (Builder $done) => $done->where('status', ProjectStatus::Completed->value)
+                    ->where(fn (Builder $when) => $when->where('due_date', '>=', $recent)
+                        ->orWhereExists(fn ($entries) => $entries->selectRaw('1')->from('time_entries')
+                            ->whereColumn('time_entries.project_id', 'projects.id')
+                            ->whereIn('time_entries.status', self::REAL)
+                            ->where('time_entries.date', '>=', $recent)))))
+            ->orderBy('id')
+            ->get(['id', 'client_id', 'code', 'name', 'start_date', 'created_at', 'fixed_price_amount', 'budget_minutes']);
+
+        if ($projects->isEmpty()) {
+            return;
+        }
+
+        $ids = $projects->modelKeys();
+        $invoiced = $this->invoiced(HoldedInvoiceLink::query()->whereIn('project_id', $ids), 'project_id', null, null);
+        $hours = TimeEntry::query()->toBase()
+            ->whereIn('project_id', $ids)
+            ->whereIn('status', self::REAL)
+            ->selectRaw('project_id, SUM(minutes) as real_minutes')
+            ->groupBy('project_id')
+            ->orderBy('project_id')
+            ->pluck('real_minutes', 'project_id');
+
+        foreach ($projects as $project) {
+            $price = Money::round((string) $project->fixed_price_amount);
+            $billed = Money::round($invoiced[$project->id]['amount'] ?? '0');
+            $pending = Money::round(Money::sub($price, $billed));
+            if ($project->client_id === null || bccomp($pending, '0', 2) <= 0) {
+                continue;
+            }
+
+            $real = (int) ($hours[$project->id] ?? 0);
+            $budget = $project->budget_minutes !== null && $project->budget_minutes > 0 ? $project->budget_minutes : null;
+            $oldest = ($project->start_date ?? $project->created_at)?->toDateString();
+
+            $this->add($project->client_id, 0, 0, $pending, $oldest, 'fixed', 1);
+            $this->line($project->client_id, 'fixed', $project, null, 0, 0, $pending, $oldest, fixed: [
+                'price' => $price,
+                'invoiced' => $billed,
+                'real_minutes' => $real,
+                'budget_minutes' => $budget,
+                'consumption_pct' => $budget === null ? null : round($real / $budget * 100, 1),
+            ]);
         }
     }
 
@@ -330,11 +465,11 @@ final class UnbilledReport
     }
 
     /**
-     * @param  'hours'|'overage'|'banks'|'fees'  $source
+     * @param  'hours'|'overage'|'banks'|'fees'|'fixed'  $source
      */
     private function add(int $clientId, int $minutes, int $pending, string $amount, ?string $date, string $source, int $count): void
     {
-        $row = $this->rows[$clientId] ?? ['minutes' => 0, 'pending_minutes' => 0, 'amount' => '0', 'oldest' => null, 'sources' => ['hours' => 0, 'overage' => 0, 'banks' => 0, 'fees' => 0]];
+        $row = $this->rows[$clientId] ?? ['minutes' => 0, 'pending_minutes' => 0, 'amount' => '0', 'oldest' => null, 'sources' => ['hours' => 0, 'overage' => 0, 'banks' => 0, 'fees' => 0, 'fixed' => 0]];
         $row['minutes'] += $minutes;
         $row['pending_minutes'] += $pending;
         $row['amount'] = Money::add($row['amount'], $amount);
@@ -344,6 +479,31 @@ final class UnbilledReport
         $row['sources'][$source] += $count;
 
         $this->rows[$clientId] = $row;
+    }
+
+    /**
+     * Una línea del detalle de un cliente.
+     *
+     * @param  'hours'|'overage'|'carried'|'banks'|'fees'|'fixed'  $source
+     * @param  Project|array{id: int, code: string, name: string}  $project
+     * @param  array{id: int, name: string}|null  $nextBank
+     * @param  array{price: string, invoiced: string, real_minutes: int, budget_minutes: int|null, consumption_pct: float|null}|null  $fixed
+     */
+    private function line(int $clientId, string $source, Project|array $project, ?HourBank $bank, int $minutes, int $pending, ?string $amount, ?string $oldest,
+        ?int $months = null, ?array $nextBank = null, ?array $fixed = null): void
+    {
+        $this->lines[$clientId][] = [
+            'source' => $source,
+            'project' => $project instanceof Project ? ['id' => $project->id, 'code' => $project->code, 'name' => $project->name] : $project,
+            'bank' => $bank === null ? null : ['id' => $bank->id, 'name' => $bank->name],
+            'minutes' => $minutes,
+            'pending_minutes' => $pending,
+            'amount' => $amount,
+            'oldest' => $oldest,
+            'months' => $months,
+            'next_bank' => $nextBank,
+            'fixed' => $fixed,
+        ];
     }
 
     /**

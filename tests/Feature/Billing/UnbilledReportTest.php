@@ -84,12 +84,12 @@ it('suma por cliente las horas sin facturar, los excesos, las bolsas sin factura
     // Acme: 10 h − 4 h facturadas = 6 h; 600 € de valor − 240 € = 360 €. La hora enviada, aparte.
     expect($row($this->acme))->toMatchArray([
         'minutes' => 360, 'pending_minutes' => 60, 'amount' => '360.00', 'oldest' => '2026-02-03',
-        'sources' => ['hours' => 1, 'overage' => 0, 'banks' => 0, 'fees' => 0],
+        'sources' => ['hours' => 1, 'overage' => 0, 'banks' => 0, 'fees' => 0, 'fixed' => 0],
     ]);
     // Zeta: 2 h de exceso a 50 € (100 €) + la bolsa de marzo (550 €) + febrero y marzo del fee (600 €).
     expect($row($this->zeta))->toMatchArray([
         'minutes' => 120, 'amount' => '1250.00', 'oldest' => '2026-02-01',
-        'sources' => ['hours' => 0, 'overage' => 1, 'banks' => 1, 'fees' => 2],
+        'sources' => ['hours' => 0, 'overage' => 1, 'banks' => 1, 'fees' => 2, 'fixed' => 0],
     ]);
     // Quien lo tiene todo facturado no sale.
     expect($row($this->quiet))->toBeNull()
@@ -98,7 +98,7 @@ it('suma por cliente las horas sin facturar, los excesos, las bolsas sin factura
         ->and($report['totals'])->toBe(['clients' => 2, 'minutes' => 480, 'pending_minutes' => 60, 'amount' => '1610.00']);
 });
 
-it('una bolsa con su factura de exceso ya no lo cuenta y los meses futuros de un fee no cuentan', function () {
+it('el exceso de una bolsa sin bolsa siguiente sigue pendiente aunque haya facturado de más (D-433) y los meses futuros de un fee no cuentan', function () {
     $extra = HoldedInvoice::query()->create([
         'holded_id' => 'h-x', 'kind' => HoldedDocumentKind::Invoice, 'number' => 'F260020', 'issued_on' => '2026-03-01',
         'subtotal' => '100.00', 'tax_total' => '0.00', 'total' => '100.00', 'paid_total' => '0.00', 'pending_total' => '100.00', 'collection_status' => CollectionStatus::Unpaid,
@@ -108,8 +108,8 @@ it('una bolsa con su factura de exceso ya no lo cuenta y los meses futuros de un
 
     $zeta = collect(($this->report)()['clients'])->firstWhere('client.id', $this->zeta->id);
 
-    // Sin exceso; abril a diciembre del fee aún no han empezado.
-    expect($zeta)->toMatchArray(['minutes' => 0, 'amount' => '1150.00', 'sources' => ['hours' => 0, 'overage' => 0, 'banks' => 1, 'fees' => 2]]);
+    // Ya no se descuenta lo facturado de más (cambia D-412); abril a diciembre del fee aún no han empezado.
+    expect($zeta)->toMatchArray(['minutes' => 120, 'amount' => '1250.00', 'sources' => ['hours' => 0, 'overage' => 1, 'banks' => 1, 'fees' => 2, 'fixed' => 0]]);
 });
 
 it('sin view-billing solo horas: sin importes, sin bolsas ni fees y sin descontar lo facturado en Holded', function () {
@@ -119,7 +119,7 @@ it('sin view-billing solo horas: sin importes, sin bolsas ni fees y sin desconta
         ->and($report['totals']['amount'])->toBeNull()
         ->and(collect($report['clients'])->pluck('amount')->filter()->all())->toBe([])
         ->and(collect($report['clients'])->firstWhere('client.id', $this->acme->id)['minutes'])->toBe(600)
-        ->and(collect($report['clients'])->firstWhere('client.id', $this->zeta->id)['sources'])->toBe(['hours' => 0, 'overage' => 1, 'banks' => 0, 'fees' => 0])
+        ->and(collect($report['clients'])->firstWhere('client.id', $this->zeta->id)['sources'])->toBe(['hours' => 0, 'overage' => 1, 'banks' => 0, 'fees' => 0, 'fixed' => 0])
         ->and(collect($report['clients'])->firstWhere('client.id', $this->quiet->id)['minutes'])->toBe(120);
 });
 
