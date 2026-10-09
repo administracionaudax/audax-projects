@@ -2,6 +2,8 @@
 
 Fecha: 09/10/2026. Rama de referencia: `fase-10`. Es un documento de análisis y diseño: no hay código de la app.
 
+> **Estado (09/10/2026):** **E1 · Emitir facturas: hecha** (rama `emision-e1`, D-417 a D-429; lo construido, en `docs/PLAN-FASE-12.md` §12). E2 a E9, pendientes.
+
 Lo pide D-249 (el propietario decide emitir desde Audax Proyectos y dar de baja Holded) con su actualización del mismo día:
 - la emisión propia se construye ya, sin el envío a la AEAT, dando por hecho que se publicará el aplazamiento de VeriFactu a 2028;
 - desde la primera factura se cumple el Reglamento de facturación (RD 1619/2012) y se guarda un registro encadenado con huella, inalterable y preparado para VeriFactu;
@@ -49,7 +51,7 @@ Empieza el martes 13/10/2026 (el 12 es festivo). Las jornadas son de desarrollo;
 
 | Semana | Entrega | Qué queda hecho | Módulo |
 |---|---|---|---|
-| 13/10 – 23/10 | E1 · Emitir facturas | Catálogo, series, impuestos, editor, emitir con número y PDF, registro con huella, duplicar, descargar, anular y rectificar | `invoicing` en modo de prueba (solo admins), serie de pruebas |
+| 13/10 – 23/10 | E1 · Emitir facturas ✅ (D-417 a D-429) | Catálogo, series, impuestos, editor, emitir con número y PDF, registro con huella, duplicar, descargar, anular y rectificar | `invoicing` en modo de prueba (solo admins), serie de pruebas |
 | 26/10 – 6/11 | E2 · Cobrar, enviar y portal | Cobros (también parciales), por cobrar con antigüedad, envío por email con plantilla, enlace firmado, portal del cliente, recordatorios | Igual |
 | 9/11 – 20/11 | E3 · Recurrentes, programadas y facturar desde el trabajo | Recurrentes (y las 16 de Holded importadas en pausa), programadas, «Crear borrador» desde Por facturar con el bloqueo de horas | Igual |
 | 23/11 – 27/11 | E4 · Libros y gestoría | Libro de emitidas en el formato de la AEAT, exportaciones, rol Gestoría, cierre de periodo | Igual |
@@ -731,7 +733,7 @@ Cada entrega se despliega con su parte apagada: módulos nuevos `invoicing` (emi
 
 | Entrega | Contenido | Equivale a | Jornadas | Depende de |
 |---|---|---|---|---|
-| E1 · Emitir facturas | Catálogo (servicios de Holded), impuestos, formas de pago, series F, CN y PRU, instalaciones, ajustes del emisor ampliados; editor; emitir con número, copias, desglose, registro encadenado con *triggers* y PDF archivado; duplicar, descargar, anular y rectificar (D-244), anulación por error (admin); listado unificado con la vista `billing_documents`; `manage-billing`; matriz `DocumentActions`; `app:billing-verify-chain` | F2 y parte de F5 | 7 a 9 | Respuestas P-2, P-5, G-4 |
+| E1 · Emitir facturas ✅ (D-417 a D-429) | Catálogo (servicios de Holded), impuestos, formas de pago, series F, CN y PRU, instalaciones, ajustes del emisor ampliados; editor; emitir con número, copias, desglose, registro encadenado con *triggers* y PDF archivado; duplicar, descargar, anular y rectificar (D-244), anulación por error (admin); listado unificado con la vista `billing_documents`; `manage-billing`; matriz `DocumentActions`; `app:billing-verify-chain` | F2 y parte de F5 | 7 a 9 | Respuestas P-2, P-5, G-4 |
 | E2 · Cobrar, enviar y portal | Cobros y anulación de cobros, Por cobrar con antigüedad, plantillas de email, envío con PDF y enlace firmado, vistas por el cliente, recordatorios por escalones, portal del cliente, adjuntos, cadena de documentos, Resumen (I1) | F5 | 5 a 6 | P-4 (remitente) |
 | E3 · Recurrentes, programadas y facturar desde el trabajo | Recurrentes con palabras dinámicas y «Omitir», programadas, importación de las 16 de Holded en pausa, «Crear borrador» desde Por facturar, proyecto y bolsa, bloqueo de entradas concretas | F4 (sin Holded) y F5 | 6 a 7 | E1 |
 | E4 · Libros y gestoría | Libros de emitidas (y de recibidas cuando llegue E5) en el formato LSIJ, ZIP de PDF, resumen del IVA, envío programado, rol Gestoría con 2FA, cierre de periodo | F5 | 3 a 4 | G-1 |
@@ -745,7 +747,7 @@ Total hasta el corte (E1 a E6): de 29 a 37 jornadas, en las once semanas del cal
 
 Lo que no tiene entrega: presupuestos e hitos (L4), proformas, conciliación bancaria (L6), remesas SEPA, multimoneda, OCR propio y buzón de gastos.
 
-Decisiones que se registrarán en `docs/DECISIONES.md` al aprobar el plan (desde D-411): la arquitectura del registro y su verificación; las series y la instalación de pruebas; la matriz estado → acciones y `manage-billing`; el flujo de gastos y sus permisos; la vista `billing_documents`; el calendario con la regla del 21/12.
+Decisiones registradas en `docs/DECISIONES.md`: las de E1, D-417 a D-429 (arquitectura del registro y su verificación, series e instalación de pruebas, matriz estado → acciones y `manage-billing`, vista `billing_documents`). Quedan por registrar, con su entrega: el flujo de gastos y sus permisos (E5) y el calendario con la regla del 21/12.
 
 ---
 
