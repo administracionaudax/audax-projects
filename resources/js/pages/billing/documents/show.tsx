@@ -49,6 +49,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
@@ -446,7 +447,9 @@ function MoreActions({
     actions: string[];
     voidProblems: string[];
 }) {
-    const [confirming, setConfirming] = useState<'delete' | null>(null);
+    const [confirming, setConfirming] = useState<'delete' | 'void' | null>(
+        null,
+    );
     const [processing, setProcessing] = useState(false);
     const hasMenu =
         actions.includes('duplicate') ||
@@ -484,6 +487,19 @@ function MoreActions({
                             {t('invoicing.show.duplicate')}
                         </DropdownMenuItem>
                     ) : null}
+                    {actions.includes('void') ? (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onSelect={() => setConfirming('void')}
+                                className="text-danger"
+                                data-test="document-void"
+                            >
+                                <FileX2 aria-hidden="true" />
+                                {t('invoicing.show.void')}
+                            </DropdownMenuItem>
+                        </>
+                    ) : null}
                     {actions.includes('delete') ? (
                         <DropdownMenuItem
                             onSelect={() => setConfirming('delete')}
@@ -500,16 +516,8 @@ function MoreActions({
                 <VoidDialog
                     document={document}
                     problems={voidProblems}
-                    trigger={
-                        <Button
-                            variant="ghost"
-                            className="text-danger"
-                            data-test="document-void"
-                        >
-                            <FileX2 aria-hidden="true" />
-                            {t('invoicing.show.void')}
-                        </Button>
-                    }
+                    open={confirming === 'void'}
+                    onOpenChange={(open) => setConfirming(open ? 'void' : null)}
                 />
             ) : null}
             <ConfirmDialog
@@ -531,7 +539,7 @@ function MoreActions({
     );
 }
 
-/** Lo importante en grande: lo pendiente de el total (emitida) o el total (borrador). */
+/** Lo importante en grande: lo pendiente del total (emitida) o el total (borrador). */
 function AmountCard({ document }: { document: SalesDocumentDetail }) {
     const pending = Math.max(
         Number(document.total) - Number(document.paid_total),
@@ -632,8 +640,80 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function LinesTable({ document }: { document: SalesDocumentDetail }) {
     return (
+        <>
+            <LinesList document={document} />
+            <LinesGrid document={document} />
+        </>
+    );
+}
+
+/** En el móvil (por debajo de 768 px, D-415), cada línea en una fila sin desplazamiento lateral. */
+function LinesList({ document }: { document: SalesDocumentDetail }) {
+    return (
+        <ul
+            className="divide-y rounded-md border text-sm md:hidden"
+            aria-label={t('invoicing.show.lines')}
+            data-test="document-lines-list"
+        >
+            {document.lines.map((line) =>
+                line.kind === 'text' ? (
+                    <li
+                        key={line.id}
+                        className="px-3 py-2 whitespace-pre-line text-muted-foreground"
+                    >
+                        {line.description}
+                    </li>
+                ) : (
+                    <li key={line.id} className="grid gap-1 px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                            <span className="min-w-0">
+                                {line.name ?? line.description}
+                                {line.service_code ? (
+                                    <span className="text-xs text-muted-foreground">
+                                        {' '}
+                                        · {line.service_code}
+                                    </span>
+                                ) : null}
+                            </span>
+                            <span className="tabular shrink-0">
+                                {formatCurrency(line.line_base)}
+                            </span>
+                        </div>
+                        {line.name && line.description ? (
+                            <span className="text-xs whitespace-pre-line text-muted-foreground">
+                                {line.description}
+                            </span>
+                        ) : null}
+                        <span className="tabular text-xs text-muted-foreground">
+                            {[
+                                `${formatQuantity(line.quantity)} ${unitLabel(line.unit, line.quantity)} × ${formatCurrency(line.unit_price)}`,
+                                Number(line.discount_pct) === 0
+                                    ? null
+                                    : `${t('invoicing.show.discount')} ${formatQuantity(line.discount_pct)} %`,
+                                line.tax_rate === null
+                                    ? null
+                                    : taxLabel(
+                                          line.operation_type,
+                                          line.tax_rate,
+                                      ),
+                            ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                        </span>
+                    </li>
+                ),
+            )}
+        </ul>
+    );
+}
+
+function LinesGrid({ document }: { document: SalesDocumentDetail }) {
+    return (
         <div
-            className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
+            className={cn(
+                'overflow-x-auto rounded-md border max-md:hidden',
+                FOCUS_RING,
+            )}
             role="region"
             aria-label={t('invoicing.show.lines')}
             tabIndex={0}

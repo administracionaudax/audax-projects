@@ -40,7 +40,7 @@ function DialogShell({
     children,
     wide,
 }: {
-    trigger: ReactNode;
+    trigger?: ReactNode;
     title: string;
     description: string;
     open: boolean;
@@ -50,7 +50,7 @@ function DialogShell({
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogTrigger asChild>{trigger}</DialogTrigger>
+            {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
             <DialogContent className={wide ? 'sm:max-w-3xl' : undefined}>
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>{description}</DialogDescription>
@@ -586,17 +586,24 @@ export function RectifyDialog({
 }
 
 /** Anular el registro (V-03, solo admin): para una factura que no debió existir. */
+/** Sin `trigger`, la abre quien la contiene con `open` y `onOpenChange` (desde el menú «…»). */
 export function VoidDialog({
     document,
     problems,
     trigger,
+    open: controlled,
+    onOpenChange,
 }: {
     document: SalesDocumentDetail;
     problems: string[];
-    trigger: ReactNode;
+    trigger?: ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }) {
     const id = useId();
-    const [open, setOpen] = useState(false);
+    const [own, setOwn] = useState(false);
+    const open = controlled ?? own;
+    const setOpen = onOpenChange ?? setOwn;
     const form = useForm({ reason: '' });
 
     const submit = (event: FormEvent) => {

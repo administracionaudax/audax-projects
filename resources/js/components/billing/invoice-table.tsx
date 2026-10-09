@@ -562,9 +562,9 @@ function InvoiceCards({
     footerNote?: ReactNode;
 }) {
     return (
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2">
             <ul
-                className="grid gap-2"
+                className="grid min-w-0 grid-cols-1 gap-2"
                 aria-label={caption}
                 data-test="invoice-cards"
             >
@@ -576,7 +576,7 @@ function InvoiceCards({
                         <li
                             key={invoice.id}
                             className={cn(
-                                'grid gap-1.5 rounded-md border bg-card p-3 text-sm',
+                                'grid min-w-0 grid-cols-1 gap-1.5 rounded-md border bg-card p-3 text-sm',
                                 ROW_CLICK_CLASS,
                                 cancelled && 'text-muted-foreground',
                             )}

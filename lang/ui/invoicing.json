@@ -202,7 +202,7 @@
     "invoicing.show.notice_cancelled": "Anulada con la rectificativa :number del :date: ni ella ni su rectificativa cuentan como facturado.",
     "invoicing.show.notice_voided": "Anulada por error con un registro de anulación: :reason",
     "invoicing.show.notice_pdf": "Preparando el PDF: estará en unos segundos.",
-    "invoicing.show.notice_test": "Factura de prueba (serie PRU): no cuenta en informes, libros ni portal.",
+    "invoicing.show.notice_test": "De la serie de pruebas: no cuenta en informes, libros ni portal.",
     "invoicing.show.amounts": "Importes y fechas",
     "invoicing.show.pending": "Pendiente",
     "invoicing.show.total": "Total (con IVA)",
