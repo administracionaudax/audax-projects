@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ChevronRight, Clock, CircleCheck } from 'lucide-react';
 import { BillingHeader } from '@/components/billing/billing-header';
+import { FilterSheet } from '@/components/billing/filter-sheet';
 import { HelpTip } from '@/components/billing/help-tip';
 import { KpiGroup } from '@/components/billing/kpi-group';
 import { unbilledSources } from '@/components/billing/unbilled-sources';
@@ -56,12 +57,14 @@ export default function UnbilledClients({ filters, report, scope }: Props) {
                     description={t('billing.unbilled.list_description')}
                 />
 
-                <ReportFilterBar
-                    filters={filters}
-                    show={[]}
-                    url={url}
-                    compare={false}
-                />
+                <FilterSheet count={0}>
+                    <ReportFilterBar
+                        filters={filters}
+                        show={[]}
+                        url={url}
+                        compare={false}
+                    />
+                </FilterSheet>
 
                 {scope.team_only ? (
                     <R2ScopeNote>

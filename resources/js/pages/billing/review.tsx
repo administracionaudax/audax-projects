@@ -395,7 +395,7 @@ function ContactActions({
               });
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1 lg:flex-nowrap">
             {choosing ? (
                 <SearchableSelect
                     value={null}
@@ -522,7 +522,10 @@ function ContactList({
                             >
                                 {t('billing.review.col.contact')}
                             </th>
-                            <th scope="col" className="px-3 py-2 text-right">
+                            <th
+                                scope="col"
+                                className="px-3 py-2 text-right whitespace-nowrap"
+                            >
                                 {t('billing.review.col.invoiced')}
                             </th>
                             <th
@@ -733,7 +736,7 @@ function InvoiceActions({
     const label = row.number ?? t('billing.invoice.draft_number');
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1 lg:flex-nowrap">
             {choosing ? (
                 <SearchableSelect
                     value={null}
@@ -825,7 +828,10 @@ function InvoiceList({
                             >
                                 {t('billing.review.col.invoice')}
                             </th>
-                            <th scope="col" className="px-3 py-2 text-right">
+                            <th
+                                scope="col"
+                                className="px-3 py-2 text-right whitespace-nowrap"
+                            >
                                 {t('billing.invoice.subtotal_short')}
                             </th>
                             <th

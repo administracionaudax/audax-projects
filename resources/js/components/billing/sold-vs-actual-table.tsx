@@ -7,6 +7,7 @@ import { t } from '@/lib/i18n';
 import { tCount } from '@/lib/people';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { SoldVsActualTotals, SoldVsActualUnit } from '@/types';
 import { SaleStatusBadge } from './billing-badges';
 import { signedMinutes } from './sold-vs-actual-lib';
@@ -92,6 +93,19 @@ export function SoldVsActualTable({
 }) {
     // Sin importes hay sitio: el responsable y las horas sin aprobar llevan su columna.
     const wide = !financials;
+    const mobile = useIsMobile();
+
+    if (mobile) {
+        return (
+            <UnitCards
+                units={units}
+                totals={totals}
+                financials={financials}
+                caption={caption}
+                showClient={showClient}
+            />
+        );
+    }
 
     return (
         <div
@@ -394,6 +408,161 @@ export function SoldVsActualTable({
                     </tfoot>
                 ) : null}
             </table>
+        </div>
+    );
+}
+
+/** Una cifra con su rótulo encima, para las tarjetas del móvil. */
+function Figure({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <span className="grid min-w-0 content-start">
+            <span className="truncate text-xs text-muted-foreground">
+                {label}
+            </span>
+            <span className="tabular truncate">{children}</span>
+        </span>
+    );
+}
+
+/**
+ * «Vendido frente a real» en el móvil (I7, D-415): una tarjeta por unidad con su estado, las horas
+ * (vendidas, reales y la desviación o, por horas, lo que falta por facturar) y, con importes, lo
+ * vendido, lo facturado y el margen. Sin desplazamiento lateral.
+ */
+function UnitCards({
+    units,
+    totals,
+    financials,
+    caption,
+    showClient,
+}: {
+    units: ReadonlyArray<SoldVsActualUnit>;
+    totals: SoldVsActualTotals;
+    financials: boolean;
+    caption: string;
+    showClient: boolean;
+}) {
+    return (
+        <div className="grid gap-2">
+            <ul
+                className="grid gap-2"
+                aria-label={caption}
+                data-test="sold-vs-actual-cards"
+            >
+                {units.map((unit) => (
+                    <li
+                        key={unit.key}
+                        className="grid gap-2 rounded-md border bg-card p-3 text-sm"
+                    >
+                        <div className="flex items-start justify-between gap-2">
+                            <span className="min-w-0">
+                                <Link
+                                    href={unitHref(unit)}
+                                    className={cn(
+                                        'rounded-md hover:underline',
+                                        FOCUS_RING,
+                                    )}
+                                >
+                                    <span className="text-muted-foreground">
+                                        {unit.project.code}
+                                    </span>{' '}
+                                    {unit.name}
+                                </Link>
+                                <span className="block truncate text-xs text-muted-foreground">
+                                    {[
+                                        t(`billing.kind.${unit.kind}`),
+                                        showClient && unit.client
+                                            ? unit.client.name
+                                            : null,
+                                        unit.manager?.name ?? null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </span>
+                            </span>
+                            <span className="shrink-0">
+                                <SaleStatusBadge status={unit.status} />
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Figure label={t('billing.columns.sold_hours')}>
+                                {unit.sold_minutes === null
+                                    ? '—'
+                                    : formatMinutes(unit.sold_minutes)}
+                            </Figure>
+                            <Figure label={t('billing.columns.real_hours')}>
+                                {formatMinutes(unit.real_minutes)}
+                            </Figure>
+                            {unit.kind === 'horas' ? (
+                                <Figure label={t('billing.status.unbilled')}>
+                                    {formatMinutes(unit.unbilled_minutes ?? 0)}
+                                </Figure>
+                            ) : (
+                                <Figure label={t('billing.columns.deviation')}>
+                                    {signedMinutes(
+                                        unit.deviation_minutes,
+                                        formatMinutes,
+                                    )}
+                                    {unit.consumption_pct !== null
+                                        ? ` · ${formatNumber(unit.consumption_pct, 0)} %`
+                                        : ''}
+                                </Figure>
+                            )}
+                        </div>
+                        {financials ? (
+                            <div className="grid grid-cols-3 gap-2 border-t pt-2">
+                                <Figure
+                                    label={t('billing.columns.sold_amount')}
+                                >
+                                    <Money
+                                        value={
+                                            unit.sold_amount ?? unit.hours_value
+                                        }
+                                    />
+                                </Figure>
+                                <Figure label={t('billing.columns.invoiced')}>
+                                    <Money value={unit.invoiced} />
+                                </Figure>
+                                <Figure label={t('billing.columns.margin')}>
+                                    <Money value={unit.margin} />
+                                </Figure>
+                            </div>
+                        ) : null}
+                        {unit.pending_minutes > 0 ? (
+                            <Sub>
+                                {t('billing.pending_hours', {
+                                    hours: formatMinutes(unit.pending_minutes),
+                                })}
+                            </Sub>
+                        ) : null}
+                    </li>
+                ))}
+            </ul>
+            {units.length > 1 ? (
+                <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
+                    <p className="col-span-3 font-medium">
+                        {t('billing.total', { count: totals.units })}
+                    </p>
+                    <Figure label={t('billing.columns.sold_hours')}>
+                        {formatMinutes(totals.sold_minutes)}
+                    </Figure>
+                    <Figure label={t('billing.columns.real_hours')}>
+                        {formatMinutes(totals.real_minutes)}
+                    </Figure>
+                    {financials ? (
+                        <Figure label={t('billing.columns.invoiced')}>
+                            <Money value={totals.invoiced} />
+                        </Figure>
+                    ) : (
+                        <Figure label={t('billing.columns.deviation')}>
+                            {signedMinutes(
+                                totals.deviation_minutes,
+                                formatMinutes,
+                            )}
+                        </Figure>
+                    )}
+                </div>
+            ) : null}
         </div>
     );
 }

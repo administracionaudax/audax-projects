@@ -147,7 +147,8 @@ export default function BillingSummaryPage({
                 <div className="grid gap-5 lg:grid-cols-2">
                     <KpiGroup
                         title={t('billing.summary.group_invoiced')}
-                        columns="grid-cols-1 sm:grid-cols-2"
+                        help={<p>{t('billing.summary.help_invoiced')}</p>}
+                        columns="grid-cols-2"
                     >
                         <KpiCard
                             label={t('billing.summary.kpi.invoiced')}
@@ -200,7 +201,8 @@ export default function BillingSummaryPage({
                     </KpiGroup>
                     <KpiGroup
                         title={t('billing.summary.group_collected')}
-                        columns="grid-cols-1 sm:grid-cols-2"
+                        help={<p>{t('billing.summary.help_collected')}</p>}
+                        columns="grid-cols-2"
                     >
                         <KpiCard
                             label={t('billing.summary.kpi.outstanding')}
@@ -487,7 +489,7 @@ function Receivable({ summary }: { summary: BillingSummaryData }) {
                             ) : null,
                         )}
                     </div>
-                    <ul className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                    <ul className="grid grid-cols-3 gap-x-3 gap-y-1 sm:grid-cols-5">
                         {aging.map((bucket, index) => (
                             <li key={bucket.key} className="min-w-0">
                                 <Link

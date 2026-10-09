@@ -1,6 +1,10 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Info, SearchX } from 'lucide-react';
 import { BillingHeader } from '@/components/billing/billing-header';
+import {
+    countQueryFilters,
+    FilterSheet,
+} from '@/components/billing/filter-sheet';
 import { SaleFilters } from '@/components/billing/sale-filters';
 import { SoldVsActualChart } from '@/components/billing/sold-vs-actual-chart';
 import { SoldVsActualKpis } from '@/components/billing/sold-vs-actual-kpis';
@@ -10,6 +14,7 @@ import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
 import { R2ScopeNote } from '@/components/reports/r2-report-body';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { index as billingIndex, soldVsActual } from '@/routes/billing';
@@ -51,7 +56,14 @@ export default function SoldVsActual({
                     }
                 />
 
-                <div className="grid gap-4">
+                <FilterSheet
+                    count={countQueryFilters(filters.query, [
+                        'cliente',
+                        'venta',
+                        'responsable',
+                    ])}
+                    className="grid gap-4"
+                >
                     <ReportFilterBar
                         filters={filters}
                         show={['cliente']}
@@ -65,7 +77,7 @@ export default function SoldVsActual({
                         manager={manager}
                         managers={managers}
                     />
-                </div>
+                </FilterSheet>
 
                 {scope.own_projects ? (
                     <R2ScopeNote>{t('billing.report.scope_own')}</R2ScopeNote>
@@ -88,7 +100,14 @@ export default function SoldVsActual({
                             from: formatDate(report.from),
                             to: formatDate(report.to),
                         })}
-                    />
+                    >
+                        {/* El paso siguiente (R7): mirar el año entero, sin filtros. */}
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href={`${URL}?periodo=anio`}>
+                                {t('billing.empty.whole_year')}
+                            </Link>
+                        </Button>
+                    </EmptyState>
                 ) : (
                     <>
                         <SoldVsActualKpis

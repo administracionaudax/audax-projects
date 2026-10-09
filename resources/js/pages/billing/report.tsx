@@ -11,6 +11,10 @@ import type { AmountBar } from '@/components/billing/invoicing-bars';
 import { InvoicingKpis } from '@/components/billing/invoicing-kpis';
 import { amount, serviceLabel } from '@/components/billing/invoicing-lib';
 import { InvoicingMonthChart } from '@/components/billing/invoicing-month-chart';
+import {
+    countQueryFilters,
+    FilterSheet,
+} from '@/components/billing/filter-sheet';
 import { ServiceFilters } from '@/components/billing/service-filters';
 import { EmptyState } from '@/components/empty-state';
 import { ExportMenu } from '@/components/reports/export-menu';
@@ -135,7 +139,13 @@ export default function InvoicingReportPage({
                     }
                 />
 
-                <div className="grid gap-4">
+                <FilterSheet
+                    count={countQueryFilters(filters.query, [
+                        'cliente',
+                        'servicio',
+                    ])}
+                    className="grid gap-4"
+                >
                     <ReportFilterBar
                         filters={filters}
                         show={['cliente']}
@@ -148,7 +158,7 @@ export default function InvoicingReportPage({
                         services={services}
                         selected={report.services_filter}
                     />
-                </div>
+                </FilterSheet>
 
                 {filtered ? (
                     <p className="flex items-start gap-2 text-sm text-muted-foreground">

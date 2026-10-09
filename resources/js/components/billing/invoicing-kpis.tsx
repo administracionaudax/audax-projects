@@ -77,6 +77,7 @@ export function InvoicingKpis({ report }: { report: InvoicingReport }) {
         >
             <KpiGroup
                 title={t('billing.invoicing.kpis.group_invoiced')}
+                help={<p>{t('billing.summary.help_invoiced')}</p>}
                 columns="grid-cols-2 lg:grid-cols-4"
             >
                 <KpiCard
@@ -149,6 +150,7 @@ export function InvoicingKpis({ report }: { report: InvoicingReport }) {
             </KpiGroup>
             <KpiGroup
                 title={t('billing.invoicing.kpis.group_collected')}
+                help={<p>{t('billing.invoicing.kpis.help_collected')}</p>}
                 columns="grid-cols-2 lg:grid-cols-3"
             >
                 <KpiCard

@@ -82,10 +82,14 @@ function DirectoryActions({
         );
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1 lg:flex-nowrap">
             <SearchableSelect
-                value={row.client ? String(row.client.id) : null}
-                placeholder={t('billing.directory.change')}
+                value={null}
+                placeholder={t(
+                    row.client
+                        ? 'billing.directory.change'
+                        : 'billing.directory.choose',
+                )}
                 search={t('billing.contacts.search_client')}
                 empty={t('billing.contacts.no_client_found')}
                 aria-label={t('billing.review.choose_client_for', {
