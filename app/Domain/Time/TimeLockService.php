@@ -8,6 +8,7 @@ use App\Enums\TimeEntryStatus;
 use App\Enums\TimesheetStatus;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\SalesDocument;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryLock;
 use App\Models\TimesheetPeriod;
@@ -137,6 +138,74 @@ final class TimeLockService
     }
 
     /**
+     * Bloquea unas entradas concretas por una factura propia al emitirla (PLAN-EMISION §3.8; D-424),
+     * con el número de la factura como referencia. Sin la gate lock-time: quien emite ya tiene
+     * manage-billing (InvoiceIssuer lo comprueba) y va dentro de su transacción. Todas tienen que
+     * estar aprobadas.
+     *
+     * @param  list<int>  $entryIds
+     *
+     * @throws ValidationException
+     */
+    public function lockForDocument(User $by, SalesDocument $document, array $entryIds): ?TimeEntryLock
+    {
+        if ($entryIds === []) {
+            return null;
+        }
+
+        $entries = TimeEntry::query()->whereKey($entryIds)->lockForUpdate()->get(['id', 'user_id', 'date', 'minutes', 'status', 'project_id']);
+
+        if ($entries->contains(fn (TimeEntry $entry): bool => $entry->status !== TimeEntryStatus::Approved)) {
+            throw ValidationException::withMessages(['lines' => __('invoicing.errors.hours_not_approved')]);
+        }
+
+        $projects = $entries->pluck('project_id')->unique()->values();
+        $lock = TimeEntryLock::query()->create([
+            'client_id' => $document->client_id,
+            'project_id' => $projects->count() === 1 ? (int) $projects->first() : null,
+            'date_from' => $entries->min(fn (TimeEntry $entry): string => $entry->date->toDateString()),
+            'date_to' => $entries->max(fn (TimeEntry $entry): string => $entry->date->toDateString()),
+            'locked_by' => $by->id,
+            'entries_count' => $entries->count(),
+            'reference' => $document->full_number,
+        ]);
+        $lock->forceFill(['sales_document_id' => $document->id])->save();
+
+        $now = now();
+        foreach ($entries->pluck('id')->chunk(500) as $chunk) {
+            TimeEntry::query()->whereKey($chunk->all())->update([
+                'status' => TimeEntryStatus::Locked->value,
+                'locked_at' => $now,
+                'time_entry_lock_id' => $lock->id,
+                'updated_at' => $now,
+            ]);
+        }
+
+        $this->lockWeeks($entries->map(fn (TimeEntry $entry): array => [$entry->user_id, $entry->date->toDateString()])->all());
+        $this->log($lock, $by, 'locked', ['entries' => $entries->count(), 'minutes' => (int) $entries->sum('minutes'), 'sales_document_id' => $document->id]);
+        ReportCache::bumpAfterCommit();
+
+        return $lock;
+    }
+
+    /**
+     * Desbloquea las horas de una factura propia al anularla (D-244, D-424): sus bloqueos se deshacen
+     * como unlock() y las entradas vuelven al estado de su semana. Sin la gate lock-time (lo decide
+     * manage-billing). Devuelve cuántas entradas se han desbloqueado.
+     */
+    public function releaseForDocument(User $by, SalesDocument $document): int
+    {
+        $locks = TimeEntryLock::query()->where('sales_document_id', $document->id)->whereNull('unlocked_at')->lockForUpdate()->get();
+        $released = 0;
+
+        foreach ($locks as $lock) {
+            $released += $this->release($by, $lock);
+        }
+
+        return $released;
+    }
+
+    /**
      * Deshace un bloqueo. Cada entrada vuelve al estado que corresponde a su semana, para que nunca
      * quede una entrada «aprobada» en una semana que se puede editar:
      * - semana aprobada o bloqueada → aprobada (y la semana bloqueada, a aprobada),
@@ -160,6 +229,14 @@ final class TimeLockService
                 ])]);
             }
 
+            return $this->release($admin, $current);
+        });
+    }
+
+    /** Deshace un bloqueo ya leído con su candado (unlock y releaseForDocument). */
+    private function release(User $admin, TimeEntryLock $current): int
+    {
+        return DB::transaction(function () use ($admin, $current): int {
             $entries = TimeEntry::query()
                 ->where('time_entry_lock_id', $current->id)
                 ->where('status', TimeEntryStatus::Locked->value)
