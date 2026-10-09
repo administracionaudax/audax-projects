@@ -199,3 +199,12 @@ Schedule::command('app:holded-sync --programada')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping(120)
     ->onOneServer();
+
+// Emisión propia (PLAN-EMISION E1, D-429): cada noche, después de la copia de las 03:40, se comprueba
+// el registro de facturación (cadena, huellas y correlatividad) y, si algo no cuadra, se avisa a los
+// admins que usan la emisión. Solo lee: corre también con el módulo apagado (no hay nada que avisar).
+Schedule::command('app:billing-verify-chain --nightly')
+    ->dailyAt('04:15')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();

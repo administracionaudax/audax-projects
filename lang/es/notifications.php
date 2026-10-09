@@ -53,6 +53,9 @@ return [
             'document_published' => ['label' => 'Documentos de RR. HH. para leer', 'description' => 'Cuando RR. HH. publica una versión nueva del documento del registro de jornada o de la política de desconexión.'],
             'integrity_broken' => ['label' => 'Comprobación del registro de jornada', 'description' => 'Cuando la comprobación nocturna del registro encuentra algo que no cuadra. Obligatorio.'],
         ],
+        'billing' => [
+            'chain_broken' => ['label' => 'Comprobación del registro de facturación', 'description' => 'Cuando la comprobación nocturna de las facturas emitidas (cadena de huellas y numeración) encuentra algo que no cuadra. Obligatorio.'],
+        ],
         'task' => [
             'assigned' => ['label' => 'Te asignan una tarea', 'description' => 'Cuando alguien te hace responsable de una tarea.'],
             'mentioned' => ['label' => 'Te mencionan en una tarea', 'description' => 'Cuando alguien te menciona en la descripción o en un comentario.'],
