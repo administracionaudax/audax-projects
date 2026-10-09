@@ -677,6 +677,121 @@ test('Por revisar: las facturas sin proyecto se enlazan con su propuesta, en blo
     );
 });
 
+test('Por revisar: crear el cliente desde un contacto de Holded sin cliente (D-430)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-revisar?tipo=contactos');
+    const row = page
+        .getByTestId('review-contact-row')
+        .filter({ hasText: 'Estudio Nébula, S.L.' });
+    await row.getByTestId('create-client').click();
+
+    // Relleno con los datos de Holded: el nombre comercial y la razón social en la ficha fiscal.
+    const dialog = page.getByTestId('create-client-dialog');
+    await expect(dialog.getByTestId('create-client-name')).toHaveValue(
+        'Nébula',
+    );
+    await expect(dialog.getByTestId('create-client-legal_name')).toHaveValue(
+        'Estudio Nébula, S.L.',
+    );
+    await expectAccessible(page);
+
+    await dialog.getByTestId('create-client-submit').click();
+    await expect(
+        page.getByText(/^Cliente «Nébula» creado y casado/).first(),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Todos los contactos tienen cliente'),
+    ).toBeVisible();
+
+    // En el directorio, casado a mano con el cliente nuevo.
+    await page.goto('/facturacion/ajustes?contactos=todos');
+    const directory = page.getByTestId('directory-table');
+    const contact = directory
+        .getByRole('row')
+        .filter({ hasText: 'Estudio Nébula, S.L.' });
+    await expect(
+        contact.getByRole('link', { name: 'Nébula', exact: true }),
+    ).toBeVisible();
+    await expect(contact).toContainText('a mano');
+});
+
+test('Por revisar y la ficha: una factura que no necesita proyecto se marca, se ve con su filtro y se deshace (D-431)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-revisar?tipo=facturas');
+    const invoices = page.getByTestId('review-invoices');
+    const rows = await invoices.getByTestId('review-invoice-row').count();
+    const row = invoices
+        .getByTestId('review-invoice-row')
+        .filter({ hasText: /F\d{6}/ })
+        .first();
+    const number = /F\d{6}/.exec((await row.textContent()) ?? '')?.[0] ?? '';
+    expect(number).not.toBe('');
+
+    await row.getByTestId('no-project-mark').click();
+    await expect(page.getByTestId('no-project-dialog')).toBeVisible();
+    await expectAccessible(page);
+    await page.getByTestId('no-project-note').fill('Gastos repercutidos');
+    await page.getByTestId('no-project-confirm').click();
+    await expect(
+        page.getByText(`${number} no necesita proyecto`).first(),
+    ).toBeVisible();
+    await expect(invoices.getByTestId('review-invoice-row')).toHaveCount(
+        rows - 1,
+    );
+    await expect(page.getByTestId('review-undo')).toContainText(number);
+
+    // Se ven con su filtro en el listado y la ficha dice por qué.
+    const hidden = page.getByTestId('review-no-project-hidden');
+    await expect(hidden).toContainText('1 factura marcada');
+    await hidden.getByRole('link', { name: 'Verlas' }).click();
+    await expect(page).toHaveURL(/enlace=no-necesita/);
+    const table = page.getByTestId('invoice-table');
+    await expect(table).toContainText(number);
+    await expect(table).toContainText('No necesita proyecto');
+    await table.getByRole('link', { name: number }).first().click();
+    await expect(page.getByTestId('invoice-no-project')).toContainText(
+        '«Gastos repercutidos»',
+    );
+
+    // «Necesita proyecto» la devuelve a «Sin proyecto».
+    await page.getByTestId('no-project-undo').click();
+    await expect(
+        page.getByText(`${number} vuelve a necesitar proyecto.`).first(),
+    ).toBeVisible();
+    await expect(page.getByTestId('invoice-unlinked')).toBeVisible();
+    await expect(page.getByTestId('no-project-mark')).toBeVisible();
+});
+
+test('Por facturar: el precio cerrado con lo que queda y el exceso de una bolsa renovada pasado a la siguiente (D-432 y D-433)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-facturar');
+    const table = page.getByTestId('unbilled-table');
+    const faro = table.getByRole('row').filter({ hasText: 'Librería El Faro' });
+    await expect(faro).toContainText('precio cerrado');
+    await faro.getByTestId('unbilled-client').click();
+
+    const fixed = page.getByTestId('unbilled-line-fixed');
+    await expect(fixed).toContainText('FAR-SHOP');
+    await expect(fixed).toContainText(/facturado de/);
+    await expect(page.getByTestId('unbilled-lines-total')).toBeVisible();
+    await expectAccessible(page);
+
+    // Bodegas Arrieta: el exceso del 1.er semestre ya pasó al 2.º, sin importe pendiente.
+    await page.getByRole('combobox', { name: 'Cliente' }).click();
+    await page.getByRole('option', { name: 'Bodegas Arrieta' }).click();
+    const carried = page.getByTestId('unbilled-line-carried');
+    await expect(carried).toContainText(
+        'Pasado a la bolsa siguiente: Marketing – 2.º semestre',
+    );
+    await expect(carried).toContainText('En la bolsa siguiente');
+});
+
 test('los ajustes dicen quién ve Facturación, y nadie se quita el acceso a sí mismo', async ({
     page,
 }) => {
