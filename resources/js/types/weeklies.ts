@@ -113,7 +113,8 @@ export type AppModule =
     | 'day_plan'
     | 'forecast'
     | 'people'
-    | 'billing';
+    | 'billing'
+    | 'invoicing';
 
 // --- Semanas, envíos e informe ----------------------------------------------------------------
 

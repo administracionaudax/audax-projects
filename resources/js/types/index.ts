@@ -12,3 +12,4 @@ export type * from './time';
 export type * from './notifications';
 export type * from './reports';
 export type * from './billing';
+export type * from './invoicing';

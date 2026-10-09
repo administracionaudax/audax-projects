@@ -12,9 +12,9 @@ use App\Enums\HoldedDocumentKind;
 use App\Enums\InvoiceLineKind;
 use App\Enums\ProjectStatus;
 use App\Enums\TimeEntryStatus;
+use App\Models\BillingDocument;
+use App\Models\BillingDocumentLink;
 use App\Models\Client;
-use App\Models\HoldedInvoice;
-use App\Models\HoldedInvoiceLink;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TimeEntry;
@@ -183,7 +183,7 @@ final class UnbilledReport
                 $income[(int) $key] = $group['income'];
             }
         }
-        $invoiced = $financials ? $this->invoiced(HoldedInvoiceLink::query()->whereIn('project_id', $ids)->whereNull('hour_bank_id'), 'project_id', $from, $to) : [];
+        $invoiced = $financials ? $this->invoiced(BillingDocumentLink::query()->whereIn('project_id', $ids)->whereNull('hour_bank_id'), 'project_id', $from, $to) : [];
 
         foreach ($rows as $row) {
             $projectId = (int) $row->project_id;
@@ -282,10 +282,10 @@ final class UnbilledReport
             ->whereNotNull('hour_banks.price_amount')
             ->where('hour_banks.price_amount', '>', 0)
             ->whereBetween('hour_banks.start_date', [$from->toDateString(), $to->toDateString()])
-            ->whereNotExists(fn ($links) => $links->selectRaw('1')->from('holded_invoice_links')
-                ->join('holded_invoices', 'holded_invoices.id', '=', 'holded_invoice_links.holded_invoice_id')
-                ->whereColumn('holded_invoice_links.hour_bank_id', 'hour_banks.id')
-                ->where('holded_invoices.collection_status', '!=', CollectionStatus::Cancelled->value))
+            ->whereNotExists(fn ($links) => $links->selectRaw('1')->from('billing_document_links')
+                ->join('billing_documents', 'billing_documents.id', '=', 'billing_document_links.document_id')
+                ->whereColumn('billing_document_links.hour_bank_id', 'hour_banks.id')
+                ->where('billing_documents.collection_status', '!=', CollectionStatus::Cancelled->value))
             ->orderBy('hour_banks.start_date')->orderBy('hour_banks.id')
             ->get(['hour_banks.id', 'hour_banks.name', 'hour_banks.price_amount', 'hour_banks.start_date', 'projects.client_id as bank_client_id',
                 'projects.id as bank_project_id', 'projects.code as bank_project_code', 'projects.name as bank_project_name']);
@@ -325,16 +325,16 @@ final class UnbilledReport
 
         // Meses (AAAA-MM) con alguna factura (no anulada ni borrador) de cada fee.
         $invoicedMonths = [];
-        $links = HoldedInvoiceLink::query()->toBase()
-            ->join('holded_invoices', 'holded_invoices.id', '=', 'holded_invoice_links.holded_invoice_id')
-            ->whereIn('holded_invoice_links.project_id', $projects->modelKeys())
-            ->where('holded_invoices.is_draft', false)
-            ->whereNotIn('holded_invoices.collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])
-            ->where('holded_invoices.kind', HoldedDocumentKind::Invoice->value)
-            ->where('holded_invoices.issued_on', '>=', $from->startOfMonth()->toDateString())
-            ->where('holded_invoices.issued_on', '<=', $to->endOfMonth()->toDateString())
-            ->selectRaw('holded_invoice_links.project_id as project_id, SUBSTR(CAST(holded_invoices.issued_on AS TEXT), 1, 7) as month')
-            ->orderBy('holded_invoice_links.project_id')
+        $links = BillingDocumentLink::query()->toBase()
+            ->join('billing_documents', 'billing_documents.id', '=', 'billing_document_links.document_id')
+            ->whereIn('billing_document_links.project_id', $projects->modelKeys())
+            ->where('billing_documents.is_draft', false)
+            ->whereNotIn('billing_documents.collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])
+            ->where('billing_documents.kind', HoldedDocumentKind::Invoice->value)
+            ->where('billing_documents.issued_on', '>=', $from->startOfMonth()->toDateString())
+            ->where('billing_documents.issued_on', '<=', $to->endOfMonth()->toDateString())
+            ->selectRaw('billing_document_links.project_id as project_id, SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7) as month')
+            ->orderBy('billing_document_links.project_id')
             ->get();
         foreach ($links as $link) {
             $invoicedMonths[(int) $link->project_id][(string) $link->month] = true;
@@ -394,7 +394,7 @@ final class UnbilledReport
         }
 
         $ids = $projects->modelKeys();
-        $invoiced = $this->invoiced(HoldedInvoiceLink::query()->whereIn('project_id', $ids), 'project_id', null, null);
+        $invoiced = $this->invoiced(BillingDocumentLink::query()->whereIn('project_id', $ids), 'project_id', null, null);
         $hours = TimeEntry::query()->toBase()
             ->whereIn('project_id', $ids)
             ->whereIn('status', self::REAL)
@@ -431,16 +431,16 @@ final class UnbilledReport
      * y de bolsa (D-396), repartidas a partes iguales si la factura tiene varios enlaces. Solo las
      * facturas que cuentan (D-397) y, con fechas, las emitidas en ellas.
      *
-     * @param  Builder<HoldedInvoiceLink>  $links
+     * @param  Builder<BillingDocumentLink>  $links
      * @return array<int, array{minutes: int, amount: string}>
      */
     private function invoiced(Builder $links, string $key, ?CarbonImmutable $from, ?CarbonImmutable $to): array
     {
         $rows = $links
-            ->whereHas('invoice', fn (Builder $q) => HoldedInvoice::countingIn($q)
+            ->whereHas('invoice', fn (Builder $q) => BillingDocument::countingIn($q)
                 ->when($from !== null, fn (Builder $w) => $w->where('issued_on', '>=', $from?->toDateString()))
                 ->when($to !== null, fn (Builder $w) => $w->where('issued_on', '<=', $to?->toDateString())))
-            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal'])->withCount('links'), 'invoice.lines:id,holded_invoice_id,name,service_code,units'])
+            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal'])->withCount('links'), 'invoice.lines:id,document_id,name,service_code,units'])
             ->orderBy('id')
             ->get();
 

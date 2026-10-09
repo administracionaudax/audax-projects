@@ -43,6 +43,8 @@ const MODULES: AppModule[] = [
     'people',
     // Facturación (D-380): lectura de Holded y «Vendido frente a real»; apagado hasta tener la clave.
     'billing',
+    // Emisión propia (D-417): depende de Facturación; apagado hasta el corte con Holded.
+    'invoicing',
 ];
 
 /** Máximo de umbrales de alerta de las bolsas. */

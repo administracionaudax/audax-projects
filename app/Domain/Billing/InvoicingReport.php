@@ -6,8 +6,8 @@ use App\Domain\Reports\Money;
 use App\Enums\BillingService;
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
-use App\Models\HoldedInvoice;
-use App\Models\HoldedInvoiceLine;
+use App\Models\BillingDocument;
+use App\Models\BillingDocumentLine;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  * pendiente, vencido y previsto de un periodo, por mes, por servicio, por cliente y la antigüedad de
  * lo pendiente. Solo con view-billing (el controlador y el documento lo comprueban).
  *
- * - **Facturado** = base imponible (sin IVA) de lo que cuenta (HoldedInvoice::countingIn, D-397):
+ * - **Facturado** = base imponible (sin IVA) de lo que cuenta (BillingDocument::countingIn, D-397):
  *   emitidas aprobadas y no anuladas menos rectificativas, sin restar dos veces una anulada.
  * - **Cobrado**, **pendiente** y **vencido**, con IVA (lo que entra en el banco), de esas mismas
  *   facturas del periodo. Pendiente = lo que queda por cobrar de cada una (solo lo positivo); vencido,
@@ -166,21 +166,21 @@ final class InvoicingReport
     /**
      * Facturas que cuentan (o borradores, con $planned) del periodo y de los clientes del filtro.
      *
-     * @return Builder<HoldedInvoice>
+     * @return Builder<BillingDocument>
      */
     private function invoices(InvoicingQuery $query, CarbonImmutable $from, CarbonImmutable $to, bool $planned = false): Builder
     {
-        $builder = HoldedInvoice::query()
-            ->where('holded_invoices.issued_on', '>=', $from->toDateString())
-            ->where('holded_invoices.issued_on', '<', $to->addDay()->toDateString())
-            ->when($query->filters->clientIds !== [], fn (Builder $q) => $q->whereIn('holded_invoices.client_id', $query->filters->clientIds));
+        $builder = BillingDocument::query()
+            ->where('billing_documents.issued_on', '>=', $from->toDateString())
+            ->where('billing_documents.issued_on', '<', $to->addDay()->toDateString())
+            ->when($query->filters->clientIds !== [], fn (Builder $q) => $q->whereIn('billing_documents.client_id', $query->filters->clientIds));
 
         if ($planned) {
-            return $builder->where(fn (Builder $q) => $q->where('holded_invoices.is_draft', true)
-                ->orWhere('holded_invoices.collection_status', CollectionStatus::Draft->value));
+            return $builder->where(fn (Builder $q) => $q->where('billing_documents.is_draft', true)
+                ->orWhere('billing_documents.collection_status', CollectionStatus::Draft->value));
         }
 
-        return HoldedInvoice::countingIn($builder);
+        return BillingDocument::countingIn($builder);
     }
 
     /**
@@ -188,9 +188,9 @@ final class InvoicingReport
      */
     private function lines(InvoicingQuery $query, CarbonImmutable $from, CarbonImmutable $to, bool $planned = false): QueryBuilder
     {
-        $lines = HoldedInvoiceLine::query()->toBase()
-            ->join('holded_invoices', 'holded_invoices.id', '=', 'holded_invoice_lines.holded_invoice_id')
-            ->whereIn('holded_invoice_lines.holded_invoice_id', $this->invoices($query, $from, $to, $planned)->select('holded_invoices.id'));
+        $lines = BillingDocumentLine::query()->toBase()
+            ->join('billing_documents', 'billing_documents.id', '=', 'billing_document_lines.document_id')
+            ->whereIn('billing_document_lines.document_id', $this->invoices($query, $from, $to, $planned)->select('billing_documents.id'));
 
         return $query->services === [] ? $lines : $this->onlyServices($lines, $query->services);
     }
@@ -212,8 +212,8 @@ final class InvoicingReport
         return $lines->where(function (QueryBuilder $where) use ($pairs): void {
             foreach ($pairs as $pair) {
                 $where->orWhere(function (QueryBuilder $one) use ($pair): void {
-                    $pair['name'] === null ? $one->whereNull('holded_invoice_lines.name') : $one->where('holded_invoice_lines.name', $pair['name']);
-                    $pair['code'] === null ? $one->whereNull('holded_invoice_lines.service_code') : $one->where('holded_invoice_lines.service_code', $pair['code']);
+                    $pair['name'] === null ? $one->whereNull('billing_document_lines.name') : $one->where('billing_document_lines.name', $pair['name']);
+                    $pair['code'] === null ? $one->whereNull('billing_document_lines.service_code') : $one->where('billing_document_lines.service_code', $pair['code']);
                 });
             }
         });
@@ -227,7 +227,7 @@ final class InvoicingReport
      */
     private function catalog(): array
     {
-        return $this->catalog ??= array_values(HoldedInvoiceLine::query()->toBase()
+        return $this->catalog ??= array_values(BillingDocumentLine::query()->toBase()
             ->select(['name', 'service_code'])
             ->distinct()
             ->orderBy('name')
@@ -259,7 +259,7 @@ final class InvoicingReport
     private static function lineAmount(): string
     {
         // 'credit_note' = HoldedDocumentKind::CreditNote (literal: va dentro del SQL).
-        return "CASE WHEN holded_invoices.kind = 'credit_note' THEN -ABS(holded_invoice_lines.subtotal) ELSE holded_invoice_lines.subtotal END";
+        return "CASE WHEN billing_documents.kind = 'credit_note' THEN -ABS(billing_document_lines.subtotal) ELSE billing_document_lines.subtotal END";
     }
 
     /**
@@ -269,7 +269,7 @@ final class InvoicingReport
      */
     private static function month(): string
     {
-        return 'SUBSTR(CAST(holded_invoices.issued_on AS TEXT), 1, 7)';
+        return 'SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7)';
     }
 
     /**
@@ -280,7 +280,7 @@ final class InvoicingReport
     private static function invoiceCount(): string
     {
         // 'invoice' = HoldedDocumentKind::Invoice (literal: va dentro del SQL).
-        return "COUNT(DISTINCT CASE WHEN holded_invoices.kind = 'invoice' THEN holded_invoices.id END)";
+        return "COUNT(DISTINCT CASE WHEN billing_documents.kind = 'invoice' THEN billing_documents.id END)";
     }
 
     /**
@@ -292,7 +292,7 @@ final class InvoicingReport
     {
         $month = self::month();
         $base = $query->services === []
-            ? $this->invoices($query, $from, $to, $planned)->toBase()->selectRaw($month.' as month, '.self::cents('holded_invoices.subtotal').' as cents, '.self::invoiceCount().' as count')
+            ? $this->invoices($query, $from, $to, $planned)->toBase()->selectRaw($month.' as month, '.self::cents('billing_documents.subtotal').' as cents, '.self::invoiceCount().' as count')
             : $this->lines($query, $from, $to, $planned)->selectRaw($month.' as month, '.self::cents(self::lineAmount()).' as cents, '.self::invoiceCount().' as count');
 
         $rows = [];
@@ -311,14 +311,14 @@ final class InvoicingReport
     private function collection(InvoicingQuery $query, bool $previous = false): array
     {
         $row = $this->collectionInvoices($query, $previous)->toBase()
-            ->selectRaw(self::cents('holded_invoices.paid_total').' as paid, '.self::invoiceCount().' as count')
+            ->selectRaw(self::cents('billing_documents.paid_total').' as paid, '.self::invoiceCount().' as count')
             ->first();
 
         return ['paid' => (int) ($row->paid ?? 0), 'count' => (int) ($row->count ?? 0)];
     }
 
     /**
-     * @return Builder<HoldedInvoice>
+     * @return Builder<BillingDocument>
      */
     private function collectionInvoices(InvoicingQuery $query, bool $previous = false): Builder
     {
@@ -330,7 +330,7 @@ final class InvoicingReport
             return $invoices;
         }
 
-        return $invoices->whereIn('holded_invoices.id', $this->lines($query, $from, $to)->select('holded_invoice_lines.holded_invoice_id'));
+        return $invoices->whereIn('billing_documents.id', $this->lines($query, $from, $to)->select('billing_document_lines.document_id'));
     }
 
     /** Lo que restan las rectificativas del periodo (céntimos, negativo o cero). */
@@ -339,10 +339,10 @@ final class InvoicingReport
         $from = $query->filters->from;
         $to = $query->filters->to;
         $builder = $query->services === []
-            ? $this->invoices($query, $from, $to)->toBase()->selectRaw(self::cents('holded_invoices.subtotal').' as cents')
+            ? $this->invoices($query, $from, $to)->toBase()->selectRaw(self::cents('billing_documents.subtotal').' as cents')
             : $this->lines($query, $from, $to)->selectRaw(self::cents(self::lineAmount()).' as cents');
 
-        return (int) ($builder->where('holded_invoices.kind', HoldedDocumentKind::CreditNote->value)->first()->cents ?? 0);
+        return (int) ($builder->where('billing_documents.kind', HoldedDocumentKind::CreditNote->value)->first()->cents ?? 0);
     }
 
     /**
@@ -356,12 +356,12 @@ final class InvoicingReport
         // por tramo fuera: PostgreSQL no reconoce como la misma expresión un CASE con parámetros en
         // el SELECT y en el GROUP BY. Retraso de 1 a 30 días = vencimiento entre hoy − 30 y ayer.
         $pending = $this->collectionInvoices($query)->toBase()
-            ->where('holded_invoices.pending_total', '>', 0)
-            ->selectRaw("CASE WHEN holded_invoices.due_on IS NULL OR holded_invoices.due_on >= ? THEN 'current'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd1_30'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd31_60'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd61_90'"
-                ." ELSE 'd90_plus' END as bucket, CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT) as cents", [
+            ->where('billing_documents.pending_total', '>', 0)
+            ->selectRaw("CASE WHEN billing_documents.due_on IS NULL OR billing_documents.due_on >= ? THEN 'current'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd1_30'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd31_60'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd61_90'"
+                ." ELSE 'd90_plus' END as bucket, CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT) as cents", [
                     $today->toDateString(),
                     $today->subDays(30)->toDateString(),
                     $today->subDays(60)->toDateString(),
@@ -391,17 +391,17 @@ final class InvoicingReport
     private function overdue(InvoicingQuery $query, CarbonImmutable $today): array
     {
         $base = $this->collectionInvoices($query)
-            ->where('holded_invoices.pending_total', '>', 0)
-            ->whereNotNull('holded_invoices.due_on')
-            ->where('holded_invoices.due_on', '<', $today->toDateString());
+            ->where('billing_documents.pending_total', '>', 0)
+            ->whereNotNull('billing_documents.due_on')
+            ->where('billing_documents.due_on', '<', $today->toDateString());
 
         $total = (clone $base)->count();
         $rows = $base->toBase()
-            ->leftJoin('clients', 'clients.id', '=', 'holded_invoices.client_id')
-            ->select(['holded_invoices.id', 'holded_invoices.number', 'holded_invoices.issued_on', 'holded_invoices.due_on', 'holded_invoices.pending_total',
-                'holded_invoices.client_id', 'holded_invoices.contact_name', 'clients.name as client_name'])
-            ->orderBy('holded_invoices.due_on')
-            ->orderBy('holded_invoices.id')
+            ->leftJoin('clients', 'clients.id', '=', 'billing_documents.client_id')
+            ->select(['billing_documents.id', 'billing_documents.number', 'billing_documents.issued_on', 'billing_documents.due_on', 'billing_documents.pending_total',
+                'billing_documents.client_id', 'billing_documents.contact_name', 'clients.name as client_name'])
+            ->orderBy('billing_documents.due_on')
+            ->orderBy('billing_documents.id')
             ->limit(self::OVERDUE_LIMIT)
             ->get();
 
@@ -454,10 +454,10 @@ final class InvoicingReport
     private function services(InvoicingQuery $query, int $invoiced): array
     {
         $rows = $this->lines($query, $query->filters->from, $query->filters->to)
-            ->selectRaw('holded_invoice_lines.name, holded_invoice_lines.service_code, '.self::cents(self::lineAmount()).' as cents')
-            ->groupBy('holded_invoice_lines.name', 'holded_invoice_lines.service_code')
-            ->orderBy('holded_invoice_lines.name')
-            ->orderBy('holded_invoice_lines.service_code')
+            ->selectRaw('billing_document_lines.name, billing_document_lines.service_code, '.self::cents(self::lineAmount()).' as cents')
+            ->groupBy('billing_document_lines.name', 'billing_document_lines.service_code')
+            ->orderBy('billing_document_lines.name')
+            ->orderBy('billing_document_lines.service_code')
             ->get();
 
         $byService = [];
@@ -497,12 +497,12 @@ final class InvoicingReport
     {
         $from = $query->filters->from;
         $to = $query->filters->to;
-        $amount = $query->services === [] ? self::cents('holded_invoices.subtotal') : self::cents(self::lineAmount());
+        $amount = $query->services === [] ? self::cents('billing_documents.subtotal') : self::cents(self::lineAmount());
         $base = $query->services === [] ? $this->invoices($query, $from, $to)->toBase() : $this->lines($query, $from, $to);
 
-        $rows = $base->leftJoin('clients', 'clients.id', '=', 'holded_invoices.client_id')
-            ->selectRaw('holded_invoices.client_id, clients.name as client_name, '.$amount.' as cents, '.self::invoiceCount().' as count')
-            ->groupBy('holded_invoices.client_id', 'clients.name')
+        $rows = $base->leftJoin('clients', 'clients.id', '=', 'billing_documents.client_id')
+            ->selectRaw('billing_documents.client_id, clients.name as client_name, '.$amount.' as cents, '.self::invoiceCount().' as count')
+            ->groupBy('billing_documents.client_id', 'clients.name')
             ->orderByRaw($amount.' DESC')
             ->orderBy('clients.name')
             ->get();

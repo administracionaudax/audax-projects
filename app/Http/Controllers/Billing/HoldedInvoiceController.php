@@ -13,6 +13,7 @@ use App\Enums\BillingService;
 use App\Enums\CollectionStatus;
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
+use App\Models\BillingDocument;
 use App\Models\Client;
 use App\Models\HoldedInvoice;
 use App\Models\HourBank;
@@ -42,21 +43,25 @@ class HoldedInvoiceController extends Controller
         $list = InvoiceList::fromQuery($input);
 
         $page = $list->query()
-            ->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name', 'lines'])
-            ->paginate(InvoiceList::PER_PAGE, ['holded_invoices.*'], 'pagina')
+            ->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name'])
+            ->paginate(InvoiceList::PER_PAGE, ['billing_documents.*'], 'pagina')
             ->withQueryString();
 
-        /** @var list<HoldedInvoice> $items */
+        /** @var list<BillingDocument> $items */
         $items = $page->items();
-        $unlinked = array_values(array_filter($items, fn (HoldedInvoice $invoice): bool => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled && ! $invoice->noProjectNeeded()));
-        $suggester->prime($unlinked);
+        // Las sugerencias de enlace son de las de Holded sin enlazar (D-388) ni marcadas «No necesita
+        // proyecto» (D-431): las propias eligen su proyecto en el editor. Sus modelos, en una consulta.
+        $unlinkedIds = array_values(array_map(fn (BillingDocument $invoice): int => $invoice->id, array_filter($items,
+            fn (BillingDocument $invoice): bool => ! $invoice->isOwn() && $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled && ! $invoice->noProjectNeeded())));
+        $unlinked = $unlinkedIds === [] ? collect() : HoldedInvoice::query()->whereKey($unlinkedIds)->with('lines')->get()->keyBy('id');
+        $suggester->prime(array_values($unlinked->all()));
 
         return Inertia::render('billing/invoices/index', [
             'invoices' => [
                 // Sin enlazar: con su primera sugerencia, para aceptarla desde el listado (D-388).
-                'data' => array_map(fn (HoldedInvoice $invoice): array => [
+                'data' => array_map(fn (BillingDocument $invoice): array => [
                     ...InvoicePresenter::summary($invoice),
-                    'suggestion' => in_array($invoice, $unlinked, true) ? ($suggester->for($invoice)[0] ?? null) : null,
+                    'suggestion' => $unlinked->has($invoice->id) ? ($suggester->for($unlinked->get($invoice->id))[0] ?? null) : null,
                 ], $items),
                 'meta' => [
                     'current_page' => $page->currentPage(),
@@ -76,7 +81,7 @@ class HoldedInvoiceController extends Controller
             'views' => $list->viewCounts(),
             'bar' => $list->collectionBar(),
             'totals' => $list->totals(),
-            'clients' => Client::query()->whereIn('id', HoldedInvoice::query()->whereNotNull('client_id')->select('client_id'))
+            'clients' => Client::query()->whereIn('id', BillingDocument::withTests()->whereNotNull('client_id')->select('client_id'))
                 ->orderBy('name')->orderBy('id')->get(['id', 'name'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->values()->all(),
             'services' => array_map(fn (BillingService $service): string => $service->value, BillingService::cases()),
             'today' => $list->today->toDateString(),
@@ -97,14 +102,16 @@ class HoldedInvoiceController extends Controller
             'projects' => $this->linkableProjects($invoice),
             'holded' => HoldedConnection::summary(),
             'holded_url' => self::HOLDED_SALES_URL,
+            // Duplicar como borrador propio (E1, D-428): con la emisión visible y un cliente casado.
+            'can_duplicate' => $request->user()?->can('use-invoicing') === true && $invoice->client_id !== null,
             'today' => $list->today->toDateString(),
             // Del listado del que vienes (D-408): la miga «Facturas» con tus filtros y su página, y la
             // anterior y la siguiente con los mismos filtros.
             'list' => [
                 'query' => $query,
                 'back' => '/facturacion/facturas'.self::queryString([...$query, ...($neighbours['page'] > 1 ? ['pagina' => $neighbours['page']] : [])]),
-                'previous' => $neighbours['previous'] === null ? null : '/facturacion/facturas/'.$neighbours['previous'].self::queryString($query),
-                'next' => $neighbours['next'] === null ? null : '/facturacion/facturas/'.$neighbours['next'].self::queryString($query),
+                'previous' => $neighbours['previous'] === null ? null : BillingDocument::urlFor($neighbours['previous']).self::queryString($query),
+                'next' => $neighbours['next'] === null ? null : BillingDocument::urlFor($neighbours['next']).self::queryString($query),
                 'position' => $neighbours['position'],
                 'total' => $neighbours['total'],
             ],

@@ -170,6 +170,8 @@ final class NotificationCatalog
             new NotificationEvent('system.backup_failed', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
             // Registro de jornada (R2, D-352): la comprobación nocturna de la cadena falla.
             new NotificationEvent('people.integrity_broken', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
+            // Emisión propia (E1, D-429): la comprobación nocturna del registro de facturación falla.
+            new NotificationEvent('billing.chain_broken', 'system', [$app, $email], [$app, $email], self::AUDIENCE_ADMINS, mandatory: true),
         ];
 
         $byKind = [];

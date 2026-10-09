@@ -457,3 +457,17 @@ Decisiones D-411 a D-416. Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md` (I1
 - [ ] Siguiente: R1 (vista lateral), R3 (selección múltiple), R2, R4, R5, R8 y R9.
 
 **Pruebas:** `tests/Feature/Billing/BillingSummaryTest.php`, `ReviewInboxTest.php`, `UnbilledReportTest.php`, `BillingUxPermissionsTest.php` (admin, finanzas, responsable, empleado, colaborador, cliente y un admin excluido), `SoldVsActualTest.php` y `InvoiceLinesTest.php` (por horas), `tests/Feature/Performance/BillingUxPerformanceTest.php`, `tests/js/billing.test.tsx` (casos compartidos por horas) y `tests/e2e/billing.spec.ts` (Resumen, Por facturar, Por revisar, Deshacer y móvil a 375 px).
+
+## 12. Emisión propia, entrega E1 · Emitir facturas (rama `emision-e1`, 09/10/2026)
+
+Decisiones D-417 a D-429. Entrega E1 de `docs/PLAN-EMISION.md` (§9): la F2 de este plan y parte de la F5, sin Holded en medio (D-249). Con el módulo `invoicing` apagado no cambia nada.
+
+- [x] **Catálogo y ajustes (D-423, D-425 y D-426):** servicios importados de las líneas de Holded, impuestos (IVA 21, 10, 4 y 0 %, UE, fuera de la UE, exenta, inversión del sujeto pasivo e IRPF 15 y 7 %), formas de pago, series (F y CN desde el 1/1/2027; PRU y PRUCN de pruebas), plantilla del PDF y el emisor ampliado.
+- [x] **Editor (D-428):** cliente con su ficha fiscal (se completa desde el editor; aviso del NIF-IVA de la UE en las intracomunitarias), líneas con servicio, cantidad, precio, descuento e impuesto, totales al céntimo, proyecto y bolsa, vista previa del PDF sin guardar y «Guardar borrador» o «Guardar y emitir…».
+- [x] **Emitir (D-419 a D-422):** número correlativo por serie y año en una transacción con candado, copias del emisor y del cliente, desglose de impuestos, registro encadenado con la huella de VeriFactu (los tres ejemplos oficiales de la AEAT) y PDF archivado con su SHA-256. Lo emitido no se cambia, tampoco en la base de datos (*triggers* en PostgreSQL y SQLite).
+- [x] **Después de emitir (D-424):** duplicar (también una de Holded), descargar, anular (rectificativa por el total que desbloquea las horas), rectificar por diferencias y anular el registro (solo un admin).
+- [x] **Listado unificado (D-427):** la vista `billing_documents` junta las de Holded y las propias en el listado, Ventas, el Resumen, «Vendido frente a real» y Por facturar; la serie de pruebas, solo en la pestaña «Pruebas». «No necesita proyecto» (D-431) también en las propias.
+- [x] **Vigilancia (D-429):** `app:billing-verify-chain` cada noche a las 04:15, con aviso a los admins si algo no cuadra.
+- [ ] Siguiente: E2 (cobrar, enviar y portal).
+
+**Pruebas:** `tests/Unit/Billing/RecordHasherTest.php` y `DocumentTotalsTest.php`; `tests/Feature/Invoicing/` (emitir, inmutabilidad, anular y rectificar, cadena, acceso, informes, PDF, pantallas, ajustes y concurrencia); `tests/Feature/Performance/InvoicingPerformanceTest.php`; `tests/js/invoicing-editor.test.tsx` y `tests/e2e/invoicing.spec.ts` (borrador, emitir, PDF, duplicar, rectificar y anular).

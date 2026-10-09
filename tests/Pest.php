@@ -159,3 +159,6 @@ function tamperRegisterTable(string $table, string $sqliteTrigger): void
 }
 
 require_once __DIR__.'/Support/leave.php';
+
+// Emisión propia (PLAN-EMISION E1): encender el módulo, emisor y clientes completos, borradores y emitir.
+require_once __DIR__.'/Support/invoicing.php';

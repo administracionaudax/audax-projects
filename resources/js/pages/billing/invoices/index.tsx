@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { FileText, Search, X } from 'lucide-react';
+import { FileText, Plus, Search, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
 import { CollectionBar } from '@/components/billing/collection-bar';
@@ -29,6 +29,7 @@ import { ListPagination } from '@/components/projects-list/list-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { tCount } from '@/lib/people';
 import type { HoldedInvoiceSummary } from '@/types';
@@ -39,7 +40,8 @@ export type InvoiceView =
     | 'vencidas'
     | 'sin-proyecto'
     | 'borradores'
-    | 'rectificativas';
+    | 'rectificativas'
+    | 'pruebas';
 
 const VIEWS: InvoiceView[] = [
     'todas',
@@ -48,6 +50,8 @@ const VIEWS: InvoiceView[] = [
     'sin-proyecto',
     'borradores',
     'rectificativas',
+    // La serie de pruebas de la emisión propia (D-419): solo si hay alguna.
+    'pruebas',
 ];
 
 type Filters = {
@@ -64,6 +68,7 @@ type Filters = {
     estado: string | null;
     tipo: string | null;
     enlace: string | null;
+    origen: 'holded' | 'audax' | null;
 };
 
 type Props = {
@@ -116,6 +121,7 @@ export default function InvoicesIndex({
     today,
 }: Props) {
     const id = useId();
+    const can = useAbilities();
     const [search, setSearch] = useState(filters.buscar);
 
     const visit = (patch: InvoiceQuery) => {
@@ -214,6 +220,7 @@ export default function InvoicesIndex({
         filters.cliente !== null ||
         filters.servicio.length > 0 ||
         filters.cobro !== null ||
+        filters.origen !== null ||
         legacy.length > 0;
     const excluded = invoices.meta.total - totals.count;
     // En el móvil, los filtros van en una hoja con su número (I7).
@@ -221,6 +228,7 @@ export default function InvoicesIndex({
         (filters.periodo !== null ? 1 : 0) +
         (filters.cliente !== null ? 1 : 0) +
         (filters.servicio.length > 0 ? 1 : 0) +
+        (filters.origen !== null ? 1 : 0) +
         legacy.length;
 
     return (
@@ -231,14 +239,33 @@ export default function InvoicesIndex({
                 <BillingHeader
                     current="facturas"
                     title={t('billing.invoices.title')}
-                    description={t('billing.invoices.description')}
+                    description={t(
+                        can.useInvoicing
+                            ? 'billing.invoices.description_invoicing'
+                            : 'billing.invoices.description',
+                    )}
+                    actions={
+                        can.useInvoicing ? (
+                            <Button asChild data-test="new-invoice">
+                                <Link href="/facturacion/facturas/nueva">
+                                    <Plus aria-hidden="true" />
+                                    {t('invoicing.new_invoice')}
+                                </Link>
+                            </Button>
+                        ) : null
+                    }
                 />
 
                 <ViewTabs
                     label={t('billing.invoices.views_label')}
                     current={filters.vista}
                     dataTest="invoice-views"
-                    tabs={VIEWS.map((view) => ({
+                    tabs={VIEWS.filter(
+                        (view) =>
+                            view !== 'pruebas' ||
+                            views.pruebas > 0 ||
+                            filters.vista === 'pruebas',
+                    ).map((view) => ({
                         id: view,
                         label: t(`billing.invoices.view.${view}`),
                         href: viewHref(view),
@@ -328,6 +355,38 @@ export default function InvoicesIndex({
                             onChange={(value) => visit({ servicio: value })}
                             dataTest="invoice-service"
                         />
+                        {can.useInvoicing ? (
+                            <ChipSelect
+                                label={t('billing.filters.origin')}
+                                allLabel={t('billing.filters.all_origins')}
+                                searchPlaceholder={t(
+                                    'billing.filters.search_origin',
+                                )}
+                                options={[
+                                    {
+                                        value: 'holded',
+                                        label: t(
+                                            'billing.filters.origin_holded',
+                                        ),
+                                    },
+                                    {
+                                        value: 'audax',
+                                        label: t(
+                                            'billing.filters.origin_audax',
+                                        ),
+                                    },
+                                ]}
+                                value={
+                                    filters.origen === null
+                                        ? []
+                                        : [filters.origen]
+                                }
+                                onChange={(value) =>
+                                    visit({ origen: value[0] ?? null })
+                                }
+                                dataTest="invoice-origin"
+                            />
+                        ) : null}
                         {legacy.map((chip) => (
                             <RemovableChip
                                 key={chip.key}

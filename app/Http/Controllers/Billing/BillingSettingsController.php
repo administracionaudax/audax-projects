@@ -28,7 +28,10 @@ use Inertia\Response;
 class BillingSettingsController extends Controller
 {
     /** Campos del emisor (PLAN-FASE-12 §6.2, company_billing_settings). */
-    public const array ISSUER_FIELDS = ['legal_name', 'tax_id', 'address', 'postal_code', 'city', 'province', 'country_code', 'registry', 'iban', 'email', 'phone'];
+    public const array ISSUER_FIELDS = ['legal_name', 'tax_id', 'address', 'postal_code', 'city', 'province', 'country_code', 'registry', 'iban', 'email', 'phone', 'legal_form', 'trade_name', 'website'];
+
+    /** Apartados de Ajustes (?apartado=): el de siempre y, con la emisión, los suyos. */
+    public const array SECTIONS = ['general', 'series', 'impuestos', 'servicios', 'formas-de-pago', 'documento'];
 
     public function edit(Request $request, ReviewInbox $inbox): Response
     {
@@ -63,6 +66,9 @@ class BillingSettingsController extends Controller
                 'clients' => ReviewController::clientOptions(),
             ],
             'can' => ['sync' => $user->can('sync-holded'), 'access' => $user->isAdmin(), 'create_client' => $user->can('create', Client::class)],
+            // La emisión propia (E1, D-419, D-423, D-425 y D-426): solo con el módulo `invoicing` visible.
+            'section' => in_array($request->query('apartado'), self::SECTIONS, true) ? $request->query('apartado') : 'general',
+            'invoicing' => $user->can('use-invoicing') ? InvoicingSettingsController::props($user) : null,
         ]);
     }
 
@@ -76,7 +82,7 @@ class BillingSettingsController extends Controller
     {
         $excluded = AppModules::excludedIds(AppModule::Billing);
 
-        return User::query()->where('is_active', true)->whereNull('client_id')->orderBy('name')->orderBy('id')->get()
+        return User::query()->with(['roles', 'permissions'])->where('is_active', true)->whereNull('client_id')->orderBy('name')->orderBy('id')->get()
             ->filter(fn (User $user): bool => ! $user->isCollaborator() && ($user->isAdmin() || Gate::forUser($user)->allows('view-financials')))
             ->map(fn (User $user): array => [
                 'id' => $user->id,
@@ -135,6 +141,10 @@ class BillingSettingsController extends Controller
             'iban' => ['nullable', 'string', 'max:42', 'regex:/^[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{10,38}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
+            // Ampliados para la emisión (L-17, D-426): forma jurídica, nombre comercial y web.
+            'legal_form' => ['nullable', 'string', 'max:40'],
+            'trade_name' => ['nullable', 'string', 'max:200'],
+            'website' => ['nullable', 'string', 'max:200'],
         ]);
 
         $issuer = [];

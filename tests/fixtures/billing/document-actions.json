@@ -1,0 +1,283 @@
+{
+    "_comment": "Matriz estado → acciones de la emisión propia (PLAN-EMISION §3.2; D-428): casos compartidos por App\\Domain\\Billing\\Issuing\\DocumentActions (Pest) y resources/js/components/invoicing/document-actions.ts (Vitest). role null: no usa la emisión; view: prepara (use-invoicing); manage: emite, anula y rectifica (manage-billing); admin: además anula el registro (V-03).",
+    "cases": [
+        {
+            "state": "draft",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "draft",
+            "role": "view",
+            "actions": [
+                "view",
+                "edit",
+                "delete",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal"
+            ]
+        },
+        {
+            "state": "draft",
+            "role": "manage",
+            "actions": [
+                "view",
+                "edit",
+                "delete",
+                "issue",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal"
+            ]
+        },
+        {
+            "state": "draft",
+            "role": "admin",
+            "actions": [
+                "view",
+                "edit",
+                "delete",
+                "issue",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal"
+            ]
+        },
+        {
+            "state": "issued",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "issued",
+            "role": "view",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "issued",
+            "role": "manage",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "cancel",
+                "rectify",
+                "view_record"
+            ]
+        },
+        {
+            "state": "issued",
+            "role": "admin",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "cancel",
+                "rectify",
+                "void",
+                "view_record"
+            ]
+        },
+        {
+            "state": "paid",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "paid",
+            "role": "view",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "paid",
+            "role": "manage",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "cancel",
+                "rectify",
+                "view_record"
+            ]
+        },
+        {
+            "state": "paid",
+            "role": "admin",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "cancel",
+                "rectify",
+                "view_record"
+            ]
+        },
+        {
+            "state": "cancelled",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "cancelled",
+            "role": "view",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "cancelled",
+            "role": "manage",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "cancelled",
+            "role": "admin",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "voided",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "voided",
+            "role": "view",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "voided",
+            "role": "manage",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "voided",
+            "role": "admin",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "credit_note",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "credit_note",
+            "role": "view",
+            "actions": [
+                "view",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "credit_note",
+            "role": "manage",
+            "actions": [
+                "view",
+                "download_pdf",
+                "edit_non_fiscal",
+                "view_record"
+            ]
+        },
+        {
+            "state": "credit_note",
+            "role": "admin",
+            "actions": [
+                "view",
+                "download_pdf",
+                "edit_non_fiscal",
+                "void",
+                "view_record"
+            ]
+        },
+        {
+            "state": "holded",
+            "role": null,
+            "actions": []
+        },
+        {
+            "state": "holded",
+            "role": "view",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "open_holded"
+            ]
+        },
+        {
+            "state": "holded",
+            "role": "manage",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "open_holded"
+            ]
+        },
+        {
+            "state": "holded",
+            "role": "admin",
+            "actions": [
+                "view",
+                "duplicate",
+                "download_pdf",
+                "edit_non_fiscal",
+                "open_holded"
+            ]
+        }
+    ]
+}

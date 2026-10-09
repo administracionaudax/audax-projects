@@ -3031,9 +3031,93 @@ Bloques 3 y 4 de `docs/ANALISIS-UX-FACTURACION.md`: I1, I5, I10, I7, I9 y R7, co
 - No entra en la gráfica de bala ni en el consumo de lo vendido; las cifras cuentan aparte cuántas unidades por horas tienen algo por facturar. El importe pendiente de facturar sigue siendo el valor de las horas menos lo facturado.
 - El interruptor «Horas | Importes» de la propuesta no hace falta: la tabla ya cabe a 1440 px (D-410).
 
+## 09/10/2026: Emisión propia, entrega E1 · Emitir facturas (rama `emision-e1`)
+
+Entrega E1 de `docs/PLAN-EMISION.md` (§9), con el plan aprobado por el propietario. Las preguntas aún abiertas (P-2, P-5 y G-4) se resuelven con supuestos que se cambian en Ajustes, sin bloquear la entrega. Sin envío a la AEAT (D-249): el registro encadenado con su huella se guarda desde la primera factura. Nunca se llama a la AEAT ni se escribe en Holded.
+
+### D-417 · Módulo `invoicing` y alcance de E1 **[amplía D-249]**
+- **Módulo nuevo** «Emisión de facturas» (`AppModule::Invoicing`), **apagado** por defecto y en las instalaciones en uso (migración `add_invoicing_off_to_stored_modules`). Depende de `billing`: sus rutas llevan `module:billing` y `module:invoicing`, así que las exclusiones de «Quién ve Facturación» (D-245) valen también aquí. Apagado: 404 y nada de emitir es visible (ni «Nueva factura», ni los apartados de Ajustes, ni la pestaña «Pruebas»). En modo de prueba (D-239), solo los admins con acceso a Facturación.
+- **E1 incluye**: catálogo (servicios, impuestos, formas de pago, series), ajustes del emisor ampliados, el editor, emitir con número, copias, desglose, registro encadenado y PDF archivado; duplicar, descargar, anular, rectificar y anular el registro; el listado unificado; `app:billing-verify-chain`; «Nueva factura» en Facturas, en la ficha de facturación del cliente y en la pestaña Facturación del proyecto.
+- **Fuera de E1** (E2 en adelante): cobros, envío por email y portal, programadas y recurrentes, «Crear borrador» desde Por facturar (la tabla de horas facturadas ya existe y se bloquea y desbloquea al emitir y anular), libros, gastos, VeriFactu.
+
+### D-418 · Quién prepara, quién emite y quién anula el registro (P-5) **[amplía D-391]**
+- **Preparar** (`use-invoicing`): quien tiene `view-billing` con el módulo visible. Ve las facturas propias, crea, edita, duplica y borra borradores, ve el PDF y cambia lo no fiscal (nota interna, proyecto y bolsa, «No necesita proyecto»).
+- **Emitir, anular y rectificar** (`manage-billing`): permiso nuevo de spatie que tienen los admins (migración `create_manage_billing_permission`) y que se puede dar a alguien de finanzas. La gate exige además el módulo y view-billing. Los gestores de proyecto no emiten.
+- **Anular el registro** de una factura que no debió existir (`void-invoices`): solo un admin con manage-billing.
+- Habilidades compartidas `useInvoicing`, `manageBilling` y `voidInvoices`. Un colaborador externo nunca (COLLABORATOR_DENIED).
+
+### D-419 · Series y numeración (P-2)
+- **Series de partida**: `F` (facturas, `F[YY]####`) y `CN` (rectificativas, `CN[YY]####`) **desde el 1/1/2027** (el corte de la opción A, PLAN-EMISION §1.2: F270001 y CN270001); `PRU` y `PRUCN`, de pruebas, desde ya. Antes del 1/1/2027 el editor propone la de pruebas y emitir en F o CN se rechaza («La serie F empieza el 01/01/2027»).
+- **Contador por serie y año** (`numbering_counters`): sube en la misma transacción que la emisión y **solo sube** (*trigger*). El número se asigna al emitir: borrar un borrador no deja hueco y un número no se reutiliza nunca (V-18).
+- **Fecha en orden**: no se emite con una fecha anterior a la última emitida de la serie en el año, ni futura. El diálogo de emitir avisa antes con la fecha de la última; el servidor lo rechaza (PLAN-EMISION §3.1, H-039).
+- **Ajustes › Series**: nombre, formato (solo si la serie no tiene emitidas), desde cuándo, por defecto y archivada; **primer número del año** solo antes de emitir la primera de ese año y solo hacia arriba (para continuar la numeración de Holded en un corte a mitad de año, §7.1 opción B). Todo en la auditoría de ajustes.
+- La serie de pruebas **nunca cuenta**: fuera de la vista `billing_documents` (informes), solo en la pestaña «Pruebas» del listado, con la marca «Prueba» en el PDF y su propia instalación y cadena (V-17).
+
+### D-420 · El registro encadenado con la huella de VeriFactu
+- **Un registro por emisión** (alta) **o por anulación por error** (anulación), en `invoice_records`, encadenado **por instalación del sistema** (`sif_installations`: producción para F y CN, pruebas para PRU y PRUCN; NIF + código «AP» + número de instalación, FAQ §4).
+- **Huella**: SHA-256 en hexadecimal en mayúsculas sobre `campo=valor&…` en el orden de la especificación v0.1.2 (`RecordHasher`), con los importes siempre con dos decimales y punto, la fecha `DD-MM-AAAA` y la hora de Madrid con su huso. Comprobada con **los tres ejemplos oficiales** de la AEAT (tests/Unit/Billing/RecordHasherTest.php). Los campos se guardan como texto exacto, y `payload` lleva todo lo del art. 10 del RD 1007/2023 (destinatario, desglose, rectificación, sistema, encadenamiento) para generar el XML en E7 sin leer la factura.
+- **Concurrencia**: la emisión bloquea la fila de su instalación al empezar (un UPDATE, que en PostgreSQL bloquea la fila y en SQLite toma el candado de escritura); numeración y cadena van en fila aunque emitan varias personas a la vez (test con seis procesos a la vez).
+- **ImporteTotal** del registro = base + cuotas, sin la retención (la factura sí la resta).
+
+### D-421 · Lo emitido no se cambia, tampoco en la base de datos
+- **`sales_documents`**: se crea siempre como borrador; una emitida no se borra y no cambia nada fiscal (serie, número, fechas, partes y sus copias, importes, textos del PDF, forma de pago, rectificación, registro y el PDF una vez archivado). Solo pasa de emitida a anulada (con su rectificativa) o a anulada por error (con su motivo). Coherencia: emitida ⇔ número, serie, año, copias y registro; rectificativa ⇔ factura rectificada y motivo.
+- **Lo no fiscal sí se cambia emitida**: nota interna, proyecto y bolsa, «No necesita proyecto» (D-431). El nº de pedido del cliente sale en el PDF, así que se congela (el plan lo listaba como editable).
+- **`sales_document_lines` y `sales_document_taxes`**: nada si su factura no es un borrador. **`invoice_records`**: solo alta; al insertar se comprueba la cadena y, en PostgreSQL, se recalcula la huella. **`numbering_counters`**: solo sube y no se borra.
+- *Triggers* en PostgreSQL y su equivalente en SQLite (salvo el recálculo de la huella, que no tiene SHA-256: lo prueba el servidor y lo vigila `app:billing-verify-chain`), en `InvoicingGuards`.
+- **Copias congeladas** (T-SNAP): el emisor y el cliente tal como estaban al emitir; cambiar la ficha fiscal o Ajustes no cambia una emitida ni su PDF.
+
+### D-422 · Totales y redondeo
+- Base de la línea = cantidad × precio × (1 − descuento %), al céntimo; cuota por tipo = base del tipo × tipo / 100, al céntimo, solo en las operaciones S1; retención de IRPF = base × tipo / 100; total = base + cuotas − retención. Redondeo **mitad alejándose del cero** (una rectificativa por el total da exactamente los mismos importes en negativo). Sin float: bcmath en PHP (`DocumentTotals`) y BigInt en el editor (`totals.ts`), con casos compartidos (`tests/fixtures/billing/totals.json`).
+- La retención de IRPF va **por factura** (rara en Audax, que es una sociedad): un selector en el editor con los tipos del catálogo (15 % y 7 %).
+- Sin descuento general por ahora (solo por línea).
+
+### D-423 · Impuestos, menciones y formas de pago (G-4)
+- **Impuestos de partida**, cada uno con su calificación de VeriFactu y su mención legal en el PDF (en español y en inglés): IVA 21, 10, 4 y 0 % (S1); empresa de la UE (N2, no sujeta por localización, con la mención de la inversión del sujeto pasivo); fuera de la UE (N2); exenta (E1, art. 20); inversión del sujeto pasivo en España (S2); retenciones del 15 % y del 7 %.
+- **El tipo y la calificación de un impuesto ya usado no se cambian** (se archiva y se crea otro); el nombre y la mención, sí. Lo emitido copia tipo, calificación y mención.
+- **Cliente de la UE**: con el régimen «empresario de la UE» hace falta su NIF-IVA para emitir (operación intracomunitaria, art. 25 LIVA; confirmado por el propietario), y el editor lo avisa al elegir el cliente (y en el diálogo de su ficha fiscal): sin él no se emite.
+- **Formas de pago** de partida: transferencia (por defecto, a 30 días, con «:iban» en el texto) y domiciliación. El editor propone el vencimiento con sus días (o los de la ficha del cliente).
+
+### D-424 · Anular, rectificar y anular el registro **[concreta D-244]**
+- **Anular** (la vía habitual): rectificativa en la serie de rectificativas de su serie (F → CN) **por el total en negativo**: las líneas de la original y de sus rectificativas vivas cambiadas de signo, así el neto queda a 0. Motivo obligatorio. La original queda «Anulada» por esa rectificativa, sus horas se desbloquean (las entradas vuelven a poder facturarse) y la ficha ofrece duplicarla.
+- **Rectificar por diferencias**: se escribe cómo debería haber sido cada línea (unidades y precio) y se emite una rectificativa solo por la diferencia (una línea por la diferencia de unidades al precio emitido y otra por la de precio a las unidades correctas), con su motivo. La original sigue emitida y sus horas, bloqueadas.
+- **Tipo de la rectificativa**: R1 por defecto, R4 a elegir (pendiente de la gestoría, G-2). La rectificativa hereda los enlaces con proyecto y bolsa de la original.
+- **Anulación por error** (registro de anulación, V-03): solo un admin, solo una emitida sin cobros ni rectificativas, nunca una rectificativa por el total; añade el registro de anulación a la cadena y la deja «Anulada por error». Desbloquea las horas.
+- **Duplicar** crea un borrador con la fecha de hoy (también desde una factura de Holded, para el mes en paralelo, §7.3; con su cliente casado). Una rectificativa no se duplica.
+
+### D-425 · El catálogo de servicios, desde las líneas de Holded
+- La clave de Holded (D-399) es de solo lectura con los ámbitos Contactos, Proyectos y Ventas: su catálogo de productos y servicios queda fuera, así que no se pide a su API. «Importar de las facturas de Holded» (Ajustes › Servicios) crea un servicio por cada código distinto de las líneas ya leídas (BDH, DES, F_UX…) con el nombre, el precio y el IVA de su línea más reciente y la unidad según lo que vende (horas en bolsas y servicios por horas, meses en los fees, D-396). Lo que ya existe por código no se toca.
+- Una línea copia el nombre y el código de su servicio, así Ventas y «Vendido frente a real» la clasifican igual que las de Holded (`BillingService`, `InvoiceLineKind`).
+
+### D-426 · El PDF de la factura (G-4)
+- HTML con la hoja de documentos de Audax (DM Sans incrustada, 400 y 500) → Gotenberg → disco privado (`invoicing/{año}/{uuid}.pdf`) con su **SHA-256**, una sola vez tras emitir (job `GenerateInvoicePdf`; si Gotenberg está caído, se reintenta y, si no, se genera al abrirlo). Lo archivado no se regenera nunca.
+- **Contenido** (art. 6 del RD 1619/2012 y art. 24 del Código de Comercio): número y serie, fecha de expedición (y de la operación si es otra), emisor y destinatario con NIF (o NIF-IVA) y domicilio, descripción, unidades, precio sin impuesto y descuento, base, tipo y cuota por tipo, la mención de cada exención o inversión del sujeto pasivo, retención, vencimiento y forma de pago con el IBAN, la referencia a la factura rectificada con su motivo, el Registro Mercantil, y en Ajustes › Plantilla del PDF un pie, un texto legal y un logo propio (si no hay, el de la empresa). En español o en inglés según el cliente.
+- **Hueco del QR**: arriba y centrado, libre y sin leyenda (V-12) hasta E7.
+- **Borrador**: vista previa al vuelo con la marca «Borrador» y sin número (también desde el editor sin guardar); la de pruebas, con la marca «Prueba».
+- La plantilla sale en Ajustes como **«pendiente de validar con la gestoría»** hasta que alguien marque que la ha validado.
+
+### D-427 · La vista `billing_documents`: las facturas de Holded y las propias juntas
+- Vistas SQL (PostgreSQL y SQLite) con las columnas de `holded_invoices`, sus líneas y sus enlaces: `billing_documents`, `billing_document_lines` y `billing_document_links`. Las leen el listado de facturas, Ventas, el Resumen, «Vendido frente a real», Por facturar y las fichas de cliente, proyecto y bolsa: una propia cuenta igual que una de Holded (D-397 para las dos: un borrador es previsto, una anulada y su rectificativa no cuentan).
+- **Las propias llevan el id en negativo** (`-sales_documents.id`): los ids no chocan y el enlace sabe a qué ficha ir (`BillingDocument::urlFor`, `invoiceUrl` en TypeScript: `/facturacion/documentos/{id}`).
+- **Estado de cobro de una propia** (E1 aún no registra cobros): borrador, anulada, rectificativa sin pendiente, cobrada, vencida (vencimiento antes de hoy), cobrada en parte o pendiente, con las claves de D-386.
+- **La serie de pruebas** solo está en `billing_documents_all`, que lee el listado para su pestaña «Pruebas».
+- **Listado**: origen visible (icono «Emitida en Audax») y filtro «Origen» (`?origen=holded|audax`). **Por revisar sigue siendo de Holded** (contactos y sugerencias de enlace): una propia elige su proyecto en el editor; si no lo tiene, sale en «Sin proyecto» y se enlaza o se marca «No necesita proyecto» desde su ficha.
+- **«No necesita proyecto»** (D-431) también en las propias: las tres columnas en `sales_documents` con el trait `MarksNoProjectNeeded` y la columna en la vista, así «Sin proyecto» y `enlace=no-necesita` las tratan igual.
+- Una migración que cambie `holded_invoices`, sus líneas o sus enlaces, o las tablas de ventas, tiene que quitar las vistas antes y crearlas después (`BillingDocumentsView::drop()` y `create()`).
+
+### D-428 · Pantallas y matriz estado → acciones
+- **Matriz** (`DocumentActions`, con su copia en TypeScript y casos compartidos en `tests/fixtures/billing/document-actions.json`): la ficha recibe las acciones del servidor y el servidor las comprueba en cada ruta. Estados: borrador, emitida, cobrada, anulada, anulada por error, rectificativa y de Holded; papeles: preparar, emitir y admin.
+- **Editor** (`/facturacion/facturas/nueva` y `/facturacion/documentos/{id}/editar`): cliente con su ficha fiscal (lo que falta se avisa y se completa en un diálogo que guarda en la ficha del cliente), serie con el número que recibirá, fechas de expedición y de operación, forma de pago y vencimiento, proyecto y bolsa, su referencia, líneas (servicio, descripción, cantidad, unidad, precio, descuento e impuesto, con la base al céntimo), texto en la factura, nota interna, retención y, a la derecha, los totales con el cuadro de impuestos. «Vista previa del PDF» sin guardar (en otra pestaña), «Guardar borrador» y «Guardar y emitir…» (con manage-billing), que lleva a la ficha con el diálogo de emitir abierto. En el móvil, una columna con los botones fijos abajo.
+- **Ficha** (`/facturacion/documentos/{id}`): el número y su estado, lo pendiente del total, fechas, el cuadro de impuestos, líneas, rectificación, historia, el registro de facturación plegado (orden, huella y anterior, y el SHA-256 del PDF), proyecto y nota (editables también emitida) y el cliente tal como quedó. Acciones: editar, vista previa o PDF, descargar, emitir, rectificar, anular, duplicar, eliminar el borrador y anular el registro.
+- **«Nueva factura»** en Facturas, en la ficha de facturación del cliente y en la pestaña Facturación del proyecto (con el cliente o el proyecto puestos). En la ficha de una de Holded, «Duplicar como borrador».
+- **Ajustes**: con la emisión, apartados «Emisor y Holded», Series, Impuestos, Servicios, Formas de pago y Plantilla del PDF (`?apartado=`); cambiarlos, manage-billing. El emisor gana forma jurídica, nombre comercial y web.
+
+### D-429 · `app:billing-verify-chain` cada noche
+- Recorre la cadena de cada instalación (números de orden sin huecos, enlace con el anterior y cada huella recalculada desde sus campos), comprueba que cada emitida tiene su registro de alta con su número, fecha e importes (y cada anulada por error el de anulación) y la correlatividad de cada serie y año con su contador. Sale con error si algo no cuadra.
+- Cada noche a las **04:15** de Madrid (después de la copia de las 03:40); si algo no cuadra, avisa a los admins que usan la emisión, en la app y por email, de forma obligatoria (`billing.chain_broken`). Solo lee: corre también con el módulo apagado (sin registros, no hay nada que avisar).
+
 ## 09/10/2026: Respuestas del propietario en Facturación (rama `facturacion-respuestas`)
 
-Respuestas del propietario del 09/10 a las dudas que dejaron abiertas D-412 y D-413. Las decisiones D-417 a D-429 son de la emisión propia (E1), que va en otra rama.
+Respuestas del propietario del 09/10 a las dudas que dejaron abiertas D-412 y D-413. Las decisiones D-417 a D-429 son de la emisión propia (entrega E1, justo antes).
 
 ### D-430 · Crear el cliente desde un contacto de Holded **[cambia D-387 y D-413]**
 - **Se acaba «nunca se crea un cliente desde Holded»** para el trabajo a mano: en «Por revisar» (pestaña Contactos) y en el directorio de Ajustes, un contacto **sin cliente** (también uno descartado) tiene «Crear cliente». La sincronización sigue sin crear ninguno: solo casa (D-387).
@@ -3102,7 +3186,7 @@ Respuesta del propietario: «por norma general, si nos pasamos, lo facturamos en
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia (E1, en otra rama), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-435** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-417 a D-429 para la emisión propia E1, en otra rama; D-435 a D-439, reservadas para las respuestas del propietario; D-440 en adelante, libres).
+La siguiente libre es **D-435** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-435 a D-439, reservadas para las respuestas del propietario; D-440 en adelante, libres).
