@@ -2044,6 +2044,29 @@ Con los datos reales del 08/10/2026 solo casaban 23 de 283 contactos de Holded (
 - **Se marcan para revisar** (`match_method = approx`): salen en la pestaña nueva **«Por revisar»** de Contactos de Holded, con «Sí, es …» para confirmarlos. Al confirmar pasan a «a mano». Sus facturas ya cuentan para el cliente en los informes.
 - **Orden de la lista:** «Sin casar» enseña primero los contactos que más facturan.
 
+### D-249 · Audax emitirá sus facturas desde la app (emisión propia con VeriFactu) y dejará Holded **[responde a la P1 del plan de facturación; cambia el supuesto de D-398]**
+Decisión del propietario el 09/10/2026: «queremos ir hacia la segunda opción», es decir, emisión propia en lugar de preparar en Audax y emitir en Holded.
+
+**Marco legal comprobado el 09/10/2026:**
+- Fecha vigente: VeriFactu obliga a las sociedades desde el **1/1/2027** (RD 1007/2023, Orden HAC/1177/2024 y RDL 15/2025).
+- El aplazamiento a octubre de 2028 es solo un anuncio de Hacienda del 5/10/2026, sin norma en el BOE. La Orden HAC/1028/2026 del mismo día trata de la factura electrónica B2B, no de VeriFactu.
+
+**Cómo se hace:**
+- **Cumplimiento desde el primer día:** la emisión propia cumple VeriFactu desde la primera factura, en la modalidad **VERI\*FACTU**: cada registro se envía a la AEAT al expedir la factura, sin firma de registros ni registro de eventos (art. 16.3).
+- **Contenido:**
+  - registro de alta y de anulación encadenados con huella SHA-256;
+  - QR y leyenda «VERI\*FACTU»;
+  - declaración responsable del productor, que es la propia Audax;
+  - certificado electrónico de Audax para el servicio web de la AEAT, instalado por el propietario sin que nadie más lo vea.
+- **Mientras tanto, Holded sigue emitiendo.** No se cambia de programa hasta que la emisión propia esté terminada, probada en el entorno de pruebas de la AEAT y revisada con la gestoría.
+- **Corte:** a principio de trimestre, después de un mes en paralelo. Se propone el 1/4/2027, o el 1/1/2027 si todo está listo y la gestoría lo ve bien.
+- **Orden:** F2 (catálogo, series, impuestos, plantilla), F5 (emisión), F6 (VeriFactu) y F7 (corte y baja de Holded), según PLAN-FASE-12 §6.5. F3 (presupuestos) y F4 (emitir vía Holded) quedan fuera.
+- **Pendiente del propietario y de la gestoría:**
+  - serie nueva o la misma F/CN a partir del corte;
+  - cómo recibe los datos la gestoría (P5);
+  - el certificado;
+  - el SMTP para enviar las facturas por email.
+
 ### D-260 · Barra lateral con secciones plegables **[amplía D-239; cambia el orden de la navegación del SPEC §3]**
 Pedido por el propietario el 06/10: «que los menús principales se puedan colapsar: Proyectos, Weekly, Audax Woffu (le buscaremos otro nombre), Facturación…».
 - **Bloques, en este orden:** Inicio y Chat **fijos arriba**, sin encabezado (lo más usado; la búsqueda global sigue en la cabecera). Después, las secciones plegables, separadas por la línea fina de D-239:
@@ -2971,6 +2994,7 @@ Bloques 1 y 2 de `docs/ANALISIS-UX-FACTURACION.md` (I8, I2, I6, I3, I4 y R6). El
 - Barra de tipos en la lista del chat: D-246.
 - Sin importes en los informes para quien no ve Facturación: D-247.
 - Casar contactos de Holded por un nombre parecido: D-248.
+- Emisión propia de facturas con VeriFactu: D-249.
 - Plan del día: D-250 a D-256.
 - Canales del chat e importación del chat de ClickUp: D-270 a D-279.
 - Previsión: D-280 a D-289.
@@ -2980,6 +3004,6 @@ Bloques 1 y 2 de `docs/ANALISIS-UX-FACTURACION.md` (I8, I2, I6, I3, I4 y R6). El
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
 - Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410.
-- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-249.
+- Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-249** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-411 en adelante, libres).
+La siguiente libre es **D-411** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-411 en adelante, libres).
