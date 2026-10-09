@@ -17,6 +17,7 @@ import {
     MAX_BAR_SIZE,
 } from '@/components/charts/chart-config';
 import { ChartFrame } from '@/components/charts/chart-frame';
+import { useIsNarrow } from '@/hooks/use-media-query';
 import type { ChartTableColumn } from '@/components/charts/chart-frame';
 import { ChartTooltipCard } from '@/components/charts/chart-tooltip';
 import { formatCurrency } from '@/lib/format';
@@ -41,24 +42,25 @@ export type AmountBar = {
 };
 
 const ROW_HEIGHT = 34;
-/** Caracteres que caben en el eje; el nombre entero va en el tooltip y en la tabla. */
+/** Caracteres que caben en el eje (en el móvil y en pantallas anchas, INF-4); el nombre entero va en
+ * el tooltip y en la tabla. */
 const LABEL_CHARS = 16;
+const WIDE_LABEL_CHARS = 26;
 /** Gris de los agregados: la tinta secundaria sobre la tarjeta (no es un color de serie). */
 const MUTED_FILL = `color-mix(in oklab, ${CHART_INK.axis} 45%, ${CHART_INK.surface})`;
 
-function short(label: string): string {
-    return label.length > LABEL_CHARS
-        ? `${label.slice(0, LABEL_CHARS - 1)}…`
-        : label;
+function short(label: string, chars = LABEL_CHARS): string {
+    return label.length > chars ? `${label.slice(0, chars - 1)}…` : label;
 }
 
 type TickProps = {
     x?: number | string;
     y?: number | string;
     payload?: { value?: unknown };
+    chars?: number;
 };
 
-function NameTick({ x, y, payload }: TickProps) {
+function NameTick({ x, y, payload, chars }: TickProps) {
     const text = typeof payload?.value === 'string' ? payload.value : '';
 
     return (
@@ -72,7 +74,7 @@ function NameTick({ x, y, payload }: TickProps) {
                 fill={CHART_INK.label}
                 fontSize={12}
             >
-                {short(text)}
+                {short(text, chars)}
             </text>
         </g>
     );
@@ -100,6 +102,7 @@ export function InvoicingBars({
     footer?: ReactNode;
     test?: string;
 }) {
+    const narrow = useIsNarrow();
     const data = rows.map((row) => ({
         ...row,
         value: amount(row.amount),
@@ -168,8 +171,14 @@ export function InvoicingBars({
                         <YAxis
                             type="category"
                             dataKey="label"
-                            width={120}
-                            tick={<NameTick />}
+                            width={narrow ? 120 : 184}
+                            tick={
+                                <NameTick
+                                    chars={
+                                        narrow ? LABEL_CHARS : WIDE_LABEL_CHARS
+                                    }
+                                />
+                            }
                             tickLine={false}
                             axisLine={{ stroke: CHART_INK.grid }}
                             interval={0}

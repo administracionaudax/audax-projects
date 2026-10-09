@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatMinutes, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { tCount } from '@/lib/people';
 import { urls } from '@/lib/urls';
 import { cn } from '@/lib/utils';
 import type { SoldVsActualTotals, SoldVsActualUnit } from '@/types';
@@ -28,7 +29,7 @@ function Th({
         <th
             scope="col"
             className={cn(
-                'px-3 py-2 text-right font-medium whitespace-nowrap',
+                'px-3 py-2 text-right align-bottom font-medium',
                 className,
             )}
         >
@@ -45,10 +46,36 @@ function Money({ value }: { value: string | null | undefined }) {
     );
 }
 
+/** Línea secundaria de una celda (en pequeño y en gris). */
+function Sub({
+    children,
+    className,
+}: {
+    children: ReactNode;
+    className?: string;
+}) {
+    return (
+        <span className={cn('block text-xs text-muted-foreground', className)}>
+            {children}
+        </span>
+    );
+}
+
+function PendingHours({ minutes }: { minutes: number }) {
+    return (
+        <span className="inline-flex items-center justify-end gap-1">
+            <Clock aria-hidden="true" className="size-3.5 text-warning" />
+            {formatMinutes(minutes)}
+        </span>
+    );
+}
+
 /**
  * Tabla de «Vendido frente a real» (D-390): una fila por unidad de venta con lo vendido, lo real,
  * lo pendiente de aprobar, la desviación y su semáforo; con view-financials, además, lo vendido en
- * euros, lo facturado, lo cobrado, lo pendiente de cobro y el margen. Totales al pie.
+ * euros, lo facturado (sin IVA), lo cobrado (con IVA, con lo pendiente de cobro debajo) y el
+ * margen. Para que quepa a 1440 px sin desplazarse (D-410), con importes el responsable va debajo de
+ * la unidad y las horas sin aprobar debajo de las reales. Totales al pie.
  */
 export function SoldVsActualTable({
     units,
@@ -63,6 +90,9 @@ export function SoldVsActualTable({
     caption: string;
     showClient?: boolean;
 }) {
+    // Sin importes hay sitio: el responsable y las horas sin aprobar llevan su columna.
+    const wide = !financials;
+
     return (
         <div
             className={cn('overflow-x-auto rounded-md border', FOCUS_RING)}
@@ -73,25 +103,24 @@ export function SoldVsActualTable({
             <table
                 className={cn(
                     'tabular w-full text-sm',
-                    financials ? 'min-w-[86rem]' : 'min-w-[56rem]',
+                    financials ? 'min-w-[64rem]' : 'min-w-[54rem]',
                 )}
                 data-test="sold-vs-actual-table"
             >
                 <caption className="sr-only">{caption}</caption>
                 <thead>
                     <tr className="border-b text-left">
-                        <th
-                            scope="col"
-                            className="min-w-60 px-3 py-2 font-medium"
-                        >
+                        <th scope="col" className="px-3 py-2 font-medium">
                             {t('billing.columns.unit')}
                         </th>
-                        <th scope="col" className="px-3 py-2 font-medium">
-                            {t('billing.columns.manager')}
-                        </th>
+                        {wide ? (
+                            <th scope="col" className="px-3 py-2 font-medium">
+                                {t('billing.columns.manager')}
+                            </th>
+                        ) : null}
                         <Th>{t('billing.columns.sold_hours')}</Th>
                         <Th>{t('billing.columns.real_hours')}</Th>
-                        <Th>{t('billing.columns.pending')}</Th>
+                        {wide ? <Th>{t('billing.columns.pending')}</Th> : null}
                         <Th>{t('billing.columns.deviation')}</Th>
                         <th scope="col" className="px-3 py-2 font-medium">
                             {t('billing.columns.status')}
@@ -101,7 +130,6 @@ export function SoldVsActualTable({
                                 <Th>{t('billing.columns.sold_amount')}</Th>
                                 <Th>{t('billing.columns.invoiced')}</Th>
                                 <Th>{t('billing.columns.collected')}</Th>
-                                <Th>{t('billing.columns.outstanding')}</Th>
                                 <Th>{t('billing.columns.margin')}</Th>
                             </>
                         ) : null}
@@ -115,7 +143,7 @@ export function SoldVsActualTable({
                         >
                             <th
                                 scope="row"
-                                className="max-w-80 px-3 py-2 text-left font-normal"
+                                className="max-w-64 min-w-48 px-3 py-2 text-left font-normal"
                             >
                                 <Link
                                     href={unitHref(unit)}
@@ -130,18 +158,30 @@ export function SoldVsActualTable({
                                     {unit.name}
                                 </Link>
                                 <span className="block text-xs text-muted-foreground">
-                                    {t(`billing.kind.${unit.kind}`)}
-                                    {unit.months !== null
-                                        ? ` · ${t(unit.months === 1 ? 'billing.months_one' : 'billing.months_other', { count: unit.months })}`
-                                        : ''}
-                                    {showClient && unit.client
-                                        ? ` · ${unit.client.name}`
-                                        : ''}
+                                    {[
+                                        t(`billing.kind.${unit.kind}`),
+                                        unit.months !== null
+                                            ? tCount(
+                                                  'billing.months',
+                                                  unit.months,
+                                              )
+                                            : null,
+                                        showClient && unit.client
+                                            ? unit.client.name
+                                            : null,
+                                        !wide && unit.manager
+                                            ? unit.manager.name
+                                            : null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
                                 </span>
                             </th>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                                {unit.manager?.name ?? '—'}
-                            </td>
+                            {wide ? (
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                    {unit.manager?.name ?? '—'}
+                                </td>
+                            ) : null}
                             <td className="px-3 py-2 text-right">
                                 {unit.sold_minutes === null
                                     ? '—'
@@ -149,38 +189,41 @@ export function SoldVsActualTable({
                             </td>
                             <td className="px-3 py-2 text-right">
                                 {formatMinutes(unit.real_minutes)}
+                                {!wide && unit.pending_minutes > 0 ? (
+                                    <Sub>
+                                        {t('billing.pending_hours', {
+                                            hours: formatMinutes(
+                                                unit.pending_minutes,
+                                            ),
+                                        })}
+                                    </Sub>
+                                ) : null}
                             </td>
-                            <td className="px-3 py-2 text-right">
-                                {unit.pending_minutes > 0 ? (
-                                    <span className="inline-flex items-center justify-end gap-1">
-                                        <Clock
-                                            aria-hidden="true"
-                                            className="size-3.5 text-warning"
+                            {wide ? (
+                                <td className="px-3 py-2 text-right">
+                                    {unit.pending_minutes > 0 ? (
+                                        <PendingHours
+                                            minutes={unit.pending_minutes}
                                         />
-                                        {formatMinutes(unit.pending_minutes)}
-                                    </span>
-                                ) : (
-                                    formatMinutes(0)
-                                )}
-                            </td>
-                            <td
-                                className={cn(
-                                    'px-3 py-2 text-right whitespace-nowrap',
-                                )}
-                            >
+                                    ) : (
+                                        formatMinutes(0)
+                                    )}
+                                </td>
+                            ) : null}
+                            <td className="px-3 py-2 text-right">
                                 {signedMinutes(
                                     unit.deviation_minutes,
                                     formatMinutes,
                                 )}
                                 {unit.consumption_pct !== null ? (
-                                    <span className="block text-xs text-muted-foreground">
+                                    <Sub>
                                         {t('billing.consumption', {
                                             pct: formatNumber(
                                                 unit.consumption_pct,
                                                 1,
                                             ),
                                         })}
-                                    </span>
+                                    </Sub>
                                 ) : null}
                             </td>
                             <td className="px-3 py-2">
@@ -196,62 +239,70 @@ export function SoldVsActualTable({
                                             }
                                         />
                                         {unit.sold_source === 'holded' ? (
-                                            <span className="block text-xs text-muted-foreground">
+                                            <Sub>
                                                 {t('billing.sold_from_holded')}
-                                            </span>
+                                            </Sub>
                                         ) : null}
                                         {unit.kind === 'horas' ? (
-                                            <span className="block text-xs text-muted-foreground">
+                                            <Sub>
                                                 {t('billing.hours_value')}
-                                            </span>
+                                            </Sub>
                                         ) : null}
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={unit.invoiced} />
                                         {Number(unit.planned ?? 0) !== 0 ? (
-                                            <span className="block text-xs text-muted-foreground">
+                                            <Sub>
                                                 {t('billing.planned_amount', {
                                                     amount: formatCurrency(
                                                         unit.planned ?? '0',
                                                     ),
                                                 })}
-                                            </span>
+                                            </Sub>
                                         ) : null}
-                                        <span className="block text-xs text-muted-foreground">
-                                            {t(
-                                                unit.invoices_count === 1
-                                                    ? 'billing.invoices_one'
-                                                    : 'billing.invoices_other',
-                                                { count: unit.invoices_count },
+                                        <Sub>
+                                            {tCount(
+                                                'billing.invoices',
+                                                unit.invoices_count,
                                             )}
-                                        </span>
+                                        </Sub>
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={unit.collected} />
-                                    </td>
-                                    <td className="px-3 py-2 text-right">
-                                        <Money value={unit.outstanding} />
+                                        {Number(unit.outstanding ?? 0) > 0 ? (
+                                            <Sub>
+                                                {t(
+                                                    'billing.outstanding_amount',
+                                                    {
+                                                        amount: formatCurrency(
+                                                            unit.outstanding ??
+                                                                '0',
+                                                        ),
+                                                    },
+                                                )}
+                                            </Sub>
+                                        ) : null}
                                         {Number(unit.overdue ?? 0) > 0 ? (
-                                            <span className="block text-xs text-danger">
+                                            <Sub className="text-danger">
                                                 {t('billing.overdue_amount', {
                                                     amount: formatCurrency(
                                                         unit.overdue ?? '0',
                                                     ),
                                                 })}
-                                            </span>
+                                            </Sub>
                                         ) : null}
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={unit.margin} />
                                         {unit.margin_pct !== null &&
                                         unit.margin_pct !== undefined ? (
-                                            <span className="block text-xs text-muted-foreground">
+                                            <Sub>
                                                 {formatNumber(
                                                     unit.margin_pct,
                                                     1,
                                                 )}{' '}
                                                 %
-                                            </span>
+                                            </Sub>
                                         ) : null}
                                     </td>
                                 </>
@@ -265,7 +316,7 @@ export function SoldVsActualTable({
                             <th
                                 scope="row"
                                 className="px-3 py-2 text-left font-medium"
-                                colSpan={2}
+                                colSpan={wide ? 2 : 1}
                             >
                                 {t('billing.total', { count: totals.units })}
                             </th>
@@ -274,10 +325,21 @@ export function SoldVsActualTable({
                             </td>
                             <td className="px-3 py-2 text-right">
                                 {formatMinutes(totals.real_minutes)}
+                                {!wide && totals.pending_minutes > 0 ? (
+                                    <Sub>
+                                        {t('billing.pending_hours', {
+                                            hours: formatMinutes(
+                                                totals.pending_minutes,
+                                            ),
+                                        })}
+                                    </Sub>
+                                ) : null}
                             </td>
-                            <td className="px-3 py-2 text-right">
-                                {formatMinutes(totals.pending_minutes)}
-                            </td>
+                            {wide ? (
+                                <td className="px-3 py-2 text-right">
+                                    {formatMinutes(totals.pending_minutes)}
+                                </td>
+                            ) : null}
                             <td className="px-3 py-2 text-right">
                                 {signedMinutes(
                                     totals.deviation_minutes,
@@ -295,9 +357,19 @@ export function SoldVsActualTable({
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={totals.collected} />
-                                    </td>
-                                    <td className="px-3 py-2 text-right">
-                                        <Money value={totals.outstanding} />
+                                        {Number(totals.outstanding ?? 0) > 0 ? (
+                                            <Sub>
+                                                {t(
+                                                    'billing.outstanding_amount',
+                                                    {
+                                                        amount: formatCurrency(
+                                                            totals.outstanding ??
+                                                                '0',
+                                                        ),
+                                                    },
+                                                )}
+                                            </Sub>
+                                        ) : null}
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                         <Money value={totals.margin} />

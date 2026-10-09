@@ -5,6 +5,7 @@ import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { tCount } from '@/lib/people';
 import type { BillingPanelData } from '@/types';
 import { InvoiceTable } from './invoice-table';
 import { SoldVsActualChart } from './sold-vs-actual-chart';
@@ -73,9 +74,10 @@ export function BillingPanel({
             {panel.invoices !== null ? (
                 <PageSection
                     title={t('billing.invoices.title')}
-                    description={t('billing.invoices.panel_description', {
-                        count: panel.invoice_count,
-                    })}
+                    description={tCount(
+                        'billing.invoices.panel_description',
+                        panel.invoice_count,
+                    )}
                     action={
                         invoicesHref && panel.invoice_count > 0 ? (
                             <Button variant="outline" size="sm" asChild>

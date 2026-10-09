@@ -143,6 +143,29 @@ export function formatNumber(value: number, maximumFractionDigits = 2): string {
     }).format(value);
 }
 
+/**
+ * Duración en palabras, sin signo (D-410): 2775 → "46 h 15 min", 89580 → "1.493 h", 15 → "15 min",
+ * 0 → "0 h". Para las cifras que se leen («46 h 15 min por encima»); en tablas, h:mm (formatMinutes).
+ */
+export function formatDurationWords(minutes: number): string {
+    if (!Number.isFinite(minutes)) {
+        return '';
+    }
+
+    const total = Math.round(Math.abs(minutes));
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    const grouped = new Intl.NumberFormat(LOCALE, {
+        useGrouping: 'always',
+    }).format(hours);
+
+    if (hours === 0) {
+        return rest === 0 ? '0 h' : `${rest} min`;
+    }
+
+    return rest === 0 ? `${grouped} h` : `${grouped} h ${rest} min`;
+}
+
 /** 0.756 → "75,6 %". Admite valores > 1 (p. ej. consumo de bolsa 104 %). */
 export function formatPercent(
     ratio: number,
