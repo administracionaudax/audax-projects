@@ -46,6 +46,7 @@ class ReviewController extends Controller
             'undo' => $undo->last(),
             // D-430 y D-431: «Crear cliente» (además de view-billing, quien puede crear clientes) y
             // las facturas marcadas «No necesita proyecto», que ya no salen aquí.
+            'can' => ['create_client' => $request->user()?->can('create', Client::class) ?? false],
             'no_project_count' => $tab === 'facturas' ? ReviewInbox::noProjectNeededCount() : 0,
         ]);
     }
