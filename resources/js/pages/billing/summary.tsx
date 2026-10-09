@@ -65,13 +65,16 @@ function MoreLink({
         <Link
             href={href}
             className={cn(
-                'inline-flex items-center gap-1 self-start rounded-md text-xs text-primary-text hover:underline',
+                'self-start rounded-md text-xs text-primary-text hover:underline',
                 FOCUS_RING,
             )}
             data-test={dataTest}
         >
             {children}
-            <ArrowRight aria-hidden="true" className="size-3.5" />
+            <ArrowRight
+                aria-hidden="true"
+                className="ml-1 inline size-3.5 align-[-3px]"
+            />
         </Link>
     );
 }
