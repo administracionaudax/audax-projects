@@ -162,3 +162,12 @@ Pruebas de facturación e informes en PostgreSQL del servidor: **573 en verde**.
 - Aplicado con una lectura de Holded (`--forzar --sin-pdf`, 19 peticiones): 51 contactos casados (28 «por revisar»). Facturas de 2026 sin cliente: de 146 a 44 (104.640 € sin IVA, la mayoría de 7 contactos que casa el propietario a mano).
 
 Sin migraciones ni cambios de sistema. |
+| 09/10 | **Rediseño de Facturación, tramo 1** (D-405 a D-410), sin migraciones:
+- una sola navegación en la barra lateral, sin pestañas;
+- URL nuevas `/facturacion/ventas`, `/facturacion/por-facturar` y `/facturacion/por-revisar`, con 301 desde las antiguas;
+- listado de facturas con vistas, barra de importes, chips, orden y totales;
+- ficha de factura con cobro, enlace e historia;
+- cifras con y sin IVA separadas;
+- estado de Holded en todas las pantallas.
+
+Comprobado con los datos reales: todas las pantallas 200 y las URL antiguas 301. Validación del icono del cliente con intl. CI de GitHub en verde por primera vez en `fase-10` (Pest en paralelo). Sin cambios de sistema. |
