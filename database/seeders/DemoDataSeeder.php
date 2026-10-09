@@ -25,6 +25,7 @@ use App\Domain\People\RegisterAnchors;
 use App\Domain\People\Reports\RegisterDataset;
 use App\Domain\People\TimeBalanceLedger;
 use App\Domain\Privacy\PrivacyNotice;
+use App\Domain\Reports\Money;
 use App\Domain\Time\Capacity;
 use App\Domain\Weeklies\WeeklyCalendar;
 use App\Enums\AbsenceStatus;
@@ -341,7 +342,7 @@ class DemoDataSeeder extends Seeder
         $extended = Project::query()->where('billing_type', BillingType::FixedPrice->value)->whereNotNull('fixed_price_amount')
             ->where('status', ProjectStatus::Active->value)->orderBy('id')->skip(1)->first();
         if ($extended !== null) {
-            Project::withoutEvents(fn () => $extended->forceFill(['fixed_price_amount' => bcmul((string) $extended->fixed_price_amount, '1.5', 2)])->save());
+            Project::withoutEvents(fn () => $extended->forceFill(['fixed_price_amount' => Money::round(Money::mul((string) $extended->fixed_price_amount, '1.5'))])->save());
         }
 
         // Las facturas de los fees no llevan proyecto en Holded: alguien ha aceptado la sugerencia de
