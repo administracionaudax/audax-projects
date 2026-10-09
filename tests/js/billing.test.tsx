@@ -448,7 +448,9 @@ describe('barra lateral', () => {
             } as never,
             { billingReview: 3 },
         );
+        // El Resumen primero (I1, D-411), activo solo en su URL exacta.
         expect(items.map((item) => item.title)).toEqual([
+            'Resumen',
             'Facturas',
             'Por facturar',
             'Vendido frente a real',
@@ -457,9 +459,10 @@ describe('barra lateral', () => {
             'Ajustes',
         ]);
         expect(items.every((item) => item.items === undefined)).toBe(true);
-        expect(items[3].badge).toEqual({
+        expect(items[0].exact).toBe(true);
+        expect(items[4].badge).toEqual({
             count: 3,
-            label: '3 contactos por revisar',
+            label: '3 contactos y facturas por revisar',
         });
         expect(
             billingNavItems({ viewBilling: true } as never, {

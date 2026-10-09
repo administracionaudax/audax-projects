@@ -331,6 +331,54 @@ export type InvoicingReportPageProps = {
     report_request: ReportRequestData;
 };
 
+/** Un tramo de antigüedad de lo pendiente (InvoicingReport::AGING). */
+export type AgingKey = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90_plus';
+
+/** La portada «Resumen» de Facturación (App\Domain\Billing\BillingSummary, I1, D-411). */
+export type BillingSummaryData = {
+    period: { key: string; from: string; to: string };
+    today: string;
+    previous_year: string;
+    attention: {
+        overdue: { count: number; amount: string; oldest_days: number | null };
+        unlinked: { count: number; amount: string };
+        contacts: { count: number; amount: string };
+        banks: { count: number; over: number; threshold: number };
+    };
+    kpis: {
+        invoiced: string;
+        previous_invoiced: string;
+        variation_pct: string | null;
+        invoices: number;
+        unbilled: string;
+        unbilled_clients: number;
+        outstanding: string;
+        outstanding_count: number;
+        overdue: string;
+        overdue_count: number;
+    };
+    /** Con IVA: facturado por mes de emisión y cobrado por la fecha del cobro. */
+    months: {
+        month: string;
+        invoiced: string;
+        collected: string;
+        previous: string;
+    }[];
+    receivable: {
+        aging: { key: AgingKey; amount: string; count: number }[];
+        clients: {
+            client: { id: number; name: string } | null;
+            contact_name: string | null;
+            amount: string;
+            count: number;
+            overdue_count: number;
+        }[];
+    };
+    unbilled: { clients: UnbilledClient[]; total_clients: number };
+    /** La query de los informes (Ventas, Por facturar) con el mismo periodo. */
+    report_query: Record<string, string>;
+};
+
 /** Confianza de una propuesta de «Por revisar» (I5, D-413). */
 export type ReviewConfidence = 'alta' | 'media' | 'baja';
 

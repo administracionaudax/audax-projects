@@ -134,6 +134,26 @@ final class InvoicingReport
     }
 
     /**
+     * Las cifras de cabecera del Resumen (I1, D-411): lo facturado en el periodo (sin IVA), lo del
+     * mismo tramo del año anterior (D-404), su variación y el número de facturas. Tres consultas.
+     *
+     * @return array{invoiced: string, previous_invoiced: string, variation_pct: string|null, count: int}
+     */
+    public function headline(InvoicingQuery $query): array
+    {
+        $this->catalog = null;
+        $invoiced = array_sum(array_column($this->monthly($query, $query->filters->from, $query->filters->to, planned: false), 'cents'));
+        $previous = array_sum(array_column($this->monthly($query, $query->previousFrom(), $query->previousTo(), planned: false), 'cents'));
+
+        return [
+            'invoiced' => self::money($invoiced),
+            'previous_invoiced' => self::money($previous),
+            'variation_pct' => $previous === 0 ? null : self::percent($invoiced - $previous, abs($previous)),
+            'count' => $this->collection($query)['count'],
+        ];
+    }
+
+    /**
      * Importe en céntimos enteros como cadena con 2 decimales («-1234.50»).
      *
      * @return numeric-string

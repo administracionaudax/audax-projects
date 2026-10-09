@@ -259,9 +259,10 @@ it('exporta el informe en Excel, CSV, PDF y para imprimir, con los permisos de q
     $this->actingAs($this->employee)->get($url.'&formato=csv')->assertForbidden();
 });
 
-it('/facturacion lleva a Ventas o, a quien solo ve el vendido frente a real, a ese (D-401 y D-405)', function () {
-    $this->actingAs($this->admin)->get('/facturacion')->assertRedirect('/facturacion/ventas');
-    $this->actingAs($this->finance)->get('/facturacion')->assertRedirect('/facturacion/ventas');
+it('/facturacion es el Resumen o, a quien solo ve el vendido frente a real, lleva a ese (D-401 y D-411)', function () {
+    // Con view-billing, el Resumen (I1, D-411); quien solo ve las horas, a «Vendido frente a real» (D-401).
+    $this->actingAs($this->admin)->get('/facturacion')->assertOk()->assertInertia(fn (Assert $page) => $page->component('billing/summary'));
+    $this->actingAs($this->finance)->get('/facturacion')->assertOk()->assertInertia(fn (Assert $page) => $page->component('billing/summary'));
     $this->actingAs($this->manager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->projectManager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->employee)->get('/facturacion')->assertForbidden();
