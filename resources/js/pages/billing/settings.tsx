@@ -9,6 +9,7 @@ import {
 import type { FormEvent } from 'react';
 import { useId, useState } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
+import { HoldedContactsDirectory } from '@/components/billing/contacts-directory';
 import InputError from '@/components/input-error';
 import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import type { BillingClientOption, HoldedContactRow } from '@/types';
 
 type Issuer = {
     legal_name: string | null;
@@ -66,6 +68,11 @@ type Props = {
         scheduled: boolean;
     };
     runs: Run[];
+    contacts: {
+        view: 'todos' | 'descartados';
+        rows: HoldedContactRow[];
+        clients: BillingClientOption[];
+    };
     can: { sync: boolean; access: boolean };
 };
 
@@ -93,6 +100,7 @@ export default function BillingSettings({
     access,
     holded,
     runs,
+    contacts,
     can,
 }: Props) {
     const id = useId();
@@ -349,6 +357,12 @@ export default function BillingSettings({
                         )}
                     </PageSection>
                 </div>
+
+                <HoldedContactsDirectory
+                    view={contacts.view}
+                    rows={contacts.rows}
+                    clients={contacts.clients}
+                />
 
                 {can.access ? <AccessSection people={access} /> : null}
             </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Billing;
 
 use App\Domain\Billing\Holded\HoldedConnection;
 use App\Domain\Billing\Holded\HoldedSync;
+use App\Domain\Billing\ReviewInbox;
 use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Http\Controllers\Controller;
@@ -20,14 +21,15 @@ use Inertia\Response;
 /**
  * Ajustes de Facturación (Fase 12, F1; D-383 y D-387): los datos fiscales del emisor (Audax, ajuste
  * `billing_issuer`), el estado de la conexión con Holded (sin la clave) y las últimas
- * sincronizaciones, con «Sincronizar ahora» para los admins.
+ * sincronizaciones, con «Sincronizar ahora» para los admins, y el directorio de los contactos de
+ * Holded (D-413: todos y los descartados, que antes eran vistas de «Por revisar»).
  */
 class BillingSettingsController extends Controller
 {
     /** Campos del emisor (PLAN-FASE-12 §6.2, company_billing_settings). */
     public const array ISSUER_FIELDS = ['legal_name', 'tax_id', 'address', 'postal_code', 'city', 'province', 'country_code', 'registry', 'iban', 'email', 'phone'];
 
-    public function edit(Request $request): Response
+    public function edit(Request $request, ReviewInbox $inbox): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -52,6 +54,13 @@ class BillingSettingsController extends Controller
                     'finished_at' => $run->finished_at?->utc()->toIso8601ZuluString(),
                 ])->values()->all(),
             'access' => self::access($user),
+            // El directorio de contactos de Holded (D-413): todos y los descartados, con búsqueda; los
+            // que quedan por resolver están en «Por revisar».
+            'contacts' => [
+                'view' => $request->query('contactos') === 'descartados' ? 'descartados' : 'todos',
+                'rows' => $inbox->directory(),
+                'clients' => ReviewController::clientOptions(),
+            ],
             'can' => ['sync' => $user->can('sync-holded'), 'access' => $user->isAdmin()],
         ]);
     }

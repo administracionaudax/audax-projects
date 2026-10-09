@@ -65,6 +65,52 @@ final class InvoiceLinkSuggester
      */
     public function for(HoldedInvoice $invoice): array
     {
+        return array_map(fn (array $row): array => ['project' => $row['project'], 'bank' => $row['bank'], 'reason' => $row['reason']], array_slice($this->candidates($invoice), 0, self::MAX));
+    }
+
+    /**
+     * La propuesta de «Por revisar» (I5, D-413): la mejor sugerencia, las demás y su confianza.
+     * - **alta**: un solo candidato del tipo de la factura, vivo en su fecha y, si es de bolsas,
+     *   con una bolsa,
+     * - **media**: el mejor está vivo en la fecha pero hay otros candidatos,
+     * - **baja**: el mejor no estaba vivo en la fecha de la factura.
+     * Sin cliente casado no hay propuesta (hay que casar antes el contacto).
+     *
+     * @return array{suggestion: array{project: array{id: int, code: string, name: string}, bank: array{id: int, name: string}|null, reason: string}|null, alternatives: list<array{project: array{id: int, code: string, name: string}, bank: array{id: int, name: string}|null, reason: string}>, confidence: string|null, dated: bool}
+     */
+    public function propose(HoldedInvoice $invoice): array
+    {
+        $candidates = $this->candidates($invoice);
+        $strip = fn (array $row): array => ['project' => $row['project'], 'bank' => $row['bank'], 'reason' => $row['reason']];
+
+        if ($candidates === []) {
+            return ['suggestion' => null, 'alternatives' => [], 'confidence' => null, 'dated' => false];
+        }
+
+        $best = $candidates[0];
+        $active = $best['score'] >= 2;
+        $complete = $best['bank'] !== null || ! $best['banks'];
+        $confidence = match (true) {
+            $active && $complete && count($candidates) === 1 => 'alta',
+            $active => 'media',
+            default => 'baja',
+        };
+
+        return [
+            'suggestion' => $strip($best),
+            'alternatives' => array_map($strip, array_slice($candidates, 1, self::MAX - 1)),
+            'confidence' => $confidence,
+            'dated' => $active,
+        ];
+    }
+
+    /**
+     * Candidatos ordenados por su puntuación (vivo en la fecha: 2; con bolsa: 1) y el código.
+     *
+     * @return list<array{score: int, banks: bool, project: array{id: int, code: string, name: string}, bank: array{id: int, name: string}|null, reason: string}>
+     */
+    private function candidates(HoldedInvoice $invoice): array
+    {
         if ($invoice->client_id === null) {
             return [];
         }
@@ -88,6 +134,7 @@ final class InvoiceLinkSuggester
             $active = self::activeAt($project, $date);
             $candidates[] = [
                 'score' => ($active ? 2 : 0) + ($bank !== null ? 1 : 0),
+                'banks' => $project->usesHourBanks(),
                 'project' => ['id' => $project->id, 'code' => $project->code, 'name' => $project->name],
                 'bank' => $bank === null ? null : ['id' => $bank->id, 'name' => $bank->name],
                 'reason' => $kind->value,
@@ -96,7 +143,7 @@ final class InvoiceLinkSuggester
 
         usort($candidates, fn (array $a, array $b): int => [$b['score'], $a['project']['code']] <=> [$a['score'], $b['project']['code']]);
 
-        return array_map(fn (array $row): array => ['project' => $row['project'], 'bank' => $row['bank'], 'reason' => $row['reason']], array_slice($candidates, 0, self::MAX));
+        return $candidates;
     }
 
     /** El tipo de línea que más importa en la factura (por su base). */

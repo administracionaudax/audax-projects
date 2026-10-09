@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Reports\Exports;
 
+use App\Domain\Billing\BillingAccess;
+use App\Domain\Billing\UnbilledReport;
 use App\Domain\Reports\Delivery\Documents\BillingDocument;
 use App\Domain\Reports\Delivery\ReportKind;
 use App\Domain\Reports\Export\TableExporter;
@@ -19,6 +21,9 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
+ * Por facturar (I10, D-412): sin cliente, la lista de clientes con algo por facturar (UnbilledReport);
+ * con ?cliente[]=id, la exportación de horas para facturar de siempre.
+ *
  * Exportación de horas para facturar (SPEC §10 «Exportación», D-045; R2): /facturacion/por-facturar (D-405)
  * (antes /informes/facturacion, que redirige con un 301, D-401). No exige el módulo `billing` (D-402).
  * Un cliente (obligatorio, ?cliente[]=id) y un periodo con los filtros globales. La página muestra
@@ -36,7 +41,7 @@ class BillingReportController extends Controller
 {
     use AuthorizesRequests, BuildsReportScope, ExportsReports;
 
-    public function __invoke(Request $request, BillingDocument $document, TableExporter $exporter): Response|SymfonyResponse
+    public function __invoke(Request $request, BillingDocument $document, TableExporter $exporter, UnbilledReport $unbilled): Response|SymfonyResponse
     {
         $this->authorize('viewBilling', Client::class);
 
@@ -53,12 +58,33 @@ class BillingReportController extends Controller
         $client = $urlFilters->clientIds === [] ? null : Client::query()->find($urlFilters->clientIds[0], ['id', 'name', 'is_active']);
 
         if ($client === null) {
-            return $this->page($user, $urlFilters, null, null, $exporter->maxRows() - 1);
+            return $this->clients($request, $user, $unbilled);
         }
 
         $scope = $this->reportScope($request, ['clientIds' => [$client->id]]);
 
         return $this->page($user, $urlFilters->with(['clientIds' => [$client->id]]), $client, $document->summary($scope, $client), $exporter->maxRows() - 1);
+    }
+
+    /**
+     * Sin cliente, la lista de clientes con algo por facturar (I10, D-412), como el informe de lo no
+     * facturado de Harvest. Sin periodo en la URL, el año en curso. Importes solo con view-billing
+     * (con el módulo apagado, D-402, solo horas).
+     */
+    private function clients(Request $request, User $user, UnbilledReport $unbilled): Response
+    {
+        $query = $request->query();
+        unset($query['cliente']);
+        $query = isset($query['periodo']) ? $query : ['periodo' => 'anio', ...$query];
+        $filters = ReportFilters::fromQuery($query)->withoutComparison();
+        $scope = new ReportScope($user, $filters);
+        $financials = BillingAccess::viewsBilling($user);
+
+        return Inertia::render('billing/unbilled', [
+            'filters' => $this->filterProps($scope),
+            'report' => $unbilled->report($scope, $financials),
+            'scope' => ['team_only' => ! $user->isAdmin()],
+        ]);
     }
 
     /**

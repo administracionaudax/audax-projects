@@ -104,6 +104,7 @@ export function SoldVsActualKpis({
     const hours = (
         <KpiGroup
             title={t('billing.kpis.group_hours')}
+            help={<p>{t('billing.kpis.help_hours')}</p>}
             columns={cn(
                 'sm:grid-cols-2',
                 compact ? 'lg:grid-cols-2' : 'lg:grid-cols-3',
@@ -165,6 +166,11 @@ export function SoldVsActualKpis({
                         t('billing.kpis.units_ok', {
                             count: totals.by_status.ok,
                         }),
+                        totals.by_status.unbilled > 0
+                            ? t('billing.kpis.units_unbilled', {
+                                  count: totals.by_status.unbilled,
+                              })
+                            : null,
                     ]
                         .filter(Boolean)
                         .join(' · ')}
@@ -202,9 +208,11 @@ export function SoldVsActualKpis({
             <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
                 <KpiGroup
                     title={t('billing.kpis.group_invoiced')}
-                    columns="sm:grid-cols-3"
+                    help={<p>{t('billing.kpis.help_invoiced')}</p>}
+                    columns="grid-cols-2 sm:grid-cols-3"
                 >
                     <KpiCard
+                        className="col-span-2 sm:col-span-1"
                         label={t('billing.kpis.to_invoice')}
                         definition={t('billing.kpis.to_invoice_definition')}
                         value={formatCurrency(totals.to_invoice ?? '0')}

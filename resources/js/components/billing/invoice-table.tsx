@@ -22,6 +22,7 @@ import { t } from '@/lib/i18n';
 import { tCount } from '@/lib/people';
 import { ROW_CLICK_CLASS, rowClickProps } from '@/lib/row-click';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { todayInMadrid } from '@/lib/week';
 import type { HoldedInvoiceSummary } from '@/types';
 import { COLLECTION_META } from './billing-badges';
@@ -290,6 +291,20 @@ export function InvoiceTable({
     footerNote?: ReactNode;
 }) {
     const leading = showClient ? 4 : 3;
+    const mobile = useIsMobile();
+
+    if (mobile) {
+        return (
+            <InvoiceCards
+                invoices={invoices}
+                caption={caption}
+                today={today}
+                linkQuery={linkQuery}
+                totals={totals}
+                footerNote={footerNote}
+            />
+        );
+    }
 
     return (
         <div
@@ -486,6 +501,141 @@ export function InvoiceTable({
                     </tfoot>
                 ) : null}
             </table>
+        </div>
+    );
+}
+
+/**
+ * Las facturas en el móvil (I7, D-415): una tarjeta de tres líneas por factura (número y cliente con
+ * lo pendiente; el estado con días y la fecha; el proyecto o la sugerencia para enlazar), sin
+ * desplazamiento lateral. Toda la tarjeta abre la ficha; los totales, al pie.
+ */
+function InvoiceCards({
+    invoices,
+    caption,
+    today,
+    linkQuery,
+    totals,
+    footerNote,
+}: {
+    invoices: ReadonlyArray<HoldedInvoiceSummary>;
+    caption: string;
+    today: string;
+    linkQuery: InvoiceQuery;
+    totals?: InvoiceTotals;
+    footerNote?: ReactNode;
+}) {
+    return (
+        <div className="grid gap-2">
+            <ul
+                className="grid gap-2"
+                aria-label={caption}
+                data-test="invoice-cards"
+            >
+                {invoices.map((invoice) => {
+                    const cancelled = invoice.collection_status === 'cancelled';
+                    const pending = Number(invoice.pending_total) > 0;
+
+                    return (
+                        <li
+                            key={invoice.id}
+                            className={cn(
+                                'grid gap-1.5 rounded-md border bg-card p-3 text-sm',
+                                ROW_CLICK_CLASS,
+                                cancelled && 'text-muted-foreground',
+                            )}
+                            {...rowClickProps}
+                        >
+                            <div className="flex items-baseline justify-between gap-3">
+                                <span className="flex min-w-0 items-baseline gap-2">
+                                    <Link
+                                        href={invoiceUrl(invoice.id, linkQuery)}
+                                        data-row-primary
+                                        className={cn(
+                                            'inline-flex shrink-0 items-center gap-1 rounded-md text-primary-text hover:underline',
+                                            cancelled && 'line-through',
+                                            FOCUS_RING,
+                                        )}
+                                    >
+                                        {invoice.kind === 'credit_note' ? (
+                                            <Undo2
+                                                aria-label={t(
+                                                    'billing.invoice.credit_note',
+                                                )}
+                                                className="size-3.5 text-muted-foreground"
+                                            />
+                                        ) : null}
+                                        {invoice.is_draft
+                                            ? t('billing.invoice.draft_number')
+                                            : (invoice.number ?? '—')}
+                                    </Link>
+                                    <span className="truncate">
+                                        {invoice.client?.name ??
+                                            invoice.contact_name ??
+                                            '—'}
+                                    </span>
+                                </span>
+                                <span
+                                    className={cn(
+                                        'tabular shrink-0',
+                                        !pending && 'text-muted-foreground',
+                                    )}
+                                >
+                                    {formatCurrency(
+                                        pending
+                                            ? invoice.pending_total
+                                            : invoice.total,
+                                    )}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                                <RelativeStatus
+                                    invoice={invoice}
+                                    today={today}
+                                />
+                                <span className="tabular text-muted-foreground">
+                                    {formatDate(invoice.issued_on)}
+                                </span>
+                            </div>
+                            <div className="min-w-0 text-xs">
+                                <ProjectCell invoice={invoice} />
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+            {totals ? (
+                <p className="tabular rounded-md border bg-muted px-3 py-2 text-sm">
+                    <span className="font-medium">
+                        {tCount('billing.invoices.footer', totals.count)}
+                    </span>
+                    {footerNote ? (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                            {footerNote}
+                        </span>
+                    ) : null}
+                    <span className="mt-1 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                        <span>
+                            {t('billing.invoice.subtotal_short')}
+                            <span className="block text-sm text-foreground">
+                                {formatCurrency(totals.subtotal)}
+                            </span>
+                        </span>
+                        <span>
+                            {t('billing.invoice.total_short')}
+                            <span className="block text-sm text-foreground">
+                                {formatCurrency(totals.total)}
+                            </span>
+                        </span>
+                        <span>
+                            {t('billing.invoice.pending')}
+                            <span className="block text-sm text-foreground">
+                                {formatCurrency(totals.pending)}
+                            </span>
+                        </span>
+                    </span>
+                </p>
+            ) : null}
         </div>
     );
 }

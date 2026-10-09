@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Domain\Billing\HoldedInvoiceLinker;
+use App\Domain\Billing\ReviewUndo;
 use App\Http\Controllers\Controller;
 use App\Models\HoldedInvoice;
 use App\Models\HoldedInvoiceLink;
@@ -19,7 +20,7 @@ use Inertia\Inertia;
  */
 class HoldedInvoiceLinkController extends Controller
 {
-    public function store(Request $request, HoldedInvoice $invoice, HoldedInvoiceLinker $linker): RedirectResponse
+    public function store(Request $request, HoldedInvoice $invoice, HoldedInvoiceLinker $linker, ReviewUndo $undo): RedirectResponse
     {
         $data = $request->validate([
             'project_id' => ['required', 'integer', 'exists:projects,id'],
@@ -31,8 +32,13 @@ class HoldedInvoiceLinkController extends Controller
         $project = Project::query()->findOrFail((int) $data['project_id']);
         $bank = isset($data['hour_bank_id']) ? HourBank::query()->findOrFail((int) $data['hour_bank_id']) : null;
 
-        $linker->link($invoice, $project, $bank, $user);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('billing.invoices.linked', ['project' => $project->code])]);
+        $link = $linker->link($invoice, $project, $bank, $user);
+        $message = __('billing.invoices.linked', ['project' => $project->code]);
+        // «Deshacer» en la bandeja «Por revisar» (D-414): solo el enlace que se acaba de crear.
+        if ($link->wasRecentlyCreated) {
+            $undo->remember($message, links: [$link->id]);
+        }
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return back();
     }

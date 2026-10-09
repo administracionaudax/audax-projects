@@ -22,6 +22,7 @@ import type {
     InvoiceSortColumn,
     InvoiceTotals,
 } from '@/components/billing/invoice-table';
+import { FilterSheet } from '@/components/billing/filter-sheet';
 import { ViewTabs } from '@/components/billing/view-tabs';
 import { EmptyState } from '@/components/empty-state';
 import { ListPagination } from '@/components/projects-list/list-pagination';
@@ -213,6 +214,12 @@ export default function InvoicesIndex({
         filters.cobro !== null ||
         legacy.length > 0;
     const excluded = invoices.meta.total - totals.count;
+    // En el móvil, los filtros van en una hoja con su número (I7).
+    const activeFilters =
+        (filters.periodo !== null ? 1 : 0) +
+        (filters.cliente !== null ? 1 : 0) +
+        (filters.servicio.length > 0 ? 1 : 0) +
+        legacy.length;
 
     return (
         <>
@@ -268,56 +275,66 @@ export default function InvoicesIndex({
                             autoComplete="off"
                         />
                     </div>
-                    <PeriodChip
-                        period={period}
-                        explicit={filters.periodo !== null}
-                        today={today}
-                        onChange={(patch) => visit(patch)}
-                        onClear={() =>
-                            visit({ periodo: null, desde: null, hasta: null })
-                        }
-                    />
-                    <ChipSelect
-                        label={t('billing.filters.client')}
-                        allLabel={t('billing.filters.all_clients')}
-                        searchPlaceholder={t('billing.filters.search_client')}
-                        options={clients.map((client) => ({
-                            value: String(client.id),
-                            label: client.name,
-                        }))}
-                        value={
-                            filters.cliente === null
-                                ? []
-                                : [String(filters.cliente)]
-                        }
-                        onChange={(value) =>
-                            visit({ cliente: value[0] ?? null })
-                        }
-                        dataTest="invoice-client"
-                    />
-                    <ChipSelect
-                        label={t('billing.filters.service')}
-                        allLabel={t('billing.filters.all_services')}
-                        searchPlaceholder={t('billing.filters.search_service')}
-                        multiple
-                        options={services.map((service) => ({
-                            value: service,
-                            label: t(
-                                `billing.invoicing.services.${service}` as 'billing.invoicing.services.fees',
-                            ),
-                        }))}
-                        value={filters.servicio}
-                        onChange={(value) => visit({ servicio: value })}
-                        dataTest="invoice-service"
-                    />
-                    {legacy.map((chip) => (
-                        <RemovableChip
-                            key={chip.key}
-                            label={t(`billing.filters.legacy.${chip.key}`)}
-                            value={chip.value}
-                            onRemove={() => visit({ [chip.key]: null })}
+                    <FilterSheet count={activeFilters}>
+                        <PeriodChip
+                            period={period}
+                            explicit={filters.periodo !== null}
+                            today={today}
+                            onChange={(patch) => visit(patch)}
+                            onClear={() =>
+                                visit({
+                                    periodo: null,
+                                    desde: null,
+                                    hasta: null,
+                                })
+                            }
                         />
-                    ))}
+                        <ChipSelect
+                            label={t('billing.filters.client')}
+                            allLabel={t('billing.filters.all_clients')}
+                            searchPlaceholder={t(
+                                'billing.filters.search_client',
+                            )}
+                            options={clients.map((client) => ({
+                                value: String(client.id),
+                                label: client.name,
+                            }))}
+                            value={
+                                filters.cliente === null
+                                    ? []
+                                    : [String(filters.cliente)]
+                            }
+                            onChange={(value) =>
+                                visit({ cliente: value[0] ?? null })
+                            }
+                            dataTest="invoice-client"
+                        />
+                        <ChipSelect
+                            label={t('billing.filters.service')}
+                            allLabel={t('billing.filters.all_services')}
+                            searchPlaceholder={t(
+                                'billing.filters.search_service',
+                            )}
+                            multiple
+                            options={services.map((service) => ({
+                                value: service,
+                                label: t(
+                                    `billing.invoicing.services.${service}` as 'billing.invoicing.services.fees',
+                                ),
+                            }))}
+                            value={filters.servicio}
+                            onChange={(value) => visit({ servicio: value })}
+                            dataTest="invoice-service"
+                        />
+                        {legacy.map((chip) => (
+                            <RemovableChip
+                                key={chip.key}
+                                label={t(`billing.filters.legacy.${chip.key}`)}
+                                value={chip.value}
+                                onRemove={() => visit({ [chip.key]: null })}
+                            />
+                        ))}
+                    </FilterSheet>
                     {filtered ? (
                         <Button variant="ghost" size="sm" asChild>
                             <Link
@@ -356,7 +373,16 @@ export default function InvoicesIndex({
                                 ? 'billing.invoices.none_filtered_description'
                                 : 'billing.invoices.none_description',
                         )}
-                    />
+                    >
+                        {/* El paso siguiente (R7): quitar los filtros o ver todas. */}
+                        {filtered || filters.vista !== 'todas' ? (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={URL} onClick={() => setSearch('')}>
+                                    {t('billing.invoices.see_all')}
+                                </Link>
+                            </Button>
+                        ) : null}
+                    </EmptyState>
                 ) : (
                     <div className="grid gap-3">
                         <InvoiceTable

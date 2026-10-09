@@ -6,6 +6,7 @@ import {
     ChevronsUpDown,
     Clock,
     Inbox,
+    LayoutDashboard,
     Receipt,
     Scale,
     Settings,
@@ -23,11 +24,12 @@ import { cn } from '@/lib/utils';
 import type { Abilities } from '@/types';
 
 /**
- * Pantallas de Facturación (D-405, cambia D-393 y D-401). Hay un hueco reservado para el Resumen
- * (`/facturacion`, I1), que entrará primero en cuanto exista; hasta entonces /facturacion lleva a
- * Ventas (o a «Vendido frente a real» a quien solo ve las horas).
+ * Pantallas de Facturación (D-405, cambia D-393 y D-401): primero el Resumen (`/facturacion`, I1,
+ * D-411), solo con view-billing; a quien solo ve las horas /facturacion lo sigue llevando a
+ * «Vendido frente a real».
  */
 export type BillingSectionId =
+    | 'resumen'
     | 'facturas'
     | 'por-facturar'
     | 'vendido'
@@ -39,6 +41,7 @@ export type BillingSection = {
     id: BillingSectionId;
     href: string;
     label:
+        | 'billing.nav.summary'
         | 'billing.nav.invoices'
         | 'billing.nav.unbilled'
         | 'billing.nav.sold_vs_actual'
@@ -47,9 +50,19 @@ export type BillingSection = {
         | 'billing.nav.settings';
     icon: LucideIcon;
     allowed: (can: Abilities) => boolean;
+    /** Solo activa en su URL exacta (el Resumen, que es el prefijo de todas). */
+    exact?: boolean;
 };
 
 const SECTIONS: BillingSection[] = [
+    {
+        id: 'resumen',
+        href: '/facturacion',
+        label: 'billing.nav.summary',
+        icon: LayoutDashboard,
+        allowed: (can) => can.viewBilling === true,
+        exact: true,
+    },
     {
         id: 'facturas',
         href: '/facturacion/facturas',

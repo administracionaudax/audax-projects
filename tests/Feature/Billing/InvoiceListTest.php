@@ -2,6 +2,7 @@
 
 use App\Domain\Billing\BillingNav;
 use App\Domain\Billing\InvoiceList;
+use App\Domain\Billing\ReviewInbox;
 use App\Enums\BillingType;
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
@@ -232,9 +233,13 @@ it('la navegación comparte «Por revisar» y la última lectura de Holded solo 
     HoldedSyncRun::query()->create(['trigger' => 'schedule', 'status' => HoldedSyncRun::OK, 'started_at' => now()->subHours(3), 'finished_at' => now()->subHours(3)->addMinute()]);
     HoldedSyncRun::query()->create(['trigger' => 'manual', 'status' => HoldedSyncRun::FAILED, 'started_at' => now()->subHour(), 'finished_at' => now()->subHour()->addMinute()]);
 
+    // Contactos sin casar o por confirmar más las facturas sin proyecto (I5, D-413).
+    $unlinked = ReviewInbox::unlinked()->count();
+    expect($unlinked)->toBeGreaterThan(0);
+
     $this->actingAs($this->admin)->get('/facturacion/facturas')
         ->assertInertia(fn (Assert $page) => $page
-            ->where('billingNav.review', 2)
+            ->where('billingNav.review', 2 + $unlinked)
             ->where('billingNav.sync.status', 'failed')
             ->where('billingNav.sync.last_ok_at', now()->subHours(3)->addMinute()->utc()->toIso8601ZuluString())
         );
@@ -243,7 +248,7 @@ it('la navegación comparte «Por revisar» y la última lectura de Holded solo 
     expect(Cache::has(BillingNav::CACHE_KEY))->toBeFalse();
 
     $this->actingAs($this->admin)->get('/facturacion/facturas')
-        ->assertInertia(fn (Assert $page) => $page->where('billingNav.review', 1));
+        ->assertInertia(fn (Assert $page) => $page->where('billingNav.review', 1 + $unlinked));
 
     $manager = userWithRole('department_manager');
     $this->actingAs($manager)->get('/facturacion/vendido-frente-a-real')

@@ -61,9 +61,7 @@ test('Ventas: cifras en dos grupos, gráficas con su tabla, filtro de servicio y
     page,
 }) => {
     await login(page, USERS.admin);
-    // /facturacion lleva a Ventas a quien ve los importes (hasta que llegue el Resumen).
-    await page.goto('/facturacion');
-    await expect(page).toHaveURL(/\/facturacion\/ventas$/);
+    await page.goto('/facturacion/ventas');
     await expect(
         page.getByRole('heading', { name: 'Ventas', level: 1 }),
     ).toBeVisible();
@@ -118,11 +116,15 @@ test('en el móvil: sin scroll horizontal y con el selector de pantalla en la ca
     await login(page, USERS.admin);
 
     for (const url of [
+        '/facturacion',
         '/facturacion/ventas',
         '/facturacion/facturas',
         '/facturacion/facturas?vista=sin-proyecto',
         '/facturacion/vendido-frente-a-real',
-        '/facturacion/por-revisar',
+        '/facturacion/por-revisar?tipo=contactos',
+        '/facturacion/por-revisar?tipo=facturas',
+        '/facturacion/por-facturar',
+        '/facturacion/ajustes',
     ]) {
         await page.goto(url);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -134,13 +136,21 @@ test('en el móvil: sin scroll horizontal y con el selector de pantalla en la ca
         expect(overflow, url).toBeLessThanOrEqual(0);
     }
 
-    // La ficha de una factura, también.
+    // Las facturas, en tarjetas, y los filtros en una hoja (I7).
     await page.goto('/facturacion/facturas');
+    await expect(page.getByTestId('invoice-table')).toHaveCount(0);
+    await page.getByTestId('filter-sheet-trigger').click();
+    await expect(page.getByTestId('filter-sheet')).toBeVisible();
+    await expect(
+        page.getByTestId('filter-sheet').getByTestId('invoice-period'),
+    ).toContainText('Este año');
+    await page.keyboard.press('Escape');
+
+    // La ficha de una factura, también.
     await page
-        .getByTestId('invoice-table')
-        .locator('tbody tr')
-        .first()
+        .getByTestId('invoice-cards')
         .locator('a[data-row-primary]')
+        .first()
         .click();
     await expect(page).toHaveURL(/\/facturacion\/facturas\/\d+/);
     expect(
@@ -191,9 +201,14 @@ test('Informes ya no tiene nada de facturación y las URL antiguas llevan a Fact
             '/facturacion/informe?periodo=anio',
             /\/facturacion\/ventas\?periodo=anio$/,
         ],
+        // Todos y Descartados, al directorio de Ajustes; el resto, a la bandeja (D-413).
         [
             '/facturacion/contactos?vista=todos',
-            /\/facturacion\/por-revisar\?vista=todos$/,
+            /\/facturacion\/ajustes\?contactos=todos#contactos-holded$/,
+        ],
+        [
+            '/facturacion/contactos',
+            /\/facturacion\/por-revisar\?tipo=contactos$/,
         ],
     ] as const) {
         await page.goto(old);
@@ -209,6 +224,7 @@ test('una sola navegación: la sección Facturación de la barra lateral, sin pe
     const billing = page.getByTestId('nav-section-billing');
 
     await expect(billing.getByRole('link')).toHaveText([
+        'Resumen',
         'Facturas',
         'Por facturar',
         'Vendido frente a real',
@@ -219,7 +235,13 @@ test('una sola navegación: la sección Facturación de la barra lateral, sin pe
     await expect(
         billing.getByRole('link', { name: 'Facturas' }),
     ).toHaveAttribute('aria-current', 'page');
-    await expect(billing.getByTestId('nav-badge')).toHaveText(/1/);
+    // Contactos y facturas sin proyecto (D-413).
+    await expect(billing.getByTestId('nav-badge')).toContainText(
+        /\d+ contactos y facturas por revisar/,
+    );
+    await expect(
+        billing.getByRole('link', { name: 'Resumen' }),
+    ).not.toHaveAttribute('aria-current', 'page');
     // Ni rastro de las pestañas de antes.
     await expect(
         page.getByRole('navigation', { name: 'Secciones de facturación' }),
@@ -465,26 +487,113 @@ test('la ficha: cobro, línea de tiempo, anterior y siguiente del listado y la m
     await expect(page).toHaveURL(/\/facturacion\/facturas\?vista=vencidas$/);
 });
 
-test('un contacto de Holded sin casar se resuelve eligiendo su cliente', async ({
+test('Resumen: lo que requiere atención, cuatro cifras con su enlace, la gráfica por mes con su tabla y el periodo (I1)', async ({
     page,
 }) => {
     await login(page, USERS.admin);
-    await page.goto('/facturacion/por-revisar');
+    await page.goto('/facturacion');
+    await expect(
+        page.getByRole('heading', { name: 'Resumen', level: 1 }),
+    ).toBeVisible();
+    await expect(
+        page
+            .getByTestId('nav-section-billing')
+            .getByRole('link', { name: 'Resumen' }),
+    ).toHaveAttribute('aria-current', 'page');
+
+    const attention = page.getByTestId('summary-attention');
+    await expect(attention.getByTestId('attention-overdue')).toContainText(
+        /facturas? vencidas?/,
+    );
+    await expect(attention.getByTestId('attention-contacts')).toContainText(
+        'contacto de Holded',
+    );
+    await expect(
+        page.getByRole('heading', { name: 'Facturación (sin IVA)' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Cobros (con IVA), a hoy' }),
+    ).toBeVisible();
+    await expect(page.getByTestId('summary-receivable')).toContainText(
+        'Quién más debe',
+    );
+    await expect(page.getByTestId('summary-unbilled')).toContainText('sin IVA');
+    await expectAccessible(page);
+
+    // La gráfica tiene su tabla y el año anterior se puede añadir.
+    const chart = page.getByTestId('summary-month-chart');
+    await chart.getByRole('checkbox').click();
+    await expect(chart).toContainText(/Facturado el año anterior/);
+    await chart.getByRole('button', { name: 'Ver como tabla' }).click();
+    await expect(chart.getByRole('table')).toContainText('Cobrado');
+
+    // Cada cifra lleva a su vista.
+    await page.getByTestId('kpi-overdue').click();
+    await expect(page).toHaveURL(/\/facturacion\/facturas\?vista=vencidas$/);
+    await page.goBack();
+    await page
+        .getByTestId('summary-attention')
+        .getByRole('link', { name: 'Casar' })
+        .click();
+    await expect(page).toHaveURL(/\/facturacion\/por-revisar\?tipo=contactos$/);
+
+    // El periodo va en la URL y en los enlaces a Ventas.
+    await page.goto('/facturacion');
+    await page.getByTestId('summary-period').click();
+    await page.getByRole('button', { name: 'Este trimestre' }).click();
+    await expect(page).toHaveURL(/periodo=trimestre/);
+    await expect(page.getByTestId('kpi-invoiced')).toHaveAttribute(
+        'href',
+        '/facturacion/ventas?periodo=trimestre',
+    );
+});
+
+test('Por facturar abre con la lista de clientes y cada uno lleva a su detalle (I10)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-facturar');
+    await expect(
+        page.getByRole('heading', { name: 'Por facturar', level: 1 }),
+    ).toBeVisible();
+    const table = page.getByTestId('unbilled-table');
+    await expect(table).toContainText('Importe (sin IVA)');
+    await expect(table.locator('tfoot')).toContainText(/\d+ clientes?/);
+    await expectAccessible(page);
+
+    const first = table.getByTestId('unbilled-client').first();
+    const name = ((await first.textContent()) ?? '').trim();
+    await first.click();
+    await expect(page).toHaveURL(/cliente/);
+    await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
+    await page.getByTestId('unbilled-back').click();
+    await expect(page).toHaveURL(
+        /\/facturacion\/por-facturar\?(?!.*cliente).*periodo=anio/,
+    );
+});
+
+test('Por revisar: un contacto sin propuesta se casa eligiendo su cliente y se deshace (I5)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-revisar?tipo=contactos');
     await expect(
         page.getByRole('heading', { name: 'Por revisar', level: 1 }),
     ).toBeVisible();
-    const contacts = page.getByTestId('holded-contacts');
+    await expect(page.getByTestId('review-coverage')).toContainText(
+        /\d+ de \d+ contactos casados/,
+    );
+    const contacts = page.getByTestId('review-contacts');
     await expect(contacts).toContainText('Estudio Nébula, S.L.');
     await expectAccessible(page);
 
-    // El selector de cliente lleva buscador (D-245): se escribe y se elige.
-    await contacts.getByTestId('contact-client').first().click();
+    // El buscador de clientes en la propia fila (D-245): elegir es casar.
+    await contacts.getByTestId('review-choose-client').first().click();
     await page
         .getByPlaceholder('Busca un cliente por nombre o NIF')
         .fill('faro');
     await expect(page.getByRole('option')).toHaveCount(1);
     await page.getByRole('option', { name: /^Librería El Faro/ }).click();
-    await contacts.getByRole('button', { name: 'Asignar' }).first().click();
     await expect(
         page
             .getByText(
@@ -495,11 +604,76 @@ test('un contacto de Holded sin casar se resuelve eligiendo su cliente', async (
     await expect(
         page.getByText('Todos los contactos tienen cliente'),
     ).toBeVisible();
+    // El paso siguiente: las facturas sin proyecto.
+    await expect(
+        page.getByRole('link', {
+            name: /Ahora enlaza (la|las \d+) facturas? sin proyecto/,
+        }),
+    ).toBeVisible();
 
     // Sus facturas pasan a ese cliente.
     await page.goto('/facturacion/facturas?buscar=N%C3%A9bula');
     await expect(page.getByTestId('invoice-table')).toContainText(
         'Librería El Faro',
+    );
+
+    // Deshacer: vuelve a estar sin cliente.
+    await page.goto('/facturacion/por-revisar?tipo=contactos');
+    await expect(page.getByTestId('review-undo')).toContainText(
+        'Librería El Faro',
+    );
+    await page.getByTestId('review-undo-button').click();
+    await expect(page.getByText(/^Deshecho/).first()).toBeVisible();
+    await expect(page.getByTestId('review-contacts')).toContainText(
+        'Estudio Nébula, S.L.',
+    );
+});
+
+test('Por revisar: las facturas sin proyecto se enlazan con su propuesta, en bloque las de confianza alta (I5)', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await page.goto('/facturacion/por-revisar?tipo=facturas');
+    const invoices = page.getByTestId('review-invoices');
+    await expect(invoices).toContainText('Confianza alta');
+    await expectAccessible(page);
+
+    // Rechazar deja elegir otro proyecto en la misma fila.
+    await invoices.getByTestId('review-reject').first().click();
+    await expect(
+        invoices.getByTestId('review-choose-project').first(),
+    ).toBeVisible();
+
+    // Una a una.
+    const rows = await invoices.getByTestId('review-invoice-row').count();
+    await invoices.getByTestId('review-accept').first().click();
+    await expect(page.getByText(/Factura enlazada con/).first()).toBeVisible();
+    await expect(invoices.getByTestId('review-invoice-row')).toHaveCount(
+        rows - 1,
+    );
+
+    // En bloque, las de confianza alta; se puede deshacer de una vez.
+    const accept = page.getByTestId('review-accept-high');
+    await expect(accept).toBeEnabled();
+    await accept.click();
+    await expect(
+        page.getByText(/facturas? enlazadas? con su proyecto/).first(),
+    ).toBeVisible();
+    await expect(accept).toBeDisabled();
+    await page.getByTestId('review-undo-button').click();
+    await expect(page.getByText(/^Deshecho/).first()).toBeVisible();
+    await expect(accept).toBeEnabled();
+
+    // El directorio de contactos está en Ajustes.
+    await page.goto('/facturacion/ajustes?contactos=descartados');
+    const directory = page.getByTestId('holded-contacts-directory');
+    await expect(directory).toBeVisible();
+    await expect(
+        directory.getByTestId('directory-view-descartados'),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await directory.getByTestId('directory-view-todos').click();
+    await expect(directory.getByTestId('directory-table')).toContainText(
+        'Hoteles Mirador',
     );
 });
 

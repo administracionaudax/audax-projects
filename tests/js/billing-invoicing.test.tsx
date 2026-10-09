@@ -413,6 +413,7 @@ describe('pantallas de Facturación (D-405)', () => {
                 exportBillingHours: true,
             } as Abilities).map((section) => section.href),
         ).toEqual([
+            '/facturacion',
             '/facturacion/facturas',
             '/facturacion/por-facturar',
             '/facturacion/vendido-frente-a-real',

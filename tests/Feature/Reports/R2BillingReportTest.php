@@ -69,17 +69,15 @@ test('no compara con el periodo anterior: sin comparar en la barra ni en sus enl
             ->missing('filters.next.comparar'));
 });
 
-test('sin cliente, la página pide elegir uno y la exportación no se hace', function () {
+test('sin cliente, la página es la lista de clientes por facturar (I10) y la exportación no se hace', function () {
     $s = $this->s;
 
     $this->actingAs($s->admin)->get('/facturacion/por-facturar')
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('billing/hours')
-            ->where('client', null)
-            ->where('summary', null)
-            ->where('clients.0.name', 'Bodega Ñandú')
-            ->has('clients', 2));
+            ->component('billing/unbilled')
+            ->where('filters.period', 'anio')
+            ->has('report.clients'));
 
     $this->actingAs($s->admin)->get('/facturacion/por-facturar?formato=xlsx')->assertStatus(422);
 });
@@ -348,8 +346,9 @@ test('el enlace al informe del cliente solo va a quien puede verlo', function ()
         ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false));
     $this->actingAs($s->luis->fresh())->get('/informes/clientes/'.$s->client->id)->assertForbidden();
 
+    // Sin cliente, la lista (I10): no lleva enlace a ningún informe de cliente.
     $this->actingAs($s->admin)->get('/facturacion/por-facturar')
-        ->assertInertia(fn (Assert $page) => $page->where('can.viewReport', false)->where('client', null));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/unbilled')->missing('can'));
 });
 
 test('la ficha del cliente enlaza sus horas para facturar a quien puede exportarlas (can.viewBilling)', function () {

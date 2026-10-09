@@ -37,6 +37,21 @@ export function saleStatus(pct: number | null): SaleStatus {
     return pct >= RISK_PCT ? 'risk' : 'ok';
 }
 
+/**
+ * Estado de una unidad por horas (D-416, como SoldVsActual::hourlyStatus): no hay nada vendido, así
+ * que no hay porcentaje. Horas reales por encima de las facturadas: pendiente de facturar.
+ */
+export function hourlyStatus(
+    invoicedMinutes: number,
+    realMinutes: number,
+): SaleStatus {
+    if (realMinutes > invoicedMinutes) {
+        return 'unbilled';
+    }
+
+    return realMinutes > 0 || invoicedMinutes > 0 ? 'billed' : 'none';
+}
+
 export const SALE_KINDS: SaleKind[] = [
     'bolsa',
     'precio_cerrado',

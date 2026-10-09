@@ -73,13 +73,18 @@ it('los parecidos salen en «Por revisar» y se confirman con un clic; sus factu
     $contact->save();
     $monto = Client::query()->where('name', 'Montó')->value('id');
 
-    $this->actingAs($admin)->get('/facturacion/por-revisar?vista=por-revisar')
+    // En la bandeja (I5, D-413), con su propuesta: el parecido, de confianza media.
+    $this->actingAs($admin)->get('/facturacion/por-revisar?tipo=contactos')
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('view', 'por-revisar')
-            ->where('counts.por-revisar', 1)
+            ->component('billing/review')
+            ->where('tab', 'contactos')
+            ->where('counts.contactos', 1)
             ->where('contacts.0.match_method', HoldedContact::MATCH_APPROX)
-            ->where('contacts.0.client.id', $monto));
+            ->where('contacts.0.client.id', $monto)
+            ->where('contacts.0.proposal.client.id', $monto)
+            ->where('contacts.0.proposal.reason', 'parecido')
+            ->where('contacts.0.proposal.confidence', 'media'));
 
     $this->actingAs($admin)->put("/facturacion/contactos/{$contact->id}", ['action' => 'confirm'])->assertRedirect();
 

@@ -7,6 +7,7 @@ import {
     CircleDot,
     Clock,
     PencilLine,
+    ReceiptText,
     TriangleAlert,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/styleguide/status-badges';
@@ -21,6 +22,9 @@ const SALE: Record<SaleStatus, Meta> = {
     ok: { tone: 'success', icon: CircleCheck },
     risk: { tone: 'warning', icon: TriangleAlert },
     over: { tone: 'danger', icon: CircleAlert },
+    // Por horas (D-416): no hay nada vendido; lo que pasa de lo facturado está por facturar.
+    unbilled: { tone: 'info', icon: ReceiptText },
+    billed: { tone: 'neutral', icon: CircleCheck },
     none: { tone: 'neutral', icon: CircleDashed },
 };
 

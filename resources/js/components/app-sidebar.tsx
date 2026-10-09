@@ -282,8 +282,9 @@ export function peopleNavItems(
 
 /**
  * Sección «Facturación» (D-260; D-405, que cambia D-393 y D-401), con el módulo `billing` visible
- * (las habilidades ya lo tienen en cuenta), en este orden: Facturas, Por facturar, Vendido frente a
- * real, Por revisar (con su contador), Ventas y Ajustes al final. Cada persona ve solo lo que puede
+ * (las habilidades ya lo tienen en cuenta), en este orden: Resumen (I1, D-411; activo solo en
+ * /facturacion), Facturas, Por facturar, Vendido frente a real, Por revisar (con su contador de
+ * contactos y facturas, D-413), Ventas y Ajustes al final. Cada persona ve solo lo que puede
  * abrir (billingSections): «Vendido frente a real» también responsables y gestores, y «Por
  * facturar» con su permiso de siempre, también sin el módulo (D-402). Sin entradas, la sección no se
  * pinta.
@@ -298,6 +299,7 @@ export function billingNavItems(
         title: t(section.label),
         href: section.href,
         icon: section.icon,
+        exact: section.exact,
         badge:
             section.id === 'por-revisar' && review > 0
                 ? {

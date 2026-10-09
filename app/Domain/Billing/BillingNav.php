@@ -2,7 +2,6 @@
 
 namespace App\Domain\Billing;
 
-use App\Models\HoldedContact;
 use App\Models\HoldedSyncRun;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -10,9 +9,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Lo que la navegación de Facturación enseña en todas las páginas (D-405 y D-409), en la prop
  * compartida `billing`, solo para quien tiene view-billing:
- * - `review`: el contador de «Por revisar» de la barra lateral (hoy, los contactos de Holded sin
- *   casar o casados por un nombre parecido, por confirmar; con I5 se sumarán las facturas sin
- *   proyecto),
+ * - `review`: el contador de «Por revisar» de la barra lateral: los contactos de Holded sin casar o
+ *   casados por un nombre parecido, por confirmar, más las facturas sin proyecto ni bolsa (I5),
  * - `sync`: la última lectura de Holded (cuándo, si falló y cuándo fue la última buena), para el
  *   estado discreto de la cabecera de cada pantalla (R6).
  * Son datos de toda la agencia, no de cada persona: se guardan en la caché un minuto y se olvidan al
@@ -45,14 +43,13 @@ final class BillingNav
         Cache::forget(self::CACHE_KEY);
     }
 
-    /** Contactos sin casar (ni descartados) más los casados por un nombre parecido, en una consulta. */
+    /**
+     * Lo que hay en «Por revisar» (I5, D-413): contactos sin casar (ni descartados) más los casados
+     * por un nombre parecido, y facturas sin proyecto ni bolsa (dos consultas).
+     */
     public static function reviewCount(): int
     {
-        $row = HoldedContact::query()->toBase()
-            ->selectRaw('COALESCE(SUM(CASE WHEN client_id IS NULL AND ignored_at IS NULL THEN 1 WHEN match_method = ? THEN 1 ELSE 0 END), 0) as review', [HoldedContact::MATCH_APPROX])
-            ->first();
-
-        return (int) ($row->review ?? 0);
+        return array_sum(ReviewInbox::counts());
     }
 
     /**

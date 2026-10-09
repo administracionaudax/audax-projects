@@ -94,7 +94,7 @@ it('calcula vendido, real, pendiente, desviación y semáforo de cada unidad', f
 
     expect($report['units'])->toHaveCount(4)
         // Primero lo pasado y lo que está en riesgo.
-        ->and(array_column($report['units'], 'status'))->toBe(['over', 'risk', 'ok', 'none']);
+        ->and(array_column($report['units'], 'status'))->toBe(['over', 'risk', 'unbilled', 'ok']);
 
     expect($unit('bank:'.$this->bank->id))->toMatchArray([
         'kind' => 'bolsa', 'sold_minutes' => 600, 'real_minutes' => 540, 'pending_minutes' => 90,
@@ -102,11 +102,14 @@ it('calcula vendido, real, pendiente, desviación y semáforo de cada unidad', f
     ]);
     expect($unit('project:'.$this->fixed->id))->toMatchArray(['kind' => 'precio_cerrado', 'sold_minutes' => 1200, 'real_minutes' => 1320, 'deviation_minutes' => 120, 'consumption_pct' => 110.0, 'status' => 'over']);
     expect($unit('project:'.$this->fee->id))->toMatchArray(['kind' => 'fee', 'months' => 3, 'sold_minutes' => 1800, 'real_minutes' => 900, 'consumption_pct' => 50.0, 'status' => 'ok']);
-    expect($unit('project:'.$this->hourly->id))->toMatchArray(['kind' => 'horas', 'sold_minutes' => null, 'real_minutes' => 120, 'status' => 'none']);
+    // Por horas no hay nada vendido (D-416): las 2 h sin facturar son lo pendiente de facturar.
+    expect($unit('project:'.$this->hourly->id))->toMatchArray(['kind' => 'horas', 'sold_minutes' => null, 'real_minutes' => 120, 'consumption_pct' => null,
+        'deviation_minutes' => null, 'status' => 'unbilled', 'unbilled_minutes' => 120]);
 
     expect($report['totals'])->toMatchArray([
         'units' => 4, 'sold_minutes' => 3600, 'real_of_sold_minutes' => 2760, 'deviation_minutes' => -840, 'real_minutes' => 2880, 'pending_minutes' => 90,
-        'by_status' => ['over' => 1, 'risk' => 1, 'ok' => 1, 'none' => 1],
+        'by_status' => ['over' => 1, 'risk' => 1, 'unbilled' => 1, 'ok' => 1, 'billed' => 0, 'none' => 0],
+        'unbilled_minutes' => 120,
     ]);
 });
 
@@ -174,6 +177,29 @@ it('el semáforo sigue los casos compartidos con el navegador', function (?int $
     $cases = json_decode((string) file_get_contents(__DIR__.'/../../fixtures/billing/sold-vs-actual-status.json'), true)['cases'];
 
     return array_map(fn (array $case): array => [$case['sold'], $case['real'], $case['pct'] === null ? null : (float) $case['pct'], $case['status']], $cases);
+});
+
+it('por horas, una factura parcial no da un porcentaje ni un «pasado»: el resto es pendiente de facturar (D-416)', function () {
+    // Como la F260314 enlazada con LAM-INT (VFR-4): 1 h 30 min facturada de 2 h reales.
+    $invoice = HoldedInvoice::query()->where('number', 'F260004')->firstOrFail();
+    $invoice->lines()->create(['position' => 1, 'name' => 'Horas desarrollo', 'units' => '1.5', 'unit_price' => '66.67', 'discount_pct' => '0', 'subtotal' => '100.00', 'tax_rate' => '21']);
+
+    $report = app(SoldVsActual::class)->report($this->query, $this->admin, true);
+    $hourly = ($this->unit)($report, 'project:'.$this->hourly->id);
+
+    expect($hourly)->toMatchArray(['invoiced_minutes' => 90, 'sold_minutes' => null, 'consumption_pct' => null, 'status' => 'unbilled', 'unbilled_minutes' => 30, 'to_invoice' => '20.00'])
+        // No entra en la escala de lo vendido ni en los totales de consumo.
+        ->and($report['totals']['sold_minutes'])->toBe(3600)
+        ->and($report['totals']['by_status']['over'])->toBe(1);
+});
+
+it('el estado por horas sigue los casos compartidos con el navegador', function (int $invoiced, int $real, string $status, int $unbilled) {
+    expect(SoldVsActual::hourlyStatus($invoiced, $real))->toBe($status)
+        ->and(max(0, $real - $invoiced))->toBe($unbilled);
+})->with(function (): array {
+    $cases = json_decode((string) file_get_contents(__DIR__.'/../../fixtures/billing/sold-vs-actual-status.json'), true)['hourly_cases'];
+
+    return array_map(fn (array $case): array => [$case['invoiced'], $case['real'], $case['status'], $case['unbilled']], $cases);
 });
 
 it('cuenta los meses naturales de un periodo', function () {

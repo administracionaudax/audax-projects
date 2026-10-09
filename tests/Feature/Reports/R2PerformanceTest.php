@@ -71,7 +71,8 @@ beforeEach(function () {
         'reports.project.client.pdf' => 25,
         'reports.project.client.export' => 25,
         'reports.billing' => 17,
-        'reports.billing.empty' => 6,
+        // Sin cliente, la lista de clientes por facturar (I10, D-412): horas, valor y facturas.
+        'reports.billing.empty' => 13,
         // Cuenta las entradas (límite de filas) y, en frío, calcula el resumen para que el total
         // del fichero sea el de la página (con la página ya vista, el resumen sale de la caché).
         'reports.billing.export' => 22,

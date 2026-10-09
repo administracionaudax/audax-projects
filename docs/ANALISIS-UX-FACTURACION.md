@@ -24,7 +24,13 @@ Material de apoyo, en esta misma carpeta:
   - Ajustes va como última entrada de la lista, no como engranaje en la cabecera de la sección.
   - En el listado, «Vencimiento» no es columna propia: el estado ya dice los días y la columna Estado se ordena por el vencimiento. Sin vista lateral, selección múltiple ni «Deshacer» (R1, R3 y R2 siguen pendientes).
   - En el móvil, el listado sigue siendo una tabla que se desplaza dentro de su caja (las tarjetas son I7).
-- **Siguiente tanda:** I1, I5 e I10, con R7.
+- **Tanda 2 (09/10/2026, rama `facturacion-ux-2`, decisiones D-411 a D-416):** I1, I5, I10, I7, I9 y R7. Capturas en `tanda-2/`. Diferencias con la propuesta:
+  - Resumen: «Pendiente» y «Vencido» son de todas las facturas, a hoy (no del periodo), y la gráfica por mes va con IVA en las dos series para poder comparar lo facturado con lo cobrado (D-411). El periodo es el chip del listado, sin «Todo».
+  - Por revisar: «Rechazar» una propuesta de factura no se guarda (deja elegir otro proyecto); en los contactos, ✗ es «Descartar», como siempre. Sin atajos de teclado ni selección múltiple (R9 y R3 siguen pendientes); «Deshacer» guarda la última acción en la sesión, no una lista «Hechos hoy» (D-414).
+  - Por facturar: los precios cerrados no entran (se facturan por hitos, F3) y la lista no tiene aún el botón «Crear factura» (L2).
+  - Vendido frente a real: sin el interruptor «Horas | Importes» (la tabla ya cabe, D-410); por horas, «Por facturar» o «Facturado al día» en lugar del porcentaje (D-416). Las filas siguen sin enlazar a sus facturas (VFR-5).
+  - Móvil: las tablas de las gráficas («Ver como tabla») se desplazan dentro de su caja; el resto, tarjetas.
+- **Siguiente tanda:** R1, R3, R2, R4, R5, R8 y R9.
 
 ---
 
@@ -251,23 +257,23 @@ Esfuerzo: S (hasta 2 días), M (3-6 días), L (más de una semana). Riesgo: lo q
 
 | Nivel | Código | Mejora | Esfuerzo | Riesgo | Estado |
 |---|---|---|---|---|---|
-| Imprescindible | I1 | Portada «Resumen» orientada a la acción | M | Bajo | Pendiente |
+| Imprescindible | I1 | Portada «Resumen» orientada a la acción | M | Bajo | Hecho, tanda 2 (D-411) |
 | Imprescindible | I2 | Una sola navegación, títulos y migas coherentes | S | Bajo | Hecho, tanda 1 (D-405) |
 | Imprescindible | I3 | Listado de facturas rápido: vistas, barra de importes, chips, orden y totales | L | Medio | Hecho, tanda 1 (D-406 y D-407) |
 | Imprescindible | I4 | Ficha de factura con cabecera útil, enlace en un solo bloque y línea de tiempo | M | Bajo | Hecho, tanda 1 (D-408) |
-| Imprescindible | I5 | Bandeja «Por revisar» para contactos y facturas | M | Medio | Pendiente |
+| Imprescindible | I5 | Bandeja «Por revisar» para contactos y facturas | M | Medio | Hecho, tanda 2 (D-413 y D-414) |
 | Imprescindible | I6 | Una base por grupo de cifras y «Pendiente de facturar» como cifra principal | S | Bajo | Hecho, tanda 1 (D-410) |
-| Imprescindible | I7 | Móvil: listas en tarjetas y filtros en una hoja | M | Bajo | Pendiente |
+| Imprescindible | I7 | Móvil: listas en tarjetas y filtros en una hoja | M | Bajo | Hecho, tanda 2 (D-415) |
 | Imprescindible | I8 | Errores visibles: desbordes, columnas cortadas, plural, barra lateral | S | Bajo | Hecho, tanda 1 (D-410) |
-| Imprescindible | I9 | «Vendido frente a real» sin scroll lateral y con la lectura correcta por tipo de venta | M | Medio | Pendiente |
-| Imprescindible | I10 | «Por facturar» con la lista de clientes pendientes | M | Bajo | Pendiente |
+| Imprescindible | I9 | «Vendido frente a real» sin scroll lateral y con la lectura correcta por tipo de venta | M | Medio | Hecho, tanda 1 (tabla, D-410) y tanda 2 (por horas, D-416) |
+| Imprescindible | I10 | «Por facturar» con la lista de clientes pendientes | M | Bajo | Hecho, tanda 2 (D-412) |
 | Muy recomendable | R1 | Vista lateral con ↑ y ↓ para revisar y enlazar en serie | M | Bajo | Pendiente |
 | Muy recomendable | R2 | Vistas guardadas con nombre, fijables en la barra lateral | M | Bajo | Pendiente |
 | Muy recomendable | R3 | Selección múltiple con barra de acciones | M | Medio | Pendiente |
 | Muy recomendable | R4 | Facturas en la búsqueda global (Ctrl K) | S | Medio | Pendiente |
 | Muy recomendable | R5 | «Ventas» (el informe actual) más compacto y con cobros | M | Bajo | Pendiente |
 | Muy recomendable | R6 | Estado de la sincronización en todas las pantallas | S | Bajo | Hecho, tanda 1 (D-409) |
-| Muy recomendable | R7 | Estados vacíos con siguiente paso y ayuda en contexto | S | Bajo | Pendiente |
+| Muy recomendable | R7 | Estados vacíos con siguiente paso y ayuda en contexto | S | Bajo | Hecho, tanda 2 (D-415) |
 | Muy recomendable | R8 | Barra de facturación compacta en bolsa, proyecto y cliente | S | Bajo | Pendiente |
 | Muy recomendable | R9 | Atajos de teclado | S | Bajo | Pendiente |
 | Más adelante | L1 | Matriz estado → acciones y menú ⋯ por fila (emisión) | M | Medio | Pendiente |

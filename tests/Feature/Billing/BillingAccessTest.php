@@ -259,9 +259,10 @@ it('exporta el informe en Excel, CSV, PDF y para imprimir, con los permisos de q
     $this->actingAs($this->employee)->get($url.'&formato=csv')->assertForbidden();
 });
 
-it('/facturacion lleva a Ventas o, a quien solo ve el vendido frente a real, a ese (D-401 y D-405)', function () {
-    $this->actingAs($this->admin)->get('/facturacion')->assertRedirect('/facturacion/ventas');
-    $this->actingAs($this->finance)->get('/facturacion')->assertRedirect('/facturacion/ventas');
+it('/facturacion es el Resumen o, a quien solo ve el vendido frente a real, lleva a ese (D-401 y D-411)', function () {
+    // Con view-billing, el Resumen (I1, D-411); quien solo ve las horas, a «Vendido frente a real» (D-401).
+    $this->actingAs($this->admin)->get('/facturacion')->assertOk()->assertInertia(fn (Assert $page) => $page->component('billing/summary'));
+    $this->actingAs($this->finance)->get('/facturacion')->assertOk()->assertInertia(fn (Assert $page) => $page->component('billing/summary'));
     $this->actingAs($this->manager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->projectManager)->get('/facturacion')->assertRedirect('/facturacion/vendido-frente-a-real');
     $this->actingAs($this->employee)->get('/facturacion')->assertForbidden();
@@ -273,7 +274,6 @@ it('las URL antiguas responden con un 301 a las de Facturación, con su query (D
         '/informes/facturacion' => '/facturacion/por-facturar',
         '/facturacion/horas-para-facturar' => '/facturacion/por-facturar',
         '/facturacion/informe' => '/facturacion/ventas',
-        '/facturacion/contactos' => '/facturacion/por-revisar',
     ];
 
     foreach ($moved as $old => $new) {
@@ -291,9 +291,13 @@ it('las URL antiguas responden con un 301 a las de Facturación, con su query (D
     $csv = $this->actingAs($this->finance)->followingRedirects()->get('/informes/vendido-frente-a-real?periodo=anio&formato=csv');
     $csv->assertOk();
     $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/informe?periodo=anio&formato=csv')->assertOk();
+    // Contactos (I5, D-413): las vistas de trabajo, a la bandeja; Todos y Descartados, al directorio de Ajustes.
+    $this->actingAs($this->finance)->get('/facturacion/contactos')->assertStatus(301)->assertRedirect('/facturacion/por-revisar?tipo=contactos');
+    $this->actingAs($this->finance)->get('/facturacion/contactos?vista=sin-casar')->assertStatus(301)->assertRedirect('/facturacion/por-revisar?tipo=contactos');
+    $this->actingAs($this->finance)->get('/facturacion/contactos?vista=descartados')->assertStatus(301)->assertRedirect('/facturacion/ajustes?contactos=descartados#contactos-holded');
     $this->actingAs($this->employee)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertForbidden();
     $this->actingAs($this->finance)->followingRedirects()->get('/facturacion/contactos?vista=todos')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('billing/contacts')->where('view', 'todos'));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/settings')->where('contacts.view', 'todos'));
 });
 
 it('con el módulo apagado, las URL antiguas de Facturación no dicen nada (404), salvo la de las horas (D-402 y D-405)', function () {
@@ -307,8 +311,9 @@ it('con el módulo apagado, las URL antiguas de Facturación no dicen nada (404)
 it('las horas para facturar no dependen del módulo, pero sí de las exclusiones de Facturación (D-402 y D-247)', function () {
     enableBilling(false);
 
+    // Sin cliente, la lista de clientes por facturar (I10), en horas: sin el módulo no hay importes.
     $this->actingAs($this->finance)->get('/facturacion/por-facturar')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('billing/hours'));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/unbilled')->where('report.financials', false));
     $this->actingAs($this->admin)->get('/facturacion/por-facturar?cliente[]='.$this->clientCompany->id.'&formato=csv')->assertOk();
     $this->actingAs($this->employee)->get('/facturacion/por-facturar')->assertForbidden();
     $this->actingAs($this->finance)->get('/facturacion/ventas')->assertNotFound();

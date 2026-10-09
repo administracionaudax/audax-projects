@@ -8,7 +8,14 @@ import type { ReportFiltersProps, ReportRequestData } from './reports';
 
 export type SaleKind = 'bolsa' | 'precio_cerrado' | 'fee' | 'horas';
 
-export type SaleStatus = 'ok' | 'risk' | 'over' | 'none';
+/** El semáforo de lo vendido y, por horas, lo pendiente de facturar o facturado al día (D-416). */
+export type SaleStatus =
+    | 'ok'
+    | 'risk'
+    | 'over'
+    | 'unbilled'
+    | 'billed'
+    | 'none';
 
 export type CollectionStatus =
     | 'paid'
@@ -58,6 +65,8 @@ export type SoldVsActualUnit = {
     invoices_count: number;
     /** Horas de las líneas de horas y de bolsa de sus facturas (D-396). */
     invoiced_minutes: number;
+    /** Por horas (D-416): las horas reales que pasan de las facturadas; null en las demás. */
+    unbilled_minutes: number | null;
     sold_amount?: string | null;
     /** De dónde sale el importe vendido: la bolsa o el proyecto en Audax, o la línea de Holded. */
     sold_source?: 'audax' | 'holded' | null;
@@ -86,6 +95,8 @@ export type SoldVsActualTotals = {
     consumption_pct: number | null;
     status: SaleStatus;
     by_status: Record<SaleStatus, number>;
+    /** Horas pendientes de facturar de las unidades por horas (D-416). */
+    unbilled_minutes: number;
     sold_amount?: string;
     income?: string;
     invoiced?: string;
@@ -318,4 +329,155 @@ export type InvoicingReportPageProps = {
     services: BillingService[];
     report: InvoicingReport;
     report_request: ReportRequestData;
+};
+
+/** Un tramo de antigüedad de lo pendiente (InvoicingReport::AGING). */
+export type AgingKey = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90_plus';
+
+/** La portada «Resumen» de Facturación (App\Domain\Billing\BillingSummary, I1, D-411). */
+export type BillingSummaryData = {
+    period: { key: string; from: string; to: string };
+    today: string;
+    previous_year: string;
+    attention: {
+        overdue: { count: number; amount: string; oldest_days: number | null };
+        unlinked: { count: number; amount: string };
+        contacts: { count: number; amount: string };
+        banks: { count: number; over: number; threshold: number };
+    };
+    kpis: {
+        invoiced: string;
+        previous_invoiced: string;
+        variation_pct: string | null;
+        invoices: number;
+        unbilled: string;
+        unbilled_clients: number;
+        outstanding: string;
+        outstanding_count: number;
+        overdue: string;
+        overdue_count: number;
+    };
+    /** Con IVA: facturado por mes de emisión y cobrado por la fecha del cobro. */
+    months: {
+        month: string;
+        invoiced: string;
+        collected: string;
+        previous: string;
+    }[];
+    receivable: {
+        aging: { key: AgingKey; amount: string; count: number }[];
+        clients: {
+            client: { id: number; name: string } | null;
+            contact_name: string | null;
+            amount: string;
+            count: number;
+            overdue_count: number;
+        }[];
+    };
+    unbilled: { clients: UnbilledClient[]; total_clients: number };
+    /** La query de los informes (Ventas, Por facturar) con el mismo periodo. */
+    report_query: Record<string, string>;
+};
+
+/** Confianza de una propuesta de «Por revisar» (I5, D-413). */
+export type ReviewConfidence = 'alta' | 'media' | 'baja';
+
+/** Por qué se propone un cliente para un contacto (HoldedContactMatcher::propose). */
+export type ReviewContactReason =
+    | 'codigo_f'
+    | 'proyecto'
+    | 'nif'
+    | 'nombre'
+    | 'parecido'
+    | 'palabras';
+
+/** Un contacto de Holded (ReviewInbox::contactRow): bandeja y directorio de Ajustes. */
+export type HoldedContactRow = {
+    id: number;
+    name: string;
+    trade_name: string | null;
+    tax_id: string | null;
+    email: string | null;
+    city: string | null;
+    client: { id: number; name: string } | null;
+    match_method: 'tax_id' | 'name' | 'approx' | 'manual' | null;
+    ignored: boolean;
+    invoices: number;
+    /** Base facturada (sin IVA) de todas sus facturas. */
+    invoiced: string;
+};
+
+export type ReviewContactRow = HoldedContactRow & {
+    proposal: {
+        client: { id: number; name: string };
+        reason: ReviewContactReason;
+        confidence: ReviewConfidence;
+    } | null;
+};
+
+export type ReviewInvoiceRow = {
+    id: number;
+    number: string | null;
+    kind: 'invoice' | 'credit_note';
+    is_draft: boolean;
+    issued_on: string;
+    client: { id: number; name: string } | null;
+    contact_name: string | null;
+    subtotal: string;
+    /** El tipo de línea que más pesa (bolsa, fee, horas…). */
+    service: InvoiceLineKind;
+    proposal:
+        | (InvoiceLinkSuggestion & {
+              confidence: ReviewConfidence;
+              /** El proyecto estaba vivo en la fecha de la factura. */
+              dated: boolean;
+          })
+        | null;
+    alternatives: InvoiceLinkSuggestion[];
+};
+
+/** Un proyecto (y sus bolsas) con el que enlazar a mano (ReviewInbox::linkTargets). */
+export type ReviewLinkTarget = {
+    id: number;
+    code: string;
+    name: string;
+    client_id: number | null;
+    client: string | null;
+    uses_banks: boolean;
+    banks: { id: number; name: string; start_date: string }[];
+};
+
+export type BillingClientOption = {
+    id: number;
+    name: string;
+    is_active: boolean;
+    tax_id: string | null;
+};
+
+/** Un cliente con algo por facturar (App\Domain\Billing\UnbilledReport, I10, D-412). */
+export type UnbilledClient = {
+    client: { id: number; name: string; is_active: boolean };
+    /** Horas sin facturar: las de los proyectos por horas y los excesos de bolsa. */
+    minutes: number;
+    /** Horas facturables aún sin aprobar (no cuentan en `minutes`). */
+    pending_minutes: number;
+    /** Importe sin IVA; null sin view-billing. */
+    amount: string | null;
+    /** Fecha (AAAA-MM-DD) de lo más antiguo sin facturar. */
+    oldest: string | null;
+    /** De dónde sale: proyectos por horas y bolsas con exceso, bolsas sin factura y meses de fee sin factura. */
+    sources: { hours: number; overage: number; banks: number; fees: number };
+};
+
+export type UnbilledReportData = {
+    clients: UnbilledClient[];
+    totals: {
+        clients: number;
+        minutes: number;
+        pending_minutes: number;
+        amount: string | null;
+    };
+    financials: boolean;
+    from: string;
+    to: string;
 };

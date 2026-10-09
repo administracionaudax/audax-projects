@@ -33,13 +33,14 @@ use Illuminate\Database\Eloquent\Collection;
  * | Bolsa | `total_minutes` y `price_amount` | horas de la bolsa | las enlazadas con la bolsa |
  * | Precio cerrado | `budget_minutes` y `fixed_price_amount` | horas del proyecto | las del proyecto |
  * | Fee mensual | horas e importe al mes × meses del periodo | horas del periodo | las del periodo |
- * | Por horas | — (lo vendido es lo que se factura) | horas facturables del periodo | las del periodo |
+ * | Por horas | — (nada: sin porcentaje, D-416) | horas facturables del periodo | las del periodo |
  *
  * - Bolsas y precios cerrados se miden **enteros** (toda su vida) si están vivos en el periodo; fees
  *   y horas, **dentro del periodo**.
  * - **Real** = horas aprobadas o bloqueadas; las enviadas y en borrador van aparte («pendientes de
  *   aprobar»), como en todos los informes. Desviación = real − vendido; semáforo de la Weekly:
- *   riesgo desde el 85 %, pasado por encima del 100 %.
+ *   riesgo desde el 85 %, pasado por encima del 100 %. Por horas no hay semáforo (D-416): lo que
+ *   pasa de lo facturado son horas pendientes de facturar (`unbilled_minutes`, estado «unbilled»).
  * - **Importes** (solo con view-financials): lo facturado es la base imponible (sin IVA) de las
  *   facturas aprobadas y no anuladas menos sus rectificativas; cobrado y pendiente de cobro, con IVA
  *   (lo que se cobra). Una factura enlazada con varias unidades se reparte a partes iguales al
@@ -56,6 +57,9 @@ final class SoldVsActual
     public const int RISK_PCT = 85;
 
     public const int OVER_PCT = 100;
+
+    /** Estados de una unidad: el semáforo de lo vendido y, por horas, lo pendiente de facturar (D-416). */
+    public const array STATUSES = ['over', 'risk', 'unbilled', 'ok', 'billed', 'none'];
 
     private const array REAL = [TimeEntryStatus::Approved->value, TimeEntryStatus::Locked->value];
 
@@ -126,6 +130,20 @@ final class SoldVsActual
             $pct > self::OVER_PCT => 'over',
             $pct >= self::RISK_PCT => 'risk',
             default => 'ok',
+        };
+    }
+
+    /**
+     * Estado de una unidad por horas (D-416): no hay nada vendido, así que no hay porcentaje. Con
+     * horas reales por encima de las facturadas, «unbilled» (pendiente de facturar); con todo
+     * facturado, «billed»; sin horas ni facturas, «none».
+     */
+    public static function hourlyStatus(int $invoicedMinutes, int $realMinutes): string
+    {
+        return match (true) {
+            $realMinutes > $invoicedMinutes => 'unbilled',
+            $realMinutes > 0 || $invoicedMinutes > 0 => 'billed',
+            default => 'none',
         };
     }
 
@@ -456,10 +474,8 @@ final class SoldVsActual
         $project = $unit['project'];
         /** @var SaleKind $kind */
         $kind = $unit['kind'];
-        // Por horas, lo vendido son las horas facturadas (sus líneas de horas, D-396).
-        if ($kind === SaleKind::Hourly && $unit['sold_minutes'] === null && $unit['invoiced_minutes'] > 0) {
-            $unit['sold_minutes'] = $unit['invoiced_minutes'];
-        }
+        // Por horas no hay nada vendido (D-416, cambia la lectura de D-390): lo facturado no es un
+        // límite, así que pasar de ello no es un exceso, son horas pendientes de facturar.
         // Una bolsa sin precio en Audax (las de ClickUp): el de su línea «bolsadehoras» en Holded.
         $soldSource = $unit['sold_amount'] !== null ? 'audax' : null;
         if ($kind === SaleKind::HourBank && $unit['sold_amount'] === null && bccomp(Money::of($unit['bank_amount']), '0', 2) > 0) {
@@ -468,7 +484,8 @@ final class SoldVsActual
         }
         $sold = $unit['sold_minutes'];
         $real = (int) $unit['real_minutes'];
-        $pct = $sold !== null && $sold > 0 ? round($real / $sold * 100, 1) : null;
+        $hourly = $kind === SaleKind::Hourly;
+        $pct = ! $hourly && $sold !== null && $sold > 0 ? round($real / $sold * 100, 1) : null;
 
         $row = [
             'key' => $unit['key'],
@@ -485,9 +502,10 @@ final class SoldVsActual
             'pending_minutes' => (int) $unit['pending_minutes'],
             'deviation_minutes' => $sold !== null ? $real - $sold : null,
             'consumption_pct' => $pct,
-            'status' => self::status($pct),
+            'status' => $hourly ? self::hourlyStatus((int) $unit['invoiced_minutes'], $real) : self::status($pct),
             'invoices_count' => count($unit['invoice_ids']),
             'invoiced_minutes' => (int) $unit['invoiced_minutes'],
+            'unbilled_minutes' => $hourly ? max(0, $real - (int) $unit['invoiced_minutes']) : null,
         ];
 
         if (! $financials) {
@@ -542,12 +560,11 @@ final class SoldVsActual
             'deviation_minutes' => $realOfSold - $sold,
             'consumption_pct' => $pct,
             'status' => self::status($pct),
-            'by_status' => [
-                'over' => count(array_filter($rows, fn (array $row): bool => $row['status'] === 'over')),
-                'risk' => count(array_filter($rows, fn (array $row): bool => $row['status'] === 'risk')),
-                'ok' => count(array_filter($rows, fn (array $row): bool => $row['status'] === 'ok')),
-                'none' => count(array_filter($rows, fn (array $row): bool => $row['status'] === 'none')),
-            ],
+            'by_status' => array_combine(self::STATUSES, array_map(
+                fn (string $status): int => count(array_filter($rows, fn (array $row): bool => $row['status'] === $status)),
+                self::STATUSES,
+            )),
+            'unbilled_minutes' => array_sum(array_map(fn (array $row): int => (int) ($row['unbilled_minutes'] ?? 0), $rows)),
         ];
 
         if (! $financials) {
@@ -619,8 +636,10 @@ final class SoldVsActual
         return match ($status) {
             'over' => 0,
             'risk' => 1,
-            'ok' => 2,
-            default => 3,
+            'unbilled' => 2,
+            'ok' => 3,
+            'billed' => 4,
+            default => 5,
         };
     }
 }

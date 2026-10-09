@@ -249,9 +249,14 @@ export function PeriodChip({
     today,
     onChange,
     onClear,
+    presets = PRESETS,
+    dataTest = 'invoice-period',
 }: {
     period: { key: string; from: string | null; to: string | null };
     explicit: boolean;
+    /** Atajos que se ofrecen (el Resumen no ofrece «Todo», D-411). */
+    presets?: ReadonlyArray<Exclude<PeriodKey, 'rango'>>;
+    dataTest?: string;
     today: string;
     onChange: (patch: {
         periodo: PeriodKey | null;
@@ -274,11 +279,11 @@ export function PeriodChip({
                 open={open}
                 onClear={onClear}
                 clearLabel={t('billing.filters.period_reset')}
-                dataTest="invoice-period"
+                dataTest={dataTest}
             >
                 <PopoverContent className="w-72 p-2" align="start">
                     <ul className="grid gap-0.5" aria-label={label}>
-                        {PRESETS.map((key) => {
+                        {presets.map((key) => {
                             const current = period.key === key;
 
                             return (
