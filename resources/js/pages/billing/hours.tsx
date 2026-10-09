@@ -13,6 +13,7 @@ import {
     countQueryFilters,
     FilterSheet,
 } from '@/components/billing/filter-sheet';
+import { UnbilledLines } from '@/components/billing/unbilled-lines';
 import { EmptyState } from '@/components/empty-state';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
@@ -47,6 +48,7 @@ import { cn } from '@/lib/utils';
 import { unbilled as billingHours } from '@/routes/billing';
 import { client as clientReport } from '@/routes/reports';
 import type { ReportFilterKey } from '@/types';
+import type { UnbilledDetail } from '@/types/billing-rules';
 
 /** El cliente se elige aparte (uno y obligatorio); el resto de filtros, en la barra. */
 const FILTERS: ReportFilterKey[] = [
@@ -71,7 +73,11 @@ export default function BillingReport({
     export_limit: exportLimit,
     can,
     report_request: reportRequest,
-}: R2BillingProps) {
+    unbilled = null,
+}: R2BillingProps & {
+    /** Lo pendiente del cliente por línea (D-432 y D-433); null sin cliente. */
+    unbilled?: UnbilledDetail | null;
+}) {
     const id = useId();
     const mobile = useIsMobile();
     const url = billingHours.url();
@@ -217,6 +223,17 @@ export default function BillingReport({
                     <R2ScopeNote>
                         {t('reports_r2.billing.scope_team')}
                     </R2ScopeNote>
+                ) : null}
+
+                {client !== null &&
+                unbilled !== null &&
+                unbilled.lines.length > 0 ? (
+                    <UnbilledLines
+                        client={client.name}
+                        detail={unbilled}
+                        from={filters.from}
+                        to={filters.to}
+                    />
                 ) : null}
 
                 <R2ReportBody>
