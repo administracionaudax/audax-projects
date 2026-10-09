@@ -8,10 +8,12 @@ use App\Http\Controllers\Billing\HoldedContactController;
 use App\Http\Controllers\Billing\HoldedInvoiceController;
 use App\Http\Controllers\Billing\HoldedInvoiceLinkController;
 use App\Http\Controllers\Billing\InvoicingReportController;
+use App\Http\Controllers\Billing\InvoicingSettingsController;
 use App\Http\Controllers\Billing\MovedReportController;
 use App\Http\Controllers\Billing\NoProjectNeededController;
 use App\Http\Controllers\Billing\ProjectBillingController;
 use App\Http\Controllers\Billing\ReviewController;
+use App\Http\Controllers\Billing\SalesDocumentController;
 use App\Http\Controllers\Billing\SoldVsActualController;
 use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Providers\ReportsServiceProvider;
@@ -114,5 +116,58 @@ Route::middleware('module:billing')->group(function () use ($exports) {
             ->name('billing.contacts.client.store');
         Route::post('facturacion/facturas/{invoice}/sin-proyecto', [NoProjectNeededController::class, 'store'])->whereNumber('invoice')->name('billing.invoices.no-project.store');
         Route::delete('facturacion/facturas/{invoice}/sin-proyecto', [NoProjectNeededController::class, 'destroy'])->whereNumber('invoice')->name('billing.invoices.no-project.destroy');
+    });
+
+    /*
+    | Emisión propia (PLAN-EMISION E1; D-417 a D-429), detrás también del módulo `invoicing`
+    | (apagado: 404; en modo de prueba, solo admins). Preparar borradores: use-invoicing; emitir,
+    | anular y rectificar: manage-billing; anular el registro: void-invoices (comprobado en el
+    | controlador con la matriz DocumentActions). Nunca se llama a la AEAT ni se escribe en Holded.
+    */
+    Route::middleware(['module:invoicing', 'can:use-invoicing'])->group(function () {
+        Route::get('facturacion/facturas/nueva', [SalesDocumentController::class, 'create'])->name('billing.documents.create');
+        Route::post('facturacion/facturas/{invoice}/duplicar', [SalesDocumentController::class, 'duplicateHolded'])->whereNumber('invoice')->name('billing.invoices.duplicate');
+        Route::post('facturacion/documentos', [SalesDocumentController::class, 'store'])->name('billing.documents.store');
+        Route::post('facturacion/documentos/vista-previa', [SalesDocumentController::class, 'preview'])
+            ->middleware('throttle:30,1,billing.documents.preview')
+            ->name('billing.documents.preview');
+
+        Route::prefix('facturacion/documentos/{document}')->whereNumber('document')->group(function () {
+            Route::get('/', [SalesDocumentController::class, 'show'])->name('billing.documents.show');
+            Route::get('editar', [SalesDocumentController::class, 'edit'])->name('billing.documents.edit');
+            Route::put('/', [SalesDocumentController::class, 'update'])->name('billing.documents.update');
+            Route::delete('/', [SalesDocumentController::class, 'destroy'])->name('billing.documents.destroy');
+            Route::get('pdf', [SalesDocumentController::class, 'pdf'])
+                ->middleware('throttle:60,1,billing.documents.pdf')
+                ->name('billing.documents.pdf');
+            Route::put('no-fiscal', [SalesDocumentController::class, 'updateNonFiscal'])->name('billing.documents.non-fiscal');
+            // «No necesita proyecto» (D-431), como en las de Holded.
+            Route::post('sin-proyecto', [SalesDocumentController::class, 'markNoProject'])->name('billing.documents.no-project.store');
+            Route::delete('sin-proyecto', [SalesDocumentController::class, 'clearNoProject'])->name('billing.documents.no-project.destroy');
+            Route::post('duplicar', [SalesDocumentController::class, 'duplicate'])->name('billing.documents.duplicate');
+
+            Route::middleware('can:manage-billing')->group(function () {
+                Route::post('emitir', [SalesDocumentController::class, 'issue'])->middleware('throttle:30,1,billing.documents.issue')->name('billing.documents.issue');
+                Route::post('anular', [SalesDocumentController::class, 'cancel'])->name('billing.documents.cancel');
+                Route::post('rectificar', [SalesDocumentController::class, 'rectify'])->name('billing.documents.rectify');
+                Route::post('anular-registro', [SalesDocumentController::class, 'void'])->middleware('can:void-invoices')->name('billing.documents.void');
+            });
+        });
+
+        // Ajustes de la emisión (D-419, D-423, D-425 y D-426): verlos con use-invoicing; cambiarlos, manage-billing.
+        Route::middleware('can:manage-billing')->prefix('facturacion/ajustes/emision')->group(function () {
+            Route::put('series/{series}', [InvoicingSettingsController::class, 'updateSeries'])->whereNumber('series')->name('billing.settings.series.update');
+            Route::put('series/{series}/contador', [InvoicingSettingsController::class, 'updateCounter'])->whereNumber('series')->name('billing.settings.series.counter');
+            Route::post('impuestos', [InvoicingSettingsController::class, 'storeTax'])->name('billing.settings.taxes.store');
+            Route::put('impuestos/{tax}', [InvoicingSettingsController::class, 'updateTax'])->whereNumber('tax')->name('billing.settings.taxes.update');
+            Route::post('servicios', [InvoicingSettingsController::class, 'storeService'])->name('billing.settings.services.store');
+            Route::put('servicios/{service}', [InvoicingSettingsController::class, 'updateService'])->whereNumber('service')->name('billing.settings.services.update');
+            Route::post('servicios/importar', [InvoicingSettingsController::class, 'importServices'])->name('billing.settings.services.import');
+            Route::post('formas-de-pago', [InvoicingSettingsController::class, 'storePaymentMethod'])->name('billing.settings.payment-methods.store');
+            Route::put('formas-de-pago/{method}', [InvoicingSettingsController::class, 'updatePaymentMethod'])->whereNumber('method')->name('billing.settings.payment-methods.update');
+            Route::put('documento', [InvoicingSettingsController::class, 'updateDocument'])->name('billing.settings.document.update');
+            Route::post('documento/logo', [InvoicingSettingsController::class, 'uploadLogo'])->name('billing.settings.document.logo');
+            Route::delete('documento/logo', [InvoicingSettingsController::class, 'deleteLogo'])->name('billing.settings.document.logo.destroy');
+        });
     });
 });

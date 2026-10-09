@@ -21,8 +21,11 @@ import { t } from '@/lib/i18n';
 /** Máximo del motivo (como HoldedInvoice::NO_PROJECT_NOTE_MAX). */
 export const NO_PROJECT_NOTE_MAX = 500;
 
+/** Una propia (id negativo en la vista, D-427) tiene su ruta en /facturacion/documentos. */
 export const noProjectUrl = (invoiceId: number) =>
-    `/facturacion/facturas/${invoiceId}/sin-proyecto`;
+    invoiceId < 0
+        ? `/facturacion/documentos/${-invoiceId}/sin-proyecto`
+        : `/facturacion/facturas/${invoiceId}/sin-proyecto`;
 
 /** Cómo se nombra la factura en las etiquetas (los borradores no tienen número). */
 export function invoiceLabel(invoice: { number: string | null }): string {
