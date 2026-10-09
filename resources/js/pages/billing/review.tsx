@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
+import { CreateClientButton } from '@/components/billing/create-client-dialog';
 import { HelpTip } from '@/components/billing/help-tip';
+import { MarkNoProjectButton } from '@/components/billing/no-project-needed';
 import {
     ConfidenceBadge,
     contactReason,
@@ -53,6 +55,10 @@ type Props = {
     clients: BillingClientOption[];
     targets: ReviewLinkTarget[];
     undo: { message: string; count: number } | null;
+    /** D-430: crear el cliente desde un contacto (view-billing y ClientPolicy::create). */
+    can: { create_client: boolean };
+    /** D-431: facturas marcadas «No necesita proyecto», que ya no salen aquí. */
+    no_project_count: number;
 };
 
 const URL = '/facturacion/por-revisar';
@@ -69,7 +75,8 @@ const fold = (value: string | null | undefined) =>
  * pestañas: los contactos sin cliente o por confirmar y las facturas sin proyecto ni bolsa. Cada
  * fila trae la propuesta con su motivo y su confianza; se acepta, se descarta o se elige otra en la
  * misma fila. «Aceptar las de confianza alta» y «Deshacer» la última acción. Primero lo que más
- * importe tiene. Nunca se crea un cliente desde Holded (D-387).
+ * importe tiene. Desde D-430, «Crear cliente» desde un contacto sin cliente; desde D-431, «No
+ * necesita proyecto» en las facturas.
  */
 export default function Review({
     tab,
@@ -80,6 +87,8 @@ export default function Review({
     clients,
     targets,
     undo,
+    can,
+    no_project_count: noProjectCount,
 }: Props) {
     const id = useId();
     const [search, setSearch] = useState('');
@@ -190,6 +199,27 @@ export default function Review({
                     ]}
                 />
 
+                {tab === 'facturas' && noProjectCount > 0 ? (
+                    <p
+                        className="text-sm text-muted-foreground"
+                        data-test="review-no-project-hidden"
+                    >
+                        {tCount(
+                            'billing.no_project.review_hidden',
+                            noProjectCount,
+                        )}{' '}
+                        <Link
+                            href="/facturacion/facturas?enlace=no-necesita&periodo=todo"
+                            className={cn(
+                                'rounded-md text-primary-text underline underline-offset-2',
+                                FOCUS_RING,
+                            )}
+                        >
+                            {t('billing.no_project.review_hidden_link')}
+                        </Link>
+                    </p>
+                ) : null}
+
                 {total === 0 ? (
                     <ReviewEmpty tab={tab} counts={counts} />
                 ) : (
@@ -266,6 +296,7 @@ export default function Review({
                             <ContactList
                                 rows={shownContacts}
                                 clients={clients}
+                                canCreateClient={can.create_client}
                             />
                         ) : (
                             <InvoiceList
@@ -378,9 +409,11 @@ function clientGroups(clients: BillingClientOption[]) {
 function ContactActions({
     row,
     clients,
+    canCreateClient,
 }: {
     row: ReviewContactRow;
     clients: BillingClientOption[];
+    canCreateClient: boolean;
 }) {
     const { processing, send } = useSend();
     const [choosing, setChoosing] = useState(row.proposal === null);
@@ -445,6 +478,13 @@ function ContactActions({
                     {t('billing.review.other')}
                 </Button>
             ) : null}
+            {canCreateClient && row.client === null ? (
+                <CreateClientButton
+                    contact={row}
+                    disabled={processing}
+                    compact
+                />
+            ) : null}
             <Button
                 type="button"
                 size="sm"
@@ -492,9 +532,11 @@ function ContactProposal({ row }: { row: ReviewContactRow }) {
 function ContactList({
     rows,
     clients,
+    canCreateClient,
 }: {
     rows: ReviewContactRow[];
     clients: BillingClientOption[];
+    canCreateClient: boolean;
 }) {
     const caption = t('billing.review.contacts_caption');
 
@@ -578,6 +620,7 @@ function ContactList({
                                     <ContactActions
                                         row={row}
                                         clients={clients}
+                                        canCreateClient={canCreateClient}
                                     />
                                 </td>
                             </tr>
@@ -613,7 +656,11 @@ function ContactList({
                                 />
                             ) : null}
                         </div>
-                        <ContactActions row={row} clients={clients} />
+                        <ContactActions
+                            row={row}
+                            clients={clients}
+                            canCreateClient={canCreateClient}
+                        />
                     </li>
                 ))}
             </ul>
@@ -791,6 +838,7 @@ function InvoiceActions({
                     </Button>
                 </>
             ) : null}
+            <MarkNoProjectButton invoice={row} compact />
         </div>
     );
 }

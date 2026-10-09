@@ -73,7 +73,7 @@ type Props = {
         rows: HoldedContactRow[];
         clients: BillingClientOption[];
     };
-    can: { sync: boolean; access: boolean };
+    can: { sync: boolean; access: boolean; create_client: boolean };
 };
 
 const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
@@ -362,6 +362,7 @@ export default function BillingSettings({
                     view={contacts.view}
                     rows={contacts.rows}
                     clients={contacts.clients}
+                    canCreateClient={can.create_client}
                 />
 
                 {can.access ? <AccessSection people={access} /> : null}

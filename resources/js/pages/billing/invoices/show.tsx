@@ -25,6 +25,10 @@ import { Meter } from '@/components/billing/sold-vs-actual-kpis';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { SearchableSelect } from '@/components/domain/searchable-select';
 import InputError from '@/components/input-error';
+import {
+    MarkNoProjectButton,
+    NoProjectNeededPanel,
+} from '@/components/billing/no-project-needed';
 import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -295,11 +299,31 @@ export default function InvoiceShow({
                     </div>
 
                     <aside className="grid content-start gap-6">
-                        <LinksPanel
-                            invoice={invoice}
-                            projects={projects}
-                            suggestions={suggestions}
-                        />
+                        {invoice.no_project ? (
+                            <NoProjectNeededPanel
+                                invoice={{
+                                    ...invoice,
+                                    no_project: invoice.no_project,
+                                }}
+                            />
+                        ) : (
+                            <div className="grid content-start gap-2">
+                                <LinksPanel
+                                    invoice={invoice}
+                                    projects={projects}
+                                    suggestions={suggestions}
+                                />
+                                {/* D-431: gastos repercutidos o una factura suelta. */}
+                                {invoice.links.length === 0 &&
+                                invoice.collection_status !== 'cancelled' ? (
+                                    <div>
+                                        <MarkNoProjectButton
+                                            invoice={invoice}
+                                        />
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
                         <ClientPanel invoice={invoice} />
                     </aside>
                 </div>
