@@ -381,7 +381,9 @@ test('el listado de facturas: vistas con su número, barra de importes que filtr
     );
     // Lo cobrado, también lo cobrado en parte; nada sin un euro cobrado ni borradores.
     await expect(page.getByTestId('invoice-table')).toContainText('Cobrada');
-    await expect(page.getByTestId('invoice-table')).not.toContainText('Borrador');
+    await expect(page.getByTestId('invoice-table')).not.toContainText(
+        'Borrador',
+    );
     await page.getByTestId('collection-cobrado').click();
     await expect(page).not.toHaveURL(/cobro=/);
 
