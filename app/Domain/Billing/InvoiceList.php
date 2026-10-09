@@ -5,26 +5,29 @@ namespace App\Domain\Billing;
 use App\Enums\BillingService;
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
-use App\Models\HoldedInvoice;
-use App\Models\HoldedInvoiceLine;
+use App\Models\BillingDocument;
+use App\Models\BillingDocumentLine;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 
 /**
- * El listado de facturas de Holded (D-406 y D-407): vistas por tarea, periodo, filtros, barra de
+ * El listado de facturas (D-406 y D-407), las de Holded y las propias juntas (vista
+ * `billing_documents_all`, D-427): vistas por tarea, periodo, filtros, barra de
  * importes, orden y totales al pie, todo en la URL y agregado en SQL (igual en PostgreSQL y en
  * SQLite, siempre con orderBy y sin DISTINCT). La ficha usa la misma lista para «anterior» y
  * «siguiente» y para volver con los mismos filtros.
  *
  * Parámetros (todos opcionales):
- * - `vista`: todas (por defecto), por-cobrar, vencidas, sin-proyecto, borradores o rectificativas.
+ * - `vista`: todas (por defecto), por-cobrar, vencidas, sin-proyecto, borradores, rectificativas o
+ *   pruebas (la serie de pruebas de la emisión propia, D-419; nunca sale en las demás).
  * - `periodo`: anio, anio-anterior, trimestre, mes, 12-meses, todo o rango (con `desde` y `hasta`).
  *   Sin él, el año en curso en «Todas» y «Rectificativas» y todo en las vistas de trabajo (lo que
  *   queda por cobrar o enlazar no caduca con el año).
  * - `buscar` (número, cliente, contacto o concepto), `cliente` (id), `servicio[]` (BillingService).
  * - `cobro`: vencido, por-vencer o cobrado (la barra de importes).
+ * - `origen`: holded o audax (D-427).
  * - `orden` (fecha, numero, cliente, base, total, pendiente, vencimiento) y `dir` (asc o desc).
  * - Los de antes, como alias (D-385): `enlace=sin` es la vista «Sin proyecto», `tipo=credit_note`
  *   la de rectificativas y `estado=overdue|draft` las de vencidas y borradores; el resto (`estado`,
@@ -35,13 +38,17 @@ final class InvoiceList
 {
     public const int PER_PAGE = 50;
 
-    public const array VIEWS = ['todas', 'por-cobrar', 'vencidas', 'sin-proyecto', 'borradores', 'rectificativas'];
+    /** «Pruebas»: la serie de pruebas de la emisión propia (D-419), que no cuenta en ninguna otra. */
+    public const array VIEWS = ['todas', 'por-cobrar', 'vencidas', 'sin-proyecto', 'borradores', 'rectificativas', 'pruebas'];
 
     public const array PERIODS = ['anio', 'anio-anterior', 'trimestre', 'mes', '12-meses', 'todo', 'rango'];
 
     public const array SORTS = ['fecha', 'numero', 'cliente', 'base', 'total', 'pendiente', 'vencimiento'];
 
     public const array COLLECTIONS = ['vencido', 'por-vencer', 'cobrado'];
+
+    /** Origen (D-427): las leídas de Holded o las emitidas en Audax. */
+    public const array ORIGINS = ['holded', 'audax'];
 
     /** Alias SQL de cada vista en el recuento de las pestañas. */
     private const array COUNT_ALIASES = [
@@ -51,6 +58,7 @@ final class InvoiceList
         'sin-proyecto' => 'v_sin_proyecto',
         'borradores' => 'v_borradores',
         'rectificativas' => 'v_rectificativas',
+        'pruebas' => 'v_pruebas',
     ];
 
     /** El catálogo de servicios (una consulta por lista, aunque el filtro se use en varias). */
@@ -78,6 +86,7 @@ final class InvoiceList
         public readonly ?string $kind,
         public readonly ?string $link,
         public readonly CarbonImmutable $today,
+        public readonly ?string $origin = null,
     ) {}
 
     /**
@@ -141,6 +150,7 @@ final class InvoiceList
             kind: $kind,
             link: $link,
             today: $today ?? LocalTime::today(),
+            origin: $oneOf('origen', self::ORIGINS),
         );
     }
 
@@ -180,7 +190,7 @@ final class InvoiceList
     /**
      * Las facturas del listado: filtros, vista, periodo y tramo de cobro, ya ordenadas.
      *
-     * @return Builder<HoldedInvoice>
+     * @return Builder<BillingDocument>
      */
     public function query(): Builder
     {
@@ -225,16 +235,16 @@ final class InvoiceList
     public function collectionBar(): array
     {
         $today = $this->today->toDateString();
-        $overdue = 'holded_invoices.pending_total > 0 AND holded_invoices.due_on IS NOT NULL AND holded_invoices.due_on < ?';
-        $upcoming = 'holded_invoices.pending_total > 0 AND (holded_invoices.due_on IS NULL OR holded_invoices.due_on >= ?)';
-        $collected = 'holded_invoices.paid_total > 0';
+        $overdue = 'billing_documents.pending_total > 0 AND billing_documents.due_on IS NOT NULL AND billing_documents.due_on < ?';
+        $upcoming = 'billing_documents.pending_total > 0 AND (billing_documents.due_on IS NULL OR billing_documents.due_on >= ?)';
+        $collected = 'billing_documents.paid_total > 0';
 
-        $row = HoldedInvoice::countingIn($this->filtered($this->view))->toBase()->selectRaw(
-            "COALESCE(SUM(CASE WHEN {$overdue} THEN CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as overdue_cents,"
+        $row = BillingDocument::countingIn($this->filtered($this->view))->toBase()->selectRaw(
+            "COALESCE(SUM(CASE WHEN {$overdue} THEN CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as overdue_cents,"
             ." COALESCE(SUM(CASE WHEN {$overdue} THEN 1 ELSE 0 END), 0) as overdue_count,"
-            ." COALESCE(SUM(CASE WHEN {$upcoming} THEN CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as upcoming_cents,"
+            ." COALESCE(SUM(CASE WHEN {$upcoming} THEN CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as upcoming_cents,"
             ." COALESCE(SUM(CASE WHEN {$upcoming} THEN 1 ELSE 0 END), 0) as upcoming_count,"
-            ." COALESCE(SUM(CASE WHEN {$collected} THEN CAST(ROUND(holded_invoices.paid_total * 100) AS BIGINT) ELSE 0 END), 0) as collected_cents,"
+            ." COALESCE(SUM(CASE WHEN {$collected} THEN CAST(ROUND(billing_documents.paid_total * 100) AS BIGINT) ELSE 0 END), 0) as collected_cents,"
             ." COALESCE(SUM(CASE WHEN {$collected} THEN 1 ELSE 0 END), 0) as collected_count",
             [$today, $today, $today, $today],
         )->first();
@@ -258,13 +268,13 @@ final class InvoiceList
         $query = $this->filtered($this->view);
         $this->whereCollection($query);
         if ($this->view !== 'borradores') {
-            $query = HoldedInvoice::countingIn($query);
+            $query = BillingDocument::countingIn($query);
         }
 
         $row = $query->toBase()->selectRaw(
-            'COUNT(*) as count, COALESCE(SUM(CAST(ROUND(holded_invoices.subtotal * 100) AS BIGINT)), 0) as subtotal,'
-            .' COALESCE(SUM(CAST(ROUND(holded_invoices.total * 100) AS BIGINT)), 0) as total,'
-            .' COALESCE(SUM(CASE WHEN holded_invoices.pending_total > 0 THEN CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as pending',
+            'COUNT(*) as count, COALESCE(SUM(CAST(ROUND(billing_documents.subtotal * 100) AS BIGINT)), 0) as subtotal,'
+            .' COALESCE(SUM(CAST(ROUND(billing_documents.total * 100) AS BIGINT)), 0) as total,'
+            .' COALESCE(SUM(CASE WHEN billing_documents.pending_total > 0 THEN CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT) ELSE 0 END), 0) as pending',
         )->first();
 
         return [
@@ -283,7 +293,7 @@ final class InvoiceList
      */
     public function neighbours(int $id): array
     {
-        $ids = $this->query()->toBase()->pluck('holded_invoices.id')->map(fn (mixed $value): int => (int) $value)->values()->all();
+        $ids = $this->query()->toBase()->pluck('billing_documents.id')->map(fn (mixed $value): int => (int) $value)->values()->all();
         $index = array_search($id, $ids, true);
 
         if (! is_int($index)) {
@@ -320,6 +330,7 @@ final class InvoiceList
             'estado' => $this->status,
             'tipo' => $this->kind,
             'enlace' => $this->link,
+            'origen' => $this->origin,
         ];
     }
 
@@ -344,38 +355,41 @@ final class InvoiceList
             'estado' => $this->status,
             'tipo' => $this->kind,
             'enlace' => $this->link,
+            'origen' => $this->origin,
         ], fn (mixed $value): bool => $value !== null);
     }
 
     /**
      * Los filtros comunes a todas las vistas: búsqueda, cliente, servicio y los de antes.
      *
-     * @return Builder<HoldedInvoice>
+     * @return Builder<BillingDocument>
      */
     private function base(): Builder
     {
-        return HoldedInvoice::query()
+        // Con la serie de pruebas: solo la ve su pestaña (viewSql).
+        return BillingDocument::withTests()
             ->when($this->search !== '', function (Builder $q): void {
                 $like = '%'.mb_strtolower($this->search).'%';
-                $q->where(fn (Builder $w) => $w->whereRaw('LOWER(holded_invoices.number) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(holded_invoices.contact_name) LIKE ?', [$like])
+                $q->where(fn (Builder $w) => $w->whereRaw('LOWER(billing_documents.number) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(billing_documents.contact_name) LIKE ?', [$like])
                     ->orWhereHas('client', fn (Builder $c) => $c->whereRaw('LOWER(name) LIKE ?', [$like]))
                     ->orWhereHas('lines', fn (Builder $l) => $l->whereRaw('LOWER(name) LIKE ?', [$like])));
             })
-            ->when($this->clientId !== null, fn (Builder $q) => $q->where('holded_invoices.client_id', $this->clientId))
-            ->when($this->services !== [], fn (Builder $q) => $q->whereIn('holded_invoices.id', $this->serviceInvoiceIds()))
-            ->when($this->status !== null, fn (Builder $q) => $q->where('holded_invoices.collection_status', $this->status))
-            ->when($this->kind !== null, fn (Builder $q) => $q->where('holded_invoices.kind', $this->kind))
+            ->when($this->clientId !== null, fn (Builder $q) => $q->where('billing_documents.client_id', $this->clientId))
+            ->when($this->services !== [], fn (Builder $q) => $q->whereIn('billing_documents.id', $this->serviceInvoiceIds()))
+            ->when($this->status !== null, fn (Builder $q) => $q->where('billing_documents.collection_status', $this->status))
+            ->when($this->kind !== null, fn (Builder $q) => $q->where('billing_documents.kind', $this->kind))
             ->when($this->link === 'con', fn (Builder $q) => $q->whereHas('links'))
             ->when($this->link === 'sin', fn (Builder $q) => $q->whereDoesntHave('links'))
             // Las marcadas «No necesita proyecto» (D-431): fuera de «Sin proyecto», se ven con este filtro.
-            ->when($this->link === 'no-necesita', fn (Builder $q) => $q->whereNotNull('holded_invoices.no_project_needed_at'));
+            ->when($this->link === 'no-necesita', fn (Builder $q) => $q->whereNotNull('billing_documents.no_project_needed_at'))
+            ->when($this->origin !== null, fn (Builder $q) => $q->where('billing_documents.source', $this->origin));
     }
 
     /**
      * Los filtros comunes, la condición de una vista y su periodo.
      *
-     * @return Builder<HoldedInvoice>
+     * @return Builder<BillingDocument>
      */
     private function filtered(string $view): Builder
     {
@@ -384,14 +398,14 @@ final class InvoiceList
         $period = $this->periodFor($view);
 
         return $query
-            ->when($period['from'] !== null, fn (Builder $q) => $q->where('holded_invoices.issued_on', '>=', $period['from']))
-            ->when($period['to'] !== null, fn (Builder $q) => $q->where('holded_invoices.issued_on', '<=', $period['to']));
+            ->when($period['from'] !== null, fn (Builder $q) => $q->where('billing_documents.issued_on', '>=', $period['from']))
+            ->when($period['to'] !== null, fn (Builder $q) => $q->where('billing_documents.issued_on', '<=', $period['to']));
     }
 
     /** Ids de las facturas con alguna línea de los servicios elegidos (subconsulta). */
     private function serviceInvoiceIds(): QueryBuilder
     {
-        $lines = HoldedInvoiceLine::query()->toBase()->select('holded_invoice_lines.holded_invoice_id');
+        $lines = BillingDocumentLine::query()->toBase()->select('billing_document_lines.document_id');
 
         $this->catalog ??= app(InvoicingReport::class);
 
@@ -407,19 +421,25 @@ final class InvoiceList
     {
         $draft = CollectionStatus::Draft->value;
         $cancelled = CollectionStatus::Cancelled->value;
-        $issued = 'holded_invoices.is_draft = ? AND holded_invoices.collection_status <> ?';
-        $pending = "{$issued} AND holded_invoices.collection_status <> ? AND holded_invoices.pending_total > 0";
+        $issued = 'billing_documents.is_draft = ? AND billing_documents.collection_status <> ?';
+        $pending = "{$issued} AND billing_documents.collection_status <> ? AND billing_documents.pending_total > 0";
 
-        return match ($view) {
+        if ($view === 'pruebas') {
+            return ['billing_documents.is_test = ?', [true]];
+        }
+
+        [$sql, $bindings] = match ($view) {
             'por-cobrar' => [$pending, [false, $draft, $cancelled]],
-            'vencidas' => ["{$pending} AND holded_invoices.due_on IS NOT NULL AND holded_invoices.due_on < ?", [false, $draft, $cancelled, $this->today->toDateString()]],
+            'vencidas' => ["{$pending} AND billing_documents.due_on IS NOT NULL AND billing_documents.due_on < ?", [false, $draft, $cancelled, $this->today->toDateString()]],
             // Como el aviso de antes (D-388): también los borradores, que cuentan como previsto.
             // Sin las marcadas «No necesita proyecto» (D-431), que se ven con `enlace=no-necesita`.
-            'sin-proyecto' => ['holded_invoices.collection_status <> ? AND holded_invoices.no_project_needed_at IS NULL AND NOT EXISTS (SELECT 1 FROM holded_invoice_links WHERE holded_invoice_links.holded_invoice_id = holded_invoices.id)', [$cancelled]],
-            'borradores' => ['holded_invoices.is_draft = ? OR holded_invoices.collection_status = ?', [true, $draft]],
-            'rectificativas' => ['holded_invoices.kind = ?', [HoldedDocumentKind::CreditNote->value]],
+            'sin-proyecto' => ['billing_documents.collection_status <> ? AND billing_documents.no_project_needed_at IS NULL AND NOT EXISTS (SELECT 1 FROM billing_document_links WHERE billing_document_links.document_id = billing_documents.id)', [$cancelled]],
+            'borradores' => ['billing_documents.is_draft = ? OR billing_documents.collection_status = ?', [true, $draft]],
+            'rectificativas' => ['billing_documents.kind = ?', [HoldedDocumentKind::CreditNote->value]],
             default => [$issued, [false, $draft]],
         };
+
+        return ["({$sql}) AND billing_documents.is_test = ?", [...$bindings, false]];
     }
 
     /**
@@ -433,11 +453,11 @@ final class InvoiceList
         $sql = '';
         $bindings = [];
         if ($period['from'] !== null) {
-            $sql .= ' AND holded_invoices.issued_on >= ?';
+            $sql .= ' AND billing_documents.issued_on >= ?';
             $bindings[] = $period['from'];
         }
         if ($period['to'] !== null) {
-            $sql .= ' AND holded_invoices.issued_on <= ?';
+            $sql .= ' AND billing_documents.issued_on <= ?';
             $bindings[] = $period['to'];
         }
 
@@ -447,18 +467,18 @@ final class InvoiceList
     /**
      * El tramo de la barra de importes elegido.
      *
-     * @param  Builder<HoldedInvoice>  $query
+     * @param  Builder<BillingDocument>  $query
      */
     private function whereCollection(Builder $query): void
     {
         $today = $this->today->toDateString();
 
         match ($this->collection) {
-            'vencido' => HoldedInvoice::countingIn($query)->where('holded_invoices.pending_total', '>', 0)
-                ->whereNotNull('holded_invoices.due_on')->where('holded_invoices.due_on', '<', $today),
-            'por-vencer' => HoldedInvoice::countingIn($query)->where('holded_invoices.pending_total', '>', 0)
-                ->where(fn (Builder $q) => $q->whereNull('holded_invoices.due_on')->orWhere('holded_invoices.due_on', '>=', $today)),
-            'cobrado' => HoldedInvoice::countingIn($query)->where('holded_invoices.paid_total', '>', 0),
+            'vencido' => BillingDocument::countingIn($query)->where('billing_documents.pending_total', '>', 0)
+                ->whereNotNull('billing_documents.due_on')->where('billing_documents.due_on', '<', $today),
+            'por-vencer' => BillingDocument::countingIn($query)->where('billing_documents.pending_total', '>', 0)
+                ->where(fn (Builder $q) => $q->whereNull('billing_documents.due_on')->orWhere('billing_documents.due_on', '>=', $today)),
+            'cobrado' => BillingDocument::countingIn($query)->where('billing_documents.paid_total', '>', 0),
             default => null,
         };
     }
@@ -467,26 +487,26 @@ final class InvoiceList
      * Orden de la columna elegida; los vacíos (borradores sin número, sin vencimiento), siempre al
      * final, y el id para desempatar.
      *
-     * @param  Builder<HoldedInvoice>  $query
-     * @return Builder<HoldedInvoice>
+     * @param  Builder<BillingDocument>  $query
+     * @return Builder<BillingDocument>
      */
     private function sorted(Builder $query): Builder
     {
         $direction = $this->direction;
 
         $column = match ($this->sort) {
-            'numero' => 'holded_invoices.number',
-            'cliente' => 'LOWER(COALESCE((SELECT clients.name FROM clients WHERE clients.id = holded_invoices.client_id), holded_invoices.contact_name))',
-            'base' => 'holded_invoices.subtotal',
-            'total' => 'holded_invoices.total',
-            'pendiente' => 'holded_invoices.pending_total',
-            'vencimiento' => 'holded_invoices.due_on',
-            default => 'holded_invoices.issued_on',
+            'numero' => 'billing_documents.number',
+            'cliente' => 'LOWER(COALESCE((SELECT clients.name FROM clients WHERE clients.id = billing_documents.client_id), billing_documents.contact_name))',
+            'base' => 'billing_documents.subtotal',
+            'total' => 'billing_documents.total',
+            'pendiente' => 'billing_documents.pending_total',
+            'vencimiento' => 'billing_documents.due_on',
+            default => 'billing_documents.issued_on',
         };
 
         return $query
             ->orderByRaw("CASE WHEN {$column} IS NULL THEN 1 ELSE 0 END")
             ->orderByRaw("{$column} {$direction}")
-            ->orderBy('holded_invoices.id', $direction);
+            ->orderBy('billing_documents.id', $direction);
     }
 }

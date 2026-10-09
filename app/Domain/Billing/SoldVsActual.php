@@ -14,8 +14,8 @@ use App\Enums\InvoiceLineKind;
 use App\Enums\ProjectStatus;
 use App\Enums\SaleKind;
 use App\Enums\TimeEntryStatus;
-use App\Models\HoldedInvoice;
-use App\Models\HoldedInvoiceLink;
+use App\Models\BillingDocument;
+use App\Models\BillingDocumentLink;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TimeEntry;
@@ -257,7 +257,7 @@ final class SoldVsActual
                 ->distinct()->pluck('project_id')->map(fn (mixed $id): int => (int) $id)->all()
             : null;
 
-        $invoiced = HoldedInvoiceLink::query()->whereIn('project_id', $ids)
+        $invoiced = BillingDocumentLink::query()->whereIn('project_id', $ids)
             ->whereHas('invoice', fn (Builder $q) => $q->whereBetween('issued_on', [$from->toDateString(), $to->toDateString()]))
             ->distinct()->pluck('project_id')->map(fn (mixed $id): int => (int) $id)->all();
 
@@ -350,11 +350,11 @@ final class SoldVsActual
             return;
         }
 
-        $links = HoldedInvoiceLink::query()->whereIn('project_id', $projectIds)
-            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,holded_invoice_id,name,service_code,units,subtotal', 'invoice.rectified:id,collection_status'])
+        $links = BillingDocumentLink::query()->whereIn('project_id', $projectIds)
+            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,document_id,name,service_code,units,subtotal', 'invoice.rectified:id,collection_status'])
             ->orderBy('id')->get()
             // Lo facturado y, aparte, los borradores (previsto, D-395); nunca lo anulado.
-            ->filter(fn (HoldedInvoiceLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);
+            ->filter(fn (BillingDocumentLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);
 
         // Unidad de cada enlace: la bolsa (si la hay) o el proyecto.
         $unitIndex = [];
@@ -375,14 +375,14 @@ final class SoldVsActual
             if (! $unit['whole'] && ($link->invoice->issued_on->lessThan($from) || $link->invoice->issued_on->greaterThan($to))) {
                 continue;
             }
-            if (! in_array($index, $byInvoice[$link->holded_invoice_id] ?? [], true)) {
-                $byInvoice[$link->holded_invoice_id][] = $index;
+            if (! in_array($index, $byInvoice[$link->document_id] ?? [], true)) {
+                $byInvoice[$link->document_id][] = $index;
             }
         }
 
         $invoices = $links->pluck('invoice')->keyBy('id');
         foreach ($byInvoice as $invoiceId => $indexes) {
-            /** @var HoldedInvoice $invoice */
+            /** @var BillingDocument $invoice */
             $invoice = $invoices[$invoiceId];
             if ($invoice->is_draft) {
                 foreach (self::split((string) $invoice->subtotal, count($indexes)) as $n => $amount) {

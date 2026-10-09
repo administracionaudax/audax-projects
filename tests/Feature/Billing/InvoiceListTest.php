@@ -7,6 +7,7 @@ use App\Enums\BillingType;
 use App\Enums\CollectionStatus;
 use App\Enums\HoldedDocumentKind;
 use App\Enums\InvoiceLinkMethod;
+use App\Models\BillingDocument;
 use App\Models\Client;
 use App\Models\HoldedContact;
 use App\Models\HoldedInvoice;
@@ -88,7 +89,7 @@ beforeEach(function () {
     HoldedInvoiceLink::query()->create(['holded_invoice_id' => $this->paid->id, 'project_id' => $this->project->id, 'method' => InvoiceLinkMethod::Manual, 'created_by' => $this->admin->id]);
 
     $this->numbers = fn (array $query = []): array => InvoiceList::fromQuery($query)->query()->get()
-        ->map(fn (HoldedInvoice $invoice): string => $invoice->number ?? 'borrador')->all();
+        ->map(fn (BillingDocument $invoice): string => $invoice->number ?? 'borrador')->all();
 });
 
 it('cuenta cada vista con su periodo por defecto: el año en curso en Todas y todo en las de trabajo', function () {
@@ -106,6 +107,8 @@ it('cuenta cada vista con su periodo por defecto: el año en curso en Todas y to
             'sin-proyecto' => 5,
             'borradores' => 1,
             'rectificativas' => 1,
+            // La serie de pruebas de la emisión propia (D-419), solo en su pestaña.
+            'pruebas' => 0,
         ])
         ->and(($this->numbers)())->toBe(['F260003', 'CN260001', 'F260002', 'F260004', 'F260001'])
         ->and(($this->numbers)(['vista' => 'vencidas']))->toBe(['F260002', 'F250010']);

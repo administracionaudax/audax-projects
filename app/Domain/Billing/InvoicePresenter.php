@@ -2,12 +2,14 @@
 
 namespace App\Domain\Billing;
 
+use App\Models\BillingDocument;
+use App\Models\BillingDocumentLink;
 use App\Models\HoldedInvoice;
 use App\Models\HoldedInvoiceLink;
 use App\Models\HoldedPayment;
 
 /**
- * Facturas de Holded para la interfaz (Fase 12, D-385): contrato con resources/js/types/billing.ts
+ * Facturas para la interfaz (Fase 12, D-385; las propias, D-427, con su origen y su ficha): contrato con resources/js/types/billing.ts
  * (HoldedInvoiceSummary y HoldedInvoiceDetail). Solo para quien tiene view-billing.
  */
 final class InvoicePresenter
@@ -15,10 +17,16 @@ final class InvoicePresenter
     /**
      * @return array<string, mixed>
      */
-    public static function summary(HoldedInvoice $invoice): array
+    public static function summary(HoldedInvoice|BillingDocument $invoice): array
     {
+        $own = $invoice instanceof BillingDocument && $invoice->isOwn();
+
         return [
             'id' => $invoice->id,
+            // De dónde viene (D-427): Holded o la emisión propia (id negativo en la vista).
+            'source' => $own ? BillingDocument::SOURCE_AUDAX : BillingDocument::SOURCE_HOLDED,
+            'url' => BillingDocument::urlFor($invoice->id),
+            'is_test' => $invoice instanceof BillingDocument && $invoice->is_test,
             'number' => $invoice->number,
             'kind' => $invoice->kind->value,
             'issued_on' => $invoice->issued_on->toDateString(),
@@ -34,7 +42,7 @@ final class InvoicePresenter
             'collection_status' => $invoice->collection_status->value,
             'is_draft' => $invoice->is_draft,
             'tags' => $invoice->tags ?? [],
-            'links' => $invoice->relationLoaded('links') ? $invoice->links->map(fn (HoldedInvoiceLink $link): array => self::link($link))->values()->all() : [],
+            'links' => $invoice->relationLoaded('links') ? $invoice->links->map(fn (HoldedInvoiceLink|BillingDocumentLink $link): array => self::link($link))->values()->all() : [],
             'no_project_needed' => $invoice->noProjectNeeded(),
         ];
     }
@@ -100,7 +108,7 @@ final class InvoicePresenter
     /**
      * @return array<string, mixed>
      */
-    public static function link(HoldedInvoiceLink $link): array
+    public static function link(HoldedInvoiceLink|BillingDocumentLink $link): array
     {
         return [
             'id' => $link->id,

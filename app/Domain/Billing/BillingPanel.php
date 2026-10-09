@@ -3,8 +3,8 @@
 namespace App\Domain\Billing;
 
 use App\Domain\Reports\ReportFilters;
+use App\Models\BillingDocument;
 use App\Models\Client;
-use App\Models\HoldedInvoice;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\User;
@@ -57,7 +57,7 @@ final class BillingPanel
     }
 
     /**
-     * @param  callable(Builder<HoldedInvoice>): mixed  $invoiceScope
+     * @param  callable(Builder<BillingDocument>): mixed  $invoiceScope
      * @return array<string, mixed>
      */
     private function panel(SoldVsActualQuery $query, User $viewer, callable $invoiceScope): array
@@ -68,12 +68,12 @@ final class BillingPanel
         $invoices = null;
         $invoiceCount = 0;
         if ($financials) {
-            $builder = HoldedInvoice::query();
+            $builder = BillingDocument::query();
             $invoiceScope($builder);
             $invoiceCount = (clone $builder)->count();
             $invoices = $builder->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name'])
                 ->orderByDesc('issued_on')->orderByDesc('id')->limit(self::INVOICES)->get()
-                ->map(fn (HoldedInvoice $invoice): array => InvoicePresenter::summary($invoice))->values()->all();
+                ->map(fn (BillingDocument $invoice): array => InvoicePresenter::summary($invoice))->values()->all();
         }
 
         return [

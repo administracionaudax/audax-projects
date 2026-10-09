@@ -9,6 +9,7 @@ use App\Enums\BillingType;
 use App\Enums\CollectionStatus;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
+use App\Models\BillingDocument;
 use App\Models\HoldedContact;
 use App\Models\HoldedInvoice;
 use App\Models\HourBank;
@@ -182,14 +183,14 @@ final class BillingSummary
     private function receivable(CarbonImmutable $today): array
     {
         $day = $today->toDateString();
-        $pending = fn (): Builder => HoldedInvoice::countingIn(HoldedInvoice::query())->where('holded_invoices.pending_total', '>', 0);
+        $pending = fn (): Builder => BillingDocument::countingIn(BillingDocument::query())->where('billing_documents.pending_total', '>', 0);
 
         $rows = DB::query()->fromSub($pending()->toBase()
-            ->selectRaw("CASE WHEN holded_invoices.due_on IS NULL OR holded_invoices.due_on >= ? THEN 'current'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd1_30'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd31_60'"
-                ." WHEN holded_invoices.due_on >= ? THEN 'd61_90'"
-                ." ELSE 'd90_plus' END as bucket, CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT) as cents, holded_invoices.due_on as due_on", [
+            ->selectRaw("CASE WHEN billing_documents.due_on IS NULL OR billing_documents.due_on >= ? THEN 'current'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd1_30'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd31_60'"
+                ." WHEN billing_documents.due_on >= ? THEN 'd61_90'"
+                ." ELSE 'd90_plus' END as bucket, CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT) as cents, billing_documents.due_on as due_on", [
                     $day, $today->subDays(30)->toDateString(), $today->subDays(60)->toDateString(), $today->subDays(90)->toDateString(),
                 ]), 'pending')
             ->selectRaw('bucket, COALESCE(SUM(cents), 0) as cents, COUNT(*) as count, MIN(due_on) as oldest')
@@ -220,13 +221,13 @@ final class BillingSummary
             }
         }
 
-        $amount = 'CAST(ROUND(holded_invoices.pending_total * 100) AS BIGINT)';
+        $amount = 'CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT)';
         $clients = $pending()->toBase()
-            ->leftJoin('clients', 'clients.id', '=', 'holded_invoices.client_id')
-            ->selectRaw('holded_invoices.client_id as client_id, clients.name as client_name, CASE WHEN holded_invoices.client_id IS NULL THEN holded_invoices.contact_name END as contact_name,'
+            ->leftJoin('clients', 'clients.id', '=', 'billing_documents.client_id')
+            ->selectRaw('billing_documents.client_id as client_id, clients.name as client_name, CASE WHEN billing_documents.client_id IS NULL THEN billing_documents.contact_name END as contact_name,'
                 ." COALESCE(SUM({$amount}), 0) as cents, COUNT(*) as count,"
-                .' COALESCE(SUM(CASE WHEN holded_invoices.due_on IS NOT NULL AND holded_invoices.due_on < ? THEN 1 ELSE 0 END), 0) as overdue_count', [$day])
-            ->groupByRaw('holded_invoices.client_id, clients.name, CASE WHEN holded_invoices.client_id IS NULL THEN holded_invoices.contact_name END')
+                .' COALESCE(SUM(CASE WHEN billing_documents.due_on IS NOT NULL AND billing_documents.due_on < ? THEN 1 ELSE 0 END), 0) as overdue_count', [$day])
+            ->groupByRaw('billing_documents.client_id, clients.name, CASE WHEN billing_documents.client_id IS NULL THEN billing_documents.contact_name END')
             ->orderByRaw("COALESCE(SUM({$amount}), 0) DESC")
             ->orderBy('clients.name')
             ->limit(self::TOP)
@@ -257,12 +258,12 @@ final class BillingSummary
      */
     private function months(InvoicingQuery $query, CarbonImmutable $from, CarbonImmutable $to): array
     {
-        $month = 'SUBSTR(CAST(holded_invoices.issued_on AS TEXT), 1, 7)';
-        $invoiced = fn (CarbonImmutable $start, CarbonImmutable $end): array => HoldedInvoice::countingIn(HoldedInvoice::query())
-            ->where('holded_invoices.issued_on', '>=', $start->toDateString())
-            ->where('holded_invoices.issued_on', '<=', $end->toDateString())
+        $month = 'SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7)';
+        $invoiced = fn (CarbonImmutable $start, CarbonImmutable $end): array => BillingDocument::countingIn(BillingDocument::query())
+            ->where('billing_documents.issued_on', '>=', $start->toDateString())
+            ->where('billing_documents.issued_on', '<=', $end->toDateString())
             ->toBase()
-            ->selectRaw("{$month} as month, COALESCE(SUM(CAST(ROUND(holded_invoices.total * 100) AS BIGINT)), 0) as cents")
+            ->selectRaw("{$month} as month, COALESCE(SUM(CAST(ROUND(billing_documents.total * 100) AS BIGINT)), 0) as cents")
             ->groupByRaw($month)
             ->orderByRaw($month)
             ->pluck('cents', 'month')
