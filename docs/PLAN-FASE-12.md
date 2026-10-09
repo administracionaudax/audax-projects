@@ -429,3 +429,17 @@ Decisiones D-400 a D-403 en `docs/DECISIONES.md`. Encargo del propietario: «haz
 - Los importes de Dirección y Clientes se quedan donde están (D-403).
 
 **Pruebas:** `tests/Feature/Billing/InvoicingReportTest.php`, `BillingAccessTest.php` (matriz, redirecciones, módulo apagado y exclusiones), `tests/Feature/Performance/InvoicingReportPerformanceTest.php`, `tests/js/billing-invoicing.test.tsx` y `tests/e2e/billing.spec.ts`.
+
+## 10. Rediseño de usabilidad, tanda 1 (rama `facturacion-ux-1`, 09/10/2026)
+
+Decisiones D-405 a D-410. Análisis y propuesta en `docs/ANALISIS-UX-FACTURACION.md` (bloques 1 y 2: I8, I2, I6, I3, I4 y R6), con el aspecto de Audax.
+
+- [x] **Una sola navegación (I2, D-405):** sin `BillingTabs`; barra lateral Facturas · Por facturar · Vendido frente a real · Por revisar (con contador) · Ventas · Ajustes; URL nuevas `/facturacion/ventas`, `/facturacion/por-facturar` y `/facturacion/por-revisar` con 301 desde las de antes; h1 y migas coherentes; selector de pantalla en el móvil. Resumen: ruta preparada, entrada al llegar I1.
+- [x] **Errores visibles (I8):** filtros que se salían, tabla de «Vendido frente a real» que no cabía, plurales, etiquetas del ranking y el pie de la barra lateral.
+- [x] **Una base por grupo (I6, D-410):** «Facturación (sin IVA)» y «Cobros (con IVA)» en Ventas, «Vendido frente a real» y Facturas; «Pendiente de facturar» como cifra principal; desviación en palabras.
+- [x] **Listado de facturas (I3, D-406 y D-407):** vistas con su número, periodo por defecto, barra de importes que filtra, chips, búsqueda al escribir, orden, totales al pie, estado con días, paginación y todo en la URL (`App\Domain\Billing\InvoiceList`).
+- [x] **Ficha (I4, D-408):** cabecera con el cobro, enlace en un bloque con sus propuestas y todos los proyectos, línea de tiempo, anterior y siguiente del listado, miga con los filtros y «Abrir en Holded».
+- [x] **Estado de la lectura de Holded (R6, D-409)** en todas las pantallas, con la prop compartida `billingNav`.
+- [ ] Siguiente tanda: Resumen (I1), Por revisar (I5), Por facturar (I10), con R7; después I9, I7, R1 y R3.
+
+**Pruebas:** `tests/Feature/Billing/InvoiceListTest.php`, `BillingAccessTest.php` (rutas y 301 nuevos), `tests/Feature/Performance/InvoiceListPerformanceTest.php`, `tests/js/billing-ux.test.tsx`, `billing.test.tsx`, `billing-invoicing.test.tsx` y `tests/e2e/billing.spec.ts` (navegación, listado, ficha y móvil a 375 px).

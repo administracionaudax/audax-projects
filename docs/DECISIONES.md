@@ -2902,6 +2902,52 @@ Revisados el 08/10/2026 con las 910 facturas leídas de Holded:
 - **Comparación con el año anterior:** con el periodo en curso, las cifras (facturado, número de facturas, ticket medio) se comparan **hasta el mismo día** del año anterior. Por ejemplo, del 1/1 al 8/10 de 2026 se compara con el mismo tramo de 2025, y no con todo 2025, que daba un −31,9 % engañoso. Un periodo ya cerrado se compara entero. La gráfica por meses sigue enseñando el año anterior completo como referencia.
 - **Servicios:** nueva categoría **«Marketing y campañas»** (Marketing, Gestión Campañas…: unos 37.000 € de 2026 que caían en «Otros»). Hosting, licencias y servidores pasan a «Herramientas».
 
+
+## 09/10/2026: Rediseño de usabilidad de Facturación, tanda 1 (rama `facturacion-ux-1`)
+
+Bloques 1 y 2 de `docs/ANALISIS-UX-FACTURACION.md` (I8, I2, I6, I3, I4 y R6). El propietario aprobó la dirección con una condición: adaptarla al aspecto de Audax (los bocetos eran ilustrativos). Todo se ha hecho con los componentes de la app: `PageHeader` y `PageSection`, las tablas de Proyectos y Clientes (orden con `aria-sort`, filas pulsables de D-324), `KpiCard`, `StatusBadge`, `SearchableSelect`, `DatePicker`, los disparadores con aspecto de campo de los filtros de Informes y las pestañas del proyecto.
+
+### D-405 · Una sola navegación en Facturación **[cambia D-393 y D-401]**
+- **Sin pestañas `BillingTabs`.** La sección Facturación de la barra lateral es la única navegación, en este orden: **Facturas, Por facturar, Vendido frente a real, Por revisar (con su contador), Ventas y Ajustes** (al final). Cada persona ve solo lo que puede abrir, como antes: todo con `view-billing`; «Vendido frente a real» con `view-sold-vs-actual` (responsables y gestores, en horas, D-391); «Por facturar» con `exportBillingHours`, también sin el módulo (D-402). Las exclusiones por persona (D-245) siguen aplicándose en las habilidades y en las rutas.
+- **Resumen (`/facturacion`, `billing.index`)** tiene la ruta preparada, pero **no sale en la barra lateral hasta que exista (I1)**: hoy `/facturacion` lleva a Ventas (o a «Vendido frente a real» a quien solo ve horas), y una entrada «Resumen» que abriera Ventas confundiría.
+- **URL y nombres de ruta nuevos:** `/facturacion/ventas` (`billing.sales`, el informe de D-400), `/facturacion/por-facturar` (`billing.unbilled`, la pantalla de «Horas para facturar»; sin el módulo, D-402) y `/facturacion/por-revisar` (`billing.review`, hoy los contactos de Holded con sus vistas; con I5 sumará las facturas sin proyecto). El cambio de contactos sigue en `PUT /facturacion/contactos/{id}`.
+- **Redirecciones 301 con su query** (`MovedReportController`, como D-401): `/facturacion/informe` → `/facturacion/ventas`, `/facturacion/horas-para-facturar` y `/informes/facturacion` → `/facturacion/por-facturar` (sin pasar dos veces), y `/facturacion/contactos` → `/facturacion/por-revisar`. Las de Ventas y contactos van dentro del módulo (apagado, 404 como antes); la de las horas, fuera (D-402). Con I5, `/facturacion/contactos` llevará a `?tipo=contactos` y las vistas Todos y Descartados pasarán a Ajustes.
+- **Envíos programados:** guardan el tipo, no la URL. `ReportKind::Billing` apunta a `billing.unbilled` y `ReportKind::Invoicing` a `billing.sales`. El documento del informe de ventas se titula «Ventas» (antes «Informe de facturación») y se descarga como `ventas-…`.
+- **Títulos y migas:** el h1 es siempre el nombre de la pantalla (nunca «Facturación» a secas, ni «Horas para [[facturar]]» con la palabra destacada) y las migas, «Facturación › Pantalla» (en la ficha, «Facturación › Facturas › F260314», ver D-408). La miga «Facturación» lleva a `/facturacion`, salvo en Por facturar, que lleva a sí misma porque sin el módulo `/facturacion` no existe (D-402).
+- **Móvil:** junto al h1, un botón abre el menú con las demás pantallas de la sección (`BillingSectionSwitcher`); con una sola pantalla no sale.
+- **Barra lateral (T-10):** la lista se desplaza con un fundido abajo, el pie va separado por una línea y la entrada de la página actual se pone a la vista al entrar, para que el pie no tape la última.
+- **Contador de «Por revisar»:** contactos sin casar (ni descartados) más los casados por un nombre parecido, por confirmar (D-248). Va en la prop compartida `billingNav` (D-409).
+
+### D-406 · El listado de facturas: vistas, periodo por defecto, barra de importes y filtros
+- **Vistas por tarea, cada una con su número:** Todas (sin borradores; las anuladas, atenuadas y tachadas), Por cobrar (algo pendiente), Vencidas (pendiente con el vencimiento pasado, **aunque Holded aún no la haya marcado vencida**, porque el estado se calcula al sincronizar), Sin proyecto (sin enlace ni anular; también los borradores, como el aviso de antes), Borradores y Rectificativas.
+- **Periodo por defecto:** el año en curso en Todas y Rectificativas; **todo** en las vistas de trabajo (Por cobrar, Vencidas, Sin proyecto y Borradores), porque lo que queda por cobrar o enlazar no caduca con el año. Un periodo elegido en la URL vale para todas las vistas y sus números. Atajos: este año, el anterior, este trimestre, este mes, los últimos 12 meses, todo o entre dos fechas.
+- **Barra de importes (con IVA, rotulada «Cobros (con IVA)»):** vencido y por vencer (lo pendiente de cada factura) y cobrado (lo cobrado, también lo cobrado en parte), de la vista y los filtros, sin borradores ni anuladas (D-397). Arriba, la raya con la parte de cada tramo; debajo, un botón por tramo que filtra (`cobro=vencido|por-vencer|cobrado`) y se quita al volver a pulsarlo. Colores de estado (rojo, verde) y el azul de los datos para lo que está por vencer, siempre con icono y texto.
+- **Filtros en una línea de chips** con el aspecto de los de Informes: búsqueda al escribir (300 ms) por número, cliente, contacto o concepto de las líneas; periodo; cliente con buscador; servicio (varios, con las categorías de `BillingService`). Los parámetros de antes siguen valiendo como alias (`enlace=sin` → Sin proyecto, `tipo=credit_note` → Rectificativas, `estado=overdue|draft` → Vencidas o Borradores) y el resto (`estado`, `tipo=invoice`, `enlace=con`) se ve como un chip que se quita. Lo que no se entiende se ignora, sin error.
+- **Orden por columnas** (número, fecha, cliente, base, total, pendiente y vencimiento, desde la columna Estado), con los vacíos al final en PostgreSQL y en SQLite y el id para desempatar. **Totales al pie** de lo filtrado (base sin IVA, total y pendiente con IVA), sin anuladas (lo dice el pie); en Borradores, los borradores. Paginación de 50 con «1–50 de 910».
+- **Todo en la URL** y agregado en SQL (`App\Domain\Billing\InvoiceList`): las seis vistas en una consulta con `SUM(CASE …)`, la barra en otra y los totales en otra; las sugerencias de la página, en dos consultas para todas sus filas (`InvoiceLinkSuggester::prime`). Presupuesto en `tests/Feature/Performance/InvoiceListPerformanceTest.php` (26 consultas el listado, que no crecen con los datos).
+- **Sugerencia compacta:** «Enlazar MIR-FE1» dentro de la celda del proyecto, con el motivo en el tooltip, sin duplicar la altura de la fila.
+
+### D-407 · Estado de cobro con días
+- El estado dice cuándo: «Vencida hace 8 días», «Vence hoy», «Vence mañana», «Vence en 5 días» o «Cobrada en parte · 40 %», calculado en el navegador con la fecha de hoy de Madrid que manda el servidor (`billing-time.ts`). «Cobrada» y «Anulada» van en gris, sin insignia de color, para que destaque lo que no está cobrado. El vencimiento exacto va en el tooltip del estado.
+
+### D-408 · La ficha de una factura
+- **Cabecera:** «Factura · cliente», el número, el estado con días y las etiquetas; en grande, **lo pendiente «de» el total** y la barra de lo cobrado; las cifras, agrupadas en Fechas, Sin IVA y Con IVA.
+- **Proyecto y bolsa en un solo bloque:** enlazada, sus enlaces (los manuales se quitan) y «Añadir otro enlace»; sin enlazar, la propuesta principal con su motivo y «Enlazar», las demás debajo y «Elegir otro proyecto…», que abre el buscador con **todos** los proyectos con cliente (primero los del cliente de la factura; sin archivados de otros clientes). Se acaba el formulario siempre visible con el botón deshabilitado (FIC-2, FIC-3).
+- **Historia (línea de tiempo):** emitida, cobros, vencimiento (con los días si sigue pendiente), rectificativas, anulada, los enlaces a mano (quién y cuándo) y la última lectura de Holded. Los enlaces automáticos se rehacen cada noche y no tienen fecha propia, así que no salen.
+- **Anterior y siguiente del listado del que vienes:** el listado pasa sus filtros a la ficha en la query (`/facturacion/facturas/14?vista=vencidas`), la ficha calcula su posición con una consulta de ids y la miga «Facturas» vuelve al listado con esos filtros y en su página.
+- **«Abrir en Holded»:** la URL de cada documento en Holded no es pública, así que abre el listado de ventas (`https://app.holded.com/sales/revenue`) en otra pestaña y copia el número al portapapeles para buscarlo.
+
+### D-409 · Estado de la lectura de Holded en todas las pantallas (R6)
+- En la cabecera de cada pantalla de Facturación, discreto: «Holded: leído hace 3 h» con un punto verde, ámbar si pasan más de 26 h (la lectura de la noche no ha llegado) o rojo si la última falló, siempre con su texto; el detalle (fecha, y la última buena si falló) va en el tooltip, y lleva a Ajustes, donde están el historial y «Sincronizar ahora».
+- Solo para quien tiene `view-billing` (los responsables, que solo ven horas, no lo ven). Sale de la prop compartida `billingNav` (`App\Domain\Billing\BillingNav`), con el contador de «Por revisar»: datos de toda la agencia, en caché un minuto y olvidados al guardar un contacto o una lectura. Los listados ya no piden la última lectura cada uno.
+
+### D-410 · Una base por grupo de cifras
+- **Ventas:** dos grupos rotulados una vez, «Facturación (sin IVA)» (facturado con su comparación, previsto, facturas y ticket medio) y «Cobros (con IVA)» (cobrado, pendiente y vencido). La tarjeta «Frente a 2025» se une a la de facturado y la comparación se escribe siempre igual: «+120,3 % frente a 2025».
+- **Vendido frente a real:** «Horas» (consumo, desviación y unidades) y, con importes, «Facturación (sin IVA)» con **«Pendiente de facturar» como cifra principal** (antes, letra pequeña bajo «Facturado»), facturado y margen, y «Cobros (con IVA)». La desviación se lee en palabras: «46 h 15 min por encima», «1.493 h por debajo» (`formatDurationWords`); las unidades pasadas ya no ponen el número en rojo, lo dice una línea con su icono.
+- **La tabla de «Vendido frente a real» cabe a 1440 px (VFR-1):** con importes, el responsable va debajo de la unidad, las horas sin aprobar debajo de las reales y lo pendiente de cobro debajo de lo cobrado; las cabeceras se parten en dos líneas.
+- **Facturas:** la barra de importes con IVA rotulada y las columnas «Base (sin IVA)» y «Total (con IVA)».
+- **Errores visibles corregidos (I8):** el filtro «Hasta» que se salía (la nueva línea de chips), el plural «1 facturas» (`billing.invoices.panel_description_one/_other`) y las etiquetas cortadas del ranking de Ventas (más anchas en pantallas grandes, el nombre entero en el tooltip y en la tabla).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -2933,7 +2979,7 @@ Revisados el 08/10/2026 con las 910 facturas leídas de Holded:
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179 y D-249.
 
-La siguiente libre es **D-249** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-405 en adelante, libres).
+La siguiente libre es **D-249** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-411 en adelante, libres).

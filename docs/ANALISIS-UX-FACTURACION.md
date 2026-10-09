@@ -17,6 +17,17 @@ Material de apoyo, en esta misma carpeta:
 
 ---
 
+## Estado de la implantación
+
+- **Tanda 1 (09/10/2026, rama `facturacion-ux-1`, decisiones D-405 a D-410):** I8, I2, I6, I3, I4 y R6, adaptados al aspecto de Audax (los bocetos del apartado 3.4 eran ilustrativos). Capturas en `tanda-1/`. Diferencias con la propuesta:
+  - La entrada «Resumen» no sale en la barra lateral hasta que exista la pantalla (I1); la ruta `/facturacion` ya está.
+  - Ajustes va como última entrada de la lista, no como engranaje en la cabecera de la sección.
+  - En el listado, «Vencimiento» no es columna propia: el estado ya dice los días y la columna Estado se ordena por el vencimiento. Sin vista lateral, selección múltiple ni «Deshacer» (R1, R3 y R2 siguen pendientes).
+  - En el móvil, el listado sigue siendo una tabla que se desplaza dentro de su caja (las tarjetas son I7).
+- **Siguiente tanda:** I1, I5 e I10, con R7.
+
+---
+
 ## 1. Diagnóstico de lo actual, pantalla por pantalla
 
 Cada problema lleva un código, su gravedad (alta, media o baja) y la captura donde se ve. Las rutas de las capturas son relativas a `actual/`.
@@ -238,33 +249,33 @@ Esfuerzo: S (hasta 2 días), M (3-6 días), L (más de una semana). Riesgo: lo q
 
 #### Resumen
 
-| Nivel | Código | Mejora | Esfuerzo | Riesgo |
-|---|---|---|---|---|
-| Imprescindible | I1 | Portada «Resumen» orientada a la acción | M | Bajo |
-| Imprescindible | I2 | Una sola navegación, títulos y migas coherentes | S | Bajo |
-| Imprescindible | I3 | Listado de facturas rápido: vistas, barra de importes, chips, orden y totales | L | Medio |
-| Imprescindible | I4 | Ficha de factura con cabecera útil, enlace en un solo bloque y línea de tiempo | M | Bajo |
-| Imprescindible | I5 | Bandeja «Por revisar» para contactos y facturas | M | Medio |
-| Imprescindible | I6 | Una base por grupo de cifras y «Pendiente de facturar» como cifra principal | S | Bajo |
-| Imprescindible | I7 | Móvil: listas en tarjetas y filtros en una hoja | M | Bajo |
-| Imprescindible | I8 | Errores visibles: desbordes, columnas cortadas, plural, barra lateral | S | Bajo |
-| Imprescindible | I9 | «Vendido frente a real» sin scroll lateral y con la lectura correcta por tipo de venta | M | Medio |
-| Imprescindible | I10 | «Por facturar» con la lista de clientes pendientes | M | Bajo |
-| Muy recomendable | R1 | Vista lateral con ↑ y ↓ para revisar y enlazar en serie | M | Bajo |
-| Muy recomendable | R2 | Vistas guardadas con nombre, fijables en la barra lateral | M | Bajo |
-| Muy recomendable | R3 | Selección múltiple con barra de acciones | M | Medio |
-| Muy recomendable | R4 | Facturas en la búsqueda global (Ctrl K) | S | Medio |
-| Muy recomendable | R5 | «Ventas» (el informe actual) más compacto y con cobros | M | Bajo |
-| Muy recomendable | R6 | Estado de la sincronización en todas las pantallas | S | Bajo |
-| Muy recomendable | R7 | Estados vacíos con siguiente paso y ayuda en contexto | S | Bajo |
-| Muy recomendable | R8 | Barra de facturación compacta en bolsa, proyecto y cliente | S | Bajo |
-| Muy recomendable | R9 | Atajos de teclado | S | Bajo |
-| Más adelante | L1 | Matriz estado → acciones y menú ⋯ por fila (emisión) | M | Medio |
-| Más adelante | L2 | «Crear borrador» desde Por facturar (F4) | L | Alto |
-| Más adelante | L3 | Cobros: registrar, recordatorios por escalones y antigüedad por cliente | L | Medio |
-| Más adelante | L4 | Presupuestos y recurrentes en la misma arquitectura | L | Medio |
-| Más adelante | L5 | Cadena de documentos con % facturado | M | Bajo |
-| Más adelante | L6 | Conciliación bancaria reutilizando la bandeja «Por revisar» | L | Alto |
+| Nivel | Código | Mejora | Esfuerzo | Riesgo | Estado |
+|---|---|---|---|---|---|
+| Imprescindible | I1 | Portada «Resumen» orientada a la acción | M | Bajo | Pendiente |
+| Imprescindible | I2 | Una sola navegación, títulos y migas coherentes | S | Bajo | Hecho, tanda 1 (D-405) |
+| Imprescindible | I3 | Listado de facturas rápido: vistas, barra de importes, chips, orden y totales | L | Medio | Hecho, tanda 1 (D-406 y D-407) |
+| Imprescindible | I4 | Ficha de factura con cabecera útil, enlace en un solo bloque y línea de tiempo | M | Bajo | Hecho, tanda 1 (D-408) |
+| Imprescindible | I5 | Bandeja «Por revisar» para contactos y facturas | M | Medio | Pendiente |
+| Imprescindible | I6 | Una base por grupo de cifras y «Pendiente de facturar» como cifra principal | S | Bajo | Hecho, tanda 1 (D-410) |
+| Imprescindible | I7 | Móvil: listas en tarjetas y filtros en una hoja | M | Bajo | Pendiente |
+| Imprescindible | I8 | Errores visibles: desbordes, columnas cortadas, plural, barra lateral | S | Bajo | Hecho, tanda 1 (D-410) |
+| Imprescindible | I9 | «Vendido frente a real» sin scroll lateral y con la lectura correcta por tipo de venta | M | Medio | Pendiente |
+| Imprescindible | I10 | «Por facturar» con la lista de clientes pendientes | M | Bajo | Pendiente |
+| Muy recomendable | R1 | Vista lateral con ↑ y ↓ para revisar y enlazar en serie | M | Bajo | Pendiente |
+| Muy recomendable | R2 | Vistas guardadas con nombre, fijables en la barra lateral | M | Bajo | Pendiente |
+| Muy recomendable | R3 | Selección múltiple con barra de acciones | M | Medio | Pendiente |
+| Muy recomendable | R4 | Facturas en la búsqueda global (Ctrl K) | S | Medio | Pendiente |
+| Muy recomendable | R5 | «Ventas» (el informe actual) más compacto y con cobros | M | Bajo | Pendiente |
+| Muy recomendable | R6 | Estado de la sincronización en todas las pantallas | S | Bajo | Hecho, tanda 1 (D-409) |
+| Muy recomendable | R7 | Estados vacíos con siguiente paso y ayuda en contexto | S | Bajo | Pendiente |
+| Muy recomendable | R8 | Barra de facturación compacta en bolsa, proyecto y cliente | S | Bajo | Pendiente |
+| Muy recomendable | R9 | Atajos de teclado | S | Bajo | Pendiente |
+| Más adelante | L1 | Matriz estado → acciones y menú ⋯ por fila (emisión) | M | Medio | Pendiente |
+| Más adelante | L2 | «Crear borrador» desde Por facturar (F4) | L | Alto | Pendiente |
+| Más adelante | L3 | Cobros: registrar, recordatorios por escalones y antigüedad por cliente | L | Medio | Pendiente |
+| Más adelante | L4 | Presupuestos y recurrentes en la misma arquitectura | L | Medio | Pendiente |
+| Más adelante | L5 | Cadena de documentos con % facturado | M | Bajo | Pendiente |
+| Más adelante | L6 | Conciliación bancaria reutilizando la bandeja «Por revisar» | L | Alto | Pendiente |
 
 #### Imprescindible
 
