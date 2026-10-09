@@ -7,10 +7,11 @@ use App\Domain\Billing\Holded\HoldedConnection;
 use App\Domain\Billing\Holded\HoldedPdfStore;
 use App\Domain\Billing\Holded\HoldedRequestFailed;
 use App\Domain\Billing\InvoiceLinkSuggester;
+use App\Domain\Billing\InvoiceList;
 use App\Domain\Billing\InvoicePresenter;
-use App\Domain\Reports\Money;
+use App\Enums\BillingService;
 use App\Enums\CollectionStatus;
-use App\Enums\HoldedDocumentKind;
+use App\Enums\ProjectStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\HoldedInvoice;
@@ -24,110 +25,139 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
- * Facturas leídas de Holded (Fase 12, F1; D-385): /facturacion/facturas (listado con filtros y
- * sumatorio), su ficha (líneas, cobros, rectificativas y enlaces con proyectos y bolsas) y su PDF
+ * Facturas leídas de Holded (Fase 12, F1; D-385): /facturacion/facturas (listado con vistas, barra
+ * de importes, filtros, orden y totales, D-406 y D-407), su ficha (cabecera con el cobro, enlace con
+ * proyecto o bolsa, línea de tiempo y anterior y siguiente del listado del que vienes, D-408) y su PDF
  * original. Solo lectura de Holded; quién: view-billing (en la ruta).
  */
 class HoldedInvoiceController extends Controller
 {
-    public const int PER_PAGE = 50;
+    /** Listado de ventas de Holded: el enlace exacto de cada documento no es público (D-408). */
+    public const string HOLDED_SALES_URL = 'https://app.holded.com/sales/revenue';
 
-    public function index(Request $request): Response
+    public function index(Request $request, InvoiceLinkSuggester $suggester): Response
     {
-        $filters = $request->validate([
-            'buscar' => ['nullable', 'string', 'max:120'],
-            'estado' => ['nullable', 'string', 'in:'.implode(',', CollectionStatus::values())],
-            'tipo' => ['nullable', 'string', 'in:'.implode(',', HoldedDocumentKind::values())],
-            'cliente' => ['nullable', 'integer'],
-            'enlace' => ['nullable', 'string', 'in:con,sin'],
-            'desde' => ['nullable', 'date_format:Y-m-d'],
-            'hasta' => ['nullable', 'date_format:Y-m-d'],
-        ]);
+        /** @var array<string, mixed> $input */
+        $input = $request->query();
+        $list = InvoiceList::fromQuery($input);
 
-        $query = HoldedInvoice::query()
-            ->when($filters['buscar'] ?? null, function (Builder $q, string $search): void {
-                $like = '%'.mb_strtolower(trim($search)).'%';
-                $q->where(fn (Builder $w) => $w->whereRaw('LOWER(number) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(contact_name) LIKE ?', [$like])
-                    ->orWhereHas('client', fn (Builder $c) => $c->whereRaw('LOWER(name) LIKE ?', [$like])));
-            })
-            ->when($filters['estado'] ?? null, fn (Builder $q, string $status) => $q->where('collection_status', $status))
-            ->when($filters['tipo'] ?? null, fn (Builder $q, string $kind) => $q->where('kind', $kind))
-            ->when($filters['cliente'] ?? null, fn (Builder $q, int $client) => $q->where('client_id', $client))
-            ->when(($filters['enlace'] ?? null) === 'con', fn (Builder $q) => $q->whereHas('links'))
-            ->when(($filters['enlace'] ?? null) === 'sin', fn (Builder $q) => $q->whereDoesntHave('links'))
-            ->when($filters['desde'] ?? null, fn (Builder $q, string $from) => $q->where('issued_on', '>=', $from))
-            ->when($filters['hasta'] ?? null, fn (Builder $q, string $to) => $q->where('issued_on', '<=', $to));
+        $page = $list->query()
+            ->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name', 'lines'])
+            ->paginate(InvoiceList::PER_PAGE, ['holded_invoices.*'], 'pagina')
+            ->withQueryString();
 
-        $totals = HoldedInvoice::countingIn(clone $query)->toBase()->selectRaw('COUNT(*) as count, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(total), 0) as total, COALESCE(SUM(paid_total), 0) as paid, COALESCE(SUM(pending_total), 0) as pending')->first();
-
-        $page = $query->with(['client:id,name', 'links.project:id,code,name', 'links.hourBank:id,name', 'lines'])
-            ->orderByDesc('issued_on')->orderByDesc('id')
-            ->paginate(self::PER_PAGE, pageName: 'pagina')->withQueryString();
-        $suggester = app(InvoiceLinkSuggester::class);
+        /** @var list<HoldedInvoice> $items */
+        $items = $page->items();
+        $unlinked = array_values(array_filter($items, fn (HoldedInvoice $invoice): bool => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled));
+        $suggester->prime($unlinked);
 
         return Inertia::render('billing/invoices/index', [
             'invoices' => [
                 // Sin enlazar: con su primera sugerencia, para aceptarla desde el listado (D-388).
                 'data' => array_map(fn (HoldedInvoice $invoice): array => [
                     ...InvoicePresenter::summary($invoice),
-                    'suggestion' => $invoice->links->isEmpty() && $invoice->collection_status !== CollectionStatus::Cancelled ? ($suggester->for($invoice)[0] ?? null) : null,
-                ], $page->items()),
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'total' => $page->total(),
-                'prev_url' => $page->previousPageUrl(),
-                'next_url' => $page->nextPageUrl(),
+                    'suggestion' => in_array($invoice, $unlinked, true) ? ($suggester->for($invoice)[0] ?? null) : null,
+                ], $items),
+                'meta' => [
+                    'current_page' => $page->currentPage(),
+                    'last_page' => $page->lastPage(),
+                    'from' => $page->firstItem(),
+                    'to' => $page->lastItem(),
+                    'total' => $page->total(),
+                ],
+                'links' => [
+                    'prev' => $page->previousPageUrl(),
+                    'next' => $page->nextPageUrl(),
+                ],
             ],
-            'totals' => [
-                'count' => (int) ($totals->count ?? 0),
-                'subtotal' => Money::round(Money::of((string) ($totals->subtotal ?? '0'))),
-                'total' => Money::round(Money::of((string) ($totals->total ?? '0'))),
-                'paid' => Money::round(Money::of((string) ($totals->paid ?? '0'))),
-                'pending' => Money::round(Money::of((string) ($totals->pending ?? '0'))),
-            ],
-            'filters' => [
-                'buscar' => $filters['buscar'] ?? '',
-                'estado' => $filters['estado'] ?? null,
-                'tipo' => $filters['tipo'] ?? null,
-                'cliente' => isset($filters['cliente']) ? (int) $filters['cliente'] : null,
-                'enlace' => $filters['enlace'] ?? null,
-                'desde' => $filters['desde'] ?? null,
-                'hasta' => $filters['hasta'] ?? null,
-            ],
+            'filters' => $list->filters(),
+            'list_query' => $list->toQuery(),
+            'period' => $list->periodFor($list->view),
+            'views' => $list->viewCounts(),
+            'bar' => $list->collectionBar(),
+            'totals' => $list->totals(),
             'clients' => Client::query()->whereIn('id', HoldedInvoice::query()->whereNotNull('client_id')->select('client_id'))
-                ->orderBy('name')->get(['id', 'name'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->values()->all(),
-            'unlinked' => HoldedInvoice::query()->whereDoesntHave('links')->where('collection_status', '!=', CollectionStatus::Cancelled->value)->count(),
-            'last_sync' => BillingSettingsController::lastSync(),
+                ->orderBy('name')->orderBy('id')->get(['id', 'name'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->values()->all(),
+            'services' => array_map(fn (BillingService $service): string => $service->value, BillingService::cases()),
+            'today' => $list->today->toDateString(),
         ]);
     }
 
-    public function show(HoldedInvoice $invoice): Response
+    public function show(Request $request, HoldedInvoice $invoice, InvoiceLinkSuggester $suggester): Response
     {
+        /** @var array<string, mixed> $input */
+        $input = $request->query();
+        $list = InvoiceList::fromQuery($input);
+        $neighbours = $list->neighbours($invoice->id);
+        $query = $list->toQuery();
+
         return Inertia::render('billing/invoices/show', [
             'invoice' => InvoicePresenter::detail($invoice),
-            'suggestions' => $invoice->links()->exists() ? [] : app(InvoiceLinkSuggester::class)->for($invoice),
-            // Proyectos del cliente (y sus bolsas) para enlazarla a mano; sin cliente, todos los que tienen cliente.
-            'projects' => Project::query()
-                ->whereNotNull('client_id')
-                ->when($invoice->client_id !== null, fn (Builder $q) => $q->where('client_id', $invoice->client_id))
-                ->where('billing_type', '!=', 'internal')
-                ->with(['client:id,name'])
-                ->orderBy('code')
-                ->get(['id', 'code', 'name', 'client_id', 'billing_type'])
-                ->map(fn (Project $project): array => [
-                    'id' => $project->id,
-                    'code' => $project->code,
-                    'name' => $project->name,
-                    'client' => $project->client?->name,
-                    'uses_banks' => $project->usesHourBanks(),
-                    'banks' => $project->usesHourBanks()
-                        ? HourBank::query()->where('project_id', $project->id)->orderByDesc('start_date')->orderBy('id')->get(['id', 'name', 'start_date'])
-                            ->map(fn (HourBank $bank): array => ['id' => $bank->id, 'name' => $bank->name, 'start_date' => $bank->start_date->toDateString()])->values()->all()
-                        : [],
-                ])->values()->all(),
+            'suggestions' => $invoice->links()->exists() ? [] : $suggester->for($invoice),
+            'projects' => $this->linkableProjects($invoice),
             'holded' => HoldedConnection::summary(),
+            'holded_url' => self::HOLDED_SALES_URL,
+            'today' => $list->today->toDateString(),
+            // Del listado del que vienes (D-408): la miga «Facturas» con tus filtros y su página, y la
+            // anterior y la siguiente con los mismos filtros.
+            'list' => [
+                'query' => $query,
+                'back' => '/facturacion/facturas'.self::queryString([...$query, ...($neighbours['page'] > 1 ? ['pagina' => $neighbours['page']] : [])]),
+                'previous' => $neighbours['previous'] === null ? null : '/facturacion/facturas/'.$neighbours['previous'].self::queryString($query),
+                'next' => $neighbours['next'] === null ? null : '/facturacion/facturas/'.$neighbours['next'].self::queryString($query),
+                'position' => $neighbours['position'],
+                'total' => $neighbours['total'],
+            ],
         ]);
+    }
+
+    /**
+     * Proyectos con los que enlazarla a mano (D-408, amplía D-245): primero los del cliente de la
+     * factura y después el resto de proyectos con cliente (antes solo los del cliente, FIC-3), sin
+     * internos ni archivados, con sus bolsas (dos consultas).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function linkableProjects(HoldedInvoice $invoice): array
+    {
+        $projects = Project::query()
+            ->whereNotNull('client_id')
+            ->where('billing_type', '!=', 'internal')
+            ->where(fn (Builder $q) => $q->where('status', '!=', ProjectStatus::Archived->value)
+                ->when($invoice->client_id !== null, fn (Builder $own) => $own->orWhere('client_id', $invoice->client_id)))
+            ->with(['client:id,name'])
+            ->orderBy('code')
+            ->orderBy('id')
+            ->get(['id', 'code', 'name', 'client_id', 'billing_type', 'status']);
+
+        $banks = HourBank::query()
+            ->whereIn('project_id', $projects->filter(fn (Project $project): bool => $project->usesHourBanks())->pluck('id')->all())
+            ->orderByDesc('start_date')->orderBy('id')
+            ->get(['id', 'name', 'start_date', 'project_id'])
+            ->groupBy('project_id');
+
+        return array_values($projects
+            ->sortBy(fn (Project $project): int => $project->client_id === $invoice->client_id ? 0 : 1)
+            ->map(fn (Project $project): array => [
+                'id' => $project->id,
+                'code' => $project->code,
+                'name' => $project->name,
+                'client' => $project->client?->name,
+                'own_client' => $invoice->client_id !== null && $project->client_id === $invoice->client_id,
+                'uses_banks' => $project->usesHourBanks(),
+                'banks' => ($banks->get($project->id) ?? collect())
+                    ->map(fn (HourBank $bank): array => ['id' => $bank->id, 'name' => $bank->name, 'start_date' => $bank->start_date->toDateString()])->values()->all(),
+            ])->all());
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private static function queryString(array $query): string
+    {
+        $string = http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+
+        return $string === '' ? '' : '?'.$string;
     }
 
     /** El PDF original (el guardado o, si aún no está, el de Holded, que se guarda). */

@@ -176,11 +176,12 @@ final class InvoicingReport
     }
 
     /**
-     * Restringe unas líneas a los servicios elegidos por sus pares (nombre, código).
+     * Restringe unas líneas a los servicios elegidos por sus pares (nombre, código). También lo usa
+     * el filtro de servicio del listado de facturas (InvoiceList, D-406).
      *
      * @param  list<BillingService>  $services
      */
-    private function onlyServices(QueryBuilder $lines, array $services): QueryBuilder
+    public function onlyServices(QueryBuilder $lines, array $services): QueryBuilder
     {
         $pairs = array_values(array_filter($this->catalog(), fn (array $pair): bool => in_array($pair['service'], $services, true)));
 
