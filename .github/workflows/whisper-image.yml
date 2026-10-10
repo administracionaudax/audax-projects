@@ -20,7 +20,7 @@ jobs:
     env:
       WHISPER_VERSION: v1.9.4
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Prueba sin AVX (QEMU qemu64), variante sin BLAS
         run: docker build --target test --build-arg WHISPER_VERSION=$WHISPER_VERSION --build-arg BLAS=OFF -t whisper-test:plain deploy/whisper
@@ -41,7 +41,7 @@ jobs:
           sha256sum audax-whisper.tar.zst | tee audax-whisper.tar.zst.sha256
           ls -la audax-whisper.tar.zst
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: audax-whisper-${{ env.WHISPER_VERSION }}
           path: |
