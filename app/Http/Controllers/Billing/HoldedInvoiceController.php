@@ -81,6 +81,8 @@ class HoldedInvoiceController extends Controller
             'views' => $list->viewCounts(),
             'bar' => $list->collectionBar(),
             'totals' => $list->totals(),
+            // «Por cobrar» con la antigüedad por cliente (E2, D-437); en las demás vistas, nada.
+            'aging' => $list->view === 'por-cobrar' ? $list->agingByClient() : null,
             'clients' => Client::query()->whereIn('id', BillingDocument::withTests()->whereNotNull('client_id')->select('client_id'))
                 ->orderBy('name')->orderBy('id')->get(['id', 'name'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->values()->all(),
             'services' => array_map(fn (BillingService $service): string => $service->value, BillingService::cases()),

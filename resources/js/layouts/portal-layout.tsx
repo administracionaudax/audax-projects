@@ -64,6 +64,7 @@ export default function PortalLayout({
 
                     <PortalNav
                         projects={portal?.projects ?? []}
+                        invoices={portal?.bills ?? false}
                         className="order-last -mx-3 w-full pb-2 md:order-none md:mx-0 md:w-auto md:pb-0"
                     />
 

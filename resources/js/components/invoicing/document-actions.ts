@@ -28,7 +28,12 @@ export type DocumentAction =
     | 'rectify'
     | 'void'
     | 'view_record'
-    | 'open_holded';
+    | 'open_holded'
+    | 'record_payment'
+    | 'void_payment'
+    | 'send'
+    | 'send_reminder'
+    | 'attach';
 
 const ROLES: DocumentRole[] = ['view', 'manage', 'admin'];
 
@@ -45,6 +50,11 @@ const ACTIONS: DocumentAction[] = [
     'void',
     'view_record',
     'open_holded',
+    'record_payment',
+    'void_payment',
+    'send',
+    'send_reminder',
+    'attach',
 ];
 
 const ALL_VIEW: Partial<Record<DocumentState, DocumentRole>> = {
@@ -86,6 +96,24 @@ const MATRIX: Record<
         credit_note: 'view',
     },
     open_holded: { holded: 'view' },
+    // E2 (D-436 a D-444): cobros, envío, recordatorio y adjuntos.
+    record_payment: { issued: 'manage', paid: 'manage', credit_note: 'manage' },
+    void_payment: {
+        issued: 'manage',
+        paid: 'manage',
+        cancelled: 'manage',
+        credit_note: 'manage',
+    },
+    send: { issued: 'manage', paid: 'manage', credit_note: 'manage' },
+    send_reminder: { issued: 'manage', paid: 'manage' },
+    attach: {
+        draft: 'view',
+        issued: 'view',
+        paid: 'view',
+        cancelled: 'view',
+        voided: 'view',
+        credit_note: 'view',
+    },
 };
 
 export function documentActions(

@@ -1,4 +1,4 @@
-import { Head, Link, setLayoutProps, useForm } from '@inertiajs/react';
+import { Head, Link, router, setLayoutProps, useForm } from '@inertiajs/react';
 import {
     ArrowLeft,
     BarChart3,
@@ -23,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
@@ -45,6 +46,9 @@ type Profile = {
     language: string;
     billing_emails: string[];
     complete: boolean;
+    /** E2 (D-442 y D-443): facturas en el portal y recordatorios de cobro. */
+    portal_invoices: boolean;
+    payment_reminders: boolean;
 };
 
 type Props = {
@@ -380,6 +384,61 @@ export default function ClientBilling({
                         </div>
                     </form>
                 </PageSection>
+
+                {can.useInvoicing ? (
+                    <PageSection
+                        title={t('invoicing.collect.client.title')}
+                        description={t('invoicing.collect.client.description')}
+                    >
+                        <ul
+                            className="grid max-w-3xl divide-y rounded-md border bg-card"
+                            data-test="client-billing-options"
+                        >
+                            {(
+                                [
+                                    ['portal_invoices', 'portal'],
+                                    ['payment_reminders', 'reminders'],
+                                ] as const
+                            ).map(([key, label]) => (
+                                <li
+                                    key={key}
+                                    className="flex items-start justify-between gap-4 px-4 py-3"
+                                >
+                                    <div className="grid gap-0.5">
+                                        <Label htmlFor={`${id}-${key}`}>
+                                            {t(
+                                                `invoicing.collect.client.${label}`,
+                                            )}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t(
+                                                `invoicing.collect.client.${label}_help`,
+                                            )}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id={`${id}-${key}`}
+                                        checked={profile[key]}
+                                        onCheckedChange={(checked) =>
+                                            router.put(
+                                                `${url}/opciones`,
+                                                {
+                                                    portal_invoices:
+                                                        profile.portal_invoices,
+                                                    payment_reminders:
+                                                        profile.payment_reminders,
+                                                    [key]: checked,
+                                                },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                        data-test={`client-${key}`}
+                                    />
+                                </li>
+                            ))}
+                        </ul>
+                    </PageSection>
+                ) : null}
 
                 <PageSection
                     title={t('billing.client.contacts')}

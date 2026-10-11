@@ -2,11 +2,13 @@
 
 namespace App\Policies;
 
+use App\Domain\Billing\Issuing\InvoicingAccess;
 use App\Domain\Weeklies\AppModules;
 use App\Enums\AppModule;
 use App\Models\Attachment;
 use App\Models\HelpTutorial;
 use App\Models\Message;
+use App\Models\SalesDocument;
 use App\Models\SuggestionComment;
 use App\Models\SuggestionPost;
 use App\Models\TaskComment;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Gate;
  * (Fase 6, D-071), solo quien puede ver su conversación.
  * Los borra quien los subió, quien gestiona el proyecto o un admin; los del chat, nunca sueltos.
  * Un colaborador externo (D-134), solo los de sus proyectos.
+ * Los de una factura propia (E2, D-444): quien usa la emisión; se quitan desde la factura.
  * Los del centro de ayuda (Fase 10, 10.7): los vídeos de los tutoriales y los adjuntos de las
  * sugerencias y sus comentarios los ve quien usa la ayuda (y las sugerencias, con su módulo); se
  * quitan desde su sugerencia o su comentario, nunca sueltos.
@@ -45,6 +48,11 @@ class AttachmentPolicy
             return $this->viewInHelp($user, $attachment);
         }
 
+        // Los de una factura propia (E2, D-444): quien usa la emisión, desde la ficha de la factura.
+        if ($attachment->attachable_type === (new SalesDocument)->getMorphClass()) {
+            return InvoicingAccess::uses($user) && SalesDocument::query()->whereKey($attachment->attachable_id)->exists();
+        }
+
         if (! $this->inVisibleProject($user, $attachment)) {
             return false;
         }
@@ -62,7 +70,9 @@ class AttachmentPolicy
     {
         // Los del chat se quitan borrando su mensaje (MessageWriter, D-069), nunca sueltos: así
         // nadie borra un archivo de una conversación que no ve (el admin no ve las directas).
-        if ($attachment->attachable_type === (new Message)->getMorphClass() || $this->isHelpAttachment($attachment)) {
+        // Los de una factura propia, desde su ficha (SalesDocumentAttachmentController).
+        if ($attachment->attachable_type === (new Message)->getMorphClass() || $this->isHelpAttachment($attachment)
+            || $attachment->attachable_type === (new SalesDocument)->getMorphClass()) {
             return false;
         }
 

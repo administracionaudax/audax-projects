@@ -1,12 +1,16 @@
 <?php
 
+use App\Domain\Tasks\AttachmentStorage;
 use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
 use App\Models\TaskStatus;
 use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use Illuminate\Support\Facades\Storage;
 
 /*
 | Aislamiento de TODAS las rutas del portal (SPEC §17, aceptación de la Fase 5), como
@@ -20,9 +24,15 @@ use Illuminate\Support\Facades\Route as RouteFacade;
 
 beforeEach(function () {
     TaskStatus::ensureDefaults();
+    // Las facturas propias (E2, D-443): la emisión encendida, con la serie F ya empezada.
+    $this->travelTo(CarbonImmutable::parse('2027-02-01 10:00:00', 'Europe/Madrid'));
+    Storage::fake('local');
+    enableInvoicing();
+    invoicingIssuer();
+    $admin = userWithRole('admin');
 
     // Lo propio y lo de otro cliente, abierto del todo al portal: lo único que cambia es el cliente.
-    $world = function (Client $client): array {
+    $world = function (Client $client) use ($admin): array {
         $project = Project::factory()->hourBank()->create([
             'client_id' => $client->id,
             'portal_project_visible' => true,
@@ -31,13 +41,19 @@ beforeEach(function () {
         ]);
         $bank = HourBank::factory()->create(['project_id' => $project->id, 'total_minutes' => 600]);
 
-        return ['project' => $project->id, 'bank' => $bank->id];
+        // Su factura emitida, con las facturas abiertas al portal y un adjunto visible.
+        $client->billingProfile()->update(['portal_invoices' => true]);
+        $document = invoicingIssue($admin, $client);
+        $attachment = app(AttachmentStorage::class)->store(UploadedFile::fake()->create('contrato.pdf', 10, 'application/pdf'), $document, null, $admin);
+        $attachment->forceFill(['client_visible' => true])->save();
+
+        return ['project' => $project->id, 'bank' => $bank->id, 'document' => $document->id, 'attachment' => $attachment->id];
     };
 
-    $own = Client::factory()->create();
+    $own = invoicingClient();
     $this->portal = User::factory()->portalOf($own)->create();
     $this->own = $world($own);
-    $this->foreign = $world(Client::factory()->create());
+    $this->foreign = $world(invoicingClient());
 
     $this->routes = array_values(array_filter(
         RouteFacade::getRoutes()->getRoutes(),

@@ -33,6 +33,8 @@ export type PortalNavProject = {
 export type PortalShellProps = {
     company: PortalCompany;
     projects: PortalNavProject[];
+    /** «Facturas» (E2, D-443): las facturas propias abiertas al cliente. */
+    bills?: boolean;
 };
 
 export type PortalProjectSummary = {

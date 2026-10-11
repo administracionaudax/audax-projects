@@ -32,7 +32,8 @@ import { Label } from '@/components/ui/label';
 import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { tCount } from '@/lib/people';
-import type { HoldedInvoiceSummary } from '@/types';
+import { AGES, AgingTable } from '@/components/invoicing/aging-table';
+import type { AgingByClient, HoldedInvoiceSummary } from '@/types';
 
 export type InvoiceView =
     | 'todas'
@@ -69,6 +70,9 @@ type Filters = {
     tipo: string | null;
     enlace: string | null;
     origen: 'holded' | 'audax' | null;
+    /** E2 (D-437 y D-442): tramo de antigüedad y recordatorios que no salieron. */
+    antiguedad: string | null;
+    recordatorio: 'fallido' | null;
 };
 
 type Props = {
@@ -90,6 +94,8 @@ type Props = {
     views: Record<InvoiceView, number>;
     bar: CollectionBarData;
     totals: InvoiceTotals;
+    /** «Por cobrar» con la antigüedad por cliente (E2, D-437); null en las demás vistas. */
+    aging: AgingByClient | null;
     clients: { id: number; name: string }[];
     services: string[];
     today: string;
@@ -116,6 +122,7 @@ export default function InvoicesIndex({
     views,
     bar,
     totals,
+    aging,
     clients,
     services,
     today,
@@ -184,7 +191,23 @@ export default function InvoicesIndex({
         });
     };
 
-    const legacy: { key: 'estado' | 'tipo' | 'enlace'; value: string }[] = [];
+    const legacy: {
+        key: 'estado' | 'tipo' | 'enlace' | 'antiguedad' | 'recordatorio';
+        value: string;
+    }[] = [];
+    const age = AGES.find((one) => one.param === filters.antiguedad);
+    if (age) {
+        legacy.push({
+            key: 'antiguedad',
+            value: t(`billing.invoicing.aging.${age.bucket}`),
+        });
+    }
+    if (filters.recordatorio) {
+        legacy.push({
+            key: 'recordatorio',
+            value: t('invoicing.collect.aging.reminder_failed'),
+        });
+    }
     if (filters.estado) {
         legacy.push({
             key: 'estado',
@@ -278,6 +301,17 @@ export default function InvoicesIndex({
                     selected={filters.cobro}
                     onSelect={(key) => visit({ cobro: key })}
                 />
+
+                {filters.vista === 'por-cobrar' && aging ? (
+                    <AgingTable
+                        aging={aging}
+                        query={listQuery}
+                        selected={{
+                            client: filters.cliente,
+                            age: filters.antiguedad,
+                        }}
+                    />
+                ) : null}
 
                 <div
                     role="search"
@@ -390,7 +424,17 @@ export default function InvoicesIndex({
                         {legacy.map((chip) => (
                             <RemovableChip
                                 key={chip.key}
-                                label={t(`billing.filters.legacy.${chip.key}`)}
+                                label={
+                                    chip.key === 'antiguedad'
+                                        ? t('invoicing.collect.aging.chip')
+                                        : chip.key === 'recordatorio'
+                                          ? t(
+                                                'invoicing.collect.aging.chip_reminder',
+                                            )
+                                          : t(
+                                                `billing.filters.legacy.${chip.key}`,
+                                            )
+                                }
                                 value={chip.value}
                                 onRemove={() => visit({ [chip.key]: null })}
                             />

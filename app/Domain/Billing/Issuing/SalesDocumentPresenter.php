@@ -2,11 +2,17 @@
 
 namespace App\Domain\Billing\Issuing;
 
+use App\Models\Attachment;
 use App\Models\InvoiceRecord;
+use App\Models\Payment;
+use App\Models\PaymentReminderDelivery;
 use App\Models\SalesDocument;
+use App\Models\SalesDocumentEmail;
 use App\Models\SalesDocumentLine;
 use App\Models\SalesDocumentLink;
 use App\Models\SalesDocumentTax;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Facturas propias para la interfaz (PLAN-EMISION §6; D-428): contrato con
@@ -32,7 +38,7 @@ final class SalesDocumentPresenter
             'links.creator:id,name',
             'rectified:id,full_number,issue_date,status',
             'rectifiedHolded:id,number,issued_on',
-            'rectifications:id,full_number,issue_date,total,subtotal,rectification_kind,status,rectified_document_id',
+            'rectifications:id,full_number,issue_date,total,subtotal,paid_total,rectification_kind,status,rectified_document_id',
             'cancelledBy:id,full_number,issue_date',
             'issuer:id,name',
             'creator:id,name',
@@ -40,7 +46,28 @@ final class SalesDocumentPresenter
             'noProjectNeededBy:id,name',
             'paymentMethod:id,name',
             'records',
+            // E2: cobros, envíos, recordatorios, adjuntos y de dónde se duplicó.
+            'attachments',
+            'source:id,full_number,status',
+            'sourceHolded:id,number',
         ]);
+        // Un borrador no tiene cobros, envíos ni recordatorios: no se piden.
+        if ($document->isDraft()) {
+            foreach (['payments', 'emails', 'reminderDeliveries'] as $relation) {
+                $document->setRelation($relation, new Collection);
+            }
+        } else {
+            $document->loadMissing(['payments', 'emails.rule:id,days', 'reminderDeliveries.rule:id,days']);
+        }
+
+        // Quién registró, anuló, envió o subió algo (E2): todos los nombres en una sola consulta.
+        $people = User::query()->whereKey(array_values(array_unique(array_filter([
+            ...$document->payments->pluck('created_by')->all(),
+            ...$document->payments->pluck('voided_by')->all(),
+            ...$document->emails->pluck('sent_by')->all(),
+            ...$document->attachments->pluck('user_id')->all(),
+        ]))))->pluck('name', 'id');
+        $name = fn (?int $id): ?string => $id === null ? null : ($people[$id] ?? null);
 
         return [
             'id' => $document->id,
@@ -85,6 +112,7 @@ final class SalesDocumentPresenter
                 'total' => (string) $credit->total,
                 'kind' => $credit->rectification_kind?->value,
                 'status' => $credit->status->value,
+                'paid_total' => (string) $credit->paid_total,
             ])->values()->all(),
             'cancelled_by' => $document->cancelledBy === null ? null : ['id' => $document->cancelledBy->id, 'number' => $document->cancelledBy->full_number, 'issue_date' => $document->cancelledBy->issue_date->toDateString()],
             // «No necesita proyecto» (D-431): quién, cuándo y por qué.
@@ -98,6 +126,63 @@ final class SalesDocumentPresenter
             'issued_by' => $document->issuer?->name,
             'created_at' => $document->created_at?->utc()->toIso8601ZuluString(),
             'created_by' => $document->creator?->name,
+            // E2 (D-436 a D-445): cobro, envíos, vistas del cliente, adjuntos y la cadena.
+            'collection' => PortalInvoices::collection($document),
+            'pending' => $document->pendingAmount(),
+            'remaining' => PaymentRecorder::remaining($document),
+            'sent_at' => $document->sent_at?->utc()->toIso8601ZuluString(),
+            'first_viewed_at' => $document->first_viewed_at?->utc()->toIso8601ZuluString(),
+            'last_viewed_at' => $document->last_viewed_at?->utc()->toIso8601ZuluString(),
+            'view_count' => $document->view_count,
+            'payments' => $document->payments->map(fn (Payment $payment): array => [
+                'id' => $payment->id,
+                'paid_on' => $payment->paid_on->toDateString(),
+                'amount' => (string) $payment->amount,
+                'method' => $payment->method->value,
+                'bank_reference' => $payment->bank_reference,
+                'note' => $payment->note,
+                'created_by' => $name($payment->created_by),
+                'created_at' => $payment->created_at?->utc()->toIso8601ZuluString(),
+                'voided' => $payment->voided_at === null ? null : ['at' => $payment->voided_at->utc()->toIso8601ZuluString(), 'by' => $name($payment->voided_by), 'reason' => $payment->void_reason],
+            ])->values()->all(),
+            'emails' => $document->emails->map(fn (SalesDocumentEmail $email): array => [
+                'id' => $email->id,
+                'kind' => $email->kind,
+                'template' => $email->template,
+                'to' => $email->to,
+                'cc' => $email->cc ?? [],
+                'subject' => $email->subject,
+                'status' => $email->status,
+                'error' => $email->error,
+                'test_mode' => $email->test_mode,
+                'rule_days' => $email->rule?->days,
+                'sent_by' => $name($email->sent_by),
+                'created_at' => $email->created_at?->utc()->toIso8601ZuluString(),
+                'sent_at' => $email->sent_at?->utc()->toIso8601ZuluString(),
+                'first_viewed_at' => $email->first_viewed_at?->utc()->toIso8601ZuluString(),
+                'view_count' => $email->view_count,
+            ])->values()->all(),
+            // Los recordatorios que no llegaron a ser un email (sin destinatarios).
+            'reminder_problems' => $document->reminderDeliveries->filter(fn (PaymentReminderDelivery $delivery): bool => $delivery->email_id === null && $delivery->status === PaymentReminderDelivery::FAILED)
+                ->map(fn (PaymentReminderDelivery $delivery): array => [
+                    'id' => $delivery->id,
+                    'days' => $delivery->rule->days,
+                    'detail' => $delivery->detail,
+                    'created_at' => $delivery->created_at?->utc()->toIso8601ZuluString(),
+                ])->values()->all(),
+            'attachments' => $document->attachments->map(fn (Attachment $attachment): array => [
+                'id' => $attachment->id,
+                'name' => $attachment->original_name,
+                'mime' => $attachment->mime,
+                'size' => $attachment->size,
+                'client_visible' => $attachment->client_visible,
+                'uploaded_by' => $name($attachment->user_id),
+                'created_at' => $attachment->created_at?->utc()->toIso8601ZuluString(),
+                'url' => $document->url().'/adjuntos/'.$attachment->id,
+            ])->values()->all(),
+            'source' => $document->source !== null
+                ? ['id' => $document->source->id, 'view_id' => -$document->source->id, 'number' => $document->source->full_number, 'own' => true]
+                : ($document->sourceHolded !== null ? ['id' => $document->sourceHolded->id, 'view_id' => $document->sourceHolded->id, 'number' => $document->sourceHolded->number, 'own' => false] : null),
             'pdf_ready' => $document->pdf_sha256 !== null,
             'pdf_sha256' => $document->pdf_sha256,
             'lines' => $document->lines->map(fn (SalesDocumentLine $line): array => [

@@ -9,6 +9,7 @@ use App\Enums\SalesDocumentStatus;
 use App\Enums\SalesDocumentType;
 use App\Models\NumberingSeries;
 use App\Models\SalesDocument;
+use App\Models\SalesDocumentEmail;
 use App\Models\SalesDocumentLine;
 use App\Models\SalesDocumentLink;
 use App\Models\SifInstallation;
@@ -183,6 +184,10 @@ final class InvoiceCorrections
         }
         if (bccomp(DocumentTotals::num((string) $document->paid_total), '0', 2) !== 0) {
             return [__('invoicing.errors.void_paid')];
+        }
+        // Una factura que ya ha recibido el cliente no «no debió existir» (PLAN-EMISION §3.2, E2).
+        if ($document->sent_at !== null || $document->emails()->where('status', '!=', SalesDocumentEmail::FAILED)->exists()) {
+            return [__('invoicing.errors.void_sent')];
         }
         if (SalesDocument::query()->where('rectified_document_id', $document->id)->whereIn('status', [SalesDocumentStatus::Issued->value, SalesDocumentStatus::Cancelled->value])->exists()) {
             return [__('invoicing.errors.void_has_credits')];

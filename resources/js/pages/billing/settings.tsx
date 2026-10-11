@@ -11,6 +11,11 @@ import { useId, useState } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
 import { HoldedContactsDirectory } from '@/components/billing/contacts-directory';
 import InputError from '@/components/input-error';
+import {
+    ReminderSettings,
+    SenderSettings,
+    TemplateSettings,
+} from '@/components/invoicing/mailing-settings';
 import { PageSection } from '@/components/projects-list/page-section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +36,7 @@ import {
 import type {
     BillingClientOption,
     HoldedContactRow,
+    InvoicingMailingData,
     InvoicingSettingsData,
 } from '@/types';
 
@@ -91,6 +97,7 @@ type Props = {
     can: { sync: boolean; access: boolean; create_client: boolean };
     section: Section;
     invoicing: InvoicingSettingsData | null;
+    mailing: InvoicingMailingData | null;
 };
 
 const FIELDS: { key: keyof Issuer; wide?: boolean; autoComplete?: string }[] = [
@@ -117,7 +124,9 @@ type Section =
     | 'impuestos'
     | 'servicios'
     | 'formas-de-pago'
-    | 'documento';
+    | 'documento'
+    | 'correo'
+    | 'recordatorios';
 
 const SECTIONS: { id: Section; label: Parameters<typeof t>[0] }[] = [
     { id: 'general', label: 'invoicing.settings.section.general' },
@@ -126,6 +135,9 @@ const SECTIONS: { id: Section; label: Parameters<typeof t>[0] }[] = [
     { id: 'servicios', label: 'invoicing.settings.section.services' },
     { id: 'formas-de-pago', label: 'invoicing.settings.section.payment' },
     { id: 'documento', label: 'invoicing.settings.section.document' },
+    // E2 (D-438, D-439 y D-442).
+    { id: 'correo', label: 'invoicing.collect.mailing.section' },
+    { id: 'recordatorios', label: 'invoicing.collect.reminders.section' },
 ];
 
 /**
@@ -142,6 +154,7 @@ export default function BillingSettings({
     can,
     section,
     invoicing,
+    mailing,
 }: Props) {
     const id = useId();
     const form = useForm<Record<keyof Issuer, string>>(
@@ -204,6 +217,15 @@ export default function BillingSettings({
                 ) : null}
                 {invoicing && section === 'documento' ? (
                     <DocumentSettings data={invoicing} />
+                ) : null}
+                {mailing && section === 'correo' ? (
+                    <>
+                        <SenderSettings data={mailing} />
+                        <TemplateSettings data={mailing} />
+                    </>
+                ) : null}
+                {mailing && section === 'recordatorios' ? (
+                    <ReminderSettings data={mailing} />
                 ) : null}
 
                 {!invoicing || section === 'general' ? (

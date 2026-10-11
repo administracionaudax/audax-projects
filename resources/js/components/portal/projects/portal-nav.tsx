@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { FolderOpen, House } from 'lucide-react';
+import { FolderOpen, House, ReceiptText } from 'lucide-react';
 import type {
     PortalNavProject,
     PortalShellProps,
@@ -32,15 +32,18 @@ export function portalProjectHref(
 }
 
 /**
- * Navegación del portal en la cabecera (sobre el degradado): Inicio y, si el equipo ha abierto
- * algún proyecto al portal, Proyectos. La página actual lleva aria-current y un subrayado (nunca solo
+ * Navegación del portal en la cabecera (sobre el degradado): Inicio, si el equipo ha abierto
+ * algún proyecto al portal, Proyectos, y si tiene sus facturas abiertas (E2), Facturas. La página actual lleva aria-current y un subrayado (nunca solo
  * el color). En móvil ocupa su propia fila dentro de la cabecera.
  */
 export function PortalNav({
     projects,
+    invoices = false,
     className,
 }: {
     projects: ReadonlyArray<PortalNavProject>;
+    /** «Facturas» (E2, D-443), si el cliente las tiene abiertas. */
+    invoices?: boolean;
     className?: string;
 }) {
     const path = new URL(
@@ -51,6 +54,7 @@ export function PortalNav({
     ).pathname.replace(/\/+$/, '');
     const homeUrl = home.url();
     const projectsUrl = projectsIndex.url();
+    const invoicesUrl = '/portal/facturas';
 
     const items = [
         {
@@ -71,6 +75,18 @@ export function PortalNav({
                   },
               ]
             : []),
+        ...(invoices
+            ? [
+                  {
+                      href: invoicesUrl,
+                      label: t('portal_nav.invoices'),
+                      icon: ReceiptText,
+                      current:
+                          path === invoicesUrl ||
+                          path.startsWith(`${invoicesUrl}/`),
+                  },
+              ]
+            : []),
     ];
 
     return (
@@ -88,7 +104,7 @@ export function PortalNav({
                                     : 'border-transparent',
                                 FOCUS_RING,
                             )}
-                            data-test={`portal-nav-${item.href === homeUrl ? 'home' : 'projects'}`}
+                            data-test={`portal-nav-${item.href === homeUrl ? 'home' : item.href === invoicesUrl ? 'invoices' : 'projects'}`}
                         >
                             <item.icon
                                 aria-hidden="true"

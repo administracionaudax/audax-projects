@@ -2,11 +2,11 @@
 
 namespace App\Domain\Billing;
 
+use App\Domain\Billing\Issuing\PaymentReminders;
 use App\Domain\Reports\ReportFilters;
 use App\Domain\Reports\ReportPeriod;
 use App\Domain\Reports\ReportScope;
 use App\Enums\BillingType;
-use App\Enums\CollectionStatus;
 use App\Enums\HourBankStatus;
 use App\Enums\ProjectStatus;
 use App\Models\BillingDocument;
@@ -24,14 +24,16 @@ use Illuminate\Support\Facades\DB;
  * por revisar y cómo va el periodo. Solo con view-billing.
  *
  * - **Requiere atención** (a hoy, no depende del periodo): facturas vencidas (importe con IVA y la
- *   más antigua), facturas sin proyecto ni bolsa, contactos de Holded sin casar o por confirmar y
- *   bolsas abiertas por encima del 85 % (el «en riesgo» de la Weekly, D-188).
+ *   más antigua), facturas sin proyecto ni bolsa, contactos de Holded sin casar o por confirmar,
+ *   bolsas abiertas por encima del 85 % (el «en riesgo» de la Weekly, D-188) y, con la emisión
+ *   propia (E2, D-442), los recordatorios de cobro que no han salido.
  * - **Cuatro cifras** en dos grupos: «Facturación (sin IVA)» con lo facturado en el periodo y su
  *   variación frente al mismo tramo del año anterior (InvoicingReport, D-404) y lo que queda por
  *   facturar (UnbilledReport, D-412); «Cobros (con IVA)», a hoy, con lo pendiente y lo vencido de
  *   todas las facturas.
  * - **Facturado y cobrado por mes** (con IVA, D-411): el total de lo facturado por mes de emisión y
- *   los cobros por su fecha, y el facturado del año anterior como referencia.
+ *   los cobros por su fecha (los de Holded y los propios, vista `billing_payments`), y el facturado
+ *   del año anterior como referencia.
  * - **Por cobrar** (a hoy): la antigüedad por tramos y los cinco clientes que más deben.
  * - **Por facturar**: los cinco clientes con más por facturar en el periodo.
  *
@@ -160,6 +162,9 @@ final class BillingSummary
             ->selectRaw('COUNT(*) as count, COALESCE(SUM(CASE WHEN hour_banks.consumed_minutes > hour_banks.total_minutes THEN 1 ELSE 0 END), 0) as over')
             ->first();
 
+        // Recordatorios de cobro que no salieron (E2, D-442), de facturas que siguen pendientes.
+        $reminders = (int) (PaymentReminders::failed()->toBase()->selectRaw('COUNT(DISTINCT payment_reminder_deliveries.sales_document_id) as count')->first()->count ?? 0);
+
         $oldest = $receivable['oldest_due'];
 
         return [
@@ -171,6 +176,7 @@ final class BillingSummary
             'unlinked' => ['count' => (int) ($unlinked->count ?? 0), 'amount' => InvoicingReport::money((int) ($unlinked->cents ?? 0))],
             'contacts' => ['count' => (int) ($contacts->count ?? 0), 'amount' => InvoicingReport::money((int) ($contacts->cents ?? 0))],
             'banks' => ['count' => (int) ($banks->count ?? 0), 'over' => (int) ($banks->over ?? 0), 'threshold' => SoldVsActual::RISK_PCT],
+            'reminders' => ['count' => $reminders],
         ];
     }
 
@@ -270,14 +276,12 @@ final class BillingSummary
             ->map(fn (mixed $cents): int => (int) $cents)
             ->all();
 
-        $paidMonth = 'SUBSTR(CAST(holded_payments.paid_on AS TEXT), 1, 7)';
-        $collected = DB::table('holded_payments')
-            ->join('holded_invoices', 'holded_invoices.id', '=', 'holded_payments.holded_invoice_id')
-            ->where('holded_payments.paid_on', '>=', $from->toDateString())
-            ->where('holded_payments.paid_on', '<=', $to->toDateString())
-            ->where('holded_invoices.is_draft', false)
-            ->where('holded_invoices.collection_status', '!=', CollectionStatus::Cancelled->value)
-            ->selectRaw("{$paidMonth} as month, COALESCE(SUM(CAST(ROUND(holded_payments.amount * 100) AS BIGINT)), 0) as cents")
+        // Los cobros de Holded y los propios (E2, D-437), por la fecha del cobro.
+        $paidMonth = 'SUBSTR(CAST(billing_payments.paid_on AS TEXT), 1, 7)';
+        $collected = DB::table('billing_payments')
+            ->where('billing_payments.paid_on', '>=', $from->toDateString())
+            ->where('billing_payments.paid_on', '<=', $to->toDateString())
+            ->selectRaw("{$paidMonth} as month, COALESCE(SUM(CAST(ROUND(billing_payments.amount * 100) AS BIGINT)), 0) as cents")
             ->groupByRaw($paidMonth)
             ->orderByRaw($paidMonth)
             ->pluck('cents', 'month')

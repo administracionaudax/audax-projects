@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Billing\Issuing\DocumentTotals;
 use App\Enums\RectificationKind;
 use App\Enums\SalesDocumentStatus;
 use App\Enums\SalesDocumentType;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Factura o rectificativa emitida desde Audax (PLAN-EMISION §4.2, E1; D-417 a D-429). Se crea como
@@ -71,6 +73,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $no_project_needed_at «No necesita proyecto» (D-431): no es fiscal
  * @property int|null $no_project_needed_by
  * @property string|null $no_project_note
+ * @property CarbonImmutable|null $sent_at Primer envío por email aceptado por el relé (E2, D-438)
+ * @property CarbonImmutable|null $first_viewed_at Primera vez que el cliente abrió su enlace o su PDF (D-440)
+ * @property CarbonImmutable|null $last_viewed_at
+ * @property int $view_count
  * @property int|null $created_by
  * @property int|null $updated_by
  * @property CarbonImmutable|null $created_at
@@ -90,6 +96,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read User|null $issuer
  * @property-read User|null $creator
  * @property-read User|null $voider
+ * @property-read Collection<int, Payment> $payments
+ * @property-read Collection<int, SalesDocumentEmail> $emails
+ * @property-read Collection<int, Attachment> $attachments
+ * @property-read SalesDocument|null $source
+ * @property-read HoldedInvoice|null $sourceHolded
+ * @property-read Collection<int, PaymentReminderDelivery> $reminderDeliveries
  */
 #[Fillable([
     'uuid', 'type', 'is_test', 'series_id', 'issue_date', 'operation_date', 'due_date',
@@ -114,6 +126,7 @@ class SalesDocument extends Model
         'is_test' => false,
         'language' => 'es',
         'paid_total' => '0.00',
+        'view_count' => 0,
     ];
 
     /**
@@ -141,6 +154,10 @@ class SalesDocument extends Model
             'voided_at' => 'immutable_datetime',
             'issued_at' => 'immutable_datetime',
             'pdf_generated_at' => 'immutable_datetime',
+            'sent_at' => 'immutable_datetime',
+            'first_viewed_at' => 'immutable_datetime',
+            'last_viewed_at' => 'immutable_datetime',
+            'view_count' => 'integer',
         ];
     }
 
@@ -264,6 +281,80 @@ class SalesDocument extends Model
     public function voider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voided_by');
+    }
+
+    /**
+     * Los cobros (E2), también los anulados (salen en la historia).
+     *
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->orderBy('paid_on')->orderBy('id');
+    }
+
+    /**
+     * Los envíos por email (E2), del primero al último.
+     *
+     * @return HasMany<SalesDocumentEmail, $this>
+     */
+    public function emails(): HasMany
+    {
+        return $this->hasMany(SalesDocumentEmail::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    /**
+     * Los recordatorios de cobro por escalones (E2, D-442).
+     *
+     * @return HasMany<PaymentReminderDelivery, $this>
+     */
+    public function reminderDeliveries(): HasMany
+    {
+        return $this->hasMany(PaymentReminderDelivery::class);
+    }
+
+    /**
+     * Adjuntos de la factura (contratos, albaranes; E2, D-444).
+     *
+     * @return MorphMany<Attachment, $this>
+     */
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable')->orderBy('id');
+    }
+
+    /**
+     * La factura de la que se duplicó (la cadena de documentos, D-445).
+     *
+     * @return BelongsTo<SalesDocument, $this>
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'source_document_id');
+    }
+
+    /**
+     * @return BelongsTo<HoldedInvoice, $this>
+     */
+    public function sourceHolded(): BelongsTo
+    {
+        return $this->belongsTo(HoldedInvoice::class, 'source_holded_invoice_id');
+    }
+
+    /**
+     * Lo que queda por cobrar de una factura emitida (con IVA; nunca negativo).
+     *
+     * @return numeric-string
+     */
+    public function pendingAmount(): string
+    {
+        if ($this->status !== SalesDocumentStatus::Issued || $this->isCreditNote()) {
+            return '0.00';
+        }
+
+        $pending = bcsub(DocumentTotals::num((string) $this->total), DocumentTotals::num((string) $this->paid_total), 2);
+
+        return bccomp($pending, '0', 2) > 0 ? $pending : '0.00';
     }
 
     public function isDraft(): bool

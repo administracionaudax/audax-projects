@@ -88,6 +88,7 @@ return [
         'counter_down' => 'El primer número no puede ser menor que el siguiente que toca (:next).',
         'counter_used' => 'Ya hay facturas emitidas en :year: el contador solo se fija antes de la primera.',
         'tax_in_use' => 'El tipo y la calificación de un impuesto no se cambian: archívalo y crea otro.',
+        'void_sent' => 'La factura ya se ha enviado al cliente: no se puede anular su registro. Anúlala con una rectificativa.',
     ],
 
     'chain' => [
@@ -121,6 +122,188 @@ return [
         'note_saved' => 'Guardado.',
         'settings_saved' => 'Ajustes de la emisión guardados.',
         'services_imported' => 'Servicios importados: :created nuevos y :skipped que ya estaban.',
+        // E2 (D-436 a D-444).
+        'payment_recorded' => 'Cobro de :amount registrado en :number.',
+        'paid' => 'Cobro de :amount registrado: :number queda cobrada.',
+        'refund_recorded' => 'Devolución de :amount registrada en :number.',
+        'payment_voided' => 'Cobro anulado.',
+        'email_sent' => '{1} Enviada a :to.|[2,*] Enviada a :to.',
+        'reminder_sent' => '{1} Recordatorio enviado a :to.|[2,*] Recordatorio enviado a :to.',
+        'email_test' => 'Modo de prueba: el correo solo te llega a ti (:email). No se ha enviado nada al cliente.',
+        'attachments_added' => '{1} Adjunto añadido.|[2,*] :count adjuntos añadidos.',
+        'attachment_visible' => 'El cliente verá el adjunto en el email y en el portal.',
+        'attachment_internal' => 'El adjunto queda solo para el equipo.',
+        'attachment_deleted' => 'Adjunto eliminado.',
+        'client_options_saved' => 'Opciones de facturación del cliente guardadas.',
+    ],
+
+    // Cobros de las facturas propias (E2, D-436).
+    'payments' => [
+        'attributes' => [
+            'paid_on' => 'la fecha del cobro',
+            'amount' => 'el importe',
+            'method' => 'la forma de pago',
+            'bank_reference' => 'la referencia del banco',
+            'note' => 'la nota',
+            'reason' => 'el motivo',
+        ],
+        'errors' => [
+            'not_issued' => 'Solo se registran cobros de una factura emitida que no esté anulada.',
+            'positive' => 'El importe tiene que ser mayor que 0.',
+            'nothing_pending' => 'No queda nada por cobrar en esta factura.',
+            'too_much' => 'El importe no puede pasar de lo pendiente (:max).',
+            'future' => 'La fecha del cobro no puede ser futura.',
+            'before_issue' => 'La fecha del cobro no puede ser anterior a la factura (:date).',
+            'already_voided' => 'Este cobro ya está anulado.',
+        ],
+    ],
+
+    // Envío por email (E2, D-438 a D-441).
+    'emails' => [
+        'attributes' => [
+            'to' => 'los destinatarios',
+            'to.*' => 'el destinatario',
+            'cc' => 'las copias',
+            'cc.*' => 'la copia',
+            'subject' => 'el asunto',
+            'body' => 'el texto',
+        ],
+        'settings_attributes' => [
+            'sender_name' => 'el nombre del remitente',
+            'reply_to' => 'la dirección de respuesta',
+            'bcc' => 'la copia oculta',
+        ],
+        'errors' => [
+            'not_sendable' => 'Solo se envía una factura o rectificativa emitida que no esté anulada.',
+            'no_recipients' => 'Añade al menos un destinatario con un email válido.',
+            'test_mode' => 'Modo de prueba: no se envía nada al cliente.',
+            'nothing_pending' => 'La factura no tiene nada pendiente: no hace falta recordarla.',
+            'failed' => 'El servidor de correo no ha aceptado el envío.',
+        ],
+        'sources' => [
+            'billing' => 'Email de facturación',
+            'last' => 'Del último envío',
+            'contact' => 'Contacto del cliente',
+            'portal' => ':name · portal',
+        ],
+        'mail' => [
+            'test_notice' => 'Envío de prueba: el módulo de emisión está en modo de prueba y este correo solo le llega a quien lo envía.',
+            'es' => [
+                'open' => 'Ver y descargar la factura',
+                'open_credit' => 'Ver y descargar la rectificativa',
+                'link_note' => 'El PDF va adjunto. El enlace caduca el :date.',
+            ],
+            'en' => [
+                'open' => 'View and download the invoice',
+                'open_credit' => 'View and download the credit note',
+                'link_note' => 'The PDF is attached. The link expires on :date.',
+            ],
+        ],
+    ],
+
+    // Plantillas de serie (E2, D-439). Variables: [cliente], [numero], [importe], [pendiente],
+    // [vencimiento], [enlace], [empresa] y, en la rectificativa, [rectificada].
+    'email_templates' => [
+        'es' => [
+            'invoice' => [
+                'subject' => 'Factura [numero] de [empresa]',
+                'body' => "Hola:\n\nAdjuntamos la factura [numero] por [importe], con vencimiento el [vencimiento].\n\nCualquier duda, responde a este correo.\n\nUn saludo,\n[empresa]",
+            ],
+            'credit_note' => [
+                'subject' => 'Factura rectificativa [numero] de [empresa]',
+                'body' => "Hola:\n\nAdjuntamos la factura rectificativa [numero] por [importe], que rectifica la factura [rectificada].\n\nCualquier duda, responde a este correo.\n\nUn saludo,\n[empresa]",
+            ],
+            'reminder' => [
+                'subject' => 'Recordatorio: factura [numero] pendiente de pago',
+                'body' => "Hola:\n\nTe recordamos que la factura [numero], con vencimiento el [vencimiento], tiene [pendiente] pendiente de pago.\n\nSi ya la has pagado, gracias y no hace falta hacer nada más.\n\nUn saludo,\n[empresa]",
+            ],
+        ],
+        'en' => [
+            'invoice' => [
+                'subject' => 'Invoice [numero] from [empresa]',
+                'body' => "Hello,\n\nPlease find attached invoice [numero] for [importe], due on [vencimiento].\n\nIf you have any questions, just reply to this email.\n\nKind regards,\n[empresa]",
+            ],
+            'credit_note' => [
+                'subject' => 'Credit note [numero] from [empresa]',
+                'body' => "Hello,\n\nPlease find attached credit note [numero] for [importe], which corrects invoice [rectificada].\n\nIf you have any questions, just reply to this email.\n\nKind regards,\n[empresa]",
+            ],
+            'reminder' => [
+                'subject' => 'Reminder: invoice [numero] awaiting payment',
+                'body' => "Hello,\n\nThis is a friendly reminder that invoice [numero], due on [vencimiento], has [pendiente] outstanding.\n\nIf you have already paid it, thank you, and please disregard this message.\n\nKind regards,\n[empresa]",
+            ],
+        ],
+    ],
+
+    // Recordatorios de cobro por escalones (E2, D-442).
+    'reminders' => [
+        'inactive' => 'La emisión no está encendida (o está en modo de prueba): no se envía ningún recordatorio.',
+        'done' => 'Recordatorios: :sent enviados, :failed sin enviar y :skipped que ya no hacían falta.',
+        'attributes' => [
+            'days' => 'los días',
+        ],
+        'errors' => [
+            'duplicate' => 'Ya hay un escalón con esos días.',
+        ],
+    ],
+
+    // La factura desde el enlace firmado del email (E2, D-440): en el idioma del cliente.
+    'public' => [
+        'es' => [
+            'invoice' => 'Factura',
+            'credit_note' => 'Factura rectificativa',
+            'from' => 'De',
+            'to' => 'Para',
+            'issue_date' => 'Fecha',
+            'due_date' => 'Vencimiento',
+            'total' => 'Total',
+            'pending' => 'Pendiente',
+            'paid' => 'Pagado',
+            'payment' => 'Forma de pago',
+            'view_pdf' => 'Ver el PDF',
+            'download_pdf' => 'Descargar el PDF',
+            'attachments' => 'Documentos adjuntos',
+            'expires' => 'Este enlace caduca el :date.',
+            'test' => 'Factura de prueba: no tiene validez.',
+            'status' => [
+                'paid' => 'Pagada',
+                'partial' => 'Pagada en parte',
+                'overdue' => 'Vencida',
+                'unpaid' => 'Pendiente de pago',
+                'cancelled' => 'Anulada',
+            ],
+            'invalid_title' => 'Este enlace no es válido',
+            'invalid_body' => 'Puede que se haya copiado incompleto. Abre el enlace desde el email tal como te llegó.',
+            'expired_title' => 'Este enlace ha caducado',
+            'expired_body' => 'Por seguridad, los enlaces a las facturas caducan. Si necesitas la factura, responde al email con el que te llegó y te enviaremos uno nuevo.',
+        ],
+        'en' => [
+            'invoice' => 'Invoice',
+            'credit_note' => 'Credit note',
+            'from' => 'From',
+            'to' => 'To',
+            'issue_date' => 'Date',
+            'due_date' => 'Due date',
+            'total' => 'Total',
+            'pending' => 'Outstanding',
+            'paid' => 'Paid',
+            'payment' => 'Payment',
+            'view_pdf' => 'View PDF',
+            'download_pdf' => 'Download PDF',
+            'attachments' => 'Attached documents',
+            'expires' => 'This link expires on :date.',
+            'test' => 'Test invoice: not valid.',
+            'status' => [
+                'paid' => 'Paid',
+                'partial' => 'Partly paid',
+                'overdue' => 'Overdue',
+                'unpaid' => 'Awaiting payment',
+                'cancelled' => 'Cancelled',
+            ],
+            'invalid_title' => 'This link is not valid',
+            'invalid_body' => 'It may have been copied incompletely. Please open the link from the email as you received it.',
+            'expired_title' => 'This link has expired',
+            'expired_body' => 'For security, invoice links expire. If you need the invoice, reply to the email you received and we will send you a new link.',
+        ],
     ],
 
     'pdf' => [

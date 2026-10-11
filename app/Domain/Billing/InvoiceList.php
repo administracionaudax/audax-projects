@@ -33,6 +33,10 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  *   la de rectificativas y `estado=overdue|draft` las de vencidas y borradores; el resto (`estado`,
  *   `tipo=invoice`, `enlace=con`) sigue filtrando y se ve como un filtro más.
  * - `enlace=no-necesita`: las marcadas «No necesita proyecto» (D-431), que no salen en «Sin proyecto».
+ * - `antiguedad` (E2, D-437): lo pendiente por tramos de antigüedad del vencimiento (en-plazo, 1-30,
+ *   31-60, 61-90 o mas-90), las celdas de la tabla de antigüedad por cliente de «Por cobrar».
+ * - `recordatorio=fallido` (E2, D-442): propias con un recordatorio de cobro que no salió («Requiere
+ *   atención» del Resumen).
  */
 final class InvoiceList
 {
@@ -49,6 +53,12 @@ final class InvoiceList
 
     /** Origen (D-427): las leídas de Holded o las emitidas en Audax. */
     public const array ORIGINS = ['holded', 'audax'];
+
+    /** Tramos de antigüedad de la URL (E2, D-437) → claves de InvoicingReport::AGING. */
+    public const array AGES = ['en-plazo' => 'current', '1-30' => 'd1_30', '31-60' => 'd31_60', '61-90' => 'd61_90', 'mas-90' => 'd90_plus'];
+
+    /** Filas de la tabla de antigüedad por cliente. */
+    public const int AGING_CLIENTS = 50;
 
     /** Alias SQL de cada vista en el recuento de las pestañas. */
     private const array COUNT_ALIASES = [
@@ -87,6 +97,8 @@ final class InvoiceList
         public readonly ?string $link,
         public readonly CarbonImmutable $today,
         public readonly ?string $origin = null,
+        public readonly ?string $age = null,
+        public readonly ?string $reminder = null,
     ) {}
 
     /**
@@ -151,6 +163,8 @@ final class InvoiceList
             link: $link,
             today: $today ?? LocalTime::today(),
             origin: $oneOf('origen', self::ORIGINS),
+            age: $oneOf('antiguedad', array_keys(self::AGES)),
+            reminder: $oneOf('recordatorio', ['fallido']),
         );
     }
 
@@ -196,6 +210,7 @@ final class InvoiceList
     {
         $query = $this->filtered($this->view);
         $this->whereCollection($query);
+        $this->whereAge($query);
 
         return $this->sorted($query);
     }
@@ -267,6 +282,7 @@ final class InvoiceList
     {
         $query = $this->filtered($this->view);
         $this->whereCollection($query);
+        $this->whereAge($query);
         if ($this->view !== 'borradores') {
             $query = BillingDocument::countingIn($query);
         }
@@ -331,6 +347,8 @@ final class InvoiceList
             'tipo' => $this->kind,
             'enlace' => $this->link,
             'origen' => $this->origin,
+            'antiguedad' => $this->age,
+            'recordatorio' => $this->reminder,
         ];
     }
 
@@ -356,6 +374,8 @@ final class InvoiceList
             'tipo' => $this->kind,
             'enlace' => $this->link,
             'origen' => $this->origin,
+            'antiguedad' => $this->age,
+            'recordatorio' => $this->reminder,
         ], fn (mixed $value): bool => $value !== null);
     }
 
@@ -383,7 +403,13 @@ final class InvoiceList
             ->when($this->link === 'sin', fn (Builder $q) => $q->whereDoesntHave('links'))
             // Las marcadas «No necesita proyecto» (D-431): fuera de «Sin proyecto», se ven con este filtro.
             ->when($this->link === 'no-necesita', fn (Builder $q) => $q->whereNotNull('billing_documents.no_project_needed_at'))
-            ->when($this->origin !== null, fn (Builder $q) => $q->where('billing_documents.source', $this->origin));
+            ->when($this->origin !== null, fn (Builder $q) => $q->where('billing_documents.source', $this->origin))
+            // Propias con un recordatorio de cobro que no salió (E2, D-442).
+            ->when($this->reminder === 'fallido', fn (Builder $q) => $q->where('billing_documents.source', 'audax')->whereExists(fn (QueryBuilder $e) => $e->selectRaw('1')
+                ->from('payment_reminder_deliveries')
+                ->leftJoin('sales_document_emails', 'sales_document_emails.id', '=', 'payment_reminder_deliveries.email_id')
+                ->whereColumn('payment_reminder_deliveries.sales_document_id', 'billing_documents.source_id')
+                ->where(fn (QueryBuilder $w) => $w->where('payment_reminder_deliveries.status', 'failed')->orWhere('sales_document_emails.status', 'failed'))));
     }
 
     /**
@@ -481,6 +507,99 @@ final class InvoiceList
             'cobrado' => BillingDocument::countingIn($query)->where('billing_documents.paid_total', '>', 0),
             default => null,
         };
+    }
+
+    /**
+     * El tramo de antigüedad elegido (E2, D-437): lo pendiente según los días desde el vencimiento.
+     *
+     * @param  Builder<BillingDocument>  $query
+     */
+    private function whereAge(Builder $query): void
+    {
+        if ($this->age === null) {
+            return;
+        }
+
+        [$sql, $bindings] = $this->ageSql(self::AGES[$this->age]);
+        BillingDocument::countingIn($query)->where('billing_documents.pending_total', '>', 0)->whereRaw($sql, $bindings);
+    }
+
+    /**
+     * La condición SQL de un tramo de antigüedad (las mismas fronteras que el Resumen, D-411).
+     *
+     * @return array{0: literal-string, 1: list<string>}
+     */
+    private function ageSql(string $bucket): array
+    {
+        $day = fn (int $days): string => $this->today->subDays($days)->toDateString();
+
+        return match ($bucket) {
+            'current' => ['(billing_documents.due_on IS NULL OR billing_documents.due_on >= ?)', [$this->today->toDateString()]],
+            'd1_30' => ['(billing_documents.due_on < ? AND billing_documents.due_on >= ?)', [$this->today->toDateString(), $day(30)]],
+            'd31_60' => ['(billing_documents.due_on < ? AND billing_documents.due_on >= ?)', [$day(30), $day(60)]],
+            'd61_90' => ['(billing_documents.due_on < ? AND billing_documents.due_on >= ?)', [$day(60), $day(90)]],
+            default => ['billing_documents.due_on < ?', [$day(90)]],
+        };
+    }
+
+    /**
+     * La tabla de antigüedad de «Por cobrar» (E2, D-437, como la de Xero): lo pendiente de cada
+     * cliente (o contacto de Holded sin cliente) por tramos, con los filtros de la lista menos el
+     * tramo, el cliente con más pendiente primero. Una consulta.
+     *
+     * @return array{rows: list<array{client: array{id: int, name: string}|null, contact_name: string|null, buckets: array<string, string>, total: string, count: int}>, totals: array<string, string>, total: string, more: int}
+     */
+    public function agingByClient(): array
+    {
+        $query = BillingDocument::countingIn($this->filtered('por-cobrar'))->where('billing_documents.pending_total', '>', 0);
+        $this->whereCollection($query);
+
+        $cents = 'CAST(ROUND(billing_documents.pending_total * 100) AS BIGINT)';
+        $select = 'billing_documents.client_id as client_id, clients.name as client_name, CASE WHEN billing_documents.client_id IS NULL THEN billing_documents.contact_name END as contact_name,'
+            ." COALESCE(SUM({$cents}), 0) as total_cents, COUNT(*) as count";
+        $bindings = [];
+        foreach (InvoicingReport::AGING as $bucket) {
+            [$sql, $values] = $this->ageSql($bucket);
+            $select .= ", COALESCE(SUM(CASE WHEN {$sql} THEN {$cents} ELSE 0 END), 0) as {$bucket}_cents";
+            array_push($bindings, ...$values);
+        }
+
+        $rows = $query->toBase()
+            ->leftJoin('clients', 'clients.id', '=', 'billing_documents.client_id')
+            ->selectRaw($select, $bindings)
+            ->groupByRaw('billing_documents.client_id, clients.name, CASE WHEN billing_documents.client_id IS NULL THEN billing_documents.contact_name END')
+            ->orderByRaw("COALESCE(SUM({$cents}), 0) DESC")
+            ->orderBy('clients.name')
+            ->get();
+
+        $totals = array_fill_keys(InvoicingReport::AGING, 0);
+        $total = 0;
+        $result = [];
+        foreach ($rows as $index => $row) {
+            $buckets = [];
+            foreach (InvoicingReport::AGING as $bucket) {
+                $value = (int) ($row->{"{$bucket}_cents"} ?? 0);
+                $totals[$bucket] += $value;
+                $buckets[$bucket] = InvoicingReport::money($value);
+            }
+            $total += (int) $row->total_cents;
+            if ($index < self::AGING_CLIENTS) {
+                $result[] = [
+                    'client' => $row->client_id === null ? null : ['id' => (int) $row->client_id, 'name' => (string) $row->client_name],
+                    'contact_name' => $row->client_id === null && is_string($row->contact_name) ? $row->contact_name : null,
+                    'buckets' => $buckets,
+                    'total' => InvoicingReport::money((int) $row->total_cents),
+                    'count' => (int) $row->count,
+                ];
+            }
+        }
+
+        return [
+            'rows' => $result,
+            'totals' => array_map(fn (int $value): string => InvoicingReport::money($value), $totals),
+            'total' => InvoicingReport::money($total),
+            'more' => max(0, $rows->count() - self::AGING_CLIENTS),
+        ];
     }
 
     /**

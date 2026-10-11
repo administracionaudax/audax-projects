@@ -16,13 +16,15 @@ use Illuminate\Support\Facades\DB;
  * - `billing_documents_all` trae también la serie de pruebas (PRU), que solo ve el listado en su
  *   pestaña «Pruebas»; `billing_documents` no la trae nunca: ningún informe la cuenta (V-17). Las
  *   líneas y los enlaces de las de prueba tampoco están en sus vistas.
- * - Estado de cobro de una propia (E1 aún no registra cobros, E2): borrador, anulada (también la
+ * - Estado de cobro de una propia (con `paid_total`, la suma de sus cobros desde E2): borrador, anulada (también la
  *   anulada por error), rectificativa sin nada pendiente, cobrada, vencida (con el vencimiento antes
  *   de hoy), cobrada en parte o pendiente, con las mismas claves que las de Holded (D-386).
  *
  * Una migración que cambie `holded_invoices`, sus líneas o sus enlaces, o las tablas de ventas, tiene
- * que quitar las vistas antes (drop) y volver a crearlas después (create): PostgreSQL no deja cambiar
- * una columna que usa una vista y SQLite rehace la tabla al cambiarla.
+ * que quitar las vistas antes (drop y dropPayments) y volver a crearlas después (create y
+ * createPayments): PostgreSQL no deja cambiar una columna que usa una vista y SQLite rehace la tabla
+ * al cambiarla. `billing_payments` (E2) va aparte porque la migración de E1 crea las demás antes de
+ * que exista `payments`.
  */
 final class BillingDocumentsView
 {
@@ -166,6 +168,43 @@ final class BillingDocumentsView
             JOIN sales_documents sd ON sd.id = sl.sales_document_id
             WHERE sd.is_test = FALSE
             SQL);
+    }
+
+    /**
+     * Los cobros de las dos procedencias (E2, D-437), para lo cobrado por fecha de cobro (Resumen):
+     * los de Holded de sus facturas que cuentan (sin borradores ni anuladas, como antes) y los propios
+     * sin anular de facturas emitidas que no son de la serie de pruebas. Los propios llevan el id y el
+     * documento en negativo, como en `billing_documents`.
+     */
+    public static function createPayments(): void
+    {
+        DB::statement(<<<'SQL'
+            CREATE VIEW billing_payments AS
+            SELECT
+                hp.id AS id,
+                'holded' AS source,
+                hp.holded_invoice_id AS document_id,
+                hp.paid_on AS paid_on,
+                hp.amount AS amount
+            FROM holded_payments hp
+            JOIN holded_invoices hi ON hi.id = hp.holded_invoice_id
+            WHERE hi.is_draft = FALSE AND hi.collection_status <> 'cancelled'
+            UNION ALL
+            SELECT
+                0 - p.id,
+                'audax',
+                0 - p.sales_document_id,
+                p.paid_on,
+                p.amount
+            FROM payments p
+            JOIN sales_documents sd ON sd.id = p.sales_document_id
+            WHERE p.voided_at IS NULL AND sd.is_test = FALSE AND sd.status <> 'draft'
+            SQL);
+    }
+
+    public static function dropPayments(): void
+    {
+        DB::statement('DROP VIEW IF EXISTS billing_payments');
     }
 
     public static function drop(): void

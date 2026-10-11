@@ -7,13 +7,17 @@ use App\Http\Controllers\Billing\HoldedContactClientController;
 use App\Http\Controllers\Billing\HoldedContactController;
 use App\Http\Controllers\Billing\HoldedInvoiceController;
 use App\Http\Controllers\Billing\HoldedInvoiceLinkController;
+use App\Http\Controllers\Billing\InvoicingEmailSettingsController;
 use App\Http\Controllers\Billing\InvoicingReportController;
 use App\Http\Controllers\Billing\InvoicingSettingsController;
 use App\Http\Controllers\Billing\MovedReportController;
 use App\Http\Controllers\Billing\NoProjectNeededController;
 use App\Http\Controllers\Billing\ProjectBillingController;
 use App\Http\Controllers\Billing\ReviewController;
+use App\Http\Controllers\Billing\SalesDocumentAttachmentController;
 use App\Http\Controllers\Billing\SalesDocumentController;
+use App\Http\Controllers\Billing\SalesDocumentEmailController;
+use App\Http\Controllers\Billing\SalesDocumentPaymentController;
 use App\Http\Controllers\Billing\SoldVsActualController;
 use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Providers\ReportsServiceProvider;
@@ -78,6 +82,10 @@ Route::middleware('module:billing')->group(function () use ($exports) {
 
     Route::middleware('can:view-billing')->group(function () {
         Route::get('facturacion/facturas', [HoldedInvoiceController::class, 'index'])->name('billing.invoices.index');
+        // «Por cobrar» (E2, D-437): una vista de Facturas, con la antigüedad por cliente.
+        Route::get('facturacion/por-cobrar', MovedReportController::class)
+            ->defaults('to', '/facturacion/facturas?vista=por-cobrar')
+            ->name('billing.receivables');
         Route::get('facturacion/facturas/{invoice}', [HoldedInvoiceController::class, 'show'])->whereNumber('invoice')->name('billing.invoices.show');
         Route::get('facturacion/facturas/{invoice}/pdf', [HoldedInvoiceController::class, 'pdf'])
             ->whereNumber('invoice')
@@ -146,6 +154,17 @@ Route::middleware('module:billing')->group(function () use ($exports) {
             Route::delete('sin-proyecto', [SalesDocumentController::class, 'clearNoProject'])->name('billing.documents.no-project.destroy');
             Route::post('duplicar', [SalesDocumentController::class, 'duplicate'])->name('billing.documents.duplicate');
 
+            // E2 (D-436 a D-444): cobros, envío por email y recordatorio a mano, y adjuntos. Cada
+            // acción la comprueba la matriz DocumentActions (cobrar y enviar, manage-billing).
+            Route::post('cobros', [SalesDocumentPaymentController::class, 'store'])->middleware('throttle:30,1,billing.documents.payments')->name('billing.documents.payments.store');
+            Route::post('cobros/{payment}/anular', [SalesDocumentPaymentController::class, 'void'])->whereNumber('payment')->name('billing.documents.payments.void');
+            Route::get('envio', [SalesDocumentEmailController::class, 'compose'])->name('billing.documents.emails.compose');
+            Route::post('envios', [SalesDocumentEmailController::class, 'store'])->middleware('throttle:20,1,billing.documents.emails')->name('billing.documents.emails.store');
+            Route::post('adjuntos', [SalesDocumentAttachmentController::class, 'store'])->middleware('throttle:30,1,billing.documents.attachments')->name('billing.documents.attachments.store');
+            Route::get('adjuntos/{attachment}', [SalesDocumentAttachmentController::class, 'show'])->whereNumber('attachment')->name('billing.documents.attachments.show');
+            Route::put('adjuntos/{attachment}', [SalesDocumentAttachmentController::class, 'update'])->whereNumber('attachment')->name('billing.documents.attachments.update');
+            Route::delete('adjuntos/{attachment}', [SalesDocumentAttachmentController::class, 'destroy'])->whereNumber('attachment')->name('billing.documents.attachments.destroy');
+
             Route::middleware('can:manage-billing')->group(function () {
                 Route::post('emitir', [SalesDocumentController::class, 'issue'])->middleware('throttle:30,1,billing.documents.issue')->name('billing.documents.issue');
                 Route::post('anular', [SalesDocumentController::class, 'cancel'])->name('billing.documents.cancel');
@@ -153,6 +172,9 @@ Route::middleware('module:billing')->group(function () use ($exports) {
                 Route::post('anular-registro', [SalesDocumentController::class, 'void'])->middleware('can:void-invoices')->name('billing.documents.void');
             });
         });
+
+        // Opciones de facturación del cliente (E2, D-442 y D-443): facturas en el portal y recordatorios.
+        Route::put('clientes/{client}/facturacion/opciones', [ClientBillingController::class, 'updateOptions'])->whereNumber('client')->name('clients.billing.options');
 
         // Ajustes de la emisión (D-419, D-423, D-425 y D-426): verlos con use-invoicing; cambiarlos, manage-billing.
         Route::middleware('can:manage-billing')->prefix('facturacion/ajustes/emision')->group(function () {
@@ -168,6 +190,14 @@ Route::middleware('module:billing')->group(function () use ($exports) {
             Route::put('documento', [InvoicingSettingsController::class, 'updateDocument'])->name('billing.settings.document.update');
             Route::post('documento/logo', [InvoicingSettingsController::class, 'uploadLogo'])->name('billing.settings.document.logo');
             Route::delete('documento/logo', [InvoicingSettingsController::class, 'deleteLogo'])->name('billing.settings.document.logo.destroy');
+
+            // E2 (D-438, D-439 y D-442): remitente, plantillas de email y escalones de los recordatorios.
+            Route::put('correo', [InvoicingEmailSettingsController::class, 'updateSender'])->name('billing.settings.email.update');
+            Route::put('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'updateTemplate'])->name('billing.settings.templates.update');
+            Route::delete('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'resetTemplate'])->name('billing.settings.templates.reset');
+            Route::post('recordatorios', [InvoicingEmailSettingsController::class, 'storeRule'])->name('billing.settings.reminders.store');
+            Route::put('recordatorios/{rule}', [InvoicingEmailSettingsController::class, 'updateRule'])->whereNumber('rule')->name('billing.settings.reminders.update');
+            Route::delete('recordatorios/{rule}', [InvoicingEmailSettingsController::class, 'destroyRule'])->whereNumber('rule')->name('billing.settings.reminders.destroy');
         });
     });
 });

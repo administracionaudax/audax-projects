@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $payment_day
  * @property string $language
  * @property list<string>|null $billing_emails
+ * @property bool $portal_invoices Sus facturas propias en el portal (E2, D-443; apagado)
+ * @property bool $payment_reminders Recordatorios de cobro por email (E2, D-442; encendido)
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Client $client
@@ -47,6 +49,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'payment_day',
     'language',
     'billing_emails',
+    'portal_invoices',
+    'payment_reminders',
 ])]
 class ClientBillingProfile extends Model
 {
@@ -57,6 +61,8 @@ class ClientBillingProfile extends Model
         'country_code' => 'ES',
         'tax_regime' => 'general',
         'language' => 'es',
+        'portal_invoices' => false,
+        'payment_reminders' => true,
     ];
 
     /**
@@ -70,6 +76,8 @@ class ClientBillingProfile extends Model
             'payment_days' => 'integer',
             'payment_day' => 'integer',
             'billing_emails' => 'array',
+            'portal_invoices' => 'boolean',
+            'payment_reminders' => 'boolean',
         ];
     }
 

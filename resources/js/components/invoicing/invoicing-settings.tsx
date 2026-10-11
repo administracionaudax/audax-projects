@@ -8,7 +8,7 @@ import {
     Plus,
     Trash2,
 } from 'lucide-react';
-import type { FormEvent, ReactNode } from 'react';
+import type { ComponentProps, FormEvent, ReactNode } from 'react';
 import { useId, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { PageSection } from '@/components/projects-list/page-section';
@@ -243,9 +243,22 @@ function EditDialog({
     );
 }
 
-function EditButton({ label }: { label: string }) {
+/**
+ * El botón «Editar» de cada fila. Pasa al Button lo que le pone DialogTrigger (asChild: onClick,
+ * aria-expanded…): sin eso, el diálogo no se abría (arreglado en E2).
+ */
+function EditButton({
+    label,
+    ...props
+}: { label: string } & ComponentProps<typeof Button>) {
     return (
-        <Button type="button" variant="ghost" size="sm" aria-label={label}>
+        <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={label}
+            {...props}
+        >
             <PencilLine aria-hidden="true" />
             {t('invoicing.settings.edit')}
         </Button>

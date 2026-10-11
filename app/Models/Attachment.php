@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $mime
  * @property int $size
  * @property string|null $thumbnail_path
+ * @property bool $client_visible Adjunto de una factura propia que ve el cliente (portal y email; E2, D-444)
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
@@ -33,11 +34,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property-read Project|null $project
  * @property-read User|null $uploader
  */
-#[Fillable(['attachable_type', 'attachable_id', 'project_id', 'user_id', 'disk', 'path', 'original_name', 'mime', 'size', 'thumbnail_path'])]
+#[Fillable(['attachable_type', 'attachable_id', 'project_id', 'user_id', 'disk', 'path', 'original_name', 'mime', 'size', 'thumbnail_path', 'client_visible'])]
 class Attachment extends Model
 {
     /** @use HasFactory<AttachmentFactory> */
     use HasFactory, SoftDeletes;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'client_visible' => false,
+    ];
 
     /**
      * Tipos MIME permitidos (D-037): imágenes, PDF, ofimática (Office y ODF), texto, CSV y ZIP.
@@ -86,6 +94,7 @@ class Attachment extends Model
     {
         return [
             'size' => 'integer',
+            'client_visible' => 'boolean',
         ];
     }
 

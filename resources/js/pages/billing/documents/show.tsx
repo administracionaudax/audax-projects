@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Ban,
+    BellRing,
     ChevronLeft,
     ChevronRight,
     Copy,
@@ -13,9 +14,12 @@ import {
     MoreHorizontal,
     PencilLine,
     Plus,
+    MailWarning,
+    Send,
     ShieldCheck,
     Trash2,
     Undo2,
+    Wallet,
 } from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
 import { useId, useState } from 'react';
@@ -36,6 +40,16 @@ import {
     RectifyDialog,
     VoidDialog,
 } from '@/components/invoicing/document-dialogs';
+import {
+    RecordPaymentDialog,
+    SendDocumentDialog,
+} from '@/components/invoicing/collect-dialogs';
+import {
+    AttachmentsSection,
+    ClientViews,
+    DocumentChain,
+    PaymentsSection,
+} from '@/components/invoicing/collect-panels';
 import { InvoiceTotalsPanel } from '@/components/invoicing/invoice-totals-panel';
 import {
     formatQuantity,
@@ -57,6 +71,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
 import { t } from '@/lib/i18n';
+import { tCount } from '@/lib/people';
 import { cn } from '@/lib/utils';
 import type { SalesDocumentDetail, SalesDocumentShowProps } from '@/types';
 
@@ -78,6 +93,7 @@ export default function SalesDocumentShow({
     projects,
     open_issue: openIssue,
     today,
+    payment_methods: paymentMethods,
     list,
 }: SalesDocumentShowProps) {
     const can = (action: SalesDocumentShowProps['actions'][number]) =>
@@ -130,6 +146,7 @@ export default function SalesDocumentShow({
                             <span className="text-xs text-muted-foreground">
                                 {t('invoicing.show.origin')}
                             </span>
+                            <ClientViews document={document} />
                         </div>
                     }
                     actions={
@@ -209,6 +226,53 @@ export default function SalesDocumentShow({
                                     </a>
                                 </Button>
                             ) : null}
+                            {can('send') ? (
+                                <SendDocumentDialog
+                                    document={document}
+                                    trigger={
+                                        <Button
+                                            variant={
+                                                document.sent_at
+                                                    ? 'outline'
+                                                    : 'default'
+                                            }
+                                            data-test="document-send"
+                                        >
+                                            <Send aria-hidden="true" />
+                                            {t(
+                                                document.sent_at
+                                                    ? 'invoicing.collect.email.resend'
+                                                    : 'invoicing.collect.email.send',
+                                            )}
+                                        </Button>
+                                    }
+                                />
+                            ) : null}
+                            {can('record_payment') &&
+                            Number(document.remaining) > 0 ? (
+                                <RecordPaymentDialog
+                                    document={document}
+                                    methods={paymentMethods}
+                                    today={today}
+                                    trigger={
+                                        <Button
+                                            variant={
+                                                document.sent_at
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            data-test="document-record-payment"
+                                        >
+                                            <Wallet aria-hidden="true" />
+                                            {t(
+                                                credit
+                                                    ? 'invoicing.collect.payment.open_refund'
+                                                    : 'invoicing.collect.payment.open',
+                                            )}
+                                        </Button>
+                                    }
+                                />
+                            ) : null}
                             {can('issue') && issue ? (
                                 <IssueDialog
                                     document={document}
@@ -265,6 +329,11 @@ export default function SalesDocumentShow({
                     <div className="grid min-w-0 content-start gap-6">
                         <AmountCard document={document} />
 
+                        <PaymentsSection
+                            document={document}
+                            canVoid={can('void_payment')}
+                        />
+
                         <PageSection title={t('invoicing.show.lines')}>
                             <LinesTable document={document} />
                         </PageSection>
@@ -276,6 +345,11 @@ export default function SalesDocumentShow({
                         <PageSection title={t('billing.timeline.title')}>
                             <InvoiceTimeline events={timeline(document)} />
                         </PageSection>
+
+                        <AttachmentsSection
+                            document={document}
+                            editable={can('attach')}
+                        />
 
                         {document.body ? (
                             <PageSection title={t('invoicing.show.body')}>
@@ -305,6 +379,7 @@ export default function SalesDocumentShow({
                             projects={projects}
                             editable={can('edit_non_fiscal')}
                         />
+                        <DocumentChain document={document} />
                         <ClientPanel document={document} />
                     </aside>
                 </div>
@@ -372,18 +447,19 @@ function DocumentStatus({
         );
     }
 
+    // El estado de cobro calculado como en el listado (E2, D-436): pendiente, en parte, cobrada o vencida.
     return (
         <RelativeStatus
             invoice={{
                 collection_status:
-                    Number(document.total) - Number(document.paid_total) <= 0
+                    document.collection === 'paid'
                         ? 'paid'
-                        : 'unpaid',
+                        : Number(document.paid_total) > 0
+                          ? 'partial'
+                          : 'unpaid',
                 due_on: document.due_date,
                 total: document.total,
-                pending_total: String(
-                    Number(document.total) - Number(document.paid_total),
-                ),
+                pending_total: document.pending,
                 is_draft: false,
             }}
             today={today}
@@ -447,14 +523,18 @@ function MoreActions({
     actions: string[];
     voidProblems: string[];
 }) {
-    const [confirming, setConfirming] = useState<'delete' | 'void' | null>(
-        null,
-    );
+    const [confirming, setConfirming] = useState<
+        'delete' | 'void' | 'remind' | null
+    >(null);
     const [processing, setProcessing] = useState(false);
+    // Recordatorio a mano (E2, D-442): solo con algo pendiente.
+    const canRemind =
+        actions.includes('send_reminder') && Number(document.pending) > 0;
     const hasMenu =
         actions.includes('duplicate') ||
         actions.includes('delete') ||
-        actions.includes('void');
+        actions.includes('void') ||
+        canRemind;
 
     if (!hasMenu) {
         return null;
@@ -474,6 +554,15 @@ function MoreActions({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-56">
+                    {canRemind ? (
+                        <DropdownMenuItem
+                            onSelect={() => setConfirming('remind')}
+                            data-test="document-remind"
+                        >
+                            <BellRing aria-hidden="true" />
+                            {t('invoicing.collect.email.remind')}
+                        </DropdownMenuItem>
+                    ) : null}
                     {actions.includes('duplicate') ? (
                         <DropdownMenuItem
                             onSelect={() =>
@@ -512,6 +601,16 @@ function MoreActions({
                     ) : null}
                 </DropdownMenuContent>
             </DropdownMenu>
+            {canRemind ? (
+                <SendDocumentDialog
+                    document={document}
+                    reminder
+                    open={confirming === 'remind'}
+                    onOpenChange={(open) =>
+                        setConfirming(open ? 'remind' : null)
+                    }
+                />
+            ) : null}
             {actions.includes('void') ? (
                 <VoidDialog
                     document={document}
@@ -545,8 +644,17 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
         Number(document.total) - Number(document.paid_total),
         0,
     );
-    const showPending =
-        document.status === 'issued' && document.type === 'invoice';
+    const invoice = document.status === 'issued' && document.type === 'invoice';
+    const showPending = invoice && pending > 0;
+    // Lo cobrado de la factura, en la barra (E2, D-436).
+    const paidPct = invoice
+        ? Math.min(
+              100,
+              Math.round(
+                  (Number(document.paid_total) / Number(document.total)) * 100,
+              ),
+          )
+        : 0;
 
     return (
         <section
@@ -560,7 +668,9 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
                         {t(
                             showPending
                                 ? 'invoicing.show.pending'
-                                : 'invoicing.show.total',
+                                : invoice
+                                  ? 'invoicing.collect.amount.paid'
+                                  : 'invoicing.show.total',
                         )}
                     </p>
                     <p className="tabular text-3xl">
@@ -573,6 +683,25 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
                             </span>
                         ) : null}
                     </p>
+                    {invoice && paidPct > 0 ? (
+                        <div className="mt-2 grid max-w-80 gap-1">
+                            <div
+                                aria-hidden="true"
+                                className="h-1.5 overflow-hidden rounded-full bg-muted"
+                            >
+                                <div
+                                    className="h-full bg-success"
+                                    style={{ width: `${paidPct}%` }}
+                                />
+                            </div>
+                            <p className="tabular text-xs text-muted-foreground">
+                                {t('invoicing.collect.amount.bar', {
+                                    paid: formatCurrency(document.paid_total),
+                                    pct: paidPct,
+                                })}
+                            </p>
+                        </div>
+                    ) : null}
                 </div>
                 <dl className="grid gap-1.5 text-sm sm:grid-cols-2 sm:gap-x-6">
                     <Fact
@@ -953,6 +1082,114 @@ function timeline(document: SalesDocumentDetail): TimelineEvent[] {
                 </>
             ),
         });
+    }
+
+    // E2 (D-436 a D-442): envíos, vistas del cliente, cobros y recordatorios que no salieron.
+    for (const email of document.emails) {
+        const when = email.sent_at ?? email.created_at;
+        const recipients = [...email.to, ...email.cc].join(', ');
+        events.push({
+            key: `email-${email.id}`,
+            date: when ? day(when) : null,
+            when: when ? formatDateTime(when) : '',
+            icon:
+                email.status === 'failed'
+                    ? MailWarning
+                    : email.kind === 'reminder'
+                      ? BellRing
+                      : Send,
+            tone: email.status === 'failed' ? 'danger' : 'neutral',
+            content: (
+                <>
+                    {t(
+                        `invoicing.collect.timeline.${email.kind === 'reminder' ? 'reminder' : 'email'}_${email.status}`,
+                        {
+                            to: recipients,
+                            by:
+                                email.sent_by ??
+                                t('invoicing.collect.timeline.automatic'),
+                            days:
+                                email.rule_days === null
+                                    ? ''
+                                    : t(
+                                          email.rule_days < 0
+                                              ? 'invoicing.collect.timeline.days_before'
+                                              : email.rule_days === 0
+                                                ? 'invoicing.collect.timeline.days_due'
+                                                : 'invoicing.collect.timeline.days_after',
+                                          { days: Math.abs(email.rule_days) },
+                                      ),
+                        },
+                    )}
+                    {email.test_mode ? (
+                        <span className="block text-xs text-muted-foreground">
+                            {t('invoicing.collect.timeline.test_mode')}
+                        </span>
+                    ) : null}
+                    {email.status === 'failed' && email.error ? (
+                        <span className="block text-xs text-danger">
+                            {email.error}
+                        </span>
+                    ) : null}
+                    {email.first_viewed_at ? (
+                        <span className="block text-xs text-muted-foreground">
+                            {tCount(
+                                'invoicing.collect.timeline.viewed',
+                                email.view_count,
+                                {
+                                    when: formatDateTime(email.first_viewed_at),
+                                },
+                            )}
+                        </span>
+                    ) : null}
+                </>
+            ),
+        });
+    }
+
+    for (const problem of document.reminder_problems) {
+        events.push({
+            key: `reminder-problem-${problem.id}`,
+            date: problem.created_at ? day(problem.created_at) : null,
+            when: problem.created_at ? formatDateTime(problem.created_at) : '',
+            icon: MailWarning,
+            tone: 'danger',
+            content: t('invoicing.collect.timeline.reminder_no_recipients'),
+        });
+    }
+
+    for (const payment of document.payments) {
+        events.push({
+            key: `payment-${payment.id}`,
+            date: payment.paid_on,
+            when: formatDate(payment.paid_on),
+            icon: Wallet,
+            tone: payment.voided ? 'muted' : 'success',
+            content: t(
+                Number(payment.amount) < 0
+                    ? 'invoicing.collect.timeline.refund'
+                    : 'invoicing.collect.timeline.payment',
+                {
+                    amount: formatCurrency(Math.abs(Number(payment.amount))),
+                    method: t(`invoicing.collect.method.${payment.method}`),
+                    by: payment.created_by ?? '—',
+                },
+            ),
+        });
+        if (payment.voided) {
+            events.push({
+                key: `payment-void-${payment.id}`,
+                date: day(payment.voided.at),
+                when: formatDateTime(payment.voided.at),
+                icon: Ban,
+                tone: 'danger',
+                content: t('invoicing.collect.timeline.payment_voided', {
+                    amount: formatCurrency(Math.abs(Number(payment.amount))),
+                    by: payment.voided.by ?? '—',
+                    reason: payment.voided.reason ?? '',
+                }),
+            });
+        }
     }
 
     if (document.voided) {

@@ -1,5 +1,5 @@
 {
-    "_comment": "Matriz estado → acciones de la emisión propia (PLAN-EMISION §3.2; D-428): casos compartidos por App\\Domain\\Billing\\Issuing\\DocumentActions (Pest) y resources/js/components/invoicing/document-actions.ts (Vitest). role null: no usa la emisión; view: prepara (use-invoicing); manage: emite, anula y rectifica (manage-billing); admin: además anula el registro (V-03).",
+    "_comment": "Matriz estado → acciones de la emisión propia (PLAN-EMISION §3.2; D-428): casos compartidos por App\\Domain\\Billing\\Issuing\\DocumentActions (Pest) y resources/js/components/invoicing/document-actions.ts (Vitest). role null: no usa la emisión; view: prepara (use-invoicing); manage: emite, anula y rectifica (manage-billing); admin: además anula el registro (V-03). E2 añade record_payment, void_payment, send, send_reminder y attach (D-436 a D-444).",
     "cases": [
         {
             "state": "draft",
@@ -15,7 +15,8 @@
                 "delete",
                 "duplicate",
                 "download_pdf",
-                "edit_non_fiscal"
+                "edit_non_fiscal",
+                "attach"
             ]
         },
         {
@@ -28,7 +29,8 @@
                 "issue",
                 "duplicate",
                 "download_pdf",
-                "edit_non_fiscal"
+                "edit_non_fiscal",
+                "attach"
             ]
         },
         {
@@ -41,7 +43,8 @@
                 "issue",
                 "duplicate",
                 "download_pdf",
-                "edit_non_fiscal"
+                "edit_non_fiscal",
+                "attach"
             ]
         },
         {
@@ -57,7 +60,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -70,7 +74,12 @@
                 "edit_non_fiscal",
                 "cancel",
                 "rectify",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "send_reminder",
+                "attach"
             ]
         },
         {
@@ -84,7 +93,12 @@
                 "cancel",
                 "rectify",
                 "void",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "send_reminder",
+                "attach"
             ]
         },
         {
@@ -100,7 +114,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -113,7 +128,12 @@
                 "edit_non_fiscal",
                 "cancel",
                 "rectify",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "send_reminder",
+                "attach"
             ]
         },
         {
@@ -126,7 +146,12 @@
                 "edit_non_fiscal",
                 "cancel",
                 "rectify",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "send_reminder",
+                "attach"
             ]
         },
         {
@@ -142,7 +167,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -153,7 +179,9 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "void_payment",
+                "attach"
             ]
         },
         {
@@ -164,7 +192,9 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "void_payment",
+                "attach"
             ]
         },
         {
@@ -180,7 +210,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -191,7 +222,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -202,7 +234,8 @@
                 "duplicate",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -217,7 +250,8 @@
                 "view",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "attach"
             ]
         },
         {
@@ -227,7 +261,11 @@
                 "view",
                 "download_pdf",
                 "edit_non_fiscal",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "attach"
             ]
         },
         {
@@ -238,7 +276,11 @@
                 "download_pdf",
                 "edit_non_fiscal",
                 "void",
-                "view_record"
+                "view_record",
+                "record_payment",
+                "void_payment",
+                "send",
+                "attach"
             ]
         },
         {

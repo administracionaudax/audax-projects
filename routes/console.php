@@ -208,3 +208,11 @@ Schedule::command('app:billing-verify-chain --nightly')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Emisión propia, E2 (D-442): recordatorios de cobro por escalones, por la mañana. Solo con los
+// módulos `billing` e `invoicing` encendidos de verdad (en modo de prueba no se envía nada, D-239).
+Schedule::command('app:billing-send-reminders')
+    ->dailyAt('09:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();

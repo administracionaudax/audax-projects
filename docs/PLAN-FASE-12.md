@@ -468,6 +468,22 @@ Decisiones D-417 a D-429. Entrega E1 de `docs/PLAN-EMISION.md` (§9): la F2 de e
 - [x] **Después de emitir (D-424):** duplicar (también una de Holded), descargar, anular (rectificativa por el total que desbloquea las horas), rectificar por diferencias y anular el registro (solo un admin).
 - [x] **Listado unificado (D-427):** la vista `billing_documents` junta las de Holded y las propias en el listado, Ventas, el Resumen, «Vendido frente a real» y Por facturar; la serie de pruebas, solo en la pestaña «Pruebas». «No necesita proyecto» (D-431) también en las propias.
 - [x] **Vigilancia (D-429):** `app:billing-verify-chain` cada noche a las 04:15, con aviso a los admins si algo no cuadra.
-- [ ] Siguiente: E2 (cobrar, enviar y portal).
+- [x] E2 (cobrar, enviar y portal): §13.
 
 **Pruebas:** `tests/Unit/Billing/RecordHasherTest.php` y `DocumentTotalsTest.php`; `tests/Feature/Invoicing/` (emitir, inmutabilidad, anular y rectificar, cadena, acceso, informes, PDF, pantallas, ajustes y concurrencia); `tests/Feature/Performance/InvoicingPerformanceTest.php`; `tests/js/invoicing-editor.test.tsx` y `tests/e2e/invoicing.spec.ts` (borrador, emitir, PDF, duplicar, rectificar y anular).
+
+## 13. Emisión propia, entrega E2 · Cobrar, enviar y portal (rama `emision-e2`, 11/10/2026)
+
+Decisiones D-435 a D-446. Entrega E2 de `docs/PLAN-EMISION.md` (§9): la parte de cobros, envío y portal de la F5. Con el módulo `invoicing` apagado no cambia nada; en modo de prueba no sale nada hacia los clientes.
+
+- [x] **Cobros (D-436):** registrar cobros (también parciales) con fecha, importe, forma de pago, referencia y nota; la devolución en una rectificativa; anular un cobro con motivo y auditoría. Pendiente, cobrada en parte, cobrada y vencida, calculadas como las de Holded.
+- [x] **Los cobros en los informes y «Por cobrar» (D-437):** la vista `billing_payments` (Resumen por fecha de cobro); «Por cobrar» como vista de Facturas con la antigüedad por cliente y celdas que filtran (`antiguedad`).
+- [x] **Envío por email (D-438, D-439 y D-441):** remitente en Ajustes (supuesto de P-4), plantillas de factura, rectificativa y recordatorio en español e inglés con variables, diálogo con los emails del cliente y CC, PDF archivado y adjuntos visibles por la cola `mail`, historia de envíos; en modo de prueba solo le llega a quien lo envía.
+- [x] **Enlace firmado y vistas (D-440):** `/factura/{uuid}` de 60 días, sin usuario, con «vista por el cliente» sin píxel; caducado (410) y manipulado (403) con su página.
+- [x] **Recordatorios (D-442):** escalones en Ajustes, una orden diaria (09:00), por cliente se apagan, nunca a cobradas o anuladas, puesta al día de 7 días, los que no salen en «Requiere atención».
+- [x] **Portal (D-443):** «Facturas» por cliente (apagado por defecto), solo las emitidas y sus rectificativas, con el PDF y los adjuntos visibles; aislamiento con 404.
+- [x] **Adjuntos y cadena de documentos (D-444 y D-445):** adjuntos internos o visibles; en la ficha, cobros, adjuntos, la cadena (duplicada de → factura → rectificativas → cobros) y la historia con envíos, vistas y cobros.
+- [x] **Corregido de E1 (D-446):** el botón «Editar» de las filas de Ajustes no abría su diálogo.
+- [ ] Siguiente: E3 (recurrentes, programadas y facturar desde el trabajo).
+
+**Pruebas:** `tests/Feature/Invoicing/PaymentsTest.php`, `EmailSendingTest.php`, `PublicLinkTest.php`, `RemindersTest.php`, `AttachmentsTest.php` y `CollectAccessTest.php` (admin, finanzas, quien prepara, responsable, empleado, colaborador, cliente del portal y admin excluido); `tests/Feature/Portal/InvoicesTest.php` y `PortalRoutesIsolationTest.php` (con las rutas nuevas); `tests/Feature/Performance/InvoicingPerformanceTest.php` (ficha con cobros, envíos y adjuntos, y «Por cobrar»); `tests/js/invoicing-collect.test.tsx`; `tests/e2e/invoicing-e2.spec.ts` (emitir en PRU, cobro parcial y total, enviar, «Por cobrar» y el portal con una de la serie F).
