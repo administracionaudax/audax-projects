@@ -112,6 +112,7 @@ return [
         'created' => 'Importada en pausa',
         'would_create' => 'Se importaría en pausa',
         'existing' => 'Ya importada',
+        'failed' => 'No se importa:',
         'no_client' => 'Sin cliente: el contacto «:contact» no está casado con ningún cliente',
         'no_periodicity' => 'No se entiende la periodicidad (:value)',
         'no_lines' => 'Sin líneas',

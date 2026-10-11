@@ -21,8 +21,9 @@ use Illuminate\Support\Facades\Schema;
  *   anulada por error), rectificativa sin nada pendiente, cobrada, vencida (con el vencimiento antes
  *   de hoy), cobrada en parte o pendiente, con las mismas claves que las de Holded (D-386).
  *
- * Las líneas propias llevan sus minutos (`minutes`): los de las horas facturadas desde el trabajo
- * (E3), exactos; las de Holded, NULL (se leen de las unidades, D-396).
+ * Las líneas propias llevan sus minutos (`minutes`), su proyecto y su bolsa: los de lo facturado
+ * desde el trabajo (E3), exactos, así una factura con varios proyectos reparte cada línea al suyo; las
+ * de Holded, NULL (se leen de las unidades, D-396, y se reparten a partes iguales entre sus enlaces).
  *
  * Una migración que cambie `holded_invoices`, sus líneas o sus enlaces, o las tablas de ventas, tiene
  * que quitar las vistas antes (drop y dropPayments) y volver a crearlas después (create y
@@ -132,7 +133,9 @@ final class BillingDocumentsView
                 l.subtotal AS subtotal,
                 l.tax_rate AS tax_rate,
                 l.holded_project_id AS holded_project_id,
-                CAST(NULL AS INTEGER) AS minutes
+                CAST(NULL AS INTEGER) AS minutes,
+                CAST(NULL AS BIGINT) AS project_id,
+                CAST(NULL AS BIGINT) AS hour_bank_id
             FROM holded_invoice_lines l
             UNION ALL
             SELECT
@@ -148,7 +151,9 @@ final class BillingDocumentsView
                 sl.line_base,
                 sl.tax_rate,
                 NULL,
-                sl.minutes
+                sl.minutes,
+                sl.project_id,
+                sl.hour_bank_id
             FROM sales_document_lines sl
             JOIN sales_documents sd ON sd.id = sl.sales_document_id
             WHERE sl.kind = 'item' AND sd.is_test = FALSE

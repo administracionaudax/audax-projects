@@ -13,6 +13,7 @@ use App\Enums\InvoiceLineKind;
 use App\Enums\ProjectStatus;
 use App\Enums\TimeEntryStatus;
 use App\Models\BillingDocument;
+use App\Models\BillingDocumentLine;
 use App\Models\BillingDocumentLink;
 use App\Models\Client;
 use App\Models\HourBank;
@@ -367,6 +368,11 @@ final class UnbilledReport
             ->where('billing_documents.kind', HoldedDocumentKind::Invoice->value)
             ->where('billing_documents.issued_on', '>=', $from->startOfMonth()->toDateString())
             ->where('billing_documents.issued_on', '<=', $to->endOfMonth()->toDateString())
+            // Una propia con líneas de fee con su mes (E3) cuenta por esos meses, no por el de emisión.
+            ->whereNotExists(fn ($own) => $own->selectRaw('1')->from('sales_document_lines')
+                ->whereRaw('sales_document_lines.sales_document_id = 0 - billing_documents.id')
+                ->where('sales_document_lines.origin', 'fee')
+                ->whereNotNull('sales_document_lines.period_start'))
             ->selectRaw('billing_document_links.project_id as project_id, SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7) as month')
             ->orderBy('billing_document_links.project_id')
             ->get();
@@ -517,13 +523,13 @@ final class UnbilledReport
             ->whereHas('invoice', fn (Builder $q) => BillingDocument::countingIn($q)
                 ->when($from !== null, fn (Builder $w) => $w->where('issued_on', '>=', $from?->toDateString()))
                 ->when($to !== null, fn (Builder $w) => $w->where('issued_on', '<=', $to?->toDateString())))
-            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal', 'rectified_invoice_id'])->withCount('links'), 'invoice.lines:id,document_id,name,service_code,units,subtotal,minutes'])
+            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal', 'rectified_invoice_id'])->withCount('links'), 'invoice.lines:id,document_id,name,service_code,units,subtotal,minutes,project_id,hour_bank_id'])
             ->orderBy('id')
             ->get();
 
         // E3: en los proyectos por horas, las facturas propias con horas facturadas desde el trabajo
-        // (y sus rectificativas) no descuentan por importe esas líneas: sus horas ya no son
-        // pendientes (notInvoicedByAudax).
+        // (y sus rectificativas) no descuentan esas líneas: sus horas ya no son pendientes
+        // (notInvoicedByAudax).
         $work = $skipWork ? self::workDocuments($rows->pluck('invoice')->all()) : [];
 
         $result = [];
@@ -531,29 +537,48 @@ final class UnbilledReport
             $invoice = $link->invoice;
             $parts = max(1, (int) $invoice->getAttribute('links_count'));
             $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
+            $isWork = isset($work[$invoice->id]) || ($invoice->rectified_invoice_id !== null && isset($work[$invoice->rectified_invoice_id]));
+            if ($isWork && $invoice->kind === HoldedDocumentKind::CreditNote) {
+                continue;
+            }
+
+            $lines = $invoice->lines->filter(fn (BillingDocumentLine $line): bool => ! ($isWork && $line->minutes !== null))->values();
+            // Las líneas propias hechas desde el trabajo llevan su proyecto (E3): cada una cuenta para
+            // el suyo y el resto se reparte a partes iguales, como siempre.
+            $tagged = $lines->contains(fn (BillingDocumentLine $line): bool => $line->project_id !== null);
             $minutes = 0;
-            $subtotal = (string) $invoice->subtotal;
-            if (isset($work[$invoice->id]) || ($invoice->rectified_invoice_id !== null && isset($work[$invoice->rectified_invoice_id]))) {
-                if ($invoice->kind === HoldedDocumentKind::CreditNote) {
+            $amount = '0';
+            foreach ($lines as $line) {
+                $lineMinutes = $line->minutes !== null ? $sign * $line->minutes
+                    : (InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units)->countsHours() ? $sign * (int) round((float) $line->units * 60) : 0);
+                if ($tagged && $line->project_id !== null) {
+                    $mine = $line->project_id === (int) $link->project_id && ($key !== 'hour_bank_id' || $line->hour_bank_id === (int) $link->getAttribute('hour_bank_id'));
+                    if ($mine) {
+                        $minutes += $lineMinutes * $parts;
+                        $amount = Money::add($amount, Money::mul((string) $line->subtotal, (string) $parts));
+                    }
+
                     continue;
                 }
+                $minutes += $lineMinutes;
+                $amount = Money::add($amount, (string) $line->subtotal);
+            }
+            if (! $tagged && $lines->count() !== $invoice->lines->count()) {
+                // Sin líneas propias de horas: el importe es la base menos las líneas quitadas.
+                $amount = (string) $invoice->subtotal;
                 foreach ($invoice->lines as $line) {
-                    if ($line->minutes !== null) {
-                        $subtotal = Money::sub($subtotal, (string) $line->subtotal);
+                    if ($isWork && $line->minutes !== null) {
+                        $amount = Money::sub($amount, (string) $line->subtotal);
                     }
                 }
+            } elseif (! $tagged) {
+                $amount = (string) $invoice->subtotal;
             }
-            foreach ($invoice->lines as $line) {
-                if ($line->minutes !== null) {
-                    $minutes += $skipWork ? 0 : $sign * $line->minutes;
-                } elseif (InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units)->countsHours()) {
-                    $minutes += $sign * (int) round((float) $line->units * 60);
-                }
-            }
+
             $id = (int) $link->getAttribute($key);
             $result[$id] ??= ['minutes' => 0, 'amount' => '0'];
             $result[$id]['minutes'] += intdiv($minutes, $parts);
-            $result[$id]['amount'] = Money::add($result[$id]['amount'], Money::div($subtotal, (string) $parts));
+            $result[$id]['amount'] = Money::add($result[$id]['amount'], Money::div($amount, (string) $parts));
         }
 
         return $result;
