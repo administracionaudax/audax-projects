@@ -65,7 +65,7 @@ final class RecurringInvoiceGenerator
         $result = ['generated' => 0, 'skipped' => 0, 'failed' => 0];
 
         $due = RecurringInvoice::query()->running()
-            ->where('next_run_on', '<=', $today->toDateString())
+            ->whereDate('next_run_on', '<=', $today->toDateString())
             ->orderBy('next_run_on')->orderBy('id')
             ->pluck('id');
 
@@ -139,7 +139,7 @@ final class RecurringInvoiceGenerator
                 if ($locked === null || $locked->next_run_on === null || $locked->next_run_on->toDateString() !== $period->toDateString()) {
                     return null;
                 }
-                if (RecurringInvoiceRun::query()->where('recurring_invoice_id', $locked->id)->where('period_on', $period->toDateString())->exists()) {
+                if (RecurringInvoiceRun::query()->where('recurring_invoice_id', $locked->id)->whereDate('period_on', $period->toDateString())->exists()) {
                     return null;
                 }
 

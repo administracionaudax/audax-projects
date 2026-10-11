@@ -244,11 +244,11 @@ final class RecurringInvoices
         return bcadd($total, '0', 2);
     }
 
-    /** La próxima fecha desde el inicio (o desde hoy si ya ha generado alguna y el inicio pasó). */
+    /** La próxima fecha: la primera desde el inicio o desde hoy, la que sea más tarde (nada del pasado). */
     private function reschedule(RecurringInvoice $recurring): void
     {
         $today = LocalTime::today();
-        $from = $recurring->occurrences_count > 0 && $recurring->start_date->toDateString() < $today->toDateString() ? $today : $recurring->start_date;
+        $from = $recurring->start_date->toDateString() < $today->toDateString() ? $today : $recurring->start_date;
         $next = RecurringSchedule::first($recurring, $from);
 
         $recurring->forceFill(['next_run_on' => $next?->toDateString(), 'finished_at' => $next === null ? now() : null])->save();

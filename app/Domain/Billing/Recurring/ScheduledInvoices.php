@@ -82,7 +82,7 @@ final class ScheduledInvoices
         $result = ['issued' => 0, 'failed' => 0];
 
         $due = SalesDocument::query()->where('status', 'draft')->whereNotNull('scheduled_for')
-            ->where('scheduled_for', '<=', $today->toDateString())
+            ->whereDate('scheduled_for', '<=', $today->toDateString())
             ->orderBy('scheduled_for')->orderBy('id')
             ->get();
 
