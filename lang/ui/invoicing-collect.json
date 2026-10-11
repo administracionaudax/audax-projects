@@ -205,5 +205,8 @@
     "portal_invoices.status.unpaid": "Pendiente de pago",
     "portal_invoices.status.cancelled": "Anulada",
     "portal_invoices.status.draft": "Borrador",
-    "portal_invoices.how_to_pay": "Cómo pagar"
+    "portal_invoices.how_to_pay": "Cómo pagar",
+    "invoicing.collect.amount.paid": "Cobrada",
+    "invoicing.collect.amount.bar": "Cobrado :paid (:pct %)",
+    "invoicing.collect.payments.void_label": "Anular el cobro de :amount del :date"
 }

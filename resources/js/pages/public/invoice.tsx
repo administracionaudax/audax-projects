@@ -69,6 +69,7 @@ function money(amount: string, language: string): string {
     return new Intl.NumberFormat(language === 'en' ? 'en-GB' : 'es-ES', {
         style: 'currency',
         currency: 'EUR',
+        useGrouping: 'always',
     }).format(Number(amount));
 }
 

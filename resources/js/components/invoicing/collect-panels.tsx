@@ -91,26 +91,26 @@ export function PaymentsSection({
                     {document.payments.map((payment) => (
                         <li
                             key={payment.id}
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm"
+                            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[auto_6rem_7rem_minmax(0,1fr)_auto] sm:items-center"
                             data-test="payment-row"
                         >
                             <Wallet
                                 aria-hidden="true"
-                                className="size-4 shrink-0 text-muted-foreground"
+                                className="mt-0.5 size-4 shrink-0 text-muted-foreground sm:mt-0"
                             />
-                            <span className="tabular w-24 shrink-0">
+                            <span className="tabular">
                                 {formatDate(payment.paid_on)}
                             </span>
                             <span
                                 className={cn(
-                                    'tabular w-28 shrink-0 text-right',
+                                    'tabular text-right',
                                     payment.voided &&
                                         'text-muted-foreground line-through',
                                 )}
                             >
                                 {formatCurrency(payment.amount)}
                             </span>
-                            <span className="min-w-0 flex-1">
+                            <span className="col-span-2 col-start-2 min-w-0 sm:col-span-1 sm:col-start-auto">
                                 {t(
                                     `invoicing.collect.method.${payment.method}`,
                                 )}
@@ -142,13 +142,25 @@ export function PaymentsSection({
                                 <Button
                                     variant="ghost"
                                     size="sm"
+                                    className="col-start-2 justify-self-start text-muted-foreground sm:col-start-auto sm:justify-self-end"
                                     onClick={() => setVoiding(payment)}
+                                    aria-label={t(
+                                        'invoicing.collect.payments.void_label',
+                                        {
+                                            amount: formatCurrency(
+                                                payment.amount,
+                                            ),
+                                            date: formatDate(payment.paid_on),
+                                        },
+                                    )}
                                     data-test="payment-void"
                                 >
                                     <Ban aria-hidden="true" />
                                     {t('invoicing.collect.payments.void')}
                                 </Button>
-                            ) : null}
+                            ) : (
+                                <span className="hidden sm:block" />
+                            )}
                         </li>
                     ))}
                 </ul>

@@ -167,7 +167,9 @@ it('el email escapa el texto y convierte el enlace en un enlace con nombre', fun
         ->and($paragraphs[1])->toBe('Mírala aquí: <a href="https://ejemplo.test/factura/x?a=1&amp;b=2">Ver la factura</a> y gracias');
 
     $html = (new SalesDocumentMail('Factura', "Hola:\n\nTexto", 'https://ejemplo.test/f', 'es', false, false, []))->render();
-    expect($html)->toContain('Ver y descargar la factura')->toContain('https://ejemplo.test/f')->toContain('El PDF va adjunto');
+    // Cabecera y pie con el nombre del emisor (lo recibe el cliente), no el de la app.
+    expect($html)->toContain('Ver y descargar la factura')->toContain('https://ejemplo.test/f')->toContain('El PDF va adjunto')
+        ->toContain('© '.date('Y').' Audax Studio')->not->toContain('© '.date('Y').' Audax Proyectos');
 });
 
 it('Ajustes: cambiar una plantilla, volver a la de serie y el remitente, en la auditoría', function () {

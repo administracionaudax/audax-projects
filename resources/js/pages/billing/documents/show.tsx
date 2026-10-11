@@ -644,8 +644,18 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
         Number(document.total) - Number(document.paid_total),
         0,
     );
-    const showPending =
+    const invoice =
         document.status === 'issued' && document.type === 'invoice';
+    const showPending = invoice && pending > 0;
+    // Lo cobrado de la factura, en la barra (E2, D-436).
+    const paidPct = invoice
+        ? Math.min(
+              100,
+              Math.round(
+                  (Number(document.paid_total) / Number(document.total)) * 100,
+              ),
+          )
+        : 0;
 
     return (
         <section
@@ -659,7 +669,9 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
                         {t(
                             showPending
                                 ? 'invoicing.show.pending'
-                                : 'invoicing.show.total',
+                                : invoice
+                                  ? 'invoicing.collect.amount.paid'
+                                  : 'invoicing.show.total',
                         )}
                     </p>
                     <p className="tabular text-3xl">
@@ -672,6 +684,25 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
                             </span>
                         ) : null}
                     </p>
+                    {invoice && paidPct > 0 ? (
+                        <div className="mt-2 grid max-w-80 gap-1">
+                            <div
+                                aria-hidden="true"
+                                className="h-1.5 overflow-hidden rounded-full bg-muted"
+                            >
+                                <div
+                                    className="h-full bg-success"
+                                    style={{ width: `${paidPct}%` }}
+                                />
+                            </div>
+                            <p className="tabular text-xs text-muted-foreground">
+                                {t('invoicing.collect.amount.bar', {
+                                    paid: formatCurrency(document.paid_total),
+                                    pct: paidPct,
+                                })}
+                            </p>
+                        </div>
+                    ) : null}
                 </div>
                 <dl className="grid gap-1.5 text-sm sm:grid-cols-2 sm:gap-x-6">
                     <Fact

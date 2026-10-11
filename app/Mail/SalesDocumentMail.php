@@ -61,6 +61,7 @@ class SalesDocumentMail extends Mailable
                 'paragraphs' => self::paragraphs($this->body, $label),
                 'testNotice' => $this->testMode ? WeeklyDigestNotification::escape((string) __('invoicing.emails.mail.test_notice')) : null,
                 'buttonUrl' => $this->link,
+                'company' => InvoiceEmailSettings::get()['sender_name'],
                 'buttonLabel' => $label,
                 'linkNote' => WeeklyDigestNotification::escape($text('link_note', [
                     'date' => CarbonImmutable::now()->addDays(InvoiceEmailSettings::LINK_DAYS)->setTimezone((string) config('app.display_timezone', 'Europe/Madrid'))->format('d/m/Y'),
