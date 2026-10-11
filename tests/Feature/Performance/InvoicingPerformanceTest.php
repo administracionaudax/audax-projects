@@ -1,18 +1,23 @@
 <?php
 
 use App\Domain\Billing\Issuing\InvoiceCorrections;
+use App\Domain\Billing\Issuing\PaymentRecorder;
+use App\Domain\Tasks\AttachmentStorage;
 use App\Models\CatalogService;
 use App\Models\Project;
 use App\Models\SalesDocument;
+use App\Models\SalesDocumentEmail;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /*
-| Rendimiento de la emisión propia (PLAN-EMISION E1; D-427 y D-428): el listado unificado con las
-| propias, la ficha de una propia, el editor (nuevo y borrador) y los ajustes de la emisión.
+| Rendimiento de la emisión propia (PLAN-EMISION E1 y E2; D-427, D-428 y D-436 a D-445): el listado
+| unificado con las propias (y «Por cobrar» con la antigüedad por cliente), la ficha de una propia con
+| sus cobros, envíos y adjuntos, el editor (nuevo y borrador) y los ajustes de la emisión.
 |   1. cada página cabe en un presupuesto de consultas,
 |   2. ninguna consulta se repite más de 4 veces (el síntoma de un N+1),
 |   3. el número de consultas NO crece con los datos (el doble de clientes, proyectos, facturas,
@@ -24,11 +29,14 @@ use Tests\TestCase;
 const OWN_INVOICING_BUDGETS = [
     'listado.audax' => 26,
     'listado.pruebas' => 25,
-    'ficha' => 34,
+    // E2 añade los cobros, los envíos, los recordatorios, los adjuntos y de dónde se duplicó.
+    'ficha' => 38,
+    'por-cobrar' => 27,
     'ficha.borrador' => 39,
     'editor.nuevo' => 28,
     'editor.borrador' => 30,
-    'ajustes.series' => 29,
+    // E2: con el correo y los recordatorios (plantillas, escalones y sus envíos).
+    'ajustes.series' => 32,
 ];
 
 function seedOwnInvoices(TestCase $test, int $clients, string $prefix): void
@@ -41,7 +49,14 @@ function seedOwnInvoices(TestCase $test, int $clients, string $prefix): void
         $lines = [invoicingLine('8', '60', 'iva_21', '0', 'Desarrollo'), invoicingLine('2', '50', 'iva_10', '5', 'Diseño'), invoicingLine('1', '100', 'exempt', '0', 'Formación')];
 
         $first = invoicingIssue($admin, $client, $lines, ['project_id' => $project->id]);
-        invoicingIssue($admin, $client, $lines, ['project_id' => $project->id]);
+        $second = invoicingIssue($admin, $client, $lines, ['project_id' => $project->id]);
+        // E2: dos cobros (uno anulado), un envío y un adjunto, para medir la ficha con todo.
+        $recorder = app(PaymentRecorder::class);
+        $payment = $recorder->record($second, ['paid_on' => '2027-03-08', 'amount' => '100', 'method' => 'transfer'], $admin);
+        $recorder->record($second, ['paid_on' => '2027-03-08', 'amount' => '50', 'method' => 'cash'], $admin);
+        $recorder->void($payment, 'Devuelto por el banco', $admin);
+        SalesDocumentEmail::query()->create(['sales_document_id' => $second->id, 'kind' => 'send', 'template' => 'invoice', 'to' => ['a@b.test'], 'subject' => 'Factura', 'body' => 'Hola', 'sent_by' => $admin->id]);
+        app(AttachmentStorage::class)->store(UploadedFile::fake()->create('contrato.pdf', 5, 'application/pdf'), $second, null, $admin);
         invoicingIssue($admin, $client, $lines, ['series_id' => invoicingSeries('PRU')->id]);
         invoicingDraft($admin, $client, $lines, ['project_id' => $project->id]);
         app(InvoiceCorrections::class)->cancel($first, $admin, 'Rehacer la factura');
@@ -78,7 +93,7 @@ beforeEach(function () {
         CatalogService::query()->create(['code' => $code, 'name' => $name, 'unit' => 'hour', 'unit_price' => '60', 'tax_rate_id' => invoicingTax('iva_21')->id]);
     }
     seedOwnInvoices($this, 6, 'A');
-    $this->issued = SalesDocument::query()->where('status', 'issued')->where('type', 'invoice')->where('is_test', false)->orderBy('id')->firstOrFail();
+    $this->issued = SalesDocument::query()->where('status', 'issued')->where('type', 'invoice')->where('is_test', false)->where('paid_total', '>', 0)->orderBy('id')->firstOrFail();
     $this->draft = SalesDocument::query()->where('status', 'draft')->orderBy('id')->firstOrFail();
 });
 
@@ -87,6 +102,7 @@ it('la emisión propia cabe en su presupuesto de consultas y no crece con los da
         'listado.audax' => '/facturacion/facturas?origen=audax&periodo=todo',
         'listado.pruebas' => '/facturacion/facturas?vista=pruebas',
         'ficha' => "/facturacion/documentos/{$this->issued->id}",
+        'por-cobrar' => '/facturacion/facturas?vista=por-cobrar',
         'ficha.borrador' => "/facturacion/documentos/{$this->draft->id}",
         'editor.nuevo' => '/facturacion/facturas/nueva',
         'editor.borrador' => "/facturacion/documentos/{$this->draft->id}/editar",

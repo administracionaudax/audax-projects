@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -109,4 +110,25 @@ it('la ficha de facturación del cliente las enciende (y los recordatorios), con
     // Un cliente del portal no entra en las rutas internas (va a /portal).
     $this->actingAs($this->portal)->put("/clientes/{$other->id}/facturacion/opciones", ['portal_invoices' => false, 'payment_reminders' => true])->assertRedirect();
     expect($other->billingProfile()->first()->portal_invoices)->toBeTrue();
+});
+
+it('el listado del portal no hace más consultas con más facturas (sin N+1)', function () {
+    $count = function (): int {
+        $this->actingAs($this->portal)->get('/portal/facturas')->assertOk();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $this->actingAs($this->portal)->get('/portal/facturas')->assertOk();
+        $total = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $total;
+    };
+
+    $before = $count();
+    foreach (range(1, 4) as $i) {
+        $invoice = invoicingIssue($this->admin, $this->client);
+        app(AttachmentStorage::class)->store(UploadedFile::fake()->create("doc{$i}.pdf", 5, 'application/pdf'), $invoice, null, $this->admin)->forceFill(['client_visible' => true])->save();
+    }
+
+    expect($count())->toBe($before)->toBeLessThanOrEqual(30);
 });

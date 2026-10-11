@@ -11,6 +11,8 @@ use App\Models\SalesDocumentEmail;
 use App\Models\SalesDocumentLine;
 use App\Models\SalesDocumentLink;
 use App\Models\SalesDocumentTax;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Facturas propias para la interfaz (PLAN-EMISION §6; D-428): contrato con
@@ -45,15 +47,27 @@ final class SalesDocumentPresenter
             'paymentMethod:id,name',
             'records',
             // E2: cobros, envíos, recordatorios, adjuntos y de dónde se duplicó.
-            'payments.creator:id,name',
-            'payments.voider:id,name',
-            'emails.sender:id,name',
-            'emails.rule:id,days',
-            'reminderDeliveries.rule:id,days',
-            'attachments.uploader:id,name',
+            'attachments',
             'source:id,full_number,status',
             'sourceHolded:id,number',
         ]);
+        // Un borrador no tiene cobros, envíos ni recordatorios: no se piden.
+        if ($document->isDraft()) {
+            foreach (['payments', 'emails', 'reminderDeliveries'] as $relation) {
+                $document->setRelation($relation, new Collection);
+            }
+        } else {
+            $document->loadMissing(['payments', 'emails.rule:id,days', 'reminderDeliveries.rule:id,days']);
+        }
+
+        // Quién registró, anuló, envió o subió algo (E2): todos los nombres en una sola consulta.
+        $people = User::query()->whereKey(array_values(array_unique(array_filter([
+            ...$document->payments->pluck('created_by')->all(),
+            ...$document->payments->pluck('voided_by')->all(),
+            ...$document->emails->pluck('sent_by')->all(),
+            ...$document->attachments->pluck('user_id')->all(),
+        ]))))->pluck('name', 'id');
+        $name = fn (?int $id): ?string => $id === null ? null : ($people[$id] ?? null);
 
         return [
             'id' => $document->id,
@@ -127,9 +141,9 @@ final class SalesDocumentPresenter
                 'method' => $payment->method->value,
                 'bank_reference' => $payment->bank_reference,
                 'note' => $payment->note,
-                'created_by' => $payment->creator?->name,
+                'created_by' => $name($payment->created_by),
                 'created_at' => $payment->created_at?->utc()->toIso8601ZuluString(),
-                'voided' => $payment->voided_at === null ? null : ['at' => $payment->voided_at->utc()->toIso8601ZuluString(), 'by' => $payment->voider?->name, 'reason' => $payment->void_reason],
+                'voided' => $payment->voided_at === null ? null : ['at' => $payment->voided_at->utc()->toIso8601ZuluString(), 'by' => $name($payment->voided_by), 'reason' => $payment->void_reason],
             ])->values()->all(),
             'emails' => $document->emails->map(fn (SalesDocumentEmail $email): array => [
                 'id' => $email->id,
@@ -142,7 +156,7 @@ final class SalesDocumentPresenter
                 'error' => $email->error,
                 'test_mode' => $email->test_mode,
                 'rule_days' => $email->rule?->days,
-                'sent_by' => $email->sender?->name,
+                'sent_by' => $name($email->sent_by),
                 'created_at' => $email->created_at?->utc()->toIso8601ZuluString(),
                 'sent_at' => $email->sent_at?->utc()->toIso8601ZuluString(),
                 'first_viewed_at' => $email->first_viewed_at?->utc()->toIso8601ZuluString(),
@@ -162,7 +176,7 @@ final class SalesDocumentPresenter
                 'mime' => $attachment->mime,
                 'size' => $attachment->size,
                 'client_visible' => $attachment->client_visible,
-                'uploaded_by' => $attachment->uploader?->name,
+                'uploaded_by' => $name($attachment->user_id),
                 'created_at' => $attachment->created_at?->utc()->toIso8601ZuluString(),
                 'url' => $document->url().'/adjuntos/'.$attachment->id,
             ])->values()->all(),
