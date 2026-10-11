@@ -506,14 +506,14 @@ export function RecipientsField({
             <Label htmlFor={id}>{label}</Label>
             <div
                 className={cn(
-                    'flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border bg-background px-2 py-1.5',
+                    'flex min-h-10 min-w-0 flex-wrap items-center gap-1.5 overflow-hidden rounded-md border bg-background px-2 py-1.5',
                     (error || invalid) && 'border-danger',
                 )}
             >
                 {value.map((email) => (
                     <span
                         key={email}
-                        className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted py-0.5 pr-1 pl-2 text-sm"
+                        className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-muted py-0.5 pr-1 pl-2 text-sm"
                     >
                         <span className="truncate">
                             {labelFor(email) ? (
