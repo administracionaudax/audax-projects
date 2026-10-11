@@ -169,12 +169,12 @@ final class PaymentReminders
         $last = SalesDocumentEmail::query()->where('sales_document_id', $document->id)->where('kind', 'send')
             ->where('status', SalesDocumentEmail::SENT)->where('test_mode', false)->orderByDesc('id')->first();
         if ($last !== null) {
-            return ['to' => array_values($last->to), 'cc' => array_values($last->cc ?? [])];
+            return ['to' => $last->to, 'cc' => $last->cc ?? []];
         }
 
-        $emails = $document->client()->with('billingProfile')->first()?->billingProfile?->billing_emails ?? [];
+        $emails = $document->client()->with('billingProfile')->first()?->billingProfile->billing_emails ?? [];
 
-        return ['to' => array_values($emails), 'cc' => []];
+        return ['to' => $emails, 'cc' => []];
     }
 
     /**

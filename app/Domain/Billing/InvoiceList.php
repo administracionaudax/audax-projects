@@ -527,7 +527,7 @@ final class InvoiceList
     /**
      * La condición SQL de un tramo de antigüedad (las mismas fronteras que el Resumen, D-411).
      *
-     * @return array{0: string, 1: list<string>}
+     * @return array{0: literal-string, 1: list<string>}
      */
     private function ageSql(string $bucket): array
     {

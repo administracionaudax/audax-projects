@@ -97,13 +97,14 @@ async function issueInvoice(
         await form.getByLabel('Dirección').fill('Camino de la Bodega, 3');
         await form.getByLabel('Código postal').fill('26200');
         await form.getByLabel('Población').fill('Haro');
-        await form
-            .getByRole('button', { name: 'Guardar en la ficha' })
-            .click();
+        await form.getByRole('button', { name: 'Guardar en la ficha' }).click();
         await expect(form).toBeHidden();
     }
 
-    await page.getByTestId('line-description').first().fill('Campaña de vendimia');
+    await page
+        .getByTestId('line-description')
+        .first()
+        .fill('Campaña de vendimia');
     await page.getByTestId('line-quantity').first().fill('10');
     await page.getByTestId('line-price').first().fill('100');
     await expect(page.getByTestId('invoice-total')).toContainText('1.210,00');
@@ -190,7 +191,9 @@ test('enviar por email con el PDF y el enlace; queda en la historia (D-438 a D-4
     await expect(form.getByTestId('send-subject')).toHaveValue(
         new RegExp(testNumber),
     );
-    await expect(form.getByTestId('send-attachments')).toContainText(testNumber);
+    await expect(form.getByTestId('send-attachments')).toContainText(
+        testNumber,
+    );
     await expectAccessible(page);
     await form.getByTestId('send-confirm').click();
     await expect(form).toBeHidden();

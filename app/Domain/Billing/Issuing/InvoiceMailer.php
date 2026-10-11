@@ -169,7 +169,7 @@ final class InvoiceMailer
             $found[$email] = ['email' => $email, 'label' => $label, 'source' => $source, 'default' => $default];
         };
 
-        $billing = $client?->billingProfile?->billing_emails ?? [];
+        $billing = $client?->billingProfile->billing_emails ?? [];
         foreach ($billing as $email) {
             $add($email, __('invoicing.emails.sources.billing'), 'billing', true);
         }

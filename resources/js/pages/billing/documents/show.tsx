@@ -644,8 +644,7 @@ function AmountCard({ document }: { document: SalesDocumentDetail }) {
         Number(document.total) - Number(document.paid_total),
         0,
     );
-    const invoice =
-        document.status === 'issued' && document.type === 'invoice';
+    const invoice = document.status === 'issued' && document.type === 'invoice';
     const showPending = invoice && pending > 0;
     // Lo cobrado de la factura, en la barra (E2, D-436).
     const paidPct = invoice

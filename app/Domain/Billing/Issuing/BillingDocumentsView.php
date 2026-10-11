@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * - `billing_documents_all` trae también la serie de pruebas (PRU), que solo ve el listado en su
  *   pestaña «Pruebas»; `billing_documents` no la trae nunca: ningún informe la cuenta (V-17). Las
  *   líneas y los enlaces de las de prueba tampoco están en sus vistas.
- * - Estado de cobro de una propia (E1 aún no registra cobros, E2): borrador, anulada (también la
+ * - Estado de cobro de una propia (con `paid_total`, la suma de sus cobros desde E2): borrador, anulada (también la
  *   anulada por error), rectificativa sin nada pendiente, cobrada, vencida (con el vencimiento antes
  *   de hoy), cobrada en parte o pendiente, con las mismas claves que las de Holded (D-386).
  *

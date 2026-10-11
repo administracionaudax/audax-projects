@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Billing\Issuing\DocumentTotals;
 use App\Enums\RectificationKind;
 use App\Enums\SalesDocumentStatus;
 use App\Enums\SalesDocumentType;
@@ -100,6 +101,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property-read Collection<int, Attachment> $attachments
  * @property-read SalesDocument|null $source
  * @property-read HoldedInvoice|null $sourceHolded
+ * @property-read Collection<int, PaymentReminderDelivery> $reminderDeliveries
  */
 #[Fillable([
     'uuid', 'type', 'is_test', 'series_id', 'issue_date', 'operation_date', 'due_date',
@@ -339,14 +341,18 @@ class SalesDocument extends Model
         return $this->belongsTo(HoldedInvoice::class, 'source_holded_invoice_id');
     }
 
-    /** Lo que queda por cobrar de una factura emitida (con IVA; nunca negativo). */
+    /**
+     * Lo que queda por cobrar de una factura emitida (con IVA; nunca negativo).
+     *
+     * @return numeric-string
+     */
     public function pendingAmount(): string
     {
         if ($this->status !== SalesDocumentStatus::Issued || $this->isCreditNote()) {
             return '0.00';
         }
 
-        $pending = bcsub((string) $this->total, (string) $this->paid_total, 2);
+        $pending = bcsub(DocumentTotals::num((string) $this->total), DocumentTotals::num((string) $this->paid_total), 2);
 
         return bccomp($pending, '0', 2) > 0 ? $pending : '0.00';
     }

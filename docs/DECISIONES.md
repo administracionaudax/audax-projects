@@ -3154,6 +3154,77 @@ Respuesta del propietario: «por norma general, si nos pasamos, lo facturamos en
 - **El Resumen** toma lo que queda por facturar de `UnbilledReport`, así que cuenta los precios cerrados y deja fuera el exceso traspasado; «Requiere atención» y el contador de la barra lateral leen `ReviewInbox::unlinked`, que ya no cuenta las marcadas (D-431).
 - **Ayudas**: las definiciones de «Por facturar» del Resumen y de la pantalla, y la descripción de «Por revisar», dicen las reglas nuevas.
 
+## 11/10/2026: Emisión propia, entrega E2 · Cobrar, enviar y portal (rama `emision-e2`)
+
+Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigue detrás del módulo `invoicing` (apagado; en modo de prueba, solo los admins, D-239) y de las exclusiones de «Quién ve Facturación» (D-245). La pregunta P-4 (el remitente) sigue abierta: se resuelve con un supuesto que se cambia en Ajustes (D-438). Nunca se llama a la AEAT ni se escribe en Holded, y desde local, los tests y los E2E no sale ningún email real (`MAIL_MAILER=log`, `Mail::fake`).
+
+### D-435 · Alcance de E2 **[amplía D-417]**
+- **Incluye**: cobros de las facturas propias (también parciales) y su anulación; «Por cobrar» con la antigüedad por cliente; envío por email con plantillas, PDF adjunto y enlace firmado; «vista por el cliente»; recordatorios de cobro por escalones; las facturas en el portal del cliente; adjuntos en la factura; la cadena de documentos en la ficha; y lo nuevo en el Resumen.
+- **Fuera** (con su entrega): cobros contra facturas de Holded después de la baja (E8, la tabla `payments` ganará esa columna), «No recordar» en una factura suelta (de momento, por cliente), selección múltiple con envío en bloque (R3), conciliación bancaria y remesas (L6), comentarios del cliente en el portal (H-102) y «Enviar prueba» de una plantilla (Ajustes enseña una vista previa con datos de ejemplo).
+- Migración solo aditiva (`create_invoicing_e2_tables`): `payments`, `sales_document_emails`, `email_templates`, `payment_reminder_rules` (con 4 escalones de serie) y `payment_reminder_deliveries`; `sales_documents` gana el envío y las vistas; `client_billing_profiles`, las dos opciones del cliente; `attachments`, «visible para el cliente».
+
+### D-436 · Cobros: registrar, anular y el estado de cobro
+- **Registrar** (`PaymentRecorder`): importe con IVA (por defecto, lo pendiente), fecha, forma de pago (transferencia, domiciliación, tarjeta, efectivo u otra), referencia del banco y nota. Cobros parciales sin límite, pero **nunca más de lo pendiente** (un cobro de más se rechaza: si el cliente paga de más, es otra cosa); la fecha, ni futura ni anterior a la factura.
+- **Devolución**: en una rectificativa (anulada una factura ya cobrada) se registra la devolución al cliente, en negativo, como mucho por su total.
+- **Anular un cobro**: no se borra; queda anulado con motivo, quién y cuándo, tachado en la ficha, en la historia y en la auditoría (`payment_recorded`, `payment_voided`).
+- **`sales_documents.paid_total`** es la suma de los cobros sin anular, recalculada en la misma transacción con la factura bloqueada (`SELECT … FOR UPDATE`): dos cobros a la vez no se pasan. No es fiscal: el *trigger* de lo emitido la deja cambiar.
+- **Estado**: el de la vista `billing_documents` (D-427): pendiente, cobrada en parte, cobrada o vencida. La ficha lo enseña igual que el listado, con lo pendiente «de» el total, la barra de lo cobrado (con el %) y, cobrada, «Cobrada» con el total.
+- **Quién**: `manage-billing` (matriz `record_payment` y `void_payment`), como emitir.
+
+### D-437 · Los cobros propios cuentan como los de Holded, y «Por cobrar» con antigüedad **[amplía D-411 y D-406]**
+- El listado, la ficha, Ventas y la barra de importes ya leían `paid_total` de la vista; el Resumen (cobrado por mes) lee ahora la vista nueva `billing_payments`, que une los cobros de Holded (de sus facturas que cuentan) y los propios sin anular de facturas que no son de prueba, por la fecha del cobro. A diferencia de Holded, el cobro de una propia anulada después sí cuenta (es dinero que entró; su devolución resta en la rectificativa).
+- **«Por cobrar» es una vista de Facturas** (no una pantalla aparte): `/facturacion/por-cobrar` responde con un 301 a `/facturacion/facturas?vista=por-cobrar`. Encima de la lista, la **antigüedad por cliente** (como la de Xero): lo pendiente con IVA de cada cliente en plazo, 1–30, 31–60, 61–90 y más de 90 días desde el vencimiento (las fronteras del Resumen), con el total; cada celda filtra la lista (`cliente` y `antiguedad=en-plazo|1-30|31-60|61-90|mas-90`) y se quita al volver a pulsarla. En el móvil, una tarjeta por cliente. Una consulta (`InvoiceList::agingByClient`), 50 clientes como mucho.
+
+### D-438 · El remitente de las facturas (supuesto de la pregunta P-4, cambiable)
+- Las facturas salen **desde la dirección del relé** (`MAIL_FROM_ADDRESS`; en el servidor, administracion@audaxstudio.com, que el relé SMTP de Google Workspace ya acepta). La dirección no se elige en Ajustes: el relé solo acepta usuarios o alias del dominio, y el `.env` del servidor no se toca.
+- En **Ajustes › Correo** se eligen el **nombre** que ve el cliente (por defecto, el nombre comercial del emisor), la dirección de **respuesta** (vacía: llega al remitente) y una **copia oculta** a Audax de cada factura y recordatorio (vacía: ninguna). Ajuste `invoice_email`, con manage-billing y en la auditoría.
+- Si el propietario elige otra dirección (por ejemplo, facturas@), basta con crear el alias en Google Workspace y cambiar `MAIL_FROM_ADDRESS`, o separar la dirección de las facturas en un ajuste propio.
+
+### D-439 · Plantillas de email
+- Una por tipo (**factura, rectificativa y recordatorio**) e idioma (**español e inglés**; cada cliente recibe la de su idioma), con asunto y texto plano. Las de serie están en `lang/es/invoicing.php`; las cambiadas, en `email_templates`; «Volver a la de serie» quita la cambiada.
+- **Variables** entre corchetes, como el plan: `[cliente]`, `[numero]`, `[importe]`, `[pendiente]`, `[vencimiento]`, `[enlace]`, `[empresa]` y, en la rectificativa, `[rectificada]`. El diálogo de envío llega con todas puestas (salvo `[enlace]`, que es de cada envío) y se puede retocar antes de enviar.
+- En el email el texto se escapa; una URL (la de `[enlace]`) se convierte en un enlace con nombre. Debajo del texto va siempre el botón «Ver y descargar la factura» y una línea con la caducidad del enlace. La cabecera y el pie llevan el nombre del remitente (el emisor), no el de la app.
+- Las de serie tutean al cliente, como el resto de la app («Cualquier duda, responde a este correo»). Se pueden cambiar en Ajustes.
+
+### D-440 · Enlace firmado de la factura y «vista por el cliente» (H-098)
+- `/factura/{uuid}?envio={id}&expires=…&signature=…`, **sin usuario**, que caduca a los **60 días**. Lleva el uuid (no el id) y el envío del que sale. Enseña lo que importa al cliente (número, fechas, total, lo pendiente, el estado, la forma de pago), el PDF archivado (ver y descargar, con enlaces firmados hasta la misma fecha) y los adjuntos visibles. Nunca la nota interna, los proyectos ni nada de la plantilla. Con la marca de la cabecera del portal y en el idioma del cliente.
+- **Manipulado: 403; caducado: 410**, con una página que lo explica y dice cómo pedir otro (responder al email). Con la emisión apagada (y fuera del modo de prueba) o un borrador: 404.
+- **«Vista por el cliente»**, sin píxel espía: la primera vez y cuántas veces se abre la página o el PDF desde el enlace (y desde el portal), en la factura y en el envío. Las visitas de la plantilla con la sesión iniciada no cuentan. Sale bajo el estado de la ficha («Vista por el cliente el 14/11 a las 10:32 · 3 veces») y en la historia de cada envío.
+
+### D-441 · Enviar por email
+- **Diálogo**: destinatarios propuestos (los emails de facturación del cliente, marcados; si no tiene, los del último envío o su contacto) y, para añadir con un clic, su contacto, sus contactos de Holded y sus usuarios del portal; CC; asunto y texto de la plantilla; lo que se adjunta. Hasta 10 en Para y 10 en CC.
+- **Envío** (`InvoiceMailer` y el job `SendSalesDocumentEmail`): se guarda en `sales_document_emails` (destinatarios, asunto y texto tal como salen, adjuntos, huella del PDF, id del mensaje, estado y error) y va por la **cola `mail`**, con un solo intento (repetirlo podría mandarlo dos veces). Adjunta el **PDF archivado** (lo genera si aún no está) y los adjuntos visibles. Si el relé lo rechaza, queda «No se pudo enviar» con el error en la historia, y se puede volver a enviar.
+- La factura queda **enviada** con el primer envío aceptado: el botón pasa a «Volver a enviar» y **ya no se puede anular su registro** (V-03: una factura que recibió el cliente no «no debió existir»; se anula con una rectificativa).
+- **Modo de prueba** (D-239): con el módulo sin encender de verdad, el correo **solo le llega a quien lo envía** (el diálogo lo avisa y el botón dice «Enviármelo a mí»), con un aviso dentro del email; no cuenta como enviada.
+- La rectificativa se envía con su plantilla. Una de la serie de pruebas se puede enviar (el diálogo avisa: el PDF lleva la marca «Prueba»).
+- Quién: `manage-billing` (matriz `send` y `send_reminder`).
+
+### D-442 · Recordatorios de cobro por escalones (H-092)
+- **Escalones** en Ajustes › Recordatorios: de serie, 3 días antes, el día del vencimiento, y 7 y 30 días después; se añaden (días antes, el día o después), se apagan y se quitan (se archivan: sus envíos los siguen nombrando).
+- **Cada mañana a las 09:00** (`app:billing-send-reminders`): a las facturas propias emitidas (no rectificativas ni de pruebas) con algo pendiente, el **último escalón que ya ha llegado**, como mucho de hace 7 días (si un día no corre, al siguiente se pone al día; al encender el módulo no sale una tanda de recordatorios viejos) y no anterior a la emisión. **Uno por factura y escalón**, y nunca uno anterior a otro ya enviado. Justo antes de enviar se mira otra vez: **nunca a una cobrada o anulada**.
+- **A quién**: los destinatarios del último envío de la factura o, si no se ha enviado, los emails de facturación del cliente. **Por cliente** se apagan en su ficha de facturación («Recordatorios de cobro», encendido por defecto).
+- **Modo de prueba**: con `billing` o `invoicing` sin encender de verdad, la orden no hace nada, ni siquiera para los admins.
+- **Los que no salen** (sin destinatarios o con el correo fallido) de facturas que siguen pendientes van a «Requiere atención» del Resumen, que lleva a `/facturacion/facturas?vista=por-cobrar&recordatorio=fallido`; salen también en la historia de la factura. Cobrada la factura, deja de pedir atención.
+- **A mano**: «Enviar recordatorio de cobro» en el menú «…» de la ficha, con la plantilla del recordatorio, solo con algo pendiente.
+
+### D-443 · Las facturas en el portal del cliente **[amplía D-064; cambia D-097 para esta opción]**
+- Pestaña **«Facturas»** en el portal (`/portal/facturas`): las facturas propias **emitidas** del cliente y sus rectificativas (y las anuladas, como anuladas), con lo pendiente, el estado de cobro, el vencimiento, cómo pagar (la forma de pago con el IBAN, como en el PDF), el PDF (ver y descargar) y los adjuntos visibles. **Nunca** borradores, anuladas por error, de la serie de pruebas, de otro cliente ni nada interno.
+- **Se enciende por cliente** en su ficha de facturación («Facturas en el portal», apagado por defecto), con view-billing y la emisión visible: es un dato de facturación, así que no va en los ajustes del portal (ClientPolicy::update, D-097). Y solo con la emisión **encendida de verdad**: en modo de prueba el cliente no ve nada.
+- Aislamiento: una factura o un adjunto de otro cliente, un borrador o una de pruebas dan **404** (`PortalRoutesIsolationTest` recorre también las rutas nuevas).
+
+### D-444 · Adjuntos en la factura (H-122)
+- Con el sistema de adjuntos de siempre (`AttachmentStorage`: disco privado, tipo real, miniatura en cola), en `attachments/invoicing/{id}`, sin proyecto (no salen en la pestaña Archivos). Cada uno es **interno** o **visible para el cliente** (`attachments.client_visible`): los visibles van adjuntos en el email y salen en el enlace firmado y en el portal.
+- No son fiscales: se añaden, se cambian de visibilidad y se quitan también en una emitida, quien prepara (use-invoicing, matriz `attach`), desde la ficha; siempre en la auditoría. La ruta de adjuntos de siempre solo los sirve a quien usa la emisión, y nunca los borra. Duplicar una factura no copia sus adjuntos.
+
+### D-445 · La ficha de la factura con E2 **[amplía D-408 y D-428]**
+- **Cabecera**: «Enviar» (destacado mientras no se ha enviado) y «Registrar cobro» (destacado una vez enviada), además de lo de E1; «Enviar recordatorio de cobro» en el menú «…». Bajo el estado, «Vista por el cliente…» o «Enviada; el cliente aún no la ha abierto».
+- **Cobros** debajo de las cifras; **Adjuntos** debajo de la historia; en la columna, la **cadena de documentos** (L5, H-034): de qué factura se duplicó → la factura → sus rectificativas (por el total o por diferencias) → sus cobros.
+- **Historia**: además, cada envío (a quién, quién, si falló y por qué, si lo abrió el cliente), cada recordatorio (con su escalón), cada cobro y cada cobro anulado.
+
+### D-446 · Permisos de E2 y un error de E1 corregido
+- **Cobrar, anular un cobro, enviar y recordar**: `manage-billing` (admins y quien tenga el permiso, por ejemplo finanzas). **Adjuntos**: quien prepara (use-invoicing). **Ajustes del correo y los recordatorios**: se ven con use-invoicing y se cambian con manage-billing. **Opciones del cliente**: view-billing con la emisión visible. Responsables, plantilla, colaboradores, clientes del portal y el admin excluido de Facturación (D-245): nada (`CollectAccessTest`). La matriz compartida (`document-actions.json`) gana `record_payment`, `void_payment`, `send`, `send_reminder` y `attach`.
+- **Corregido de E1**: el botón «Editar» de cada fila de Ajustes (series, impuestos, servicios y formas de pago) no abría su diálogo (no pasaba al botón lo que le pone `DialogTrigger`). Lo encontró el E2E de E2 al cambiar la fecha de inicio de la serie F.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -3186,7 +3257,7 @@ Respuesta del propietario: «por norma general, si nos pasamos, lo facturamos en
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-435** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-435 a D-439, reservadas para las respuestas del propietario; D-440 en adelante, libres).
+La siguiente libre es **D-447** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-447 a D-451, reservadas para las respuestas del propietario, que antes iban en D-435 a D-439 y las ha usado E2 por encargo; D-452 en adelante, libres).
