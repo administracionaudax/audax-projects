@@ -66,6 +66,7 @@ it('calcula la portada a mano', function () {
             'unlinked' => ['count' => 4, 'amount' => '3600.00'],
             'contacts' => ['count' => 1, 'amount' => '300.00'],
             'banks' => ['count' => 1, 'over' => 0, 'threshold' => 85],
+            'reminders' => ['count' => 0],
         ])
         ->and($summary['kpis'])->toBe([
             'invoiced' => '3500.00',
@@ -129,5 +130,6 @@ it('sin nada pendiente, «Requiere atención» está vacío (el «Todo al día»
         'unlinked' => ['count' => 0, 'amount' => '0.00'],
         'contacts' => ['count' => 0, 'amount' => '0.00'],
         'banks' => ['count' => 0, 'over' => 0, 'threshold' => 85],
+        'reminders' => ['count' => 0],
     ]);
 });

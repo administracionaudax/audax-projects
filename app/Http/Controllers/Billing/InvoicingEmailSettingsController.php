@@ -75,6 +75,7 @@ class InvoicingEmailSettingsController extends Controller
 
     public function updateTemplate(Request $request, string $kind, string $language): RedirectResponse
     {
+        self::assertTemplate($kind, $language);
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:10000'],
@@ -94,6 +95,7 @@ class InvoicingEmailSettingsController extends Controller
     /** «Volver a la de serie»: quita la plantilla cambiada. */
     public function resetTemplate(Request $request, string $kind, string $language): RedirectResponse
     {
+        self::assertTemplate($kind, $language);
         $old = EmailTemplates::get($kind, $language);
         EmailTemplate::query()->where('kind', $kind)->where('language', $language)->delete();
 
@@ -126,6 +128,12 @@ class InvoicingEmailSettingsController extends Controller
         $rule->forceFill(['archived_at' => now(), 'is_active' => false])->save();
 
         return $this->saved($request, 'reminder_rule', $old, []);
+    }
+
+    /** Un tipo o un idioma que no existe, 404 (después de los permisos de la ruta). */
+    private static function assertTemplate(string $kind, string $language): void
+    {
+        abort_unless(in_array($kind, EmailTemplates::KINDS, true) && in_array($language, EmailTemplates::LANGUAGES, true), 404);
     }
 
     /**

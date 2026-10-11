@@ -52,7 +52,7 @@ it('ve sus facturas emitidas con su estado, lo pendiente y nada interno', functi
             ->where('summary.pending', '1152.00'));
 
     expect($this->actingAs($this->portal)->get('/portal/facturas')->getContent())->not->toContain('Nota interna secreta')
-        ->and($this->actingAs($this->portal)->get('/portal')->inertiaProps('portal.invoices'))->toBeTrue();
+        ->and($this->actingAs($this->portal)->get('/portal')->inertiaProps('portal.bills'))->toBeTrue();
 });
 
 it('descarga su PDF y nunca el de otro cliente, un borrador, una de prueba ni una anulada por error', function () {
@@ -91,7 +91,7 @@ it('solo los adjuntos visibles para el cliente', function () {
 it('apagado para el cliente, con la emisión apagada o en modo de prueba: 404 y sin «Facturas»', function () {
     $this->client->billingProfile()->update(['portal_invoices' => false]);
     $this->actingAs($this->portal)->get('/portal/facturas')->assertNotFound();
-    expect($this->actingAs($this->portal)->get('/portal')->inertiaProps('portal.invoices'))->toBeFalse();
+    expect($this->actingAs($this->portal)->get('/portal')->inertiaProps('portal.bills'))->toBeFalse();
 
     $this->client->billingProfile()->update(['portal_invoices' => true]);
     Setting::set('modules', [...(array) Setting::get('modules'), 'billing' => false, 'invoicing' => false]);

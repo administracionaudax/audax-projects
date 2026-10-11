@@ -111,6 +111,8 @@ it('las rutas que no son del portal ni internas son solo de cuenta, públicas o 
         '#^marca/logo/#',
         // Informe enviado por correo como enlace (D-141): sin sesión, solo con firma de 7 días.
         '#^informes/descargas/#',
+        // La factura desde el email (E2, D-440): sin sesión, solo con firma de 60 días.
+        '#^factura/#',
         // Horizon: su propia puerta (solo admin fuera de local).
         '#^horizon#',
         // Acceso de solo lectura de la Inspección de Trabajo (D-353): sin cuenta de la app, con su

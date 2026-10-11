@@ -193,12 +193,8 @@ Route::middleware('module:billing')->group(function () use ($exports) {
 
             // E2 (D-438, D-439 y D-442): remitente, plantillas de email y escalones de los recordatorios.
             Route::put('correo', [InvoicingEmailSettingsController::class, 'updateSender'])->name('billing.settings.email.update');
-            Route::put('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'updateTemplate'])
-                ->whereIn('kind', ['invoice', 'credit_note', 'reminder'])->whereIn('language', ['es', 'en'])
-                ->name('billing.settings.templates.update');
-            Route::delete('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'resetTemplate'])
-                ->whereIn('kind', ['invoice', 'credit_note', 'reminder'])->whereIn('language', ['es', 'en'])
-                ->name('billing.settings.templates.reset');
+            Route::put('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'updateTemplate'])->name('billing.settings.templates.update');
+            Route::delete('plantillas/{kind}/{language}', [InvoicingEmailSettingsController::class, 'resetTemplate'])->name('billing.settings.templates.reset');
             Route::post('recordatorios', [InvoicingEmailSettingsController::class, 'storeRule'])->name('billing.settings.reminders.store');
             Route::put('recordatorios/{rule}', [InvoicingEmailSettingsController::class, 'updateRule'])->whereNumber('rule')->name('billing.settings.reminders.update');
             Route::delete('recordatorios/{rule}', [InvoicingEmailSettingsController::class, 'destroyRule'])->whereNumber('rule')->name('billing.settings.reminders.destroy');

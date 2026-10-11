@@ -26,7 +26,7 @@ final class PortalShell
     ) {}
 
     /**
-     * @return array{company: array{name: string, logo: array{url: string, width: int, height: int}|null}, projects: list<array{id: int, code: string, name: string, view: bool, gantt: bool}>, invoices: bool}
+     * @return array{company: array{name: string, logo: array{url: string, width: int, height: int}|null}, projects: list<array{id: int, code: string, name: string, view: bool, gantt: bool}>, bills: bool}
      */
     public function for(User $user): array
     {
@@ -34,16 +34,16 @@ final class PortalShell
             $scope = PortalScope::for($user);
             $projects = $this->projects->navigation($scope);
             // «Facturas» (E2, D-443): con la emisión encendida y las facturas abiertas al cliente.
-            $invoices = PortalInvoices::enabledFor($scope);
+            $bills = PortalInvoices::enabledFor($scope);
         } catch (HttpException) {
             $projects = [];
-            $invoices = false;
+            $bills = false;
         }
 
         return [
             'company' => $this->identity->forPortal(),
             'projects' => $projects,
-            'invoices' => $invoices,
+            'bills' => $bills,
         ];
     }
 }

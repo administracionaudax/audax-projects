@@ -66,11 +66,10 @@ Route::get('informes/descargas/{download}', ReportDownloadController::class)
 // caduca a los 60 días (PublicInvoiceController comprueba la firma y explica si ha caducado). Se
 // anota cuándo la abre el cliente; la plantilla con sesión no cuenta.
 Route::prefix('factura/{document}')->whereUuid('document')->name('invoices.public.')
-    ->middleware('throttle:60,1,invoices.public')
     ->group(function (): void {
-        Route::get('/', [PublicInvoiceController::class, 'show'])->name('show');
-        Route::get('pdf', [PublicInvoiceController::class, 'pdf'])->name('pdf');
-        Route::get('adjuntos/{attachment}', [PublicInvoiceController::class, 'attachment'])->whereNumber('attachment')->name('attachment');
+        Route::get('/', [PublicInvoiceController::class, 'show'])->middleware('throttle:60,1,invoices.public.show')->name('show');
+        Route::get('pdf', [PublicInvoiceController::class, 'pdf'])->middleware('throttle:30,1,invoices.public.pdf')->name('pdf');
+        Route::get('adjuntos/{attachment}', [PublicInvoiceController::class, 'attachment'])->whereNumber('attachment')->middleware('throttle:30,1,invoices.public.attachment')->name('attachment');
     });
 
 // Acceso de solo lectura de la Inspección de Trabajo (Fase 11, R2; D-353): fuera del grupo interno,
