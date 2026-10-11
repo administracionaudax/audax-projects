@@ -351,7 +351,7 @@ final class SoldVsActual
         }
 
         $links = BillingDocumentLink::query()->whereIn('project_id', $projectIds)
-            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,document_id,name,service_code,units,subtotal', 'invoice.rectified:id,collection_status'])
+            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,document_id,name,service_code,units,subtotal,minutes', 'invoice.rectified:id,collection_status'])
             ->orderBy('id')->get()
             // Lo facturado y, aparte, los borradores (previsto, D-395); nunca lo anulado.
             ->filter(fn (BillingDocumentLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);
@@ -399,7 +399,10 @@ final class SoldVsActual
             foreach ($invoice->lines as $line) {
                 $kind = InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units);
                 $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
-                if ($kind->countsHours()) {
+                // Las horas facturadas desde el trabajo (E3) llevan sus minutos exactos.
+                if ($line->minutes !== null) {
+                    $minutes += $sign * $line->minutes;
+                } elseif ($kind->countsHours()) {
                     $minutes += $sign * (int) round((float) $line->units * 60);
                 }
                 if ($kind === InvoiceLineKind::HourBank) {
