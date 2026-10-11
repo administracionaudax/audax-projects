@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Spatie\Activitylog\Models\Activity;
 
 /*
 | Envío de una factura propia por email (PLAN-EMISION §3.4, E2; D-438 a D-441): el diálogo propone los
@@ -167,4 +168,17 @@ it('el email escapa el texto y convierte el enlace en un enlace con nombre', fun
 
     $html = (new SalesDocumentMail('Factura', "Hola:\n\nTexto", 'https://ejemplo.test/f', 'es', false, false, []))->render();
     expect($html)->toContain('Ver y descargar la factura')->toContain('https://ejemplo.test/f')->toContain('El PDF va adjunto');
+});
+
+it('Ajustes: cambiar una plantilla, volver a la de serie y el remitente, en la auditoría', function () {
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/emision/plantillas/reminder/es', ['subject' => 'Te recordamos la [numero]', 'body' => 'Pendiente: [pendiente]'])->assertRedirect();
+    expect(EmailTemplate::query()->where('kind', 'reminder')->value('subject'))->toBe('Te recordamos la [numero]');
+
+    $this->actingAs($this->admin)->delete('/facturacion/ajustes/emision/plantillas/reminder/es')->assertRedirect();
+    expect(EmailTemplate::query()->count())->toBe(0);
+
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/emision/correo', ['sender_name' => '', 'reply_to' => 'no-es-email', 'bcc' => null])->assertSessionHasErrors('reply_to');
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/emision/correo', ['sender_name' => '', 'reply_to' => 'Cobros@AudaxStudio.com', 'bcc' => null])->assertSessionHasNoErrors();
+    expect(InvoiceEmailSettings::get())->toBe(['sender_name' => 'Audax Studio', 'reply_to' => 'cobros@audaxstudio.com', 'bcc' => null])
+        ->and(Activity::query()->where('log_name', 'settings')->count())->toBe(3);
 });
