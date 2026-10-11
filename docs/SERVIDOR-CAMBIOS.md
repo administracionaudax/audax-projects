@@ -180,3 +180,11 @@ Comprobado con los datos reales: todas las pantallas 200 y las URL antiguas 301.
 - Vendido frente a real lee bien los proyectos por horas.
 
 Probado con los datos reales: todas las pantallas 200, entre 113 y 405 ms. Pruebas de Facturación del tramo 1 en PostgreSQL del servidor: 161 en verde. Plan de la emisión propia en `docs/PLAN-EMISION.md` (D-249). Sin cambios de sistema. |
+| 11/10 | **Emisión propia E1 y las respuestas sobre Por revisar y Por facturar** (D-417 a D-434). Copia previa `antes-de-emision-e1.dump` (600, comprobada: 1.198 entradas). Migraciones:
+- `add_no_project_needed_to_holded_invoices`;
+- `create_invoicing_tables`, con triggers de solo alta para el registro encadenado y las facturas emitidas;
+- `create_billing_documents_view`, que une las facturas de Holded y las propias;
+- `add_invoicing_off_to_stored_modules`: el módulo `invoicing` queda **apagado**;
+- `create_manage_billing_permission`.
+
+Comprobado con los datos reales: todas las pantallas de Facturación 200 (entre 154 y 421 ms), 930 documentos en la vista conjunta y `app:billing-verify-chain` íntegra (0 registros propios). Nada enviado a la AEAT ni escrito en Holded. Batería V con T0 = 2026-10-11 sin incidencias; webs 33/35. El acceso SSH volvió con la IP 93.175.243.255 (el perímetro del CPD admite la red de siempre). Sin cambios de sistema. |
