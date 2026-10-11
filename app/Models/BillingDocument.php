@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $synced_at
  * @property CarbonImmutable|null $no_project_needed_at «No necesita proyecto» (D-431), de las dos tablas
  * @property bool $is_test
+ * @property CarbonImmutable|null $scheduled_for Borrador propio programado (E3)
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Client|null $client
@@ -83,6 +84,7 @@ class BillingDocument extends Model
             'pending_total' => 'decimal:2',
             'is_draft' => 'boolean',
             'is_test' => 'boolean',
+            'scheduled_for' => 'immutable_date',
             'tags' => 'array',
             'synced_at' => 'immutable_datetime',
             'no_project_needed_at' => 'immutable_datetime',

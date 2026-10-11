@@ -37,6 +37,7 @@ return [
             'holded_project' => 'Proyecto de Holded',
             'rectified' => 'De la factura rectificada',
             'manual' => 'A mano',
+            'work' => 'Desde el trabajo',
         ],
         'sale_kind' => [
             'bolsa' => 'Bolsa',

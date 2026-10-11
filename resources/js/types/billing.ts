@@ -29,7 +29,8 @@ export type InvoiceLinkMethod =
     | 'f_code'
     | 'holded_project'
     | 'rectified'
-    | 'manual';
+    | 'manual'
+    | 'work';
 
 export type InvoiceLineKind =
     | 'bank'

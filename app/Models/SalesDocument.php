@@ -77,6 +77,12 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property CarbonImmutable|null $first_viewed_at Primera vez que el cliente abrió su enlace o su PDF (D-440)
  * @property CarbonImmutable|null $last_viewed_at
  * @property int $view_count
+ * @property int|null $recurring_invoice_id La recurrente de la que sale (E3)
+ * @property CarbonImmutable|null $recurring_period_on El periodo de la recurrente que factura
+ * @property CarbonImmutable|null $scheduled_for Programada (E3): un borrador que se emite solo ese día
+ * @property bool $scheduled_send Al emitirse sola, enviarla al cliente
+ * @property int|null $scheduled_by Quién la programó (la emite en su nombre)
+ * @property string|null $auto_issue_error Por qué no se pudo emitir o enviar sola
  * @property int|null $created_by
  * @property int|null $updated_by
  * @property CarbonImmutable|null $created_at
@@ -102,6 +108,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property-read SalesDocument|null $source
  * @property-read HoldedInvoice|null $sourceHolded
  * @property-read Collection<int, PaymentReminderDelivery> $reminderDeliveries
+ * @property-read RecurringInvoice|null $recurring
+ * @property-read User|null $scheduler
  */
 #[Fillable([
     'uuid', 'type', 'is_test', 'series_id', 'issue_date', 'operation_date', 'due_date',
@@ -127,6 +135,7 @@ class SalesDocument extends Model
         'language' => 'es',
         'paid_total' => '0.00',
         'view_count' => 0,
+        'scheduled_send' => false,
     ];
 
     /**
@@ -158,6 +167,9 @@ class SalesDocument extends Model
             'first_viewed_at' => 'immutable_datetime',
             'last_viewed_at' => 'immutable_datetime',
             'view_count' => 'integer',
+            'recurring_period_on' => 'immutable_date',
+            'scheduled_for' => 'immutable_date',
+            'scheduled_send' => 'boolean',
         ];
     }
 
@@ -339,6 +351,30 @@ class SalesDocument extends Model
     public function sourceHolded(): BelongsTo
     {
         return $this->belongsTo(HoldedInvoice::class, 'source_holded_invoice_id');
+    }
+
+    /**
+     * La recurrente de la que sale (E3; la cadena de documentos).
+     *
+     * @return BelongsTo<RecurringInvoice, $this>
+     */
+    public function recurring(): BelongsTo
+    {
+        return $this->belongsTo(RecurringInvoice::class, 'recurring_invoice_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function scheduler(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'scheduled_by');
+    }
+
+    /** ¿Un borrador programado para emitirse solo (E3)? */
+    public function isScheduled(): bool
+    {
+        return $this->isDraft() && $this->scheduled_for !== null;
     }
 
     /**

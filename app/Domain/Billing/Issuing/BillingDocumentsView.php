@@ -3,6 +3,7 @@
 namespace App\Domain\Billing\Issuing;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Las vistas SQL que unen las facturas de Holded y las propias (PLAN-EMISION §4.6; D-427), con las
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\DB;
  *   anulada por error), rectificativa sin nada pendiente, cobrada, vencida (con el vencimiento antes
  *   de hoy), cobrada en parte o pendiente, con las mismas claves que las de Holded (D-386).
  *
+ * Las líneas propias llevan sus minutos (`minutes`): los de las horas facturadas desde el trabajo
+ * (E3), exactos; las de Holded, NULL (se leen de las unidades, D-396).
+ *
  * Una migración que cambie `holded_invoices`, sus líneas o sus enlaces, o las tablas de ventas, tiene
  * que quitar las vistas antes (drop y dropPayments) y volver a crearlas después (create y
  * createPayments): PostgreSQL no deja cambiar una columna que usa una vista y SQLite rehace la tabla
@@ -30,7 +34,11 @@ final class BillingDocumentsView
 {
     public static function create(): void
     {
-        DB::statement(<<<'SQL'
+        // E3 (D-450 en adelante): la fecha de programación de un borrador propio (vista «Programadas»).
+        // Las migraciones anteriores a E3 crean la vista sin la columna en la tabla: va como NULL.
+        $scheduled = Schema::hasColumn('sales_documents', 'scheduled_for') ? 'sd.scheduled_for' : 'CAST(NULL AS DATE)';
+
+        DB::statement(str_replace('{scheduled}', $scheduled, <<<'SQL'
             CREATE VIEW billing_documents_all AS
             SELECT
                 hi.id AS id,
@@ -61,7 +69,8 @@ final class BillingDocumentsView
                 hi.no_project_needed_at AS no_project_needed_at,
                 FALSE AS is_test,
                 hi.created_at AS created_at,
-                hi.updated_at AS updated_at
+                hi.updated_at AS updated_at,
+                CAST(NULL AS DATE) AS scheduled_for
             FROM holded_invoices hi
             UNION ALL
             SELECT
@@ -101,9 +110,10 @@ final class BillingDocumentsView
                 sd.no_project_needed_at,
                 sd.is_test,
                 sd.created_at,
-                sd.updated_at
+                sd.updated_at,
+                {scheduled}
             FROM sales_documents sd
-            SQL);
+            SQL));
 
         DB::statement('CREATE VIEW billing_documents AS SELECT * FROM billing_documents_all WHERE is_test = FALSE');
 
@@ -121,7 +131,8 @@ final class BillingDocumentsView
                 l.discount_pct AS discount_pct,
                 l.subtotal AS subtotal,
                 l.tax_rate AS tax_rate,
-                l.holded_project_id AS holded_project_id
+                l.holded_project_id AS holded_project_id,
+                CAST(NULL AS INTEGER) AS minutes
             FROM holded_invoice_lines l
             UNION ALL
             SELECT
@@ -136,7 +147,8 @@ final class BillingDocumentsView
                 sl.discount_pct,
                 sl.line_base,
                 sl.tax_rate,
-                NULL
+                NULL,
+                sl.minutes
             FROM sales_document_lines sl
             JOIN sales_documents sd ON sd.id = sl.sales_document_id
             WHERE sl.kind = 'item' AND sd.is_test = FALSE
