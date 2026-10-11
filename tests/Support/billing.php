@@ -82,6 +82,8 @@ function holdedFake(array $data = []): FakeHolded
         $data['invoices'] ?? [],
         $data['creditNotes'] ?? [],
         $data['payments'] ?? [],
+        [],
+        $data['recurring'] ?? [],
     );
 }
 

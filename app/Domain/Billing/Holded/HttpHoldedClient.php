@@ -102,6 +102,11 @@ final class HttpHoldedClient implements HoldedApi
         return $this->paginate('/payments');
     }
 
+    public function recurringInvoices(): iterable
+    {
+        return $this->paginate((string) config('services.holded.recurring_path', '/recurring-invoices'));
+    }
+
     public function pdf(string $holdedId, HoldedDocumentKind $kind): string
     {
         $path = ($kind === HoldedDocumentKind::CreditNote ? '/credit-notes/' : '/invoices/').rawurlencode($holdedId).'/pdf';

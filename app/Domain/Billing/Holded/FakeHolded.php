@@ -13,6 +13,7 @@ use App\Models\HourBank;
 use App\Models\Project;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -38,6 +39,7 @@ class FakeHolded implements HoldedApi
      * @param  list<array<string, mixed>>  $creditNotes
      * @param  list<array<string, mixed>>  $payments
      * @param  array<string, string>  $pdfs  id → contenido; si falta, uno generado
+     * @param  list<array<string, mixed>>  $recurring  las recurrentes (E3)
      */
     public function __construct(
         private array $contacts = [],
@@ -46,6 +48,7 @@ class FakeHolded implements HoldedApi
         private array $creditNotes = [],
         private array $payments = [],
         private array $pdfs = [],
+        private array $recurring = [],
     ) {}
 
     public function contacts(): iterable
@@ -94,6 +97,13 @@ class FakeHolded implements HoldedApi
         $this->requests++;
 
         return $this->payments;
+    }
+
+    public function recurringInvoices(): iterable
+    {
+        $this->requests++;
+
+        return $this->recurring;
     }
 
     public function pdf(string $holdedId, HoldedDocumentKind $kind): string
@@ -388,7 +398,64 @@ class FakeHolded implements HoldedApi
         }
 
         // La factura de horas sin proyecto, para enlazarla a mano (E2E).
-        return new self($contacts, $projects, $invoices, $creditNotes, $payments);
+        return new self($contacts, $projects, $invoices, $creditNotes, $payments, [], self::recurringFor($sold, $contactOf, $today));
+    }
+
+    /**
+     * Las recurrentes de Holded (E3): una mensual por fee (el día 29, en borrador), una trimestral
+     * de mantenimiento, una anual de hosting, una de un contacto que no es de ningún cliente y una
+     * con un servicio que no está en el catálogo. Como las 16 reales: todas generan borradores.
+     *
+     * @param  Collection<int, Project>  $projects
+     * @param  array<int, array{id: string, name: string}>  $contactOf
+     * @return list<array<string, mixed>>
+     */
+    private static function recurringFor(Collection $projects, array $contactOf, CarbonImmutable $today): array
+    {
+        $recurring = [];
+        $next = $today->day >= 29 ? $today->addMonthNoOverflow()->startOfMonth() : $today->startOfMonth();
+        $next = $next->setDay(min(29, $next->daysInMonth));
+        $first = null;
+
+        foreach ($projects as $project) {
+            if (! isset($contactOf[(int) $project->client_id])) {
+                continue;
+            }
+            $first ??= $project;
+            if (self::isFee($project)) {
+                $amount = $project->monthly_fee_amount !== null ? (string) $project->monthly_fee_amount : '1200.00';
+                $recurring[] = [
+                    'id' => self::holdedId('recurring-fee-'.$project->id),
+                    'name' => 'Fee '.$project->name,
+                    'contact_id' => $contactOf[(int) $project->client_id]['id'],
+                    'contact_name' => $contactOf[(int) $project->client_id]['name'],
+                    'interval' => 'month',
+                    'frequency' => 1,
+                    'start_date' => ($project->start_date ?? $today)->toDateString(),
+                    'next_date' => $next->toDateString(),
+                    'end_date' => null,
+                    'status' => 'active',
+                    'approve' => false,
+                    'items' => [self::line('Fee Producto digital', $amount, null, 'Sprint de [mes] [año] · '.$project->name, code: 'F_UX')],
+                ];
+            }
+        }
+
+        if ($first !== null) {
+            $contact = $contactOf[(int) $first->client_id];
+            $recurring[] = ['id' => self::holdedId('recurring-maintenance'), 'name' => 'Mantenimiento trimestral', 'contact_id' => $contact['id'], 'contact_name' => $contact['name'],
+                'interval' => 'month', 'frequency' => 3, 'start_date' => $today->startOfYear()->toDateString(), 'next_date' => $today->startOfQuarter()->addMonthsNoOverflow(3)->toDateString(),
+                'status' => 'active', 'approve' => false, 'items' => [self::line('Mantenimiento', '450.00', null, 'Mantenimiento del [trimestre] de [año]', code: 'MANT')]];
+            $recurring[] = ['id' => self::holdedId('recurring-hosting'), 'name' => 'Hosting anual', 'contact_id' => $contact['id'], 'contact_name' => $contact['name'],
+                'interval' => 'year', 'frequency' => 1, 'start_date' => $today->startOfYear()->toDateString(), 'next_date' => $today->addYear()->startOfYear()->addDays(14)->toDateString(),
+                'status' => 'active', 'approve' => false, 'items' => [self::line('Herramienta', '240.00', null, 'Hosting y dominio [año]')]];
+        }
+
+        $recurring[] = ['id' => self::holdedId('recurring-nebula'), 'name' => 'Nébula · Fee', 'contact_id' => self::holdedId('contact-nebula'), 'contact_name' => 'Estudio Nébula, S.L.',
+            'interval' => 'month', 'frequency' => 1, 'start_date' => $today->startOfYear()->toDateString(), 'next_date' => $next->toDateString(),
+            'status' => 'active', 'approve' => false, 'items' => [self::line('Fee MK y RRSS', '800.00', null, 'Fee de [mes]', code: 'FMKRRSS')]];
+
+        return $recurring;
     }
 
     /**
