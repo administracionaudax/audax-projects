@@ -234,6 +234,9 @@ export function AttachmentsSection({
                             multiple
                             className="sr-only"
                             tabIndex={-1}
+                            aria-label={t(
+                                'invoicing.collect.attachments.add',
+                            )}
                             onChange={upload}
                             data-test="attachments-input"
                         />
