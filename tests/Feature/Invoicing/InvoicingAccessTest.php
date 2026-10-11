@@ -52,7 +52,7 @@ it('cada papel ve y hace lo suyo', function () {
     // Quien prepara: crea y edita borradores, no emite.
     $this->actingAs($this->finance)->get('/facturacion/facturas/nueva')->assertOk();
     $this->actingAs($this->finance)->get("/facturacion/documentos/{$this->draft->id}")->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->component('billing/documents/show')->where('actions', ['view', 'edit', 'delete', 'duplicate', 'download_pdf', 'edit_non_fiscal']));
+        ->assertInertia(fn (Assert $page) => $page->component('billing/documents/show')->where('actions', ['view', 'edit', 'delete', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'attach']));
     $this->actingAs($this->finance)->post("/facturacion/documentos/{$this->draft->id}/emitir")->assertForbidden();
     $this->actingAs($this->finance)->post("/facturacion/documentos/{$this->issued->id}/anular", ['reason' => 'No tiene permiso'])->assertForbidden();
 

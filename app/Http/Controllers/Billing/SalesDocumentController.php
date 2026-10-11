@@ -10,6 +10,7 @@ use App\Domain\Billing\Issuing\InvoiceCorrections;
 use App\Domain\Billing\Issuing\InvoiceIssuer;
 use App\Domain\Billing\Issuing\InvoicePdf;
 use App\Domain\Billing\Issuing\SalesDocumentPresenter;
+use App\Enums\BillingPaymentMethod;
 use App\Enums\SalesDocumentStatus;
 use App\Enums\SalesDocumentType;
 use App\Http\Controllers\Controller;
@@ -123,6 +124,10 @@ class SalesDocumentController extends Controller
             'projects' => in_array('edit_non_fiscal', $actions, true) ? EditorOptions::projects() : [],
             'open_issue' => $request->boolean('emitir') && in_array('issue', $actions, true),
             'today' => LocalTime::today()->toDateString(),
+            // E2: las formas de cobro del diálogo «Registrar cobro» (D-436).
+            'payment_methods' => in_array('record_payment', $actions, true)
+                ? array_map(fn (BillingPaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()], BillingPaymentMethod::cases())
+                : [],
             'list' => [
                 'back' => '/facturacion/facturas'.self::queryString([...$query, ...($neighbours['page'] > 1 ? ['pagina' => $neighbours['page']] : [])]),
                 'previous' => $neighbours['previous'] === null ? null : BillingDocument::urlFor($neighbours['previous']).self::queryString($query),

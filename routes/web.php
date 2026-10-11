@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\GoogleLoginController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Billing\PublicInvoiceController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HomeLayoutController;
 use App\Http\Controllers\NavSectionsController;
@@ -61,6 +62,17 @@ Route::get('informes/descargas/{download}', ReportDownloadController::class)
     ->middleware(['signed', 'throttle:30,1,reports.downloads.show'])
     ->name('reports.downloads.show');
 
+// La factura para el cliente desde el email (E2, D-440): sin usuario, con la firma de la URL, que
+// caduca a los 60 días (PublicInvoiceController comprueba la firma y explica si ha caducado). Se
+// anota cuándo la abre el cliente; la plantilla con sesión no cuenta.
+Route::prefix('factura/{document}')->whereUuid('document')->name('invoices.public.')
+    ->middleware('throttle:60,1,invoices.public')
+    ->group(function (): void {
+        Route::get('/', [PublicInvoiceController::class, 'show'])->name('show');
+        Route::get('pdf', [PublicInvoiceController::class, 'pdf'])->name('pdf');
+        Route::get('adjuntos/{attachment}', [PublicInvoiceController::class, 'attachment'])->whereNumber('attachment')->name('attachment');
+    });
+
 // Acceso de solo lectura de la Inspección de Trabajo (Fase 11, R2; D-353): fuera del grupo interno,
 // con su propio enlace, código y sesión (routes/app/inspection.php).
 require __DIR__.'/app/inspection.php';
@@ -100,7 +112,8 @@ Route::middleware(['auth', 'active', 'internal', 'collaborator', '2fa'])->group(
 Route::middleware(['auth', 'active', 'portal'])->prefix('portal')->name('portal.')->group(function () {
     // Fase 5: una ruta por área del portal (routes/portal/*.php). Todo sale de PortalScope (D-064).
     // El inicio (portal.home) está en routes/portal/banks.php: son las bolsas del cliente.
-    foreach (['banks', 'projects'] as $area) {
+    // Facturas (E2, D-443): las facturas propias del cliente, si las tiene encendidas.
+    foreach (['banks', 'projects', 'invoices'] as $area) {
         require __DIR__."/portal/{$area}.php";
     }
 });

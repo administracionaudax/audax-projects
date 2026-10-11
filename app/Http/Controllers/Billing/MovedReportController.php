@@ -18,6 +18,15 @@ class MovedReportController extends Controller
     {
         $to = $request->route()?->defaults['to'] ?? null;
         $to = is_string($to) ? $to : '/facturacion';
+
+        // Una URL nueva con su propia query (Por cobrar → Facturas · Por cobrar, E2): la suya manda.
+        if (str_contains($to, '?')) {
+            [$path, $fixed] = explode('?', $to, 2);
+            parse_str($fixed, $own);
+
+            return redirect()->to($path.'?'.http_build_query([...$request->query(), ...$own], '', '&', PHP_QUERY_RFC3986), 301);
+        }
+
         $query = (string) $request->getQueryString();
 
         return redirect()->to($query === '' ? $to : $to.'?'.$query, 301);

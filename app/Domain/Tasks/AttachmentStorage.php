@@ -5,6 +5,7 @@ namespace App\Domain\Tasks;
 use App\Domain\Tasks\Jobs\GenerateAttachmentThumbnail;
 use App\Models\Attachment;
 use App\Models\Message;
+use App\Models\SalesDocument;
 use App\Models\Setting;
 use App\Models\SuggestionComment;
 use App\Models\SuggestionPost;
@@ -158,10 +159,11 @@ final class AttachmentStorage
     }
 
     /**
-     * @param  int|null  $projectId  null en conversaciones sin proyecto (directas y de grupo) y en las
-     *                               sugerencias del centro de ayuda (Fase 10, F-161 y F-165)
+     * @param  int|null  $projectId  null en conversaciones sin proyecto (directas y de grupo), en las
+     *                               sugerencias del centro de ayuda (Fase 10, F-161 y F-165) y en las
+     *                               facturas propias (E2)
      */
-    public function store(UploadedFile $file, Task|TaskComment|Message|SuggestionPost|SuggestionComment $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
+    public function store(UploadedFile $file, Task|TaskComment|Message|SuggestionPost|SuggestionComment|SalesDocument $attachable, ?int $projectId, User $uploader, bool $audio = false): Attachment
     {
         // Los vídeos solo en las sugerencias y sus comentarios (D-235).
         $videos = $attachable instanceof SuggestionPost || $attachable instanceof SuggestionComment;
@@ -175,6 +177,8 @@ final class AttachmentStorage
             $attachable instanceof Message => "attachments/chat/{$attachable->conversation_id}",
             $attachable instanceof SuggestionPost => "attachments/suggestions/{$attachable->id}",
             $attachable instanceof SuggestionComment => "attachments/suggestions/{$attachable->suggestion_post_id}/comments",
+            // Adjuntos de una factura propia (E2, D-444): contratos, albaranes…, sin proyecto.
+            $attachable instanceof SalesDocument => "attachments/invoicing/{$attachable->id}",
             default => throw new RuntimeException('Adjunto sin proyecto ni conversación.'),
         };
 

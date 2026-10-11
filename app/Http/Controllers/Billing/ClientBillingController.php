@@ -58,7 +58,7 @@ class ClientBillingController extends Controller
                 'tax_regimes' => array_map(fn (TaxRegime $regime): array => ['value' => $regime->value, 'label' => $regime->label()], TaxRegime::cases()),
                 'payment_methods' => array_map(fn (BillingPaymentMethod $method): array => ['value' => $method->value, 'label' => $method->label()], BillingPaymentMethod::cases()),
             ],
-            'can' => ['update' => $user->can('update', $client)],
+            'can' => ['update' => $user->can('update', $client), 'invoicing' => $user->can('use-invoicing')],
         ]);
     }
 
@@ -114,6 +114,32 @@ class ClientBillingController extends Controller
     }
 
     /**
+     * Opciones de facturación del cliente con la emisión propia (E2, D-442 y D-443): sus facturas en
+     * el portal (apagado por defecto) y los recordatorios de cobro por email (encendidos). Con
+     * use-invoicing (la ruta); queda en la auditoría.
+     */
+    public function updateOptions(Request $request, Client $client): RedirectResponse
+    {
+        $this->authorize('view', $client);
+
+        $data = $request->validate([
+            'portal_invoices' => ['required', 'boolean'],
+            'payment_reminders' => ['required', 'boolean'],
+        ]);
+
+        $profile = ClientBillingProfile::query()->firstOrNew(['client_id' => $client->id]);
+        $old = ['portal_invoices' => (bool) $profile->portal_invoices, 'payment_reminders' => (bool) $profile->payment_reminders];
+        $profile->fill(['portal_invoices' => (bool) $data['portal_invoices'], 'payment_reminders' => (bool) $data['payment_reminders']])->save();
+
+        activity('invoicing')->causedBy($request->user())->performedOn($client)->event('client_options_updated')
+            ->withProperties(['old' => $old, 'attributes' => ['portal_invoices' => $profile->portal_invoices, 'payment_reminders' => $profile->payment_reminders]])
+            ->log('invoicing.client_options_updated');
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('invoicing.flash.client_options_saved')]);
+
+        return back();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function profile(ClientBillingProfile $profile): array
@@ -133,6 +159,8 @@ class ClientBillingController extends Controller
             'language' => $profile->language,
             'billing_emails' => $profile->billing_emails ?? [],
             'complete' => $profile->isComplete(),
+            'portal_invoices' => (bool) $profile->portal_invoices,
+            'payment_reminders' => (bool) $profile->payment_reminders,
         ];
     }
 }

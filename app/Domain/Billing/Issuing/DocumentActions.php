@@ -17,8 +17,8 @@ use App\Models\User;
  * (V-03). Una acción que no está aquí no se ofrece; el servidor comprueba además las condiciones
  * concretas (por ejemplo, que no haya cobros para anular el registro).
  *
- * Fuera de E1: programar, enviar, enlace del cliente, cobros, recordatorios, hacer recurrente y
- * el estado en la AEAT (E2, E3 y E7).
+ * E2 añade cobrar, anular un cobro, enviar, recordar el cobro y los adjuntos. Fuera aún: programar,
+ * hacer recurrente (E3) y el estado en la AEAT (E7).
  */
 final class DocumentActions
 {
@@ -26,7 +26,7 @@ final class DocumentActions
 
     public const array ROLES = ['view', 'manage', 'admin'];
 
-    public const array ACTIONS = ['view', 'edit', 'delete', 'issue', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'open_holded'];
+    public const array ACTIONS = ['view', 'edit', 'delete', 'issue', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'open_holded', 'record_payment', 'void_payment', 'send', 'send_reminder', 'attach'];
 
     /** Acción → estado → papel mínimo (null: no se ofrece). */
     private const array MATRIX = [
@@ -42,6 +42,14 @@ final class DocumentActions
         'void' => ['issued' => 'admin', 'credit_note' => 'admin'],
         'view_record' => ['issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view'],
         'open_holded' => ['holded' => 'view'],
+        // E2 (D-436 a D-444): cobrar (en una rectificativa, la devolución), anular un cobro, enviar
+        // por email, recordar el cobro y los adjuntos. El servidor comprueba además que quede algo
+        // por cobrar (record_payment, send_reminder).
+        'record_payment' => ['issued' => 'manage', 'paid' => 'manage', 'credit_note' => 'manage'],
+        'void_payment' => ['issued' => 'manage', 'paid' => 'manage', 'cancelled' => 'manage', 'credit_note' => 'manage'],
+        'send' => ['issued' => 'manage', 'paid' => 'manage', 'credit_note' => 'manage'],
+        'send_reminder' => ['issued' => 'manage', 'paid' => 'manage'],
+        'attach' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view'],
     ];
 
     /**

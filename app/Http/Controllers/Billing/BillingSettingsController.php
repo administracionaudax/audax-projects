@@ -31,7 +31,7 @@ class BillingSettingsController extends Controller
     public const array ISSUER_FIELDS = ['legal_name', 'tax_id', 'address', 'postal_code', 'city', 'province', 'country_code', 'registry', 'iban', 'email', 'phone', 'legal_form', 'trade_name', 'website'];
 
     /** Apartados de Ajustes (?apartado=): el de siempre y, con la emisión, los suyos. */
-    public const array SECTIONS = ['general', 'series', 'impuestos', 'servicios', 'formas-de-pago', 'documento'];
+    public const array SECTIONS = ['general', 'series', 'impuestos', 'servicios', 'formas-de-pago', 'documento', 'correo', 'recordatorios'];
 
     public function edit(Request $request, ReviewInbox $inbox): Response
     {
@@ -69,6 +69,8 @@ class BillingSettingsController extends Controller
             // La emisión propia (E1, D-419, D-423, D-425 y D-426): solo con el módulo `invoicing` visible.
             'section' => in_array($request->query('apartado'), self::SECTIONS, true) ? $request->query('apartado') : 'general',
             'invoicing' => $user->can('use-invoicing') ? InvoicingSettingsController::props($user) : null,
+            // E2 (D-438, D-439 y D-442): remitente, plantillas de email y recordatorios.
+            'mailing' => $user->can('use-invoicing') ? InvoicingEmailSettingsController::props($user) : null,
         ]);
     }
 
