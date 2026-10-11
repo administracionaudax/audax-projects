@@ -188,3 +188,9 @@ Probado con los datos reales: todas las pantallas 200, entre 113 y 405 ms. Prueb
 - `create_manage_billing_permission`.
 
 Comprobado con los datos reales: todas las pantallas de Facturación 200 (entre 154 y 421 ms), 930 documentos en la vista conjunta y `app:billing-verify-chain` íntegra (0 registros propios). Nada enviado a la AEAT ni escrito en Holded. Batería V con T0 = 2026-10-11 sin incidencias; webs 33/35. El acceso SSH volvió con la IP 93.175.243.255 (el perímetro del CPD admite la red de siempre). Sin cambios de sistema. |
+| 11/10 | **Emisión propia E2: cobros, envío por email, recordatorios, portal y adjuntos** (D-435 a D-446). Copia previa `antes-de-emision-e2.dump` (600, comprobada: 1.351 entradas). Migración `create_invoicing_e2_tables`. El módulo `invoicing` sigue **apagado**.
+- Tareas nuevas en el planificador: `app:billing-verify-chain --nightly` (02:15) y `app:billing-send-reminders` (09:00). Los recordatorios solo salen con `billing` e `invoicing` encendidos de verdad; en modo de prueba no corren.
+- Pantallas de Facturación 200 con los datos reales.
+- Pruebas de E1 en PostgreSQL del servidor: 318 en verde.
+- Batería V sin incidencias; webs 33/35.
+- Sin cambios de sistema. |
