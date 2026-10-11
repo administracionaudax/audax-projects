@@ -5,6 +5,7 @@ import {
     CircleAlert,
     Gauge,
     Link2Off,
+    MailWarning,
     PartyPopper,
     UserRoundX,
 } from 'lucide-react';
@@ -107,7 +108,8 @@ export default function BillingSummaryPage({
         attention.overdue.count === 0 &&
         attention.unlinked.count === 0 &&
         attention.contacts.count === 0 &&
-        attention.banks.count === 0;
+        attention.banks.count === 0 &&
+        attention.reminders.count === 0;
 
     return (
         <>
@@ -300,6 +302,22 @@ function AttentionList({
                       ),
             action: t('billing.summary.attention.overdue_action'),
             href: `${INVOICES}?vista=vencidas&orden=vencimiento&dir=asc`,
+        });
+    }
+
+    // Recordatorios de cobro que no salieron (E2, D-442).
+    if (attention.reminders.count > 0) {
+        items.push({
+            key: 'reminders',
+            icon: MailWarning,
+            iconClass: 'text-danger',
+            text: tCount(
+                'invoicing.collect.summary.reminders',
+                attention.reminders.count,
+            ),
+            detail: t('invoicing.collect.summary.reminders_detail'),
+            action: t('invoicing.collect.summary.reminders_action'),
+            href: `${INVOICES}?vista=por-cobrar&recordatorio=fallido`,
         });
     }
 

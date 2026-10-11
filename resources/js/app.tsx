@@ -33,6 +33,9 @@ void createInertiaApp({
             // El acceso de solo lectura de la Inspección (D-353) trae su propio marco: no es la app.
             case name.startsWith('inspection/'):
                 return null;
+            // La factura desde el enlace firmado del email (E2, D-440): sin usuario, con su propio marco.
+            case name.startsWith('public/'):
+                return null;
             // Los ajustes son comunes: los clientes los ven dentro del portal.
             case name.startsWith('settings/'):
                 return (page.props as { auth?: Auth }).auth?.user?.is_client

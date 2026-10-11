@@ -106,5 +106,7 @@ it('la ficha de facturación del cliente las enciende (y los recordatorios), con
     expect($other->billingProfile()->first()->only(['portal_invoices', 'payment_reminders']))->toBe(['portal_invoices' => true, 'payment_reminders' => false]);
 
     $this->actingAs(userWithRole('employee'))->put("/clientes/{$other->id}/facturacion/opciones", ['portal_invoices' => false, 'payment_reminders' => true])->assertForbidden();
-    $this->actingAs($this->portal)->put("/clientes/{$other->id}/facturacion/opciones", ['portal_invoices' => false, 'payment_reminders' => true])->assertForbidden();
+    // Un cliente del portal no entra en las rutas internas (va a /portal).
+    $this->actingAs($this->portal)->put("/clientes/{$other->id}/facturacion/opciones", ['portal_invoices' => false, 'payment_reminders' => true])->assertRedirect();
+    expect($other->billingProfile()->first()->portal_invoices)->toBeTrue();
 });

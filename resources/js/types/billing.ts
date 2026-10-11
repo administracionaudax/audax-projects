@@ -355,6 +355,8 @@ export type BillingSummaryData = {
         unlinked: { count: number; amount: string };
         contacts: { count: number; amount: string };
         banks: { count: number; over: number; threshold: number };
+        /** Recordatorios de cobro que no salieron (E2, D-442). */
+        reminders: { count: number };
     };
     kpis: {
         invoiced: string;
