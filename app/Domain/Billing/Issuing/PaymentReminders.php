@@ -212,8 +212,9 @@ final class PaymentReminders
             ->whereNotNull('due_date')
             ->whereColumn('total', '>', 'paid_total')
             // El vencimiento entre el escalón más tardío (y la puesta al día) y el más temprano.
-            ->where('due_date', '>=', $today->subDays($max + self::CATCH_UP_DAYS)->toDateString())
-            ->where('due_date', '<=', $today->subDays($min)->toDateString())
+            // whereDate: en SQLite la fecha se guarda con la hora (00:00:00).
+            ->whereDate('due_date', '>=', $today->subDays($max + self::CATCH_UP_DAYS)->toDateString())
+            ->whereDate('due_date', '<=', $today->subDays($min)->toDateString())
             ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('client_billing_profiles')
                 ->whereColumn('client_billing_profiles.client_id', 'sales_documents.client_id')
                 ->where('client_billing_profiles.payment_reminders', false))
