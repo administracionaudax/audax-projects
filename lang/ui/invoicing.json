@@ -256,7 +256,7 @@
     "invoicing.record.previous": "Huella anterior",
     "invoicing.record.none": "Ninguna (es el primero)",
     "invoicing.record.pdf": "SHA-256 del PDF archivado:",
-    "invoicing.settings.page_description": "Los datos de Audax como emisor, la lectura de Holded y, para emitir desde Audax, las series, los impuestos, el catálogo de servicios, las formas de pago y la plantilla del PDF.",
+    "invoicing.settings.page_description": "Los datos de Audax como emisor, la lectura de Holded y, para emitir desde Audax, las series, los impuestos, el catálogo de servicios, las formas de pago, la plantilla del PDF, el correo y los recordatorios de cobro.",
     "invoicing.settings.sections": "Apartados de Ajustes",
     "invoicing.settings.section.general": "Emisor y Holded",
     "invoicing.settings.section.series": "Series",

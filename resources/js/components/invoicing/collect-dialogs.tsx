@@ -549,7 +549,7 @@ export function RecipientsField({
                     type="email"
                     value={draft}
                     autoComplete="off"
-                    className="min-w-40 flex-1 bg-transparent py-0.5 text-sm outline-none placeholder:text-muted-foreground"
+                    className="min-w-32 flex-1 bg-transparent py-0.5 text-sm outline-none placeholder:text-muted-foreground"
                     placeholder={
                         value.length === 0
                             ? t('invoicing.collect.email.add_placeholder')
@@ -713,7 +713,7 @@ export function SendDocumentDialog({
                     <form
                         onSubmit={submit}
                         noValidate
-                        className="grid max-h-[70dvh] gap-4 overflow-y-auto pr-1"
+                        className="grid max-h-[70dvh] grid-cols-[minmax(0,1fr)] gap-4 overflow-y-auto pr-1"
                         data-test="send-form"
                     >
                         {compose.test_mode ? (

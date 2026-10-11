@@ -161,7 +161,7 @@ export default function PortalInvoices({ client, summary, invoices }: Props) {
                 ) : (
                     <>
                         <dl
-                            className="grid gap-3 sm:grid-cols-3"
+                            className="grid grid-cols-3 gap-2 sm:gap-3"
                             data-test="portal-invoices-summary"
                         >
                             {[
@@ -183,12 +183,12 @@ export default function PortalInvoices({ client, summary, invoices }: Props) {
                             ].map((item) => (
                                 <div
                                     key={item.key}
-                                    className="grid gap-1 rounded-md border bg-card p-4"
+                                    className="grid min-w-0 content-start gap-1 rounded-md border bg-card p-3 sm:p-4"
                                 >
-                                    <dt className="text-sm text-muted-foreground">
+                                    <dt className="text-xs text-muted-foreground sm:text-sm">
                                         {item.label}
                                     </dt>
-                                    <dd className="tabular text-2xl">
+                                    <dd className="tabular text-base sm:text-2xl">
                                         {item.value}
                                     </dd>
                                 </div>
