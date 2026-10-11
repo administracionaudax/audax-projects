@@ -13,8 +13,9 @@ use Illuminate\Mail\Mailables\Address;
  *   el .env del servidor desde aquí: la dirección de envío no se elige en Ajustes, porque el relé
  *   solo acepta usuarios o alias del dominio.
  * - En Ajustes se eligen el **nombre** que ve el cliente (por defecto, el nombre comercial del
- *   emisor), la dirección de **respuesta** (vacía: responder llega al remitente) y una **copia
- *   oculta** a Audax (vacía: ninguna).
+ *   emisor), la dirección de **respuesta** (por defecto, administracion@audaxstudio.com, la misma del
+ *   remitente: el propietario quiere que todo salga de ella y vuelva a ella, D-447; vacía, vuelve a
+ *   esa) y una **copia oculta** a Audax (opcional; vacía: ninguna).
  * - El enlace firmado de cada envío caduca a los **60 días** (como el de 48 h de Holded, H-098).
  *
  * @phpstan-type InvoiceEmail array{sender_name: string, reply_to: string|null, bcc: string|null}
@@ -36,7 +37,7 @@ final class InvoiceEmailSettings
 
         return [
             'sender_name' => $name,
-            'reply_to' => self::email($stored['reply_to'] ?? null),
+            'reply_to' => self::email($stored['reply_to'] ?? null) ?? self::defaultReplyTo(),
             'bcc' => self::email($stored['bcc'] ?? null),
         ];
     }
@@ -51,6 +52,12 @@ final class InvoiceEmailSettings
             'reply_to' => self::email($value['reply_to']),
             'bcc' => self::email($value['bcc']),
         ]);
+    }
+
+    /** La respuesta por defecto (D-447): config invoicing.reply_to, administracion@audaxstudio.com. */
+    public static function defaultReplyTo(): ?string
+    {
+        return self::email(config('invoicing.reply_to'));
     }
 
     /** La dirección de envío: la del relé (config mail.from.address). */

@@ -20,4 +20,8 @@ return [
 
     // Disco privado de los PDF emitidos (nunca en una purga, en la copia nocturna; L-16 y L-18).
     'disk' => env('INVOICING_DISK', 'local'),
+
+    // Respuesta por defecto de los emails de las facturas (D-447): el propietario quiere que todo
+    // salga de administracion@ y vuelva a administracion@. Se cambia en Ajustes › Correo.
+    'reply_to' => env('INVOICING_REPLY_TO', 'administracion@audaxstudio.com'),
 ];

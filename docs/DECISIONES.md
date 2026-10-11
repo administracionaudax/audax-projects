@@ -3172,19 +3172,20 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - **Quién**: `manage-billing` (matriz `record_payment` y `void_payment`), como emitir.
 
 ### D-437 · Los cobros propios cuentan como los de Holded, y «Por cobrar» con antigüedad **[amplía D-411 y D-406]**
-- El listado, la ficha, Ventas y la barra de importes ya leían `paid_total` de la vista; el Resumen (cobrado por mes) lee ahora la vista nueva `billing_payments`, que une los cobros de Holded (de sus facturas que cuentan) y los propios sin anular de facturas que no son de prueba, por la fecha del cobro. A diferencia de Holded, el cobro de una propia anulada después sí cuenta (es dinero que entró; su devolución resta en la rectificativa).
+- El listado, la ficha, Ventas y la barra de importes ya leían `paid_total` de la vista; el Resumen (cobrado por mes) lee ahora la vista nueva `billing_payments`, que une los cobros de Holded (de sus facturas que cuentan) y los propios sin anular de facturas que no son de prueba, por la fecha del cobro. ~~A diferencia de Holded, el cobro de una propia anulada después sí cuenta (es dinero que entró; su devolución resta en la rectificativa).~~ **Cambia en D-449**: como en Holded, el cobro de una anulada no cuenta.
 - **«Por cobrar» es una vista de Facturas** (no una pantalla aparte): `/facturacion/por-cobrar` responde con un 301 a `/facturacion/facturas?vista=por-cobrar`. Encima de la lista, la **antigüedad por cliente** (como la de Xero): lo pendiente con IVA de cada cliente en plazo, 1–30, 31–60, 61–90 y más de 90 días desde el vencimiento (las fronteras del Resumen), con el total; cada celda filtra la lista (`cliente` y `antiguedad=en-plazo|1-30|31-60|61-90|mas-90`) y se quita al volver a pulsarla. En el móvil, una tarjeta por cliente. Una consulta (`InvoiceList::agingByClient`), 50 clientes como mucho.
 
 ### D-438 · El remitente de las facturas (supuesto de la pregunta P-4, cambiable)
 - Las facturas salen **desde la dirección del relé** (`MAIL_FROM_ADDRESS`; en el servidor, administracion@audaxstudio.com, que el relé SMTP de Google Workspace ya acepta). La dirección no se elige en Ajustes: el relé solo acepta usuarios o alias del dominio, y el `.env` del servidor no se toca.
 - En **Ajustes › Correo** se eligen el **nombre** que ve el cliente (por defecto, el nombre comercial del emisor), la dirección de **respuesta** (vacía: llega al remitente) y una **copia oculta** a Audax de cada factura y recordatorio (vacía: ninguna). Ajuste `invoice_email`, con manage-billing y en la auditoría.
 - Si el propietario elige otra dirección (por ejemplo, facturas@), basta con crear el alias en Google Workspace y cambiar `MAIL_FROM_ADDRESS`, o separar la dirección de las facturas en un ajuste propio.
+- **Confirmado por el propietario el 12/10 (D-447)**: todo sale de administracion@audaxstudio.com y las respuestas vuelven a ella; la respuesta queda con ese valor por defecto en Ajustes.
 
 ### D-439 · Plantillas de email
 - Una por tipo (**factura, rectificativa y recordatorio**) e idioma (**español e inglés**; cada cliente recibe la de su idioma), con asunto y texto plano. Las de serie están en `lang/es/invoicing.php`; las cambiadas, en `email_templates`; «Volver a la de serie» quita la cambiada.
 - **Variables** entre corchetes, como el plan: `[cliente]`, `[numero]`, `[importe]`, `[pendiente]`, `[vencimiento]`, `[enlace]`, `[empresa]` y, en la rectificativa, `[rectificada]`. El diálogo de envío llega con todas puestas (salvo `[enlace]`, que es de cada envío) y se puede retocar antes de enviar.
 - En el email el texto se escapa; una URL (la de `[enlace]`) se convierte en un enlace con nombre. Debajo del texto va siempre el botón «Ver y descargar la factura» y una línea con la caducidad del enlace. La cabecera y el pie llevan el nombre del remitente (el emisor), no el de la app.
-- Las de serie tutean al cliente, como el resto de la app («Cualquier duda, responde a este correo»). Se pueden cambiar en Ajustes.
+- Las de serie tutean al cliente, como el resto de la app («Cualquier duda, responde a este correo»). Se pueden cambiar en Ajustes. Confirmado por el propietario el 12/10 (D-448).
 
 ### D-440 · Enlace firmado de la factura y «vista por el cliente» (H-098)
 - `/factura/{uuid}?envio={id}&expires=…&signature=…`, **sin usuario**, que caduca a los **60 días**. Lleva el uuid (no el id) y el envío del que sale. Enseña lo que importa al cliente (número, fechas, total, lo pendiente, el estado, la forma de pago), el PDF archivado (ver y descargar, con enlaces firmados hasta la misma fecha) y los adjuntos visibles. Nunca la nota interna, los proyectos ni nada de la plantilla. Con la marca de la cabecera del portal y en el idioma del cliente.
@@ -3225,6 +3226,23 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - **Cobrar, anular un cobro, enviar y recordar**: `manage-billing` (admins y quien tenga el permiso, por ejemplo finanzas). **Adjuntos**: quien prepara (use-invoicing). **Ajustes del correo y los recordatorios**: se ven con use-invoicing y se cambian con manage-billing. **Opciones del cliente**: view-billing con la emisión visible. Responsables, plantilla, colaboradores, clientes del portal y el admin excluido de Facturación (D-245): nada (`CollectAccessTest`). La matriz compartida (`document-actions.json`) gana `record_payment`, `void_payment`, `send`, `send_reminder` y `attach`.
 - **Corregido de E1**: el botón «Editar» de cada fila de Ajustes (series, impuestos, servicios y formas de pago) no abría su diálogo (no pasaba al botón lo que le pone `DialogTrigger`). Lo encontró el E2E de E2 al cambiar la fecha de inicio de la serie F.
 
+## 12/10/2026: Respuestas del propietario sobre E2 (rama `emision-e3`)
+
+Respuestas del propietario del 12/10 a las tres dudas que dejó E2 (P-4 con D-438, el tono de D-439 y los cobros de las anuladas de D-437). Usan las decisiones que estaban reservadas para sus respuestas (D-447 a D-449); E3 sigue desde D-450.
+
+### D-447 · Remitente y respuesta: administracion@ **[cierra la pregunta P-4; concreta D-438]**
+- Las facturas, las rectificativas y los recordatorios salen **desde administracion@audaxstudio.com** (la dirección del relé, `MAIL_FROM_ADDRESS`, como ya estaba) y **las respuestas vuelven a ella**.
+- **Ajustes › Correo** llega con la respuesta puesta a administracion@audaxstudio.com por defecto (`config('invoicing.reply_to')`, `INVOICING_REPLY_TO`). Si se vacía, vuelve a esa. Se puede poner otra.
+- La **copia oculta** sigue siendo opcional (vacía: ninguna).
+
+### D-448 · Tono: se tutea al cliente **[confirma D-439]**
+- Las plantillas de serie tutean al cliente, como ya hacían. No cambia nada.
+
+### D-449 · El cobro de una factura anulada no cuenta, como en Holded **[cambia D-437]**
+- El cobro de una factura propia **anulada** (con su rectificativa por el total) o anulada por error **no cuenta** en lo cobrado del Resumen (vista `billing_payments`). Tampoco la devolución de su rectificativa ni los cobros de una rectificativa de una anulada. Es la misma regla que ya seguían Ventas, el listado (barra de cobros), «Por cobrar» y «Vendido frente a real» (`BillingDocument::countingIn`, D-397). Así, todas las pantallas cuentan igual.
+- El cobro **no se borra**: sigue en la ficha de la anulada y en su historia, y en la auditoría.
+- Test: `tests/Feature/Invoicing/PaymentsTest.php` («como en Holded, el cobro de una factura anulada no cuenta…»). Migración `billing_payments_without_cancelled`, que rehace la vista.
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -3257,7 +3275,7 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446; respuestas del propietario sobre E2 (remitente, tono y cobros de las anuladas), D-447 a D-449.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-447** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-447 a D-451, reservadas para las respuestas del propietario, que antes iban en D-435 a D-439 y las ha usado E2 por encargo; D-452 en adelante, libres).
+La siguiente libre es **D-450** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-450 en adelante, libres).

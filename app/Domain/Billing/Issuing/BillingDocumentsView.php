@@ -175,6 +175,11 @@ final class BillingDocumentsView
      * los de Holded de sus facturas que cuentan (sin borradores ni anuladas, como antes) y los propios
      * sin anular de facturas emitidas que no son de la serie de pruebas. Los propios llevan el id y el
      * documento en negativo, como en `billing_documents`.
+     *
+     * «Como en Holded» (el propietario, 12/10; D-449, cambia D-437): el cobro de una factura propia
+     * anulada (o anulada por error) **no** cuenta, y tampoco la devolución de su rectificativa ni
+     * los de una rectificativa de una anulada: es la regla de `BillingDocument::countingIn`, la misma
+     * de Ventas y del listado.
      */
     public static function createPayments(): void
     {
@@ -198,7 +203,9 @@ final class BillingDocumentsView
                 p.amount
             FROM payments p
             JOIN sales_documents sd ON sd.id = p.sales_document_id
-            WHERE p.voided_at IS NULL AND sd.is_test = FALSE AND sd.status <> 'draft'
+            LEFT JOIN sales_documents rd ON rd.id = sd.rectified_document_id
+            WHERE p.voided_at IS NULL AND sd.is_test = FALSE AND sd.status = 'issued'
+                AND (rd.id IS NULL OR rd.status NOT IN ('cancelled', 'voided'))
             SQL);
     }
 
