@@ -114,7 +114,7 @@ export function SenderSettings({ data }: { data: InvoicingMailingData }) {
                     </p>
                     <InputError message={form.errors.sender_name} />
                 </div>
-                <div className="grid gap-1">
+                <div className="grid content-start gap-1">
                     <Label htmlFor={`${id}-reply`}>
                         {t('invoicing.collect.mailing.reply_to')}
                     </Label>
@@ -133,7 +133,7 @@ export function SenderSettings({ data }: { data: InvoicingMailingData }) {
                     </p>
                     <InputError message={form.errors.reply_to} />
                 </div>
-                <div className="grid gap-1">
+                <div className="grid content-start gap-1">
                     <Label htmlFor={`${id}-bcc`}>
                         {t('invoicing.collect.mailing.bcc')}
                     </Label>
@@ -202,7 +202,7 @@ export function TemplateSettings({ data }: { data: InvoicingMailingData }) {
             description={t('invoicing.collect.mailing.templates_description')}
         >
             <div className="flex flex-wrap items-end gap-3">
-                <div className="grid gap-1">
+                <div className="grid content-start gap-1">
                     <Label htmlFor={`${id}-kind`}>
                         {t('invoicing.collect.mailing.kind')}
                     </Label>
@@ -226,7 +226,7 @@ export function TemplateSettings({ data }: { data: InvoicingMailingData }) {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid gap-1">
+                <div className="grid content-start gap-1">
                     <Label htmlFor={`${id}-language`}>
                         {t('invoicing.collect.mailing.language')}
                     </Label>
@@ -265,7 +265,7 @@ export function TemplateSettings({ data }: { data: InvoicingMailingData }) {
                     className="grid content-start gap-4"
                     data-test="mailing-template"
                 >
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-subject`}>
                             {t('invoicing.collect.email.subject')}
                         </Label>
@@ -280,7 +280,7 @@ export function TemplateSettings({ data }: { data: InvoicingMailingData }) {
                         />
                         <InputError message={form.errors.subject} />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-body`}>
                             {t('invoicing.collect.email.body')}
                         </Label>
@@ -509,7 +509,7 @@ export function ReminderSettings({ data }: { data: InvoicingMailingData }) {
                     className="flex max-w-3xl flex-wrap items-end gap-3"
                     data-test="reminder-add"
                 >
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-days`}>
                             {t('invoicing.collect.reminders.days')}
                         </Label>
@@ -526,7 +526,7 @@ export function ReminderSettings({ data }: { data: InvoicingMailingData }) {
                             }
                         />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-when`}>
                             {t('invoicing.collect.reminders.when')}
                         </Label>

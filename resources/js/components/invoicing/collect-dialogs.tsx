@@ -142,7 +142,7 @@ export function RecordPaymentDialog({
                     data-test="payment-form"
                 >
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-amount`}>
                                 {t('invoicing.collect.payment.amount')}
                             </Label>
@@ -176,7 +176,7 @@ export function RecordPaymentDialog({
                             </div>
                             <InputError message={form.errors.amount} />
                         </div>
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-date`}>
                                 {t('invoicing.collect.payment.paid_on')}
                             </Label>
@@ -223,7 +223,7 @@ export function RecordPaymentDialog({
                                   })}
                     </p>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-method`}>
                                 {t('invoicing.collect.payment.method')}
                             </Label>
@@ -255,7 +255,7 @@ export function RecordPaymentDialog({
                             </Select>
                             <InputError message={form.errors.method} />
                         </div>
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-reference`}>
                                 {t('invoicing.collect.payment.reference')}
                             </Label>
@@ -276,7 +276,7 @@ export function RecordPaymentDialog({
                             <InputError message={form.errors.bank_reference} />
                         </div>
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-note`}>
                             {t('invoicing.collect.payment.note')}
                         </Label>
@@ -374,7 +374,7 @@ export function VoidPaymentDialog({
                     className="grid gap-4"
                     data-test="void-payment-form"
                 >
-                    <div className="grid gap-1">
+                    <div className="grid content-start gap-1">
                         <Label htmlFor={`${id}-reason`}>
                             {t('invoicing.collect.void_payment.reason')}
                         </Label>
@@ -766,7 +766,7 @@ export function SendDocumentDialog({
                                 })}
                             </p>
                         ) : null}
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-subject`}>
                                 {t('invoicing.collect.email.subject')}
                             </Label>
@@ -781,7 +781,7 @@ export function SendDocumentDialog({
                             />
                             <InputError message={errors.subject} />
                         </div>
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`${id}-body`}>
                                 {t('invoicing.collect.email.body')}
                             </Label>
