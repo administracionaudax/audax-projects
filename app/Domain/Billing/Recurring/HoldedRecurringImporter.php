@@ -72,7 +72,9 @@ final class HoldedRecurringImporter
         $name = HoldedPayload::string($item, 'name', 'description', 'title')
             ?? (string) __('invoicing_work.import.name', ['contact' => $contactName, 'concept' => $concept]);
         $interval = self::interval($item);
-        $next = HoldedPayload::date($item, 'next_date', 'nextDate', 'next_run', 'next_invoice_date', 'next', 'date');
+        // La v2 real da la próxima emisión en `next_invoice_scheduled_at`; `date` es la del último
+        // documento generado (comprobado contra Holded el 12/10/2026).
+        $next = HoldedPayload::date($item, 'next_invoice_scheduled_at', 'next_date', 'nextDate', 'next_run', 'next_invoice_date', 'next', 'date');
         $problems = [];
         $warnings = [];
 
@@ -204,8 +206,9 @@ final class HoldedRecurringImporter
             in_array($raw, ['month', 'months', 'monthly', 'mensual', 'mes', 'meses', 'm'], true) => 1,
             in_array($raw, ['bimonthly', 'bimestral'], true) => 2,
             in_array($raw, ['quarter', 'quarters', 'quarterly', 'trimestral', 'trimestre', 'q'], true) => 3,
-            in_array($raw, ['semester', 'semiannual', 'half_year', 'semestral', 'semestre'], true) => 6,
-            in_array($raw, ['year', 'years', 'yearly', 'annual', 'anual', 'año', 'y'], true) => 12,
+            in_array($raw, ['semester', 'semiannual', 'half_year', 'semestral', 'semestre', 's'], true) => 6,
+            // Holded v2: «m» mensual, «q» trimestral, «s» semestral y «a» anual.
+            in_array($raw, ['year', 'years', 'yearly', 'annual', 'anual', 'año', 'y', 'a'], true) => 12,
             default => null,
         };
 

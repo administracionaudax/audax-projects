@@ -97,3 +97,17 @@ it('las crea en pausa con su cliente, líneas, periodicidad, próxima fecha y el
         ->assertSuccessful();
     expect(RecurringInvoice::query()->count())->toBe(2);
 });
+
+it('con el formato real de la v2: la próxima es next_invoice_scheduled_at (no date) y «a» es anual', function () {
+    app()->instance(HoldedApi::class, holdedFake(['recurring' => [
+        ['id' => 'r-real', 'contact_id' => 'c-arrieta', 'contact_name' => 'Bodegas Arrieta, S.L.', 'date' => '2026-06-01', 'periodicity' => 'a',
+            'draft' => true, 'convert_automatically' => true, 'end_date' => null, 'next_invoice_scheduled_at' => '2027-06-01',
+            'lines' => [['name' => 'Herramienta', 'description' => 'Licencia anual', 'units' => '1,00', 'price' => '258,00', 'discount' => '0,00', 'taxes' => ['s_iva_21']]]],
+    ]]));
+
+    $this->artisan('app:import-holded-recurring')->assertSuccessful();
+
+    $real = RecurringInvoice::query()->where('holded_recurring_id', 'r-real')->firstOrFail();
+    expect($real->periodicity->value)->toBe('annual')
+        ->and($real->next_run_on->toDateString())->toBe('2027-06-01');
+});
