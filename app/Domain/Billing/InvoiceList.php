@@ -20,8 +20,8 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * «siguiente» y para volver con los mismos filtros.
  *
  * Parámetros (todos opcionales):
- * - `vista`: todas (por defecto), por-cobrar, vencidas, sin-proyecto, borradores, rectificativas o
- *   pruebas (la serie de pruebas de la emisión propia, D-419; nunca sale en las demás).
+ * - `vista`: todas (por defecto), por-cobrar, vencidas, sin-proyecto, borradores, programadas (E3),
+ *   rectificativas o pruebas (la serie de pruebas de la emisión propia, D-419; nunca sale en las demás).
  * - `periodo`: anio, anio-anterior, trimestre, mes, 12-meses, todo o rango (con `desde` y `hasta`).
  *   Sin él, el año en curso en «Todas» y «Rectificativas» y todo en las vistas de trabajo (lo que
  *   queda por cobrar o enlazar no caduca con el año).
@@ -43,7 +43,7 @@ final class InvoiceList
     public const int PER_PAGE = 50;
 
     /** «Pruebas»: la serie de pruebas de la emisión propia (D-419), que no cuenta en ninguna otra. */
-    public const array VIEWS = ['todas', 'por-cobrar', 'vencidas', 'sin-proyecto', 'borradores', 'rectificativas', 'pruebas'];
+    public const array VIEWS = ['todas', 'por-cobrar', 'vencidas', 'sin-proyecto', 'borradores', 'programadas', 'rectificativas', 'pruebas'];
 
     public const array PERIODS = ['anio', 'anio-anterior', 'trimestre', 'mes', '12-meses', 'todo', 'rango'];
 
@@ -67,6 +67,7 @@ final class InvoiceList
         'vencidas' => 'v_vencidas',
         'sin-proyecto' => 'v_sin_proyecto',
         'borradores' => 'v_borradores',
+        'programadas' => 'v_programadas',
         'rectificativas' => 'v_rectificativas',
         'pruebas' => 'v_pruebas',
     ];
@@ -283,7 +284,7 @@ final class InvoiceList
         $query = $this->filtered($this->view);
         $this->whereCollection($query);
         $this->whereAge($query);
-        if ($this->view !== 'borradores') {
+        if (! in_array($this->view, ['borradores', 'programadas'], true)) {
             $query = BillingDocument::countingIn($query);
         }
 
@@ -461,6 +462,8 @@ final class InvoiceList
             // Sin las marcadas «No necesita proyecto» (D-431), que se ven con `enlace=no-necesita`.
             'sin-proyecto' => ['billing_documents.collection_status <> ? AND billing_documents.no_project_needed_at IS NULL AND NOT EXISTS (SELECT 1 FROM billing_document_links WHERE billing_document_links.document_id = billing_documents.id)', [$cancelled]],
             'borradores' => ['billing_documents.is_draft = ? OR billing_documents.collection_status = ?', [true, $draft]],
+            // E3: los borradores propios con fecha de emisión programada.
+            'programadas' => ['billing_documents.is_draft = ? AND billing_documents.scheduled_for IS NOT NULL', [true]],
             'rectificativas' => ['billing_documents.kind = ?', [HoldedDocumentKind::CreditNote->value]],
             default => [$issued, [false, $draft]],
         };

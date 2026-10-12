@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
+    FilePlus2,
     Building2,
     Clock,
     FileWarning,
@@ -15,6 +16,7 @@ import {
 } from '@/components/billing/filter-sheet';
 import { UnbilledLines } from '@/components/billing/unbilled-lines';
 import { EmptyState } from '@/components/empty-state';
+import { WorkDraftSheet } from '@/components/invoicing/work-draft-sheet';
 import { PageSection } from '@/components/projects-list/page-section';
 import { ExportMenu } from '@/components/reports/export-menu';
 import { KpiCard } from '@/components/reports/kpi-card';
@@ -25,6 +27,7 @@ import type {
     R2BillingProps,
     R2BillingSummary,
 } from '@/components/reports/r2-types';
+import { useAbilities } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { Button } from '@/components/ui/button';
@@ -80,6 +83,7 @@ export default function BillingReport({
 }) {
     const id = useId();
     const mobile = useIsMobile();
+    const abilities = useAbilities();
     const url = billingHours.url();
     const financials = filters.can_see_financials;
     // Más entradas de las que caben en el fichero: se pide acotar en lugar de recortarlo.
@@ -139,6 +143,19 @@ export default function BillingReport({
                     actions={
                         client ? (
                             <>
+                                {abilities.useInvoicing && financials ? (
+                                    <WorkDraftSheet
+                                        client={client}
+                                        from={filters.from}
+                                        to={filters.to}
+                                        trigger={
+                                            <Button data-test="unbilled-detail-create-draft">
+                                                <FilePlus2 aria-hidden="true" />
+                                                {t('invoicing.work.open')}
+                                            </Button>
+                                        }
+                                    />
+                                ) : null}
                                 {can.viewReport ? (
                                     <Button variant="outline" asChild>
                                         <Link

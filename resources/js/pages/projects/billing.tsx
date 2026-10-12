@@ -1,6 +1,7 @@
 import { Head, Link, setLayoutProps } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { FilePlus2, Plus } from 'lucide-react';
 import { BillingPanel } from '@/components/billing/billing-panel';
+import { WorkDraftSheet } from '@/components/invoicing/work-draft-sheet';
 import { ProjectShell } from '@/components/projects/project-shell';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { Button } from '@/components/ui/button';
@@ -55,17 +56,41 @@ export default function ProjectBilling({
                         <p className="text-sm text-muted-foreground">
                             {t(`billing.project.lead.${project.billing_type}`)}
                         </p>
-                        {/* Emisión propia (E1, D-428): con el módulo y el permiso. */}
+                        {/* Emisión propia (E1, D-428; E3): con el módulo y el permiso. */}
                         {can.useInvoicing ? (
-                            <Button asChild size="sm">
-                                <Link
-                                    href={`/facturacion/facturas/nueva?proyecto=${project.id}`}
-                                    data-test="project-new-invoice"
-                                >
-                                    <Plus aria-hidden="true" />
-                                    {t('invoicing.new_invoice')}
-                                </Link>
-                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                                {project.client_id !== null &&
+                                project.billing_type !== 'internal' ? (
+                                    <WorkDraftSheet
+                                        client={
+                                            project.client ?? {
+                                                id: project.client_id,
+                                                name: project.name,
+                                            }
+                                        }
+                                        projectId={project.id}
+                                        trigger={
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                data-test="project-create-draft"
+                                            >
+                                                <FilePlus2 aria-hidden="true" />
+                                                {t('invoicing.work.open')}
+                                            </Button>
+                                        }
+                                    />
+                                ) : null}
+                                <Button asChild size="sm">
+                                    <Link
+                                        href={`/facturacion/facturas/nueva?proyecto=${project.id}`}
+                                        data-test="project-new-invoice"
+                                    >
+                                        <Plus aria-hidden="true" />
+                                        {t('invoicing.new_invoice')}
+                                    </Link>
+                                </Button>
+                            </div>
                         ) : null}
                     </div>
                     <BillingPanel panel={panel} invoicesHref={undefined} />

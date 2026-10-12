@@ -13,10 +13,12 @@ use App\Enums\InvoiceLineKind;
 use App\Enums\ProjectStatus;
 use App\Enums\TimeEntryStatus;
 use App\Models\BillingDocument;
+use App\Models\BillingDocumentLine;
 use App\Models\BillingDocumentLink;
 use App\Models\Client;
 use App\Models\HourBank;
 use App\Models\Project;
+use App\Models\SalesDocumentLine;
 use App\Models\TimeEntry;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -160,7 +162,8 @@ final class UnbilledReport
     private function hourly(ReportScope $scope, bool $financials, CarbonImmutable $from, CarbonImmutable $to): void
     {
         $projects = Project::query()->withTrashed()->select('id')->where('billing_type', BillingType::TimeAndMaterials->value)->whereNotNull('client_id');
-        $entries = fn (): Builder => (clone $scope->entries())->where('time_entries.is_billable', true)->whereIn('time_entries.project_id', $projects);
+        // Las horas ya facturadas en una factura propia emitida (E3) no son pendientes: están en ella.
+        $entries = fn (): Builder => self::notInvoicedByAudax((clone $scope->entries())->where('time_entries.is_billable', true)->whereIn('time_entries.project_id', $projects));
 
         $rows = $entries()->toBase()
             ->selectRaw('time_entries.project_id as project_id,'
@@ -183,7 +186,7 @@ final class UnbilledReport
                 $income[(int) $key] = $group['income'];
             }
         }
-        $invoiced = $financials ? $this->invoiced(BillingDocumentLink::query()->whereIn('project_id', $ids)->whereNull('hour_bank_id'), 'project_id', $from, $to) : [];
+        $invoiced = $financials ? $this->invoiced(BillingDocumentLink::query()->whereIn('project_id', $ids)->whereNull('hour_bank_id'), 'project_id', $from, $to, skipWork: true) : [];
 
         foreach ($rows as $row) {
             $projectId = (int) $row->project_id;
@@ -219,7 +222,7 @@ final class UnbilledReport
      */
     private function overage(ReportScope $scope, bool $financials): void
     {
-        $rows = (clone $scope->entries())->toBase()
+        $rows = self::notInvoicedByAudax(clone $scope->entries())->toBase()
             ->whereNotNull('time_entries.hour_bank_id')
             ->whereIn('time_entries.status', self::REAL)
             ->where('time_entries.overage_minutes', '>', 0)
@@ -323,32 +326,10 @@ final class UnbilledReport
             return;
         }
 
-        // Meses (AAAA-MM) con alguna factura (no anulada ni borrador) de cada fee.
-        $invoicedMonths = [];
-        $links = BillingDocumentLink::query()->toBase()
-            ->join('billing_documents', 'billing_documents.id', '=', 'billing_document_links.document_id')
-            ->whereIn('billing_document_links.project_id', $projects->modelKeys())
-            ->where('billing_documents.is_draft', false)
-            ->whereNotIn('billing_documents.collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])
-            ->where('billing_documents.kind', HoldedDocumentKind::Invoice->value)
-            ->where('billing_documents.issued_on', '>=', $from->startOfMonth()->toDateString())
-            ->where('billing_documents.issued_on', '<=', $to->endOfMonth()->toDateString())
-            ->selectRaw('billing_document_links.project_id as project_id, SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7) as month')
-            ->orderBy('billing_document_links.project_id')
-            ->get();
-        foreach ($links as $link) {
-            $invoicedMonths[(int) $link->project_id][(string) $link->month] = true;
-        }
+        $months = self::missingFeeMonths($projects, $from, $to);
 
         foreach ($projects as $project) {
-            $start = $from->max(($project->start_date ?? $from)->startOfMonth())->startOfMonth();
-            $end = $to->min($project->due_date ?? $to);
-            $missing = [];
-            for ($month = $start; $month->lessThanOrEqualTo($end); $month = $month->addMonthNoOverflow()) {
-                if (! isset($invoicedMonths[$project->id][$month->format('Y-m')])) {
-                    $missing[] = $month;
-                }
-            }
+            $missing = $months[$project->id] ?? [];
             if ($missing === [] || $project->client_id === null) {
                 continue;
             }
@@ -357,6 +338,109 @@ final class UnbilledReport
             $this->add($project->client_id, 0, 0, $amount, $missing[0]->toDateString(), 'fees', count($missing));
             $this->line($project->client_id, 'fees', $project, null, 0, 0, Money::round($amount), $missing[0]->toDateString(), months: count($missing));
         }
+    }
+
+    /**
+     * Los meses ya empezados de cada fee, dentro de la vida del proyecto, sin una factura enlazada
+     * emitida ese mes (D-412) ni una línea de fee propia de ese mes (E3: «Fee de septiembre»
+     * facturado en octubre cuenta para septiembre). Lo usan Por facturar y «Crear borrador».
+     *
+     * @param  iterable<int, Project>  $projects
+     * @return array<int, list<CarbonImmutable>>
+     */
+    public static function missingFeeMonths(iterable $projects, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $ids = [];
+        foreach ($projects as $project) {
+            $ids[] = $project->id;
+        }
+        if ($ids === []) {
+            return [];
+        }
+
+        // Meses (AAAA-MM) con alguna factura (no anulada ni borrador) de cada fee.
+        $invoicedMonths = [];
+        $links = BillingDocumentLink::query()->toBase()
+            ->join('billing_documents', 'billing_documents.id', '=', 'billing_document_links.document_id')
+            ->whereIn('billing_document_links.project_id', $ids)
+            ->where('billing_documents.is_draft', false)
+            ->whereNotIn('billing_documents.collection_status', [CollectionStatus::Cancelled->value, CollectionStatus::Draft->value])
+            ->where('billing_documents.kind', HoldedDocumentKind::Invoice->value)
+            ->where('billing_documents.issued_on', '>=', $from->startOfMonth()->toDateString())
+            ->where('billing_documents.issued_on', '<=', $to->endOfMonth()->toDateString())
+            // Una propia con líneas de fee con su mes (E3) cuenta por esos meses, no por el de emisión.
+            ->whereNotExists(fn ($own) => $own->selectRaw('1')->from('sales_document_lines')
+                ->whereRaw('sales_document_lines.sales_document_id = 0 - billing_documents.id')
+                ->where('sales_document_lines.origin', 'fee')
+                ->whereNotNull('sales_document_lines.period_start'))
+            ->selectRaw('billing_document_links.project_id as project_id, SUBSTR(CAST(billing_documents.issued_on AS TEXT), 1, 7) as month')
+            ->orderBy('billing_document_links.project_id')
+            ->get();
+        foreach ($links as $link) {
+            $invoicedMonths[(int) $link->project_id][(string) $link->month] = true;
+        }
+
+        // Las líneas de fee propias con su mes (E3), de facturas emitidas que no son de prueba.
+        $feeLines = SalesDocumentLine::query()->toBase()
+            ->join('sales_documents', 'sales_documents.id', '=', 'sales_document_lines.sales_document_id')
+            ->whereIn('sales_document_lines.project_id', $ids)
+            ->where('sales_document_lines.origin', 'fee')
+            ->whereNotNull('sales_document_lines.period_start')
+            ->where('sales_documents.status', 'issued')
+            ->where('sales_documents.is_test', false)
+            ->selectRaw('sales_document_lines.project_id as project_id, SUBSTR(CAST(sales_document_lines.period_start AS TEXT), 1, 7) as month')
+            ->orderBy('sales_document_lines.project_id')
+            ->get();
+        foreach ($feeLines as $line) {
+            $invoicedMonths[(int) $line->project_id][(string) $line->month] = true;
+        }
+
+        $result = [];
+        foreach ($projects as $project) {
+            $start = $from->max(($project->start_date ?? $from)->startOfMonth())->startOfMonth();
+            $end = $to->min($project->due_date ?? $to);
+            for ($month = $start; $month->lessThanOrEqualTo($end); $month = $month->addMonthNoOverflow()) {
+                if (! isset($invoicedMonths[$project->id][$month->format('Y-m')])) {
+                    $result[$project->id][] = $month;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Las entradas que no están en una factura propia emitida (E3): las facturadas desde el trabajo
+     * quedan enlazadas a su línea (`sales_document_time_entry`) hasta que se anula la factura.
+     *
+     * @param  Builder<TimeEntry>  $entries
+     * @return Builder<TimeEntry>
+     */
+    public static function notInvoicedByAudax(Builder $entries): Builder
+    {
+        return $entries->whereNotExists(fn ($billed) => $billed->selectRaw('1')->from('sales_document_time_entry')
+            ->join('sales_document_lines', 'sales_document_lines.id', '=', 'sales_document_time_entry.sales_document_line_id')
+            ->join('sales_documents', 'sales_documents.id', '=', 'sales_document_lines.sales_document_id')
+            ->whereColumn('sales_document_time_entry.time_entry_id', 'time_entries.id')
+            ->whereNull('sales_document_time_entry.released_at')
+            ->where('sales_documents.status', 'issued')
+            ->where('sales_documents.is_test', false));
+    }
+
+    /**
+     * Lo facturado y enlazado a unos precios cerrados (emitidas − rectificativas, D-432): lo que
+     * descuentan Por facturar y «Crear borrador».
+     *
+     * @param  list<int>  $projectIds
+     * @return array<int, string>
+     */
+    public function fixedInvoiced(array $projectIds): array
+    {
+        if ($projectIds === []) {
+            return [];
+        }
+
+        return array_map(fn (array $row): string => Money::round($row['amount']), $this->invoiced(BillingDocumentLink::query()->whereIn('project_id', $projectIds), 'project_id', null, null));
     }
 
     /**
@@ -434,31 +518,102 @@ final class UnbilledReport
      * @param  Builder<BillingDocumentLink>  $links
      * @return array<int, array{minutes: int, amount: string}>
      */
-    private function invoiced(Builder $links, string $key, ?CarbonImmutable $from, ?CarbonImmutable $to): array
+    private function invoiced(Builder $links, string $key, ?CarbonImmutable $from, ?CarbonImmutable $to, bool $skipWork = false): array
     {
         $rows = $links
             ->whereHas('invoice', fn (Builder $q) => BillingDocument::countingIn($q)
                 ->when($from !== null, fn (Builder $w) => $w->where('issued_on', '>=', $from?->toDateString()))
                 ->when($to !== null, fn (Builder $w) => $w->where('issued_on', '<=', $to?->toDateString())))
-            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal'])->withCount('links'), 'invoice.lines:id,document_id,name,service_code,units'])
+            ->with(['invoice' => fn ($q) => $q->select(['id', 'kind', 'subtotal', 'rectified_invoice_id'])->withCount('links'), 'invoice.lines:id,document_id,name,service_code,units,subtotal,minutes,project_id,hour_bank_id'])
             ->orderBy('id')
             ->get();
+
+        // E3: en los proyectos por horas, las facturas propias con horas facturadas desde el trabajo
+        // (y sus rectificativas) no descuentan esas líneas: sus horas ya no son pendientes
+        // (notInvoicedByAudax).
+        $work = $skipWork ? self::workDocuments($rows->pluck('invoice')->all()) : [];
 
         $result = [];
         foreach ($rows as $link) {
             $invoice = $link->invoice;
             $parts = max(1, (int) $invoice->getAttribute('links_count'));
             $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
-            $minutes = 0;
-            foreach ($invoice->lines as $line) {
-                if (InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units)->countsHours()) {
-                    $minutes += $sign * (int) round((float) $line->units * 60);
-                }
+            $isWork = isset($work[$invoice->id]) || ($invoice->rectified_invoice_id !== null && isset($work[$invoice->rectified_invoice_id]));
+            if ($isWork && $invoice->kind === HoldedDocumentKind::CreditNote) {
+                continue;
             }
+
+            $lines = $invoice->lines->filter(fn (BillingDocumentLine $line): bool => ! ($isWork && $line->minutes !== null))->values();
+            // Las líneas propias hechas desde el trabajo llevan su proyecto (E3): cada una cuenta para
+            // el suyo y el resto se reparte a partes iguales, como siempre.
+            $tagged = $lines->contains(fn (BillingDocumentLine $line): bool => $line->project_id !== null);
+            $minutes = 0;
+            $amount = '0';
+            foreach ($lines as $line) {
+                $lineMinutes = $line->minutes !== null ? $sign * $line->minutes
+                    : (InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units)->countsHours() ? $sign * (int) round((float) $line->units * 60) : 0);
+                if ($tagged && $line->project_id !== null) {
+                    $mine = $line->project_id === (int) $link->project_id && ($key !== 'hour_bank_id' || $line->hour_bank_id === (int) $link->getAttribute('hour_bank_id'));
+                    if ($mine) {
+                        $minutes += $lineMinutes * $parts;
+                        $amount = Money::add($amount, Money::mul((string) $line->subtotal, (string) $parts));
+                    }
+
+                    continue;
+                }
+                $minutes += $lineMinutes;
+                $amount = Money::add($amount, (string) $line->subtotal);
+            }
+            if (! $tagged && $lines->count() !== $invoice->lines->count()) {
+                // Sin líneas propias de horas: el importe es la base menos las líneas quitadas.
+                $amount = (string) $invoice->subtotal;
+                foreach ($invoice->lines as $line) {
+                    if ($isWork && $line->minutes !== null) {
+                        $amount = Money::sub($amount, (string) $line->subtotal);
+                    }
+                }
+            } elseif (! $tagged) {
+                $amount = (string) $invoice->subtotal;
+            }
+
             $id = (int) $link->getAttribute($key);
             $result[$id] ??= ['minutes' => 0, 'amount' => '0'];
             $result[$id]['minutes'] += intdiv($minutes, $parts);
-            $result[$id]['amount'] = Money::add($result[$id]['amount'], Money::div((string) $invoice->subtotal, (string) $parts));
+            $result[$id]['amount'] = Money::add($result[$id]['amount'], Money::div($amount, (string) $parts));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Las facturas propias (con el id en negativo de la vista) que llevan líneas con horas facturadas
+     * desde el trabajo (E3).
+     *
+     * @param  array<int, BillingDocument|null>  $invoices
+     * @return array<int, true>
+     */
+    private static function workDocuments(array $invoices): array
+    {
+        $ids = [];
+        foreach ($invoices as $invoice) {
+            if ($invoice === null) {
+                continue;
+            }
+            foreach ([$invoice->id, $invoice->rectified_invoice_id] as $id) {
+                if ($id !== null && $id < 0) {
+                    $ids[] = -$id;
+                }
+            }
+        }
+        if ($ids === []) {
+            return [];
+        }
+
+        $result = [];
+        $documents = SalesDocumentLine::query()->toBase()->whereIn('sales_document_id', array_values(array_unique($ids)))->whereNotNull('minutes')
+            ->whereIn('origin', ['hours', 'overage'])->groupBy('sales_document_id')->orderBy('sales_document_id')->pluck('sales_document_id');
+        foreach ($documents as $id) {
+            $result[-(int) $id] = true;
         }
 
         return $result;

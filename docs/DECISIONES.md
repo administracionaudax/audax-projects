@@ -3172,19 +3172,20 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - **Quién**: `manage-billing` (matriz `record_payment` y `void_payment`), como emitir.
 
 ### D-437 · Los cobros propios cuentan como los de Holded, y «Por cobrar» con antigüedad **[amplía D-411 y D-406]**
-- El listado, la ficha, Ventas y la barra de importes ya leían `paid_total` de la vista; el Resumen (cobrado por mes) lee ahora la vista nueva `billing_payments`, que une los cobros de Holded (de sus facturas que cuentan) y los propios sin anular de facturas que no son de prueba, por la fecha del cobro. A diferencia de Holded, el cobro de una propia anulada después sí cuenta (es dinero que entró; su devolución resta en la rectificativa).
+- El listado, la ficha, Ventas y la barra de importes ya leían `paid_total` de la vista; el Resumen (cobrado por mes) lee ahora la vista nueva `billing_payments`, que une los cobros de Holded (de sus facturas que cuentan) y los propios sin anular de facturas que no son de prueba, por la fecha del cobro. ~~A diferencia de Holded, el cobro de una propia anulada después sí cuenta (es dinero que entró; su devolución resta en la rectificativa).~~ **Cambia en D-449**: como en Holded, el cobro de una anulada no cuenta.
 - **«Por cobrar» es una vista de Facturas** (no una pantalla aparte): `/facturacion/por-cobrar` responde con un 301 a `/facturacion/facturas?vista=por-cobrar`. Encima de la lista, la **antigüedad por cliente** (como la de Xero): lo pendiente con IVA de cada cliente en plazo, 1–30, 31–60, 61–90 y más de 90 días desde el vencimiento (las fronteras del Resumen), con el total; cada celda filtra la lista (`cliente` y `antiguedad=en-plazo|1-30|31-60|61-90|mas-90`) y se quita al volver a pulsarla. En el móvil, una tarjeta por cliente. Una consulta (`InvoiceList::agingByClient`), 50 clientes como mucho.
 
 ### D-438 · El remitente de las facturas (supuesto de la pregunta P-4, cambiable)
 - Las facturas salen **desde la dirección del relé** (`MAIL_FROM_ADDRESS`; en el servidor, administracion@audaxstudio.com, que el relé SMTP de Google Workspace ya acepta). La dirección no se elige en Ajustes: el relé solo acepta usuarios o alias del dominio, y el `.env` del servidor no se toca.
 - En **Ajustes › Correo** se eligen el **nombre** que ve el cliente (por defecto, el nombre comercial del emisor), la dirección de **respuesta** (vacía: llega al remitente) y una **copia oculta** a Audax de cada factura y recordatorio (vacía: ninguna). Ajuste `invoice_email`, con manage-billing y en la auditoría.
 - Si el propietario elige otra dirección (por ejemplo, facturas@), basta con crear el alias en Google Workspace y cambiar `MAIL_FROM_ADDRESS`, o separar la dirección de las facturas en un ajuste propio.
+- **Confirmado por el propietario el 12/10 (D-447)**: todo sale de administracion@audaxstudio.com y las respuestas vuelven a ella; la respuesta queda con ese valor por defecto en Ajustes.
 
 ### D-439 · Plantillas de email
 - Una por tipo (**factura, rectificativa y recordatorio**) e idioma (**español e inglés**; cada cliente recibe la de su idioma), con asunto y texto plano. Las de serie están en `lang/es/invoicing.php`; las cambiadas, en `email_templates`; «Volver a la de serie» quita la cambiada.
 - **Variables** entre corchetes, como el plan: `[cliente]`, `[numero]`, `[importe]`, `[pendiente]`, `[vencimiento]`, `[enlace]`, `[empresa]` y, en la rectificativa, `[rectificada]`. El diálogo de envío llega con todas puestas (salvo `[enlace]`, que es de cada envío) y se puede retocar antes de enviar.
 - En el email el texto se escapa; una URL (la de `[enlace]`) se convierte en un enlace con nombre. Debajo del texto va siempre el botón «Ver y descargar la factura» y una línea con la caducidad del enlace. La cabecera y el pie llevan el nombre del remitente (el emisor), no el de la app.
-- Las de serie tutean al cliente, como el resto de la app («Cualquier duda, responde a este correo»). Se pueden cambiar en Ajustes.
+- Las de serie tutean al cliente, como el resto de la app («Cualquier duda, responde a este correo»). Se pueden cambiar en Ajustes. Confirmado por el propietario el 12/10 (D-448).
 
 ### D-440 · Enlace firmado de la factura y «vista por el cliente» (H-098)
 - `/factura/{uuid}?envio={id}&expires=…&signature=…`, **sin usuario**, que caduca a los **60 días**. Lleva el uuid (no el id) y el envío del que sale. Enseña lo que importa al cliente (número, fechas, total, lo pendiente, el estado, la forma de pago), el PDF archivado (ver y descargar, con enlaces firmados hasta la misma fecha) y los adjuntos visibles. Nunca la nota interna, los proyectos ni nada de la plantilla. Con la marca de la cabecera del portal y en el idioma del cliente.
@@ -3225,6 +3226,92 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - **Cobrar, anular un cobro, enviar y recordar**: `manage-billing` (admins y quien tenga el permiso, por ejemplo finanzas). **Adjuntos**: quien prepara (use-invoicing). **Ajustes del correo y los recordatorios**: se ven con use-invoicing y se cambian con manage-billing. **Opciones del cliente**: view-billing con la emisión visible. Responsables, plantilla, colaboradores, clientes del portal y el admin excluido de Facturación (D-245): nada (`CollectAccessTest`). La matriz compartida (`document-actions.json`) gana `record_payment`, `void_payment`, `send`, `send_reminder` y `attach`.
 - **Corregido de E1**: el botón «Editar» de cada fila de Ajustes (series, impuestos, servicios y formas de pago) no abría su diálogo (no pasaba al botón lo que le pone `DialogTrigger`). Lo encontró el E2E de E2 al cambiar la fecha de inicio de la serie F.
 
+## 12/10/2026: Respuestas del propietario sobre E2 (rama `emision-e3`)
+
+Respuestas del propietario del 12/10 a las tres dudas que dejó E2 (P-4 con D-438, el tono de D-439 y los cobros de las anuladas de D-437). Usan las decisiones que estaban reservadas para sus respuestas (D-447 a D-449); E3 sigue en D-450 a D-460.
+
+### D-447 · Remitente y respuesta: administracion@ **[cierra la pregunta P-4; concreta D-438]**
+- Las facturas, las rectificativas y los recordatorios salen **desde administracion@audaxstudio.com** (la dirección del relé, `MAIL_FROM_ADDRESS`, como ya estaba) y **las respuestas vuelven a ella**.
+- **Ajustes › Correo** llega con la respuesta puesta a administracion@audaxstudio.com por defecto (`config('invoicing.reply_to')`, `INVOICING_REPLY_TO`). Si se vacía, vuelve a esa. Se puede poner otra.
+- La **copia oculta** sigue siendo opcional (vacía: ninguna).
+
+### D-448 · Tono: se tutea al cliente **[confirma D-439]**
+- Las plantillas de serie tutean al cliente, como ya hacían. No cambia nada.
+
+### D-449 · El cobro de una factura anulada no cuenta, como en Holded **[cambia D-437]**
+- El cobro de una factura propia **anulada** (con su rectificativa por el total) o anulada por error **no cuenta** en lo cobrado del Resumen (vista `billing_payments`). Tampoco la devolución de su rectificativa ni los cobros de una rectificativa de una anulada. Es la misma regla que ya seguían Ventas, el listado (barra de cobros), «Por cobrar» y «Vendido frente a real» (`BillingDocument::countingIn`, D-397). Así, todas las pantallas cuentan igual.
+- El cobro **no se borra**: sigue en la ficha de la anulada y en su historia, y en la auditoría.
+- Test: `tests/Feature/Invoicing/PaymentsTest.php` («como en Holded, el cobro de una factura anulada no cuenta…»). Migración `billing_payments_without_cancelled`, que rehace la vista.
+
+## 12/10/2026: Emisión propia, entrega E3 · Recurrentes, programadas y facturar desde el trabajo (rama `emision-e3`)
+
+Entrega E3 de `docs/PLAN-EMISION.md` (§9), con §3.1, §3.8, §4.2, §6 y §7.2. Sigue detrás del módulo `invoicing` (apagado; en modo de prueba, solo los admins, D-239) y de las exclusiones de «Quién ve Facturación» (D-245). Nunca se llama a la AEAT ni se escribe en Holded (la importación solo lee), y desde local, los tests y los E2E no sale ningún email real.
+
+### D-450 · Alcance de E3 **[amplía D-417]**
+- **Incluye**: facturas recurrentes (con las de Holded importadas en pausa), facturas programadas, «Crear borrador» desde el trabajo (horas, bolsas, excesos, fees y precios cerrados) con el bloqueo de las horas al emitir, y la cadena de documentos de la recurrente a sus facturas.
+- **Fuera** (con su entrega): el aviso de L-11 (lo del mes anterior sin facturar el día 10) en «Requiere atención», que solo tiene sentido después del corte (con Holded, las horas facturadas allí no se bloquean); y los hitos de un presupuesto (F3): un precio cerrado se factura como un importe.
+- Migración solo aditiva (`create_invoicing_e3_tables`): `recurring_invoices`, `recurring_invoice_lines` y `recurring_invoice_runs`; `sales_documents` gana su recurrente y su periodo, la programación (fecha, enviar al emitir, quién) y el error de lo automático; `sales_document_lines`, el mes de una línea de fee. Las columnas nuevas de esas dos tablas van sin clave ajena en SQLite (añadirla rehace la tabla y se perderían sus *triggers*, D-421); en PostgreSQL, sí.
+
+### D-451 · Facturas recurrentes (H-057 a H-061)
+- **Plantilla**: nombre, cliente (y proyecto y bolsa), líneas, texto de la factura, nota interna, nº de pedido, serie, forma de pago, vencimiento en días y retención.
+- **Calendario** (`RecurringSchedule`): cada 1, 2, 3, 6 o 12 meses, u «otra» (cada N meses, hasta 24), contando desde el mes de inicio, el día elegido; si el mes es más corto, su último día (el 31 en abril es el 30; en febrero, el 28 o el 29 en un bisiesto), y el mes siguiente vuelve a su día. Acaba nunca, en una fecha o tras N facturas (un periodo omitido no gasta una vez). Al crearla o cambiar su calendario, la próxima es la primera desde el inicio o desde hoy (la más tardía): nunca se generan de golpe periodos pasados.
+- **Qué hace cada periodo**: por defecto, un **borrador** (como hoy en Holded: alguien lo revisa, pone el sprint o el nº de pedido y lo emite), que sale en «Requiere atención» del Resumen. O «Emitirla sola» en nombre de quien eligió ese modo (con manage-billing) y, si se quiere, **enviarla** a los emails de facturación del cliente con su plantilla. Si no se puede (falta un dato, la serie aún no ha empezado, el cliente no tiene email), queda en borrador con el motivo (`auto_issue_error`), en su ficha y en «Requiere atención».
+- **Palabras dinámicas** (`DynamicWords`), las del periodo que factura (no las del día en que se genera): `[mes]`, `[mes anterior]`, `[mes siguiente]`, `[año]`, `[año anterior]`, `[año siguiente]`, `[año del mes anterior]`, `[trimestre]` (4T; Q4 en inglés), `[trimestre anterior]`, `[fecha]`; con mayúscula inicial (`[Mes]` → «Octubre»), sin espacios (`[mesanterior]`, como en Holded) y en inglés para un cliente en inglés. Lo que no es una palabra conocida se deja tal cual.
+- **Omitir un periodo**, deshacerlo, **pausar** y **reanudar** (la próxima pasa a la primera desde hoy: lo que tocó en la pausa no se genera). Borrar solo una que no ha generado nada; con facturas, se pausa.
+- **La tarea diaria** (`app:billing-generate-recurring`, 07:30) genera lo que toca y, si un día no corrió, se pone al día (hasta 3 periodos por recurrente). **Nunca duplica**: cada periodo tiene una sola fila en el historial (`recurring_invoice_runs`, único por recurrente y periodo) y se genera con la recurrente bloqueada. **En modo de prueba no genera nada** (D-239); «Generar ahora» funciona siempre (la del próximo periodo, con la fecha de hoy).
+- **Historial** (lo generado y lo omitido, con quién y cómo) y **calendario** de las próximas 12 en la ficha. La factura generada lleva su recurrente y su periodo: la cadena de documentos empieza en la recurrente.
+
+### D-452 · Las recurrentes de Holded, importadas en pausa (PLAN-EMISION §7.2)
+- `app:import-holded-recurring [--dry-run] [--por=email]` lee `GET /recurring-invoices` de la API v2 (`HoldedApi::recurringInvoices`, ruta en `HOLDED_RECURRING_PATH`), **solo lectura**, y crea cada una **en pausa** y en borrador, con su cliente (el del contacto ya casado), sus líneas (el servicio del catálogo por su código), su periodicidad, su día y su próxima fecha (el calendario empieza en ella), y el proyecto si el cliente tiene un único fee vivo con ese importe. Guarda lo leído (`holded_snapshot`).
+- **No inventa**: sin cliente casado, sin una periodicidad que se entienda (mes, trimestre, año, semestre × frecuencia) o sin próxima fecha, no se importa y la orden lo dice; un servicio o un impuesto que no se reconoce, se avisa (la línea va sin servicio o con el IVA por defecto). Las ya importadas (por su id de Holded) no se tocan.
+- Se revisan una a una («Marcar como revisada»; «Requiere atención» cuenta las pendientes) y se reanudan el día del corte, a la vez que se desactivan en Holded.
+
+### D-453 · Facturas programadas
+- Un **borrador con fecha de emisión futura** (no es un estado más en la base de datos: es un borrador con `scheduled_for`, «Programada» en la interfaz y en la matriz). Se programa desde la ficha («Programar…») o desde el editor («Guardar y programar…»), con «Enviarla al emitir». La fecha de la factura pasa a la programada y el vencimiento se mueve lo mismo.
+- **Programar es emitir más tarde**: hace falta manage-billing, y se emite en nombre de quien la programó. Cambiar o borrar una programada también es de quien emite; al editarla, deja de estar programada.
+- `app:billing-issue-scheduled` (08:00) emite las de hoy (o atrasadas, con la fecha del día en que corre) y las envía si se pidió. **En modo de prueba no se emite nada sola.** Lo que no se puede emitir sigue programado con el motivo y se intenta al día siguiente. «Emitir ahora» la adelanta con la fecha de hoy.
+- Vista «Programadas» en Facturas (solo si hay alguna) y «Programada · fecha» en el listado y la ficha.
+
+### D-454 · «Crear borrador» desde el trabajo (H-129, H-132)
+- Desde **Por facturar** (cada cliente de la lista y su detalle), la pestaña **Facturación del proyecto**, la **bolsa** («Facturar la bolsa») y el **Resumen** (los cinco que más tienen): un panel lateral con lo que el cliente tiene por facturar en el periodo de la lista (`UnbilledWork`) y lo que daría cada cosa en la factura, con casillas.
+- **Horas** de sus proyectos por horas: las aprobadas, facturables y sin bloquear del periodo que no están en ninguna factura propia, agrupadas por tarea, persona, tipo de tarea, proyecto o una por entrada y, dentro, por tarifa. Aparte, las pendientes de aprobar (no entran) y las que ya están en un borrador.
+- **Importe al céntimo**: cada línea vale exactamente lo que sus entradas a su tarifa congelada (`EntryValuation`). Si horas × tarifa no da ese importe al redondear (20 min a 65 €/h son 21,67 €; 0,3333 h × 65 € son 21,66 €), la cantidad usa el cuarto decimal que lo da (0,3334 h, `WorkLines::quantityFor`); en el PDF se ven las mismas horas con dos decimales. Una factura redondea cada línea; Por facturar, el total del proyecto: pueden diferir en un céntimo.
+- El servicio del catálogo de cada línea de horas, por el tipo de tarea que más pesa (Desarrollo → DES…); el impuesto, por el régimen del cliente (UE, fuera de la UE, exento o el de por defecto). Con varios proyectos, un título por proyecto (H-070).
+- Lleva al editor con todo hecho: se revisa, se cambia lo que haga falta y se emite como siempre. Quién: quien prepara facturas (use-invoicing).
+
+### D-455 · Las horas facturadas se bloquean al emitir y vuelven al anular **[concreta D-244 y D-424]**
+- Cada línea de horas guarda sus minutos y sus entradas (`sales_document_time_entry`). **Una entrada solo puede estar en una factura viva**, también en un borrador (índice único parcial): no se puede facturar dos veces ni ponerla en dos borradores. Borrar el borrador o la línea la libera.
+- **Al emitir**, las entradas quedan bloqueadas con la factura como referencia (`TimeLockService::lockForDocument`). **Al anular** (rectificativa por el total) se desbloquean y vuelven a estar pendientes; **al rectificar por diferencias, no** (D-244). ~~Una factura de la serie de pruebas también bloquea (para probar el flujo): anúlala para liberarlas.~~ **Cambia en D-461**: la serie de pruebas no bloquea.
+- **Por facturar es exacto con las propias**: las horas en una factura propia emitida dejan de contar por entrada (`UnbilledReport::notInvoicedByAudax`), sin importar la fecha de la factura, y esas líneas (y sus rectificativas) no se restan por importe. Las de Holded siguen restándose por periodo, como antes (D-396).
+
+### D-456 · Bolsas y excesos al facturar **[aplica D-433]**
+- **Bolsa vendida sin factura**: «bolsadehoras» con unidades = horas de la bolsa y precio = €/h, como hoy en Holded: si la bolsa tiene tarifa y su precio es menor que horas × tarifa, la tarifa con el descuento que da el precio (100 h × 60 € − 15 % = 5.100 €); si no, su precio entre sus horas; si nada cuadra al céntimo, una unidad por el precio.
+- **Exceso**: las horas de exceso aprobadas y sin facturar, a su tarifa (la congelada o la de la bolsa, el proyecto o el cliente), con sus entradas, que se bloquean al emitir. El de una bolsa renovada se ofrece con la siguiente: al marcar la bolsa renovada, se marca solo el exceso de la anterior, y la factura se enlaza a la siguiente (D-434: puede pasar de su precio). El de la bolsa activa, suelto.
+
+### D-457 · Fees y precios cerrados al facturar **[amplía D-412 y D-432]**
+- **Fees**: un «Fee de [mes] de [año] · proyecto» por cada mes ya empezado sin facturar, con el importe al mes. La línea guarda el mes que factura (`period_start`): «Fee de septiembre» emitido en octubre cuenta para septiembre en Por facturar (y la factura ya no marca octubre por su fecha).
+- **Precios cerrados**: lo pendiente (precio − lo facturado y enlazado), como un importe o un hito con su concepto («App · 50 % al empezar»), como mucho lo pendiente.
+
+### D-458 · Cada línea hecha desde el trabajo cuenta para su proyecto o su bolsa **[amplía D-388 y D-427]**
+- La vista `billing_document_lines` gana `minutes`, `project_id` y `hour_bank_id` de las líneas propias. Una factura con varios proyectos reparte cada línea al suyo en Por facturar (precios cerrados) y en «Vendido frente a real» (lo facturado, cobrado y pendiente, en proporción), y lo que no lleva proyecto se reparte a partes iguales, como siempre. Las horas facturadas cuentan con sus minutos exactos (no por las unidades).
+- La factura se enlaza (`sales_document_links`, «desde el trabajo») a cada proyecto y bolsa de sus líneas: cuenta en «Vendido frente a real» y no sale en «Sin proyecto».
+
+### D-459 · Pantallas de E3 **[amplía D-406, D-411, D-428 y D-445]**
+- **Recurrentes** es una pestaña más de Facturas (`/facturacion/recurrentes`): nombre y cliente, periodicidad, próxima, base, qué hace, estado (activa, en pausa, de Holded por revisar, acabada, con un error) y la última factura, con filtros por estado y búsqueda; en el móvil, tarjetas. **Ficha**: qué genera (las líneas con sus palabras), las próximas 12 con «Omitir», el historial y los datos; «Generar ahora», pausar, reanudar, editar, marcar revisada y borrar. **Editor**: para quién, cuándo, qué hacer cada periodo y las líneas (las del editor de facturas) con las palabras dinámicas a la vista.
+- **Matriz** (`DocumentActions` y su copia TS, caso compartido): estado `scheduled` y acciones `schedule`, `unschedule` y `make_recurring` («Hacer recurrente», desde un borrador, una emitida o una de Holded).
+- **Ficha de la factura**: «Programar…» / «Cambiar la fecha…», «Emitir ahora…», «Desprogramar» y «Hacer recurrente» en el menú; el aviso de la programación y de lo que no salió solo; en cada línea de horas, cuántas entradas lleva y si ya están bloqueadas; la recurrente en la cadena de documentos. El editor avisa de las líneas con horas y de que guardar desprograma.
+- **Resumen**: «Requiere atención» suma lo que no se pudo emitir o enviar solo, las recurrentes con un error, los borradores de recurrentes por revisar, las programadas de hoy y las recurrentes de Holded por revisar; y «Crear borrador» en los cinco clientes de «Por facturar».
+
+### D-460 · Permisos de E3 **[amplía D-418 y D-446]**
+- **Ver las recurrentes**: use-invoicing. **Crearlas, cambiarlas, pausarlas, omitir, «Generar ahora», marcarlas revisadas y borrarlas**: manage-billing (pueden emitir solas). **Programar y desprogramar**, y cambiar o borrar una programada: manage-billing. **«Crear borrador» desde el trabajo**: use-invoicing (quien prepara). Responsables, plantilla, colaboradores, clientes del portal y el admin excluido de Facturación (D-245): nada (404 o 403); con la emisión apagada, 404 (`E3AccessTest`).
+
+### D-461 · La serie de pruebas no bloquea horas reales **[cambia D-455; amplía D-419]**
+Decisión del coordinador del 12/10, a la duda de E3: probar en modo de prueba no debe ensuciar «Por facturar» ni «Vendido frente a real», y la serie de pruebas no cuenta en nada.
+- Un borrador de la serie de pruebas (PRU) puede llevar líneas de horas hechas desde el trabajo y se emite normalmente, pero **al emitir no se bloquea ninguna entrada** (no se llama a `TimeLockService`) y sus enlaces con las entradas se sueltan: las horas siguen libres y pendientes, y se pueden facturar de verdad. Anularla no toca nada.
+- Por facturar nunca cuenta como facturada una hora de una factura de pruebas (`UnbilledReport::notInvoicedByAudax` mira solo las que no son de pruebas).
+- Aviso claro «Serie de pruebas: las horas no se bloquean.» en el panel «Crear borrador» (si el borrador irá a la serie de pruebas), en el editor y en cada línea de horas de la ficha.
+- El bloqueo y el desbloqueo se prueban con la serie F (Pest con fechas de 2027; el E2E de E3 adelanta la fecha de inicio de F en Ajustes y la devuelve al 1/1/2027 al acabar).
+
 ### Numeración
 - Fase 2: D-078 a D-087.
 - Fase 3: D-088 y D-091.
@@ -3257,7 +3344,7 @@ Entrega E2 de `docs/PLAN-EMISION.md` (§9), con §3.3 a §3.5, §4.2 y §6. Sigu
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446; respuestas del propietario sobre E2 (remitente, tono y cobros de las anuladas), D-447 a D-449; emisión propia, entrega E3 (recurrentes, programadas y facturar desde el trabajo), D-450 a D-460; la serie de pruebas no bloquea horas, D-461.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-447** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-447 a D-451, reservadas para las respuestas del propietario, que antes iban en D-435 a D-439 y las ha usado E2 por encargo; D-452 en adelante, libres).
+La siguiente libre es **D-462** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-462 en adelante, libres).

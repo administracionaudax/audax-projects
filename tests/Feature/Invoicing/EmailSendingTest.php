@@ -184,3 +184,12 @@ it('Ajustes: cambiar una plantilla, volver a la de serie y el remitente, en la a
     expect(InvoiceEmailSettings::get())->toBe(['sender_name' => 'Audax Studio', 'reply_to' => 'cobros@audaxstudio.com', 'bcc' => null])
         ->and(Activity::query()->where('log_name', 'settings')->count())->toBe(3);
 });
+
+it('por defecto, las respuestas vuelven a administracion@ y la copia oculta es opcional (D-447)', function () {
+    expect(InvoiceEmailSettings::get())->toBe(['sender_name' => 'Audax Studio', 'reply_to' => 'administracion@audaxstudio.com', 'bcc' => null]);
+
+    // Vaciarla en Ajustes vuelve a la de por defecto (todo sale de administracion@ y vuelve a ella).
+    $this->actingAs($this->admin)->put('/facturacion/ajustes/emision/correo', ['sender_name' => '', 'reply_to' => '', 'bcc' => ''])->assertSessionHasNoErrors();
+    expect(InvoiceEmailSettings::get()['reply_to'])->toBe('administracion@audaxstudio.com')
+        ->and(InvoiceEmailSettings::get()['bcc'])->toBeNull();
+});

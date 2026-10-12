@@ -7,6 +7,7 @@ import {
     Eye,
     FileText,
     Paperclip,
+    Repeat,
     Trash2,
     Undo2,
     Upload,
@@ -400,6 +401,28 @@ export function DocumentChain({ document }: { document: SalesDocumentDetail }) {
         content: ReactNode;
         current?: boolean;
     }[] = [];
+
+    // E3: la recurrente de la que sale (con el periodo que factura).
+    if (document.recurring) {
+        steps.push({
+            key: 'recurring',
+            icon: Repeat,
+            content: (
+                <>
+                    {t('invoicing.work.chain.recurring')}{' '}
+                    <ChainLink href={document.recurring.url}>
+                        {document.recurring.name}
+                    </ChainLink>
+                    {document.recurring.period ? (
+                        <span className="text-muted-foreground">
+                            {' · '}
+                            {formatDate(document.recurring.period)}
+                        </span>
+                    ) : null}
+                </>
+            ),
+        });
+    }
 
     if (document.source) {
         steps.push({

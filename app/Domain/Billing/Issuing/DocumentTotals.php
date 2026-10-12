@@ -87,6 +87,20 @@ final class DocumentTotals
     }
 
     /**
+     * La base de una línea suelta (cantidad × precio × (1 − descuento %), al céntimo), la misma de
+     * compute(): la usan las recurrentes y las líneas que se crean desde el trabajo (E3).
+     *
+     * @return numeric-string
+     */
+    public static function lineBase(string $quantity, string $unitPrice, string $discountPct = '0'): string
+    {
+        $product = bcmul(self::num($quantity), self::num($unitPrice), self::SCALE);
+        $factor = bcdiv(bcsub('100', self::num($discountPct), self::SCALE), '100', self::SCALE);
+
+        return self::round(bcmul(self::num($product), self::num($factor), self::SCALE));
+    }
+
+    /**
      * Al céntimo, mitad hacia arriba alejándose del cero.
      *
      * @return numeric-string

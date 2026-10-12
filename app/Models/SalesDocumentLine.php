@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $hour_bank_id
  * @property string $origin
  * @property int|null $minutes
+ * @property CarbonImmutable|null $period_start El mes que factura una línea de fee (E3)
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read SalesDocument $document
@@ -44,7 +45,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'sales_document_id', 'position', 'kind', 'service_id', 'name', 'service_code', 'description', 'quantity', 'unit', 'unit_price',
-    'discount_pct', 'tax_rate_id', 'tax_rate', 'operation_type', 'line_base', 'project_id', 'hour_bank_id', 'origin', 'minutes',
+    'discount_pct', 'tax_rate_id', 'tax_rate', 'operation_type', 'line_base', 'project_id', 'hour_bank_id', 'origin', 'minutes', 'period_start',
 ])]
 class SalesDocumentLine extends Model
 {
@@ -61,6 +62,7 @@ class SalesDocumentLine extends Model
             'tax_rate' => 'decimal:2',
             'operation_type' => TaxOperationType::class,
             'line_base' => 'decimal:2',
+            'period_start' => 'immutable_date',
         ];
     }
 

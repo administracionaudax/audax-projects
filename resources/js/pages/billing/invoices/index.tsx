@@ -33,27 +33,11 @@ import { useAbilities } from '@/hooks/use-auth';
 import { t } from '@/lib/i18n';
 import { tCount } from '@/lib/people';
 import { AGES, AgingTable } from '@/components/invoicing/aging-table';
+import { invoiceTabs } from '@/components/invoicing/invoice-views';
+import type { InvoiceView } from '@/components/invoicing/invoice-views';
 import type { AgingByClient, HoldedInvoiceSummary } from '@/types';
 
-export type InvoiceView =
-    | 'todas'
-    | 'por-cobrar'
-    | 'vencidas'
-    | 'sin-proyecto'
-    | 'borradores'
-    | 'rectificativas'
-    | 'pruebas';
-
-const VIEWS: InvoiceView[] = [
-    'todas',
-    'por-cobrar',
-    'vencidas',
-    'sin-proyecto',
-    'borradores',
-    'rectificativas',
-    // La serie de pruebas de la emisión propia (D-419): solo si hay alguna.
-    'pruebas',
-];
+export type { InvoiceView } from '@/components/invoicing/invoice-views';
 
 type Filters = {
     vista: InvoiceView;
@@ -99,6 +83,8 @@ type Props = {
     clients: { id: number; name: string }[];
     services: string[];
     today: string;
+    /** E3: cuántas recurrentes hay (la pestaña «Recurrentes»), con la emisión visible. */
+    recurring_count?: number;
 };
 
 const URL = '/facturacion/facturas';
@@ -126,6 +112,7 @@ export default function InvoicesIndex({
     clients,
     services,
     today,
+    recurring_count: recurringCount = 0,
 }: Props) {
     const id = useId();
     const can = useAbilities();
@@ -283,17 +270,12 @@ export default function InvoicesIndex({
                     label={t('billing.invoices.views_label')}
                     current={filters.vista}
                     dataTest="invoice-views"
-                    tabs={VIEWS.filter(
-                        (view) =>
-                            view !== 'pruebas' ||
-                            views.pruebas > 0 ||
-                            filters.vista === 'pruebas',
-                    ).map((view) => ({
-                        id: view,
-                        label: t(`billing.invoices.view.${view}`),
-                        href: viewHref(view),
-                        count: views[view],
-                    }))}
+                    tabs={invoiceTabs({
+                        views,
+                        current: filters.vista,
+                        href: viewHref,
+                        recurring: can.useInvoicing ? recurringCount : null,
+                    })}
                 />
 
                 <CollectionBar

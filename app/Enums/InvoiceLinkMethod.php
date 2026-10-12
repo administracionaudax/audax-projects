@@ -15,6 +15,8 @@ enum InvoiceLinkMethod: string
     /** Rectificativa sin enlaces propios: los de la factura que rectifica. */
     case Rectified = 'rectified';
     case Manual = 'manual';
+    /** Factura propia creada desde el trabajo (Por facturar, E3): el proyecto y la bolsa de sus líneas. */
+    case Work = 'work';
 
     public function label(): string
     {
@@ -23,7 +25,7 @@ enum InvoiceLinkMethod: string
 
     public function automatic(): bool
     {
-        return $this !== self::Manual;
+        return $this !== self::Manual && $this !== self::Work;
     }
 
     /**

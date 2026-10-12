@@ -124,8 +124,23 @@ export type SalesDocumentForm = {
     customer_reference: string | null;
     project_id: number | null;
     hour_bank_id: number | null;
-    lines: Omit<EditorLine, 'key'>[];
+    lines: (Omit<EditorLine, 'key'> & {
+        /** E3: de dónde sale la línea (horas, bolsa, exceso, fee, precio cerrado o a mano). */
+        origin?: LineOrigin;
+        minutes?: number | null;
+    })[];
+    /** E3: programada para emitirse sola ese día (al guardar deja de estarlo). */
+    scheduled_for?: string | null;
 };
+
+/** De dónde sale una línea (E3): a mano o desde el trabajo. */
+export type LineOrigin =
+    | 'manual'
+    | 'hours'
+    | 'hour_bank'
+    | 'overage'
+    | 'fee'
+    | 'fixed';
 
 export type IssuePreview = {
     series: string | null;
@@ -205,6 +220,15 @@ export type SalesDocumentDetail = {
     view_count: number;
     payments: DocumentPayment[];
     emails: DocumentEmail[];
+    /** E3: programada (se emite sola ese día), la recurrente de la que sale y lo que no salió solo. */
+    scheduled?: { for: string | null; send: boolean; by: string | null } | null;
+    recurring?: {
+        id: number;
+        name: string;
+        url: string;
+        period: string | null;
+    } | null;
+    auto_issue_error?: string | null;
     reminder_problems: {
         id: number;
         days: number;
@@ -235,6 +259,10 @@ export type SalesDocumentDetail = {
         tax_rate: string | null;
         operation_type: string | null;
         line_base: string;
+        /** E3: de dónde sale, sus minutos y cuántas entradas de horas lleva. */
+        origin?: LineOrigin;
+        minutes?: number | null;
+        entries?: number;
     }[];
     taxes: {
         operation_type: string;
@@ -270,6 +298,10 @@ export type SalesDocumentShowProps = {
     void_problems: string[];
     projects: InvoicingProjectOption[];
     open_issue: boolean;
+    /** E3: el diálogo de programar abierto («Guardar y programar…» del editor). */
+    open_schedule?: boolean;
+    /** E3: ¿se emiten solas las programadas? (no en modo de prueba, D-239). */
+    auto_active?: boolean;
     today: string;
     payment_methods: { value: PaymentMethodKey; label: string }[];
     list: {

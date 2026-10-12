@@ -122,6 +122,8 @@ return [
         'max_retry_after' => (int) env('HOLDED_MAX_RETRY_AFTER', 120),
         // PDF descargados por ejecución (el resto, en la siguiente): protege el cupo mensual del plan.
         'pdfs_per_run' => (int) env('HOLDED_PDFS_PER_RUN', 200),
+        // Las recurrentes (E3, app:import-holded-recurring), en solo lectura.
+        'recurring_path' => env('HOLDED_RECURRING_PATH', '/recurring-invoices'),
     ],
 
     /*

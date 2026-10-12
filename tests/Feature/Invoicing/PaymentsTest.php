@@ -172,3 +172,29 @@ it('el Resumen y Ventas cuentan los cobros propios como los de Holded (por fecha
     $summary = app(BillingSummary::class)->summary($this->admin, $period);
     expect(collect($summary['months'])->firstWhere('month', '2027-02')['collected'])->toBe('0.00');
 });
+
+it('como en Holded, el cobro de una factura anulada no cuenta en el Resumen, Ventas ni lo cobrado del listado (D-449)', function () {
+    pay($this->invoice, '300', '2027-02-01');
+    $other = invoicingIssue($this->admin, $this->client);
+    pay($other, '100', '2027-02-01');
+
+    // Anulada (rectificativa por el total) después de cobrarla en parte: su cobro ya no cuenta, ni
+    // la devolución de su rectificativa.
+    $credit = app(InvoiceCorrections::class)->cancel($this->invoice->refresh(), $this->admin, 'Factura duplicada');
+    $this->actingAs($this->admin)->post("/facturacion/documentos/{$credit->id}/cobros", ['paid_on' => '2027-02-01', 'amount' => '300', 'method' => 'transfer'])->assertRedirect();
+
+    $period = ['key' => 'anio', 'from' => '2027-01-01', 'to' => '2027-12-31'];
+    $summary = app(BillingSummary::class)->summary($this->admin, $period);
+    expect(collect($summary['months'])->firstWhere('month', '2027-02')['collected'])->toBe('100.00')
+        ->and($summary['kpis']['outstanding'])->toBe('626.00');
+
+    $query = new InvoicingQuery(new ReportFilters(ReportPeriod::Year, CarbonImmutable::parse('2027-01-01'), CarbonImmutable::parse('2027-12-31')), [], CarbonImmutable::parse('2027-02-01'));
+    expect(app(InvoicingReport::class)->report($query, CarbonImmutable::parse('2027-02-01'))['kpis']['collected'])->toBe('100.00');
+
+    $bar = InvoiceList::fromQuery(['periodo' => 'todo'], CarbonImmutable::parse('2027-02-01'))->collectionBar();
+    expect($bar['cobrado'])->toBe(['amount' => '100.00', 'count' => 1])
+        ->and($bar['vencido']['amount'])->toBe('0.00');
+
+    // La ficha de la anulada sigue enseñando su cobro (no se borra nada).
+    $this->get("/facturacion/documentos/{$this->invoice->id}")->assertInertia(fn (Assert $page) => $page->has('document.payments', 1));
+});

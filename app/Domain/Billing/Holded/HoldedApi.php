@@ -53,6 +53,14 @@ interface HoldedApi
     public function payments(): iterable;
 
     /**
+     * Facturas recurrentes (H-057), en solo lectura: E3 las importa en pausa en Audax
+     * (app:import-holded-recurring). Nunca se cambian en Holded.
+     *
+     * @return iterable<int, array<string, mixed>>
+     */
+    public function recurringInvoices(): iterable;
+
+    /**
      * El PDF original de un documento (empieza por «%PDF»).
      *
      * @throws HoldedRequestFailed

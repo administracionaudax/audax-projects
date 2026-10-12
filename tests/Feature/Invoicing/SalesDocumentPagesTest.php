@@ -176,7 +176,7 @@ it('anula, rectifica y anula el registro desde la ficha, y cambia lo no fiscal d
             ->where('document.rectifications.0.number', 'CN270002')
             ->where('document.records.0.kind', 'alta')
             ->where('document.links.0.project.id', $this->project->id)
-            ->where('actions', ['view', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'record_payment', 'void_payment', 'send', 'send_reminder', 'attach'])
+            ->where('actions', ['view', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'record_payment', 'void_payment', 'send', 'send_reminder', 'attach', 'make_recurring'])
             ->where('void_problems', ['La factura tiene rectificativas: no se puede anular su registro.']));
 });
 

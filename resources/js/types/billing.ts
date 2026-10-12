@@ -29,7 +29,8 @@ export type InvoiceLinkMethod =
     | 'f_code'
     | 'holded_project'
     | 'rectified'
-    | 'manual';
+    | 'manual'
+    | 'work';
 
 export type InvoiceLineKind =
     | 'bank'
@@ -153,6 +154,8 @@ export type HoldedInvoiceSummary = {
     pending_total: string;
     collection_status: CollectionStatus;
     is_draft: boolean;
+    /** Programada (E3): se emitirá sola ese día (AAAA-MM-DD). */
+    scheduled_for?: string | null;
     tags: string[];
     links: InvoiceLinkData[];
     /** Marcada «No necesita proyecto» (D-431). */
@@ -357,6 +360,12 @@ export type BillingSummaryData = {
         banks: { count: number; over: number; threshold: number };
         /** Recordatorios de cobro que no salieron (E2, D-442). */
         reminders: { count: number };
+        /** E3: borradores de recurrentes, programadas de hoy, lo que no salió solo y recurrentes con error o por revisar. */
+        recurring_drafts?: { count: number };
+        scheduled_today?: { count: number };
+        auto_failed?: { count: number; url: string };
+        recurring_failed?: { count: number };
+        recurring_review?: { count: number };
     };
     kpis: {
         invoiced: string;

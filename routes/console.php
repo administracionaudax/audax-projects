@@ -216,3 +216,18 @@ Schedule::command('app:billing-send-reminders')
     ->timezone('Europe/Madrid')
     ->withoutOverlapping()
     ->onOneServer();
+
+// Emisión propia, E3: las recurrentes que tocan hoy (07:30) y las programadas (08:00). Solo con los
+// módulos `billing` e `invoicing` encendidos de verdad (en modo de prueba no se genera ni se emite
+// nada solo, D-239). Idempotentes: un periodo no se genera dos veces.
+Schedule::command('app:billing-generate-recurring')
+    ->dailyAt('07:30')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('app:billing-issue-scheduled')
+    ->dailyAt('08:00')
+    ->timezone('Europe/Madrid')
+    ->withoutOverlapping()
+    ->onOneServer();

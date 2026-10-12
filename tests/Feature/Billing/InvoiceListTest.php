@@ -106,6 +106,7 @@ it('cuenta cada vista con su periodo por defecto: el año en curso en Todas y to
             // Sin enlazar ni anular, también el borrador (D-388).
             'sin-proyecto' => 5,
             'borradores' => 1,
+            'programadas' => 0,
             'rectificativas' => 1,
             // La serie de pruebas de la emisión propia (D-419), solo en su pestaña.
             'pruebas' => 0,

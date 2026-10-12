@@ -7,6 +7,7 @@
 
 export type DocumentState =
     | 'draft'
+    | 'scheduled'
     | 'issued'
     | 'paid'
     | 'cancelled'
@@ -33,7 +34,10 @@ export type DocumentAction =
     | 'void_payment'
     | 'send'
     | 'send_reminder'
-    | 'attach';
+    | 'attach'
+    | 'schedule'
+    | 'unschedule'
+    | 'make_recurring';
 
 const ROLES: DocumentRole[] = ['view', 'manage', 'admin'];
 
@@ -55,10 +59,14 @@ const ACTIONS: DocumentAction[] = [
     'send',
     'send_reminder',
     'attach',
+    'schedule',
+    'unschedule',
+    'make_recurring',
 ];
 
 const ALL_VIEW: Partial<Record<DocumentState, DocumentRole>> = {
     draft: 'view',
+    scheduled: 'view',
     issued: 'view',
     paid: 'view',
     cancelled: 'view',
@@ -72,11 +80,13 @@ const MATRIX: Record<
     Partial<Record<DocumentState, DocumentRole>>
 > = {
     view: ALL_VIEW,
-    edit: { draft: 'view' },
-    delete: { draft: 'view' },
-    issue: { draft: 'manage' },
+    // Una programada se emitirá sola: cambiarla o borrarla es de quien emite (E3).
+    edit: { draft: 'view', scheduled: 'manage' },
+    delete: { draft: 'view', scheduled: 'manage' },
+    issue: { draft: 'manage', scheduled: 'manage' },
     duplicate: {
         draft: 'view',
+        scheduled: 'view',
         issued: 'view',
         paid: 'view',
         cancelled: 'view',
@@ -108,11 +118,21 @@ const MATRIX: Record<
     send_reminder: { issued: 'manage', paid: 'manage' },
     attach: {
         draft: 'view',
+        scheduled: 'view',
         issued: 'view',
         paid: 'view',
         cancelled: 'view',
         voided: 'view',
         credit_note: 'view',
+    },
+    // E3: programar y desprogramar, y «Hacer recurrente» (H-033).
+    schedule: { draft: 'manage', scheduled: 'manage' },
+    unschedule: { scheduled: 'manage' },
+    make_recurring: {
+        draft: 'manage',
+        issued: 'manage',
+        paid: 'manage',
+        holded: 'manage',
     },
 };
 

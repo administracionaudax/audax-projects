@@ -10,6 +10,8 @@ use App\Domain\Billing\Issuing\InvoiceCorrections;
 use App\Domain\Billing\Issuing\InvoiceIssuer;
 use App\Domain\Billing\Issuing\InvoicePdf;
 use App\Domain\Billing\Issuing\SalesDocumentPresenter;
+use App\Domain\Billing\Recurring\RecurringInvoiceGenerator;
+use App\Domain\Billing\Recurring\ScheduledInvoices;
 use App\Enums\BillingPaymentMethod;
 use App\Enums\SalesDocumentStatus;
 use App\Enums\SalesDocumentType;
@@ -75,11 +77,13 @@ class SalesDocumentController extends Controller
         return $this->afterSave($request, $document);
     }
 
-    public function edit(SalesDocument $document): Response|RedirectResponse
+    public function edit(Request $request, SalesDocument $document): Response|RedirectResponse
     {
         if (! $document->isDraft()) {
             return redirect($document->url());
         }
+        // Una programada solo la cambia quien emite (E3).
+        abort_unless(DocumentActions::allows($document, $request->user(), 'edit'), 403);
 
         return Inertia::render('billing/documents/edit', [
             'document' => SalesDocumentPresenter::form($document),
@@ -89,10 +93,13 @@ class SalesDocumentController extends Controller
         ]);
     }
 
-    public function update(SalesDocumentRequest $request, SalesDocument $document, DraftWriter $writer): RedirectResponse
+    public function update(SalesDocumentRequest $request, SalesDocument $document, DraftWriter $writer, ScheduledInvoices $scheduled): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
+        abort_unless(! $document->isDraft() || DocumentActions::allows($document, $user, 'edit'), 403);
+        // Cambiar una programada la devuelve a borrador (PLAN-EMISION §3.2): se vuelve a programar a propósito.
+        $scheduled->unschedule($document, $user);
         $writer->save($document, $request->draft(), $user); // @phpstan-ignore argument.type
 
         return $this->afterSave($request, $document);
@@ -102,7 +109,11 @@ class SalesDocumentController extends Controller
     {
         Inertia::flash('toast', ['type' => 'success', 'message' => __('invoicing.flash.saved')]);
 
-        return redirect($document->url().($request->input('after') === 'emitir' ? '?emitir=1' : ''));
+        return redirect($document->url().match ($request->input('after')) {
+            'emitir' => '?emitir=1',
+            'programar' => '?programar=1',
+            default => '',
+        });
     }
 
     public function show(Request $request, SalesDocument $document, InvoiceIssuer $issuer): Response
@@ -123,6 +134,9 @@ class SalesDocumentController extends Controller
             'void_problems' => in_array('void', $actions, true) ? InvoiceCorrections::voidProblems($document) : [],
             'projects' => in_array('edit_non_fiscal', $actions, true) ? EditorOptions::projects() : [],
             'open_issue' => $request->boolean('emitir') && in_array('issue', $actions, true),
+            // E3: el diálogo de programar abierto (desde «Guardar y programar…» del editor).
+            'open_schedule' => $request->boolean('programar') && in_array('schedule', $actions, true),
+            'auto_active' => RecurringInvoiceGenerator::active(),
             'today' => LocalTime::today()->toDateString(),
             // E2: las formas de cobro del diálogo «Registrar cobro» (D-436).
             'payment_methods' => in_array('record_payment', $actions, true)
@@ -181,12 +195,16 @@ class SalesDocumentController extends Controller
         return redirect('/facturacion/facturas?vista=borradores');
     }
 
-    public function issue(Request $request, SalesDocument $document, InvoiceIssuer $issuer): RedirectResponse
+    public function issue(Request $request, SalesDocument $document, InvoiceIssuer $issuer, ScheduledInvoices $scheduled): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
         abort_unless(DocumentActions::allows($document, $user, 'issue'), 403);
 
+        // «Emitir ahora» una programada (adelantarla): con la fecha de hoy.
+        if ($document->isScheduled()) {
+            $scheduled->bringForward($document, $user);
+        }
         $issued = $issuer->issue($document, $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('invoicing.flash.issued', ['number' => $issued->full_number])]);
 

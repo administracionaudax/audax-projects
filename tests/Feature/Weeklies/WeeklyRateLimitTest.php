@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\WeeklyCycle;
+use Carbon\CarbonImmutable;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -70,7 +71,7 @@ it('sondear la respuesta del asistente no agota el límite de «Preguntar»', fu
 it('el autoguardado de Mi weekly no agota el límite de «Enviar»', function () {
     // Fecha fija: un miércoles, con la persona dada de alta antes de la semana (si no, en domingo
     // «no le toca» la weekly y el test fallaba según el día).
-    $this->travelTo(Carbon\CarbonImmutable::parse('2026-10-07 10:00:00', 'Europe/Madrid'));
+    $this->travelTo(CarbonImmutable::parse('2026-10-07 10:00:00', 'Europe/Madrid'));
     $me = userWithRole('employee', ['created_at' => '2026-09-01 08:00:00']);
     $cycle = WeeklyCycle::factory()->active()->create();
 

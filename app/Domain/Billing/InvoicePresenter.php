@@ -41,6 +41,8 @@ final class InvoicePresenter
             'pending_total' => (string) $invoice->pending_total,
             'collection_status' => $invoice->collection_status->value,
             'is_draft' => $invoice->is_draft,
+            // Programada (E3): se emitirá sola ese día.
+            'scheduled_for' => $invoice instanceof BillingDocument ? $invoice->scheduled_for?->toDateString() : null,
             'tags' => $invoice->tags ?? [],
             'links' => $invoice->relationLoaded('links') ? $invoice->links->map(fn (HoldedInvoiceLink|BillingDocumentLink $link): array => self::link($link))->values()->all() : [],
             'no_project_needed' => $invoice->noProjectNeeded(),

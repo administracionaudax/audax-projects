@@ -17,26 +17,28 @@ use App\Models\User;
  * (V-03). Una acción que no está aquí no se ofrece; el servidor comprueba además las condiciones
  * concretas (por ejemplo, que no haya cobros para anular el registro).
  *
- * E2 añade cobrar, anular un cobro, enviar, recordar el cobro y los adjuntos. Fuera aún: programar,
- * hacer recurrente (E3) y el estado en la AEAT (E7).
+ * E2 añade cobrar, anular un cobro, enviar, recordar el cobro y los adjuntos. E3 añade el estado
+ * «programada» (un borrador con fecha de emisión futura: editarlo, borrarlo o emitirlo antes es de
+ * quien emite), programar y desprogramar, y «Hacer recurrente». Fuera aún: el estado en la AEAT (E7).
  */
 final class DocumentActions
 {
-    public const array STATES = ['draft', 'issued', 'paid', 'cancelled', 'voided', 'credit_note', 'holded'];
+    public const array STATES = ['draft', 'scheduled', 'issued', 'paid', 'cancelled', 'voided', 'credit_note', 'holded'];
 
     public const array ROLES = ['view', 'manage', 'admin'];
 
-    public const array ACTIONS = ['view', 'edit', 'delete', 'issue', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'open_holded', 'record_payment', 'void_payment', 'send', 'send_reminder', 'attach'];
+    public const array ACTIONS = ['view', 'edit', 'delete', 'issue', 'duplicate', 'download_pdf', 'edit_non_fiscal', 'cancel', 'rectify', 'void', 'view_record', 'open_holded', 'record_payment', 'void_payment', 'send', 'send_reminder', 'attach', 'schedule', 'unschedule', 'make_recurring'];
 
     /** Acción → estado → papel mínimo (null: no se ofrece). */
     private const array MATRIX = [
-        'view' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
-        'edit' => ['draft' => 'view'],
-        'delete' => ['draft' => 'view'],
-        'issue' => ['draft' => 'manage'],
-        'duplicate' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'holded' => 'view'],
-        'download_pdf' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
-        'edit_non_fiscal' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
+        'view' => ['draft' => 'view', 'scheduled' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
+        // Una programada se emitirá sola: cambiarla o borrarla es de quien emite (y al editarla se desprograma).
+        'edit' => ['draft' => 'view', 'scheduled' => 'manage'],
+        'delete' => ['draft' => 'view', 'scheduled' => 'manage'],
+        'issue' => ['draft' => 'manage', 'scheduled' => 'manage'],
+        'duplicate' => ['draft' => 'view', 'scheduled' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'holded' => 'view'],
+        'download_pdf' => ['draft' => 'view', 'scheduled' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
+        'edit_non_fiscal' => ['draft' => 'view', 'scheduled' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view', 'holded' => 'view'],
         'cancel' => ['issued' => 'manage', 'paid' => 'manage'],
         'rectify' => ['issued' => 'manage', 'paid' => 'manage'],
         'void' => ['issued' => 'admin', 'credit_note' => 'admin'],
@@ -49,7 +51,11 @@ final class DocumentActions
         'void_payment' => ['issued' => 'manage', 'paid' => 'manage', 'cancelled' => 'manage', 'credit_note' => 'manage'],
         'send' => ['issued' => 'manage', 'paid' => 'manage', 'credit_note' => 'manage'],
         'send_reminder' => ['issued' => 'manage', 'paid' => 'manage'],
-        'attach' => ['draft' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view'],
+        'attach' => ['draft' => 'view', 'scheduled' => 'view', 'issued' => 'view', 'paid' => 'view', 'cancelled' => 'view', 'voided' => 'view', 'credit_note' => 'view'],
+        // E3: programar (o cambiar la fecha) y desprogramar, y «Hacer recurrente» (H-033).
+        'schedule' => ['draft' => 'manage', 'scheduled' => 'manage'],
+        'unschedule' => ['scheduled' => 'manage'],
+        'make_recurring' => ['draft' => 'manage', 'issued' => 'manage', 'paid' => 'manage', 'holded' => 'manage'],
     ];
 
     /**
@@ -88,6 +94,7 @@ final class DocumentActions
     public static function state(SalesDocument $document): string
     {
         return match (true) {
+            $document->isScheduled() => 'scheduled',
             $document->status === SalesDocumentStatus::Draft => 'draft',
             $document->status === SalesDocumentStatus::Cancelled => 'cancelled',
             $document->status === SalesDocumentStatus::Voided => 'voided',

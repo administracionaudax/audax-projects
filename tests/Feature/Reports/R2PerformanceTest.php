@@ -70,8 +70,9 @@ beforeEach(function () {
         // La versión para el cliente (D-241): sin importes ni caché, con las cifras del portal.
         'reports.project.client.pdf' => 25,
         'reports.project.client.export' => 25,
-        // Con lo pendiente del cliente por línea (D-432 y D-433): horas, excesos y su bolsa siguiente.
-        'reports.billing' => 21,
+        // Con lo pendiente del cliente por línea (D-432 y D-433): horas, excesos y su bolsa siguiente;
+        // y, desde E3 (D-457), los meses de las líneas de fee propias.
+        'reports.billing' => 22,
         // Sin cliente, la lista de clientes por facturar (I10, D-412): horas, valor y facturas.
         'reports.billing.empty' => 13,
         // Cuenta las entradas (límite de filas) y, en frío, calcula el resumen para que el total

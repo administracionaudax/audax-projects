@@ -21,6 +21,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $subtotal
  * @property string|null $tax_rate
  * @property string|null $holded_project_id
+ * @property int|null $minutes Minutos de una línea propia de horas facturadas desde el trabajo (E3); en Holded, null
+ * @property int|null $project_id Proyecto de una línea propia hecha desde el trabajo (E3); en Holded, null
+ * @property int|null $hour_bank_id Bolsa de esa línea (E3); en Holded, null
  * @property-read BillingDocument $document
  */
 class BillingDocumentLine extends Model
@@ -44,6 +47,9 @@ class BillingDocumentLine extends Model
             'discount_pct' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'tax_rate' => 'decimal:2',
+            'minutes' => 'integer',
+            'project_id' => 'integer',
+            'hour_bank_id' => 'integer',
         ];
     }
 

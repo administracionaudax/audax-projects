@@ -119,7 +119,7 @@
     "invoicing.collect.mailing.sender_name": "Nombre del remitente",
     "invoicing.collect.mailing.sender_preview": "El cliente verá: :name <:email>",
     "invoicing.collect.mailing.reply_to": "Responder a",
-    "invoicing.collect.mailing.reply_to_hint": "Vacío: las respuestas llegan al remitente.",
+    "invoicing.collect.mailing.reply_to_hint": "Por defecto, administracion@audaxstudio.com, como el remitente: las respuestas vuelven ahí.",
     "invoicing.collect.mailing.bcc": "Copia oculta a Audax",
     "invoicing.collect.mailing.bcc_placeholder": "Ninguna",
     "invoicing.collect.mailing.bcc_hint": "Una copia de cada factura y recordatorio que se envía.",

@@ -15,6 +15,7 @@ use App\Enums\ProjectStatus;
 use App\Enums\SaleKind;
 use App\Enums\TimeEntryStatus;
 use App\Models\BillingDocument;
+use App\Models\BillingDocumentLine;
 use App\Models\BillingDocumentLink;
 use App\Models\HourBank;
 use App\Models\Project;
@@ -351,7 +352,7 @@ final class SoldVsActual
         }
 
         $links = BillingDocumentLink::query()->whereIn('project_id', $projectIds)
-            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,document_id,name,service_code,units,subtotal', 'invoice.rectified:id,collection_status'])
+            ->with(['invoice:id,kind,issued_on,subtotal,total,paid_total,pending_total,collection_status,is_draft,rectified_invoice_id', 'invoice.lines:id,document_id,name,service_code,units,subtotal,minutes,project_id,hour_bank_id', 'invoice.rectified:id,collection_status'])
             ->orderBy('id')->get()
             // Lo facturado y, aparte, los borradores (previsto, D-395); nunca lo anulado.
             ->filter(fn (BillingDocumentLink $link): bool => $link->invoice->counts() || $link->invoice->is_draft);
@@ -393,28 +394,55 @@ final class SoldVsActual
             }
 
             // Lo que dicen sus líneas (D-396): horas facturadas (unidades de las líneas de horas y de
-            // bolsa) y el importe de las líneas de bolsa (con su descuento).
-            $minutes = 0;
-            $bankAmount = '0';
+            // bolsa) y el importe de las líneas de bolsa (con su descuento). Las propias hechas desde
+            // el trabajo (E3) llevan sus minutos exactos y su proyecto o bolsa: cuentan para su unidad
+            // y el resto de la factura se reparte a partes iguales, como siempre.
+            $count = count($indexes);
+            $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
+            $weights = array_fill(0, $count, '0');
+            $minuteShares = array_fill(0, $count, 0);
+            $bankShares = array_fill(0, $count, '0');
+            $looseMinutes = 0;
+            $looseBank = '0';
+            $looseAmount = '0';
+            $tagged = false;
             foreach ($invoice->lines as $line) {
                 $kind = InvoiceLineKind::classify($line->service_code, $line->name, (string) $line->units);
-                $sign = $invoice->kind === HoldedDocumentKind::CreditNote ? -1 : 1;
-                if ($kind->countsHours()) {
-                    $minutes += $sign * (int) round((float) $line->units * 60);
+                $lineMinutes = $line->minutes !== null ? $sign * $line->minutes : ($kind->countsHours() ? $sign * (int) round((float) $line->units * 60) : 0);
+                $lineBank = $kind === InvoiceLineKind::HourBank ? Money::abs((string) $line->subtotal) : '0';
+                $n = self::unitOfLine($line, $indexes, $units);
+                if ($line->project_id !== null) {
+                    $tagged = true;
                 }
-                if ($kind === InvoiceLineKind::HourBank) {
-                    $bankAmount = Money::add($bankAmount, Money::abs((string) $line->subtotal));
+                if ($n === null) {
+                    $looseMinutes += $lineMinutes;
+                    $looseBank = Money::add($looseBank, $lineBank);
+                    $looseAmount = Money::add($looseAmount, Money::abs((string) $line->subtotal));
+
+                    continue;
                 }
+                $minuteShares[$n] += $lineMinutes;
+                $bankShares[$n] = Money::add($bankShares[$n], $lineBank);
+                $weights[$n] = Money::add($weights[$n], Money::abs((string) $line->subtotal));
             }
-            $minuteShares = self::splitMinutes($minutes, count($indexes));
+            foreach (self::splitMinutes($looseMinutes, $count) as $n => $share) {
+                $minuteShares[$n] += $share;
+            }
+            $looseShare = Money::div($looseAmount, (string) $count);
+            $bankLoose = Money::div($looseBank, (string) $count);
+            foreach ($weights as $n => $weight) {
+                $weights[$n] = Money::add($weight, $looseShare);
+                $bankShares[$n] = Money::add($bankShares[$n], $bankLoose);
+            }
+            $by = $tagged ? array_values($weights) : null;
 
             $parts = [
-                'bank_amount' => self::split(($invoice->kind === HoldedDocumentKind::CreditNote ? '-' : '').Money::round($bankAmount), count($indexes)),
-                'invoiced' => self::split((string) $invoice->subtotal, count($indexes)),
-                'invoiced_total' => self::split((string) $invoice->total, count($indexes)),
-                'collected' => self::split((string) $invoice->paid_total, count($indexes)),
-                'outstanding' => self::split((string) $invoice->pending_total, count($indexes)),
-                'overdue' => self::split($invoice->collection_status === CollectionStatus::Overdue ? (string) $invoice->pending_total : '0.00', count($indexes)),
+                'bank_amount' => array_values(array_map(fn (string $amount): string => Money::round(($invoice->kind === HoldedDocumentKind::CreditNote ? '-' : '').Money::round($amount)), Cents::largestRemainder($bankShares))),
+                'invoiced' => self::splitBy((string) $invoice->subtotal, $count, $by),
+                'invoiced_total' => self::splitBy((string) $invoice->total, $count, $by),
+                'collected' => self::splitBy((string) $invoice->paid_total, $count, $by),
+                'outstanding' => self::splitBy((string) $invoice->pending_total, $count, $by),
+                'overdue' => self::splitBy($invoice->collection_status === CollectionStatus::Overdue ? (string) $invoice->pending_total : '0.00', $count, $by),
             ];
             foreach ($indexes as $n => $index) {
                 foreach ($parts as $field => $amounts) {
@@ -590,6 +618,50 @@ final class SoldVsActual
             'margin' => $margin,
             'margin_pct' => bccomp($income, '0', 2) > 0 ? round((float) bcdiv(bcmul($margin, '100', 6), $income, 4), 1) : null,
         ];
+    }
+
+    /**
+     * $amount repartido al céntimo en proporción a unos pesos (lo de cada unidad, E3), con el mismo
+     * total; sin pesos, a partes iguales.
+     *
+     * @param  list<string>|null  $weights
+     * @return list<string>
+     */
+    private static function splitBy(string $amount, int $parts, ?array $weights): array
+    {
+        $total = $weights === null ? '0' : Money::add('0', ...$weights);
+        if ($weights === null || Money::isZero($total)) {
+            return self::split($amount, $parts);
+        }
+
+        $negative = bccomp(Money::of($amount), '0', 2) < 0;
+        $exact = array_map(fn (string $weight): string => Money::div(Money::mul(Money::abs($amount), $weight), $total), $weights);
+        $split = array_values(Cents::largestRemainder($exact, Money::round(Money::abs($amount))));
+
+        return $negative ? array_map(fn (string $value): string => Money::isZero($value) ? '0.00' : Money::round('-'.$value), $split) : $split;
+    }
+
+    /**
+     * La unidad (su posición en `indexes`) de una línea propia hecha desde el trabajo (E3): la de su
+     * bolsa o, sin bolsa, la de su proyecto. Null si no lleva proyecto o no es de ninguna.
+     *
+     * @param  list<int>  $indexes
+     * @param  list<array<string, mixed>>  $units
+     */
+    private static function unitOfLine(BillingDocumentLine $line, array $indexes, array $units): ?int
+    {
+        if ($line->project_id === null) {
+            return null;
+        }
+
+        $key = $line->hour_bank_id !== null ? 'bank:'.$line->hour_bank_id : 'project:'.$line->project_id;
+        foreach ($indexes as $n => $index) {
+            if ($units[$index]['key'] === $key) {
+                return $n;
+            }
+        }
+
+        return null;
     }
 
     /**
