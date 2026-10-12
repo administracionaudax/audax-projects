@@ -8,7 +8,7 @@ import { login, USERS } from './support';
  * adelante): crear una recurrente y generarla a mano; desde «Por facturar», crear un borrador con
  * las horas de un proyecto por horas, emitirlo en la serie F y comprobar que esas horas ya no están
  * pendientes; anularlo y ver que vuelven. La serie de pruebas no bloquea horas (D-461): para probar
- * el bloqueo, la serie F empieza hoy solo en este E2E y al final se deja como estaba (1/1/2027).
+ * el bloqueo, las series F y CN empiezan hoy solo en este E2E y al final se dejan como estaban (1/1/2027).
  * Fundación Aula Viva tiene horas aprobadas sin facturar en los datos de ejemplo (AUL-WEB).
  */
 
@@ -73,13 +73,17 @@ async function expectAccessible(page: Page): Promise<void> {
     ).toEqual([]);
 }
 
-/** Cambia el «Empieza el» de la serie F en Ajustes › Series (como el E2E de E2). */
-async function setSeriesStart(page: Page, date: string): Promise<void> {
+/** Cambia el «Empieza el» de una serie en Ajustes › Series (como el E2E de E2). */
+async function setSeriesStart(
+    page: Page,
+    date: string,
+    code = 'F',
+): Promise<void> {
     await page.goto('/facturacion/ajustes?apartado=series');
     const dialog = page.getByRole('dialog');
     await expect(async () => {
         await page
-            .getByRole('button', { name: 'Editar F', exact: true })
+            .getByRole('button', { name: `Editar ${code}`, exact: true })
             .click();
         await expect(dialog).toBeVisible({ timeout: 1_000 });
     }).toPass();
@@ -158,11 +162,12 @@ test('desde Por facturar: crear un borrador con las horas y emitirlo en la serie
 }) => {
     test.setTimeout(120_000);
     await login(page, USERS.admin);
-    // La serie F empieza hoy, solo para este E2E (la de pruebas no bloquea horas, D-461).
+    // F y CN empiezan hoy, solo para este E2E (la de pruebas no bloquea horas, D-461).
     const today = new Date().toLocaleDateString('sv-SE', {
         timeZone: 'Europe/Madrid',
     });
-    await setSeriesStart(page, today);
+    await setSeriesStart(page, today, 'F');
+    await setSeriesStart(page, today, 'CN');
     await openWorkPanel(page);
 
     const sheet = page.getByTestId('work-draft-sheet');
@@ -270,11 +275,12 @@ test('a 375 px, la lista de recurrentes y Por facturar sin desplazamiento latera
     }
 });
 
-test('se deja la serie F como estaba y se apagan los módulos', async ({
+test('se dejan las series F y CN como estaban y se apagan los módulos', async ({
     page,
 }) => {
     await login(page, USERS.admin);
-    await setSeriesStart(page, '2027-01-01');
+    await setSeriesStart(page, '2027-01-01', 'F');
+    await setSeriesStart(page, '2027-01-01', 'CN');
 
     await setModules(page, false);
 });
