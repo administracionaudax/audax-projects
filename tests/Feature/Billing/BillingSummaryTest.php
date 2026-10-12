@@ -67,6 +67,8 @@ it('calcula la portada a mano', function () {
             'contacts' => ['count' => 1, 'amount' => '300.00'],
             'banks' => ['count' => 1, 'over' => 0, 'threshold' => 85],
             'reminders' => ['count' => 0],
+            'recurring_drafts' => ['count' => 0], 'scheduled_today' => ['count' => 0], 'auto_failed' => ['count' => 0, 'url' => '/facturacion/facturas?vista=borradores'], 'recurring_failed' => ['count' => 0], 'recurring_review' => ['count' => 0],
+            'recurring_drafts' => ['count' => 0], 'scheduled_today' => ['count' => 0], 'auto_failed' => ['count' => 0, 'url' => '/facturacion/facturas?vista=borradores'], 'recurring_failed' => ['count' => 0], 'recurring_review' => ['count' => 0],
         ])
         ->and($summary['kpis'])->toBe([
             'invoiced' => '3500.00',
@@ -131,5 +133,6 @@ it('sin nada pendiente, «Requiere atención» está vacío (el «Todo al día»
         'contacts' => ['count' => 0, 'amount' => '0.00'],
         'banks' => ['count' => 0, 'over' => 0, 'threshold' => 85],
         'reminders' => ['count' => 0],
+        'recurring_drafts' => ['count' => 0], 'scheduled_today' => ['count' => 0], 'auto_failed' => ['count' => 0, 'url' => '/facturacion/facturas?vista=borradores'], 'recurring_failed' => ['count' => 0], 'recurring_review' => ['count' => 0],
     ]);
 });

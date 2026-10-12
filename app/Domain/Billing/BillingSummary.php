@@ -13,6 +13,8 @@ use App\Models\BillingDocument;
 use App\Models\HoldedContact;
 use App\Models\HoldedInvoice;
 use App\Models\HourBank;
+use App\Models\RecurringInvoice;
+use App\Models\SalesDocument;
 use App\Models\User;
 use App\Support\LocalTime;
 use Carbon\CarbonImmutable;
@@ -167,6 +169,22 @@ final class BillingSummary
 
         $oldest = $receivable['oldest_due'];
 
+        // E3: borradores de recurrentes por revisar, programadas de hoy, lo que no se pudo emitir o
+        // enviar solo y las recurrentes con un error o importadas de Holded sin revisar (una consulta
+        // por tabla).
+        $own = SalesDocument::query()->toBase()->selectRaw(
+            'COALESCE(SUM(CASE WHEN status = ? AND recurring_invoice_id IS NOT NULL AND scheduled_for IS NULL THEN 1 ELSE 0 END), 0) as recurring_drafts,'
+            .' COALESCE(SUM(CASE WHEN status = ? AND scheduled_for IS NOT NULL AND scheduled_for <= ? THEN 1 ELSE 0 END), 0) as scheduled_today,'
+            .' COALESCE(SUM(CASE WHEN auto_issue_error IS NOT NULL AND status IN (?, ?) THEN 1 ELSE 0 END), 0) as auto_failed,'
+            .' MIN(CASE WHEN auto_issue_error IS NOT NULL AND status IN (?, ?) THEN id END) as auto_failed_first',
+            ['draft', 'draft', $today->toDateString().' 23:59:59', 'draft', 'issued', 'draft', 'issued'],
+        )->first();
+        $recurring = RecurringInvoice::query()->toBase()->selectRaw(
+            'COALESCE(SUM(CASE WHEN last_error IS NOT NULL AND paused_at IS NULL AND finished_at IS NULL THEN 1 ELSE 0 END), 0) as failed,'
+            .' COALESCE(SUM(CASE WHEN holded_recurring_id IS NOT NULL AND reviewed_at IS NULL THEN 1 ELSE 0 END), 0) as review',
+        )->first();
+        $autoFailed = (int) ($own->auto_failed ?? 0);
+
         return [
             'overdue' => [
                 'count' => $receivable['overdue_count'],
@@ -177,6 +195,15 @@ final class BillingSummary
             'contacts' => ['count' => (int) ($contacts->count ?? 0), 'amount' => InvoicingReport::money((int) ($contacts->cents ?? 0))],
             'banks' => ['count' => (int) ($banks->count ?? 0), 'over' => (int) ($banks->over ?? 0), 'threshold' => SoldVsActual::RISK_PCT],
             'reminders' => ['count' => $reminders],
+            'recurring_drafts' => ['count' => (int) ($own->recurring_drafts ?? 0)],
+            'scheduled_today' => ['count' => (int) ($own->scheduled_today ?? 0)],
+            'auto_failed' => [
+                'count' => $autoFailed,
+                // Con una sola, su ficha; con varias, los borradores.
+                'url' => $autoFailed === 1 && isset($own->auto_failed_first) ? '/facturacion/documentos/'.(int) $own->auto_failed_first : '/facturacion/facturas?vista=borradores',
+            ],
+            'recurring_failed' => ['count' => (int) ($recurring->failed ?? 0)],
+            'recurring_review' => ['count' => (int) ($recurring->review ?? 0)],
         ];
     }
 

@@ -9,6 +9,7 @@ use App\Domain\Billing\Holded\HoldedRequestFailed;
 use App\Domain\Billing\InvoiceLinkSuggester;
 use App\Domain\Billing\InvoiceList;
 use App\Domain\Billing\InvoicePresenter;
+use App\Domain\Billing\Issuing\InvoicingAccess;
 use App\Enums\BillingService;
 use App\Enums\CollectionStatus;
 use App\Enums\ProjectStatus;
@@ -18,6 +19,7 @@ use App\Models\Client;
 use App\Models\HoldedInvoice;
 use App\Models\HourBank;
 use App\Models\Project;
+use App\Models\RecurringInvoice;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -87,6 +89,8 @@ class HoldedInvoiceController extends Controller
                 ->orderBy('name')->orderBy('id')->get(['id', 'name'])->map(fn (Client $client): array => ['id' => $client->id, 'name' => $client->name])->values()->all(),
             'services' => array_map(fn (BillingService $service): string => $service->value, BillingService::cases()),
             'today' => $list->today->toDateString(),
+            // E3: la pestaña «Recurrentes», con la emisión visible.
+            'recurring_count' => InvoicingAccess::uses($request->user()) ? RecurringInvoice::query()->count() : 0,
         ]);
     }
 

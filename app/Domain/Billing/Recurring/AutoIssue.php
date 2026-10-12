@@ -25,8 +25,6 @@ final class AutoIssue
 
     /**
      * Emite el borrador. Devuelve la emitida o el motivo por el que no se pudo.
-     *
-     * @return SalesDocument|string
      */
     public function issue(SalesDocument $document, ?User $by): SalesDocument|string
     {

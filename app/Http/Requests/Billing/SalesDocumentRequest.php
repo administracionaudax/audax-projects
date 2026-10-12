@@ -47,7 +47,7 @@ class SalesDocumentRequest extends FormRequest
             'lines.*.unit_price' => ['nullable', 'required_if:lines.*.kind,item', 'numeric', 'between:-9999999,9999999'],
             'lines.*.discount_pct' => ['nullable', 'numeric', 'between:0,100'],
             'lines.*.tax_rate_id' => ['nullable', 'integer', Rule::exists('tax_rates', 'id')->where('kind', 'vat')],
-            'after' => ['nullable', 'in:emitir'],
+            'after' => ['nullable', 'in:emitir,programar'],
         ];
     }
 

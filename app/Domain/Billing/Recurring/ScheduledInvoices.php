@@ -110,6 +110,19 @@ final class ScheduledInvoices
         return $result;
     }
 
+    /**
+     * «Emitir ahora» una programada: deja de estar programada y, si su fecha aún no ha llegado, pasa
+     * a la de hoy (no se emite con fecha futura).
+     */
+    public function bringForward(SalesDocument $document, User $by): void
+    {
+        $today = LocalTime::today();
+        if ($document->issue_date->toDateString() > $today->toDateString()) {
+            $this->moveDates($document, $today);
+        }
+        $document->forceFill(['scheduled_for' => null, 'scheduled_send' => false, 'scheduled_by' => null, 'auto_issue_error' => null, 'updated_by' => $by->id])->save();
+    }
+
     /** ¿Lo puede programar? (manage-billing: es emitir más tarde). */
     public static function allowed(?User $user): bool
     {

@@ -13,12 +13,15 @@ use App\Http\Controllers\Billing\InvoicingSettingsController;
 use App\Http\Controllers\Billing\MovedReportController;
 use App\Http\Controllers\Billing\NoProjectNeededController;
 use App\Http\Controllers\Billing\ProjectBillingController;
+use App\Http\Controllers\Billing\RecurringInvoiceController;
 use App\Http\Controllers\Billing\ReviewController;
 use App\Http\Controllers\Billing\SalesDocumentAttachmentController;
 use App\Http\Controllers\Billing\SalesDocumentController;
 use App\Http\Controllers\Billing\SalesDocumentEmailController;
 use App\Http\Controllers\Billing\SalesDocumentPaymentController;
+use App\Http\Controllers\Billing\SalesDocumentScheduleController;
 use App\Http\Controllers\Billing\SoldVsActualController;
+use App\Http\Controllers\Billing\WorkDraftController;
 use App\Http\Controllers\Reports\Exports\BillingReportController;
 use App\Providers\ReportsServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -172,6 +175,35 @@ Route::middleware('module:billing')->group(function () use ($exports) {
                 Route::post('anular-registro', [SalesDocumentController::class, 'void'])->middleware('can:void-invoices')->name('billing.documents.void');
             });
         });
+
+        /*
+        | E3 (D-450 en adelante): recurrentes (verlas, use-invoicing; el resto, manage-billing, porque
+        | pueden emitir solas), programar la emisión de un borrador (manage-billing, comprobado con la
+        | matriz) y «Crear borrador» desde el trabajo (quien prepara, use-invoicing).
+        */
+        Route::get('facturacion/recurrentes', [RecurringInvoiceController::class, 'index'])->name('billing.recurring.index');
+        Route::get('facturacion/recurrentes/{recurring}', [RecurringInvoiceController::class, 'show'])->whereNumber('recurring')->name('billing.recurring.show');
+        Route::middleware('can:manage-billing')->group(function () {
+            Route::get('facturacion/recurrentes/nueva', [RecurringInvoiceController::class, 'create'])->name('billing.recurring.create');
+            Route::post('facturacion/recurrentes', [RecurringInvoiceController::class, 'store'])->name('billing.recurring.store');
+            Route::prefix('facturacion/recurrentes/{recurring}')->whereNumber('recurring')->group(function () {
+                Route::get('editar', [RecurringInvoiceController::class, 'edit'])->name('billing.recurring.edit');
+                Route::put('/', [RecurringInvoiceController::class, 'update'])->name('billing.recurring.update');
+                Route::delete('/', [RecurringInvoiceController::class, 'destroy'])->name('billing.recurring.destroy');
+                Route::post('pausar', [RecurringInvoiceController::class, 'pause'])->name('billing.recurring.pause');
+                Route::post('reanudar', [RecurringInvoiceController::class, 'resume'])->name('billing.recurring.resume');
+                Route::post('omitir', [RecurringInvoiceController::class, 'skip'])->name('billing.recurring.skip');
+                Route::post('generar', [RecurringInvoiceController::class, 'generate'])->middleware('throttle:30,1,billing.recurring.generate')->name('billing.recurring.generate');
+                Route::post('revisada', [RecurringInvoiceController::class, 'review'])->name('billing.recurring.review');
+            });
+            Route::post('facturacion/documentos/{document}/programar', [SalesDocumentScheduleController::class, 'store'])->whereNumber('document')->name('billing.documents.schedule');
+            Route::delete('facturacion/documentos/{document}/programar', [SalesDocumentScheduleController::class, 'destroy'])->whereNumber('document')->name('billing.documents.unschedule');
+        });
+        Route::get('facturacion/por-facturar/clientes/{client}/borrador', [WorkDraftController::class, 'show'])->whereNumber('client')->name('billing.unbilled.draft');
+        Route::post('facturacion/por-facturar/clientes/{client}/borrador', [WorkDraftController::class, 'store'])
+            ->whereNumber('client')
+            ->middleware('throttle:30,1,billing.unbilled.draft')
+            ->name('billing.unbilled.draft.store');
 
         // Opciones de facturación del cliente (E2, D-442 y D-443): facturas en el portal y recordatorios.
         Route::put('clientes/{client}/facturacion/opciones', [ClientBillingController::class, 'updateOptions'])->whereNumber('client')->name('clients.billing.options');

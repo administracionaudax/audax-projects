@@ -11,6 +11,7 @@ use App\Models\SalesDocumentEmail;
 use App\Models\SalesDocumentLine;
 use App\Models\SalesDocumentLink;
 use App\Models\SalesDocumentTax;
+use App\Models\SalesDocumentTimeEntry;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -50,6 +51,9 @@ final class SalesDocumentPresenter
             'attachments',
             'source:id,full_number,status',
             'sourceHolded:id,number',
+            // E3: la recurrente de la que sale y quién la programó.
+            'recurring:id,name',
+            'scheduler:id,name',
         ]);
         // Un borrador no tiene cobros, envíos ni recordatorios: no se piden.
         if ($document->isDraft()) {
@@ -68,6 +72,10 @@ final class SalesDocumentPresenter
             ...$document->attachments->pluck('user_id')->all(),
         ]))))->pluck('name', 'id');
         $name = fn (?int $id): ?string => $id === null ? null : ($people[$id] ?? null);
+        // Las entradas de horas de cada línea (E3), en una consulta.
+        $entries = SalesDocumentTimeEntry::query()->toBase()->whereIn('sales_document_line_id', $document->lines->modelKeys())->whereNull('released_at')
+            ->selectRaw('sales_document_line_id, COUNT(*) as entries')->groupBy('sales_document_line_id')->orderBy('sales_document_line_id')
+            ->pluck('entries', 'sales_document_line_id');
 
         return [
             'id' => $document->id,
@@ -183,6 +191,19 @@ final class SalesDocumentPresenter
             'source' => $document->source !== null
                 ? ['id' => $document->source->id, 'view_id' => -$document->source->id, 'number' => $document->source->full_number, 'own' => true]
                 : ($document->sourceHolded !== null ? ['id' => $document->sourceHolded->id, 'view_id' => $document->sourceHolded->id, 'number' => $document->sourceHolded->number, 'own' => false] : null),
+            // E3: programada (se emite sola ese día), de qué recurrente sale y si algo no salió solo.
+            'scheduled' => $document->isScheduled() ? [
+                'for' => $document->scheduled_for?->toDateString(),
+                'send' => $document->scheduled_send,
+                'by' => $document->scheduler?->name,
+            ] : null,
+            'recurring' => $document->recurring === null ? null : [
+                'id' => $document->recurring->id,
+                'name' => $document->recurring->name,
+                'url' => $document->recurring->url(),
+                'period' => $document->recurring_period_on?->toDateString(),
+            ],
+            'auto_issue_error' => $document->auto_issue_error,
             'pdf_ready' => $document->pdf_sha256 !== null,
             'pdf_sha256' => $document->pdf_sha256,
             'lines' => $document->lines->map(fn (SalesDocumentLine $line): array => [
@@ -200,6 +221,10 @@ final class SalesDocumentPresenter
                 'tax_rate' => $line->tax_rate === null ? null : (string) $line->tax_rate,
                 'operation_type' => $line->operation_type?->value,
                 'line_base' => (string) $line->line_base,
+                // E3: de dónde sale (horas, bolsa, exceso, fee o precio cerrado) y sus horas.
+                'origin' => $line->origin,
+                'minutes' => $line->minutes,
+                'entries' => $line->origin === 'hours' || $line->origin === 'overage' ? (int) ($entries[$line->id] ?? 0) : 0,
             ])->values()->all(),
             // El desglose congelado de una emitida o, en un borrador, el calculado desde sus líneas.
             'taxes' => $document->isDraft() ? self::draftTaxes($document) : $document->taxes->map(fn (SalesDocumentTax $tax): array => [
@@ -264,7 +289,11 @@ final class SalesDocumentPresenter
                 'unit_price' => self::plain((string) $line->unit_price),
                 'discount_pct' => self::plain((string) $line->discount_pct),
                 'tax_rate_id' => $line->tax_rate_id,
+                // E3: una línea hecha desde el trabajo (sus horas se bloquean al emitir).
+                'origin' => $line->origin,
+                'minutes' => $line->minutes,
             ])->values()->all(),
+            'scheduled_for' => $document->scheduled_for?->toDateString(),
         ];
     }
 
