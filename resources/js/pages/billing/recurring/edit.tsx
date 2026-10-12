@@ -496,7 +496,7 @@ export default function RecurringEditor({ recurring, options }: Props) {
                                         ))}
                                     </RadioGroup>
                                     {data.end === 'date' ? (
-                                        <div className="grid max-w-xs gap-1">
+                                        <div className="grid max-w-xs content-start gap-1">
                                             <Label
                                                 htmlFor={field(
                                                     'end-date-value',
@@ -530,7 +530,7 @@ export default function RecurringEditor({ recurring, options }: Props) {
                                         </div>
                                     ) : null}
                                     {data.end === 'count' ? (
-                                        <div className="grid max-w-xs gap-1">
+                                        <div className="grid max-w-xs content-start gap-1">
                                             <Label
                                                 htmlFor={field(
                                                     'end-count-value',
