@@ -194,3 +194,10 @@ Comprobado con los datos reales: todas las pantallas de Facturación 200 (entre 
 - Pruebas de E1 en PostgreSQL del servidor: 318 en verde.
 - Batería V sin incidencias; webs 33/35.
 - Sin cambios de sistema. |
+| 12/10 | **Emisión propia E3: recurrentes, programadas y facturar desde el trabajo** (D-447 a D-461). Copia previa `antes-de-emision-e3.dump` (600, comprobada: 1.403 entradas). Migraciones `billing_payments_without_cancelled` y `create_invoicing_e3_tables`. El módulo `invoicing` sigue **apagado**.
+- Tareas nuevas (recurrentes 07:30, programadas 08:00): solo corren con el módulo encendido de verdad.
+- `app:import-holded-recurring --dry-run` contra Holded real, solo lectura. Lee las 16 recurrentes, se importarían 13 en pausa y 3 esperan a que se case su contacto (H&N, Servifruit y Chemigroup).
+- Corregidos con datos reales: la próxima fecha (`next_invoice_scheduled_at`) y la periodicidad «a» (anual).
+- **Aún no se ha importado nada.**
+- Batería V sin incidencias; webs 33/35.
+- Sin cambios de sistema. |
