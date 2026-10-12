@@ -2,8 +2,11 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     Ban,
     BellRing,
+    CalendarClock,
+    CalendarX2,
     ChevronLeft,
     ChevronRight,
+    Clock,
     Copy,
     Download,
     FileCheck2,
@@ -15,6 +18,7 @@ import {
     PencilLine,
     Plus,
     MailWarning,
+    Repeat,
     Send,
     ShieldCheck,
     Trash2,
@@ -51,6 +55,7 @@ import {
     PaymentsSection,
 } from '@/components/invoicing/collect-panels';
 import { InvoiceTotalsPanel } from '@/components/invoicing/invoice-totals-panel';
+import { ScheduleDialog } from '@/components/invoicing/schedule-dialog';
 import {
     formatQuantity,
     taxLabel,
@@ -92,6 +97,8 @@ export default function SalesDocumentShow({
     void_problems: voidProblems,
     projects,
     open_issue: openIssue,
+    open_schedule: openSchedule = false,
+    auto_active: autoActive = false,
     today,
     payment_methods: paymentMethods,
     list,
@@ -273,6 +280,27 @@ export default function SalesDocumentShow({
                                     }
                                 />
                             ) : null}
+                            {can('schedule') ? (
+                                <ScheduleDialog
+                                    document={document}
+                                    today={today}
+                                    autoActive={autoActive}
+                                    defaultOpen={openSchedule}
+                                    trigger={
+                                        <Button
+                                            variant="outline"
+                                            data-test="document-schedule"
+                                        >
+                                            <CalendarClock aria-hidden="true" />
+                                            {t(
+                                                document.scheduled
+                                                    ? 'invoicing.schedule.change'
+                                                    : 'invoicing.schedule.open',
+                                            )}
+                                        </Button>
+                                    }
+                                />
+                            ) : null}
                             {can('issue') && issue ? (
                                 <IssueDialog
                                     document={document}
@@ -281,7 +309,11 @@ export default function SalesDocumentShow({
                                     trigger={
                                         <Button data-test="document-issue">
                                             <FileCheck2 aria-hidden="true" />
-                                            {t('invoicing.show.issue')}
+                                            {t(
+                                                document.scheduled
+                                                    ? 'invoicing.schedule.issue_now'
+                                                    : 'invoicing.show.issue',
+                                            )}
                                         </Button>
                                     }
                                 />
@@ -421,6 +453,16 @@ function DocumentStatus({
     document: SalesDocumentDetail;
     today: string;
 }) {
+    if (document.scheduled) {
+        return (
+            <StatusBadge tone="info" icon={CalendarClock}>
+                {t('invoicing.schedule.badge', {
+                    date: formatDate(document.scheduled.for ?? ''),
+                })}
+            </StatusBadge>
+        );
+    }
+
     if (document.status === 'draft') {
         return (
             <StatusBadge tone="neutral" icon={PencilLine}>
@@ -472,7 +514,17 @@ function Notice({ document }: { document: SalesDocumentDetail }) {
     let text: string | null = null;
     let tone = 'bg-info-soft';
 
-    if (document.status === 'draft') {
+    if (document.scheduled) {
+        text = t(
+            document.scheduled.send
+                ? 'invoicing.schedule.notice_send'
+                : 'invoicing.schedule.notice',
+            {
+                date: formatDate(document.scheduled.for ?? ''),
+                person: document.scheduled.by ?? '—',
+            },
+        );
+    } else if (document.status === 'draft') {
         text = t('invoicing.show.notice_draft');
     } else if (document.status === 'cancelled' && document.cancelled_by) {
         text = t('invoicing.show.notice_cancelled', {
@@ -489,12 +541,21 @@ function Notice({ document }: { document: SalesDocumentDetail }) {
         text = t('invoicing.show.notice_pdf');
     }
 
-    if (text === null && !document.is_test) {
+    if (text === null && !document.is_test && !document.auto_issue_error) {
         return null;
     }
 
     return (
         <div className="grid gap-1" data-test="document-notice">
+            {document.auto_issue_error ? (
+                <p
+                    className="rounded-md bg-danger-soft px-3 py-2 text-sm"
+                    role="alert"
+                    data-test="document-auto-error"
+                >
+                    {document.auto_issue_error}
+                </p>
+            ) : null}
             {text ? (
                 <p
                     className={cn(
@@ -534,6 +595,8 @@ function MoreActions({
         actions.includes('duplicate') ||
         actions.includes('delete') ||
         actions.includes('void') ||
+        actions.includes('make_recurring') ||
+        actions.includes('unschedule') ||
         canRemind;
 
     if (!hasMenu) {
@@ -574,6 +637,31 @@ function MoreActions({
                         >
                             <Copy aria-hidden="true" />
                             {t('invoicing.show.duplicate')}
+                        </DropdownMenuItem>
+                    ) : null}
+                    {actions.includes('make_recurring') ? (
+                        <DropdownMenuItem asChild>
+                            <Link
+                                href={`/facturacion/recurrentes/nueva?desde=${document.id}`}
+                                data-test="document-make-recurring"
+                            >
+                                <Repeat aria-hidden="true" />
+                                {t('invoicing.recurring.make')}
+                            </Link>
+                        </DropdownMenuItem>
+                    ) : null}
+                    {actions.includes('unschedule') ? (
+                        <DropdownMenuItem
+                            onSelect={() =>
+                                router.delete(
+                                    `/facturacion/documentos/${document.id}/programar`,
+                                    { preserveScroll: true },
+                                )
+                            }
+                            data-test="document-unschedule"
+                        >
+                            <CalendarX2 aria-hidden="true" />
+                            {t('invoicing.schedule.unschedule')}
                         </DropdownMenuItem>
                     ) : null}
                     {actions.includes('void') ? (
@@ -767,6 +855,37 @@ function Fact({ label, value }: { label: string; value: string }) {
     );
 }
 
+/** E3: una línea de horas hecha desde el trabajo dice cuántas entradas lleva y si ya están bloqueadas. */
+function WorkOrigin({
+    line,
+    draft,
+}: {
+    line: SalesDocumentDetail['lines'][number];
+    draft: boolean;
+}) {
+    if (
+        (line.origin !== 'hours' && line.origin !== 'overage') ||
+        !line.entries
+    ) {
+        return null;
+    }
+
+    return (
+        <span
+            className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+            data-test="line-work-origin"
+        >
+            <Clock aria-hidden="true" className="size-3" />
+            {tCount(
+                draft
+                    ? 'invoicing.work.line_entries_draft'
+                    : 'invoicing.work.line_entries_locked',
+                line.entries,
+            )}
+        </span>
+    );
+}
+
 function LinesTable({ document }: { document: SalesDocumentDetail }) {
     return (
         <>
@@ -813,6 +932,10 @@ function LinesList({ document }: { document: SalesDocumentDetail }) {
                                 {line.description}
                             </span>
                         ) : null}
+                        <WorkOrigin
+                            line={line}
+                            draft={document.status === 'draft'}
+                        />
                         <span className="tabular text-xs text-muted-foreground">
                             {[
                                 `${formatQuantity(line.quantity)} ${unitLabel(line.unit, line.quantity)} × ${formatCurrency(line.unit_price)}`,
@@ -926,6 +1049,10 @@ function LinesGrid({ document }: { document: SalesDocumentDetail }) {
                                             {line.description}
                                         </span>
                                     ) : null}
+                                    <WorkOrigin
+                                        line={line}
+                                        draft={document.status === 'draft'}
+                                    />
                                 </th>
                                 <td className="px-3 py-2 text-right whitespace-nowrap">
                                     {formatQuantity(line.quantity)}{' '}

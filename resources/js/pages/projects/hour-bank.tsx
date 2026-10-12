@@ -5,9 +5,17 @@ import {
     setLayoutProps,
     usePage,
 } from '@inertiajs/react';
-import { ArrowLeft, ChartColumn, Info, TriangleAlert } from 'lucide-react';
+import {
+    ArrowLeft,
+    ChartColumn,
+    FilePlus2,
+    Info,
+    TriangleAlert,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { BillingPanel } from '@/components/billing/billing-panel';
+import { WorkDraftSheet } from '@/components/invoicing/work-draft-sheet';
+import { Button } from '@/components/ui/button';
 import { HourBankMeter } from '@/components/charts/hour-bank-meter';
 import { HourBankStatusBadge } from '@/components/domain/badges';
 import { EmptyState } from '@/components/empty-state';
@@ -257,6 +265,30 @@ export default function HourBankShow({
                         <PageSection
                             title={t('billing.bank.title')}
                             description={t('billing.bank.description')}
+                            action={
+                                can.useInvoicing &&
+                                project.client_id !== null ? (
+                                    <WorkDraftSheet
+                                        client={
+                                            project.client ?? {
+                                                id: project.client_id,
+                                                name: project.name,
+                                            }
+                                        }
+                                        bankId={bank.id}
+                                        trigger={
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                data-test="bank-create-draft"
+                                            >
+                                                <FilePlus2 aria-hidden="true" />
+                                                {t('invoicing.work.open_bank')}
+                                            </Button>
+                                        }
+                                    />
+                                ) : undefined
+                            }
                         >
                             <Deferred
                                 data="billing"

@@ -2,11 +2,14 @@ import { Head, Link, router } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     ArrowRight,
+    CalendarClock,
     CircleAlert,
+    FilePlus2,
     Gauge,
     Link2Off,
     MailWarning,
     PartyPopper,
+    Repeat,
     UserRoundX,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -26,7 +29,10 @@ import { SummaryMonthChart } from '@/components/billing/summary-month-chart';
 import { unbilledSources } from '@/components/billing/unbilled-sources';
 import { sequentialColor } from '@/components/charts/chart-config';
 import { EmptyState, HeroEmptyState } from '@/components/empty-state';
+import { WorkDraftSheet } from '@/components/invoicing/work-draft-sheet';
 import { KpiCard } from '@/components/reports/kpi-card';
+import { Button } from '@/components/ui/button';
+import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -109,7 +115,12 @@ export default function BillingSummaryPage({
         attention.unlinked.count === 0 &&
         attention.contacts.count === 0 &&
         attention.banks.count === 0 &&
-        attention.reminders.count === 0;
+        attention.reminders.count === 0 &&
+        (attention.recurring_drafts?.count ?? 0) === 0 &&
+        (attention.scheduled_today?.count ?? 0) === 0 &&
+        (attention.auto_failed?.count ?? 0) === 0 &&
+        (attention.recurring_failed?.count ?? 0) === 0 &&
+        (attention.recurring_review?.count ?? 0) === 0;
 
     return (
         <>
@@ -318,6 +329,77 @@ function AttentionList({
             detail: t('invoicing.collect.summary.reminders_detail'),
             action: t('invoicing.collect.summary.reminders_action'),
             href: `${INVOICES}?vista=por-cobrar&recordatorio=fallido`,
+        });
+    }
+
+    // E3: lo que no se pudo emitir o enviar solo, recurrentes con error, borradores de recurrentes,
+    // programadas de hoy y recurrentes de Holded por revisar.
+    if ((attention.auto_failed?.count ?? 0) > 0) {
+        items.push({
+            key: 'auto-failed',
+            icon: CircleAlert,
+            iconClass: 'text-danger',
+            text: tCount(
+                'invoicing.work.summary.auto_failed',
+                attention.auto_failed?.count ?? 0,
+            ),
+            detail: t('invoicing.work.summary.auto_failed_detail'),
+            action: t('invoicing.work.summary.review_action'),
+            href: attention.auto_failed?.url ?? `${INVOICES}?vista=borradores`,
+        });
+    }
+    if ((attention.recurring_failed?.count ?? 0) > 0) {
+        items.push({
+            key: 'recurring-failed',
+            icon: Repeat,
+            iconClass: 'text-danger',
+            text: tCount(
+                'invoicing.work.summary.recurring_failed',
+                attention.recurring_failed?.count ?? 0,
+            ),
+            action: t('invoicing.work.summary.review_action'),
+            href: '/facturacion/recurrentes?estado=activas',
+        });
+    }
+    if ((attention.recurring_drafts?.count ?? 0) > 0) {
+        items.push({
+            key: 'recurring-drafts',
+            icon: Repeat,
+            iconClass: 'text-warning',
+            text: tCount(
+                'invoicing.work.summary.recurring_drafts',
+                attention.recurring_drafts?.count ?? 0,
+            ),
+            detail: t('invoicing.work.summary.recurring_drafts_detail'),
+            action: t('invoicing.work.summary.review_action'),
+            href: `${INVOICES}?vista=borradores&origen=audax`,
+        });
+    }
+    if ((attention.scheduled_today?.count ?? 0) > 0) {
+        items.push({
+            key: 'scheduled-today',
+            icon: CalendarClock,
+            iconClass: 'text-info',
+            text: tCount(
+                'invoicing.work.summary.scheduled_today',
+                attention.scheduled_today?.count ?? 0,
+            ),
+            action: t('invoicing.work.summary.see_action'),
+            href: `${INVOICES}?vista=programadas`,
+        });
+    }
+    if ((attention.recurring_review?.count ?? 0) > 0) {
+        items.push({
+            key: 'recurring-review',
+            icon: Repeat,
+            iconClass: 'text-warning',
+            text: tCount(
+                'invoicing.work.summary.recurring_review',
+                attention.recurring_review?.count ?? 0,
+            ),
+            detail: t('invoicing.work.summary.recurring_review_detail'),
+            action: t('invoicing.work.summary.review_action'),
+            href: '/facturacion/recurrentes?estado=pausadas',
         });
     }
 
@@ -568,7 +650,7 @@ function Receivable({ summary }: { summary: BillingSummaryData }) {
                                     <Link
                                         href={href}
                                         className={cn(
-                                            'flex items-baseline justify-between gap-3 rounded-md px-1 py-2 text-sm hover:bg-accent/60',
+                                            'flex min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-2 text-sm hover:bg-accent/60',
                                             FOCUS_RING,
                                         )}
                                     >
@@ -612,6 +694,7 @@ function Unbilled({
 }) {
     const { clients, total_clients: totalClients } = summary.unbilled;
     const base = '/facturacion/por-facturar';
+    const canDraft = useAbilities().useInvoicing === true;
 
     return (
         <section
@@ -646,11 +729,14 @@ function Unbilled({
                 <>
                     <ul className="divide-y" data-test="unbilled-clients">
                         {clients.map((row) => (
-                            <li key={row.client.id}>
+                            <li
+                                key={row.client.id}
+                                className="flex items-center gap-1"
+                            >
                                 <Link
                                     href={`${base}${reportQuery}${reportQuery === '' ? '?' : '&'}cliente[]=${row.client.id}`}
                                     className={cn(
-                                        'flex items-baseline justify-between gap-3 rounded-md px-1 py-2 text-sm hover:bg-accent/60',
+                                        'flex min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-2 text-sm hover:bg-accent/60',
                                         FOCUS_RING,
                                     )}
                                 >
@@ -680,6 +766,30 @@ function Unbilled({
                                         ) : null}
                                     </span>
                                 </Link>
+                                {canDraft ? (
+                                    <WorkDraftSheet
+                                        client={row.client}
+                                        from={summary.period.from}
+                                        to={summary.period.to}
+                                        trigger={
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={t(
+                                                    'invoicing.work.create_for',
+                                                    { client: row.client.name },
+                                                )}
+                                                title={t(
+                                                    'invoicing.work.create_for',
+                                                    { client: row.client.name },
+                                                )}
+                                                data-test="summary-create-draft"
+                                            >
+                                                <FilePlus2 aria-hidden="true" />
+                                            </Button>
+                                        }
+                                    />
+                                ) : null}
                             </li>
                         ))}
                     </ul>

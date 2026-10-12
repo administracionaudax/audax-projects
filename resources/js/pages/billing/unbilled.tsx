@@ -1,15 +1,17 @@
 import { Head, Link } from '@inertiajs/react';
-import { ChevronRight, Clock, CircleCheck } from 'lucide-react';
+import { ChevronRight, Clock, CircleCheck, FilePlus2 } from 'lucide-react';
 import { BillingHeader } from '@/components/billing/billing-header';
 import { FilterSheet } from '@/components/billing/filter-sheet';
 import { HelpTip } from '@/components/billing/help-tip';
 import { KpiGroup } from '@/components/billing/kpi-group';
 import { unbilledSources } from '@/components/billing/unbilled-sources';
 import { EmptyState } from '@/components/empty-state';
+import { WorkDraftSheet } from '@/components/invoicing/work-draft-sheet';
 import { KpiCard } from '@/components/reports/kpi-card';
 import { R2ScopeNote } from '@/components/reports/r2-report-body';
 import { ReportFilterBar } from '@/components/reports/report-filter-bar';
 import { Button } from '@/components/ui/button';
+import { useAbilities } from '@/hooks/use-auth';
 import { FOCUS_RING } from '@/lib/focus-ring';
 import { formatCurrency, formatDate, formatMinutes } from '@/lib/format';
 import { t } from '@/lib/i18n';
@@ -44,6 +46,9 @@ function clientHref(clientId: number, query: ReportFiltersProps['query']) {
 export default function UnbilledClients({ filters, report, scope }: Props) {
     const url = unbilledRoute.url();
     const financials = report.financials;
+    // E3: «Crear borrador» por cliente, para quien prepara facturas (con la emisión visible).
+    const canDraft = useAbilities().useInvoicing === true && financials;
+    const period = { from: report.from, to: report.to };
     const { totals } = report;
 
     return (
@@ -202,11 +207,13 @@ export default function UnbilledClients({ filters, report, scope }: Props) {
                                 query={filters.query}
                                 financials={financials}
                                 totals={totals}
+                                draft={canDraft ? period : null}
                             />
                             <UnbilledCards
                                 rows={report.clients}
                                 query={filters.query}
                                 financials={financials}
+                                draft={canDraft ? period : null}
                             />
                         </section>
                     </>
@@ -221,11 +228,14 @@ function UnbilledTable({
     query,
     financials,
     totals,
+    draft,
 }: {
     rows: UnbilledClient[];
     query: ReportFiltersProps['query'];
     financials: boolean;
     totals: UnbilledReportData['totals'];
+    /** Con la emisión: el periodo para «Crear borrador»; null, sin el botón. */
+    draft: { from: string; to: string } | null;
 }) {
     const caption = t('billing.unbilled.caption');
 
@@ -261,6 +271,13 @@ function UnbilledTable({
                         {financials ? (
                             <th scope="col" className="px-3 py-2 text-right">
                                 {t('billing.unbilled.col.amount')}
+                            </th>
+                        ) : null}
+                        {draft ? (
+                            <th scope="col" className="px-3 py-2">
+                                <span className="sr-only">
+                                    {t('invoicing.work.create_column')}
+                                </span>
                             </th>
                         ) : null}
                         <th scope="col" className="w-10 px-3 py-2">
@@ -321,6 +338,29 @@ function UnbilledTable({
                                     {formatCurrency(row.amount ?? '0')}
                                 </td>
                             ) : null}
+                            {draft ? (
+                                <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                                    <WorkDraftSheet
+                                        client={row.client}
+                                        from={draft.from}
+                                        to={draft.to}
+                                        trigger={
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                data-test="unbilled-create-draft"
+                                                aria-label={t(
+                                                    'invoicing.work.create_for',
+                                                    { client: row.client.name },
+                                                )}
+                                            >
+                                                <FilePlus2 aria-hidden="true" />
+                                                {t('invoicing.work.open')}
+                                            </Button>
+                                        }
+                                    />
+                                </td>
+                            ) : null}
                             <td className="px-3 py-1.5 text-muted-foreground">
                                 <ChevronRight
                                     aria-hidden="true"
@@ -347,6 +387,7 @@ function UnbilledTable({
                                 {formatCurrency(totals.amount ?? '0')}
                             </td>
                         ) : null}
+                        {draft ? <td /> : null}
                         <td />
                     </tr>
                 </tfoot>
@@ -360,15 +401,17 @@ function UnbilledCards({
     rows,
     query,
     financials,
+    draft,
 }: {
     rows: UnbilledClient[];
     query: ReportFiltersProps['query'];
     financials: boolean;
+    draft: { from: string; to: string } | null;
 }) {
     return (
         <ul className="grid gap-2 md:hidden" data-test="unbilled-cards">
             {rows.map((row) => (
-                <li key={row.client.id}>
+                <li key={row.client.id} className="grid gap-1">
                     <Link
                         href={clientHref(row.client.id, query)}
                         className={cn(
@@ -407,6 +450,23 @@ function UnbilledCards({
                             </span>
                         </span>
                     </Link>
+                    {draft ? (
+                        <WorkDraftSheet
+                            client={row.client}
+                            from={draft.from}
+                            to={draft.to}
+                            trigger={
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="justify-self-end"
+                                >
+                                    <FilePlus2 aria-hidden="true" />
+                                    {t('invoicing.work.open')}
+                                </Button>
+                            }
+                        />
+                    ) : null}
                 </li>
             ))}
         </ul>

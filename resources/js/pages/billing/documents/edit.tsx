@@ -1,5 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { CircleAlert, Eye, FileCheck2, Save } from 'lucide-react';
+import {
+    CalendarClock,
+    CircleAlert,
+    Clock,
+    Eye,
+    FileCheck2,
+    Save,
+} from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useId, useRef } from 'react';
 import { BillingHeader } from '@/components/billing/billing-header';
@@ -60,7 +67,7 @@ type FormData = {
     project_id: number | null;
     hour_bank_id: number | null;
     lines: EditorLine[];
-    after: 'emitir' | null;
+    after: 'emitir' | 'programar' | null;
 };
 
 const NONE = '__none__';
@@ -131,10 +138,12 @@ export default function InvoiceEditor({
               customer_reference: document.customer_reference ?? '',
               project_id: document.project_id,
               hour_bank_id: document.hour_bank_id,
-              lines: document.lines.map((line, index) => ({
-                  ...line,
-                  key: `line-${line.id ?? index}`,
-              })),
+              lines: document.lines.map(
+                  ({ origin: _origin, minutes: _minutes, ...line }, index) => ({
+                      ...line,
+                      key: `line-${line.id ?? index}`,
+                  }),
+              ),
               after: null,
           }
         : {
@@ -247,18 +256,24 @@ export default function InvoiceEditor({
         lines: data.lines.map(({ key: _key, ...line }) => line),
     });
 
-    const save = (after: 'emitir' | null) => (event?: FormEvent) => {
-        event?.preventDefault();
-        form.transform(() => ({ ...payload(), after }));
+    // E3: las líneas con horas facturadas desde el trabajo (se bloquean al emitir).
+    const workLines = (document?.lines ?? []).filter(
+        (line) => line.origin === 'hours' || line.origin === 'overage',
+    ).length;
 
-        if (document) {
-            form.put(`/facturacion/documentos/${document.id}`, {
-                preserveScroll: true,
-            });
-        } else {
-            form.post('/facturacion/documentos', { preserveScroll: true });
-        }
-    };
+    const save =
+        (after: 'emitir' | 'programar' | null) => (event?: FormEvent) => {
+            event?.preventDefault();
+            form.transform(() => ({ ...payload(), after }));
+
+            if (document) {
+                form.put(`/facturacion/documentos/${document.id}`, {
+                    preserveScroll: true,
+                });
+            } else {
+                form.post('/facturacion/documentos', { preserveScroll: true });
+            }
+        };
 
     const preview = () => previewForm.current?.submit();
 
@@ -283,6 +298,22 @@ export default function InvoiceEditor({
                     title={title}
                     description={t('invoicing.editor.description_page')}
                 />
+
+                {document?.scheduled_for ? (
+                    <p
+                        className="flex items-start gap-2 rounded-md bg-info-soft px-3 py-2 text-sm"
+                        role="status"
+                        data-test="editor-scheduled"
+                    >
+                        <CalendarClock
+                            aria-hidden="true"
+                            className="mt-0.5 size-4 shrink-0"
+                        />
+                        {t('invoicing.schedule.editor_notice', {
+                            date: formatDate(document.scheduled_for),
+                        })}
+                    </p>
+                ) : null}
 
                 {options.issuer_missing.length > 0 ? (
                     <p
@@ -664,6 +695,18 @@ export default function InvoiceEditor({
                         </PageSection>
 
                         <PageSection title={t('invoicing.editor.lines')}>
+                            {workLines > 0 ? (
+                                <p
+                                    className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-sm"
+                                    data-test="editor-work-lines"
+                                >
+                                    <Clock
+                                        aria-hidden="true"
+                                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                    />
+                                    {t('invoicing.work.editor_notice')}
+                                </p>
+                            ) : null}
                             <EditorLines
                                 lines={data.lines}
                                 bases={bases}
@@ -793,6 +836,19 @@ export default function InvoiceEditor({
                                 >
                                     <FileCheck2 aria-hidden="true" />
                                     {t('invoicing.editor.save_issue')}
+                                </Button>
+                            ) : null}
+                            {can.manageBilling ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => save('programar')()}
+                                    disabled={form.processing}
+                                    className="max-lg:hidden"
+                                    data-test="editor-save-schedule"
+                                >
+                                    <CalendarClock aria-hidden="true" />
+                                    {t('invoicing.schedule.save_schedule')}
                                 </Button>
                             ) : null}
                             <Button

@@ -3,6 +3,7 @@ import {
     ArrowDown,
     ArrowUp,
     Ban,
+    CalendarClock,
     CircleCheck,
     FileCheck2,
     Link2,
@@ -194,9 +195,20 @@ export function RelativeStatus({
     invoice: Pick<
         HoldedInvoiceSummary,
         'collection_status' | 'due_on' | 'total' | 'pending_total' | 'is_draft'
-    >;
+    > & { scheduled_for?: string | null };
     today: string;
 }) {
+    // E3: un borrador programado dice el día en que se emitirá solo.
+    if (invoice.is_draft && invoice.scheduled_for) {
+        return (
+            <StatusBadge tone="info" icon={CalendarClock}>
+                {t('invoicing.schedule.badge', {
+                    date: formatDate(invoice.scheduled_for),
+                })}
+            </StatusBadge>
+        );
+    }
+
     const relative = relativeCollection(invoice, today);
     const due = invoice.due_on
         ? t('billing.invoice.due', { date: formatDate(invoice.due_on) })

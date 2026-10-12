@@ -13,3 +13,4 @@ export type * from './notifications';
 export type * from './reports';
 export type * from './billing';
 export type * from './invoicing';
+export type * from './invoicing-work';
