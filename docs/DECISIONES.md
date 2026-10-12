@@ -3281,7 +3281,7 @@ Entrega E3 de `docs/PLAN-EMISION.md` (§9), con §3.1, §3.8, §4.2, §6 y §7.2
 
 ### D-455 · Las horas facturadas se bloquean al emitir y vuelven al anular **[concreta D-244 y D-424]**
 - Cada línea de horas guarda sus minutos y sus entradas (`sales_document_time_entry`). **Una entrada solo puede estar en una factura viva**, también en un borrador (índice único parcial): no se puede facturar dos veces ni ponerla en dos borradores. Borrar el borrador o la línea la libera.
-- **Al emitir**, las entradas quedan bloqueadas con la factura como referencia (`TimeLockService::lockForDocument`). **Al anular** (rectificativa por el total) se desbloquean y vuelven a estar pendientes; **al rectificar por diferencias, no** (D-244). Una factura de la serie de pruebas también bloquea (para probar el flujo): anúlala para liberarlas.
+- **Al emitir**, las entradas quedan bloqueadas con la factura como referencia (`TimeLockService::lockForDocument`). **Al anular** (rectificativa por el total) se desbloquean y vuelven a estar pendientes; **al rectificar por diferencias, no** (D-244). ~~Una factura de la serie de pruebas también bloquea (para probar el flujo): anúlala para liberarlas.~~ **Cambia en D-461**: la serie de pruebas no bloquea.
 - **Por facturar es exacto con las propias**: las horas en una factura propia emitida dejan de contar por entrada (`UnbilledReport::notInvoicedByAudax`), sin importar la fecha de la factura, y esas líneas (y sus rectificativas) no se restan por importe. Las de Holded siguen restándose por periodo, como antes (D-396).
 
 ### D-456 · Bolsas y excesos al facturar **[aplica D-433]**
@@ -3304,6 +3304,13 @@ Entrega E3 de `docs/PLAN-EMISION.md` (§9), con §3.1, §3.8, §4.2, §6 y §7.2
 
 ### D-460 · Permisos de E3 **[amplía D-418 y D-446]**
 - **Ver las recurrentes**: use-invoicing. **Crearlas, cambiarlas, pausarlas, omitir, «Generar ahora», marcarlas revisadas y borrarlas**: manage-billing (pueden emitir solas). **Programar y desprogramar**, y cambiar o borrar una programada: manage-billing. **«Crear borrador» desde el trabajo**: use-invoicing (quien prepara). Responsables, plantilla, colaboradores, clientes del portal y el admin excluido de Facturación (D-245): nada (404 o 403); con la emisión apagada, 404 (`E3AccessTest`).
+
+### D-461 · La serie de pruebas no bloquea horas reales **[cambia D-455; amplía D-419]**
+Decisión del coordinador del 12/10, a la duda de E3: probar en modo de prueba no debe ensuciar «Por facturar» ni «Vendido frente a real», y la serie de pruebas no cuenta en nada.
+- Un borrador de la serie de pruebas (PRU) puede llevar líneas de horas hechas desde el trabajo y se emite normalmente, pero **al emitir no se bloquea ninguna entrada** (no se llama a `TimeLockService`) y sus enlaces con las entradas se sueltan: las horas siguen libres y pendientes, y se pueden facturar de verdad. Anularla no toca nada.
+- Por facturar nunca cuenta como facturada una hora de una factura de pruebas (`UnbilledReport::notInvoicedByAudax` mira solo las que no son de pruebas).
+- Aviso claro «Serie de pruebas: las horas no se bloquean.» en el panel «Crear borrador» (si el borrador irá a la serie de pruebas), en el editor y en cada línea de horas de la ficha.
+- El bloqueo y el desbloqueo se prueban con la serie F (Pest con fechas de 2027; el E2E de E3 adelanta la fecha de inicio de F en Ajustes y la devuelve al 1/1/2027 al acabar).
 
 ### Numeración
 - Fase 2: D-078 a D-087.
@@ -3337,7 +3344,7 @@ Entrega E3 de `docs/PLAN-EMISION.md` (§9), con §3.1, §3.8, §4.2, §6 y §7.2
 - Revisión de formularios: D-310 a D-312.
 - Mejoras de uso del 07/10: D-320 a D-325 y D-326 a D-329 (2.ª tanda).
 - RR. HH. (Fase 11): R1, D-330 a D-345; R2, D-346 a D-359; R3, D-360 a D-379.
-- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446; respuestas del propietario sobre E2 (remitente, tono y cobros de las anuladas), D-447 a D-449; emisión propia, entrega E3 (recurrentes, programadas y facturar desde el trabajo), D-450 a D-460.
+- Facturación (Fase 12): F1, D-380 a D-399; informe de facturación y la facturación fuera de Informes, D-400 a D-403; ajustes con los datos reales, D-404; rediseño de usabilidad, tanda 1, D-405 a D-410; tanda 2, D-411 a D-416; emisión propia, entrega E1 (emitir facturas), D-417 a D-429; respuestas del propietario del 09/10 (crear el cliente desde Holded, «No necesita proyecto», precios cerrados y exceso en la bolsa siguiente), D-430 a D-434; emisión propia, entrega E2 (cobrar, enviar y portal), D-435 a D-446; respuestas del propietario sobre E2 (remitente, tono y cobros de las anuladas), D-447 a D-449; emisión propia, entrega E3 (recurrentes, programadas y facturar desde el trabajo), D-450 a D-460; la serie de pruebas no bloquea horas, D-461.
 - Libres sin usar: D-162 a D-164, D-169, D-174 a D-179.
 
-La siguiente libre es **D-461** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-461 en adelante, libres).
+La siguiente libre es **D-462** (reservadas: D-257 a D-259 para el plan del día y la previsión; D-264 a D-269 y D-313 a D-319, sin usar; D-462 en adelante, libres).

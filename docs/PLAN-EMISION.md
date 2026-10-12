@@ -2,7 +2,7 @@
 
 Fecha: 09/10/2026. Rama de referencia: `fase-10`. Es un documento de análisis y diseño: no hay código de la app.
 
-> **Estado (11/10/2026):** **E1 · Emitir facturas: hecha** (rama `emision-e1`, D-417 a D-429; lo construido, en `docs/PLAN-FASE-12.md` §12). **E2 · Cobrar, enviar y portal: hecha** (rama `emision-e2`, D-435 a D-446; `docs/PLAN-FASE-12.md` §13). **E3 · Recurrentes, programadas y facturar desde el trabajo: hecha** (rama `emision-e3`, D-450 a D-460; las respuestas del propietario sobre E2, D-447 a D-449; `docs/PLAN-FASE-12.md` §14). E4 a E9, pendientes.
+> **Estado (11/10/2026):** **E1 · Emitir facturas: hecha** (rama `emision-e1`, D-417 a D-429; lo construido, en `docs/PLAN-FASE-12.md` §12). **E2 · Cobrar, enviar y portal: hecha** (rama `emision-e2`, D-435 a D-446; `docs/PLAN-FASE-12.md` §13). **E3 · Recurrentes, programadas y facturar desde el trabajo: hecha** (rama `emision-e3`, D-450 a D-461; las respuestas del propietario sobre E2, D-447 a D-449; `docs/PLAN-FASE-12.md` §14). E4 a E9, pendientes.
 
 Lo pide D-249 (el propietario decide emitir desde Audax Proyectos y dar de baja Holded) con su actualización del mismo día:
 - la emisión propia se construye ya, sin el envío a la AEAT, dando por hecho que se publicará el aplazamiento de VeriFactu a 2028;
