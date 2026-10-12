@@ -172,6 +172,7 @@
     "invoicing.work.total": "Base (sin IVA)",
     "invoicing.work.create": "Crear borrador",
     "invoicing.work.hint": "Se abre en el editor para revisarlo. Las horas se bloquean al emitir; si se anula la factura, vuelven a estar pendientes.",
+    "invoicing.work.test_series": "Serie de pruebas: las horas no se bloquean.",
     "invoicing.work.errors.generic": "No se ha podido crear el borrador.",
     "invoicing.work.editor_notice": "Lleva horas facturadas desde el trabajo: al emitir, sus entradas quedan bloqueadas y enlazadas a su línea; si se anula, vuelven a estar pendientes.",
     "invoicing.work.line_entries_draft_one": ":count entrada de horas: se bloquea al emitir",

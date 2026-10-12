@@ -423,7 +423,8 @@ final class UnbilledReport
             ->join('sales_documents', 'sales_documents.id', '=', 'sales_document_lines.sales_document_id')
             ->whereColumn('sales_document_time_entry.time_entry_id', 'time_entries.id')
             ->whereNull('sales_document_time_entry.released_at')
-            ->where('sales_documents.status', 'issued'));
+            ->where('sales_documents.status', 'issued')
+            ->where('sales_documents.is_test', false));
     }
 
     /**

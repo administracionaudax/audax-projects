@@ -918,6 +918,14 @@ export function WorkDraftSheet({
                         <p className="text-xs text-muted-foreground">
                             {t('invoicing.work.hint')}
                         </p>
+                        {work.test_series ? (
+                            <p
+                                className="rounded-md bg-info-soft px-3 py-1.5 text-xs"
+                                data-test="work-test-series"
+                            >
+                                {t('invoicing.work.test_series')}
+                            </p>
+                        ) : null}
                     </div>
                 ) : null}
             </SheetContent>

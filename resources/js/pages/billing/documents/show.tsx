@@ -859,14 +859,30 @@ function Fact({ label, value }: { label: string; value: string }) {
 function WorkOrigin({
     line,
     draft,
+    test = false,
 }: {
     line: SalesDocumentDetail['lines'][number];
     draft: boolean;
+    test?: boolean;
 }) {
-    if (
-        (line.origin !== 'hours' && line.origin !== 'overage') ||
-        !line.entries
-    ) {
+    if (line.origin !== 'hours' && line.origin !== 'overage') {
+        return null;
+    }
+
+    // Serie de pruebas (D-461): sus horas nunca se bloquean.
+    if (test) {
+        return (
+            <span
+                className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+                data-test="line-work-origin"
+            >
+                <Clock aria-hidden="true" className="size-3" />
+                {t('invoicing.work.test_series')}
+            </span>
+        );
+    }
+
+    if (!line.entries) {
         return null;
     }
 
@@ -935,6 +951,7 @@ function LinesList({ document }: { document: SalesDocumentDetail }) {
                         <WorkOrigin
                             line={line}
                             draft={document.status === 'draft'}
+                            test={document.is_test}
                         />
                         <span className="tabular text-xs text-muted-foreground">
                             {[
@@ -1052,6 +1069,7 @@ function LinesGrid({ document }: { document: SalesDocumentDetail }) {
                                     <WorkOrigin
                                         line={line}
                                         draft={document.status === 'draft'}
+                                        test={document.is_test}
                                     />
                                 </th>
                                 <td className="px-3 py-2 text-right whitespace-nowrap">

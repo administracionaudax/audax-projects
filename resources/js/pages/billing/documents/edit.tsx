@@ -704,7 +704,11 @@ export default function InvoiceEditor({
                                         aria-hidden="true"
                                         className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                                     />
-                                    {t('invoicing.work.editor_notice')}
+                                    {t(
+                                        series?.is_test
+                                            ? 'invoicing.work.test_series'
+                                            : 'invoicing.work.editor_notice',
+                                    )}
                                 </p>
                             ) : null}
                             <EditorLines

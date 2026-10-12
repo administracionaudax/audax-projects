@@ -6,9 +6,10 @@ import { login, USERS } from './support';
 /*
  * Emisión propia, entrega E3 · Recurrentes, programadas y facturar desde el trabajo (D-450 en
  * adelante): crear una recurrente y generarla a mano; desde «Por facturar», crear un borrador con
- * las horas de un proyecto por horas, emitirlo en la serie de pruebas y comprobar que esas horas ya
- * no están pendientes; anularlo y ver que vuelven. Fundación Aula Viva tiene horas aprobadas sin
- * facturar en los datos de ejemplo (AUL-WEB).
+ * las horas de un proyecto por horas, emitirlo en la serie F y comprobar que esas horas ya no están
+ * pendientes; anularlo y ver que vuelven. La serie de pruebas no bloquea horas (D-461): para probar
+ * el bloqueo, la serie F empieza hoy solo en este E2E y al final se deja como estaba (1/1/2027).
+ * Fundación Aula Viva tiene horas aprobadas sin facturar en los datos de ejemplo (AUL-WEB).
  */
 
 test.describe.configure({ mode: 'serial' });
@@ -70,6 +71,21 @@ async function expectAccessible(page: Page): Promise<void> {
                     .join(' | ')}`,
         ),
     ).toEqual([]);
+}
+
+/** Cambia el «Empieza el» de la serie F en Ajustes › Series (como el E2E de E2). */
+async function setSeriesStart(page: Page, date: string): Promise<void> {
+    await page.goto('/facturacion/ajustes?apartado=series');
+    const dialog = page.getByRole('dialog');
+    await expect(async () => {
+        await page
+            .getByRole('button', { name: 'Editar F', exact: true })
+            .click();
+        await expect(dialog).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await dialog.getByLabel('Empieza el').fill(date);
+    await dialog.getByRole('button', { name: 'Guardar' }).click();
+    await expect(dialog).toBeHidden();
 }
 
 /** «Crear borrador» de un cliente en Por facturar (abre el panel lateral). */
@@ -137,11 +153,16 @@ test('crear una recurrente y generarla a mano: el borrador lleva las palabras de
     );
 });
 
-test('desde Por facturar: crear un borrador con las horas y emitirlo en la serie de pruebas; ya no están pendientes', async ({
+test('desde Por facturar: crear un borrador con las horas y emitirlo en la serie F; ya no están pendientes', async ({
     page,
 }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     await login(page, USERS.admin);
+    // La serie F empieza hoy, solo para este E2E (la de pruebas no bloquea horas, D-461).
+    const today = new Date().toLocaleDateString('sv-SE', {
+        timeZone: 'Europe/Madrid',
+    });
+    await setSeriesStart(page, today);
     await openWorkPanel(page);
 
     const sheet = page.getByTestId('work-draft-sheet');
@@ -152,7 +173,7 @@ test('desde Por facturar: crear un borrador con las horas y emitirlo en la serie
 
     await expect(page).toHaveURL(/\/facturacion\/documentos\/\d+\/editar$/);
     await expect(page.getByTestId('editor-work-lines')).toBeVisible();
-    await expect(page.getByTestId('editor-series')).toContainText('PRU ·');
+    await expect(page.getByTestId('editor-series')).toContainText('F ·');
 
     const complete = page.getByTestId('complete-fiscal');
     if ((await complete.textContent())?.includes('Completar')) {
@@ -182,7 +203,7 @@ test('desde Por facturar: crear un borrador con las horas y emitirlo en la serie
     await page.getByTestId('document-issue').click();
     await page.getByRole('dialog').getByTestId('issue-confirm').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /PRU\d{6}/,
+        /^F\d{6}$/,
     );
     await expect(page.getByTestId('line-work-origin').first()).toContainText(
         'bloqueada',
@@ -218,7 +239,7 @@ test('al anular la factura, las horas vuelven a estar pendientes', async ({
     await page.getByTestId('correct-reason').fill('Prueba del E2E de E3');
     await page.getByTestId('cancel-confirm').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        /PRUCN\d{6}/,
+        /^CN\d{6}$/,
     );
 
     await openWorkPanel(page);
@@ -249,6 +270,11 @@ test('a 375 px, la lista de recurrentes y Por facturar sin desplazamiento latera
     }
 });
 
-test('se apagan los módulos', async ({ page }) => {
+test('se deja la serie F como estaba y se apagan los módulos', async ({
+    page,
+}) => {
+    await login(page, USERS.admin);
+    await setSeriesStart(page, '2027-01-01');
+
     await setModules(page, false);
 });

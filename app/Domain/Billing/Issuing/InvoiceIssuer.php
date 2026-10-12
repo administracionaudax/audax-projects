@@ -35,7 +35,7 @@ use Illuminate\Validation\ValidationException;
  * 3. Congela las líneas (tipo y calificación del impuesto, base), el desglose por tipo, las copias del
  *    emisor y del cliente y el texto de la forma de pago.
  * 4. Añade el registro de alta a la cadena (huella de VeriFactu) y deja la factura emitida.
- * 5. Bloquea sus horas; si es una anulación (D-244), deja la original «Anulada» y desbloquea las suyas.
+ * 5. Bloquea sus horas (las de la serie de pruebas, no: D-461); si es una anulación (D-244), deja la original «Anulada» y desbloquea las suyas.
  * 6. Tras el commit, el PDF (GenerateInvoicePdf): mientras, la ficha dice «Preparando el PDF».
  */
 final class InvoiceIssuer
@@ -220,9 +220,14 @@ final class InvoiceIssuer
                 'invoice_record_id' => $record->id,
             ])->save();
 
-            // Las horas de sus líneas, bloqueadas con la factura como referencia (§3.8).
-            $entries = SalesDocumentTimeEntry::query()->whereIn('sales_document_line_id', $items->modelKeys())->whereNull('released_at')->pluck('time_entry_id')->all();
-            $this->locks->lockForDocument($by, $document, array_values(array_map('intval', $entries)));
+            // Las horas de sus líneas, bloqueadas con la factura como referencia (§3.8). Una de la
+            // serie de pruebas no bloquea ni deja facturada ninguna hora real (D-461): se sueltan.
+            $hours = SalesDocumentTimeEntry::query()->whereIn('sales_document_line_id', $items->modelKeys())->whereNull('released_at');
+            if ($document->is_test || $series->isTest()) {
+                $hours->update(['released_at' => CarbonImmutable::now()]);
+            } else {
+                $this->locks->lockForDocument($by, $document, array_values(array_map('intval', $hours->pluck('time_entry_id')->all())));
+            }
 
             if ($document->rectification_kind === RectificationKind::Cancellation && $document->rectified_document_id !== null) {
                 $this->cancelOriginal($document, $by);

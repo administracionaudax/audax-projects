@@ -122,8 +122,9 @@ it('al emitir, las horas quedan bloqueadas y dejan de estar pendientes; al anula
     // Por facturar redondea el total del proyecto (229,8333 €); la factura, cada línea (151,67 + 78,17).
     expect(($this->pending)()['totals'])->toBe(['minutes' => 207, 'pending_minutes' => 45, 'amount' => '229.83']);
 
+    // En la serie F (empieza el 1/1/2027): la de pruebas no bloquea (D-461).
     $draft = ($this->draft)(['entries' => [$this->e1->id, $this->e2->id, $this->e3->id]]);
-    $draft->forceFill(['series_id' => invoicingSeries('PRU')->id])->save();
+    $draft->forceFill(['series_id' => invoicingSeries('F')->id])->save();
     // Un borrador aún no es facturado: siguen pendientes.
     expect(($this->pending)()['totals']['minutes'])->toBe(207);
 
@@ -146,6 +147,30 @@ it('al emitir, las horas quedan bloqueadas y dejan de estar pendientes; al anula
         ->and(collect(($this->work)()['hours'][0]['lines'])->sum('minutes'))->toBe(207);
     $again = ($this->draft)(['entries' => [$this->e1->id]]);
     expect((string) $again->subtotal)->toBe('130.00');
+});
+
+it('una de la serie de pruebas no bloquea ni deja facturada ninguna hora real (D-461)', function () {
+    $draft = ($this->draft)(['entries' => [$this->e1->id, $this->e2->id, $this->e3->id]]);
+    $draft->forceFill(['series_id' => invoicingSeries('PRU')->id, 'is_test' => true])->save();
+    $issued = app(InvoiceIssuer::class)->issue($draft, $this->admin);
+
+    expect($issued->full_number)->toStartWith('PRU')
+        ->and((string) $issued->subtotal)->toBe('229.84')
+        ->and($this->e1->refresh()->status)->toBe(TimeEntryStatus::Approved)
+        ->and(TimeEntryLock::query()->where('sales_document_id', $issued->id)->exists())->toBeFalse()
+        ->and(SalesDocumentTimeEntry::query()->whereNull('released_at')->count())->toBe(0)
+        // Siguen pendientes y se pueden facturar de verdad.
+        ->and(($this->pending)()['totals']['minutes'])->toBe(207)
+        ->and(collect(($this->work)()['hours'][0]['lines'])->sum('minutes'))->toBe(207);
+
+    $real = ($this->draft)(['entries' => [$this->e1->id]]);
+    $real->forceFill(['series_id' => invoicingSeries('F')->id])->save();
+    app(InvoiceIssuer::class)->issue($real, $this->admin);
+    expect($this->e1->refresh()->status)->toBe(TimeEntryStatus::Locked);
+
+    // Anular la de pruebas no toca la hora que ya está en la factura de verdad.
+    app(InvoiceCorrections::class)->cancel($issued->refresh(), $this->admin, 'Era una prueba');
+    expect($this->e1->refresh()->status)->toBe(TimeEntryStatus::Locked);
 });
 
 it('una hora solo puede estar en una factura emitida viva (índice único)', function () {

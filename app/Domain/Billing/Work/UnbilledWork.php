@@ -2,6 +2,7 @@
 
 namespace App\Domain\Billing\Work;
 
+use App\Domain\Billing\Issuing\DraftWriter;
 use App\Domain\Billing\UnbilledReport;
 use App\Domain\Reports\EntryValuation;
 use App\Domain\Reports\Money;
@@ -10,6 +11,7 @@ use App\Enums\BillingService;
 use App\Enums\BillingType;
 use App\Enums\CollectionStatus;
 use App\Enums\ProjectStatus;
+use App\Enums\SalesDocumentType;
 use App\Enums\TimeEntryStatus;
 use App\Models\CatalogService;
 use App\Models\Client;
@@ -72,6 +74,8 @@ final class UnbilledWork
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'grouping' => $grouping,
+            // La serie que llevará el borrador: con la de pruebas, las horas no se bloquean (D-461).
+            'test_series' => DraftWriter::defaultSeries(SalesDocumentType::Invoice, $today)?->isTest() ?? false,
             'hours' => $bank === null ? $this->hours($projects, $from, $to, $grouping, $services) : [],
             'banks' => $this->banks($client, $projects, $from, $to, $bank, $services),
             'overage' => $this->overage($client, $projects, $from, $to, $bank),

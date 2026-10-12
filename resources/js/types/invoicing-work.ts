@@ -132,6 +132,8 @@ export type UnbilledWork = {
     from: string;
     to: string;
     grouping: WorkGrouping;
+    /** El borrador irá a la serie de pruebas: sus horas no se bloquean (D-461). */
+    test_series?: boolean;
     hours: {
         project: WorkProjectRef;
         minutes: number;
