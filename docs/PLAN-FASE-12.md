@@ -484,6 +484,19 @@ Decisiones D-435 a D-446. Entrega E2 de `docs/PLAN-EMISION.md` (§9): la parte d
 - [x] **Portal (D-443):** «Facturas» por cliente (apagado por defecto), solo las emitidas y sus rectificativas, con el PDF y los adjuntos visibles; aislamiento con 404.
 - [x] **Adjuntos y cadena de documentos (D-444 y D-445):** adjuntos internos o visibles; en la ficha, cobros, adjuntos, la cadena (duplicada de → factura → rectificativas → cobros) y la historia con envíos, vistas y cobros.
 - [x] **Corregido de E1 (D-446):** el botón «Editar» de las filas de Ajustes no abría su diálogo.
-- [ ] Siguiente: E3 (recurrentes, programadas y facturar desde el trabajo).
+- [x] E3 (recurrentes, programadas y facturar desde el trabajo): §14.
 
 **Pruebas:** `tests/Feature/Invoicing/PaymentsTest.php`, `EmailSendingTest.php`, `PublicLinkTest.php`, `RemindersTest.php`, `AttachmentsTest.php` y `CollectAccessTest.php` (admin, finanzas, quien prepara, responsable, empleado, colaborador, cliente del portal y admin excluido); `tests/Feature/Portal/InvoicesTest.php` y `PortalRoutesIsolationTest.php` (con las rutas nuevas); `tests/Feature/Performance/InvoicingPerformanceTest.php` (ficha con cobros, envíos y adjuntos, y «Por cobrar»); `tests/js/invoicing-collect.test.tsx`; `tests/e2e/invoicing-e2.spec.ts` (emitir en PRU, cobro parcial y total, enviar, «Por cobrar» y el portal con una de la serie F).
+
+## 14. Emisión propia, entrega E3 · Recurrentes, programadas y facturar desde el trabajo (rama `emision-e3`, 12/10/2026)
+
+Decisiones D-450 a D-460 (y D-447 a D-449, las respuestas del propietario sobre E2: el remitente y la respuesta, administracion@; se tutea al cliente; el cobro de una factura anulada no cuenta, como en Holded). Entrega E3 de `docs/PLAN-EMISION.md` (§9). Con el módulo `invoicing` apagado no cambia nada; en modo de prueba no se genera ni se emite nada solo.
+
+- [x] **Recurrentes (D-451):** plantilla con cliente, líneas y periodicidad (mensual, bimestral, trimestral, semestral, anual u otra), día del mes (el último si el mes es más corto), inicio y fin por fecha o por número de veces, borrador por defecto o emitir y enviar sola; palabras dinámicas del periodo; omitir, pausar, reanudar y «Generar ahora»; historial y calendario de las próximas 12. Tarea diaria a las 07:30, idempotente.
+- [x] **Las 16 de Holded (D-452):** `app:import-holded-recurring` con `--dry-run`, solo lectura, en pausa, con lo que no casa dicho y sin inventar.
+- [x] **Programadas (D-453):** un borrador con fecha de emisión futura que se emite (y se envía) solo a las 08:00, en nombre de quien la programó; vista «Programadas».
+- [x] **Facturar desde el trabajo (D-454 a D-458):** «Crear borrador» desde Por facturar, el proyecto, la bolsa y el Resumen: horas agrupadas a su tarifa congelada y al céntimo, bolsas («bolsadehoras» con su descuento), excesos (con la bolsa siguiente), fees por mes y precios cerrados como hitos. Al emitir, las horas se bloquean y quedan enlazadas a su línea; al anular vuelven, al rectificar no; una hora nunca está en dos facturas. Por facturar y «Vendido frente a real» cuentan cada línea para su proyecto o bolsa.
+- [x] **Pantallas y permisos (D-459 y D-460).**
+- [ ] Siguiente: E4 (libros y gestoría).
+
+**Pruebas:** `tests/Unit/Billing/RecurringScheduleTest.php` (periodicidades, fin de mes, bisiestos, palabras) y `WorkLinesTest.php` (al céntimo, bolsas); `tests/Feature/Invoicing/RecurringInvoicesTest.php` (idempotencia, ponerse al día, omitir, pausa, fin, emitir y enviar sola, modo de prueba), `ScheduledInvoicesTest.php`, `ImportHoldedRecurringTest.php` (Holded falso), `WorkBillingTest.php` (agrupaciones, importes, bloqueo, no facturar dos veces, anular y rectificar, bolsas y excesos según D-433, fees, precios cerrados, varios proyectos, UE) y `E3AccessTest.php` (admin, finanzas, quien prepara, responsable, empleado, colaborador, portal y admin excluido); `PaymentsTest.php` (el cobro de una anulada no cuenta); `tests/js/invoicing-work.test.tsx`; `tests/e2e/invoicing-e3.spec.ts` (recurrente generada a mano; borrador con horas desde Por facturar, emitido en PRU, que ya no están pendientes; anulado, vuelven).
